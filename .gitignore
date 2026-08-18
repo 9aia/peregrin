@@ -1,0 +1,21 @@
+# Logs
+logs
+*.log
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# dotenv environment variable files
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+
+# AI agent worktrees
+worktrees/
+
+repos/
+
