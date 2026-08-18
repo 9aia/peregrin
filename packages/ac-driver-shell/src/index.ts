@@ -1,0 +1,46 @@
+import cp from "node:child_process";
+import { Effect, Layer } from "effect";
+import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
+import { resolveValueForNode } from "ac-template-engine";
+
+export const ShellDriver: Driver = {
+  name: "shell",
+  invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
+    Effect.gen(function* () {
+      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+        Effect.mapError((error) => new DriverError({ reason: String(error) })),
+      );
+
+      const with_ = resolved as Record<string, unknown>;
+      const cmd = with_.cmd;
+      if (typeof cmd !== "string" || cmd.length === 0) {
+        return yield* Effect.fail(
+          new DriverError({ reason: `shell node '${node.id}' missing 'with.cmd'` }),
+        );
+      }
+
+      if (ctx.dryRun) {
+        return [new Event("cmd.done", { cmd, dryRun: true, stdout: "" }, node.id)];
+      }
+
+      const result = yield* Effect.sync(() =>
+        cp.spawnSync(cmd, { shell: true, encoding: "utf-8", timeout: 30000 }),
+      );
+
+      if (result.error) {
+        return [new Event("node.failed", { error: String(result.error), cmd, rc: -1 }, node.id)];
+      }
+
+      const rc = result.status ?? -1;
+      const stdout = result.stdout ?? "";
+      const stderr = result.stderr ?? "";
+
+      if (rc === 0) {
+        return [new Event("cmd.done", { stdout, rc, cmd }, node.id)];
+      }
+
+      return [new Event("node.failed", { stdout, stderr, rc, cmd }, node.id)];
+    }),
+};
+
+export const ShellDriverLive = Layer.succeed(Driver, ShellDriver);

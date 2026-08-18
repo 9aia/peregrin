@@ -1,0 +1,29 @@
+{
+  "name": "ac",
+  "version": "0.0.0",
+  "private": true,
+  "bin": {
+    "ac": "./dist/cli.mjs"
+  },
+  "type": "module",
+  "scripts": {
+    "build": "vp build",
+    "check": "vp check",
+    "test": "vp test"
+  },
+  "dependencies": {
+    "@effect/cli": "^0.77.0",
+    "@effect/platform": "^0.97.1",
+    "@effect/platform-node": "^0.107.0",
+    "ac-cli-defaults": "workspace:*",
+    "ac-core": "workspace:*",
+    "ac-engine": "workspace:*",
+    "ac-loader-yaml": "workspace:*",
+    "effect": "^3.22.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.13.3",
+    "typescript": "~6.0.2",
+    "vite-plus": "catalog:"
+  }
+}

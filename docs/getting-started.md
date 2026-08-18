@@ -1,19 +1,21 @@
-# Getting Started
+# Peregrin docs site setup
 
-1. Install dependencies:
+This tutorial walks through setting up the Peregrin documentation site on your local machine.
 
-   ```bash
-   vp install
-   ```
+## Install dependencies
 
-2. Run the documentation site:
+```bash
+vp install
+```
 
-   ```bash
-   vp run docs#docs:dev
-   ```
+## Run the documentation site
 
-3. Build the documentation:
+```bash
+vp run docs#docs:dev
+```
 
-   ```bash
-   vp run docs#docs:build
-   ```
+## Build the documentation
+
+```bash
+vp run docs#docs:build
+```
