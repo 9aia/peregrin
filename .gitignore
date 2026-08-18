@@ -6,6 +6,7 @@ node_modules
 dist
 dist-ssr
 *.local
+docs/.vitepress/cache/
 
 # dotenv environment variable files
 .env
@@ -20,3 +21,4 @@ project/
 
 repos/
 
+/docs/.vitepress/cache/deps
