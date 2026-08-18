@@ -1,0 +1,63 @@
+# Peregrin Rules System — Skills + Digests + Full Rules
+
+## How this works
+
+This file is always in context. It contains 10 universal rules + a routing table.
+Procedural rules are Devin Skills (`.agents/skills/`) — auto-activated by triggers.
+Reference rules are compressed digests (`rules/.digest/`) — load on-demand per routing table.
+Full rule files (`rules/`) are the source of truth — load when a digest lacks detail.
+
+Each rule appears in exactly ONE place. No redundancy.
+
+## Tier 0 — Universal Rules (always in context)
+
+These apply to every line of code written. No exceptions.
+
+- No `throw` in library code. OK in tests and `main.ts` only.
+- Library functions return `Effect` for expected errors, never throw.
+- Use `Effect.gen` + `yield*` for sequencing. Prefer `pipe` for linear transformations.
+- Use `Schema` to validate at boundaries. Trust data once it has crossed a boundary.
+- Discriminated unions over `string` when values are known. `Option`/`Either` over `null`/`undefined`.
+- Functions are verbs, booleans are predicates (`is_`, `has_`), types are nouns.
+- No abbreviations: `config` not `cfg`, `instance` not `inst`.
+- Explicit over clever. `pipe(x, transform)` not `transform(x)` in a chain.
+- Early returns over deep nesting. Max 3 levels. `if`/`else` guards at the top.
+- Don't reinvent what exists — check Effect std-lib, workspace packages, then ecosystem.
+
+## Skills (auto-activated)
+
+Procedural rules live as Devin Skills in `.agents/skills/`. Devin auto-activates them based on task context.
+
+| Skill | Triggers on |
+|---|---|
+| `git-conventions` | Committing, branching, PRs |
+| `ci-cd` | CI config, pipeline changes, CI failures |
+| `testing` | Writing tests, mocking, test structure |
+| `create-package` | New package under `apps/` or `packages/` |
+| `workspace-structure` | Workspace-level config, project layout |
+| `write-adr` | Architecture decisions, design trade-offs |
+
+## Digests (on-demand)
+
+Load digests from `rules/.digest/` before starting work. If no row matches, Tier 0 is sufficient.
+
+| Task involves | Load these digests |
+|---|---|
+| Effect idioms, `yield*`, `pipe` | `effect-conventions` |
+| Error types, `Effect` error channel | `error-management` |
+| Architecture, package structure, layering | `architecture` |
+| Adding a dependency | `dependency-management` |
+| Naming, nesting, function length | `code-style` |
+| Choosing types, branded types, time | `data-types` |
+| Comments, doc comments | `comments` |
+
+Additional rule files can be added to `rules/` and `rules/.digest/` as the project grows.
+
+## Digest → Full Rule Escalation
+
+If a digest says "see <file>.md" or the task needs examples, code snippets, or full context —
+load the full file from `rules/<file>.md`. Digests are reference cards; full files are source of truth.
+
+## Sync
+
+Run `scripts/check-digests.sh` to detect stale digests (source file modified after digest).
