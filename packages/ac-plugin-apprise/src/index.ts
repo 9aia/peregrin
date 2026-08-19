@@ -1,6 +1,8 @@
 import { Context, Either, Effect, Layer } from "effect";
 import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
 import { resolveValueForNode } from "ac-template-engine";
+import { send as ahhaSend, registerService, type ParsedUrl, type Params } from "@toanalien/ahha";
+import nodemailer from "nodemailer";
 
 export interface AppriseMessage {
   readonly target: string;
@@ -25,6 +27,79 @@ interface NotificationResult {
 const isHttpUrl = (target: string): boolean =>
   target.startsWith("http://") || target.startsWith("https://");
 
+function normalizeTarget(target: string): string {
+  if (target.startsWith("tgram://")) {
+    return `telegram://${target.slice("tgram://".length)}`;
+  }
+  if (target.startsWith("jsons://")) {
+    return `https://${target.slice("jsons://".length)}`;
+  }
+  if (target.startsWith("json://")) {
+    return `http://${target.slice("json://".length)}`;
+  }
+  return target;
+}
+
+async function sendMail(
+  config: ParsedUrl,
+  message: string,
+  params?: Params,
+): Promise<{ success: boolean; service: string; timestamp: Date }> {
+  const host = config.host;
+  if (host === undefined || host.length === 0) {
+    throw new Error("mailto target missing host");
+  }
+  const to =
+    params?.to ?? config.query["to"] ?? (config.path.length > 0 ? config.path.join("/") : "");
+  if (to.length === 0) {
+    throw new Error("mailto target missing 'to' address");
+  }
+
+  const port =
+    config.port ?? (config.scheme === "mailtos" || config.scheme === "smtps" ? 465 : 587);
+  const secure =
+    config.scheme === "mailtos" ||
+    config.scheme === "smtps" ||
+    config.query["mode"] === "ssl" ||
+    port === 465;
+  const user = config.user ?? "";
+  const pass = config.password ?? "";
+  const from = params?.from ?? config.query["from"] ?? (user.length > 0 ? `${user}@${host}` : to);
+
+  const transport = nodemailer.createTransport({
+    host,
+    port,
+    secure,
+    auth: user.length > 0 ? { user, pass } : undefined,
+  });
+
+  await transport.sendMail({
+    from,
+    to,
+    subject: params?.title ?? config.query["subject"] ?? "Notification",
+    text: message,
+  });
+
+  return { success: true, service: config.scheme, timestamp: new Date() };
+}
+
+function registerAhhaServices(): void {
+  registerService({
+    scheme: "mailto",
+    create: (config) => ({
+      send: (message, params) => sendMail(config, message, params),
+    }),
+  });
+  registerService({
+    scheme: "mailtos",
+    create: (config) => ({
+      send: (message, params) => sendMail(config, message, params),
+    }),
+  });
+}
+
+registerAhhaServices();
+
 interface NotifyArgs {
   readonly target: string;
   readonly body: string;
@@ -39,44 +114,68 @@ const notifyOne = (args: NotifyArgs): Effect.Effect<NotificationResult, DriverEr
       return yield* Effect.fail(new DriverError({ reason: "apprise notify missing 'target'" }));
     }
 
-    if (!isHttpUrl(args.target)) {
-      return yield* Effect.fail(
-        new DriverError({
-          reason: `apprise target '${args.target}' is not a supported HTTP(S) URL`,
-        }),
-      );
+    const target = normalizeTarget(args.target);
+
+    if (isHttpUrl(target)) {
+      const timeout = typeof args.timeout === "number" && args.timeout > 0 ? args.timeout : 60;
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
+
+      const body = JSON.stringify({
+        body: args.body,
+        title: args.title,
+        format: args.bodyFormat,
+      });
+
+      const request = Effect.tryPromise({
+        try: () =>
+          fetch(target, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+            signal: controller.signal,
+          }),
+        catch: (error) =>
+          new DriverError({
+            reason: `apprise notify failed for '${args.target}': ${String(error)}`,
+          }),
+      }).pipe(Effect.ensuring(Effect.sync(() => clearTimeout(timeoutId))));
+
+      const response = yield* request;
+
+      if (!response.ok) {
+        return yield* Effect.fail(
+          new DriverError({
+            reason: `apprise notify failed with status ${response.status}`,
+          }),
+        );
+      }
+
+      return {
+        success: true,
+        target: args.target,
+        title: args.title,
+        body: args.body,
+      };
     }
 
-    const timeout = typeof args.timeout === "number" && args.timeout > 0 ? args.timeout : 60;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
+    const params: Params = {
+      title: args.title ?? "",
+      format: args.bodyFormat ?? "text",
+    };
 
-    const body = JSON.stringify({
-      body: args.body,
-      title: args.title,
-      format: args.bodyFormat,
-    });
-
-    const request = Effect.tryPromise({
-      try: () =>
-        fetch(args.target, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body,
-          signal: controller.signal,
-        }),
+    const result = yield* Effect.tryPromise({
+      try: () => ahhaSend(target, args.body, params),
       catch: (error) =>
         new DriverError({
           reason: `apprise notify failed for '${args.target}': ${String(error)}`,
         }),
-    }).pipe(Effect.ensuring(Effect.sync(() => clearTimeout(timeoutId))));
+    });
 
-    const response = yield* request;
-
-    if (!response.ok) {
+    if (!result.success) {
       return yield* Effect.fail(
         new DriverError({
-          reason: `apprise notify failed with status ${response.status}`,
+          reason: `apprise notify failed for '${args.target}': ${result.error?.message ?? "unknown error"}`,
         }),
       );
     }

@@ -14,13 +14,16 @@
     "check": "vp check"
   },
   "dependencies": {
+    "@toanalien/ahha": "0.1.1",
     "ac-core": "workspace:*",
     "ac-template-engine": "workspace:*",
-    "effect": "^3.22.1"
+    "effect": "^3.22.1",
+    "nodemailer": "^9.0.5"
   },
   "devDependencies": {
     "@effect/vitest": "^0.30.0",
     "@types/node": "^24.13.3",
+    "@types/nodemailer": "^8.0.1",
     "typescript": "~6.0.2",
     "vite-plus": "catalog:"
   }
