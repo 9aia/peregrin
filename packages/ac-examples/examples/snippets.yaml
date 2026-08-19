@@ -1,0 +1,57 @@
+# snippets: named, reusable fragments — define once, use by name anywhere.
+#
+# Demonstrates both forms:
+# - snippet: name   → merge into containing dict (like include: but by name)
+# - ${snippet(name)} → inject at any value position (like ${include()} but by name)
+#
+# Snippets can also reference files (file:) and inherit other snippets
+# (snippet: within a snippet definition).
+
+name: snippets-demo
+
+# Define reusable fragments. These are pure data — no code.
+snippets:
+  # A whole node template — the "devin driver" pattern
+  devin:
+    driver: shell
+    emits: [devin.done, devin.failed]
+    with:
+      cmd: "echo 'devin run --prompt ${event.payload.prompt} --workspace ${event.payload.workspace}'"
+      timeout: 1800
+
+  # Inherit from devin, override timeout
+  devin-long:
+    snippet: devin
+    with:
+      timeout: 3600
+
+  # Reusable value fragments — any YAML type
+  pr-triggers: [pr.opened, pr.updated, pr.reopened]
+  prod-env:
+    REGION: us-east-1
+    CLUSTER: prod
+  default-model: sonnet
+
+nodes:
+  # snippet: devin — merges the whole node template, override on:
+  - id: review
+    snippet: devin
+    on: ${snippet(pr-triggers)} # inject list of triggers
+    with:
+      env: ${snippet(prod-env)} # inject dict
+      timeout: 3600 # local overrides snippet's 1800
+
+  # snippet: devin-long — inherited snippet with longer timeout
+  - id: deep-analysis
+    snippet: devin-long
+    on: [review.done]
+    with:
+      cmd: "echo 'devin run --model ${snippet(default-model)} --prompt ${event.payload.prompt}'"
+
+  # Plain node using ${snippet()} for just the cmd string
+  - id: quick-check
+    driver: shell
+    on: [start]
+    emits: [check.done]
+    with:
+      cmd: "echo 'using model ${snippet(default-model)} for quick check'"

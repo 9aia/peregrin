@@ -1,0 +1,59 @@
+# fix: spawn an agent to apply the fix.
+# Bugfix-specific — uses devin -p to edit files following ndocs-3 conventions.
+#
+# Fires on investigate.done OR verify.failed (retry loop).
+# max_fires bounds the retry loop (default 3, from config.max_fix_attempts).
+#
+# Expects env:
+#   BUG_DESCRIPTION — what the bug is
+#
+# Emits: fix.done | fix.failed
+# Writes summary to /tmp/ac-bugfix-fix-summary.txt.
+
+id: fix
+driver: shell
+on: [investigate.done, verify.failed]
+emits: [fix.done, fix.failed]
+max_fires: 3
+with:
+  cmd: |
+    source /tmp/ac-bugfix-env
+    cd "$WORKTREE_PATH"
+
+    ATTEMPT_FILE="/tmp/ac-bugfix-attempt"
+    ATTEMPT=$(cat "$ATTEMPT_FILE" 2>/dev/null || echo 0)
+    ATTEMPT=$((ATTEMPT + 1))
+    echo "$ATTEMPT" > "$ATTEMPT_FILE"
+
+    echo "=== Fix attempt $ATTEMPT/${config.max_fix_attempts} ==="
+
+    devin -p "You are fixing a bug in the ndocs-3 project (Effect + Bun + Vite+).
+    Bug: $BUG_DESCRIPTION
+
+    Worktree: $(pwd) (branch: $BRANCH)
+
+    Previous investigation report is in /tmp/ac-bugfix-investigation.txt.
+    $(cat /tmp/ac-bugfix-investigation.txt 2>/dev/null || echo 'No prior investigation.')
+
+    $(if [ "$ATTEMPT" -gt 1 ]; then
+      echo "Previous fix attempt failed verification."
+      echo "Verify output from last attempt:"
+      cat /tmp/ac-bugfix-verify-output.txt 2>/dev/null || echo 'No verify output.'
+    fi)
+
+    Apply the fix following ndocs-3 conventions:
+    - English identifiers, comments, and commit messages
+    - Effect patterns (Generators, Tagged Errors) where applicable
+    - Core code stays portable (no cloud SDKs in src/core/)
+    - Keep changes surgical — touch only what's needed
+
+    After fixing, write a summary to /tmp/ac-bugfix-fix-summary.txt:
+    FILES_CHANGED: <list>
+    SUMMARY: <what you changed and why>
+
+    Stage changes with: git add -A" \
+      --respect-workspace-trust false
+  emit:
+    0: fix.done
+    default: fix.failed
+  timeout: 600

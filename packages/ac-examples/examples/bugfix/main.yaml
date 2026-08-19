@@ -1,0 +1,74 @@
+# bugfix: end-to-end bugfix workflow for ndocs-3.
+#
+# Pipeline:
+#   worktree → reproduce → investigate (agent) → fix (agent)
+#            → verify → commit → review (agent) → pr → report
+#
+# If verify fails, loops back to fix (max 3 attempts).
+# If investigate or worktree fails, aborts.
+#
+# Node definitions are auto-discovered from colocated *.node.yml files
+# in this directory by the file router. No include: or import: needed.
+#
+# Usage:
+#   BUG_ID=123 \
+#   BUG_DESCRIPTION="Login crashes on empty password" \
+#   BUG_TEST_PATH="src/auth/login.test.ts" \
+#   ac run examples/bugfix/main.yaml
+#
+# Required env:
+#   BUG_ID            — short identifier (becomes branch name: fix/<id>)
+#   BUG_DESCRIPTION   — what the bug is
+#
+# Optional env:
+#   BUG_TEST_PATH     — test file/path to run (default: skip targeted tests)
+#   REVIEWER_FOCUS    — extra instructions for the review agent
+#
+# Agents (investigate, fix, review) use `devin -p` in non-interactive mode.
+
+name: bugfix
+
+config:
+  repo: /home/luis-nm/ndocs-3
+  worktree_base: /home/luis-nm
+  max_fix_attempts: 3
+
+events:
+  - type: worktree.ready
+    fields: { path: string, branch: string }
+  - type: reproduce.done
+    fields: { stdout: string, rc: int }
+  - type: investigate.done
+    fields: { report: string }
+  - type: fix.done
+    fields: { summary: string }
+  - type: fix.failed
+    fields: { reason: string }
+  - type: verify.passed
+    fields: { stdout: string }
+  - type: verify.failed
+    fields: { stdout: string, rc: int }
+  - type: commit.done
+    fields: { sha: string }
+  - type: review.done
+    fields: { report: string }
+  - type: pr.created
+    fields: { url: string }
+  - type: bugfix.complete
+    fields: { branch: string, pr_url: string }
+  - type: bugfix.aborted
+    fields: { reason: string }
+
+# Nodes are auto-discovered from *.node.yml files in this directory:
+#   worktree.node.yml       → worktree (creates git worktree)
+#   reproduce.node.yml      → reproduce (run baseline tests)
+#   investigate.node.yml    → investigate (agent: root cause analysis)
+#   fix.node.yml            → fix (agent: apply fix, retry on verify.failed)
+#   verify.node.yml         → verify (run checks + targeted tests)
+#   commit.node.yml         → commit (git commit changes)
+#   review.node.yml         → review (agent: code review)
+#   pr.node.yml             → pr (push + create PR)
+#   report.node.yml         → report (completion summary)
+#   abort.node.yml          → abort (failure handler)
+#   fix-exhausted.node.yml  → fix-exhausted (max attempts reached)
+nodes: []

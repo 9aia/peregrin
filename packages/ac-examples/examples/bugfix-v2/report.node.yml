@@ -1,0 +1,16 @@
+# report: print completion summary.
+# Reads ${state.branch} and ${state.worktree_path} — no /tmp/ac-bugfix-env needed.
+
+id: report
+driver: shell
+on: [git.pr.created]
+emits: [bugfix-v2.complete]
+with:
+  cmd: |
+    echo "════════════════════════════════════════"
+    echo "  BUGFIX COMPLETE"
+    echo "════════════════════════════════════════"
+    echo "  Branch:   ${state.branch}"
+    echo "  Worktree: ${state.worktree_path}"
+    echo "  PR:       ${event.payload.stdout}"
+    echo "════════════════════════════════════════"

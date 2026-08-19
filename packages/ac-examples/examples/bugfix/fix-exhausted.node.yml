@@ -1,0 +1,16 @@
+# fix-exhausted: report when max fix attempts reached without passing verify.
+# Bugfix-specific.
+
+id: fix-exhausted
+driver: shell
+on: [fix.failed]
+emits: [bugfix.failed]
+with:
+  cmd: |
+    echo "════════════════════════════════════════"
+    echo "  BUGFIX FAILED — max fix attempts reached"
+    echo "════════════════════════════════════════"
+    echo "  The agent could not produce a passing fix"
+    echo "  after ${config.max_fix_attempts} attempts."
+    echo "  Check the worktree for partial changes."
+    echo "════════════════════════════════════════"

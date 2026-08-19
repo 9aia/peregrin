@@ -1,0 +1,17 @@
+# report: print completion summary.
+# Reusable by any workflow — change the header text via merge override.
+
+id: report
+driver: shell
+on: [pr.created]
+emits: [bugfix.complete]
+with:
+  cmd: |
+    source /tmp/ac-bugfix-env
+    echo "════════════════════════════════════════"
+    echo "  BUGFIX COMPLETE"
+    echo "════════════════════════════════════════"
+    echo "  Branch:  $BRANCH"
+    echo "  Worktree: $WORKTREE_PATH"
+    echo "  PR:       ${event.payload.stdout}"
+    echo "════════════════════════════════════════"

@@ -1,0 +1,50 @@
+# git/worktree: create a clean git worktree from origin/main.
+#
+# Reusable — any workflow that needs an isolated branch. Stores the worktree
+# path, branch, and repo in shared state so downstream nodes read them via
+# ${state.worktree_path}, ${state.branch}, ${state.repo} — no /tmp sidecar.
+#
+# on:    git.worktree.run
+# emits: git.worktree.ready | git.worktree.failed
+#
+# Expects config:
+#   repo          — path to the git repo
+#   worktree_base — parent dir for the worktree
+#
+# Expects env (or state):
+#   BRANCH_ID  — used for branch name (fix/<id>) and worktree dir slug
+#                Falls back to ${state.branch_id} if unset.
+#   BRANCH_PREFIX — prefix for the branch (default: fix)
+#   WORKTREE_DIR_PREFIX — prefix for the worktree dir name (default: wt)
+#
+# Writes to state (on success, via set_state_from_stdout):
+#   worktree_path — absolute path to the created worktree
+#   branch        — the branch name
+
+id: git.worktree
+driver: shell
+on: [git.worktree.run]
+emits: [git.worktree.ready, git.worktree.failed]
+with:
+  cmd: |
+    REPO="${config.repo}"
+    BASE="${config.worktree_base}"
+    ID="${BRANCH_ID:-${state.branch_id:-untitled}}"
+    PREFIX="${BRANCH_PREFIX:-fix}"
+    DIR_PREFIX="${WORKTREE_DIR_PREFIX:-wt}"
+    BRANCH="$PREFIX/$ID"
+    SLUG=$(echo "$ID" | tr '/' '-' | tr ' ' '-')
+    WORKTREE="$BASE/$DIR_PREFIX-$SLUG"
+
+    cd "$REPO"
+    git fetch origin main
+    git worktree remove "$WORKTREE" --force 2>/dev/null || true
+    git branch -D "$BRANCH" 2>/dev/null || true
+    git worktree add "$WORKTREE" -b "$BRANCH" origin/main
+
+    echo "WORKTREE_PATH=$WORKTREE"
+    echo "BRANCH=$BRANCH"
+  set_state_from_stdout: true
+  emit:
+    0: git.worktree.ready
+    default: git.worktree.failed

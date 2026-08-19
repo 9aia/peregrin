@@ -1,0 +1,11 @@
+# minimal-router/ — file router in action.
+#
+# This file is intentionally tiny. Everything else is auto-discovered
+# from colocated *.node.yml, *.snippet.yml, *.handler.py files
+# in the .ac/ directory. Run with:
+#
+#   ac run examples/minimal-router/main.yaml --dry-run
+
+name: minimal-router
+
+nodes: []

@@ -1,0 +1,57 @@
+# bugfix-v2: end-to-end bugfix workflow — refactored to use new engine features.
+#
+# Compare with examples/bugfix/ (the original) to see what the new features
+# eliminate:
+#
+#   /tmp/ac-bugfix-env sidecar files     → ${state.worktree_path}, ${state.branch}
+#   /tmp/ac-bugfix-attempt counter       → ${node.fires}
+#   envsubst + devin -p boilerplate      → driver: agent with prompt_file
+#   thin orchestrator echo bridge nodes  → forward:
+#
+# Pipeline:
+#   worktree → reproduce → investigate (agent) → fix (agent, retry)
+#            → verify → commit → review (agent) → pr → report
+#
+# Node definitions are auto-discovered from colocated *.node.yml files.
+#
+# Usage:
+#   BUG_ID=123 BUG_DESCRIPTION="Login crashes on empty password" \
+#   ac run examples/bugfix-v2/main.yaml
+
+name: bugfix-v2
+
+config:
+  repo: /home/luis-nm/ndocs-3
+  worktree_base: /home/luis-nm
+  max_fix_attempts: 3
+  install_cmd: bun install
+  check_cmd: vp check
+  test_cmd: vp test
+
+events:
+  - type: git.worktree.ready
+    fields: { stdout: string }
+  - type: git.worktree.failed
+    fields: { stderr: string }
+  - type: test.install.done
+  - type: test.check.passed
+  - type: test.check.failed
+    fields: { stdout: string }
+  - type: agent.investigate.done
+    fields: { stdout: string }
+  - type: agent.fix.done
+    fields: { stdout: string }
+  - type: agent.fix.failed
+  - type: agent.review.done
+    fields: { stdout: string }
+  - type: git.commit.done
+  - type: git.push.done
+  - type: git.pr.created
+    fields: { stdout: string }
+  - type: bugfix-v2.complete
+  - type: bugfix-v2.aborted
+    fields: { reason: string }
+
+# Nodes are auto-discovered from *.node.yml files in this directory.
+# Each one uses the new engine features — no /tmp sidecars, no envsubst.
+nodes: []

@@ -1,0 +1,12 @@
+# fix-exhausted: max fix attempts reached.
+# Fires when agent.fix.failed has been emitted (max_fires exhausted).
+
+id: fix-exhausted
+driver: shell
+on: [agent.fix.failed]
+emits: [bugfix-v2.failed]
+with:
+  cmd: |
+    echo "════════════════════════════════════════"
+    echo "  FIX EXHAUSTED — ${config.max_fix_attempts} attempts"
+    echo "════════════════════════════════════════"

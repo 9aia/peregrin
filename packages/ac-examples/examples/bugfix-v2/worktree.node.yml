@@ -1,0 +1,9 @@
+# worktree: trigger git.worktree.run.
+# Uses forward: to bridge start → git.worktree.run without a shell echo node.
+# The git/worktree.node.yml lib node (copied to .ac/lib/git/) does the work
+# and stores the result in ${state.worktree_path} and ${state.branch}.
+
+id: worktree
+on: [start]
+emits: [git.worktree.run]
+forward: [git.worktree.run]

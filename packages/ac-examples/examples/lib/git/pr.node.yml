@@ -1,0 +1,30 @@
+# git/pr: create a GitHub PR from the current branch.
+# Reusable — any workflow that needs to open a PR.
+#
+# on:    git.pr.run
+# emits: git.pr.created | git.pr.failed
+#
+# Reads from state:
+#   worktree_path — the worktree (set by git.worktree)
+#   branch        — the head branch for the PR
+#   pr_title      — PR title (falls back to "fix: ${state.branch}")
+#   pr_body       — PR body text (falls back to a default)
+#
+# Config:
+#   pr_base — base branch (default: main)
+
+id: git.pr
+driver: shell
+on: [git.pr.run]
+emits: [git.pr.created, git.pr.failed]
+with:
+  cmd: |
+    cd "${state.worktree_path}"
+    TITLE="${state.pr_title:-fix: ${state.branch}}"
+    BASE="${config.pr_base:-main}"
+    BODY="${state.pr_body:-Generated with [Devin](https://devin.ai) via agent-campaign}"
+    gh pr create --title "$TITLE" --body "$BODY" --base "$BASE" --head "${state.branch}"
+  emit:
+    0: git.pr.created
+    default: git.pr.failed
+  timeout: 120

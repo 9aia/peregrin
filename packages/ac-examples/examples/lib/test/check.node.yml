@@ -1,0 +1,24 @@
+# test/check: run lint/typecheck in the worktree.
+# Reusable — any workflow that needs lint/typecheck.
+#
+# on:    test.check.run
+# emits: test.check.passed | test.check.failed
+#
+# Reads from state:
+#   worktree_path — where to run (set by git.worktree)
+#
+# Config:
+#   check_cmd — the check command (default: vp check)
+
+id: test.check
+driver: shell
+on: [test.check.run]
+emits: [test.check.passed, test.check.failed]
+with:
+  cmd: |
+    cd "${state.worktree_path}"
+    ${config.check_cmd:-vp check}
+  emit:
+    0: test.check.passed
+    default: test.check.failed
+  timeout: 600

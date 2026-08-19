@@ -1,0 +1,60 @@
+# review-pr: lint + test in parallel, then summarize, then notify
+# Demonstrates: parallel fan-out from `start`, fan-in with mode: all,
+# conditional branching via shell exit-code → emits convention.
+
+name: review-pr
+
+events:
+  - type: lint.passed
+    fields: { stdout: string, rc: int }
+  - type: lint.failed
+    fields: { stdout: string, rc: int }
+  - type: test.passed
+    fields: { stdout: string, rc: int }
+  - type: test.failed
+    fields: { stdout: string, rc: int }
+  - type: summary.done
+    fields: { summary: string }
+  - type: notify.done
+    fields: {}
+
+nodes:
+  # --- parallel fan-out from start ---
+  - id: lint
+    driver: shell
+    on: [start]
+    emits: [lint.passed, lint.failed]
+    with:
+      cmd: "ruff check . || true; exit $?"
+
+  - id: test
+    driver: shell
+    on: [start]
+    emits: [test.passed, test.failed]
+    with:
+      cmd: "pytest --tb=short -q || true; exit $?"
+
+  # --- fan-in: wait for both lint and test ---
+  - id: summarize
+    driver: shell
+    on: [lint.passed, test.passed]
+    mode: all
+    emits: [summary.done]
+    with:
+      cmd: "echo 'Lint: ${event.payload.stdout} | Tests: ${event.payload.stdout}'"
+
+  # --- notify on any failure ---
+  - id: notify-failure
+    driver: shell
+    on: [lint.failed, test.failed]
+    mode: any
+    emits: [notify.done]
+    with:
+      cmd: "echo 'FAIL: check lint/test output'"
+
+  - id: notify-success
+    driver: shell
+    on: [summary.done]
+    emits: [notify.done]
+    with:
+      cmd: "echo 'All checks passed'"

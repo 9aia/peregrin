@@ -1,0 +1,8 @@
+# A reusable node definition — included into workflows.
+# This file is just a node spec; it gets deep-merged into the parent.
+id: lint
+driver: shell
+on: [start]
+emits: [lint.passed, lint.failed]
+with:
+  cmd: "ruff check ."

@@ -1,0 +1,34 @@
+# map-reduce: dynamic fan-out via wildcard subscriptions
+# Demonstrates: a planner emits shard events, N workers subscribe via
+# wildcard `shard.*.ready`, and a reducer joins on `shard.*.done`.
+# The graph grows itself at runtime — no fixed fan-out width.
+
+name: map-reduce
+
+nodes:
+  - id: planner
+    driver: python
+    handler: agent_campaign.handlers:plan_shards
+    on: [start]
+    emits: [shard.1.ready, shard.2.ready, shard.3.ready]
+    with:
+      count: 3
+
+  # Wildcard subscription — catches any shard.N.ready event.
+  # max_fires: 0 so it fires per shard (not just the first).
+  - id: worker
+    driver: shell
+    on: [shard.*.ready]
+    emits: [shard.done]
+    max_fires: 0
+    with:
+      cmd: "echo 'processing shard ${event.payload.id}'"
+
+  # Reducer fires once all shards are done (mode: all on wildcard)
+  - id: reducer
+    driver: shell
+    on: [shard.**.done]
+    mode: all
+    emits: [reduce.done]
+    with:
+      cmd: "echo 'all shards processed'"

@@ -1,0 +1,25 @@
+# agent/review: spawn a normal-mode agent to review the diff.
+# Reusable — any workflow that needs an agent-driven code review.
+#
+# on:    agent.review.run
+# emits: agent.review.done | agent.review.failed
+#
+# Reads from state:
+#   worktree_path — where to run the agent (set by git.worktree)
+#
+# with:
+#   prompt_file — path to the review prompt (relative to cwd)
+#   prompt      — inline prompt (alternative to prompt_file)
+#   runner      — devin | claude-code | codex | custom (default: devin)
+#   timeout     — seconds (default: 300)
+
+id: agent.review
+driver: agent
+on: [agent.review.run]
+emits: [agent.review.done, agent.review.failed]
+with:
+  runner: devin
+  permission_mode: normal
+  trust: false
+  timeout: 300
+  cwd: "${state.worktree_path}"

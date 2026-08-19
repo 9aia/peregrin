@@ -1,0 +1,33 @@
+# commit: stage and commit changes with a conventional message.
+# Reusable by any workflow that needs to commit work.
+#
+# Expects env:
+#   BUG_DESCRIPTION — used in the commit message
+#
+# Emits: commit.done | <workflow>.aborted
+
+id: commit
+driver: shell
+on: [verify.passed]
+emits: [commit.done, bugfix.aborted]
+with:
+  cmd: |
+    source /tmp/ac-bugfix-env
+    cd "$WORKTREE_PATH"
+
+    SUMMARY=$(cat /tmp/ac-bugfix-fix-summary.txt 2>/dev/null || echo "fix: $BUG_DESCRIPTION")
+
+    git add -A
+    git commit -m "fix: $BUG_DESCRIPTION
+
+    $SUMMARY
+
+    Generated with [Devin](https://devin.ai) via agent-campaign bugfix workflow
+
+    Co-Authored-By: Devin <158243242+devin-ai-integration[bot]@users.noreply.github.com>"
+
+    SHA=$(git rev-parse --short HEAD)
+    echo "committed as $SHA"
+  emit:
+    0: commit.done
+    default: bugfix.aborted

@@ -1,0 +1,28 @@
+# test/run: run targeted tests in the worktree.
+# Reusable — any workflow that needs to run tests.
+#
+# on:    test.run.run
+# emits: test.run.passed | test.run.failed | test.run.skipped
+#
+# Reads from state:
+#   worktree_path — where to run (set by git.worktree)
+#
+# Config:
+#   test_cmd — the test command prefix (default: vp test)
+#
+# Env:
+#   TEST_PATH — test file/path to run (if unset, emits test.run.skipped)
+
+id: test.run
+driver: shell
+on: [test.run.run]
+emits: [test.run.passed, test.run.failed, test.run.skipped]
+with:
+  cmd: |
+    cd "${state.worktree_path}"
+    [ -z "${TEST_PATH:-}" ] && echo "no TEST_PATH — skipping" && exit 0
+    ${config.test_cmd:-vp test} "$TEST_PATH"
+  emit:
+    0: test.run.passed
+    default: test.run.failed
+  timeout: 600

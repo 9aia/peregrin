@@ -1,0 +1,14 @@
+# abort: print failure summary.
+# Reads ${event.payload.stderr} for the error reason.
+
+id: abort
+driver: shell
+on: [bugfix-v2.aborted]
+emits: [bugfix-v2.failed]
+with:
+  cmd: |
+    echo "════════════════════════════════════════"
+    echo "  BUGFIX ABORTED"
+    echo "════════════════════════════════════════"
+    echo "  Error: ${event.payload.stderr}"
+    echo "════════════════════════════════════════"

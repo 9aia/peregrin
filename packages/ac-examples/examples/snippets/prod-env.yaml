@@ -1,0 +1,5 @@
+# Shared environment config — included into `with` blocks.
+env:
+  PYTHONPATH: /app
+  LOG_LEVEL: INFO
+timeout: 300

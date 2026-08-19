@@ -287,6 +287,15 @@
         "vite-plus": "catalog:",
       },
     },
+    "packages/ac-examples": {
+      "name": "ac-examples",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/node": "^24.13.3",
+        "typescript": "~6.0.2",
+        "vite-plus": "catalog:",
+      },
+    },
     "packages/ac-file-router": {
       "name": "ac-file-router",
       "version": "0.0.0",
@@ -1006,6 +1015,8 @@
     "ac-driver-webhook": ["ac-driver-webhook@workspace:packages/ac-driver-webhook"],
 
     "ac-engine": ["ac-engine@workspace:packages/ac-engine"],
+
+    "ac-examples": ["ac-examples@workspace:packages/ac-examples"],
 
     "ac-file-router": ["ac-file-router@workspace:packages/ac-file-router"],
 

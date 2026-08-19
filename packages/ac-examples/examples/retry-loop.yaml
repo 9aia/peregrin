@@ -1,0 +1,62 @@
+# retry-loop: an intentional loop with explicit bounds.
+#
+# This workflow demonstrates the three loop protection mechanisms:
+#
+# 1. max_fires: the retry node fires at most 5 times
+# 2. until: the retry node stops once "deploy.success" or "deploy.failed" exists
+# 3. cycle detection: (runner-level) catches accidental infinite loops
+#
+# The retry node has `max_fires: 5` — it can fire up to 5
+# times. The `until` clause stops it early if a terminal event appears.
+#
+# Compare with an accidental loop (no bounds) which would be caught by
+# the runner's cycle detection.
+
+name: retry-loop
+
+nodes:
+  # Attempt an operation. Retries on failure, up to 5 times.
+  # Uses `with.emit` to map exit codes to events:
+  #   rc==0 → op.success (stop retrying)
+  #   rc!=0 → op.retry   (try again)
+  # `max_fires: 5` bounds the loop. `until: [op.success]` stops early on success.
+  # If all 5 attempts fail, the node exhausts max_fires and the workflow quiesces.
+  - id: attempt
+    driver: shell
+    on: [start, op.retry]
+    emits: [op.success, op.retry]
+    max_fires: 5
+    until: [op.success]
+    with:
+      emit:
+        0: op.success
+        default: op.retry
+      # Simulate: fail first 2 times, succeed on 3rd
+      cmd: |
+        ATTEMPT_FILE="/tmp/ac-retry-attempt"
+        ATTEMPT=$(cat "$ATTEMPT_FILE" 2>/dev/null || echo 0)
+        ATTEMPT=$((ATTEMPT + 1))
+        echo "$ATTEMPT" > "$ATTEMPT_FILE"
+        echo "attempt $ATTEMPT"
+        if [ "$ATTEMPT" -ge 3 ]; then
+          echo "success on attempt $ATTEMPT"
+          exit 0
+        else
+          echo "fail on attempt $ATTEMPT"
+          exit 1
+        fi
+
+  # On success: clean up and notify
+  - id: cleanup
+    driver: shell
+    on: [op.success]
+    emits: [cleanup.done]
+    with:
+      cmd: "rm -f /tmp/ac-retry-attempt && echo 'cleaned up'"
+
+  - id: notify-success
+    driver: shell
+    on: [cleanup.done]
+    emits: [notify.done]
+    with:
+      cmd: "echo 'operation succeeded after retries'"

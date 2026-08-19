@@ -1,0 +1,24 @@
+# test/install: install dependencies in the worktree.
+# Reusable — any workflow that needs deps installed.
+#
+# on:    test.install.run
+# emits: test.install.done | test.install.failed
+#
+# Reads from state:
+#   worktree_path — where to install (set by git.worktree)
+#
+# Config:
+#   install_cmd — the install command (default: bun install)
+
+id: test.install
+driver: shell
+on: [test.install.run]
+emits: [test.install.done, test.install.failed]
+with:
+  cmd: |
+    cd "${state.worktree_path}"
+    ${config.install_cmd:-bun install}
+  emit:
+    0: test.install.done
+    default: test.install.failed
+  timeout: 600

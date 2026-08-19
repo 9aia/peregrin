@@ -1,0 +1,30 @@
+# agent/fix: spawn an agent to apply a fix. Retry loop via max_fires.
+# Reusable — any workflow that needs an agent-driven fix step.
+#
+# on:    agent.fix.run, verify.failed
+# emits: agent.fix.done | agent.fix.failed
+#
+# Reads from state:
+#   worktree_path — where to run the agent (set by git.worktree)
+#
+# with:
+#   prompt_file — path to the fix prompt (relative to cwd)
+#   prompt      — inline prompt (alternative to prompt_file)
+#   runner      — devin | cline | claude-code | codex | custom (default: devin)
+#   runners     — ordered fallback list, e.g. [devin, cline] (rate-limit aware)
+#   timeout     — seconds (default: 600)
+#
+# ${node.fires} is available in the prompt to show the attempt number,
+# replacing the /tmp/ac-*-attempt counter hack.
+
+id: agent.fix
+driver: agent
+on: [agent.fix.run, verify.failed]
+emits: [agent.fix.done, agent.fix.failed]
+max_fires: 3
+with:
+  runner: devin
+  permission_mode: dangerous
+  trust: false
+  timeout: 600
+  cwd: "${state.worktree_path}"

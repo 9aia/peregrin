@@ -1,0 +1,7 @@
+# A reusable node definition — included into workflows.
+id: test
+driver: shell
+on: [start]
+emits: [test.passed, test.failed]
+with:
+  cmd: "pytest -q"

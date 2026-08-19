@@ -1,0 +1,40 @@
+# inline-includes: compose a workflow from fragments.
+#
+# Two include mechanisms:
+# 1. include: — merge whole files into parent dicts (deep-merged)
+# 2. ${include(path)} — inject file content into a specific value position
+#    (dicts, scalars, string interpolation)
+
+name: inline-includes
+
+nodes:
+  # --- include: merges a node definition from a file ---
+  - include: snippets/lint.yaml
+  - include: snippets/test.yaml
+
+  # Fan-in: wait for both, with included env config
+  - id: summarize
+    driver: shell
+    on: [lint.passed, test.passed]
+    mode: all
+    emits: [summary.done]
+    with:
+      include: snippets/prod-env.yaml # merge: env + timeout into this with block
+      cmd: "echo 'all checks passed'"
+
+  # --- ${include()} injects a scalar into a string ---
+  - id: log-region
+    driver: shell
+    on: [start]
+    emits: [region.logged]
+    with:
+      cmd: "echo 'deploying to ${include(snippets/region.yaml)}'"
+
+  # --- ${include()} injects a dict into a value ---
+  - id: deploy
+    driver: shell
+    on: [summary.done]
+    emits: [deploy.done]
+    with:
+      env: ${include(snippets/prod-env.yaml)} # inject the whole dict as the env value
+      cmd: "echo deploying"

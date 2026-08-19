@@ -1,0 +1,16 @@
+# abort: print abort summary when any node fails.
+# Reusable by any workflow — listens for <workflow>.aborted.
+
+id: abort
+driver: shell
+on: [bugfix.aborted]
+emits: [bugfix.failed]
+with:
+  cmd: |
+    source /tmp/ac-bugfix-env 2>/dev/null || true
+    echo "════════════════════════════════════════"
+    echo "  BUGFIX ABORTED"
+    echo "════════════════════════════════════════"
+    echo "  Reason: ${event.payload.stderr}"
+    echo "  Worktree: ${WORKTREE_PATH:-none}"
+    echo "════════════════════════════════════════"

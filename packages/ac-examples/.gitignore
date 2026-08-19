@@ -1,0 +1,13 @@
+.ac/
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+*.log
+*.jsonl
+*.secret.yml
+*.secret.yaml
+.env
+node_modules/
+dist/

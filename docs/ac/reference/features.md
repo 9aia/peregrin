@@ -89,7 +89,7 @@
 
 - **Graceful shutdown:** SIGINT/SIGTERM handler — awaits in-flight tasks, cleans up webhook servers
 - **Concurrency control:** `--max-concurrency N` limits parallel node executions (default: 50)
-- **Reusable lib:** `examples/lib/` — canonical, copyable node YAMLs
+- **Reusable lib:** `packages/ac-examples/examples/lib/` — canonical, copyable node YAMLs
 
 ## Integration library
 

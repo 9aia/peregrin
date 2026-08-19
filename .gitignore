@@ -15,6 +15,19 @@ docs/.vitepress/cache/
 
 # Editor directories and files
 
+# Python runtime artifacts (from ac-driver-python and imported examples)
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Agent Campaigns runtime directory (event logs, state, generated schemas)
+.ac/
+*.jsonl
+*.secret.yml
+*.secret.yaml
+
 # AI agent worktrees
 worktrees/
 project/

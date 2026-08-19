@@ -1,0 +1,25 @@
+# agent/investigate: spawn a normal-mode agent to find the root cause.
+# Reusable — any workflow that needs an investigation step.
+#
+# on:    agent.investigate.run
+# emits: agent.investigate.done | agent.investigate.failed
+#
+# Reads from state:
+#   worktree_path — where to run the agent (set by git.worktree)
+#
+# with:
+#   prompt_file — path to the investigation prompt (relative to cwd)
+#   prompt      — inline prompt (alternative to prompt_file)
+#   runner      — devin | claude-code | codex | custom (default: devin)
+#   timeout     — seconds (default: 300)
+
+id: agent.investigate
+driver: agent
+on: [agent.investigate.run]
+emits: [agent.investigate.done, agent.investigate.failed]
+with:
+  runner: devin
+  permission_mode: normal
+  trust: false
+  timeout: 300
+  cwd: "${state.worktree_path}"

@@ -1,0 +1,40 @@
+# investigate: spawn a normal-mode agent to find the root cause.
+# Bugfix-specific — uses devin -p to search the codebase and produce a report.
+#
+# Expects env:
+#   BUG_DESCRIPTION — what the bug is
+#
+# Emits: investigate.done | <workflow>.aborted
+# Writes report to stdout (captured in event payload).
+
+id: investigate
+driver: shell
+on: [reproduce.done]
+emits: [investigate.done, bugfix.aborted]
+with:
+  cmd: |
+    source /tmp/ac-bugfix-env
+    cd "$WORKTREE_PATH"
+
+    devin -p "You are investigating a bug in the ndocs-3 project (Effect + Bun + Vite+).
+    Bug: $BUG_DESCRIPTION
+
+    Search the codebase under $(pwd) for the root cause.
+    Look at:
+    - Relevant source files in src/
+    - Tests that cover the affected area
+    - Recent git log for related changes
+
+    Output a structured report:
+    1. ROOT CAUSE: <concise explanation>
+    2. FILES TO CHANGE: <list of file paths>
+    3. PROPOSED FIX: <description of the fix approach>
+    4. TESTS TO ADD/UPDATE: <list>
+
+    Do NOT make any changes. Investigation only." \
+      --respect-workspace-trust false \
+      --permission-mode normal
+  emit:
+    0: investigate.done
+    default: bugfix.aborted
+  timeout: 300

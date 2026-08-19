@@ -1,0 +1,13 @@
+# pr: push and create PR after review.
+# Two forwarders: review.done → git.push.run → git.push.done → git.pr.run.
+# The git/push.node.yml and git/pr.node.yml lib nodes read ${state.*}.
+
+id: pr-push
+on: [agent.review.done]
+emits: [git.push.run]
+forward: [git.push.run]
+
+id: pr-create
+on: [git.push.done]
+emits: [git.pr.run]
+forward: [git.pr.run]

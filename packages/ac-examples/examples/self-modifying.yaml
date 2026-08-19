@@ -1,0 +1,32 @@
+# self-modifying: a workflow that generates and injects new nodes
+# Demonstrates: meta-workflow. A planner node emits a plan.ready event
+# whose payload contains new node specs. The runner driver injects them
+# into the live graph, and they execute as if they were always there.
+
+name: self-modifying
+
+nodes:
+  - id: planner
+    driver: python
+    handler: agent_campaign.handlers:plan_dynamic
+    on: [start]
+    emits: [plan.ready]
+    with:
+      tasks:
+        - cmd: "echo 'task A'"
+        - cmd: "echo 'task B'"
+        - cmd: "echo 'task C'"
+
+  # Absorb the plan and inject new nodes into the graph
+  - id: absorb
+    driver: runner
+    on: [plan.ready]
+    emits: [absorb.done]
+
+  # After absorption, run a final summary
+  - id: finish
+    driver: shell
+    on: [absorb.done]
+    emits: [workflow.complete]
+    with:
+      cmd: "echo 'dynamic workflow complete'"

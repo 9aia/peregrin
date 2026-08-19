@@ -1,0 +1,42 @@
+# worktree: create a git worktree from origin/main.
+# Reusable by any workflow that needs an isolated branch.
+#
+# Expects config:
+#   repo          — path to the git repo
+#   worktree_base — parent dir for the worktree
+#
+# Expects env:
+#   BUG_ID  — used for branch name (fix/<id>) and worktree dir slug
+#
+# Emits: worktree.ready | <workflow>.aborted
+# Writes /tmp/ac-bugfix-env with WORKTREE_PATH, BRANCH, REPO for downstream nodes.
+
+id: worktree
+driver: shell
+on: [start]
+emits: [worktree.ready, bugfix.aborted]
+with:
+  cmd: |
+    REPO="${config.repo}"
+    BASE="${config.worktree_base}"
+    BUG_ID="${BUG_ID:-untitled}"
+    BRANCH="fix/${BUG_ID}"
+    SLUG=$(echo "$BUG_ID" | tr '/' '-' | tr ' ' '-')
+    WORKTREE="$BASE/ndocs-3-fix-$SLUG"
+
+    cd "$REPO"
+    git fetch origin main
+
+    git worktree remove "$WORKTREE" --force 2>/dev/null || true
+    git branch -D "$BRANCH" 2>/dev/null || true
+
+    git worktree add "$WORKTREE" -b "$BRANCH" origin/main
+
+    echo "WORKTREE_PATH=$WORKTREE" > /tmp/ac-bugfix-env
+    echo "BRANCH=$BRANCH" >> /tmp/ac-bugfix-env
+    echo "REPO=$REPO" >> /tmp/ac-bugfix-env
+
+    echo "worktree ready at $WORKTREE on branch $BRANCH"
+  emit:
+    0: worktree.ready
+    default: bugfix.aborted
