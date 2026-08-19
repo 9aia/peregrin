@@ -1,53 +1,37 @@
 # OpenTelemetry observer
 
-`OTelObserver` emits OpenTelemetry spans for the workflow and every node.
+`OtelObserver` from `ac-observer-otel` writes console span output for the workflow and every node.
 
-## Console only
+## Usage
 
-```bash
-pip install opentelemetry-api opentelemetry-sdk
-ac run workflow.yaml --otel
+```ts
+import { Effect } from "effect";
+import { Runner } from "ac-engine";
+import { DefaultsLive } from "ac-cli-defaults";
+import { OtelObserverLive } from "ac-observer-otel";
+
+const program = Effect.gen(function* () {
+  const runner = yield* Runner;
+  const log = yield* runner.run(workflow);
+  return log;
+}).pipe(Effect.provide(DefaultsLive), Effect.provide(OtelObserverLive));
+
+Effect.runPromise(program);
 ```
 
-```python
-from agent_campaign.observers.otel import OTelObserver
+## Span output
 
-runner = Runner(wf, observer=OTelObserver(service_name="my-service"))
+```
+[otel:workflow:start] my-workflow
+[otel:node:start] hello traceparent=00-...
+[otel:event] hello.done
+[otel:node:end] hello emitted=1
+[otel:workflow:end] workflow:my-workflow events=2 cancelled=false cycle=false failed=false
 ```
 
-## OTLP export to a collector
-
-```bash
-pip install opentelemetry-exporter-otlp-proto-grpc
-ac run workflow.yaml --otel-endpoint http://collector:4317 --otel-service-name my-wf
-```
-
-```python
-runner = Runner(wf, observer=OTelObserver(
-    service_name="my-service",
-    console=False,
-    otlp_endpoint="http://collector:4317",
-    otlp_protocol="grpc",
-))
-```
-
-## CLI flags
-
-| Flag                  | Description                              |
-| --------------------- | ---------------------------------------- |
-| `--otel`              | Enable console tracing                   |
-| `--otel-endpoint`     | OTLP collector URL                       |
-| `--otel-protocol`     | `grpc` (default) or `http`               |
-| `--otel-service-name` | Service name for spans                   |
-| `--otel-payloads`     | Include redacted event payloads in spans |
-
-## Distributed tracing (W3C traceparent)
-
-When the `http` driver makes requests and `--otel` is enabled, a W3C
-`traceparent` header is automatically injected.
+Each span receives a generated W3C `traceparent`. The `http` driver can read `ctx.traceparent` and propagate it in outbound requests.
 
 ## See also
 
 - [Observers](../explanation/observers.md)
 - [Write a custom observer](../how-to/write-a-custom-observer.md)
-- [Run a workflow](../tutorials/run-a-workflow.md) — CLI observability flags

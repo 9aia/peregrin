@@ -1,46 +1,40 @@
 # Drivers
 
-Drivers execute handlers. A node declares `driver: <name>`, and the runner
-looks up the driver in its registry. The driver receives the node, trigger
-events, and context — it runs the handler and returns emitted events.
+Drivers execute node logic. A node declares `driver: <name>`, and the runner looks up the driver in its registry. The driver receives the node, trigger events, and the execution context — it runs the handler and returns the events to emit.
 
 ## Built-in drivers
 
-- `shell` — runs a shell command. Exit codes map to events.
-- `python` — calls a Python function by name (`handler: my_func` or `handler: module:func`).
+- `shell` — runs a shell command.
+- `python` — spawns the Python interpreter with `with.script`, `with.module` + `with.function`.
 - `runner` — injects new nodes from an event payload into the live graph.
-- `http` — makes HTTP requests. Status codes map to events.
-- `webhook` — starts an HTTP server. POSTs emit events. Keeps the workflow alive.
-- `stdin` — reads lines from stdin. Emits one event per line. Keeps the workflow alive.
-- `cli` — polls a shell command on an interval. Emits one event per output line.
-- `agent` — runs an external AI coding agent CLI and maps exit codes to events.
-- `human` — prompts a human on stdin and maps the response to events.
+- `http` — makes HTTP requests.
+- `webhook` — starts an HTTP server.
+- `stdin` — reads lines from stdin.
+- `cli` — polls a shell command on an interval.
+- `agent` — runs an external AI coding agent CLI.
+- `human` — prompts a human on stdin.
 
 ## The driver registry
 
-The runner maintains a registry that maps driver names to `DriverProtocol`
-implementations. Built-in drivers are registered by default. You can also
-pass a custom dictionary:
+The `DriverRegistry` maps driver names to `Driver` implementations. Built-in drivers are registered by `ac-cli-defaults`. You can also register custom drivers at runtime or through an Effect `Layer`.
 
-```python
-runner = Runner(wf, drivers={"http": HTTPDriver()})
+```ts
+import { Effect } from "effect";
+import { DriverRegistry } from "ac-engine";
+import { DefaultsLive } from "ac-cli-defaults";
+
+const program = Effect.gen(function* () {
+  const registry = yield* DriverRegistry;
+  registry.register("echo", EchoDriver);
+  // ...
+}).pipe(Effect.provide(DefaultsLive));
 ```
 
-A driver only needs a single `invoke` method.
+A driver only needs a `name` string and an `invoke` function that returns `Effect<ReadonlyArray<Event>, DriverError>`.
 
 ## Agent prefix convention
 
-For `agent:*` driver names, the runner resolves the prefix. Register a
-driver under `"agent"` and it handles `agent:claude`, `agent:cursor`, etc.:
-
-```python
-class AgentDriver:
-    async def invoke(self, node, triggers, ctx):
-        agent_name = node.driver.split(":")[1]
-        # ... run and return events
-
-runner = Runner(wf, drivers={"agent": AgentDriver()})
-```
+For `agent:*` driver names, the registry resolves the prefix. Register a driver under `"agent"` and parse the suffix inside `invoke`:
 
 ```yaml
 - id: review
@@ -51,8 +45,7 @@ runner = Runner(wf, drivers={"agent": AgentDriver()})
     prompt: "Review this PR: ${event.payload.url}"
 ```
 
-The `agent:*` scheme lets a single driver support many agent CLIs while the
-workflow author controls which one runs.
+The `agent:*` scheme lets a single driver support many agent CLIs while the workflow author controls which one runs.
 
 ## See also
 

@@ -1,42 +1,17 @@
 # Dead-letter queue (DLQ)
 
-When a node fails and has no retry (or retries are exhausted), the failure
-event goes to the DLQ. The runner emits a `dlq.event` event so downstream
-nodes can react.
+When a node fails and has no retry (or retries are exhausted), the runner emits a `dlq.event` event so downstream nodes can react.
 
-## Default path
+## DLQ event payload
 
+```yaml
+type: dlq.event
+source: __runner__
+payload:
+  node: <node-id>
+  error: <error-message>
+  event: node.failed
 ```
-.ac/<name>.dlq.jsonl
-```
-
-## CLI
-
-```bash
-# Default: persistent DLQ
-ac run workflow.yaml
-
-# Override path
-ac run workflow.yaml --dlq /var/log/ac/dlq.jsonl
-
-# Disable persistence
-ac run workflow.yaml --no-dlq
-
-# Export DLQ as JSON after run
-ac run workflow.yaml --export-dlq /tmp/dlq.json
-```
-
-## Programmatic access
-
-```python
-runner = Runner(wf)
-asyncio.run(runner.run())
-print(f"DLQ: {len(runner.dlq)} events")
-for e in runner.dlq:
-    print(f"  {e.type} from {e.payload['node']}: {e.payload['error']}")
-```
-
-The DLQ is cleared at the start of each run.
 
 ## Reacting to DLQ events
 
@@ -48,6 +23,23 @@ The DLQ is cleared at the start of each run.
   with:
     cmd: "echo 'DLQ: node ${event.payload.node} failed: ${event.payload.error}'"
 ```
+
+## Retries
+
+A node can retry before the DLQ event is emitted:
+
+```yaml
+- id: flaky
+  driver: http
+  on: [start]
+  emits: [flaky.done, flaky.failed]
+  retry:
+    max_attempts: 3
+    delay: 1
+    backoff: exponential
+```
+
+After the configured `max_attempts` are exhausted, the runner emits `dlq.event` and `node.failed`.
 
 ## See also
 

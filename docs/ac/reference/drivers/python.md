@@ -1,44 +1,57 @@
 # python driver
 
-Calls a Python handler function. The handler receives `(triggers, ctx, node)`
-and returns a list of events.
+The `python` driver spawns the `python` interpreter. It is a shell-out driver, not a Python SDK.
 
-## Register by name
-
-```python
-from agent_campaign.drivers.python import register
-
-register("review_pr", review_pr)
-```
+## Run a Python script
 
 ```yaml
-- id: review
+- id: analyse
   driver: python
-  handler: review_pr
-  on: [pr.opened]
-  emits: [pr.approved, pr.changes_requested]
+  on: [data.ready]
+  emits: [analyse.done, analyse.failed]
+  with:
+    script: scripts/analyse.py
+    args: ["--input", "${event.payload.path}"]
+    timeout: 60000
 ```
 
-## Use `module:func` notation
+`python` is invoked with the script path and any `args`.
+
+## Call a function in a module
 
 ```yaml
-- id: review
+- id: compute
   driver: python
-  handler: myapp:review_pr
-  on: [pr.opened]
-  emits: [pr.approved, pr.changes_requested]
+  on: [start]
+  emits: [compute.done, compute.failed]
+  with:
+    module: myapp.math
+    function: compute_total
 ```
 
-## Common `with:` fields
+The driver runs:
 
-| Field     | Type   | Description                           |
-| --------- | ------ | ------------------------------------- |
-| `handler` | string | Registered name or `module:func` path |
+```bash
+python -c "from myapp.math import compute_total; print(compute_total())"
+```
 
-The `ctx` object is documented in [Handler context](../handler-context.md).
+## Common `with` fields
+
+| Field      | Type   | Description                             |
+| ---------- | ------ | --------------------------------------- |
+| `script`   | string | Path to a Python script to execute      |
+| `module`   | string | Module to import (requires `function`)  |
+| `function` | string | Function to call (requires `module`)    |
+| `args`     | array  | Command-line arguments for `script`     |
+| `timeout`  | number | Timeout in milliseconds (default 30000) |
+
+## Exit events
+
+- `python.done` — exit code `0`. Payload includes `stdout` and `rc`.
+- `python.failed` — non-zero exit code or runtime error. Payload includes `stdout`, `stderr`, `rc`, and `error`.
 
 ## See also
 
-- [Handler context](../handler-context.md)
-- [Handler registration](../handler-registration.md)
-- [Write a Python handler](../../how-to/custom-drivers.md)
+- [Execution context](../handler-context.md)
+- [Register a custom driver](../handler-registration.md)
+- [Custom drivers and handlers](../../how-to/custom-drivers.md)

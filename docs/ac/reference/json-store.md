@@ -1,24 +1,21 @@
 # JSON store
 
-`JsonStore` is the default `EventStore`. It persists every event as one line
-of JSON to an append-only file. Survives crashes by default.
+`JsonStore` from `ac-store-json` is an append-only `EventStore` that persists every event as one line of JSON.
 
-## Default path
+## Programmatic usage
 
-```bash
-ac run workflow.yaml
-# → events saved to .ac/<workflow-name>.jsonl
-```
+```ts
+import { Effect } from "effect";
+import { Runner } from "ac-engine";
+import { DefaultsLive } from "ac-cli-defaults";
+import { Live as JsonStoreLive } from "ac-store-json";
 
-## Override the path
+const program = Effect.gen(function* () {
+  const runner = yield* Runner;
+  return yield* runner.run(workflow);
+}).pipe(Effect.provide(DefaultsLive), Effect.provide(JsonStoreLive(".ac/events.jsonl")));
 
-```bash
-ac run workflow.yaml --store /tmp/events.jsonl
-```
-
-```python
-from agent_campaign.stores.json import JsonStore
-runner = Runner(wf, store=JsonStore("/tmp/events.jsonl"))
+Effect.runPromise(program);
 ```
 
 ## Behaviour
@@ -26,7 +23,7 @@ runner = Runner(wf, store=JsonStore("/tmp/events.jsonl"))
 - Each event is one JSON line.
 - The file is append-only.
 - File permissions are `0600`.
-- Use `--replay` to resume from a saved log.
+- Events are indexed in memory for fast `byType` and `seenTypes` lookups.
 
 ## See also
 

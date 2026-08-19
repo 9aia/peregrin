@@ -1,59 +1,79 @@
-# Handler context (ctx)
+# Execution context
 
-The `ctx` object gives handlers access to config, secrets, the event log,
-and runtime actions.
+The `ExecutionContext` object gives drivers access to workflow config, secrets, the event log, and runtime actions.
 
-```python
-def my_handler(triggers, ctx, node):
-    # Read workflow config
-    region = ctx.config.get("region", "us-east-1")
+```ts
+import { Event } from "ac-core";
 
-    # Read secrets — preferred API
-    api_key = ctx.get_secret("API_KEY")
+const exampleDriver = {
+  name: "example",
+  invoke: (node, _triggers, ctx) =>
+    Effect.gen(function* () {
+      // Read workflow config
+      const region = String(ctx.config.region ?? "us-east-1");
 
-    # Direct dict access also works
-    api_key = ctx.secrets.get("API_KEY")
+      // Read secrets — preferred API
+      const apiKey = ctx.getSecret("API_KEY");
 
-    # Idempotency key — unique per node firing
-    key = ctx.idempotency_key
+      // Direct access also works
+      const sameKey = ctx.secrets.API_KEY;
 
-    # Read the full event log
-    for e in ctx.log:
-        print(e.type, e.payload)
+      // Idempotency key — unique per node firing
+      const key = ctx.idempotencyKey;
 
-    # Emit events dynamically (beyond declared emits)
-    ctx.emit("dynamic.event", {"data": 42})
+      // Read the full event log
+      for (const event of ctx.log) {
+        console.log(event.type, event.payload);
+      }
 
-    # Inject new nodes at runtime
-    ctx.inject([
-        {"id": "dynamic-1", "driver": "shell", "on": ["start"],
-         "emits": ["dynamic-1.done"], "with": {"cmd": "echo hi"}},
-    ])
+      // Emit events dynamically
+      ctx.emit(new Event("dynamic.event", { data: 42 }, node.id));
 
-    # Fire counter for this node
-    attempt = ctx.fires
+      // Inject new nodes at runtime
+      ctx.inject([
+        {
+          id: "dynamic-1",
+          driver: "shell",
+          on: ["start"],
+          emits: ["dynamic-1.done"],
+          with: { cmd: "echo hi" },
+        },
+      ]);
 
-    # Shared scratch state
-    ctx.state["last_run"] = time.time()
+      // Fire counter for this node
+      const attempt = ctx.fires;
 
-    return [Event(type="done", source=node.id)]
+      // Shared scratch state
+      ctx.state.set("last_run", Date.now());
+
+      // Request shutdown from inside a driver
+      ctx.requestShutdown();
+
+      return [new Event("done", {}, node.id)];
+    }),
+};
 ```
 
 ## Attributes and methods
 
-| Name                      | Description                           |
-| ------------------------- | ------------------------------------- |
-| `ctx.config`              | Workflow-level `config` dict          |
-| `ctx.secrets`             | Dict of resolved secrets              |
-| `ctx.get_secret(name)`    | Preferred API for reading a secret    |
-| `ctx.log`                 | All events emitted so far             |
-| `ctx.idempotency_key`     | Unique string per node firing         |
-| `ctx.fires`               | 1-based attempt counter for this node |
-| `ctx.state`               | Persisted key/value store             |
-| `ctx.emit(type, payload)` | Emit an event directly                |
-| `ctx.inject(node_specs)`  | Inject new nodes into the graph       |
+| Name                            | Description                            |
+| ------------------------------- | -------------------------------------- |
+| `ctx.config`                    | Workflow-level `config` record         |
+| `ctx.secrets`                   | Record of resolved secrets             |
+| `ctx.getSecret(name, default?)` | Returns a secret or the default        |
+| `ctx.log`                       | All events emitted so far              |
+| `ctx.idempotencyKey`            | Unique string per node firing          |
+| `ctx.fires`                     | 1-based attempt counter for this node  |
+| `ctx.state`                     | `StateStore` for scratch state         |
+| `ctx.emit(event)`               | Emit an `Event` directly               |
+| `ctx.inject(nodeSpecs)`         | Inject new nodes into the graph        |
+| `ctx.dryRun`                    | Whether the runner is in dry-run mode  |
+| `ctx.strict`                    | Whether the workflow is in strict mode |
+| `ctx.traceparent`               | W3C traceparent string for propagation |
+| `ctx.requestShutdown()`         | Cancel the workflow at the next cycle  |
 
 ## See also
 
-- [Handlers](../explanation/handlers.md)
+- [Drivers](../explanation/drivers.md) — the driver model
 - [Dynamically inject nodes](../how-to/dynamically-inject-nodes.md)
+- [Register a custom driver](handler-registration.md)

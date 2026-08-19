@@ -13,7 +13,7 @@ A few terms used throughout the docs:
 
 - **Workflow** — the executable graph declared in YAML.
 - **Campaign** — a running instance of a workflow.
-- **Event** — a message that moves execution through the graph.
+- **Event** — a message that carries data through the graph.
 - **Node** — a handler attached to one or more event types.
 - **Driver** — the adapter that performs the side effect when a node fires.
 
@@ -23,39 +23,19 @@ Imagine a deploy pipeline. A pull request opens, tests run, a human has to
 approve, an agent writes the release notes, and the change deploys.
 
 ```text
-   pr.opened
-      │
-      ▼
-  ┌─────────┐
-  │  tests  │
-  └────┬────┘
-       │
-       ▼
-   build.done
-       │
-       ▼
-  ┌────────────┐
-  │   human    │
-  │  approve   │
-  └─────┬──────┘
-        │
-        ▼
-  human.approved
-        │
-        ▼
-  ┌──────────┐
-  │  agent   │
-  │  notes   │
-  └─────┬────┘
-        │
-        ▼
-   deploy
+pr.opened → [ tests ] → build.done → [ human-approve ] → human.approved
+                                             ↓
+                                    human.rejected
+                                             ↓
+                                  [ notify-rejected ]
+
+human.approved → [ release-notes ] → agent.notes → [ deploy ] → deploy.done
 ```
 
-In Peregrin, each box is a node and each arrow is an event type. A node fires
-when it has seen the events it is waiting for, runs a driver, and then emits one
-or more new events. The engine walks the graph until nothing else is ready to
-fire.
+In Peregrin, each `[ box ]` is a node and each arrow is an event type. A node
+fires when it has seen the events it is waiting for, runs a driver, and then
+emits one or more new events. The engine walks the graph until nothing else is
+ready to fire.
 
 ```yaml
 workflow: deploy
@@ -100,33 +80,52 @@ nodes:
       cmd: "npm run deploy"
 ```
 
-The `on` field says what the node waits for. The `emits` field says what it can
-produce. The `driver` and `with` fields say how the side effect is performed. The
-campaign starts at `pr.opened`, fires `tests`, then moves through the graph based
-on the events that come back.
+The `on` field declares the events that can trigger the node. The `emits` field
+lists the events the node can produce. The `driver` and `with` fields say how
+the side effect is performed. A node with `on: [a, b]` and `mode: all` waits for
+both `a` and `b`; with `mode: any` (the default) it fires when the first
+matching event arrives.
 
 ## The event-graph model
 
-Peregrin is not a pipeline. It is a bipartite graph of events and nodes.
+Peregrin is not a pipeline. It is a bipartite graph of event types and nodes.
+Events connect nodes: a node consumes one or more events, performs a side effect,
+and emits new events.
 
-- **Events are the edges.** They connect nodes, carry data, and are written to a
-  persistent log.
-- **Nodes are the handlers.** They wait for events, run a driver, and emit more
-  events.
-- **Drivers are the boundary with the outside world.** They are the only place
-  where side effects are performed.
+```text
+pr.opened → [ tests ] → build.done
+```
 
-This separation gives the engine a clear contract. A node cannot know who
-produced the event it consumes. It only knows the event type. That makes nodes
-small, reusable, and easy to test in isolation. A driver cannot change the
-campaign directly. It can only return events, and the engine decides what to do
-with them.
+`pr.opened` and `build.done` are event types. `tests` is a node. The arrows show
+that `tests` consumes `pr.opened` and produces `build.done`. A single node can
+consume many events and emit many events; the graph is the set of all these
+relationships.
+
+This separation gives the engine a clear contract:
+
+- A node does not know who produced the event it consumes. It only knows the
+  event type. That makes nodes small, reusable, and easy to test in isolation.
+- A driver cannot change the campaign directly. It can only return events, and
+  the engine decides what to do with them.
+
+```text
+node + trigger events + context
+            │
+            ▼
+         driver
+            │
+            ▼
+       new events
+```
 
 Because every event is recorded, the engine can:
 
-- **Replay** the campaign from the log.
-- **Recover** from a crash by reading the latest state.
-- **Trace** exactly which nodes fired and in what order.
+- **Reconstruct campaign state.** The engine can rebuild the state of a campaign
+  from the event log without re-running external side effects.
+- **Trace execution.** The log records which nodes fired, which events triggered
+  them, and the resulting event sequence.
+- **Recover from a crash.** The store is the source of truth for campaign state,
+  so the engine can resume from the last persisted event.
 
 ## Drivers are the boundary for side effects
 
@@ -143,37 +142,6 @@ Each driver receives a node, the events that triggered it, and an execution
 context. It returns a list of events. This narrow contract makes it easy to add
 drivers, mock them in tests, and reason about where the outside world is touched.
 
-## Campaigns can grow as they run
-
-A workflow does not have to be fixed before it starts. A `runner` node can
-inspect, extend, and write new workflow YAML files and then inject fresh nodes
-into the live campaign. This is useful when:
-
-- The campaign discovers sub-tasks as it runs.
-- The campaign needs to scaffold a review loop for a specific situation.
-- An agent proposes the next steps and the graph updates to include them.
-
-This makes Peregrin different from most workflow engines, where the graph is
-frozen before the first step. The trade-off is that the campaign has more power,
-so the safety model matters.
-
-## Runtime guarantees
-
-Peregrin is designed for production work. The runtime provides a few guarantees
-to keep campaigns reliable:
-
-- **Persistence.** Every event is written to a store before the next node is
-  triggered. The store is the source of truth for campaign state.
-- **Replay.** The engine can re-evaluate a campaign from the event log. This is
-  not the same as re-running side effects; it is a deterministic replay of the
-  state transitions.
-- **Retries and circuit breakers.** Node-level retry policies and circuit
-  breakers control how transient failures are handled.
-- **Observability.** Observers receive every event, including OpenTelemetry
-  traces and metrics.
-- **Safety.** Capability checks constrain what a driver can do, so a node cannot
-  silently exceed the permissions given to the campaign.
-
 ## Why YAML?
 
 Peregrin workflows are written in YAML because the structure of the campaign
@@ -184,12 +152,67 @@ graph, but they are themselves events that can be inspected and replayed.
 YAML also makes it easy to generate, review, and version workflows alongside the
 code they affect.
 
+## Campaigns can grow as they run
+
+Unlike a workflow whose graph is fixed before execution, a Peregrin campaign can
+extend its graph while it runs. A `runner` node can:
+
+- generate new workflow YAML,
+- register new nodes in the current campaign,
+- or persist those definitions as files for later reuse or for sharing as a
+  library pattern.
+
+This is useful when the campaign discovers sub-tasks as it runs, scaffolds a
+review loop for a specific situation, or when an agent proposes the next steps
+and the graph updates to include them.
+
+The trade-off is that the campaign has more power, so the safety model matters.
+
+## Runtime model
+
+Peregrin is designed for production work. The runtime provides a few guarantees
+about how campaigns execute:
+
+- **Persistence.** Every event is written to a store before the next node is
+  triggered. The store is the source of truth for campaign state.
+- **Deterministic state transitions.** The engine evaluates the same event log
+  the same way every time. Ordering within a single node is deterministic; nodes
+  that are eligible at the same time may run concurrently unless constrained by
+  resources or capabilities.
+- **Crash recovery.** The engine can resume a campaign from the last persisted
+  event without re-running side effects.
+
+## Reliability and operations
+
+Beyond the core runtime model, Peregrin provides features to keep campaigns
+healthy in production:
+
+- **Retries and circuit breakers.** Node-level retry policies and circuit
+  breakers control how transient failures are handled.
+- **Observability.** Observers receive every event, including OpenTelemetry
+  traces and metrics.
+- **Safety.** Capability checks constrain what a driver can do. A node's
+  `capabilities` list declares what it may touch, such as `shell.exec`,
+  `network.http`, `agent.spawn`, or `workflow.mutate`. The engine refuses to
+  schedule a node that requests a capability the campaign has not granted.
+
 ## Built-in libraries and drivers
 
 Peregrin ships with built-in drivers and a library of reusable workflow patterns
 for common processes such as test-driven review, dependency upgrades, and
-incident response. Users compose them with `include:` or install them from a
-library, so teams do not have to reinvent patterns that are already tested.
+incident response. Users compose them with `include:`:
+
+```yaml
+include:
+  - patterns/dependency-upgrade
+
+nodes:
+  - id: upgrade
+    driver: runner
+    on: [start]
+    with:
+      workflow: dependency-upgrade
+```
 
 ## Who is Peregrin for?
 
@@ -202,9 +225,6 @@ operationally important to remain an ad-hoc script:
   ask for help.
 - **DevOps teams** that want event-driven automation with a persistent audit
   trail and human-in-the-loop support.
-
-If your automation is starting to feel like a fragile pile of scripts and
-webhooks, Peregrin is worth a look.
 
 ## What to read next
 

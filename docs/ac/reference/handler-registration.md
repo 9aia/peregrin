@@ -1,69 +1,47 @@
-# Handler registration
+# Register a custom driver
 
-Python handlers can be used by name or by `module:func` path.
+Custom drivers are registered by name in the `DriverRegistry`.
 
-## Register by name
+## Register at runtime
 
-```python
-from agent_campaign.drivers.python import register
-from agent_campaign.model import Event
+```ts
+import { Effect } from "effect";
+import { Driver } from "ac-core";
+import { DriverRegistry, Runner } from "ac-engine";
+import { DefaultsLive } from "ac-cli-defaults";
 
-def my_handler(triggers, ctx, node):
-    return [Event(type="done", payload={"result": "ok"}, source=node.id)]
+const EchoDriver: Driver = {
+  name: "echo",
+  invoke: (node, _triggers, _ctx) =>
+    Effect.succeed([new Event(`${node.id}.done`, { text: node.with_.text }, node.id)]),
+};
 
-register("my_handler", my_handler)
+const program = Effect.gen(function* () {
+  const registry = yield* DriverRegistry;
+  registry.register("echo", EchoDriver);
+  const runner = yield* Runner;
+  const log = yield* runner.run(workflow);
+  return log;
+}).pipe(Effect.provide(DefaultsLive));
 ```
+
+## Use in a workflow
 
 ```yaml
 - id: custom
-  driver: python
-  handler: my_handler
+  driver: echo
   on: [start]
-  emits: [done]
+  emits: [custom.done]
+  with:
+    text: "hello"
 ```
 
-## `module:func` notation
+## Prefix convention
 
-No registration needed:
-
-```yaml
-- id: custom
-  driver: python
-  handler: myapp.code_review:review_pr
-  on: [pr.opened]
-  emits: [pr.approved, pr.changes_requested]
-```
-
-The `myapp.code_review` module is imported and `review_pr` is called.
-
-## Import modules in YAML
-
-```yaml
-import: [lib/litellm/handlers.py]
-
-nodes:
-  - id: review
-    driver: python
-    handler: llm:complete
-    on: [pr.opened]
-    emits: [review.done]
-```
-
-With an `as:` alias:
-
-```yaml
-import:
-  - file: lib/litellm/handlers.py
-    as: llm
-```
-
-Dotted module paths (for installed packages):
-
-```yaml
-import: [myapp.handlers]
-```
+The registry resolves `driver` names by prefix. Registering a driver under `"agent"` makes it handle `agent:claude`, `agent:cursor`, and so on. The suffix is available on `node.driver` for the `invoke` implementation to parse.
 
 ## See also
 
-- [Handlers](../explanation/handlers.md)
-- [python driver](drivers/python.md)
+- [Write a custom driver](../how-to/write-a-custom-driver.md)
+- [Drivers](../explanation/drivers.md) — the driver model
+- [Execution context](handler-context.md)
