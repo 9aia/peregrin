@@ -3,6 +3,12 @@ import { Data, Effect, Layer } from "effect";
 import fs from "node:fs";
 import path from "node:path";
 
+function coerceToString(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
+
 export class JsonStoreError extends Data.TaggedError("JsonStoreError")<{
   readonly reason: string;
 }> {}
@@ -27,10 +33,10 @@ export class JsonStore implements EventStore {
 
   private toEvent(raw: Record<string, unknown>): Event {
     return new Event(
-      String(raw.type ?? ""),
+      coerceToString(raw.type),
       (raw.payload ?? {}) as Record<string, unknown>,
-      String(raw.source ?? ""),
-      String(raw.id ?? ""),
+      coerceToString(raw.source),
+      coerceToString(raw.id),
       typeof raw.ts === "number" ? raw.ts : 0,
     );
   }

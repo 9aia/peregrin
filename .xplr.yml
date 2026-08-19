@@ -1,0 +1,7 @@
+show_hidden: true
+file_nesting:
+  patterns:
+    - parent: package.json
+      children:
+        - bun.lock
+      expanded: true

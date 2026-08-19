@@ -1,5 +1,11 @@
 import crypto from "node:crypto";
 
+function coerceToString(value: unknown, fallback = ""): string {
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return fallback;
+}
+
 export type TriggerMode = "any" | "all";
 
 export class Event {
@@ -110,7 +116,7 @@ export class Node {
   static fromDict(raw: Readonly<Record<string, unknown>>): Node {
     const poll = raw.poll as Readonly<Record<string, unknown>> | undefined;
     if (poll) {
-      const nodeId = String(raw.id);
+      const nodeId = coerceToString(raw.id);
       const tick = `${nodeId}.tick`;
       const on = Array.from<string>((raw.on as Array<string>) ?? ["start"]);
       const emits = Array.from<string>((raw.emits as Array<string>) ?? []);
@@ -128,8 +134,8 @@ export class Node {
       }
       return new Node(
         nodeId,
-        String(raw.driver ?? ""),
-        String(raw.handler ?? ""),
+        coerceToString(raw.driver),
+        coerceToString(raw.handler),
         on,
         emits,
         (raw.mode as TriggerMode) ?? "any",
@@ -147,9 +153,9 @@ export class Node {
       );
     }
     return new Node(
-      String(raw.id),
-      String(raw.driver ?? ""),
-      String(raw.handler ?? ""),
+      coerceToString(raw.id),
+      coerceToString(raw.driver),
+      coerceToString(raw.handler),
       Array.from<string>((raw.on as Array<string>) ?? []),
       Array.from<string>((raw.emits as Array<string>) ?? []),
       (raw.mode as TriggerMode) ?? "any",
@@ -207,7 +213,7 @@ export class Workflow {
 
   static fromDict(raw: Readonly<Record<string, unknown>>): Workflow {
     return new Workflow(
-      String(raw.name ?? ""),
+      coerceToString(raw.name),
       ((raw.events as Array<Record<string, unknown>>) ?? []).map(
         (e) =>
           new EventSchema(
@@ -216,7 +222,7 @@ export class Workflow {
             (e.schema as Record<string, unknown>) ?? {},
           ),
       ),
-      ((raw.nodes as Array<Record<string, unknown>>) ?? []).map(Node.fromDict),
+      ((raw.nodes as Array<Record<string, unknown>>) ?? []).map((node) => Node.fromDict(node)),
       (raw.config as Record<string, unknown>) ?? {},
       Array.from<string>((raw.include as Array<string>) ?? (raw.includes as Array<string>) ?? []),
       Array.from<string>((raw.stop_on as Array<string>) ?? []),
