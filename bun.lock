@@ -16,7 +16,7 @@
       "name": "ac",
       "version": "0.0.0",
       "bin": {
-        "ac": "./dist/cli.js",
+        "ac": "./dist/cli.mjs",
       },
       "dependencies": {
         "@effect/cli": "^0.77.0",
@@ -25,6 +25,7 @@
         "ac-cli-defaults": "workspace:*",
         "ac-core": "workspace:*",
         "ac-engine": "workspace:*",
+        "ac-file-router": "workspace:*",
         "ac-loader-yaml": "workspace:*",
         "effect": "^3.22.1",
       },

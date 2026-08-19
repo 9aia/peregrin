@@ -18,6 +18,7 @@
     "ac-cli-defaults": "workspace:*",
     "ac-core": "workspace:*",
     "ac-engine": "workspace:*",
+    "ac-file-router": "workspace:*",
     "ac-loader-yaml": "workspace:*",
     "effect": "^3.22.1"
   },
