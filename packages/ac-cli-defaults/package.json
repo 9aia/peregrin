@@ -15,9 +15,12 @@
   },
   "dependencies": {
     "ac-core": "workspace:*",
+    "ac-driver-agent": "workspace:*",
     "ac-driver-http": "workspace:*",
+    "ac-driver-human": "workspace:*",
     "ac-driver-noop": "workspace:*",
     "ac-driver-python": "workspace:*",
+    "ac-driver-runner": "workspace:*",
     "ac-driver-shell": "workspace:*",
     "ac-driver-webhook": "workspace:*",
     "ac-engine": "workspace:*",

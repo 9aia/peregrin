@@ -215,7 +215,9 @@ class RunnerLive implements Runner {
       emit: (event) => {
         pending.current.push(event);
       },
-      inject: () => {},
+      inject: (nodes: ReadonlyArray<Record<string, unknown>>) => {
+        this.bus.inject(nodes);
+      },
       dryRun,
       idempotencyKey,
       traceparent: "",

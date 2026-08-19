@@ -60,6 +60,7 @@ export interface EventBus {
   readonly publish: (event: Event) => Effect.Effect<PublishResult, never, never>;
   readonly log: Effect.Effect<ReadonlyArray<Event>, never, never>;
   readonly fireCount: (nodeId: string) => Effect.Effect<number, never, never>;
+  readonly inject: (nodes: ReadonlyArray<Record<string, unknown>>) => void;
 }
 
 export const EventBus = Context.GenericTag<EventBus>("ac/EventBus");
@@ -91,6 +92,19 @@ class EventBusLive implements EventBus {
   fireCount(nodeId: string) {
     return Effect.sync(() => this.fireCounts.get(nodeId) ?? 0);
   }
+
+  readonly inject = (nodes: ReadonlyArray<Record<string, unknown>>): void => {
+    for (const spec of nodes) {
+      try {
+        const node = Node.fromDict(spec);
+        this.nodes.set(node.id, node);
+        this.fireCounts.set(node.id, 0);
+      } catch {
+        // Skip invalid node specs silently.
+      }
+    }
+    this.observer.onInject(nodes);
+  };
 
   private publishSync(event: Event): PublishResult {
     this.store.append(event);

@@ -19,11 +19,11 @@
   "dependencies": {
     "ac-core": "workspace:*",
     "effect": "^3.22.1",
-    "nunjucks": "^3.2.4"
+    "lodash-es": "^4.17.21"
   },
   "devDependencies": {
+    "@types/lodash-es": "^4.17.12",
     "@types/node": "^24.13.3",
-    "@types/nunjucks": "^3.2.6",
     "typescript": "~6.0.2",
     "vite-plus": "catalog:"
   }

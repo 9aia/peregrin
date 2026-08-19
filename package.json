@@ -17,6 +17,7 @@
     "prepare": "vp config"
   },
   "devDependencies": {
+    "@typescript/native-preview": "7.0.0-dev.20260707.2",
     "esbuild": "^0.25.0",
     "vite": "catalog:",
     "vite-plus": "catalog:",

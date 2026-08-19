@@ -2,19 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import cp from "node:child_process";
 import { Effect } from "effect";
-import * as nunjucks from "nunjucks";
+import { template } from "lodash-es";
 import type { Event, ExecutionContext, Node } from "ac-core";
 
-const knownPrefixes = ["event", "config", "secret", "node", "state"];
-
-const sentinelBase: Record<string | symbol, unknown> = {
-  toString: () => "",
-  valueOf: () => 0,
-  [Symbol.toPrimitive]: () => "",
-};
-const sentinel: Record<string | symbol, unknown> = new Proxy(sentinelBase, {
-  get: (target, prop) => (prop in target ? target[prop] : sentinel),
-});
+const knownPrefixes = ["event", "config", "secret", "node", "state", "file", "shell"];
 
 function readFile(filePath: string): string {
   const resolved = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
@@ -35,25 +26,53 @@ function runShell(cmd: string): string {
   }
 }
 
-const env = new nunjucks.Environment(undefined, {
-  autoescape: false,
-  throwOnUndefined: false,
-  tags: {
-    variableStart: "${",
-    variableEnd: "}",
-  },
-});
+function toStringSafe(value: unknown): string {
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (
+    typeof value === "number" ||
+    typeof value === "boolean" ||
+    typeof value === "bigint" ||
+    typeof value === "symbol"
+  ) {
+    return String(value);
+  }
+  if (
+    typeof value === "object" &&
+    typeof (value as { toString?: unknown }).toString === "function"
+  ) {
+    return (value as { toString(): string }).toString();
+  }
+  return JSON.stringify(value);
+}
 
-env.addFilter("file", readFile);
-env.addFilter("shell", runShell);
+const templateSettings = {
+  escape: /[^\s\S]/g,
+  evaluate: /[^\s\S]/g,
+  interpolate: /\$\{([\s\S]+?)\}/g,
+  imports: { __s: toStringSafe, file: readFile, shell: runShell },
+};
 
 function isJinjaExpr(content: string): boolean {
   const stripped = content.trim();
-  if (stripped.includes("|")) return true;
+  if (stripped.includes("|")) return false;
   for (const prefix of knownPrefixes) {
     if (stripped === prefix || stripped.startsWith(prefix + ".")) return true;
+    if (stripped.startsWith(prefix + "(")) return true;
   }
   return false;
+}
+
+function resolvePlaceholder(placeholder: string, context: Record<string, unknown>): string {
+  if (!placeholder.startsWith("${") || !placeholder.endsWith("}")) return placeholder;
+  const content = placeholder.slice(2, -1);
+  if (!isJinjaExpr(content)) return placeholder;
+  try {
+    const compiled = template(`__s(${placeholder})`, templateSettings);
+    return compiled(context);
+  } catch {
+    return placeholder;
+  }
 }
 
 function findMatchingBrace(text: string, start: number): number {
@@ -68,69 +87,57 @@ function findMatchingBrace(text: string, start: number): number {
   return -1;
 }
 
-function resolveDefaults(template: string, context: Record<string, unknown>): string {
+function resolveDefaults(input: string, context: Record<string, unknown>): string {
   const result: string[] = [];
   let i = 0;
-  while (i < template.length) {
-    if (template[i] === "$" && template[i + 1] === "{") {
-      const end = findMatchingBrace(template, i + 1);
+  while (i < input.length) {
+    if (input[i] === "$" && input[i + 1] === "{") {
+      const end = findMatchingBrace(input, i + 1);
       if (end === -1) {
-        result.push(template.slice(i));
+        result.push(input.slice(i));
         break;
       }
-      const inner = template.slice(i + 2, end);
+      const inner = input.slice(i + 2, end);
       const sep = inner.indexOf(":-");
       if (sep !== -1) {
         const varPart = inner.slice(0, sep).trim();
+        const defaultPart = inner.slice(sep + 2);
         if (isJinjaExpr(varPart)) {
-          try {
-            const value = env.renderString("${" + varPart + "}", context);
-            if (value) {
-              result.push(value);
-            } else {
-              result.push(resolveDefaults(inner.slice(sep + 2), context));
-            }
-          } catch {
-            result.push(resolveDefaults(inner.slice(sep + 2), context));
+          const resolved = resolvePlaceholder("${" + varPart + "}", context);
+          if (resolved) {
+            result.push(resolved);
+          } else {
+            result.push(resolveDefaults(defaultPart, context));
           }
-          i = end + 1;
-          continue;
+        } else {
+          result.push("${" + varPart + ":-");
+          result.push(resolveDefaults(defaultPart, context));
+          result.push("}");
         }
-        const resolvedDefault = renderTemplate(inner.slice(sep + 2), context);
-        result.push("${" + inner.slice(0, sep) + ":-" + resolvedDefault + "}");
         i = end + 1;
-        continue;
+      } else {
+        result.push(input.slice(i, end + 1));
+        i = end + 1;
       }
-      result.push(template.slice(i, end + 1));
-      i = end + 1;
     } else {
-      result.push(template[i]);
+      result.push(input[i]);
       i++;
     }
   }
   return result.join("");
 }
 
-function renderTemplate(template: string, context: Record<string, unknown>): string {
-  const pre = resolveDefaults(template, context);
+function renderTemplate(input: string, context: Record<string, unknown>): string {
+  const re = /\$\{([^}]+)\}/g;
   const segments: string[] = [];
   let lastEnd = 0;
-  const braceRe = /\$\{([^}]+)\}/g;
   let match: RegExpExecArray | null;
-  while ((match = braceRe.exec(pre)) !== null) {
-    const content = match[1];
-    if (isJinjaExpr(content)) {
-      if (match.index > lastEnd) segments.push(pre.slice(lastEnd, match.index));
-      try {
-        const rendered = env.renderString("${" + content + "}", context);
-        segments.push(rendered);
-      } catch {
-        segments.push(match[0]);
-      }
-      lastEnd = match.index + match[0].length;
-    }
+  while ((match = re.exec(input)) !== null) {
+    if (match.index > lastEnd) segments.push(input.slice(lastEnd, match.index));
+    segments.push(resolvePlaceholder(match[0], context));
+    lastEnd = match.index + match[0].length;
   }
-  if (lastEnd < pre.length) segments.push(pre.slice(lastEnd));
+  if (lastEnd < input.length) segments.push(input.slice(lastEnd));
   return segments.join("");
 }
 
@@ -175,6 +182,17 @@ function eventCapturesForNode(triggers: ReadonlyArray<Event>, node: Node): Recor
   return {};
 }
 
+const sentinel: Record<string | symbol, unknown> = new Proxy(
+  {
+    toString: () => "",
+    valueOf: () => 0,
+    [Symbol.toPrimitive]: () => "",
+  },
+  {
+    get: (target, prop) => (prop in target ? Reflect.get(target, prop) : sentinel),
+  },
+);
+
 function makeContext(
   triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
@@ -203,13 +221,14 @@ function makeContext(
 }
 
 function resolveTemplateImpl(
-  template: string,
+  templateStr: string,
   triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
   node?: Node,
 ): string {
   const context = makeContext(triggers, ctx, node);
-  return renderTemplate(template, context);
+  const pre = resolveDefaults(templateStr, context);
+  return renderTemplate(pre, context);
 }
 
 function resolveValueImpl(
@@ -229,10 +248,11 @@ function resolveValueImpl(
 }
 
 export const resolveTemplate = (
-  template: string,
+  templateStr: string,
   triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
-): Effect.Effect<string, unknown> => Effect.try(() => resolveTemplateImpl(template, triggers, ctx));
+): Effect.Effect<string, unknown> =>
+  Effect.try(() => resolveTemplateImpl(templateStr, triggers, ctx));
 
 export const resolveValue = (
   value: unknown,

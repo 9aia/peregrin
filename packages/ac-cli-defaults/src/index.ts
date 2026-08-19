@@ -1,16 +1,22 @@
 import { Layer } from "effect";
 import { Live as MemoryStoreLive } from "ac-store-memory";
 import { Layer as NoopObserverLayer } from "ac-observer-noop";
+import { AgentDriver } from "ac-driver-agent";
 import { HttpDriver } from "ac-driver-http";
+import { HumanDriver } from "ac-driver-human";
 import { NoopDriver } from "ac-driver-noop";
+import { RunnerDriver } from "ac-driver-runner";
 import { PythonDriver } from "ac-driver-python";
 import { ShellDriver } from "ac-driver-shell";
 import { WebhookDriver } from "ac-driver-webhook";
 import { DriverRegistry, DriverRegistryLive, EventBusLiveLayer, RunnerLiveLayer } from "ac-engine";
 
 const registry = new DriverRegistryLive();
+registry.register("agent", AgentDriver);
 registry.register("http", HttpDriver);
+registry.register("human", HumanDriver);
 registry.register("noop", new NoopDriver());
+registry.register("runner", RunnerDriver);
 registry.register("python", PythonDriver);
 registry.register("shell", ShellDriver);
 registry.register("webhook", WebhookDriver);
