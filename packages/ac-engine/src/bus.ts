@@ -69,6 +69,7 @@ class EventBusLive implements EventBus {
   private nodes = new Map<string, Node>();
   private fireCounts = new Map<string, number>();
   private exhausted = new Set<string>();
+  private config: Readonly<Record<string, unknown>> = {};
 
   constructor(
     private store: EventStore,
@@ -77,11 +78,12 @@ class EventBusLive implements EventBus {
 
   readonly log = Effect.sync(() => this.store.all());
 
-  reset(nodes: ReadonlyArray<Node>, _config: Readonly<Record<string, unknown>>) {
+  reset(nodes: ReadonlyArray<Node>, config: Readonly<Record<string, unknown>>) {
     return Effect.sync(() => {
       this.nodes = new Map(nodes.map((node) => [node.id, node]));
       this.fireCounts.clear();
       this.exhausted.clear();
+      this.config = config;
     });
   }
 
@@ -134,6 +136,8 @@ class EventBusLive implements EventBus {
       if (node.mode === "all") {
         if (!this.allPatternsSatisfied(node, seen)) continue;
         triggers = this.collectAllTriggers(node, seen);
+      } else if (node.fanIn) {
+        triggers = this.collectFanInTriggers(node, seen);
       } else {
         triggers = [event];
       }
@@ -168,7 +172,80 @@ class EventBusLive implements EventBus {
   }
 
   private isEligible(node: Node, seen: ReadonlySet<string>): boolean {
-    return !this.isMaxFiresExhausted(node) && !this.isUntilBlocked(node, seen);
+    return (
+      !this.isMaxFiresExhausted(node) &&
+      !this.isUntilBlocked(node, seen) &&
+      this.isFanInSatisfied(node, seen)
+    );
+  }
+
+  private isFanInSatisfied(node: Node, seen: ReadonlySet<string>): boolean {
+    if (!node.fanIn) return true;
+    const count = this.resolveFanInCount(node);
+    if (count === undefined) return true;
+    const pattern = node.on[0] ?? "";
+    if (!pattern) return false;
+    return this.countMatching(pattern, seen) >= count;
+  }
+
+  private resolveFanInCount(node: Node): number | undefined {
+    if (!node.fanIn) return undefined;
+    if ("count" in node.fanIn) {
+      const c = Number(node.fanIn.count);
+      return Number.isNaN(c) ? undefined : c;
+    }
+    if ("count_from" in node.fanIn) {
+      const path = String(node.fanIn.count_from);
+      const parts = path.split(".");
+      let current: unknown = this.config;
+      for (const part of parts) {
+        if (
+          current &&
+          typeof current === "object" &&
+          part in (current as Record<string, unknown>)
+        ) {
+          current = (current as Record<string, unknown>)[part];
+        } else {
+          return undefined;
+        }
+      }
+      if (Array.isArray(current)) return current.length;
+      const n = Number(current);
+      return Number.isNaN(n) ? undefined : n;
+    }
+    return undefined;
+  }
+
+  private countMatching(pattern: string, seen: ReadonlySet<string>): number {
+    if (!pattern.includes("*")) {
+      return this.store.byType(pattern).length;
+    }
+    let total = 0;
+    for (const type of seen) {
+      if (matches(pattern, type)) {
+        total += this.store.byType(type).length;
+      }
+    }
+    return total;
+  }
+
+  private eventsMatching(pattern: string, seen: ReadonlySet<string>): ReadonlyArray<Event> {
+    if (!pattern.includes("*")) {
+      return this.store.byType(pattern);
+    }
+    const result: Array<Event> = [];
+    for (const type of seen) {
+      if (matches(pattern, type)) {
+        result.push(...this.store.byType(type));
+      }
+    }
+    return result;
+  }
+
+  private collectFanInTriggers(node: Node, seen: ReadonlySet<string>): ReadonlyArray<Event> {
+    const pattern = node.on[0] ?? "";
+    if (!pattern) return [];
+    return this.eventsMatching(pattern, seen);
   }
 
   private matchesAny(node: Node, event: Event): boolean {

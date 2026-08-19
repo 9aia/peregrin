@@ -110,6 +110,20 @@
         "vite-plus": "catalog:",
       },
     },
+    "packages/ac-driver-cli": {
+      "name": "ac-driver-cli",
+      "version": "0.0.0",
+      "dependencies": {
+        "ac-core": "workspace:*",
+        "ac-template-engine": "workspace:*",
+        "effect": "^3.22.1",
+      },
+      "devDependencies": {
+        "@types/node": "^24.13.3",
+        "typescript": "~6.0.2",
+        "vite-plus": "catalog:",
+      },
+    },
     "packages/ac-driver-http": {
       "name": "ac-driver-http",
       "version": "0.0.0",
@@ -151,6 +165,20 @@
         "vite-plus": "catalog:",
       },
     },
+    "packages/ac-driver-polling": {
+      "name": "ac-driver-polling",
+      "version": "0.0.0",
+      "dependencies": {
+        "ac-core": "workspace:*",
+        "ac-template-engine": "workspace:*",
+        "effect": "^3.22.1",
+      },
+      "devDependencies": {
+        "@types/node": "^24.13.3",
+        "typescript": "~6.0.2",
+        "vite-plus": "catalog:",
+      },
+    },
     "packages/ac-driver-python": {
       "name": "ac-driver-python",
       "version": "0.0.0",
@@ -181,6 +209,34 @@
     },
     "packages/ac-driver-shell": {
       "name": "ac-driver-shell",
+      "version": "0.0.0",
+      "dependencies": {
+        "ac-core": "workspace:*",
+        "ac-template-engine": "workspace:*",
+        "effect": "^3.22.1",
+      },
+      "devDependencies": {
+        "@types/node": "^24.13.3",
+        "typescript": "~6.0.2",
+        "vite-plus": "catalog:",
+      },
+    },
+    "packages/ac-driver-stdin": {
+      "name": "ac-driver-stdin",
+      "version": "0.0.0",
+      "dependencies": {
+        "ac-core": "workspace:*",
+        "ac-template-engine": "workspace:*",
+        "effect": "^3.22.1",
+      },
+      "devDependencies": {
+        "@types/node": "^24.13.3",
+        "typescript": "~6.0.2",
+        "vite-plus": "catalog:",
+      },
+    },
+    "packages/ac-driver-streaming": {
+      "name": "ac-driver-streaming",
       "version": "0.0.0",
       "dependencies": {
         "ac-core": "workspace:*",
@@ -903,17 +959,25 @@
 
     "ac-driver-agent": ["ac-driver-agent@workspace:packages/ac-driver-agent"],
 
+    "ac-driver-cli": ["ac-driver-cli@workspace:packages/ac-driver-cli"],
+
     "ac-driver-http": ["ac-driver-http@workspace:packages/ac-driver-http"],
 
     "ac-driver-human": ["ac-driver-human@workspace:packages/ac-driver-human"],
 
     "ac-driver-noop": ["ac-driver-noop@workspace:packages/ac-driver-noop"],
 
+    "ac-driver-polling": ["ac-driver-polling@workspace:packages/ac-driver-polling"],
+
     "ac-driver-python": ["ac-driver-python@workspace:packages/ac-driver-python"],
 
     "ac-driver-runner": ["ac-driver-runner@workspace:packages/ac-driver-runner"],
 
     "ac-driver-shell": ["ac-driver-shell@workspace:packages/ac-driver-shell"],
+
+    "ac-driver-stdin": ["ac-driver-stdin@workspace:packages/ac-driver-stdin"],
+
+    "ac-driver-streaming": ["ac-driver-streaming@workspace:packages/ac-driver-streaming"],
 
     "ac-driver-webhook": ["ac-driver-webhook@workspace:packages/ac-driver-webhook"],
 
