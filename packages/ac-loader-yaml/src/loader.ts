@@ -390,7 +390,7 @@ const autoDiscover = (
     }
   });
 
-const loadRaw = (
+export const loadRaw = (
   text: string,
   baseDir: string,
 ): Effect.Effect<Record<string, unknown>, LoaderError, never> =>
@@ -419,7 +419,6 @@ const loadRaw = (
       string,
       unknown
     >;
-    delete raw.snippets;
     return raw;
   });
 
