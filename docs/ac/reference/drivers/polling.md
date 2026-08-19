@@ -19,7 +19,7 @@ The `poll:` modifier expands to:
 
 - `on: [start, <id>.tick]`
 - `emits: [..., <id>.tick]`
-- `max_fires: 0`
+- `max_fires: unlimited`
 - `until: [...]`
 - `with.interval` (if the driver supports it)
 - After each successful run, the runner auto-emits `<id>.tick` delayed by
@@ -37,7 +37,7 @@ Purpose-built polling driver with per-line events and JSON parsing. See
   driver: shell
   on: [start, poll-prs.tick]
   emits: [pr.discovered, poll-prs.tick]
-  max_fires: 0
+  max_fires: unlimited
   with:
     cmd: "sleep 60 && gh pr list --json number,title --state open"
 ```
@@ -49,13 +49,13 @@ Purpose-built polling driver with per-line events and JSON parsing. See
   driver: http
   on: [start, poll-api.tick]
   emits: [api.response, poll-api.tick]
-  max_fires: 0
+  max_fires: unlimited
   with:
     method: GET
     url: "https://api.example.com/status"
 ```
 
-All approaches use `max_fires: 0` (unlimited) and `until: [some.event]`
+All approaches use `max_fires: unlimited` (unlimited) and `until: [some.event]`
 to stop when a condition is met.
 
 ## `poll:` field reference

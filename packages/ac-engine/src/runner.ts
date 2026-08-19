@@ -377,6 +377,7 @@ class RunnerLive implements Runner {
   ) {
     const state = new SimpleStateStore();
     const capabilities = { ...workflow.capabilities, ...node.capabilities };
+    const missingSecrets: Array<string> = [];
     return {
       config: workflow.config,
       secrets,
@@ -393,10 +394,18 @@ class RunnerLive implements Runner {
       state,
       fires,
       requestShutdown,
-      getSecret: (key: string, default_ = "") => secrets[key] ?? default_,
+      getSecret: (key: string, default_ = "") => {
+        const value = secrets[key] ?? default_;
+        if (workflow.strict && value === "" && !(key in secrets)) {
+          missingSecrets.push(key);
+        }
+        return value;
+      },
       resources: node.resources,
       capabilities,
       workflowCapabilities: workflow.capabilities,
+      strict: workflow.strict,
+      missingSecrets,
     };
   }
 }

@@ -79,14 +79,14 @@ ac run workflow.yaml --timeout 60 --max-events 1000
 
 ## Intentional vs accidental
 
-| Type                   | How to express                           | Protection              |
-| ---------------------- | ---------------------------------------- | ----------------------- |
-| Retry N times          | `max_fires: N` + `on: [node.exhausted]`  | `max_fires`             |
-| Poll until condition   | `max_fires: 0, until: [condition.event]` | `until`                 |
-| Refinement loop        | `max_fires: N, until: [good.enough]`     | both                    |
-| Clean up injected node | `retire_on: [done.event]`                | `retire_on`             |
-| Accidental cycle       | (none — you forgot)                      | cycle detection         |
-| Runaway production     | (none — handler is slow/stuck)           | `timeout`, `max_events` |
+| Type                   | How to express                                   | Protection              |
+| ---------------------- | ------------------------------------------------ | ----------------------- |
+| Retry N times          | `max_fires: N` + `on: [node.exhausted]`          | `max_fires`             |
+| Poll until condition   | `max_fires: unlimited, until: [condition.event]` | `until`                 |
+| Refinement loop        | `max_fires: N, until: [good.enough]`             | both                    |
+| Clean up injected node | `retire_on: [done.event]`                        | `retire_on`             |
+| Accidental cycle       | (none — you forgot)                              | cycle detection         |
+| Runaway production     | (none — handler is slow/stuck)                   | `timeout`, `max_events` |
 
 The principle: **express what you want explicitly; the runner catches what
 you did not.**

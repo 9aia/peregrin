@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "ac-core": "workspace:*",
+    "ac-plugin-litellm": "workspace:*",
     "ac-template-engine": "workspace:*",
     "effect": "^3.22.1"
   },

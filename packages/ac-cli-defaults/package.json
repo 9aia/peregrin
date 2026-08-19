@@ -29,6 +29,8 @@
     "ac-driver-webhook": "workspace:*",
     "ac-engine": "workspace:*",
     "ac-observer-noop": "workspace:*",
+    "ac-plugin-apprise": "workspace:*",
+    "ac-plugin-litellm": "workspace:*",
     "ac-store-memory": "workspace:*",
     "effect": "^3.22.1"
   },

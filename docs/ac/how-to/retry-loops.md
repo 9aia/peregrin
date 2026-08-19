@@ -32,7 +32,7 @@ nodes:
     driver: shell
     on: [start, poll.tick]
     emits: [poll.ready, poll.tick]
-    max_fires: 0
+    max_fires: unlimited
     until: [poll.ready]
     with:
       emit:

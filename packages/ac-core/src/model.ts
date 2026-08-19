@@ -27,7 +27,7 @@ export class Event {
     return new Event("node.failed", { error, node: nodeId }, nodeId);
   }
 
-  static nodeExhausted(nodeId: string, maxFires: number): Event {
+  static nodeExhausted(nodeId: string, maxFires: number | "unlimited"): Event {
     return new Event("node.exhausted", { node: nodeId, maxFires }, nodeId);
   }
 
@@ -79,6 +79,13 @@ export class EventSchema {
   }
 }
 
+function parseMaxFires(value: unknown, defaultValue: number | "unlimited"): number | "unlimited" {
+  if (value === "unlimited") return "unlimited";
+  if (typeof value === "number" && Number.isInteger(value) && value > 0) return value;
+  if (value === 0) return "unlimited";
+  return defaultValue;
+}
+
 export class Node {
   constructor(
     readonly id: string,
@@ -88,7 +95,7 @@ export class Node {
     readonly emits: ReadonlyArray<string> = [],
     readonly mode: TriggerMode = "any",
     readonly with_: Readonly<Record<string, unknown>> = {},
-    readonly maxFires: number = 1,
+    readonly maxFires: number | "unlimited" = 1,
     readonly until: ReadonlyArray<string> = [],
     readonly retireOn: ReadonlyArray<string> = [],
     readonly retry: Readonly<Record<string, unknown>> = {},
@@ -109,7 +116,7 @@ export class Node {
       const emits = Array.from<string>((raw.emits as Array<string>) ?? []);
       if (!on.includes(tick)) on.push(tick);
       if (!emits.includes(tick)) emits.push(tick);
-      const maxFires = typeof raw.max_fires === "number" ? raw.max_fires : 0;
+      const maxFires = parseMaxFires(raw.max_fires, "unlimited");
       const until = Array.from<string>((raw.until as Array<string>) ?? []);
       const pollUntil = Array.from<string>((poll.until as Array<string>) ?? []);
       for (const e of pollUntil) if (!until.includes(e)) until.push(e);
@@ -147,7 +154,7 @@ export class Node {
       Array.from<string>((raw.emits as Array<string>) ?? []),
       (raw.mode as TriggerMode) ?? "any",
       (raw.with as Record<string, unknown>) ?? {},
-      typeof raw.max_fires === "number" ? raw.max_fires : 1,
+      parseMaxFires(raw.max_fires, 1),
       Array.from<string>((raw.until as Array<string>) ?? []),
       Array.from<string>((raw.retire_on as Array<string>) ?? []),
       (raw.retry as Record<string, unknown>) ?? {},
@@ -170,7 +177,8 @@ export class Node {
       mode: this.mode,
       with: this.with_,
     };
-    if (this.maxFires !== 1) d.max_fires = this.maxFires;
+    const defaultFires = this.poll ? "unlimited" : 1;
+    if (this.maxFires !== defaultFires) d.max_fires = this.maxFires;
     if (this.until.length > 0) d.until = [...this.until];
     if (this.retireOn.length > 0) d.retire_on = [...this.retireOn];
     if (Object.keys(this.retry).length > 0) d.retry = this.retry;
@@ -194,6 +202,7 @@ export class Workflow {
     readonly stopOn: ReadonlyArray<string> = [],
     readonly payloadSchemas: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {},
     readonly capabilities: Readonly<Record<string, unknown>> = {},
+    readonly strict: boolean = false,
   ) {}
 
   static fromDict(raw: Readonly<Record<string, unknown>>): Workflow {
@@ -213,6 +222,7 @@ export class Workflow {
       Array.from<string>((raw.stop_on as Array<string>) ?? []),
       (raw.payload_schemas as Record<string, Record<string, unknown>>) ?? {},
       (raw.capabilities as Record<string, unknown>) ?? {},
+      Boolean(raw.strict),
     );
   }
 
@@ -230,6 +240,7 @@ export class Workflow {
     if (this.imports.length > 0) d.include = [...this.imports];
     if (this.stopOn.length > 0) d.stop_on = [...this.stopOn];
     if (Object.keys(this.capabilities).length > 0) d.capabilities = this.capabilities;
+    if (this.strict) d.strict = true;
     return d;
   }
 
@@ -271,4 +282,5 @@ export interface ExecutionContext {
   readonly fires: number;
   readonly requestShutdown: () => void;
   readonly getSecret: (key: string, default_?: string) => string;
+  readonly strict: boolean;
 }

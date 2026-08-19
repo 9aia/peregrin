@@ -16,7 +16,7 @@ nodes:
     driver: shell
     on: [shard.*.ready]
     emits: [shard.done]
-    max_fires: 0
+    max_fires: unlimited
     with:
       cmd: "process ${event.payload.id}"
 
@@ -33,7 +33,7 @@ nodes:
 
 1. `planner` emits `shard.1.ready`, `shard.2.ready`, `shard.3.ready` at runtime.
 2. `worker` has `on: [shard.*.ready]` — `*` matches one segment, so it catches each.
-3. `max_fires: 0` means the worker can fire unlimited times (once per shard).
+3. `max_fires: unlimited` means the worker can fire unlimited times (once per shard).
 4. `reduce` has `on: [shard.**.done]` with `mode: all` — waits for all shards to finish.
 
 ## See also

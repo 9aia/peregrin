@@ -79,6 +79,8 @@
         "ac-driver-webhook": "workspace:*",
         "ac-engine": "workspace:*",
         "ac-observer-noop": "workspace:*",
+        "ac-plugin-apprise": "workspace:*",
+        "ac-plugin-litellm": "workspace:*",
         "ac-store-memory": "workspace:*",
         "effect": "^3.22.1",
       },
@@ -105,6 +107,7 @@
       "version": "0.0.0",
       "dependencies": {
         "ac-core": "workspace:*",
+        "ac-plugin-litellm": "workspace:*",
         "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
       },
@@ -133,6 +136,7 @@
       "version": "0.0.0",
       "dependencies": {
         "ac-core": "workspace:*",
+        "ac-plugin-apprise": "workspace:*",
         "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
       },

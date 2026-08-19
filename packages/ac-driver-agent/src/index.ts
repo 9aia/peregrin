@@ -4,6 +4,7 @@ import path from "node:path";
 import { Effect, Layer } from "effect";
 import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
 import { resolveValueForNode } from "ac-template-engine";
+import { LiteLLM, Live as LiteLLMLive } from "ac-plugin-litellm";
 
 export const AgentDriver: Driver = {
   name: "agent",
@@ -50,6 +51,35 @@ export const AgentDriver: Driver = {
             reason: `agent node '${node.id}' missing 'with.prompt' or 'with.prompt_file'`,
           }),
         );
+      }
+
+      const model = with_.model;
+      const provider = with_.provider;
+      if (typeof model === "string" && model.length > 0) {
+        if (ctx.dryRun) {
+          return [
+            new Event("agent.litellm", { content: "", model, provider, dry_run: true }, node.id),
+          ];
+        }
+
+        const liteLLM = yield* LiteLLM;
+        const content = yield* liteLLM.complete({
+          model,
+          provider: typeof provider === "string" && provider.length > 0 ? provider : undefined,
+          prompt: promptText,
+          endpoint:
+            typeof with_.endpoint === "string" && with_.endpoint.length > 0
+              ? with_.endpoint
+              : undefined,
+          apiKey:
+            typeof with_.api_key === "string" && with_.api_key.length > 0
+              ? with_.api_key
+              : env.LITELLM_API_KEY,
+          system:
+            typeof with_.system === "string" && with_.system.length > 0 ? with_.system : undefined,
+        });
+
+        return [new Event("agent.litellm", { content, model, provider }, node.id)];
       }
 
       const permissionMode =
@@ -183,7 +213,7 @@ export const AgentDriver: Driver = {
       const eventType = getEventType(rc);
 
       return [new Event(eventType, { stdout, stderr, rc, runner }, node.id)];
-    }),
+    }).pipe(Effect.provide(LiteLLMLive)),
 };
 
 export const AgentDriverLive = Layer.succeed(Driver, AgentDriver);

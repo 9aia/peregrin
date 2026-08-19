@@ -164,7 +164,8 @@ class EventBusLive implements EventBus {
   }
 
   private isMaxFiresExhausted(node: Node): boolean {
-    return node.maxFires > 0 && (this.fireCounts.get(node.id) ?? 0) >= node.maxFires;
+    if (node.maxFires === "unlimited") return false;
+    return (this.fireCounts.get(node.id) ?? 0) >= node.maxFires;
   }
 
   private isUntilBlocked(node: Node, seen: ReadonlySet<string>): boolean {

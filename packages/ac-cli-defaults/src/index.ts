@@ -1,6 +1,8 @@
 import { Layer } from "effect";
 import { Live as MemoryStoreLive } from "ac-store-memory";
 import { Layer as NoopObserverLayer } from "ac-observer-noop";
+import { Live as LiteLLMLive } from "ac-plugin-litellm";
+import { Live as AppriseLive } from "ac-plugin-apprise";
 import { AgentDriver } from "ac-driver-agent";
 import { CliDriver } from "ac-driver-cli";
 import { HttpDriver } from "ac-driver-http";
@@ -31,7 +33,8 @@ registry.register("webhook", WebhookDriver);
 
 const DefaultDriverRegistryLive = Layer.succeed(DriverRegistry, registry);
 
-const base = Layer.merge(MemoryStoreLive, NoopObserverLayer);
+const plugins = Layer.merge(LiteLLMLive, AppriseLive);
+const base = Layer.merge(Layer.merge(MemoryStoreLive, NoopObserverLayer), plugins);
 const withBus = EventBusLiveLayer.pipe(Layer.provide(base));
 const withRegistry = Layer.merge(withBus, DefaultDriverRegistryLive);
 const DefaultsLive = RunnerLiveLayer.pipe(Layer.provide(withRegistry));

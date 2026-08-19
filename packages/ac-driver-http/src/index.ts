@@ -1,6 +1,7 @@
 import { Either, Effect, Layer } from "effect";
 import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
 import { resolveValueForNode } from "ac-template-engine";
+import { Apprise, Live as AppriseLive } from "ac-plugin-apprise";
 
 const makeBody = (body: unknown, headers: Record<string, string>): string | undefined => {
   if (body === undefined) return undefined;
@@ -88,12 +89,37 @@ export const HttpDriver: Driver = {
         headers: responseHeaders,
       };
 
+      const appriseTarget = with_.apprise;
+      if (with_.notify === true && typeof appriseTarget === "string" && appriseTarget.length > 0) {
+        const apprise = yield* Apprise;
+        const notifyBody =
+          typeof with_.message === "string" && with_.message.length > 0
+            ? with_.message
+            : typeof responseBody === "string"
+              ? responseBody
+              : String(responseBody);
+        yield* apprise.send({
+          target: appriseTarget,
+          body: notifyBody,
+          title:
+            typeof with_.title === "string" && with_.title.length > 0 ? with_.title : undefined,
+        });
+
+        return [
+          new Event(
+            response.ok ? "http.done" : "http.failed",
+            { ...payload, notified: true },
+            node.id,
+          ),
+        ];
+      }
+
       if (response.ok) {
         return [new Event("http.done", payload, node.id)];
       }
 
       return [new Event("http.failed", payload, node.id)];
-    }),
+    }).pipe(Effect.provide(AppriseLive)),
 };
 
 export const HttpDriverLive = Layer.succeed(Driver, HttpDriver);

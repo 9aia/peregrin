@@ -9,7 +9,7 @@ Polls a shell command on an interval and emits one event per output line.
   driver: cli
   on: [start, poll-prs.tick]
   emits: [pr.discovered, poll-prs.tick]
-  max_fires: 0
+  max_fires: unlimited
   with:
     cmd: "gh pr list --json number,title --state open"
     interval: 60
@@ -42,7 +42,7 @@ Loops internally with `keep_alive`. No self-triggering needed.
   driver: cli
   on: [start, poll-events.tick]
   emits: [alert, info, poll-events.tick]
-  max_fires: 0
+  max_fires: unlimited
   with:
     cmd: "curl -s https://api.example.com/events"
     interval: 30
