@@ -6,6 +6,22 @@ export class DriverError extends Data.TaggedError("DriverError")<{
   readonly reason: string;
 }> {}
 
+export class TemplateError extends Data.TaggedError("TemplateError")<{
+  readonly reason: string;
+}> {
+  override toString() {
+    return `TemplateError: ${this.reason}`;
+  }
+}
+
+export interface DeadLetterQueue {
+  readonly enqueue: (event: Event, reason: string) => Effect.Effect<void>;
+  readonly all: () => Effect.Effect<ReadonlyArray<Event>>;
+  readonly close: () => Effect.Effect<void>;
+}
+
+export const DeadLetterQueue = Context.GenericTag<DeadLetterQueue>("ac/DeadLetterQueue");
+
 export interface Driver {
   readonly name: string;
   readonly invoke: (

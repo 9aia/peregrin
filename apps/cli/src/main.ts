@@ -1,29 +1,101 @@
-import { Args, Command } from "@effect/cli";
+import { Args, Command, Options } from "@effect/cli";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
-import { Console, Effect } from "effect";
-import { loadWorkflow } from "ac-loader-yaml";
-import { Runner } from "ac-engine";
+import { Console, Effect, Option } from "effect";
+import { Event } from "ac-core";
+import { loadWorkflow, LoaderError } from "ac-loader-yaml";
+import { Runner, type RunOptions } from "ac-engine";
 import {
-  RunnerLiveLayer,
-  EventBusLiveLayer,
-  DefaultDriverRegistryLive,
+  makeDefaultsLive,
+  MetricsObserverLive,
   NoopObserverLayer,
-  MemoryStoreLive,
+  OtelObserverLive,
 } from "ac-cli-defaults";
+import fs from "node:fs";
 
 const workflowArg = Args.text({ name: "workflow" }).pipe(
   Args.withDescription("Path to the workflow to run"),
 );
 
-const run = Command.make("run", { workflow: workflowArg }, ({ workflow }) =>
+const replayOption = Options.optional(
+  Options.text("replay").pipe(Options.withDescription("Path to a JSON/JSONL event log to replay")),
+);
+
+const otelOption = Options.boolean("otel", { ifPresent: true }).pipe(
+  Options.withDescription("Enable OpenTelemetry observer"),
+);
+
+const metricsOption = Options.boolean("metrics", { ifPresent: true }).pipe(
+  Options.withDescription("Emit runtime metrics"),
+);
+
+const loadReplayEvents = (
+  filePath: string,
+): Effect.Effect<ReadonlyArray<Event>, LoaderError, never> =>
   Effect.gen(function* () {
-    const runner = yield* Runner;
-    const wf = yield* loadWorkflow(workflow);
-    const events = yield* runner.run(wf);
-    for (const event of events) {
-      yield* Console.log(`${event.ts} ${event.source} ${event.type}`);
-    }
-  }),
+    const content = yield* Effect.try(() => fs.readFileSync(filePath, "utf8")).pipe(
+      Effect.mapError(
+        (error) =>
+          new LoaderError({ reason: `Failed to read replay log: ${filePath}`, cause: error }),
+      ),
+    );
+    const raw = yield* Effect.try(() => {
+      const trimmed = content.trim();
+      if (trimmed.startsWith("[")) {
+        return JSON.parse(trimmed) as Array<Record<string, unknown>>;
+      }
+      return trimmed
+        .split("\n")
+        .filter((line) => line.trim() !== "")
+        .map((line) => JSON.parse(line) as Record<string, unknown>);
+    }).pipe(
+      Effect.mapError(
+        (error) => new LoaderError({ reason: "Failed to parse replay log", cause: error }),
+      ),
+    );
+    return raw.map(
+      (record) =>
+        new Event(
+          typeof record.type === "string" ? record.type : "",
+          (record.payload ?? {}) as Record<string, unknown>,
+          typeof record.source === "string" ? record.source : "",
+          typeof record.id === "string" ? record.id : "",
+          typeof record.ts === "number" ? record.ts : 0,
+        ),
+    );
+  });
+
+const selectObserver = (flags: { otel: boolean; metrics: boolean }) => {
+  if (flags.metrics) return MetricsObserverLive;
+  if (flags.otel) return OtelObserverLive;
+  return NoopObserverLayer;
+};
+
+const run = Command.make(
+  "run",
+  {
+    workflow: workflowArg,
+    replay: replayOption,
+    otel: otelOption,
+    metrics: metricsOption,
+  },
+  ({ workflow, replay, otel, metrics }) =>
+    Effect.gen(function* () {
+      const wf = yield* loadWorkflow(workflow);
+      let replayEvents: ReadonlyArray<Event> = [];
+      if (Option.isSome(replay)) {
+        replayEvents = yield* loadReplayEvents(replay.value);
+      }
+      const runOptions: RunOptions = replayEvents.length > 0 ? { replayEvents } : {};
+      const observer = selectObserver({ otel, metrics });
+      const runWorkflow = Effect.gen(function* () {
+        const runner = yield* Runner;
+        const events = yield* runner.run(wf, runOptions);
+        for (const event of events) {
+          yield* Console.log(`${event.ts} ${event.source} ${event.type}`);
+        }
+      });
+      yield* runWorkflow.pipe(Effect.provide(makeDefaultsLive(observer)));
+    }),
 ).pipe(Command.withDescription("Run a workflow"));
 
 const version = Command.make("version", {}, () => Console.log("0.0.0")).pipe(
@@ -37,12 +109,4 @@ const program = Command.run(ac, {
   version: "0.0.0",
 });
 
-program(process.argv).pipe(
-  Effect.provide(RunnerLiveLayer),
-  Effect.provide(EventBusLiveLayer),
-  Effect.provide(DefaultDriverRegistryLive),
-  Effect.provide(NoopObserverLayer),
-  Effect.provide(MemoryStoreLive),
-  Effect.provide(NodeContext.layer),
-  NodeRuntime.runMain,
-);
+NodeRuntime.runMain(Effect.provide(program(process.argv), NodeContext.layer));

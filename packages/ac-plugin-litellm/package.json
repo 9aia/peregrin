@@ -10,14 +10,16 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
-    "test": "vp test -- --passWithNoTests",
+    "test": "vp test",
     "check": "vp check"
   },
   "dependencies": {
     "ac-core": "workspace:*",
+    "ac-template-engine": "workspace:*",
     "effect": "^3.22.1"
   },
   "devDependencies": {
+    "@effect/vitest": "^0.30.0",
     "@types/node": "^24.13.3",
     "typescript": "~6.0.2",
     "vite-plus": "catalog:"

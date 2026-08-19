@@ -1,9 +1,19 @@
 import { Context, Duration, Effect, Either, Layer } from "effect";
 import type { Adapter } from "effect/Effect";
-import { Event, Node, Workflow, DriverError, Observer } from "ac-core";
+import {
+  Event,
+  Node,
+  Workflow,
+  DriverError,
+  DeadLetterQueue,
+  Observer,
+  TemplateError,
+} from "ac-core";
 import type { ExecutionContext, StateStore } from "ac-core";
 import { captureWildcards, EventBus } from "./bus.js";
 import { DriverRegistry } from "./registry.js";
+import { buildValidator, CapabilityChecker, ResourceGate } from "ac-safety";
+import { resolveValueForNode } from "ac-template-engine";
 
 function resolveForward(fwdType: string, captures: Record<string, string>): string {
   const parts = fwdType.split(".");
@@ -36,9 +46,16 @@ class SimpleStateStore implements StateStore {
   }
 }
 
+const noOpDeadLetterQueue: DeadLetterQueue = {
+  enqueue: () => Effect.sync(() => undefined),
+  all: () => Effect.succeed([]),
+  close: () => Effect.sync(() => undefined),
+};
+
 export interface RunOptions {
   readonly dryRun?: boolean;
   readonly secrets?: Readonly<Record<string, string>>;
+  readonly replayEvents?: ReadonlyArray<Event>;
 }
 
 export interface Runner {
@@ -59,10 +76,41 @@ class RunnerLive implements Runner {
     private bus: EventBus,
     private registry: DriverRegistry,
     private observer: Observer,
+    private resourceGate: ResourceGate,
+    private dlq: DeadLetterQueue,
   ) {}
 
   run(workflow: Workflow, options: RunOptions = {}) {
     return Effect.gen(this, function* (this: RunnerLive, _resume: Adapter) {
+      if (workflow.strict) {
+        for (const eventSchema of workflow.events) {
+          if (eventSchema.compiledSchema() === null) {
+            return yield* Effect.fail(
+              new DriverError({
+                reason: `strict mode requires a payload schema for event '${eventSchema.type}'`,
+              }),
+            );
+          }
+        }
+        for (const node of workflow.nodes) {
+          if (node.on.length === 0) {
+            return yield* Effect.fail(
+              new DriverError({
+                reason: `strict mode: node '${node.id}' must declare 'on'`,
+              }),
+            );
+          }
+          if (node.emits.length === 0) {
+            return yield* Effect.fail(
+              new DriverError({
+                reason: `strict mode: node '${node.id}' must declare 'emits'`,
+              }),
+            );
+          }
+        }
+      }
+
+      const validator = buildValidator(workflow.events);
       yield* this.bus.reset(workflow.nodes, workflow.config);
       yield* Effect.sync(() => this.resetState());
       const pending: { current: Array<Event> } = { current: [] };
@@ -74,10 +122,17 @@ class RunnerLive implements Runner {
       const requestShutdown = () => {
         cancelled = true;
       };
+
       yield* Effect.sync(() => this.observer.onWorkflowStart(workflow));
-      const start = yield* this.bus.publish(Event.start());
+      const hasReplay = options.replayEvents && options.replayEvents.length > 0;
+      const start = hasReplay
+        ? yield* this.bus
+            .seed(options.replayEvents as ReadonlyArray<Event>)
+            .pipe(Effect.flatMap(() => this.bus.checkReady()))
+        : yield* this.bus.publish(Event.start());
       ready = Array.from(start.ready);
       pending.current.push(...start.sideEvents);
+
       while ((pending.current.length > 0 || ready.length > 0) && !cancelled) {
         if (ready.length > 0) {
           const toRun = ready;
@@ -91,12 +146,7 @@ class RunnerLive implements Runner {
           for (const events of emitted) {
             pending.current.push(...events);
           }
-          const failedTypes = new Set([
-            "node.failed",
-            "circuit.open",
-            "dlq.event",
-            "capability.violation",
-          ]);
+          const failedTypes = new Set(["node.failed", "circuit.open", "workflow.failed"]);
           if (emitted.some((events) => events.some((event) => failedTypes.has(event.type)))) {
             failed = true;
           }
@@ -113,11 +163,26 @@ class RunnerLive implements Runner {
             cancelled = true;
             break;
           }
+          if (validator !== null) {
+            const errors = validator.validate(event);
+            if (errors.length > 0) {
+              pending.current.push(
+                Event.eventInvalid(event.type, event.source, errors, event.payload),
+              );
+              if (workflow.strict) {
+                pending.current.push(
+                  Event.nodeFailed(event.source, `payload validation failed: ${errors.join("; ")}`),
+                );
+              }
+              continue;
+            }
+          }
           const result = yield* this.bus.publish(event);
           pending.current.push(...result.sideEvents);
           ready = [...ready, ...result.ready];
         }
       }
+
       if (cancelled) {
         yield* this.bus.publish(
           new Event("workflow.cancelled", { reason: "cancelled" }, "__runner__"),
@@ -139,6 +204,13 @@ class RunnerLive implements Runner {
     this.circuitStates.clear();
   }
 
+  private resourceWeight(node: Node): number {
+    const raw = node.resources?.["weight"];
+    const n = typeof raw === "number" ? raw : Number(raw);
+    if (Number.isNaN(n) || n < 1) return 1;
+    return n;
+  }
+
   private executeNode(
     node: Node,
     triggers: ReadonlyArray<Event>,
@@ -151,39 +223,115 @@ class RunnerLive implements Runner {
     return Effect.gen(this, function* (this: RunnerLive, _resume: Adapter) {
       const span = this.observer.onNodeStart(node, triggers);
       const [log, fires] = yield* Effect.all([this.bus.log, this.bus.fireCount(node.id)]);
-      const makeCtx: (idempotencyKey: string) => ExecutionContext = (idempotencyKey) =>
-        this.makeContext(
+
+      const run = Effect.gen(this, function* (this: RunnerLive, _resume: Adapter) {
+        const preKey = `${node.id}:pre`;
+        const preCtx = this.makeContext(
           node,
           fires,
-          idempotencyKey,
+          preKey,
           pending,
           dryRun,
           secrets,
           workflow,
           log,
           requestShutdown,
+          "",
         );
 
-      if (node.poll) {
-        const tick = `${node.id}.tick`;
-        const isTick = triggers.some((event) => event.type === tick);
-        const interval =
-          typeof node.with_.interval === "number"
-            ? node.with_.interval
-            : typeof node.poll?.interval === "number"
-              ? node.poll.interval
-              : 0;
-        if (isTick && interval > 0) {
-          yield* Effect.sleep(Duration.seconds(interval));
-        }
-      }
+        const resolvedEither = yield* resolveValueForNode(node.with_, triggers, preCtx, node).pipe(
+          Effect.mapError((error: TemplateError) => new DriverError({ reason: error.reason })),
+          Effect.either,
+        );
 
-      const driverEvents = node.fanIn
-        ? ([] as ReadonlyArray<Event>)
-        : yield* this.runWithRetry(node, triggers, makeCtx, dryRun);
-      const all = this.buildNodeEvents(node, triggers, driverEvents);
-      this.observer.onNodeEnd(node, all, null, span);
-      return all;
+        if (Either.isLeft(resolvedEither)) {
+          const fail = Event.nodeFailed(node.id, resolvedEither.left.reason);
+          this.observer.onNodeEnd(node, [fail], new Error(resolvedEither.left.reason), span);
+          return [fail];
+        }
+
+        const resolvedWith = resolvedEither.right as Readonly<Record<string, unknown>>;
+        const capChecker = new CapabilityChecker(workflow.capabilities, workflow.strict);
+        const effective = capChecker.merge(node.capabilities);
+        const check = new CapabilityChecker(effective, workflow.strict);
+        const violations = check.check(node.driver, resolvedWith);
+
+        if (violations.length > 0) {
+          const events: Array<Event> = [Event.capabilityViolation(node.id, violations)];
+          if (workflow.strict) {
+            events.push(
+              Event.nodeFailed(node.id, `capability violations: ${violations.join("; ")}`),
+            );
+          }
+          this.observer.onNodeEnd(node, events, null, span);
+          return events;
+        }
+
+        const makeCtx: (idempotencyKey: string) => ExecutionContext = (idempotencyKey) =>
+          this.makeContext(
+            node,
+            fires,
+            idempotencyKey,
+            pending,
+            dryRun,
+            secrets,
+            workflow,
+            log,
+            requestShutdown,
+            span.getTraceparent(),
+          );
+
+        const driverEvents = node.fanIn
+          ? ([] as ReadonlyArray<Event>)
+          : yield* this.runWithRetry(node, triggers, makeCtx, dryRun);
+
+        if (node.poll) {
+          const tick = `${node.id}.tick`;
+          const isTick = triggers.some((event) => event.type === tick);
+          const interval =
+            typeof node.with_.interval === "number"
+              ? node.with_.interval
+              : typeof node.poll?.interval === "number"
+                ? node.poll.interval
+                : 0;
+          if (isTick && interval > 0) {
+            const scheduled = Effect.sleep(Duration.seconds(interval)).pipe(
+              Effect.andThen(
+                Effect.sync(() => {
+                  pending.current.push(new Event(tick, { poll: true }, node.id));
+                }),
+              ),
+            );
+            yield* Effect.fork(scheduled);
+          }
+        }
+
+        const all = this.buildNodeEvents(node, triggers, driverEvents);
+
+        if (workflow.strict) {
+          const allowedEmits = new Set(node.emits);
+          for (const event of all) {
+            if (event.type === "node.failed" || event.type === "circuit.open") continue;
+            if (!allowedEmits.has(event.type)) {
+              const fail = Event.nodeFailed(
+                node.id,
+                `emitted '${event.type}' not declared in 'emits'`,
+              );
+              this.observer.onNodeEnd(node, [fail], null, span);
+              return [fail];
+            }
+          }
+        }
+
+        this.observer.onNodeEnd(node, all, null, span);
+        return all;
+      });
+
+      const reserved = yield* this.resourceGate.acquire(this.resourceWeight(node));
+      const result = yield* run.pipe(
+        Effect.ensuring(Effect.sync(() => this.resourceGate.release(reserved))),
+      );
+      return result;
     });
   }
 
@@ -194,7 +342,7 @@ class RunnerLive implements Runner {
   ): ReadonlyArray<Event> {
     const out: Array<Event> = [];
     if (node.fanIn) {
-      const fanInEmit = node.fanIn?.emit;
+      const fanInEmit = node.fanIn?.["emit"];
       const emitType =
         typeof fanInEmit === "string" ? fanInEmit : (node.emits[0] ?? `${node.id}.done`);
       out.push(
@@ -231,7 +379,13 @@ class RunnerLive implements Runner {
     }
     if (node.poll) {
       const tick = `${node.id}.tick`;
-      if (!out.some((event) => event.type === tick)) {
+      const interval =
+        typeof node.with_.interval === "number"
+          ? node.with_.interval
+          : typeof node.poll?.interval === "number"
+            ? node.poll.interval
+            : 0;
+      if (interval <= 0 && !out.some((event) => event.type === tick)) {
         out.push(new Event(tick, { poll: true }, node.id));
       }
     }
@@ -251,7 +405,7 @@ class RunnerLive implements Runner {
       }
 
       const retryCfg = node.retry;
-      const maxAttempts = Math.max(1, Number(retryCfg.max_attempts ?? 1));
+      const maxAttempts = Math.max(1, Number(retryCfg["max_attempts"] ?? 1));
       let lastError: DriverError | null = null;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
@@ -267,7 +421,7 @@ class RunnerLive implements Runner {
 
         now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
         if (this.recordFailure(node, now)) {
-          const onTripRaw = node.circuitBreaker?.on_trip;
+          const onTripRaw = node.circuitBreaker?.["on_trip"];
           const onTrip = typeof onTripRaw === "string" ? onTripRaw : "circuit.open";
           return [
             new Event(
@@ -281,8 +435,8 @@ class RunnerLive implements Runner {
         this.retryCounts.set(node.id, attempt);
 
         if (attempt < maxAttempts) {
-          const baseDelay = Number(retryCfg.delay ?? 1);
-          const backoffRaw = retryCfg.backoff;
+          const baseDelay = Number(retryCfg["delay"] ?? 1);
+          const backoffRaw = retryCfg["backoff"];
           const backoff = typeof backoffRaw === "string" ? backoffRaw : "fixed";
           let delay = baseDelay;
           if (backoff === "exponential") {
@@ -294,18 +448,9 @@ class RunnerLive implements Runner {
         }
       }
 
-      return [
-        Event.nodeFailed(node.id, lastError?.reason ?? "unknown error"),
-        new Event(
-          "dlq.event",
-          {
-            node: node.id,
-            error: lastError?.reason ?? "unknown error",
-            event: "node.failed",
-          },
-          "__runner__",
-        ),
-      ];
+      const fail = Event.nodeFailed(node.id, lastError?.reason ?? "unknown error");
+      yield* this.dlq.enqueue(fail, "retry exhausted");
+      return [fail];
     });
   }
 
@@ -330,7 +475,7 @@ class RunnerLive implements Runner {
   private isCircuitOpen(node: Node, now: number): boolean {
     const cb = this.circuitStates.get(node.id);
     if (!cb || !cb.open) return false;
-    const resetAfter = Number(node.circuitBreaker?.reset_after ?? 60) * 1000;
+    const resetAfter = Number(node.circuitBreaker?.["reset_after"] ?? 60) * 1000;
     if (now - cb.openedAt > resetAfter) {
       cb.open = false;
       cb.failures = 0;
@@ -345,7 +490,7 @@ class RunnerLive implements Runner {
     }
     const cb = this.circuitStates.get(node.id) ?? { failures: 0, open: false, openedAt: 0 };
     cb.failures += 1;
-    const threshold = Number(node.circuitBreaker?.threshold ?? 5);
+    const threshold = Number(node.circuitBreaker?.["threshold"] ?? 5);
     if (!cb.open && cb.failures >= threshold) {
       cb.open = true;
       cb.openedAt = now;
@@ -374,13 +519,23 @@ class RunnerLive implements Runner {
     workflow: Workflow,
     log: ReadonlyArray<Event>,
     requestShutdown: () => void,
-  ) {
+    traceparent: string,
+  ): ExecutionContext {
     const state = new SimpleStateStore();
-    const capabilities = { ...workflow.capabilities, ...node.capabilities };
     const missingSecrets: Array<string> = [];
+    const secretProxy = new Proxy(secrets, {
+      get: (target, prop) => {
+        if (typeof prop === "symbol" || prop === "then") return undefined;
+        const key = prop as string;
+        if (key in target) return (target as Record<string, string>)[key];
+        if (workflow.strict) missingSecrets.push(key);
+        return "";
+      },
+    });
+    const capabilities = { ...workflow.capabilities, ...node.capabilities };
     return {
       config: workflow.config,
-      secrets,
+      secrets: secretProxy as Readonly<Record<string, string>>,
       log,
       emit: (event: Event) => {
         pending.current.push(event);
@@ -390,16 +545,16 @@ class RunnerLive implements Runner {
       },
       dryRun,
       idempotencyKey,
-      traceparent: "",
+      traceparent,
       state,
       fires,
       requestShutdown,
-      getSecret: (key: string, default_ = "") => {
-        const value = secrets[key] ?? default_;
-        if (workflow.strict && value === "" && !(key in secrets)) {
+      getSecret: (key: string, default_ = ""): string => {
+        if (key in secrets) return secrets[key];
+        if (workflow.strict && (default_ === undefined || default_ === "")) {
           missingSecrets.push(key);
         }
-        return value;
+        return default_;
       },
       resources: node.resources,
       capabilities,
@@ -416,6 +571,6 @@ export const RunnerLiveLayer = Layer.effect(
     const bus = yield* EventBus;
     const registry = yield* DriverRegistry;
     const observer = yield* Observer;
-    return new RunnerLive(bus, registry, observer);
+    return new RunnerLive(bus, registry, observer, new ResourceGate(), noOpDeadLetterQueue);
   }),
 );

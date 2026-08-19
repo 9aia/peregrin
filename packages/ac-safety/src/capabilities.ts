@@ -42,9 +42,11 @@ function globMatch(pattern: string, value: string): boolean {
 
 export class CapabilityChecker {
   private readonly _wfCaps: Readonly<Record<string, unknown>>;
+  private readonly _defaultPolicy: string;
 
-  constructor(workflowCaps: Readonly<Record<string, unknown>> | null) {
+  constructor(workflowCaps: Readonly<Record<string, unknown>> | null, strict = false) {
     this._wfCaps = workflowCaps ?? {};
+    this._defaultPolicy = asString(this._wfCaps["default_policy"], strict ? "deny" : "allow");
   }
 
   merge(nodeCaps: Readonly<Record<string, unknown>> | null): Readonly<Record<string, unknown>> {
@@ -75,10 +77,7 @@ export class CapabilityChecker {
   }
 
   check(driver: string, resolvedWith: Readonly<Record<string, unknown>>): ReadonlyArray<string> {
-    if (Object.keys(this._wfCaps).length === 0) return [];
-
-    const policy = asString(this._wfCaps["default_policy"], "deny");
-    if (policy === "allow") return [];
+    if (this._defaultPolicy === "allow") return [];
 
     const violations: string[] = [];
 
@@ -98,9 +97,7 @@ export class CapabilityChecker {
   }
 
   filterSecrets(secrets: Readonly<Record<string, string>>): Record<string, string> {
-    if (Object.keys(this._wfCaps).length === 0) return { ...secrets };
-    const policy = asString(this._wfCaps["default_policy"], "deny");
-    if (policy === "allow") return { ...secrets };
+    if (this._defaultPolicy === "allow") return { ...secrets };
     const allowed = asList(this._wfCaps["secrets"]);
     if (allowed.length === 0) return {};
     return Object.fromEntries(Object.entries(secrets).filter(([k]) => allowed.includes(k)));

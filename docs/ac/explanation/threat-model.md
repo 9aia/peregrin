@@ -60,8 +60,7 @@ workflow boundary is bypassed for that node.**
 Two mitigations exist today, one is planned:
 
 1. **Today — the reviewer strips caps by default.** The
-   [capability-confinement example](../../examples/capability-confinement/)
-   demonstrates this. As long as the reviewer strips, the workflow boundary
+   capability-confinement example demonstrates this. As long as the reviewer strips, the workflow boundary
    holds.
 
 2. **Planned — inject-time narrowing.** `Runner.inject` will refuse to

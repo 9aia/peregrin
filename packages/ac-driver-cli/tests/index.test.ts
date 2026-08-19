@@ -1,6 +1,12 @@
-import { expect, test } from "vite-plus/test";
-import { CliDriver } from "../src/index.ts";
+import { describe, it, expect } from "vite-plus/test";
+import { CliDriver, CliDriverLive } from "../src/index.ts";
 
-test("CliDriver is named 'cli'", () => {
-  expect(CliDriver.name).toBe("cli");
+describe("ac-driver-cli", () => {
+  it("exports a driver named cli", () => {
+    expect(CliDriver.name).toBe("cli");
+  });
+
+  it("exports a Live layer", () => {
+    expect(CliDriverLive).toBeDefined();
+  });
 });

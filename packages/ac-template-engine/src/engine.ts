@@ -3,7 +3,8 @@ import path from "node:path";
 import cp from "node:child_process";
 import { Effect } from "effect";
 import { template } from "lodash-es";
-import type { Event, ExecutionContext, Node } from "ac-core";
+import type { ExecutionContext } from "ac-core";
+import { Event, Node, TemplateError } from "ac-core";
 
 const knownPrefixes = ["event", "config", "secret", "node", "state", "file", "shell"];
 
@@ -141,6 +142,26 @@ function renderTemplate(input: string, context: Record<string, unknown>): string
   return segments.join("");
 }
 
+function findAllPlaceholders(input: string): ReadonlyArray<string> {
+  const found: string[] = [];
+  let i = 0;
+  while (i < input.length) {
+    if (input[i] === "$" && input[i + 1] === "{") {
+      const end = findMatchingBrace(input, i + 1);
+      if (end === -1) {
+        found.push(input.slice(i));
+        break;
+      }
+      const inner = input.slice(i + 2, end).trim();
+      if (!isJinjaExpr(inner)) found.push(input.slice(i, end + 1));
+      i = end + 1;
+    } else {
+      i++;
+    }
+  }
+  return found;
+}
+
 function captureWildcards(pattern: string, eventType: string): Record<string, string> | null {
   const ps = pattern.split(".");
   const es = eventType.split(".");
@@ -231,39 +252,73 @@ function resolveTemplateImpl(
   return renderTemplate(pre, context);
 }
 
-function resolveValueImpl(
-  value: unknown,
-  triggers: ReadonlyArray<Event>,
-  ctx: ExecutionContext,
-  node?: Node,
-): unknown {
-  if (typeof value === "string") return resolveTemplateImpl(value, triggers, ctx, node);
-  if (Array.isArray(value)) return value.map((v) => resolveValueImpl(v, triggers, ctx, node));
-  if (value !== null && typeof value === "object") {
-    const out: Record<string, unknown> = {};
-    for (const [k, v] of Object.entries(value)) out[k] = resolveValueImpl(v, triggers, ctx, node);
-    return out;
-  }
-  return value;
-}
-
 export const resolveTemplate = (
   templateStr: string,
   triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
-): Effect.Effect<string, unknown> =>
-  Effect.try(() => resolveTemplateImpl(templateStr, triggers, ctx));
+  node?: Node,
+): Effect.Effect<string, TemplateError> =>
+  Effect.gen(function* () {
+    const rendered = yield* Effect.sync(() =>
+      resolveTemplateImpl(templateStr, triggers, ctx, node),
+    );
+    if (ctx.strict) {
+      const unresolved = findAllPlaceholders(rendered);
+      if (unresolved.length > 0) {
+        return yield* Effect.fail(
+          new TemplateError({
+            reason: `unresolved placeholders: ${unresolved.join(", ")}`,
+          }),
+        );
+      }
+      if (ctx.missingSecrets.length > 0) {
+        return yield* Effect.fail(
+          new TemplateError({
+            reason: `missing secrets: ${ctx.missingSecrets.join(", ")}`,
+          }),
+        );
+      }
+    }
+    return rendered;
+  });
+
+function resolveValueEffect(
+  value: unknown,
+  triggers: ReadonlyArray<Event>,
+  ctx: ExecutionContext,
+  node?: Node,
+): Effect.Effect<unknown, TemplateError> {
+  return Effect.gen(function* () {
+    if (typeof value === "string") {
+      return yield* resolveTemplate(value, triggers, ctx, node);
+    }
+    if (Array.isArray(value)) {
+      const out: Array<unknown> = [];
+      for (const v of value) {
+        out.push(yield* resolveValueEffect(v, triggers, ctx, node));
+      }
+      return out;
+    }
+    if (value !== null && typeof value === "object") {
+      const out: Record<string, unknown> = {};
+      for (const [k, v] of Object.entries(value)) {
+        out[k] = yield* resolveValueEffect(v, triggers, ctx, node);
+      }
+      return out;
+    }
+    return value;
+  });
+}
 
 export const resolveValue = (
   value: unknown,
   triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
-): Effect.Effect<unknown, unknown> => Effect.try(() => resolveValueImpl(value, triggers, ctx));
+): Effect.Effect<unknown, TemplateError> => resolveValueEffect(value, triggers, ctx);
 
 export const resolveValueForNode = (
   value: unknown,
   triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
   node: Node,
-): Effect.Effect<unknown, unknown> =>
-  Effect.try(() => resolveValueImpl(value, triggers, ctx, node));
+): Effect.Effect<unknown, TemplateError> => resolveValueEffect(value, triggers, ctx, node);

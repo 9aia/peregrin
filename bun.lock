@@ -79,6 +79,7 @@
         "ac-driver-webhook": "workspace:*",
         "ac-engine": "workspace:*",
         "ac-observer-noop": "workspace:*",
+        "ac-observer-otel": "workspace:*",
         "ac-plugin-apprise": "workspace:*",
         "ac-plugin-litellm": "workspace:*",
         "ac-store-memory": "workspace:*",
@@ -276,6 +277,8 @@
       "version": "0.0.0",
       "dependencies": {
         "ac-core": "workspace:*",
+        "ac-safety": "workspace:*",
+        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
       },
       "devDependencies": {
@@ -343,9 +346,11 @@
       "version": "0.0.0",
       "dependencies": {
         "ac-core": "workspace:*",
+        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
       },
       "devDependencies": {
+        "@effect/vitest": "^0.30.0",
         "@types/node": "^24.13.3",
         "typescript": "~6.0.2",
         "vite-plus": "catalog:",
@@ -356,9 +361,11 @@
       "version": "0.0.0",
       "dependencies": {
         "ac-core": "workspace:*",
+        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
       },
       "devDependencies": {
+        "@effect/vitest": "^0.30.0",
         "@types/node": "^24.13.3",
         "typescript": "~6.0.2",
         "vite-plus": "catalog:",
@@ -530,6 +537,8 @@
     "@effect/sql": ["@effect/sql@0.51.1", "", { "dependencies": { "uuid": "^11.0.3" }, "peerDependencies": { "@effect/experimental": "^0.60.0", "@effect/platform": "^0.96.1", "effect": "^3.21.2" } }, "sha512-iPDAefrJcI0HcTk9keP9Gq8Pg08K1HmpnmZZt85AqyTcvorhoNsXDFiKBbPldfV2CortwVkacX8KjO9GPpSYCA=="],
 
     "@effect/typeclass": ["@effect/typeclass@0.41.0", "", { "peerDependencies": { "effect": "^3.22.0" } }, "sha512-Tsv94iDPUWgmz/JsYUh7awx5mmFukEJZB+duyzlLRlCHxNUz5LHBBzTaEfUPNMzAE1s8FTUSVwdPSpL0DznXKg=="],
+
+    "@effect/vitest": ["@effect/vitest@0.30.0", "", { "peerDependencies": { "effect": "^3.22.0", "vitest": "^3.2.0" } }, "sha512-2qcK7F4XSwOn7Ye9vgEkrndHiiHVf9Nl+U5jvvLBKeYx4+8++O5Y8RFezaQzs/rWx8GkdlStv/s+HYMHZ/2/AQ=="],
 
     "@effect/workflow": ["@effect/workflow@0.18.2", "", { "peerDependencies": { "@effect/experimental": "^0.60.0", "@effect/platform": "^0.96.1", "@effect/rpc": "^0.75.1", "effect": "^3.21.2" } }, "sha512-2av0TexhxHnapQa3eLn6TkniokUFRZKf8dlWlLqbODMpXAJ3mm+DOHWM0ozMGkg9K/+zGCtiL3dMqJyJ8r7G8g=="],
 

@@ -58,6 +58,8 @@ export interface EventBus {
     config: Readonly<Record<string, unknown>>,
   ) => Effect.Effect<void, never, never>;
   readonly publish: (event: Event) => Effect.Effect<PublishResult, never, never>;
+  readonly seed: (events: ReadonlyArray<Event>) => Effect.Effect<void, never, never>;
+  readonly checkReady: () => Effect.Effect<PublishResult, never, never>;
   readonly log: Effect.Effect<ReadonlyArray<Event>, never, never>;
   readonly fireCount: (nodeId: string) => Effect.Effect<number, never, never>;
   readonly inject: (nodes: ReadonlyArray<Record<string, unknown>>) => void;
@@ -89,6 +91,14 @@ class EventBusLive implements EventBus {
 
   publish(event: Event) {
     return Effect.sync(() => this.publishSync(event));
+  }
+
+  seed(events: ReadonlyArray<Event>) {
+    return Effect.sync(() => this.seedSync(events));
+  }
+
+  checkReady() {
+    return Effect.sync(() => this.checkReadySync());
   }
 
   fireCount(nodeId: string) {
@@ -147,6 +157,77 @@ class EventBusLive implements EventBus {
     return { ready, sideEvents, retired };
   }
 
+  private seedSync(events: ReadonlyArray<Event>): void {
+    for (const event of events) {
+      this.store.append(event);
+      if (event.source && event.source !== "__runner__") {
+        this.fireCounts.set(event.source, (this.fireCounts.get(event.source) ?? 0) + 1);
+      }
+    }
+  }
+
+  private matchesAnyType(node: Node, seen: ReadonlySet<string>): boolean {
+    return node.on.some((pattern) => {
+      if (pattern.includes("*")) {
+        for (const type of seen) {
+          if (matches(pattern, type)) return true;
+        }
+        return false;
+      }
+      return seen.has(pattern);
+    });
+  }
+
+  private firstMatchingAnyPattern(node: Node, seen: ReadonlySet<string>): Event | null {
+    for (const pattern of node.on) {
+      const event = this.firstMatching(pattern, seen);
+      if (event) return event;
+    }
+    return null;
+  }
+
+  private checkReadySync(): PublishResult {
+    const seen = this.store.seenTypes();
+    const retired = this.checkRetirements();
+    for (const id of retired) this.observer.onRetire(id);
+    const ready: Array<readonly [Node, ReadonlyArray<Event>]> = [];
+    const sideEvents: Array<Event> = [];
+    const added = new Set<string>();
+    for (const node of this.nodes.values()) {
+      if (!this.isEligible(node, seen)) {
+        if (
+          this.isMaxFiresExhausted(node) &&
+          !this.isUntilBlocked(node, seen) &&
+          !this.exhausted.has(node.id) &&
+          this.matchesAnyType(node, seen)
+        ) {
+          if (node.mode !== "all" || this.allPatternsSatisfied(node, seen)) {
+            this.exhausted.add(node.id);
+            sideEvents.push(Event.nodeExhausted(node.id, node.maxFires));
+          }
+        }
+        continue;
+      }
+      if (!this.matchesAnyType(node, seen)) continue;
+      let triggers: ReadonlyArray<Event>;
+      if (node.mode === "all") {
+        if (!this.allPatternsSatisfied(node, seen)) continue;
+        triggers = this.collectAllTriggers(node, seen);
+      } else if (node.fanIn) {
+        triggers = this.collectFanInTriggers(node, seen);
+      } else {
+        const event = this.firstMatchingAnyPattern(node, seen);
+        if (!event) continue;
+        triggers = [event];
+      }
+      if (added.has(node.id)) continue;
+      added.add(node.id);
+      ready.push([node, triggers]);
+      this.fireCounts.set(node.id, (this.fireCounts.get(node.id) ?? 0) + 1);
+    }
+    return { ready, sideEvents, retired };
+  }
+
   private checkRetirements(): Array<string> {
     const seen = this.store.seenTypes();
     const toRetire: Array<string> = [];
@@ -189,11 +270,11 @@ class EventBusLive implements EventBus {
     return this.countMatching(pattern, seen) >= count;
   }
 
-  private resolveFanInCount(node: Node): number | undefined {
-    if (!node.fanIn) return undefined;
+  private resolveFanInCount(node: Node): number {
+    if (!node.fanIn) return 1;
     if ("count" in node.fanIn) {
       const c = Number(node.fanIn.count);
-      return Number.isNaN(c) ? undefined : c;
+      return Number.isNaN(c) ? 1 : Math.max(1, c);
     }
     if ("count_from" in node.fanIn) {
       const path = String(node.fanIn.count_from);
@@ -207,14 +288,14 @@ class EventBusLive implements EventBus {
         ) {
           current = (current as Record<string, unknown>)[part];
         } else {
-          return undefined;
+          return 1;
         }
       }
       if (Array.isArray(current)) return current.length;
       const n = Number(current);
-      return Number.isNaN(n) ? undefined : n;
+      return Number.isNaN(n) ? 1 : Math.max(1, n);
     }
-    return undefined;
+    return 1;
   }
 
   private countMatching(pattern: string, seen: ReadonlySet<string>): number {

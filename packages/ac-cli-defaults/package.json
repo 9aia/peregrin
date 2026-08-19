@@ -10,7 +10,7 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
-    "test": "vp test -- --passWithNoTests",
+    "test": "vp test",
     "check": "vp check"
   },
   "dependencies": {
@@ -29,6 +29,7 @@
     "ac-driver-webhook": "workspace:*",
     "ac-engine": "workspace:*",
     "ac-observer-noop": "workspace:*",
+    "ac-observer-otel": "workspace:*",
     "ac-plugin-apprise": "workspace:*",
     "ac-plugin-litellm": "workspace:*",
     "ac-store-memory": "workspace:*",

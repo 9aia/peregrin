@@ -93,5 +93,5 @@
 
 ## Integration library
 
-- [litellm](../../lib/litellm/) — unified LLM calls (OpenAI, Anthropic, Google, 100+ providers)
-- [apprise](../../lib/apprise/) — unified notifications (Slack, Telegram, Discord, 75+ services)
+- `litellm` — unified LLM calls (OpenAI, Anthropic, Google, 100+ providers)
+- `apprise` — unified notifications (Slack, Telegram, Discord, 75+ services)

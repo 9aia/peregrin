@@ -12,13 +12,13 @@ persists campaigns in an event store, and exposes engine state through the
 well for local development and CI, a web UI is useful for:
 
 - **Visibility.** Teams want to see running campaigns, node status, and the
-event log without reading JSON or YAML.
+  event log without reading JSON or YAML.
 - **Human-in-the-loop.** The `human` driver currently prompts on `stdin`. A web
-UI can turn approval and input requests into a browser-based form.
+  UI can turn approval and input requests into a browser-based form.
 - **Operations.** SREs and platform teams need a dashboard for failure traces,
-metrics, and the dead-letter queue.
+  metrics, and the dead-letter queue.
 - **Debugging.** A visual event graph and a step-by-step replay make it easier
-to understand why a campaign ended in a particular state.
+  to understand why a campaign ended in a particular state.
 
 A web UI should not be required to run a campaign. It is an optional layer on
 top of the engine.

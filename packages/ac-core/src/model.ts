@@ -116,7 +116,7 @@ export class Node {
       const emits = Array.from<string>((raw.emits as Array<string>) ?? []);
       if (!on.includes(tick)) on.push(tick);
       if (!emits.includes(tick)) emits.push(tick);
-      const maxFires = parseMaxFires(raw.max_fires, "unlimited");
+      const maxFires = parseMaxFires(raw.max_fires, 1);
       const until = Array.from<string>((raw.until as Array<string>) ?? []);
       const pollUntil = Array.from<string>((poll.until as Array<string>) ?? []);
       for (const e of pollUntil) if (!until.includes(e)) until.push(e);
@@ -177,7 +177,7 @@ export class Node {
       mode: this.mode,
       with: this.with_,
     };
-    const defaultFires = this.poll ? "unlimited" : 1;
+    const defaultFires = 1;
     if (this.maxFires !== defaultFires) d.max_fires = this.maxFires;
     if (this.until.length > 0) d.until = [...this.until];
     if (this.retireOn.length > 0) d.retire_on = [...this.retireOn];
@@ -283,4 +283,8 @@ export interface ExecutionContext {
   readonly requestShutdown: () => void;
   readonly getSecret: (key: string, default_?: string) => string;
   readonly strict: boolean;
+  readonly missingSecrets: Array<string>;
+  readonly capabilities: Readonly<Record<string, unknown>>;
+  readonly resources: Readonly<Record<string, unknown>>;
+  readonly workflowCapabilities: Readonly<Record<string, unknown>>;
 }

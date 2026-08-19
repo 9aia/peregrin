@@ -1,6 +1,6 @@
-import cp from "node:child_process";
-import { Context, Effect, Layer } from "effect";
-import { DriverError } from "ac-core";
+import { Context, Either, Effect, Layer } from "effect";
+import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
+import { resolveValueForNode } from "ac-template-engine";
 
 export interface AppriseMessage {
   readonly target: string;
@@ -14,44 +14,227 @@ export interface Apprise {
 
 export const Apprise = Context.GenericTag<Apprise>("ac/Apprise");
 
-const send = (message: AppriseMessage): Effect.Effect<void, DriverError> =>
+interface NotificationResult {
+  readonly success: boolean;
+  readonly target: string;
+  readonly title?: string | undefined;
+  readonly body: string;
+  readonly error?: string | undefined;
+}
+
+const isHttpUrl = (target: string): boolean =>
+  target.startsWith("http://") || target.startsWith("https://");
+
+interface NotifyArgs {
+  readonly target: string;
+  readonly body: string;
+  readonly title?: string | undefined;
+  readonly timeout?: number | undefined;
+  readonly bodyFormat?: string | undefined;
+}
+
+const notifyOne = (args: NotifyArgs): Effect.Effect<NotificationResult, DriverError> =>
   Effect.gen(function* () {
-    const args = [message.target, "--body", message.body];
-    if (message.title && message.title.length > 0) {
-      args.push("--title", message.title);
+    if (args.target.length === 0) {
+      return yield* Effect.fail(new DriverError({ reason: "apprise notify missing 'target'" }));
     }
 
-    const result = yield* Effect.try({
+    if (!isHttpUrl(args.target)) {
+      return yield* Effect.fail(
+        new DriverError({
+          reason: `apprise target '${args.target}' is not a supported HTTP(S) URL`,
+        }),
+      );
+    }
+
+    const timeout = typeof args.timeout === "number" && args.timeout > 0 ? args.timeout : 60;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
+
+    const body = JSON.stringify({
+      body: args.body,
+      title: args.title,
+      format: args.bodyFormat,
+    });
+
+    const request = Effect.tryPromise({
       try: () =>
-        cp.spawnSync("apprise", args, {
-          encoding: "utf-8",
-          timeout: 60000,
+        fetch(args.target, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+          signal: controller.signal,
         }),
       catch: (error) =>
         new DriverError({
-          reason: `apprise spawn failed: ${String(error)}`,
+          reason: `apprise notify failed for '${args.target}': ${String(error)}`,
         }),
+    }).pipe(Effect.ensuring(Effect.sync(() => clearTimeout(timeoutId))));
+
+    const response = yield* request;
+
+    if (!response.ok) {
+      return yield* Effect.fail(
+        new DriverError({
+          reason: `apprise notify failed with status ${response.status}`,
+        }),
+      );
+    }
+
+    return {
+      success: true,
+      target: args.target,
+      title: args.title,
+      body: args.body,
+    };
+  });
+
+const send = (message: AppriseMessage): Effect.Effect<void, DriverError> =>
+  Effect.gen(function* () {
+    yield* notifyOne({
+      target: message.target,
+      body: message.body,
+      title: message.title,
     });
-
-    if (result.error) {
-      return yield* Effect.fail(
-        new DriverError({
-          reason: `apprise failed: ${String(result.error)}`,
-        }),
-      );
-    }
-
-    if (result.status !== 0) {
-      const stderr = result.stderr ?? "";
-      return yield* Effect.fail(
-        new DriverError({
-          reason: `apprise exited with status ${result.status}: ${stderr}`,
-        }),
-      );
-    }
-
     return undefined;
   });
+
+const asString = (value: unknown): string | undefined =>
+  typeof value === "string" ? value : undefined;
+
+const asStringArray = (value: unknown): ReadonlyArray<string> | null => {
+  if (typeof value === "string") return [value];
+  if (Array.isArray(value)) {
+    const out: Array<string> = [];
+    for (const item of value) {
+      if (typeof item === "string") out.push(item);
+    }
+    return out.length > 0 ? out : null;
+  }
+  return null;
+};
+
+export const AppriseDriver: Driver = {
+  name: "apprise",
+  invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
+    Effect.gen(function* () {
+      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+        Effect.mapError((error) => new DriverError({ reason: String(error) })),
+      );
+
+      const with_ = resolved as Record<string, unknown>;
+      const handler = node.handler === "send_multi" ? "send_multi" : "send";
+      const title = asString(with_.title);
+      const body = asString(with_.body);
+      const bodyFormat = asString(with_.body_format);
+      const timeout =
+        typeof with_.timeout === "number" && with_.timeout > 0 ? with_.timeout : undefined;
+
+      if (handler === "send") {
+        const target = asString(with_.target);
+        if (target === undefined) {
+          return yield* Effect.fail(
+            new DriverError({
+              reason: `apprise node '${node.id}' missing 'with.target'`,
+            }),
+          );
+        }
+        if (body === undefined) {
+          return yield* Effect.fail(
+            new DriverError({
+              reason: `apprise node '${node.id}' missing 'with.body'`,
+            }),
+          );
+        }
+
+        const result = yield* notifyOne({
+          target,
+          body,
+          title,
+          timeout,
+          bodyFormat,
+        }).pipe(Effect.either);
+
+        if (Either.isLeft(result)) {
+          return [
+            new Event(
+              node.emits[1] ?? "notify.failed",
+              { target, body, title, success: false, error: result.left.reason },
+              node.id,
+            ),
+          ];
+        }
+
+        const success = result.right.success;
+        const eventType = success
+          ? (node.emits[0] ?? "notify.sent")
+          : (node.emits[1] ?? "notify.failed");
+        return [new Event(eventType, { ...result.right, body, title, success }, node.id)];
+      }
+
+      const rawTargets = with_.targets;
+      const targets = asStringArray(rawTargets);
+      if (targets === null) {
+        return yield* Effect.fail(
+          new DriverError({
+            reason: `apprise node '${node.id}' missing 'with.targets'`,
+          }),
+        );
+      }
+      if (body === undefined) {
+        return yield* Effect.fail(
+          new DriverError({
+            reason: `apprise node '${node.id}' missing 'with.body'`,
+          }),
+        );
+      }
+
+      const results = yield* Effect.forEach(targets, (target) =>
+        notifyOne({
+          target,
+          body,
+          title,
+          timeout,
+          bodyFormat,
+        }).pipe(Effect.either),
+      );
+
+      const outcomes = results.map((result, index) => {
+        const target = targets[index];
+        if (Either.isLeft(result)) {
+          return {
+            success: false,
+            target,
+            body,
+            title,
+            error: result.left.reason,
+          };
+        }
+        return { ...result.right, body, title };
+      });
+
+      const success = outcomes.every((r) => r.success);
+      const eventType = success
+        ? (node.emits[0] ?? "notify.sent")
+        : (node.emits[1] ?? "notify.failed");
+
+      return [
+        new Event(
+          eventType,
+          {
+            targets: outcomes,
+            title,
+            body,
+            success,
+            count: outcomes.length,
+          },
+          node.id,
+        ),
+      ];
+    }),
+};
+
+export const AppriseDriverLive = Layer.succeed(Driver, AppriseDriver);
 
 export const Live = Layer.succeed(Apprise, {
   send: (message) => send(message),

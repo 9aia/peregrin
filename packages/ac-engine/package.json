@@ -10,11 +10,13 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
-    "test": "vp test -- --passWithNoTests",
+    "test": "vp test",
     "check": "vp check"
   },
   "dependencies": {
     "ac-core": "workspace:*",
+    "ac-safety": "workspace:*",
+    "ac-template-engine": "workspace:*",
     "effect": "^3.22.1"
   },
   "devDependencies": {
