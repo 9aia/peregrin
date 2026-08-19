@@ -16,7 +16,7 @@ Modern automation is rarely a single command. It is a chain of decisions, side e
 - A ticket is created → classify → spawn sub-tasks → wait for evidence → close.
 - A periodic check detects drift → gather data → open a campaign → loop until resolved.
 
-Each step is a different actor: a shell, a Python function, an HTTP API, a coding agent, a human. Each actor can fail, retry, time out, or produce new work. Existing tools tend to treat these as either a static pipeline or an ad-hoc script. Peregrin treats them as a graph that can grow, react, and repair itself.
+Each step is a different actor: a shell, a Python script, an HTTP API, a coding agent, a human. Each actor can fail, retry, time out, or produce new work. Existing tools tend to treat these as either a static pipeline or an ad-hoc script. Peregrin treats them as a graph that can grow, react, and repair itself.
 
 ## The core idea: events as edges, nodes as handlers
 
@@ -78,6 +78,23 @@ Peregrin is meant for production work, so it is designed to be observable and sa
 - **Safety** capabilities constrain what a driver can do, so a workflow cannot accidentally escalate beyond its permissions.
 
 These are not afterthoughts. They are part of the model, and they appear in the YAML alongside the business logic.
+
+## Meta-workflows
+
+A workflow does not have to stop at running commands. Nodes can inspect, extend,
+and write new workflow YAML files. A meta-workflow can scaffold a CI workflow,
+draft a human-review loop, or generate a new campaign file and commit it for
+review — either inside the same repository or to a shared AC library. The engine
+treats workflow files as just another artifact that campaigns can produce.
+
+## Built-in libraries and drivers
+
+Agent Campaigns ships with built-in libraries of validated, reusable YAML
+patterns — common processes like test-driven review, dependency upgrades,
+incident response, and agent councils — plus built-in drivers for shell, Python
+scripts, HTTP, webhooks, agents, humans, and more. Users compose them with
+`include:` or install them from a library, so teams do not have to reinvent
+patterns that have already been tested, validated, and evaluated.
 
 ## Effect and TypeScript
 

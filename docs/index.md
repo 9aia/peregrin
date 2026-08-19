@@ -1,33 +1,25 @@
 # Peregrin
 
-Peregrin is a workflow engine for building **event-driven, agent-aware campaigns**. It lets you describe multi-actor processes as YAML graphs of events, nodes, and drivers, then runs them with determinism, observability, and safety built in.
+Peregrin is a workflow engine for **event-driven, agent-aware campaigns**.
 
-## What are Agent Campaigns?
+Describe multi-actor processes as YAML graphs — shell scripts, Python scripts,
+HTTP calls, AI agents, human approvals — and let the engine run, observe, and
+repair the state machine.
 
-Agent Campaigns is the workflow language and runtime on top of Peregrin. A campaign connects shell commands, Python scripts, HTTP calls, AI agents, human approvals, and dynamic graph injection in one declarative file. A node listens for events, invokes a driver, and emits new events. The engine walks the graph until nothing is ready to fire.
+- **Meta-workflows** generate and commit new workflow files for human or AI
+  review.
+- **Built-in libraries** give you tested, validated patterns to compose and
+  install.
+- **Built-in drivers** handle shell, Python scripts, HTTP, webhooks, agents,
+  humans, and more.
+- **Safety and resilience** are part of the model: retry, circuit breakers,
+  dead-letter queues, capability checks, and OpenTelemetry.
 
-## Meta-workflows
+## Where to start
 
-A workflow does not have to stop at running commands. Nodes can inspect, extend,
-and write new workflow YAML files. A meta-workflow can scaffold a CI workflow,
-draft a human-review loop, or generate a new campaign file and commit it for
-review — either inside the same repository or to a shared AC library. The engine
-treats workflow files as just another artifact that campaigns can produce.
-
-## Built-in libraries and drivers
-
-Agent Campaigns ships with built-in libraries of validated, reusable YAML
-patterns — common processes like test-driven review, dependency upgrades,
-incident response, and agent councils — plus built-in drivers for shell, Python
-scripts, HTTP, webhooks, agents, humans, and more. Users compose them with
-`include:` or install them from a library, so teams do not have to reinvent
-patterns that have already been tested, validated, and evaluated.
-
-## Get started
-
-- [Tutorials](ac/tutorials/) — learn by doing, step by step.
-- [How-to guides](ac/how-to/) — achieve a specific goal.
-- [Explanation](ac/explanation/) — understand why it works.
-- [Reference](ac/reference/) — look up facts, schemas, and driver options.
+- [Quick Start](/ac/quick-start/introduction) — what Peregrin is and how the
+  model works.
+- [Tutorials](/ac/tutorials/) — install the CLI and run your first workflow.
+- [Reference](/ac/reference/) — look up drivers, schemas, and features.
 
 This site is organised around the Diataxis documentation framework.
