@@ -115,6 +115,12 @@ specifier grammar (`name@version`) for `ac install` and `include:`. Required by
 the install/registry and scaffolder systems for pinning and reusing patterns.
 See [ADR-0010: Versioning](/adrs/0010-versioning.md).
 
+### Web UI
+
+An optional web UI that connects to a running engine or a campaign store to
+visualise event graphs, the event log, campaign status, metrics, and
+human-in-the-loop approvals. See [ADR-0011: Web UI](/adrs/0011-webui.md).
+
 ## Doc audit: Python references
 
 - The `python` driver reference (`docs/ac/reference/drivers/python.md`) needs
