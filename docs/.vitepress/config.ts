@@ -18,10 +18,7 @@ export default defineConfig({
         text: "Quick Start",
         link: "/ac/quick-start/introduction",
         collapsed: false,
-        items: [
-          { text: "Introduction", link: "/ac/quick-start/introduction" },
-          { text: "Introduction v2", link: "/ac/quick-start/introduction-v2" },
-        ],
+        items: [{ text: "Introduction", link: "/ac/quick-start/introduction" }],
       },
       {
         text: "Tutorials",
@@ -64,7 +61,6 @@ export default defineConfig({
           { text: "Drivers", link: "/ac/explanation/drivers" },
           { text: "Event graph model", link: "/ac/explanation/event-graph-model" },
           { text: "Events", link: "/ac/explanation/events" },
-          { text: "Handlers", link: "/ac/explanation/handlers" },
           { text: "Include and snippet resolution", link: "/ac/explanation/include-resolution" },
           { text: "Loop protection", link: "/ac/explanation/loop-protection" },
           { text: "Observers", link: "/ac/explanation/observers" },
@@ -82,7 +78,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: "Full feature list", link: "/ac/reference/features" },
-          { text: "Performance", link: "/ac/reference/performance" },
+          { text: "Strict mode", link: "/ac/reference/strict" },
           {
             text: "Drivers",
             collapsed: true,
@@ -100,11 +96,11 @@ export default defineConfig({
             ],
           },
           {
-            text: "Handlers and events",
+            text: "Drivers and events",
             collapsed: true,
             items: [
-              { text: "Handler context", link: "/ac/reference/handler-context" },
-              { text: "Handler registration", link: "/ac/reference/handler-registration" },
+              { text: "Execution context", link: "/ac/reference/handler-context" },
+              { text: "Register a custom driver", link: "/ac/reference/handler-registration" },
               { text: "Event schemas", link: "/ac/reference/event-schemas" },
               { text: "Wildcard matching", link: "/ac/reference/wildcard-matching" },
             ],

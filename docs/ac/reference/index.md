@@ -19,9 +19,9 @@ Reference material is austere: facts, schemas, and option lists while you are wo
 ## Core reference
 
 - [Full feature list](features.md)
-- [Performance benchmarks](performance.md)
-- [Handler context](handler-context.md)
-- [Handler registration](handler-registration.md)
+- [Strict mode](strict.md)
+- [Execution context](handler-context.md)
+- [Register a custom driver](handler-registration.md)
 - [Event schemas](event-schemas.md)
 - [Wildcard matching](wildcard-matching.md)
 

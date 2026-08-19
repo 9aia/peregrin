@@ -1,4 +1,4 @@
-# ADR-0006: Campaign generators
+# ADR-0006: Artifact generators
 
 ## Status
 
@@ -28,7 +28,7 @@ output is deterministic because the input is declarative.
 
 ## Decision
 
-Peregrin will provide a `Generator` abstraction and a `peregrin generate`
+Peregrin will provide an `ArtifactGenerator` abstraction and an `ac generate`
 command. The generator takes a `Workflow` (loaded through `ac-loader-yaml`) and
 emits one of several target formats.
 
@@ -60,10 +60,10 @@ emits one of several target formats.
 ### Command surface (proposed)
 
 ```bash
-peregrin generate <workflow> --format mermaid
-peregrin generate <workflow> --format markdown --out docs/campaigns/
-peregrin generate <workflow> --format python-stubs
-peregrin generate <dir> --format campaign-map
+ac generate <workflow> --format mermaid
+ac generate <workflow> --format markdown --out docs/campaigns/
+ac generate <workflow> --format python-stubs
+ac generate <dir> --format campaign-map
 ```
 
 The generator must not execute the workflow. It only reads and renders the
