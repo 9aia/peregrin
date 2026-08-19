@@ -3,12 +3,34 @@
 This file tracks known work that is not yet implemented. It is intentionally
 low-ceremony; items are removed when they ship.
 
-## Python SDK port
+## DSL and architecture specification
+
+A formal, language-agnostic description of the Agent Campaigns DSL, the engine
+architecture, and the adapter ports. This is the contract that other language
+runtimes must implement to be compatible with the same YAML workflows.
+
+### Scope
+
+- Full YAML schema with field semantics, defaults, and validation rules.
+- Event graph model: node lifecycle, bus semantics, and ordering guarantees.
+- Driver contract: signature, `ExecutionContext`, error handling, and allowed
+  events.
+- Adapter ports: `EventStore`, `Observer`, `DeadLetterQueue`, `ExportLog`,
+  `SecretStore`, `Queue`.
+- Resilience primitives: `retry`, `circuit_breaker`, `fan_in`, `poll`, `until`,
+  `retire_on`.
+- `strict` and bounded-defaults behavior.
+- CLI surface and programmatic API.
+- Test fixtures and golden workflows.
+
+### Child ports
+
+#### Python SDK port
 
 Peregrin is being ported from Python to TypeScript. The runtime, drivers, CLI,
 and core model are now TypeScript. A Python SDK does not currently exist.
 
-### Known impact
+##### Known impact
 
 Many documentation files still show the old Python API:
 
@@ -31,14 +53,14 @@ Many documentation files still show the old Python API:
 These pages either need to be rewritten for TypeScript or moved behind a
 "Python SDK" section once the Python SDK is ported.
 
-### What is still Python
+##### What is still Python
 
 The `python` driver (`packages/ac-driver-python`) still exists in the
 TypeScript runtime. It spawns the `python` interpreter with `with.script`,
 `with.module`, and `with.function`. This is a shell-out, not a Python SDK.
 The reference docs for `driver: python` should reflect that.
 
-### Proposed Python SDK scope (future)
+##### Proposed Python SDK scope (future)
 
 - A Python package (e.g. `peregrin` or `agent-campaigns`) that mirrors the
   TypeScript `ac-core` API.
@@ -46,6 +68,12 @@ The reference docs for `driver: python` should reflect that.
 - Programmatic workflow execution.
 - Python handlers that are first-class drivers.
 - Python observer and store implementations.
+
+#### Go SDK port (future)
+
+A future port of the Agent Campaigns runtime to Go. It should consume the same
+YAML workflows and implement the same adapter ports, taking advantage of Go's
+concurrency model for the event bus and driver isolation.
 
 ## Doc audit: Python references
 
