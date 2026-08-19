@@ -4,7 +4,7 @@ Peregrin is a workflow engine for building **event-driven, agent-aware campaigns
 
 ## What are Agent Campaigns?
 
-Agent Campaigns is the workflow language and runtime on top of Peregrin. A campaign connects shell commands, Python handlers, HTTP calls, AI agents, human approvals, and dynamic graph injection in one declarative file. A node listens for events, invokes a driver, and emits new events. The engine walks the graph until nothing is ready to fire.
+Agent Campaigns is the workflow language and runtime on top of Peregrin. A campaign connects shell commands, Python scripts, HTTP calls, AI agents, human approvals, and dynamic graph injection in one declarative file. A node listens for events, invokes a driver, and emits new events. The engine walks the graph until nothing is ready to fire.
 
 ## Get started
 
