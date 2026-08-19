@@ -70,8 +70,10 @@ directory, or a remote library via `include:`.
   `{{driver}}`, etc.) into static files.
 - `ac generate` and `ac create` must not conflict with `ac export`. `ac create`
   and `ac generate` write new source; `ac export` renders existing source.
-- Templates are versioned with the project so they do not drift from the current
-  package API.
+- Templates depend on ADR-0010 (Versioning) to stamp `version` into generated
+  files and track the template version in a lockfile.
+- Scaffolders can include default `annotations` from ADR-0009 in generated
+  workflows and nodes.
 
 ## Alternatives considered
 

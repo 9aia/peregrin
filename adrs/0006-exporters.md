@@ -81,6 +81,10 @@ dynamic node injection are documented as "resolved at runtime".
   between releases. Changes to `ac-core` may require exporter updates.
 - Generated artifacts are static. They describe the _possible_ event graph, not
   the _actual_ runtime path.
+- Exporters can use `annotations` from ADR-0009 to generate richer Markdown
+  runbooks and diagrams.
+- Exporters can use `version` from ADR-0010 to label generated artifacts with
+  the workflow or node version they were produced from.
 
 ## Alternatives considered
 

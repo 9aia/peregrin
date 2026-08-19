@@ -35,10 +35,7 @@ matches a specifier wins.
 export interface Registry {
   readonly name: string;
   readonly canResolve: (spec: string) => boolean;
-  readonly resolve: (
-    spec: string,
-    into: string,
-  ) => Effect.Effect<ResolvedPackage, RegistryError>;
+  readonly resolve: (spec: string, into: string) => Effect.Effect<ResolvedPackage, RegistryError>;
 }
 ```
 
@@ -76,12 +73,7 @@ any version or lock metadata.
 The default `InstallService` is configured with an ordered array of registries:
 
 ```ts
-const defaultRegistries = [
-  LocalFileRegistry,
-  GitHubRegistry,
-  GitLabRegistry,
-  GenericGitRegistry,
-];
+const defaultRegistries = [LocalFileRegistry, GitHubRegistry, GitLabRegistry, GenericGitRegistry];
 ```
 
 For each `ac install` call, the service asks each registry `canResolve(spec)` in
@@ -138,6 +130,8 @@ packages and their source specifiers.
   and configuring registry implementations.
 - The lockfile makes shared packages deterministic without vendoring the entire
   repository history.
+- The install and registry system depends on ADR-0010 (Versioning) for the
+  `name@version` specifier grammar and the lockfile format.
 
 ## Alternatives considered
 

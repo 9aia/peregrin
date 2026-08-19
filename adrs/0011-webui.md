@@ -95,6 +95,10 @@ application.
 - The Web UI can reuse the exporters from ADR-0006 for diagrams and runbooks.
 - It does not replace the CLI or YAML-first workflow. It is an operational
   companion.
+- The Web UI can use `annotations` from ADR-0009 to display workflow and node
+  titles, descriptions, examples, and documentation links.
+- The Web UI can use exporters from ADR-0006 to render the event graph and
+  runbook views.
 - Security matters: the Web UI must respect the same capability and secret
   checks as the CLI. It is not a way to bypass the engine.
 
