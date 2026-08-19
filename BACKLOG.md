@@ -101,6 +101,20 @@ through a pluggable array of registries and writes them to a project-local
 load the installed packages. See
 [ADR-0008: Install and registries](/adrs/0008-install-and-registries.md).
 
+### Annotations
+
+An optional `annotations` field on `Workflow`, `Node`, and `EventSchema` that
+carries human-readable metadata such as `title`, `description`, `tags`,
+`example`, and `see`. Exporters and the CLI can use it for richer
+documentation. See [ADR-0009: Annotations](/adrs/0009-annotations.md).
+
+### Versioning
+
+A `version` field on `Workflow`, `Node`, and `EventSchema`, plus a versioned
+specifier grammar (`name@version`) for `ac install` and `include:`. Required by
+the install/registry and scaffolder systems for pinning and reusing patterns.
+See [ADR-0010: Versioning](/adrs/0010-versioning.md).
+
 ## Doc audit: Python references
 
 - The `python` driver reference (`docs/ac/reference/drivers/python.md`) needs
