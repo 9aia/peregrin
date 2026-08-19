@@ -75,20 +75,20 @@ A future port of the Agent Campaigns runtime to Go. It should consume the same
 YAML workflows and implement the same adapter ports, taking advantage of Go's
 concurrency model for the event bus and driver isolation.
 
-### Artifact generators
+### Exporters
 
-An `ac generate` command and `packages/ac-artifact-generator` tooling that
-turns a declarative YAML workflow into deterministic artefacts: Mermaid/Graphviz
+An `ac export` command and `packages/ac-exporter` tooling that turns a
+declarative YAML workflow into deterministic artefacts: Mermaid/Graphviz
 diagrams, Markdown runbooks, event schema stubs, test skeletons, prompt
 templates, and aggregated campaign maps for workflow libraries. See
-[ADR-0006: Artifact generators](/adrs/0006-artifact-generators.md).
+[ADR-0006: Exporters](/adrs/0006-exporters.md).
 
-### Create scaffolders
+### Scaffolders
 
-An `ac create` command and template system for scaffolding new workflows,
-drivers, observers, stores, and projects. This is distinct from `ac generate`,
-which renders artifacts from existing workflows. See
-[ADR-0007: Create scaffolders](/adrs/0007-create-scaffolders.md).
+An `ac generate` command and `packages/ac-generate` template system for
+scaffolding new workflows, drivers, observers, stores, and projects. This is
+distinct from `ac export`, which renders artefacts from existing workflows. See
+[ADR-0007: Scaffolders](/adrs/0007-scaffolders.md).
 
 ## Doc audit: Python references
 

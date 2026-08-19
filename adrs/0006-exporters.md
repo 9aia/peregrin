@@ -1,4 +1,4 @@
-# ADR-0006: Artifact generators
+# ADR-0006: Exporters
 
 ## Status
 
@@ -23,16 +23,16 @@ other representations. This means that:
 - Event types, payload schemas, and driver contracts are documented separately
   from the source of truth.
 
-A generator layer turns the workflow file into a reusable artefact factory. The
+An exporter layer turns the workflow file into a reusable artefact factory. The
 output is deterministic because the input is declarative.
 
 ## Decision
 
-Peregrin will provide an `ArtifactGenerator` abstraction and an `ac generate`
-command. The generator takes a `Workflow` (loaded through `ac-loader-yaml`) and
-emits one of several target formats.
+Peregrin will provide an `Exporter` abstraction and an `ac export` command. The
+exporter takes a `Workflow` (loaded through `ac-loader-yaml`) and emits one of
+several target formats.
 
-### Generator targets (proposed)
+### Export targets (proposed)
 
 1. **Mermaid / Graphviz diagram**
    Render the bipartite event graph from `events`, `on`, and `emits`. Distinct
@@ -60,13 +60,13 @@ emits one of several target formats.
 ### Command surface (proposed)
 
 ```bash
-ac generate <workflow> --format mermaid
-ac generate <workflow> --format markdown --out docs/campaigns/
-ac generate <workflow> --format python-stubs
-ac generate <dir> --format campaign-map
+ac export <workflow> --format mermaid
+ac export <workflow> --format markdown --out docs/campaigns/
+ac export <workflow> --format python-stubs
+ac export <dir> --format campaign-map
 ```
 
-The generator must not execute the workflow. It only reads and renders the
+The exporter must not execute the workflow. It only reads and renders the
 static definition. Runtime-only concerns such as conditions, retries, and
 dynamic node injection are documented as "resolved at runtime".
 
@@ -77,8 +77,8 @@ dynamic node injection are documented as "resolved at runtime".
   execution.
 - Cross-language ports can generate starter types and stubs from the same
   canonical model.
-- We must keep the `Workflow` model stable enough that generators do not break
-  between releases. Changes to `ac-core` may require generator updates.
+- We must keep the `Workflow` model stable enough that exporters do not break
+  between releases. Changes to `ac-core` may require exporter updates.
 - Generated artifacts are static. They describe the _possible_ event graph, not
   the _actual_ runtime path.
 
@@ -87,6 +87,6 @@ dynamic node injection are documented as "resolved at runtime".
 - **Hand-maintain diagrams and docs.** Rejected because drift is inevitable.
 - **Generate artifacts inside `apps/website` only.** Rejected because other
   consumers (CLI, IDE extensions, ports) also need access to the same output.
-- **Make generators a driver or meta-workflow.** Rejected for now. Generators
+- **Make exporters a driver or meta-workflow.** Rejected for now. Exporters
   are build-time/read-time tooling; running them as campaign side effects would
   complicate the runtime model without clear benefit.
