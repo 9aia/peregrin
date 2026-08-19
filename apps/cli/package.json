@@ -9,7 +9,7 @@
   "scripts": {
     "build": "vp build",
     "check": "vp check",
-    "test": "vp test"
+    "test": "vp test -- --passWithNoTests"
   },
   "dependencies": {
     "@effect/cli": "^0.77.0",

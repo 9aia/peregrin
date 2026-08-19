@@ -10,7 +10,7 @@
   "scripts": {
     "build": "vp pack",
     "dev": "vp pack --watch",
-    "test": "vp test",
+    "test": "vp test -- --passWithNoTests",
     "check": "vp check"
   },
   "dependencies": {
