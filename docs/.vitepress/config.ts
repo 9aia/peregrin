@@ -7,12 +7,19 @@ export default defineConfig({
   themeConfig: {
     nav: [
       { text: "Home", link: "/" },
+      { text: "Quick Start", link: "/ac/quick-start/introduction" },
       { text: "Tutorials", link: "/ac/tutorials/" },
       { text: "How-to", link: "/ac/how-to/" },
       { text: "Explanation", link: "/ac/explanation/" },
       { text: "Reference", link: "/ac/reference/" },
     ],
     sidebar: [
+      {
+        text: "Quick Start",
+        link: "/ac/quick-start/introduction",
+        collapsed: false,
+        items: [{ text: "Introduction", link: "/ac/quick-start/introduction" }],
+      },
       {
         text: "Tutorials",
         link: "/ac/tutorials/",
