@@ -1,90 +1,119 @@
 # Write a custom store
 
-Implement the `EventStore` protocol and pass it to the runner.
+Implement the `EventStore` interface from `ac-core` and provide it as an Effect `Layer`.
+
+## The `EventStore` interface
+
+```ts
+import { Event, EventStore } from "ac-core";
+
+interface EventStore {
+  append(event: Event): void;
+  all(): ReadonlyArray<Event>;
+  byType(eventType: string): ReadonlyArray<Event>;
+  seenTypes(): ReadonlySet<string>;
+  latest(): Event | null;
+  clear(): void;
+  close(): void;
+}
+```
 
 ## SQLite store
 
-```python
-import json
-import sqlite3
-from agent_campaign.model import Event
+```ts
+import sqlite3 from "sqlite3";
+import { Event, EventStore } from "ac-core";
+import { Layer } from "effect";
 
-class SQLiteStore:
-    def __init__(self, path: str = ":memory:"):
-        self._conn = sqlite3.connect(path)
-        self._conn.execute("""
-            CREATE TABLE IF NOT EXISTS events (
-                type TEXT, payload TEXT, source TEXT, id TEXT, ts REAL
-            )
-        """)
-        self._conn.commit()
+class SQLiteStore implements EventStore {
+  private db: sqlite3.Database;
 
-    def append(self, event: Event) -> None:
-        self._conn.execute(
-            "INSERT INTO events VALUES (?,?,?,?,?)",
-            (event.type, json.dumps(event.payload), event.source, event.id, event.ts),
-        )
-        self._conn.commit()
+  constructor(path: string) {
+    this.db = new sqlite3.Database(path);
+    this.db.exec(`
+      CREATE TABLE IF NOT EXISTS events (
+        type TEXT, payload TEXT, source TEXT, id TEXT, ts REAL
+      )
+    `);
+  }
 
-    def all(self) -> list[Event]:
-        rows = self._conn.execute("SELECT * FROM events ORDER BY ts").fetchall()
-        return [Event(type=r[0], payload=json.loads(r[1]), source=r[2],
-                      id=r[3], ts=r[4]) for r in rows]
+  append(event: Event): void {
+    const json = JSON.stringify(event.payload);
+    this.db.run("INSERT INTO events VALUES (?, ?, ?, ?, ?)", [
+      event.type,
+      json,
+      event.source,
+      event.id,
+      event.ts,
+    ]);
+  }
 
-    def by_type(self, event_type: str) -> list[Event]:
-        rows = self._conn.execute(
-            "SELECT * FROM events WHERE type=? ORDER BY ts", (event_type,)
-        ).fetchall()
-        return [Event(type=r[0], payload=json.loads(r[1]), source=r[2],
-                      id=r[3], ts=r[4]) for r in rows]
+  all(): ReadonlyArray<Event> {
+    return this.query("SELECT * FROM events ORDER BY ts");
+  }
 
-    def seen_types(self) -> set[str]:
-        return {r[0] for r in self._conn.execute("SELECT DISTINCT type FROM events")}
+  byType(eventType: string): ReadonlyArray<Event> {
+    return this.query("SELECT * FROM events WHERE type = ? ORDER BY ts", [eventType]);
+  }
 
-    def latest(self) -> Event | None:
-        events = self.all()
-        return events[-1] if events else None
+  private query(sql: string, params: unknown[] = []): Array<Event> {
+    const rows: Array<{
+      type: string;
+      payload: string;
+      source: string;
+      id: string;
+      ts: number;
+    }> = [];
+    this.db.each(sql, params, (err, row) => {
+      if (!err) rows.push(row as any);
+    });
+    return rows.map((r) => new Event(r.type, JSON.parse(r.payload), r.source, r.id, r.ts));
+  }
 
-    def clear(self) -> None:
-        self._conn.execute("DELETE FROM events")
-        self._conn.commit()
+  seenTypes(): ReadonlySet<string> {
+    const types = new Set<string>();
+    this.db.each("SELECT DISTINCT type FROM events", (err, row) => {
+      if (!err) types.add((row as any).type);
+    });
+    return types;
+  }
 
-    def close(self) -> None:
-        self._conn.close()
+  latest(): Event | null {
+    const events = this.all();
+    return events.at(-1) ?? null;
+  }
+
+  clear(): void {
+    this.db.run("DELETE FROM events");
+  }
+
+  close(): void {
+    this.db.close();
+  }
+}
 ```
 
 Use it:
 
-```python
-runner = Runner(wf, store=SQLiteStore("/data/workflow.db"))
-```
+```ts
+import { Effect } from "effect";
+import { Runner } from "ac-engine";
+import { DefaultsLive } from "ac-cli-defaults";
 
-## Postgres store (sketch)
+const SQLiteLive = Layer.succeed(EventStore, new SQLiteStore("/data/workflow.db"));
 
-```python
-import psycopg2
+const program = Effect.gen(function* () {
+  const runner = yield* Runner;
+  const log = yield* runner.run(workflow);
+  return log;
+}).pipe(Effect.provide(DefaultsLive), Effect.provide(SQLiteLive));
 
-class PostgresStore:
-    def __init__(self, dsn: str):
-        self._conn = psycopg2.connect(dsn)
-        self._conn.execute("""
-            CREATE TABLE IF NOT EXISTS events (
-                type TEXT, payload JSONB, source TEXT, id TEXT, ts REAL
-            )
-        """)
-
-    def append(self, event: Event) -> None:
-        self._conn.execute(
-            "INSERT INTO events VALUES (%s, %s, %s, %s, %s)",
-            (event.type, json.dumps(event.payload), event.source, event.id, event.ts),
-        )
-        self._conn.commit()
-
-    # ... implement all(), by_type(), seen_types(), latest(), clear(), close()
+Effect.runPromise(program);
 ```
 
 ## See also
 
 - [Stores](../explanation/stores.md) — the adapter concept
-- [JSON store](../reference/json-store.md), [Memory store](../reference/memory-store.md)
+- [JSON store](../reference/json-store.md)
+- [Memory store](../reference/memory-store.md)
 - [Use the programmatic API](programmatic-api.md)

@@ -1,35 +1,60 @@
 # Write a custom driver
 
-Implement the `DriverProtocol` — one async method:
+A driver is a value that satisfies the `Driver` interface from `ac-core`. It returns an `Effect` that produces the events a node should emit.
 
-```python
-from agent_campaign.model import Context, Event, Node
+## The `Driver` interface
 
-class HTTPDriver:
-    async def invoke(
-        self, node: Node, triggers: list[Event], ctx: Context
-    ) -> list[Event]:
-        import aiohttp
-        cfg = node.with_
-        async with aiohttp.ClientSession() as s:
-            async with s.request(
-                cfg.get("method", "GET"),
-                cfg["url"],
-                json=cfg.get("body"),
-                headers=cfg.get("headers", {}),
-            ) as r:
-                payload = {"status": r.status, "body": await r.text()}
-                event_type = node.emits[0] if r.status < 400 else node.emits[1]
-                return [Event(type=event_type, payload=payload, source=node.id)]
+```ts
+import { Effect } from "effect";
+import { Driver, DriverError, Event } from "ac-core";
+import type { ExecutionContext, Node } from "ac-core";
+
+interface Driver {
+  readonly name: string;
+  readonly invoke: (
+    node: Node,
+    triggers: ReadonlyArray<Event>,
+    ctx: ExecutionContext,
+  ) => Effect.Effect<ReadonlyArray<Event>, DriverError, never>;
+}
 ```
 
-Register it:
+- `node` — the node definition (`id`, `driver`, `with_`, `emits`, ...).
+- `triggers` — the events that caused the node to fire.
+- `ctx` — the execution context (config, secrets, event log, `emit`, `inject`, ...).
 
-```python
-runner = Runner(wf, drivers={"http": HTTPDriver()})
+The driver must return an `Effect` that succeeds with an array of `Event` objects or fails with `DriverError`.
+
+## Example: HTTP driver
+
+```ts
+import { Effect } from "effect";
+import { Driver, DriverError, Event } from "ac-core";
+
+const HttpDriver: Driver = {
+  name: "http",
+  invoke: (node, _triggers, _ctx) =>
+    Effect.gen(function* () {
+      const with_ = node.with_ as Record<string, unknown>;
+      const method = String(with_.method ?? "GET");
+      const url = String(with_.url);
+      const response = yield* Effect.tryPromise({
+        try: () => fetch(url, { method }),
+        catch: (error) => new DriverError({ reason: String(error) }),
+      });
+      const body = yield* Effect.tryPromise({
+        try: () => response.text(),
+        catch: (error) => new DriverError({ reason: String(error) }),
+      });
+      const status = response.status;
+      const payload = { status, body };
+      const eventType = status < 400 ? node.emits[0] : node.emits[1];
+      return [new Event(eventType, payload, node.id)];
+    }),
+};
 ```
 
-Use it:
+Use in a workflow:
 
 ```yaml
 - id: webhook
@@ -43,33 +68,54 @@ Use it:
       text: "Deployment ready"
 ```
 
-## The protocol
+## Register the driver
 
-A driver is just an object with an `invoke` method. It receives the node
-definition, the list of trigger events, and the runtime context. It must
-return a list of `Event` objects. The driver decides what to do with
-`node.with_` and how to map outcomes to the declared `emits`.
+Register the driver through the `DriverRegistry` at runtime, or build an Effect `Layer` that provides it:
 
-## Naming and registry
+```ts
+import { Effect } from "effect";
+import { Driver, DriverError, Event } from "ac-core";
+import {
+  DriverRegistry,
+  DriverRegistryLiveLayer,
+  Runner,
+  RunnerLiveLayer,
+  EventBusLiveLayer,
+} from "ac-engine";
+import { DefaultsLive } from "ac-cli-defaults";
 
-Driver names are arbitrary strings. Register them when constructing the
-runner:
+const echoDriver: Driver = {
+  name: "echo",
+  invoke: (node, _triggers, _ctx) =>
+    Effect.succeed([new Event(`${node.id}.done`, { message: node.with_.message }, node.id)]),
+};
 
-```python
-runner = Runner(wf, drivers={"my-driver": MyDriver(), "agent": AgentDriver()})
+const program = Effect.gen(function* () {
+  const registry = yield* DriverRegistry;
+  registry.register("echo", echoDriver);
+  const runner = yield* Runner;
+  const log = yield* runner.run(workflow);
+  console.log(`emitted ${log.length} events`);
+}).pipe(Effect.provide(DefaultsLive));
+
+Effect.runPromise(program);
 ```
 
-A node uses the name directly:
+## Agent prefix convention
+
+For `agent:*` driver names, the registry resolves the prefix. Register a driver under `"agent"` and parse the suffix inside `invoke`:
 
 ```yaml
-- id: custom
-  driver: my-driver
+- id: review
+  driver: agent:claude
+  on: [pr.opened]
+  emits: [review.done]
+  with:
+    prompt: "Review this PR: ${event.payload.url}"
 ```
-
-For `agent:*` prefixes, register the driver under the base name and parse
-the suffix inside `invoke`.
 
 ## See also
 
 - [Drivers](../explanation/drivers.md) — the driver model
-- [Custom drivers and handlers](custom-drivers.md) — Python handlers and the shell driver
+- [Custom drivers and handlers](custom-drivers.md) — more driver recipes
+- [Execution context](../reference/handler-context.md) — the `ctx` object

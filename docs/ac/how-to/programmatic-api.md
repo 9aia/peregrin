@@ -1,124 +1,123 @@
 # Use the programmatic API
 
-Everything the CLI does, you can do in Python.
+Everything the CLI can do, you can do from TypeScript using the `ac-core` model, the `ac-engine` runner, and the `ac-loader-yaml` loader. The runtime is built on [Effect](https://effect.website), so program setup and dependency wiring use `Layer` and `Effect.runPromise`.
 
 ## Basic run
 
-```python
-import asyncio
-from agent_campaign import Workflow, Node
-from agent_campaign.runner import Runner
+```ts
+import { Effect } from "effect";
+import { Node, Workflow } from "ac-core";
+import { Runner, RunnerLiveLayer } from "ac-engine";
+import { DefaultsLive } from "ac-cli-defaults";
 
-wf = Workflow(nodes=[
-    Node(id="hello", driver="shell", on=["start"],
-         emits=["hello.done"],
-         with_={"cmd": "echo 'hello'"}),
-])
+const workflow = new Workflow(
+  "hello",
+  [],
+  [new Node("hello", "shell", "", ["start"], ["hello.done"], "any", { cmd: "echo 'hello'" })],
+);
 
-runner = Runner(wf)
-log = asyncio.run(runner.run())
-for e in log:
-    print(f"  {e.type} [{e.source}]")
+const program = Effect.gen(function* () {
+  const runner = yield* Runner;
+  const log = yield* runner.run(workflow);
+  for (const event of log) {
+    console.log(`  ${event.type} [${event.source}]`);
+  }
+}).pipe(Effect.provide(DefaultsLive));
+
+Effect.runPromise(program);
 ```
+
+`DefaultsLive` wires the default drivers, an in-memory `EventStore`, and the no-op observer.
 
 ## Load from YAML
 
-```python
-runner = Runner.from_yaml("workflow.yaml")
-log = asyncio.run(runner.run())
+```ts
+import { Effect } from "effect";
+import { loadWorkflow } from "ac-loader-yaml";
+import { Runner } from "ac-engine";
+import { DefaultsLive } from "ac-cli-defaults";
+
+const program = Effect.gen(function* () {
+  const workflow = yield* loadWorkflow("workflow.yaml");
+  const runner = yield* Runner;
+  const log = yield* runner.run(workflow);
+  console.log(`run complete: ${log.length} events`);
+}).pipe(Effect.provide(DefaultsLive));
+
+Effect.runPromise(program);
 ```
 
-## Persistence (default: JsonStore)
+## Choose a store
 
-```python
-runner = Runner(wf)
-asyncio.run(runner.run())
+The default CLI layer uses an in-memory `MemoryStore`. For a persistent JSON-lines store, provide `JsonStore` instead:
+
+```ts
+import { Live as JsonStoreLive } from "ac-store-json";
+import { Live as MemoryStoreLive } from "ac-store-memory";
+
+const program = ...
+  .pipe(Effect.provide(DefaultsLive))
+  .pipe(Effect.provide(JsonStoreLive(".ac/events.jsonl")));
 ```
 
-Override the path:
-
-```python
-from agent_campaign.stores.json import JsonStore
-runner = Runner(wf, store=JsonStore("/tmp/events.jsonl"))
-```
-
-Opt out:
-
-```python
-from agent_campaign.stores.memory import MemoryStore
-runner = Runner(wf, store=MemoryStore())
-```
-
-## Replay (resume)
-
-```python
-from agent_campaign.model import Event
-
-saved = [
-    Event(type="start", source="__runner__"),
-    Event(type="a.done", source="a"),
-]
-
-runner = Runner(wf)
-log = runner.replay(saved)
-```
-
-## Observability
-
-```python
-from agent_campaign.observers.otel import OTelObserver
-
-runner = Runner(wf, observer=OTelObserver(service_name="my-service"))
-asyncio.run(runner.run())
-```
-
-## Custom store or observer
-
-```python
-runner = Runner(
-    wf,
-    store=MyPostgresStore(),
-    observer=MyDatadogObserver(),
-)
-```
-
-## Loop protection
-
-```python
-runner = Runner(
-    wf,
-    max_events=1000,
-    timeout=60,
-    cycle_detection=True,
-    cycle_window=20,
-    cycle_threshold=3,
-)
-```
+The `JsonStore` layer overrides the in-memory store because both satisfy the `EventStore` adapter port.
 
 ## Inspect the event log
 
-```python
-log = asyncio.run(runner.run())
+The runner returns the final log as an array of `Event` objects:
 
-for e in log:
-    print(e.type, e.payload, e.source)
+```ts
+const log = yield * runner.run(workflow);
 
-for e in runner.store.all():
-    print(e.type)
+for (const event of log) {
+  console.log(event.type, event.payload, event.source);
+}
 
-for e in runner.store.by_type("lint.passed"):
-    print(e.payload)
-
-print(runner.store.seen_types())
+// Query by type
+const passed = log.filter((e) => e.type === "lint.passed");
 ```
 
-## Export the log
+For direct store access, implement or yield the `EventStore` port:
 
-```python
-runner.export_log("/tmp/log.json")
+```ts
+import { EventStore } from "ac-core";
+
+const store = yield * EventStore;
+const all = store.all();
+const byType = store.byType("lint.passed");
 ```
+
+## Add observability
+
+Provide the `OtelObserver` layer to emit console span output:
+
+```ts
+import { OtelObserverLive } from "ac-observer-otel";
+
+const program = ...
+  .pipe(Effect.provide(DefaultsLive))
+  .pipe(Effect.provide(OtelObserverLive));
+```
+
+## Pass secrets
+
+```ts
+const program = runner.run(workflow, { secrets: { API_KEY: "secret" } });
+```
+
+Secrets are resolved through `ctx.getSecret` in drivers and the template engine.
+
+## Dry run
+
+```ts
+const log = yield * runner.run(workflow, { dryRun: true });
+```
+
+In dry-run mode, drivers return a synthetic event and do not execute side effects.
 
 ## See also
 
-- [Custom drivers and handlers](custom-drivers.md)
-- [Run a workflow](../tutorials/run-a-workflow.md) — CLI flags reference
+- [Write a custom driver](write-a-custom-driver.md) — implement a `Driver`
+- [Write a custom store](write-a-custom-store.md) — implement `EventStore`
+- [Write a custom observer](write-a-custom-observer.md) — implement `Observer`
+- [Run a workflow](../tutorials/run-a-workflow.md) — CLI usage

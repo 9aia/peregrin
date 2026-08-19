@@ -75,6 +75,14 @@ A future port of the Agent Campaigns runtime to Go. It should consume the same
 YAML workflows and implement the same adapter ports, taking advantage of Go's
 concurrency model for the event bus and driver isolation.
 
+### Generators
+
+A `peregrin generate` command and `packages/ac-generator` tooling that turns a
+declarative YAML workflow into deterministic artefacts: Mermaid/Graphviz
+diagrams, Markdown runbooks, event schema stubs, test skeletons, prompt
+templates, and aggregated campaign maps for workflow libraries. See
+[ADR-0006: Campaign generators](/adrs/0006-generators.md).
+
 ## Doc audit: Python references
 
 - The `python` driver reference (`docs/ac/reference/drivers/python.md`) needs

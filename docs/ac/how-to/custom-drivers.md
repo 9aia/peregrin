@@ -1,102 +1,10 @@
 # Custom drivers and handlers
 
-## Python handlers
-
-Register a function that takes `(triggers, ctx, node)` and returns a list
-of events:
-
-```python
-from agent_campaign.model import Event
-from agent_campaign.drivers.python import register
-
-def my_handler(triggers, ctx, node):
-    e = triggers[0]
-    return [Event(type="done", payload={"result": "ok"}, source=node.id)]
-
-register("my_handler", my_handler)
-```
-
-Use in a workflow:
-
-```yaml
-- id: custom
-  driver: python
-  handler: my_handler
-  on: [start]
-  emits: [done]
-```
-
-Or use `module:func` notation without registering:
-
-```yaml
-- id: custom
-  driver: python
-  handler: myapp.handlers:my_handler
-  on: [start]
-  emits: [done]
-```
-
-## Importing Python modules
-
-Use `import:` in the workflow YAML to import Python modules so their
-handlers become available.
-
-```yaml
-import: [lib/litellm/handlers.py]
-
-nodes:
-  - id: review
-    driver: python
-    handler: llm:complete
-    on: [pr.opened]
-    emits: [review.done]
-```
-
-With an `as:` alias:
-
-```yaml
-import:
-  - file: lib/litellm/handlers.py
-    as: llm
-
-nodes:
-  - id: review
-    driver: python
-    handler: llm:complete
-```
-
-Dotted module paths (for installed packages):
-
-```yaml
-import: [myapp.handlers]
-```
-
-`import:` (Python modules) is distinct from `include:` (YAML file merging).
-
-## Handler context (ctx)
-
-```python
-def my_handler(triggers, ctx, node):
-    region = ctx.config.get("region", "us-east-1")
-    api_key = ctx.get_secret("API_KEY")
-
-    for e in ctx.log:
-        print(e.type)
-
-    ctx.emit("dynamic.event", {"data": 42})
-
-    ctx.inject([
-        {"id": "dynamic-1", "driver": "shell", "on": ["start"],
-         "emits": ["dynamic-1.done"], "with": {"cmd": "echo hi"}},
-    ])
-
-    return [Event(type="done", source=node.id)]
-```
+Peregrin drivers are implemented in TypeScript. The `python` driver is a shell-out to the Python interpreter, not a Python SDK.
 
 ## Shell driver conventions
 
-The shell driver is the universal tool — most CLI agents are just shell
-commands:
+The `shell` driver is the universal tool — most CLI agents are just shell commands:
 
 ```yaml
 - id: review
@@ -107,55 +15,113 @@ commands:
     cmd: "claude --print 'Review this PR: ${event.payload.url}'"
 ```
 
-### Exit codes → events
+### Exit codes
 
-- `emits: [A, B]` → rc==0 emits `A`, rc!=0 emits `B`
-- `with.emit: {0: A, 1: B, default: C}` → explicit mapping
-
-### Environment + secrets + timeout
+The `shell` driver emits `cmd.done` on exit code `0` and `node.failed` on any non-zero exit code.
 
 ```yaml
-with:
-  cmd: "deploy.sh"
-  env:
-    REGION: us-east-1
-  secrets: [API_KEY, DB_PASSWORD]
-  timeout: 300
+- id: deploy
+  driver: shell
+  on: [test.passed]
+  emits: [deploy.done, deploy.failed]
+  with:
+    cmd: "deploy.sh"
+    timeout: 300
 ```
 
-## Custom drivers
+- `with.cmd` — the command to run.
+- `with.timeout` — timeout in milliseconds (default `30000`).
 
-Implement the `Driver` protocol and register it:
+## The `python` driver
 
-```python
-from agent_campaign.model import Context, Event, Node
-
-class MyDriver:
-    async def invoke(self, node: Node, triggers: list[Event], ctx: Context) -> list[Event]:
-        return [Event(type=f"{node.id}.done", source=node.id)]
-
-runner = Runner(wf, drivers={"my-driver": MyDriver()})
-```
-
-Use in a workflow:
+The `python` driver spawns the `python` interpreter. It is not a Python SDK.
 
 ```yaml
-- id: custom
-  driver: my-driver
+- id: analyse
+  driver: python
+  on: [data.ready]
+  emits: [analyse.done, analyse.failed]
+  with:
+    script: scripts/analyse.py
+    args: ["--input", "${event.payload.path}"]
+    timeout: 60000
+```
+
+### `with` fields
+
+| Field      | Type   | Description                             |
+| ---------- | ------ | --------------------------------------- |
+| `script`   | string | Path to a Python script to execute      |
+| `module`   | string | Module to import (requires `function`)  |
+| `function` | string | Function to call (requires `module`)    |
+| `args`     | array  | Command-line arguments for `script`     |
+| `timeout`  | number | Timeout in milliseconds (default 30000) |
+
+Use `with.module` and `with.function` to call a single function:
+
+```yaml
+- id: compute
+  driver: python
   on: [start]
-  emits: [custom.done]
+  emits: [compute.done, compute.failed]
+  with:
+    module: myapp.math
+    function: compute_total
+```
+
+The driver emits `python.done` (rc `0`) or `python.failed` (non-zero or runtime error).
+
+## Custom TypeScript drivers
+
+Implement the `Driver` interface and register it with `DriverRegistry`:
+
+```ts
+import { Effect } from "effect";
+import { Driver, Event } from "ac-core";
+
+const GreeterDriver: Driver = {
+  name: "greeter",
+  invoke: (node, _triggers, _ctx) =>
+    Effect.succeed([new Event(`${node.id}.done`, { text: `Hello, ${node.with_.name}` }, node.id)]),
+};
+```
+
+Register at runtime:
+
+```ts
+import { Effect } from "effect";
+import { DriverRegistry } from "ac-engine";
+import { DefaultsLive } from "ac-cli-defaults";
+
+const program = Effect.gen(function* () {
+  const registry = yield* DriverRegistry;
+  registry.register("greeter", GreeterDriver);
+  const runner = yield* Runner;
+  const log = yield* runner.run(workflow);
+  console.log(log);
+}).pipe(Effect.provide(DefaultsLive));
+
+Effect.runPromise(program);
 ```
 
 ## Agent drivers
 
-Most CLI agents (claude-code, cursor, devin) are just shell commands. Use
-the shell driver directly, or register a thin custom driver for richer APIs.
+Most CLI agents (claude-code, cursor, devin) are just shell commands. Use the `shell` driver directly, or register a thin custom driver for richer APIs.
 
-For `agent:*` driver names, the runner resolves the prefix — register a
-driver under `"agent"` and it handles `agent:claude`, `agent:cursor`, etc.
+For `agent:*` driver names, the registry resolves the prefix. Register a driver under `"agent"` and parse the suffix inside `invoke`:
+
+```yaml
+- id: review
+  driver: agent:claude
+  on: [pr.opened]
+  emits: [review.done]
+  with:
+    prompt: "Review this PR: ${event.payload.url}"
+```
 
 ## See also
 
-- [Write a custom driver](write-a-custom-driver.md)
-- [Self-modifying workflows](../explanation/self-modifying.md) — `ctx.inject()`
+- [Write a custom driver](write-a-custom-driver.md) — implement a `Driver`
+- [Drivers](../explanation/drivers.md) — the driver model
+- [python driver](../reference/drivers/python.md) — reference
 - [Use the programmatic API](programmatic-api.md)

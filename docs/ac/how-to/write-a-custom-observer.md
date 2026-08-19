@@ -1,148 +1,123 @@
 # Write a custom observer
 
-Implement the `Observer` protocol and pass it to the runner.
+Implement the `Observer` interface from `ac-core` and provide it as an Effect `Layer`.
 
-## Datadog observer
+## The `Observer` and `Span` interfaces
 
-```python
-import time
-from agent_campaign.observers.base import NoopSpan
+```ts
+import { Observer, Span, Event, Workflow, Node } from "ac-core";
 
-class DatadogObserver:
-    def __init__(self):
-        from datadog import statsd
-        self._statsd = statsd
-
-    def on_workflow_start(self, workflow):
-        self._start = time.time()
-        self._name = workflow.name
-
-    def on_workflow_end(self, event_count, cancelled, cycle, failed=False):
-        duration = time.time() - self._start
-        tags = [f"workflow:{self._name}"]
-        self._statsd.histogram("workflow.duration", duration, tags=tags)
-        self._statsd.increment("workflow.events", event_count, tags=tags)
-        if failed:
-            self._statsd.increment("workflow.failures", tags=tags)
-        if cancelled:
-            self._statsd.increment("workflow.cancellations", tags=tags)
-
-    def on_node_start(self, node, triggers):
-        return NoopSpan()
-
-    def on_node_end(self, node, events, error, span):
-        if error:
-            self._statsd.increment("node.failures", tags=[f"node:{node.id}"])
-        span.end()
-
-    def on_event(self, event):
-        pass
-
-    def on_inject(self, node_specs):
-        self._statsd.increment("nodes.injected", len(node_specs))
-
-    def on_retire(self, node_id):
-        self._statsd.increment("nodes.retired")
+const MyObserver: Observer = {
+  onWorkflowStart(workflow: Workflow) {
+    console.log(`START ${workflow.name}`);
+  },
+  onWorkflowEnd(eventCount, cancelled, cycle, failed) {
+    console.log(`END events=${eventCount} cancelled=${cancelled} cycle=${cycle} failed=${failed}`);
+  },
+  onNodeStart(node, _triggers): Span {
+    return {
+      end: () => {},
+      setAttribute: () => {},
+      recordError: () => {},
+      getTraceparent: () => "",
+    };
+  },
+  onNodeEnd(_node, _events, _error, span) {
+    span.end();
+  },
+  onEvent(event: Event) {
+    console.log(`  EVENT ${event.type} [${event.source}]`);
+  },
+  onInject(_nodeSpecs) {
+    console.log(`  INJECTED`);
+  },
+  onRetire(nodeId) {
+    console.log(`  RETIRED ${nodeId}`);
+  },
+};
 ```
 
-Use it:
+## Provide the observer
 
-```python
-runner = Runner(wf, observer=DatadogObserver())
+```ts
+import { Layer, Effect } from "effect";
+import { Observer } from "ac-core";
+import { Runner } from "ac-engine";
+import { DefaultsLive } from "ac-cli-defaults";
+
+const MyObserverLive = Layer.succeed(Observer, MyObserver);
+
+const program = Effect.gen(function* () {
+  const runner = yield* Runner;
+  const log = yield* runner.run(workflow);
+  return log;
+}).pipe(Effect.provide(DefaultsLive), Effect.provide(MyObserverLive));
+
+Effect.runPromise(program);
 ```
+
+`MyObserverLive` satisfies the `Observer` port and overrides the default no-op observer.
 
 ## Logging observer
 
-```python
-import logging
-from agent_campaign.observers.base import NoopSpan
-
-logger = logging.getLogger("workflow")
-
-class LoggingObserver:
-    def on_workflow_start(self, workflow):
-        logger.info("START workflow='%s' nodes=%d", workflow.name, len(workflow.nodes))
-
-    def on_workflow_end(self, event_count, cancelled, cycle, failed=False):
-        status = "FAILED" if failed else ("CANCELLED" if cancelled else ("CYCLE" if cycle else "DONE"))
-        logger.info("END status=%s events=%d", status, event_count)
-
-    def on_node_start(self, node, triggers):
-        logger.info("  NODE %s (driver=%s)", node.id, node.driver)
-        return NoopSpan()
-
-    def on_node_end(self, node, events, error, span):
-        if error:
-            logger.error("  ERROR %s: %s", node.id, error)
-        else:
-            logger.info("  DONE %s → %d events", node.id, len(events))
-        span.end()
-
-    def on_event(self, event):
-        logger.debug("  EVENT %s [%s]", event.type, event.source)
-
-    def on_inject(self, node_specs):
-        logger.info("  INJECTED %d nodes", len(node_specs))
-
-    def on_retire(self, node_id):
-        logger.info("  RETIRED %s", node_id)
+```ts
+const LoggingObserver: Observer = {
+  onWorkflowStart(workflow) {
+    console.log(`START workflow='${workflow.name}' nodes=${workflow.nodes.length}`);
+  },
+  onWorkflowEnd(eventCount, cancelled, cycle, failed) {
+    const status = failed ? "FAILED" : cancelled ? "CANCELLED" : cycle ? "CYCLE" : "DONE";
+    console.log(`END status=${status} events=${eventCount}`);
+  },
+  onNodeStart(node, _triggers) {
+    console.log(`  NODE ${node.id} (driver=${node.driver})`);
+    return { end() {}, setAttribute() {}, recordError() {}, getTraceparent: () => "" };
+  },
+  onNodeEnd(node, events, error, span) {
+    if (error) console.error(`  ERROR ${node.id}: ${error.message}`);
+    else console.log(`  DONE ${node.id} → ${events.length} events`);
+    span.end();
+  },
+  onEvent(event) {
+    console.log(`  EVENT ${event.type} [${event.source}]`);
+  },
+  onInject(_nodeSpecs) {
+    console.log(`  INJECTED`);
+  },
+  onRetire(nodeId) {
+    console.log(`  RETIRED ${nodeId}`);
+  },
+};
 ```
 
-## File audit observer
+## Datadog-style metrics
 
-```python
-import json
-from agent_campaign.observers.base import NoopSpan
+Emitting metrics inside the hooks is the same as in any TypeScript service:
 
-class AuditObserver:
-    def __init__(self, path: str):
-        self._file = open(path, "a")
+```ts
+import { StatsD } from "node-statsd";
 
-    def on_workflow_start(self, workflow):
-        self._file.write(json.dumps({"event": "workflow.start", "name": workflow.name}) + "\n")
-        self._file.flush()
+const client = new StatsD();
 
-    def on_workflow_end(self, event_count, cancelled, cycle, failed=False):
-        self._file.write(json.dumps({
-            "event": "workflow.end",
-            "events": event_count,
-            "cancelled": cancelled,
-            "failed": failed,
-        }) + "\n")
-        self._file.flush()
-
-    def on_node_start(self, node, triggers):
-        return NoopSpan()
-
-    def on_node_end(self, node, events, error, span):
-        if error:
-            self._file.write(json.dumps({
-                "event": "node.failed",
-                "node": node.id,
-                "error": str(error),
-            }) + "\n")
-            self._file.flush()
-        span.end()
-
-    def on_event(self, event):
-        self._file.write(json.dumps({
-            "event": "event",
-            "type": event.type,
-            "source": event.source,
-        }) + "\n")
-        self._file.flush()
-
-    def on_inject(self, node_specs):
-        pass
-
-    def on_retire(self, node_id):
-        pass
-```
-
-Use it:
-
-```python
-runner = Runner(wf, observer=AuditObserver("/var/log/workflow-audit.jsonl"))
+const DatadogObserver: Observer = {
+  onWorkflowStart(workflow) {
+    client.increment(`workflow.start,workflow:${workflow.name}`);
+  },
+  onWorkflowEnd(eventCount, _cancelled, _cycle, failed) {
+    client.histogram("workflow.events", eventCount);
+    if (failed) client.increment("workflow.failure");
+  },
+  onNodeStart(_node, _triggers) {
+    return { end() {}, setAttribute() {}, recordError() {}, getTraceparent: () => "" };
+  },
+  onNodeEnd(node, _events, error, span) {
+    if (error) client.increment(`node.failure,node:${node.id}`);
+    span.end();
+  },
+  onEvent(_event) {},
+  onInject(_nodeSpecs) {},
+  onRetire(_nodeId) {},
+};
 ```
 
 ## See also
