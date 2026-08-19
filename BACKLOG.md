@@ -92,6 +92,15 @@ artifacts into an existing project. Both are distinct from `ac export`, which
 renders artefacts from existing workflows. See
 [ADR-0007: Scaffolders](/adrs/0007-scaffolders.md).
 
+### Install and registries
+
+An `ac install` command and `packages/ac-install` tooling that resolves package
+specifiers (`filepath`, `org/repo`, `gitlab:group/project`, `git+https://...`)
+through a pluggable array of registries and writes them to a project-local
+`.peregrin/packages/` directory. The file router and `include:` mechanism then
+load the installed packages. See
+[ADR-0008: Install and registries](/adrs/0008-install-and-registries.md).
+
 ## Doc audit: Python references
 
 - The `python` driver reference (`docs/ac/reference/drivers/python.md`) needs
