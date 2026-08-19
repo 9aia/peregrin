@@ -18,7 +18,10 @@ export default defineConfig({
         text: "Quick Start",
         link: "/ac/quick-start/introduction",
         collapsed: false,
-        items: [{ text: "Introduction", link: "/ac/quick-start/introduction" }],
+        items: [
+          { text: "Introduction", link: "/ac/quick-start/introduction" },
+          { text: "Introduction v2", link: "/ac/quick-start/introduction-v2" },
+        ],
       },
       {
         text: "Tutorials",
