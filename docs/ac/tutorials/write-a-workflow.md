@@ -104,7 +104,7 @@ Explicit exit-code mapping with `with.emit`:
 
 ## Payload placeholders
 
-All `with` fields support `${...}` substitution, powered by [Jinja2](https://jinja.palletsprojects.com/).
+All `with` fields support `${...}` substitution, powered by [lodash-es `_.template`](https://lodash.com/docs/4.17.15#template). Expressions are JavaScript and run inside a `with` context of known variables.
 
 ```yaml
 with:
@@ -114,10 +114,9 @@ with:
   cmd: "echo '${config.region}'" # workflow config
   cmd: "echo '${secret.API_KEY}'" # from --secrets file
   cmd: "echo '${node.id}'" # this node id
-  cmd: 'cat ${ "/tmp/data.json" | file }' # read file content at runtime
-  cmd: 'echo ${ "git rev-parse --short HEAD" | shell }' # shell command output
-  cmd: "echo '${event.payload.name | upper}'" # Jinja2 filter
-  cmd: 'echo ''${event.payload.tags | join(", ")}''' # Jinja2 filter
+  cmd: "echo '${state.x}'" # persisted state
+  cmd: 'cat ${file("/tmp/data.json")}' # read file content at runtime
+  cmd: 'echo ${shell("git rev-parse --short HEAD")}' # shell command output
 ```
 
 Works in any string field inside `with`, recursively.
@@ -134,15 +133,17 @@ Works in any string field inside `with`, recursively.
 | `${config.x}`        | Workflow config value        |
 | `${secret.x}`        | Secret from `--secrets` file |
 | `${node.id}`         | This node's id               |
+| `${node.fires}`      | Fire attempt number          |
+| `${state.x}`         | Persisted state value        |
 
-### Custom filters
+### Custom helpers
 
-| Filter  | Syntax              |
-| ------- | ------------------- |
-| `file`  | `${ "/tmp/data.txt" | file }`  |
-| `shell` | `${ "echo hello"    | shell }` |
+| Helper  | Syntax                     |
+| ------- | -------------------------- |
+| `file`  | `${file("/tmp/data.txt")}` |
+| `shell` | `${shell("echo hello")}`   |
 
-### `file` filter — read file content at runtime
+### `file` helper — read file content at runtime
 
 Reads a file's content and injects it into the template. The file can be
 created by an earlier node in the same workflow.
@@ -155,10 +156,10 @@ created by an earlier node in the same workflow.
   with:
     cmd: |
       devin -p "Review this report:
-      ${ "/tmp/ac-report.txt" | file }"
+      ${file("/tmp/ac-report.txt")}"
 ```
 
-### `shell` filter — run a shell command at runtime
+### `shell` helper — run a shell command at runtime
 
 Runs a shell command and injects its stdout. Useful for dynamic config values
 that are not known until the workflow runs.
@@ -170,16 +171,16 @@ that are not known until the workflow runs.
   emits: [deploy.done]
   with:
     cmd: |
-      echo "Deploying ${ "git rev-parse --short HEAD" | shell }"
+      echo "Deploying ${shell("git rev-parse --short HEAD")}"
 ```
 
 ### Bash compatibility
 
 Shell scripts in `cmd:` blocks often use `${VAR}` and `${VAR:-default}`
 for bash variable expansion. Only `${...}` expressions starting with known
-prefixes (`event`, `config`, `secret`, `node`) or containing Jinja2 filter
-syntax (`|`) are processed by the template engine. All other `${...}`
-expressions are left untouched for the shell to interpret.
+prefixes (`event`, `config`, `secret`, `node`, `state`) or the helpers
+`file(...)` / `shell(...)` are processed by the template engine. All other
+`${...}` expressions are left untouched for the shell to interpret.
 
 ## Event matching (wildcards)
 

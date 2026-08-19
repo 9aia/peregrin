@@ -22,50 +22,36 @@ Runs an external AI coding agent CLI and maps exit codes to events.
 
 ## Runners
 
-`devin`, `cline`, `claude-code`, `codex`, `custom`. Each maps to a known
-invocation profile. `custom` requires `with.binary` and `with.flags`.
+The current TypeScript port supports:
 
-## Cross-agent fallback
-
-Agent CLIs are opaque subprocesses. When rate-limited, the driver detects
-this and backs off. If `with.runners` is an ordered list, it falls back to
-the next runner:
-
-```yaml
-- id: fix
-  driver: agent
-  on: [investigate.done]
-  emits: [fix.done, fix.failed]
-  with:
-    runners: [devin, cline]
-    prompt_file: campaigns/my/fix.prompt.md
-    permission_mode: dangerous
-    rate_limit:
-      max_retries: 2
-      base_delay: 5
-      max_delay: 120
-      jitter: true
-      cooldown: true
-```
-
-A process-global cooldown registry keeps concurrent agent nodes from
-dogpiling a provider that is already throttling.
+- `devin` — runs `devin -p [--prompt-file <path> | <prompt>] [--permission-mode <mode>] --respect-workspace-trust <true|false>`
+- `custom` — runs the binary and flags provided in `with.binary` and `with.flags`
 
 ## Common `with:` fields
 
-| Field             | Type   | Description               |
-| ----------------- | ------ | ------------------------- |
-| `runner`          | string | Agent CLI name            |
-| `runners`         | list   | Ordered fallback list     |
-| `prompt`          | string | Inline prompt             |
-| `prompt_file`     | string | Path to prompt file       |
-| `permission_mode` | string | Agent permission mode     |
-| `trust`           | any    | Trust settings            |
-| `cwd`             | string | Working directory         |
-| `timeout`         | int    | Seconds                   |
-| `binary`          | string | For `custom` runner       |
-| `flags`           | list   | For `custom` runner       |
-| `emit`            | dict   | Exit-code → event mapping |
+| Field             | Type   | Description                                           |
+| ----------------- | ------ | ----------------------------------------------------- |
+| `runner`          | string | `devin` (default) or `custom`                         |
+| `prompt`          | string | Inline prompt (mutually exclusive with `prompt_file`) |
+| `prompt_file`     | string | Path to prompt file                                   |
+| `permission_mode` | string | Agent permission mode (devin)                         |
+| `trust`           | bool   | Workspace trust flag (devin, default `false`)         |
+| `extra_args`      | list   | Extra CLI args appended to the invocation             |
+| `env`             | dict   | Env vars for the agent process                        |
+| `cwd`             | string | Working directory                                     |
+| `timeout`         | int    | Seconds (default `600`)                               |
+| `binary`          | string | For `custom` runner                                   |
+| `flags`           | list   | For `custom` runner                                   |
+| `emit`            | dict   | Exit-code → event mapping                             |
+
+## Emitted payload
+
+```yaml
+stdout: "..."
+stderr: "..."
+rc: 0 | non-zero
+runner: "devin" | "custom"
+```
 
 ## See also
 

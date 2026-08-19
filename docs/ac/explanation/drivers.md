@@ -14,6 +14,7 @@ events, and context — it runs the handler and returns emitted events.
 - `stdin` — reads lines from stdin. Emits one event per line. Keeps the workflow alive.
 - `cli` — polls a shell command on an interval. Emits one event per output line.
 - `agent` — runs an external AI coding agent CLI and maps exit codes to events.
+- `human` — prompts a human on stdin and maps the response to events.
 
 ## The driver registry
 
@@ -56,5 +57,5 @@ workflow author controls which one runs.
 ## See also
 
 - [Write a custom driver](../how-to/write-a-custom-driver.md)
-- Driver reference: [shell](../reference/drivers/shell.md), [python](../reference/drivers/python.md), [runner](../reference/drivers/runner.md), [http](../reference/drivers/http.md), [webhook](../reference/drivers/webhook.md), [stdin](../reference/drivers/stdin.md), [cli](../reference/drivers/cli.md), [agent](../reference/drivers/agent.md)
+- Driver reference: [shell](../reference/drivers/shell.md), [python](../reference/drivers/python.md), [runner](../reference/drivers/runner.md), [http](../reference/drivers/http.md), [webhook](../reference/drivers/webhook.md), [stdin](../reference/drivers/stdin.md), [cli](../reference/drivers/cli.md), [agent](../reference/drivers/agent.md), [human](../reference/drivers/human.md)
 - [Streaming](../reference/drivers/streaming.md) and [polling](../reference/drivers/polling.md)

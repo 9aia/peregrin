@@ -9,6 +9,7 @@ Reference material is austere: facts, schemas, and option lists while you are wo
 - [http](drivers/http.md)
 - [webhook](drivers/webhook.md)
 - [agent](drivers/agent.md)
+- [human](drivers/human.md)
 - [stdin](drivers/stdin.md)
 - [cli](drivers/cli.md)
 - [runner](drivers/runner.md)
