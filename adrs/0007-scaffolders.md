@@ -11,15 +11,16 @@ need a fast way to start from a known good structure rather than copying files
 by hand. At the same time, the project wants to ship reusable patterns
 (libraries) that can be instantiated for a specific repository or team.
 
-A `generate` command scaffolds these starting points from templates.
-This is distinct from the `ac export` command (ADR-0006), which renders
-artifacts from an existing workflow. `ac generate` produces new source; `ac
-export` renders existing source into another format.
+Two commands scaffold starting points from templates. `ac create --template`
+creates a new project or workflow from an opinionated template. `ac generate`
+scaffolds a single artifact into an existing project. Both are distinct from
+`ac export` (ADR-0006), which renders artifacts from an existing workflow.
 
 ## Decision
 
-Peregrin will provide an `ac generate` command and a template system for
-scaffolding new projects and workflows.
+Peregrin will provide `ac create --template` and `ac generate` commands backed
+by a shared template system. `ac create` is for one-shot project or workflow
+creation; `ac generate` is for adding artifacts to an existing project.
 
 ### Templates (proposed)
 
@@ -47,6 +48,9 @@ scaffolding new projects and workflows.
 ### Command surface (proposed)
 
 ```bash
+ac create my-campaigns --template project
+ac create deploy --template workflow --pattern dependency-upgrade
+
 ac generate workflow --name deploy
 ac generate workflow --pattern dependency-upgrade
 ac generate driver --name httpbin
@@ -64,8 +68,8 @@ directory, or a remote library via `include:`.
 - Library authors can ship templates alongside reusable patterns.
 - The CLI needs a template engine that substitutes variables (`{{name}}`,
   `{{driver}}`, etc.) into static files.
-- `ac generate` must not conflict with `ac generate`. `create` writes new source;
-  `generate` renders existing source.
+- `ac generate` and `ac create` must not conflict with `ac export`. `ac create`
+  and `ac generate` write new source; `ac export` renders existing source.
 - Templates are versioned with the project so they do not drift from the current
   package API.
 

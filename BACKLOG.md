@@ -85,9 +85,11 @@ templates, and aggregated campaign maps for workflow libraries. See
 
 ### Scaffolders
 
-An `ac generate` command and `packages/ac-generate` template system for
-scaffolding new workflows, drivers, observers, stores, and projects. This is
-distinct from `ac export`, which renders artefacts from existing workflows. See
+`ac create --template` and `ac generate` commands backed by a shared
+`packages/ac-scaffolder` template system. `ac create` creates projects or
+workflows from opinionated templates; `ac generate` scaffolds individual
+artifacts into an existing project. Both are distinct from `ac export`, which
+renders artefacts from existing workflows. See
 [ADR-0007: Scaffolders](/adrs/0007-scaffolders.md).
 
 ## Doc audit: Python references
