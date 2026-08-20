@@ -54,4 +54,4 @@ impl Pass for ResolvePass {
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

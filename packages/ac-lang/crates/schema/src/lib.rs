@@ -41,4 +41,4 @@ mod schema;
 pub use schema::{Schema, ValidationError};
 
 #[cfg(test)]
-mod schema_test;
+mod schema_tests;

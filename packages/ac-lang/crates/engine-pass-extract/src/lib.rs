@@ -26,4 +26,4 @@ impl Pass for ExtractPass {
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

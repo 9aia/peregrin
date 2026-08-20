@@ -107,4 +107,4 @@ pub fn interpret_function(
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

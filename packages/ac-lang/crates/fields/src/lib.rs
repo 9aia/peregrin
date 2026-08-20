@@ -57,19 +57,19 @@ pub use validation::{validate_args, validate_return};
 mod test_helpers;
 
 #[cfg(test)]
-mod extraction_test;
+mod extraction_tests;
 
 #[cfg(test)]
-mod interpolation_test;
+mod interpolation_tests;
 
 #[cfg(test)]
-mod expression_test;
+mod expression_tests;
 
 #[cfg(test)]
-mod computed_test;
+mod computed_tests;
 
 #[cfg(test)]
-mod merge_test;
+mod merge_tests;
 
 #[cfg(test)]
-mod scope_test;
+mod scope_tests;

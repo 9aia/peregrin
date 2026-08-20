@@ -44,4 +44,4 @@ pub use interpreter::SchemaInterpreter;
 pub use type_::{FunctionType, Type};
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

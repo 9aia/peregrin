@@ -44,4 +44,4 @@ mod compose_tests;
 #[cfg(test)]
 mod emit_tests;
 #[cfg(test)]
-mod end_to_end_test;
+mod end_to_end_tests;

@@ -59,6 +59,7 @@ impl ModuleResolver for VirtualResolver {
         Some(ResolvedModule {
             schemas: extracted.schemas,
             merge: extracted.merge,
+            functions: extracted.functions,
             data: extracted.data.inner().clone(),
             base_path: None,
         })

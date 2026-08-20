@@ -145,4 +145,4 @@ pub trait TypegenBackend: Send + Sync {
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

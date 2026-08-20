@@ -26,10 +26,10 @@ pub use host::{Function, Host};
 pub use vm::Vm;
 
 #[cfg(test)]
-mod context_test;
+mod context_tests;
 
 #[cfg(test)]
-mod error_test;
+mod error_tests;
 
 #[cfg(test)]
-mod vm_test;
+mod vm_tests;

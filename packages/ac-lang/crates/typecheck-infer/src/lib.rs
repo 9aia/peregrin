@@ -134,4 +134,4 @@ fn walk_path(ty: &Type, parts: &[&str]) -> Type {
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

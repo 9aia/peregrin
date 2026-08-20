@@ -192,6 +192,7 @@ dependencies = [
  "ac-runtime",
  "ac-source",
  "serde_json",
+ "thiserror",
 ]
 
 [[package]]
@@ -201,6 +202,7 @@ dependencies = [
  "ac-runtime",
  "ac-source",
  "serde_json",
+ "thiserror",
  "toml",
 ]
 
@@ -212,6 +214,7 @@ dependencies = [
  "ac-source",
  "serde_json",
  "serde_yaml",
+ "thiserror",
 ]
 
 [[package]]
@@ -254,6 +257,7 @@ dependencies = [
 name = "ac-resolver-core"
 version = "0.1.0"
 dependencies = [
+ "ac-fields",
  "serde_json",
 ]
 
@@ -262,11 +266,8 @@ name = "ac-resolver-file"
 version = "0.1.0"
 dependencies = [
  "ac-fields",
- "ac-frontend-json",
- "ac-frontend-toml",
- "ac-frontend-yaml",
+ "ac-frontend",
  "ac-resolver-core",
- "ac-runtime",
  "serde_json",
 ]
 
@@ -279,6 +280,7 @@ dependencies = [
  "ac-resolver-core",
  "ac-runtime",
  "git2",
+ "hex",
  "serde_json",
  "sha2",
  "url",
@@ -337,6 +339,9 @@ dependencies = [
 [[package]]
 name = "ac-source"
 version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
 
 [[package]]
 name = "ac-typecheck-core"
@@ -959,6 +964,12 @@ name = "heck"
 version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2304e00983f87ffb38b55b444b5e3b60a884b5d30c0fca7d82fe33449bbe55ea"
+
+[[package]]
+name = "hex"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f24254aa9a54b5c858eaee2f5bccdb46aaf0e486a595ed5fd8f86ba55232a70"
 
 [[package]]
 name = "icu_collections"
@@ -1761,6 +1772,26 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.119",
+]
+
+[[package]]
+name = "thiserror"
+version = "2.0.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ec86235f5fcc2a73650310756d2ac5b138a5780bbbdfae3eeccec992c435ba4f"
+dependencies = [
+ "thiserror-impl",
+]
+
+[[package]]
+name = "thiserror-impl"
+version = "2.0.20"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bc04cd3e1236dd4a98afca4569f2deb3f120e5422a4023be2cb683f8486292af"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 3.0.3",
 ]
 
 [[package]]

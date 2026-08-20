@@ -13,34 +13,14 @@
 mod scanner;
 
 use ac_runtime::{Frontend, RuntimeValue};
+use thiserror::Error;
 
 /// Errors that can occur during JSON parsing.
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum JsonError {
     /// The underlying JSON parser returned an error.
-    Parse(serde_json::Error),
-}
-
-impl std::fmt::Display for JsonError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            JsonError::Parse(e) => write!(f, "json parse error: {e}"),
-        }
-    }
-}
-
-impl std::error::Error for JsonError {
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        match self {
-            JsonError::Parse(e) => Some(e),
-        }
-    }
-}
-
-impl From<serde_json::Error> for JsonError {
-    fn from(e: serde_json::Error) -> Self {
-        JsonError::Parse(e)
-    }
+    #[error("json parse error: {0}")]
+    Parse(#[from] serde_json::Error),
 }
 
 /// Parses a JSON string into a [`RuntimeValue`].
@@ -105,4 +85,4 @@ impl Frontend for JsonFrontend {
 }
 
 #[cfg(test)]
-mod lib_test;
+mod lib_tests;

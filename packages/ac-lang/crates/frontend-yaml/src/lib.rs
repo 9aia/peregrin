@@ -80,4 +80,4 @@ impl Frontend for YamlFrontend {
 }
 
 #[cfg(test)]
-mod convert_test;
+mod convert_tests;

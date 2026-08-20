@@ -24,7 +24,7 @@ pub use expr::Expr;
 pub use field::Field;
 
 #[cfg(test)]
-mod expr_test;
+mod expr_tests;
 
 #[cfg(test)]
-mod field_test;
+mod field_tests;

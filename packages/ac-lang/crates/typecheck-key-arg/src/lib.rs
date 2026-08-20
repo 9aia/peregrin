@@ -80,4 +80,4 @@ pub fn check(
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

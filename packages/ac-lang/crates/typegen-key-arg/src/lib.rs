@@ -27,4 +27,4 @@ pub fn strip_key(ctx: &mut TypegenContext) {
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

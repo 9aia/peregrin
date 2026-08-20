@@ -9,7 +9,7 @@
 use std::path::{Path, PathBuf};
 
 use ac_fields::extract_fields;
-use ac_runtime::RuntimeValue;
+use ac_frontend::frontend_for;
 use ac_resolver_core::{ModuleCache, ModuleResolver, NoCache, ResolvedModule};
 
 /// Filesystem-based module resolver.
@@ -65,26 +65,19 @@ impl<C: ModuleCache> ModuleResolver for FileResolver<C> {
             .and_then(|e| e.to_str())
             .unwrap_or("yaml");
 
-        let value = parse_document(&content, format)?;
+        let frontend = frontend_for(format).ok()?;
+        let value = frontend.parse(content.as_str()).ok()?;
         let extracted = extract_fields(value).ok()?;
 
         let module = ResolvedModule {
             schemas: extracted.schemas,
             merge: extracted.merge,
+            functions: extracted.functions,
             data: extracted.data.inner().clone(),
             base_path: resolved.parent().map(|p| p.to_path_buf()),
         };
 
         self.cache.insert(&cache_key, module.clone());
         Some(module)
-    }
-}
-
-fn parse_document(content: &str, format: &str) -> Option<RuntimeValue> {
-    match format {
-        "yaml" | "yml" => ac_frontend_yaml::parse(content).ok(),
-        "json" => ac_frontend_json::parse(content).ok(),
-        "toml" => ac_frontend_toml::parse(content).ok(),
-        _ => ac_frontend_yaml::parse(content).ok(),
     }
 }

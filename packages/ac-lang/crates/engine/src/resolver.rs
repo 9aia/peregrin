@@ -11,8 +11,8 @@ use std::path::PathBuf;
 
 use ac_ast::Expr;
 use ac_fields::{self, FunctionResolver};
-use ac_frontend::frontend_for;
 use ac_host::DefaultHost;
+use ac_resolver_core::ModuleResolver;
 use ac_runtime::RuntimeValue;
 use ac_schema_json::JsonSchema;
 use ac_vm::{Context, Vm};
@@ -33,6 +33,7 @@ pub struct VmResolver<'a> {
     pub base_path: Option<PathBuf>,
     pub import_cache: RefCell<HashMap<String, serde_json::Value>>,
     pub imported_functions: RefCell<Vec<(String, ac_fields::FunctionSignature)>>,
+    pub resolver: Option<&'a dyn ModuleResolver>,
 }
 
 const MAX_DEPTH: usize = 64;
@@ -118,40 +119,31 @@ impl<'a> VmResolver<'a> {
             .and_then(|v| v.as_str())
             .ok_or("import() requires a string path argument")?;
 
-        let resolved = match &self.base_path {
-            Some(base) => base.join(path_str),
-            None => PathBuf::from(path_str),
+        let cache_key = match &self.base_path {
+            Some(base) => base.join(path_str).to_string_lossy().to_string(),
+            None => path_str.to_string(),
         };
 
-        let cache_key = resolved.to_string_lossy().to_string();
         if let Some(cached) = self.import_cache.borrow().get(&cache_key) {
             return Ok(cached.clone());
         }
 
-        let content = std::fs::read_to_string(&resolved)
-            .map_err(|e| format!("import: failed to read '{}': {e}", resolved.display()))?;
+        let resolver = self.resolver.ok_or_else(|| {
+            "import(): no module resolver configured".to_string()
+        })?;
 
-        let format = resolved
-            .extension()
-            .and_then(|e| e.to_str())
-            .unwrap_or("yaml");
-        let frontend = frontend_for(format)
-            .map_err(|e| format!("import: {e}"))?;
-        let value = frontend
-            .parse(&content)
-            .map_err(|e| format!("import: failed to parse '{}': {e}", resolved.display()))?;
-
-        let extracted = ac_fields::extract_fields(value)
-            .map_err(|e| format!("import: failed to extract fields from '{}': {e}", resolved.display()))?;
-        let data = extracted.data.into_inner();
+        let module = resolver
+            .resolve(path_str, self.base_path.as_deref())
+            .ok_or_else(|| format!("import: failed to resolve '{path_str}'"))?;
 
         let mut imported = self.imported_functions.borrow_mut();
-        for (fn_name, fn_sig) in &extracted.functions {
+        for (fn_name, fn_sig) in &module.functions {
             if !imported.iter().any(|(n, _)| n == fn_name) {
                 imported.push((fn_name.clone(), fn_sig.clone()));
             }
         }
 
+        let data = module.data.clone();
         self.import_cache
             .borrow_mut()
             .insert(cache_key, data.clone());

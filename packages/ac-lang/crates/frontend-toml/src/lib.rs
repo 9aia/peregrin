@@ -87,4 +87,4 @@ impl Frontend for TomlFrontend {
 }
 
 #[cfg(test)]
-mod convert_test;
+mod convert_tests;

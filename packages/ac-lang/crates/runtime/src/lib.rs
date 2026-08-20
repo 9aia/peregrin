@@ -17,4 +17,4 @@ pub use value::{HostValue, RuntimeValue};
 pub use frontend::Frontend;
 
 #[cfg(test)]
-mod value_test;
+mod value_tests;

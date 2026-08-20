@@ -28,4 +28,4 @@ impl Pass for GeneratePass {
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

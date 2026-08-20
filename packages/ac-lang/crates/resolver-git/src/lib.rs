@@ -15,6 +15,7 @@
 //! repo+ref fetch updates from the remote before reading.
 
 mod parse;
+mod fetch;
 
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
@@ -23,12 +24,9 @@ use std::sync::Mutex;
 use ac_fields::extract_fields;
 use ac_frontend::frontend_for;
 use ac_resolver_core::{ModuleCache, ModuleResolver, NoCache, ResolvedModule};
-use sha2::{Digest, Sha256};
 
 pub use parse::{parse_git_url, GitTarget};
-
-/// Default shallow clone depth.
-const DEFAULT_DEPTH: usize = 1;
+pub use fetch::{GitFetcher, DEFAULT_DEPTH};
 
 /// Git-based module resolver.
 ///
@@ -48,7 +46,7 @@ pub struct GitResolver<C: ModuleCache = NoCache> {
     cache_dir: PathBuf,
     module_cache: C,
     repo_cache: Mutex<HashMap<String, PathBuf>>,
-    depth: usize,
+    fetcher: GitFetcher,
 }
 
 impl GitResolver<NoCache> {
@@ -56,10 +54,10 @@ impl GitResolver<NoCache> {
     /// and the default shallow clone depth (1).
     pub fn new(cache_dir: PathBuf) -> Self {
         GitResolver {
-            cache_dir,
+            cache_dir: cache_dir.clone(),
             module_cache: NoCache,
             repo_cache: Mutex::new(HashMap::new()),
-            depth: DEFAULT_DEPTH,
+            fetcher: GitFetcher::new(cache_dir, DEFAULT_DEPTH),
         }
     }
 
@@ -74,10 +72,10 @@ impl<C: ModuleCache> GitResolver<C> {
     /// Create a resolver with a specific cache directory and module cache.
     pub fn with_cache(cache_dir: PathBuf, module_cache: C) -> Self {
         GitResolver {
-            cache_dir,
+            cache_dir: cache_dir.clone(),
             module_cache,
             repo_cache: Mutex::new(HashMap::new()),
-            depth: DEFAULT_DEPTH,
+            fetcher: GitFetcher::new(cache_dir, DEFAULT_DEPTH),
         }
     }
 
@@ -92,72 +90,8 @@ impl<C: ModuleCache> GitResolver<C> {
     /// A depth of `0` disables shallow cloning (full history). The default
     /// is `1` (only the latest commit).
     pub fn depth(mut self, depth: usize) -> Self {
-        self.depth = depth;
+        self.fetcher = GitFetcher::new(self.cache_dir.clone(), depth);
         self
-    }
-
-    /// Compute the local cache path for a repo URL + ref using SHA-256.
-    ///
-    /// SHA-256 is stable across Rust versions, unlike `DefaultHasher`.
-    fn cache_path(&self, target: &GitTarget) -> PathBuf {
-        let mut hasher = Sha256::new();
-        hasher.update(target.repo_url.as_bytes());
-        hasher.update(b"\0");
-        hasher.update(target.reference.as_bytes());
-        let hash = hasher.finalize();
-        let hex: String = hash.iter().map(|b| format!("{b:02x}")).collect();
-        self.cache_dir.join(&hex[..16])
-    }
-
-    /// Build fetch options with the configured depth.
-    fn fetch_options(&self) -> git2::FetchOptions<'_> {
-        let mut fo = git2::FetchOptions::new();
-        if self.depth > 0 {
-            fo.depth(self.depth as i32);
-        }
-        fo
-    }
-
-    /// Clone or open a repo, then read a file from it.
-    ///
-    /// If the repo is already cached, performs a fetch to refresh the ref
-    /// before reading. New clones are bare and shallow.
-    fn fetch_file(&self, target: &GitTarget) -> Option<String> {
-        let local = self.cache_path(target);
-
-        if !local.exists() {
-            std::fs::create_dir_all(&local).ok()?;
-            let mut builder = git2::build::RepoBuilder::new();
-            builder.bare(true);
-            builder.fetch_options(self.fetch_options());
-            builder.clone(&target.repo_url, &local).ok()?;
-        }
-
-        let repo = git2::Repository::open(&local).ok()?;
-
-        // Refresh the ref from the remote to avoid stale data.
-        let refname = format!("refs/remotes/origin/{}", target.reference);
-        if let Ok(mut remote) = repo.find_remote("origin") {
-            let _ = remote.fetch(
-                &[&target.reference],
-                Some(&mut self.fetch_options()),
-                None,
-            );
-        }
-
-        let oid = repo
-            .revparse_single(&refname)
-            .or_else(|_| repo.revparse_single(&target.reference))
-            .ok()?
-            .id();
-
-        let commit = repo.find_commit(oid).ok()?;
-        let tree = commit.tree().ok()?;
-
-        let entry = tree.get_path(Path::new(&target.path)).ok()?;
-        let blob = repo.find_blob(entry.id()).ok()?;
-        let content = std::str::from_utf8(blob.content()).ok()?;
-        Some(content.to_string())
     }
 }
 
@@ -188,7 +122,7 @@ impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
             return Some(cached);
         }
 
-        let content = self.fetch_file(&target)?;
+        let content = self.fetcher.fetch_file(&target)?;
 
         let format = target
             .path
@@ -209,6 +143,7 @@ impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
         let module = ResolvedModule {
             schemas: extracted.schemas,
             merge: extracted.merge,
+            functions: extracted.functions,
             data: extracted.data.inner().clone(),
             base_path: Some(base_path),
         };
@@ -219,4 +154,4 @@ impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

@@ -56,6 +56,7 @@ impl ModuleResolver for StaticResolver {
         Some(ResolvedModule {
             schemas,
             merge,
+            functions: Vec::new(),
             data,
             base_path: None,
         })

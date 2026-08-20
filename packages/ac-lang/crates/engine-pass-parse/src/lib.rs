@@ -18,4 +18,4 @@ impl Pass for ParsePass {
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

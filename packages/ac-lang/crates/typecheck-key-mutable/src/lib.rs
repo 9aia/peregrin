@@ -83,4 +83,4 @@ fn check_in_children(
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

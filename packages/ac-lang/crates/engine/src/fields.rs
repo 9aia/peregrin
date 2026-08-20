@@ -56,6 +56,9 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
     namespaces.insert("env".to_string(), ac_fields::build_env_namespace());
 
     let host = DefaultHost::default();
+    let file_resolver = ac_resolver_file::FileResolver::with_cache(
+        ac_resolver_core::MemoryModuleCache::new(),
+    );
     let resolver = VmResolver {
         host,
         function_sigs: &function_sigs,
@@ -64,6 +67,7 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
         base_path: base_path.map(|p| p.to_path_buf()),
         import_cache: RefCell::new(HashMap::new()),
         imported_functions: RefCell::new(Vec::new()),
+        resolver: Some(&file_resolver),
     };
 
     let interpolated = ac_fields::interpolate_scoped(

@@ -137,4 +137,4 @@ fn infer_value_type(value: &JsonValue, interpreter: &dyn SchemaInterpreter) -> T
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

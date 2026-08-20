@@ -15,4 +15,4 @@ mod schema;
 pub use schema::JsonSchema;
 
 #[cfg(test)]
-mod validator_test;
+mod validator_tests;

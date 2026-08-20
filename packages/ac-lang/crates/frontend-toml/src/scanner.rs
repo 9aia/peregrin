@@ -8,39 +8,31 @@
 //! - Nested tables use `[section]` or `[section.subsection]` headers
 //! - Array of tables use `[[section]]` headers
 
-use ac_source::{SourceLocation, SourceMap};
+use ac_source::{KeyMatcher, LineIndex, SourceMap, walk_value};
 use serde_json::Value;
+
+const MATCHER: KeyMatcher = KeyMatcher { separator: '=' };
 
 /// Builds a `SourceMap` for TOML source text.
 pub fn build_source_map(input: &str, value: &Value) -> SourceMap {
     let mut map = SourceMap::new();
-    let lines: Vec<usize> = compute_line_starts(input);
+    let lines = LineIndex::new(input);
 
     // First pass: find all section headers and their line positions
     let sections = find_sections(input, &lines);
 
     // Second pass: walk the value tree and resolve each key
-    walk_value(value, "", input, &lines, &sections, &mut map);
+    walk_value(value, "", &mut |_path, key, parent_path| {
+        let section_line = sections
+            .iter()
+            .find(|s| s.path == parent_path)
+            .map(|s| s.line_start);
+
+        let search_from = section_line.unwrap_or(0);
+        find_toml_key(input, &lines, key, search_from)
+    }, &mut map);
+
     map
-}
-
-fn compute_line_starts(source: &str) -> Vec<usize> {
-    let mut starts = vec![0];
-    for (i, b) in source.bytes().enumerate() {
-        if b == b'\n' {
-            starts.push(i + 1);
-        }
-    }
-    starts
-}
-
-fn at_byte_offset(offset: usize, lines: &[usize], source: &str) -> SourceLocation {
-    let offset = offset.min(source.len());
-    let line_idx = lines
-        .partition_point(|&start| start <= offset)
-        .saturating_sub(1);
-    let line_start = lines[line_idx];
-    SourceLocation::new(line_idx + 1, offset - line_start + 1)
 }
 
 struct Section {
@@ -51,14 +43,12 @@ struct Section {
 }
 
 /// Finds all `[section]` and `[[section]]` headers in the TOML text.
-fn find_sections(source: &str, lines: &[usize]) -> Vec<Section> {
+fn find_sections(source: &str, lines: &LineIndex) -> Vec<Section> {
     let mut sections = Vec::new();
+    let starts = lines.starts();
 
-    for (i, &line_start) in lines.iter().enumerate() {
-        let line_end = lines
-            .get(i + 1)
-            .copied()
-            .unwrap_or(source.len());
+    for (i, &line_start) in starts.iter().enumerate() {
+        let line_end = lines.line_end(i);
         let line = &source[line_start..line_end];
         let trimmed = line.trim_start();
 
@@ -80,67 +70,22 @@ fn find_sections(source: &str, lines: &[usize]) -> Vec<Section> {
     sections
 }
 
-fn walk_value(
-    value: &Value,
-    path: &str,
-    source: &str,
-    lines: &[usize],
-    sections: &[Section],
-    map: &mut SourceMap,
-) {
-    match value {
-        Value::Object(obj) => {
-            // Find the section that matches this path (if any)
-            let section_line = sections
-                .iter()
-                .find(|s| s.path == path)
-                .map(|s| s.line_start);
-
-            for (key, val) in obj {
-                let child_path = if path.is_empty() {
-                    key.clone()
-                } else {
-                    format!("{path}.{key}")
-                };
-
-                // For TOML, keys under a section are after the section header
-                let search_from = section_line.unwrap_or(0);
-
-                if let Some(loc) = find_toml_key(source, lines, key, search_from) {
-                    map.insert(&child_path, loc);
-                }
-
-                walk_value(val, &child_path, source, lines, sections, map);
-            }
-        }
-        Value::Array(arr) => {
-            for (i, val) in arr.iter().enumerate() {
-                let child_path = format!("{path}[{i}]");
-                walk_value(val, &child_path, source, lines, sections, map);
-            }
-        }
-        _ => {}
-    }
-}
-
 /// Finds a `key = value` line in the TOML source after the given offset.
 fn find_toml_key(
     source: &str,
-    lines: &[usize],
+    lines: &LineIndex,
     key: &str,
     from: usize,
-) -> Option<SourceLocation> {
-    let start_line = lines
+) -> Option<ac_source::SourceLocation> {
+    let starts = lines.starts();
+    let start_line = starts
         .partition_point(|&start| start <= from)
         .saturating_sub(1);
 
-    for (i, &line_start) in lines[start_line..].iter().enumerate() {
-        let line_end = lines
-            .get(start_line + i + 1)
-            .copied()
-            .unwrap_or(source.len());
+    for (i, &line_start) in starts[start_line..].iter().enumerate() {
+        let line_end = lines.line_end(start_line + i);
         let line = &source[line_start..line_end];
-        let indent = leading_whitespace(line);
+        let indent = ac_source::leading_whitespace(line);
         let trimmed = &line[indent..];
 
         // Skip empty lines and comments
@@ -153,54 +98,9 @@ fn find_toml_key(
             break;
         }
 
-        if let Some(key_offset) = match_toml_key(trimmed, key) {
-            return Some(at_byte_offset(line_start + indent + key_offset, lines, source));
+        if MATCHER.match_key(trimmed, key).is_some() {
+            return Some(lines.at_offset(line_start + indent));
         }
-    }
-
-    None
-}
-
-fn leading_whitespace(s: &str) -> usize {
-    s.chars().take_while(|c| *c == ' ' || *c == '\t').count()
-}
-
-/// Matches a TOML key (`key = ` or `"key" = ` or `'key' = `).
-/// Returns the offset of the key start within the line (always 0 if matched).
-fn match_toml_key(line: &str, key: &str) -> Option<usize> {
-    // Unquoted: key =
-    if line.starts_with(key) {
-        let after = &line[key.len()..];
-        let after_trimmed = after.trim_start();
-        if after_trimmed.starts_with('=') {
-            return Some(0);
-        }
-    }
-
-    // Double-quoted: "key" =
-    let quoted_key = format!("\"{key}\"");
-    if line.starts_with(&quoted_key) {
-        let after = &line[quoted_key.len()..];
-        let after_trimmed = after.trim_start();
-        if after_trimmed.starts_with('=') {
-            return Some(0);
-        }
-    }
-
-    // Single-quoted: 'key' =
-    let single_quoted_key = format!("'{key}'");
-    if line.starts_with(&single_quoted_key) {
-        let after = &line[single_quoted_key.len()..];
-        let after_trimmed = after.trim_start();
-        if after_trimmed.starts_with('=') {
-            return Some(0);
-        }
-    }
-
-    // Dotted key: section.key = (match the last segment)
-    if key.contains('.') {
-        // Not a direct match — this is handled via section headers
-        return None;
     }
 
     None

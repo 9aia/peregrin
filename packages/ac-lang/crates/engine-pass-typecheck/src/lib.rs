@@ -119,4 +119,4 @@ impl Pass for TypecheckPass {
 }
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;

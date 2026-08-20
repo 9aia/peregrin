@@ -13,10 +13,12 @@
 //! > braces, sections, etc.).
 
 mod location;
+mod scanner;
 mod sourcemap;
 
 pub use location::SourceLocation;
+pub use scanner::{leading_whitespace, KeyFound, KeyMatcher, LineIndex, walk_value};
 pub use sourcemap::SourceMap;
 
 #[cfg(test)]
-mod tests;
+mod lib_tests;
