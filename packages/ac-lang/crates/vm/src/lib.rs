@@ -2,7 +2,7 @@
 //!
 //! The execution engine for the AC language.
 //!
-//! This crate evaluates [`ac_core::Expr`] trees using a
+//! This crate evaluates [`ac_ast::Expr`] trees using a
 //! [`Vm`] driven by a user-provided [`Host`]. The VM has no
 //! built-in functions — all capabilities are provided by the host
 //! through the [`Primitive`] trait.
@@ -11,7 +11,7 @@
 //!
 //! > **`core` describes things. `vm` executes things.**
 //!
-//! The VM depends on `ac-core` and nothing else. It does not know
+//! The VM depends on `ac-ast` and nothing else. It does not know
 //! about JSON, YAML, or JSON Schema. It does not know what `now()`
 //! or `env()` means — those are host primitives.
 

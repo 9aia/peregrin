@@ -9,7 +9,7 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use ac_core::Expr;
+use ac_ast::Expr;
 use ac_fields::{self, FunctionResolver};
 use ac_frontend::frontend_for;
 use ac_host::DefaultHost;

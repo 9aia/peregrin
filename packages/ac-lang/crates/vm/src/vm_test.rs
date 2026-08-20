@@ -2,7 +2,7 @@ use super::*;
 use crate::context::Context;
 use crate::error::Error;
 use crate::host::{Function, Host};
-use ac_core::Expr;
+use ac_ast::Expr;
 use ac_runtime::RuntimeValue;
 
 #[derive(Clone)]

@@ -1,4 +1,4 @@
-use ac_core::Expr;
+use ac_ast::Expr;
 use ac_frontend::frontend_for;
 use ac_host::DefaultHost;
 use ac_runtime::RuntimeValue;

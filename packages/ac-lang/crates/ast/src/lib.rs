@@ -1,4 +1,4 @@
-//! # ac-core
+//! # ac-ast
 //!
 //! The language model — the kernel of the AC language.
 //!

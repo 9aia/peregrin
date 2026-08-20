@@ -4,7 +4,7 @@
 /// blocks of objects and configurations — an object is conceptually
 /// a collection of fields.
 ///
-/// `Field` is generic over the value type `V`, keeping `ac-core`
+/// `Field` is generic over the value type `V`, keeping `ac-ast`
 /// dependency-free.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Field<V> {

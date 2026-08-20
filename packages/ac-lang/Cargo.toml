@@ -5,7 +5,7 @@ edition = "2024"
 
 [workspace]
 members = [
-  "crates/core",
+  "crates/ast",
   "crates/runtime",
   "crates/vm",
   "crates/frontend-json",
@@ -54,7 +54,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
-ac-core = { path = "crates/core" }
+ac-ast = { path = "crates/ast" }
 ac-runtime = { path = "crates/runtime" }
 ac-vm = { path = "crates/vm" }
 ac-frontend-json = { path = "crates/frontend-json" }
@@ -99,7 +99,7 @@ indexmap = "2"
 rayon = "1"
 
 [dependencies]
-ac-core.workspace = true
+ac-ast.workspace = true
 ac-runtime.workspace = true
 ac-vm.workspace = true
 ac-frontend-json.workspace = true

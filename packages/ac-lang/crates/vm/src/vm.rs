@@ -1,7 +1,7 @@
 use crate::Context;
 use crate::Error;
 use crate::Host;
-use ac_core::Expr;
+use ac_ast::Expr;
 use ac_runtime::RuntimeValue;
 
 type RuntimeExpr = Expr<RuntimeValue>;

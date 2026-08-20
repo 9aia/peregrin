@@ -6,7 +6,7 @@
 /// - [`Expr::Value`] — a literal value.
 /// - [`Expr::Call`] — an invocation of a host-provided function.
 ///
-/// `Expr` is generic over the value type `V`, keeping `ac-core`
+/// `Expr` is generic over the value type `V`, keeping `ac-ast`
 /// dependency-free. The concrete value type (`RuntimeValue`) is
 /// chosen by the consumer — typically the VM.
 ///

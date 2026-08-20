@@ -4,6 +4,6 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-ac-core.workspace = true
+ac-ast.workspace = true
 ac-runtime.workspace = true
 indexmap.workspace = true

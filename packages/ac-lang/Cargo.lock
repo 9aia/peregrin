@@ -3,6 +3,10 @@
 version = 4
 
 [[package]]
+name = "ac-ast"
+version = "0.1.0"
+
+[[package]]
 name = "ac-cli"
 version = "0.1.0"
 dependencies = [
@@ -13,14 +17,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ac-core"
-version = "0.1.0"
-
-[[package]]
 name = "ac-engine"
 version = "0.1.0"
 dependencies = [
- "ac-core",
+ "ac-ast",
  "ac-engine-core",
  "ac-engine-pass-extract",
  "ac-engine-pass-generate",
@@ -143,7 +143,7 @@ dependencies = [
 name = "ac-engine-tests"
 version = "0.1.0"
 dependencies = [
- "ac-core",
+ "ac-ast",
  "ac-engine",
  "ac-engine-core",
  "ac-engine-pass-extract",
@@ -226,7 +226,7 @@ dependencies = [
 name = "ac-lang"
 version = "0.1.0"
 dependencies = [
- "ac-core",
+ "ac-ast",
  "ac-fields",
  "ac-frontend-json",
  "ac-frontend-toml",
@@ -465,7 +465,7 @@ dependencies = [
 name = "ac-vm"
 version = "0.1.0"
 dependencies = [
- "ac-core",
+ "ac-ast",
  "ac-runtime",
  "indexmap",
 ]

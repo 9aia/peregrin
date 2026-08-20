@@ -43,7 +43,7 @@ Layer 5 — CLI                     ac-cli
 Layer 4 — Engine pipeline         ac-engine, ac-engine-core, ac-engine-pass-*
 Layer 3 — Type system & generation ac-typecheck-*, ac-typegen-*, ac-resolver-*
 Layer 2 — Domain logic            ac-fields, ac-host, ac-frontend
-Layer 1 — Core                    ac-core, ac-runtime, ac-vm, ac-schema, ac-schema-json, ac-frontend-*
+Layer 1 — Core                    ac-ast, ac-runtime, ac-vm, ac-schema, ac-schema-json, ac-frontend-*
 ```
 
 ### Crate inventory

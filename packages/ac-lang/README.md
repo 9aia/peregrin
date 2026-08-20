@@ -44,7 +44,7 @@ crates/
 └── cli/            # `ac` CLI — parse, evaluate, validate (clap)
 ```
 
-**`ac-core`** — the language model. `Expr<V>` (value or call) and `Field<V>` (name + value). Generic over the value type, zero dependencies. No knowledge of formats or schemas.
+**`ac-ast`** — the language model. `Expr<V>` (value or call) and `Field<V>` (name + value). Generic over the value type, zero dependencies. No knowledge of formats or schemas.
 
 **`ac-runtime`** — the concrete value representation. `RuntimeValue` wraps `serde_json::Value` (private inner field, accessed via `inner()`/`inner_mut()`/`into_inner()`). Also defines the `Frontend` trait — the abstract interface for format parsers. This is the only crate that couples to `serde_json` for values. Core stays clean.
 
@@ -61,7 +61,7 @@ crates/
 **`ac-cli`** — command-line interface (`ac` binary). Parses YAML/JSON/TOML input via the `Frontend` trait, evaluates expressions, validates against schemas. Delegates field extraction and interpolation to `ac-fields`. Built with clap.
 
 ```
-ac-core (no deps)          ac-schema (no deps)
+ac-ast (no deps)          ac-schema (no deps)
     ↑                            ↑
 ac-runtime (serde_json)    ac-schema-json (serde_json)
     ↑                            ↑

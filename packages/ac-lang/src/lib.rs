@@ -10,7 +10,7 @@
 //!
 //! | Crate | Role |
 //! |---|---|
-//! | `ac-core` | Language representation — expressions, fields (generic over value type). |
+//! | `ac-ast` | Language representation — expressions, fields (generic over value type). |
 //! | `ac-runtime` | Concrete value type — `RuntimeValue` + `Frontend` trait. |
 //! | `ac-vm` | Execution engine — VM, host, functions, context. |
 //! | `ac-frontend-json` | JSON frontend — implements `Frontend`. |
@@ -31,14 +31,14 @@
 //!               |     |    |    |        |
 //!          ac-runtime ◄──┴────┴────────┘
 //!               |
-//!            ac-core (no deps)
+//!            ac-ast (no deps)
 //! ```
 //!
-//! `ac-core` has no dependencies — it is generic over the value
+//! `ac-ast` has no dependencies — it is generic over the value
 //! type. `ac-runtime` provides the concrete `RuntimeValue` wrapping
 //! `serde_json::Value`. All other crates depend on one or both.
 
-pub use ac_core as core;
+pub use ac_ast as core;
 pub use ac_runtime as runtime;
 pub use ac_frontend_json as json;
 pub use ac_frontend_toml as toml;
@@ -54,7 +54,7 @@ pub use ac_fields as fields;
 /// use ac_lang::prelude::*;
 /// ```
 pub mod prelude {
-    pub use ac_core::{Expr, Field};
+    pub use ac_ast::{Expr, Field};
     pub use ac_runtime::{Frontend, HostValue, RuntimeValue};
     pub use ac_frontend_json;
     pub use ac_frontend_toml;
