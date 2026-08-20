@@ -1,0 +1,52 @@
+# 10-bounded-retry: keep trying an operation, then give up or succeed.
+# Demonstrates: explicit loop with `max_fires`, `until`, and exit-code emits.
+#
+# The `attempt` node listens for `start` and its own `op.retry` event. It stops
+# early on `op.success` (`until`) and can fire at most 5 times (`max_fires`).
+#
+# Run:
+#   node apps/cli/dist/cli.mjs validate examples/10-patterns/10-bounded-retry.yaml
+
+name: bounded-retry
+
+config:
+  success_on_attempt: 3
+
+nodes:
+  - id: attempt
+    driver: shell
+    on: [start, op.retry]
+    emits: [op.success, op.retry]
+    max_fires: 5
+    until: [op.success]
+    with:
+      emit:
+        0: op.success
+        default: op.retry
+      cmd: |
+        ATTEMPT_FILE="/tmp/peregrin-attempt"
+        ATTEMPT=$(cat "$ATTEMPT_FILE" 2>/dev/null || echo 0)
+        ATTEMPT=$((ATTEMPT + 1))
+        echo "$ATTEMPT" > "$ATTEMPT_FILE"
+        echo "attempt $ATTEMPT"
+        if [ "$ATTEMPT" -ge "${config.success_on_attempt}" ]; then
+          echo "success on attempt $ATTEMPT"
+          exit 0
+        else
+          echo "fail on attempt $ATTEMPT"
+          exit 1
+        fi
+
+  - id: cleanup
+    driver: shell
+    on: [op.success]
+    emits: [cleanup.done]
+    with:
+      cmd: "rm -f /tmp/peregrin-attempt && echo 'cleaned up'"
+
+  - id: notify-success
+    driver: shell
+    on: [cleanup.done]
+    emits: [workflow.done]
+    with:
+      cmd: "echo 'operation succeeded after retries'"

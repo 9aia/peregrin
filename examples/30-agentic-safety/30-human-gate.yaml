@@ -1,0 +1,52 @@
+# 30-human-gate: require a human approval before a destructive action.
+# Demonstrates: the `human` driver, timeout/rejection, and conditional continue.
+#
+# Run (dry-run, safe):
+#   node apps/cli/dist/cli.mjs validate examples/30-agentic-safety/30-human-gate.yaml
+#
+# For a real run the prompt is written to `stderr` and the answer is read from `stdin`.
+
+name: human-gate
+
+config:
+  target: production
+
+nodes:
+  - id: prepare
+    driver: shell
+    on: [start]
+    emits: [prepare.done]
+    with:
+      cmd: "echo 'Preparing release for ${config.target}'"
+
+  - id: gate
+    driver: human
+    on: [prepare.done]
+    emits: [gate.approved, gate.rejected]
+    with:
+      prompt: "Approve destructive deploy to ${config.target}? (approve)"
+      expect: "approve"
+      timeout: 120
+      emit_ok: gate.approved
+      emit_reject: gate.rejected
+
+  - id: deploy
+    driver: shell
+    on: [gate.approved]
+    emits: [deploy.done]
+    with:
+      cmd: "echo 'Deploying to ${config.target}'"
+
+  - id: abort
+    driver: shell
+    on: [gate.rejected]
+    emits: [workflow.done]
+    with:
+      cmd: "echo 'Deploy rejected. No action taken.'"
+
+  - id: finish
+    driver: shell
+    on: [deploy.done]
+    emits: [workflow.done]
+    with:
+      cmd: "echo 'Human-gated deploy completed'"

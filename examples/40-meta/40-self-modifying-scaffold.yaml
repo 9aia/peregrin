@@ -1,0 +1,36 @@
+# 40-self-modifying-scaffold: generate and inject new nodes at runtime.
+# Demonstrates: the `runner` driver and meta-workflows.
+#
+# The `planner` node produces an event with `payload.nodes` containing the
+# new node specs. The `runner` node consumes it, injects the nodes, and the
+# injected nodes run as if they were in the original graph.
+#
+# In a real implementation the `planner` can be a Python handler, an agent,
+# or an `http` call that returns a plan. This YAML assumes the planner node
+# emits `plan.ready` with a `nodes` payload.
+#
+# Run (dry-run):
+#   node apps/cli/dist/cli.mjs validate examples/40-meta/40-self-modifying-scaffold.yaml
+
+name: self-modifying-scaffold
+
+nodes:
+  - id: planner
+    driver: python
+    on: [start]
+    emits: [plan.ready]
+    with:
+      handler: examples.plan:generate
+      args: ["--count", "3"]
+
+  - id: absorb
+    driver: runner
+    on: [plan.ready]
+    emits: [absorb.done]
+
+  - id: summarize
+    driver: shell
+    on: [absorb.done]
+    emits: [workflow.done]
+    with:
+      cmd: "echo 'Self-modifying scaffold complete'"

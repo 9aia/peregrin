@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=.ac/generated/schemas/00-hello.schema.json
+# 00-hello: the smallest possible Peregrin workflow.
+# Demonstrates: a node, the shell driver, and the synthetic `start` event.
+#
+# Run:
+#   node apps/cli/dist/cli.mjs validate examples/00-foundations/00-hello.yaml
+
+name: hello
+
+nodes:
+  - id: say-hi
+    driver: shell
+    on: [start]
+    emits: [hello.done]
+    with:
+      cmd: "echo 'Hello from Peregrin'"

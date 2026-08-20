@@ -1,0 +1,52 @@
+# 02-branching: route to a success or failure path based on a condition.
+# Demonstrates: `mode: any`, event-driven branching, and config-driven behavior.
+#
+# Toggle `config.should_succeed` between `true` and `false` to see the graph
+# take different paths.
+#
+# Run:
+#   node apps/cli/dist/cli.mjs validate examples/00-foundations/02-branching.yaml
+
+name: branching
+
+config:
+  should_succeed: true
+
+nodes:
+  - id: decide
+    driver: shell
+    on: [start]
+    emits: [decision.success, decision.failure]
+    with:
+      emit:
+        0: decision.success
+        default: decision.failure
+      cmd: |
+        if [ "${config.should_succeed}" = "true" ]; then
+          echo "success"
+          exit 0
+        else
+          echo "failure"
+          exit 1
+        fi
+
+  - id: on-success
+    driver: shell
+    on: [decision.success]
+    emits: [branching.done]
+    with:
+      cmd: "echo 'Success branch'"
+
+  - id: on-failure
+    driver: shell
+    on: [decision.failure]
+    emits: [branching.done]
+    with:
+      cmd: "echo 'Failure branch'"
+
+  - id: finish
+    driver: shell
+    on: [branching.done]
+    emits: [workflow.done]
+    with:
+      cmd: "echo 'Branching complete'"

@@ -1,0 +1,70 @@
+# 32-agent-council: collect opinions from multiple simulated experts, then decide.
+# Demonstrates: fan-out, fan-in with `mode: all`, and multi-actor aggregation.
+#
+# Each "expert" is a shell node that emits a domain-specific event. The
+# `decide` node waits for all three opinions and prints a summary.
+#
+# Run:
+#   node apps/cli/dist/cli.mjs validate examples/30-agentic-safety/32-agent-council.yaml
+
+name: agent-council
+
+nodes:
+  - id: question
+    driver: shell
+    on: [start]
+    emits: [council.started]
+    with:
+      cmd: "echo 'Should we adopt the new architecture?'"
+
+  - id: security
+    driver: shell
+    on: [council.started]
+    emits: [opinion.security]
+    with:
+      emit:
+        0: opinion.security
+      cmd: |
+        echo "security: cautious but acceptable"
+        exit 0
+
+  - id: performance
+    driver: shell
+    on: [council.started]
+    emits: [opinion.performance]
+    with:
+      emit:
+        0: opinion.performance
+      cmd: |
+        echo "performance: significant gains expected"
+        exit 0
+
+  - id: cost
+    driver: shell
+    on: [council.started]
+    emits: [opinion.cost]
+    with:
+      emit:
+        0: opinion.cost
+      cmd: |
+        echo "cost: moderate increase"
+        exit 0
+
+  - id: decide
+    driver: shell
+    on: [opinion.security, opinion.performance, opinion.cost]
+    mode: all
+    emits: [council.decided]
+    with:
+      cmd: |
+        echo "All opinions received"
+        echo "- Security: ${event.payload.security}"
+        echo "- Performance: ${event.payload.performance}"
+        echo "- Cost: ${event.payload.cost}"
+
+  - id: finish
+    driver: shell
+    on: [council.decided]
+    emits: [workflow.done]
+    with:
+      cmd: "echo 'Agent council concluded'"

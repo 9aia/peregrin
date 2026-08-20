@@ -1,0 +1,91 @@
+# 13-saga: coordinated multi-step transaction with compensation.
+# Demonstrates: `workflow.failed`, explicit failure events, and cleanup.
+#
+# Set `config.fail_at` to `reserve`, `charge`, or `ship` to see the
+# compensation path run. On any `*.failed` event the cleanup nodes fire,
+# unwinding earlier work in reverse order.
+#
+# Run:
+#   node apps/cli/dist/cli.mjs validate examples/10-patterns/13-saga.yaml
+
+name: saga
+
+config:
+  fail_at: ""
+
+nodes:
+  - id: reserve
+    driver: shell
+    on: [start]
+    emits: [reserve.done, reserve.failed]
+    with:
+      emit:
+        0: reserve.done
+        default: reserve.failed
+      cmd: |
+        if [ "${config.fail_at}" = "reserve" ]; then
+          echo "reservation failed"
+          exit 1
+        fi
+        echo "reserved"
+
+  - id: charge
+    driver: shell
+    on: [reserve.done]
+    emits: [charge.done, charge.failed]
+    with:
+      emit:
+        0: charge.done
+        default: charge.failed
+      cmd: |
+        if [ "${config.fail_at}" = "charge" ]; then
+          echo "charge failed"
+          exit 1
+        fi
+        echo "charged"
+
+  - id: ship
+    driver: shell
+    on: [charge.done]
+    emits: [ship.done, ship.failed]
+    with:
+      emit:
+        0: ship.done
+        default: ship.failed
+      cmd: |
+        if [ "${config.fail_at}" = "ship" ]; then
+          echo "shipping failed"
+          exit 1
+        fi
+        echo "shipped"
+
+  - id: cancel-ship
+    driver: shell
+    on: [ship.failed, workflow.failed]
+    mode: any
+    emits: [compensation.ship.cancelled]
+    with:
+      cmd: "echo 'Compensated: cancelled shipping'"
+
+  - id: refund-charge
+    driver: shell
+    on: [charge.failed, compensation.ship.cancelled]
+    mode: any
+    emits: [compensation.charge.refunded]
+    with:
+      cmd: "echo 'Compensated: refunded charge'"
+
+  - id: release-reservation
+    driver: shell
+    on: [reserve.failed, compensation.charge.refunded]
+    mode: any
+    emits: [compensation.done]
+    with:
+      cmd: "echo 'Compensated: released reservation'"
+
+  - id: finish
+    driver: shell
+    on: [ship.done]
+    emits: [workflow.done]
+    with:
+      cmd: "echo 'Saga completed'"

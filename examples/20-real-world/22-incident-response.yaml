@@ -1,0 +1,89 @@
+# 22-incident-response: receive an alert, triage, page a human, and run remediation.
+# Demonstrates: `webhook`, `http`, `human`, and conditional escalation.
+#
+# The webhook listens on `127.0.0.1:8080/webhook` for an alert payload.
+# Send a POST with `{"type": "alert.critical"}` to trigger it for real.
+#
+# Run (dry-run):
+#   node apps/cli/dist/cli.mjs validate examples/20-real-world/22-incident-response.yaml
+
+name: incident-response
+
+nodes:
+  - id: receive-alert
+    driver: webhook
+    on: [start]
+    emits: [alert.received]
+    with:
+      port: 8080
+      path: /webhook
+      host: 127.0.0.1
+
+  - id: triage
+    driver: shell
+    on: [alert.received]
+    emits: [incident.critical, incident.minor]
+    with:
+      emit:
+        0: incident.critical
+        default: incident.minor
+      cmd: |
+        SEVERITY="${event.payload.body.severity:-unknown}"
+        if [ "$SEVERITY" = "critical" ]; then
+          echo "critical"
+          exit 0
+        fi
+        echo "minor"
+        exit 1
+
+  - id: page-oncall
+    driver: human
+    on: [incident.critical]
+    emits: [page.acknowledged, page.rejected]
+    with:
+      prompt: "CRITICAL incident. Acknowledge? (ack)"
+      expect: "ack"
+      timeout: 120
+      emit_ok: page.acknowledged
+      emit_reject: page.rejected
+
+  - id: create-ticket
+    driver: http
+    on: [incident.critical, incident.minor]
+    mode: any
+    emits: [ticket.created]
+    with:
+      method: POST
+      url: "https://api.example.com/tickets"
+      json:
+        title: "Incident: ${event.payload.body.severity}"
+        severity: "${event.payload.body.severity}"
+
+  - id: run-remediation
+    driver: shell
+    on: [page.acknowledged]
+    emits: [remediation.done, remediation.failed]
+    with:
+      emit:
+        0: remediation.done
+        default: remediation.failed
+      cmd: "echo 'Running remediation playbook'"
+
+  - id: close
+    driver: shell
+    on: [remediation.done, ticket.created]
+    mode: any
+    emits: [incident.closed]
+    with:
+      cmd: "echo 'Incident closed'"
+
+  - id: escalate
+    driver: http
+    on: [page.rejected, remediation.failed]
+    mode: any
+    emits: [incident.escalated]
+    with:
+      method: POST
+      url: "https://api.example.com/escalate"
+      json:
+        message: "Incident escalation required"
