@@ -55,10 +55,10 @@ fn apply_imports_static() {
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
     apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_KEYS);
 
-    assert!(!ctx.fields.iter().any(|(n, _)| n == "import"));
-    assert!(ctx.fields.iter().any(|(n, _)| n == "name"));
-    assert!(ctx.fields.iter().any(|(n, _)| n == "host"));
-    assert!(ctx.fields.iter().any(|(n, _)| n == "port"));
+    assert!(!ctx.fields.iter().any(|(n, _)| n.as_str() == "import"));
+    assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "name"));
+    assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "host"));
+    assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "port"));
 }
 
 #[test]
@@ -91,10 +91,10 @@ fn apply_imports_data_driven() {
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
     apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_KEYS);
 
-    assert!(!ctx.fields.iter().any(|(n, _)| n == "import"));
-    assert!(ctx.fields.iter().any(|(n, _)| n == "name"));
-    assert!(ctx.fields.iter().any(|(n, _)| n == "host"));
-    assert!(ctx.fields.iter().any(|(n, _)| n == "port"));
+    assert!(!ctx.fields.iter().any(|(n, _)| n.as_str() == "import"));
+    assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "name"));
+    assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "host"));
+    assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "port"));
 }
 
 #[test]
@@ -125,9 +125,9 @@ fn apply_imports_parent_wins() {
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
     apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_KEYS);
 
-    let (_, host_schema) = ctx.fields.iter().find(|(n, _)| n == "host").unwrap();
+    let (_, host_schema) = ctx.fields.iter().find(|(n, _)| n.as_str() == "host").unwrap();
     assert_eq!(host_schema["type"], "number");
-    assert!(ctx.fields.iter().any(|(n, _)| n == "port"));
+    assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "port"));
 }
 
 #[test]

@@ -1,36 +1,38 @@
 use crate::Error;
 use ac_runtime::RuntimeValue;
+use indexmap::IndexMap;
 
 /// The execution context for a VM evaluation.
 ///
 /// A context maintains a stack of variable scopes. Each scope is
-/// an ordered list of name-value pairs. Variable lookup searches
-/// from the innermost scope outward, returning the first match.
+/// a map of name-value pairs with O(1) lookup. Variable lookup
+/// searches from the innermost scope outward, returning the first
+/// match.
 ///
 /// Scopes are pushed and popped to model function call boundaries.
 /// The bottommost scope is the global scope and is never popped.
 pub struct Context {
-    scopes: Vec<Vec<(String, RuntimeValue)>>,
+    scopes: Vec<IndexMap<String, RuntimeValue>>,
 }
 
 impl Context {
     /// Creates a new context with a single empty global scope.
     pub fn new() -> Self {
         Context {
-            scopes: vec![Vec::new()],
+            scopes: vec![IndexMap::new()],
         }
     }
 
     /// Pushes a new empty scope onto the scope stack.
     pub fn push_scope(&mut self) {
-        self.scopes.push(Vec::new());
+        self.scopes.push(IndexMap::new());
     }
 
     /// Pops the topmost scope from the stack.
     ///
     /// Returns the popped scope's entries, or `None` if only the
     /// global scope remains (the global scope cannot be popped).
-    pub fn pop_scope(&mut self) -> Option<Vec<(String, RuntimeValue)>> {
+    pub fn pop_scope(&mut self) -> Option<IndexMap<String, RuntimeValue>> {
         if self.scopes.len() > 1 {
             self.scopes.pop()
         } else {
@@ -50,12 +52,7 @@ impl Context {
     /// If a variable with the same name exists in the current
     /// scope, it is overwritten.
     pub fn define(&mut self, name: impl Into<String>, value: RuntimeValue) {
-        let name = name.into();
-        if let Some(existing) = self.scopes.last_mut().unwrap().iter_mut().find(|(k, _)| k == &name) {
-            existing.1 = value;
-        } else {
-            self.scopes.last_mut().unwrap().push((name, value));
-        }
+        self.scopes.last_mut().unwrap().insert(name.into(), value);
     }
 
     /// Looks up a variable by name, searching from the innermost
@@ -65,7 +62,7 @@ impl Context {
     /// [`Error::UnknownVariable`] if not.
     pub fn get(&self, name: &str) -> Result<RuntimeValue, Error> {
         for scope in self.scopes.iter().rev() {
-            if let Some((_, value)) = scope.iter().find(|(k, _)| k == name) {
+            if let Some(value) = scope.get(name) {
                 return Ok(value.clone());
             }
         }

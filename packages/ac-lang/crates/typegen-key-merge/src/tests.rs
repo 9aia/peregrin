@@ -18,7 +18,7 @@ fn filter_removes_named_fields() {
     let mut ctx = TypegenContext::from_schemas(&schemas);
     filter_fields(&mut ctx, &["_base".to_string()]);
     assert_eq!(ctx.fields.len(), 1);
-    assert!(ctx.fields.iter().any(|(n, _)| n == "host"));
+    assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "host"));
 }
 
 #[test]
@@ -28,7 +28,7 @@ fn strip_removes_merge_key() {
     ];
     let mut ctx = TypegenContext::from_schemas(&schemas);
     strip_key(&mut ctx);
-    let (_, schema) = &ctx.fields[0];
+    let schema = &ctx.fields["host"];
     assert!(!schema.as_object().unwrap().contains_key(KEY));
     assert_eq!(schema["type"], "string");
 }

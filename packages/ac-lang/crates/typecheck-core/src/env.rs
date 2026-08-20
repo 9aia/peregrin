@@ -63,6 +63,9 @@ impl TypeEnv {
 
     /// Collect all bindings from this scope and all parents into a map.
     /// Child bindings shadow parent bindings with the same name.
+    ///
+    /// **Warning**: This eagerly clones the entire scope chain. Prefer
+    /// [`all_bindings_iter`] when you only need to iterate.
     pub fn all_bindings(&self) -> BTreeMap<String, Type> {
         let mut result = BTreeMap::new();
         if let Some(ref parent) = self.parent {
@@ -72,6 +75,28 @@ impl TypeEnv {
             result.insert(name.clone(), ty.clone());
         }
         result
+    }
+
+    /// Iterate over all bindings from this scope and all parents.
+    ///
+    /// Child bindings shadow parent bindings with the same name —
+    /// only the innermost binding for a given name is yielded.
+    ///
+    /// Unlike [`all_bindings`], this does not clone any types.
+    pub fn all_bindings_iter(&self) -> impl Iterator<Item = (&String, &Type)> {
+        let mut seen = std::collections::HashSet::new();
+        let mut current = Some(self);
+        std::iter::from_fn(move || {
+            while let Some(env) = current {
+                for (name, ty) in &env.bindings {
+                    if seen.insert(name.as_str()) {
+                        return Some((name, ty));
+                    }
+                }
+                current = env.parent.as_deref();
+            }
+            None
+        })
     }
 }
 

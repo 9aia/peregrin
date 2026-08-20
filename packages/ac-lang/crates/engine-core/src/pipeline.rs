@@ -44,6 +44,15 @@ use crate::config::Config;
 /// Config provides the pluggable components (resolver, interpreter, backend).
 pub trait Pass {
     fn run(&self, compilation: &mut Compilation, config: &Config) -> Result<(), String>;
+
+    /// Whether this pass should run given the current compilation state.
+    ///
+    /// Default implementation always returns `true`. Override to skip
+    /// passes when their preconditions are not met (e.g., skip
+    /// `TypecheckPass` when no `expr` or `arg` keys exist).
+    fn should_run(&self, _compilation: &Compilation, _config: &Config) -> bool {
+        true
+    }
 }
 
 /// A configured pipeline — holds config + ordered passes.
@@ -66,11 +75,13 @@ impl Pipeline {
         self
     }
 
-    /// Run all passes in order.
+    /// Run all passes in order, skipping any whose `should_run` returns false.
     pub fn run(&self, source: Source) -> Result<Compilation, String> {
         let mut compilation = Compilation::new(source);
         for pass in &self.passes {
-            pass.run(&mut compilation, &self.config)?;
+            if pass.should_run(&compilation, &self.config) {
+                pass.run(&mut compilation, &self.config)?;
+            }
         }
         Ok(compilation)
     }

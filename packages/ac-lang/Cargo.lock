@@ -375,6 +375,7 @@ dependencies = [
  "ac-typegen-key-inherit",
  "ac-typegen-key-merge",
  "ac-typegen-key-mutable",
+ "indexmap",
  "serde_json",
 ]
 
@@ -382,6 +383,7 @@ dependencies = [
 name = "ac-typegen-core"
 version = "0.1.0"
 dependencies = [
+ "indexmap",
  "serde_json",
 ]
 
@@ -448,6 +450,7 @@ version = "0.1.0"
 dependencies = [
  "ac-core",
  "ac-runtime",
+ "indexmap",
 ]
 
 [[package]]

@@ -18,6 +18,8 @@
 mod parser;
 mod table;
 
+use std::collections::HashMap;
+
 pub use parser::{parse_expr, ExprAst};
 pub use table::FunctionTable;
 
@@ -30,6 +32,33 @@ use ac_typecheck_core::{is_compatible, Type, TypeEnv};
 /// unknown function or an unresolvable path).
 pub fn infer(expr: &str, env: &TypeEnv, functions: &FunctionTable) -> Type {
     let Some(ast) = parse_expr(expr) else {
+        return Type::Unknown;
+    };
+    infer_ast(&ast, env, functions)
+}
+
+/// Infer the type of an expression string, with AST caching.
+///
+/// Uses `cache` to avoid re-parsing the same expression string.
+/// The cache maps expression strings to their parsed [`ExprAst`].
+/// Pass the same `cache` across multiple `infer_cached` calls to
+/// eliminate redundant parsing.
+pub fn infer_cached(
+    expr: &str,
+    env: &TypeEnv,
+    functions: &FunctionTable,
+    cache: &mut HashMap<String, Option<ExprAst>>,
+) -> Type {
+    let ast = match cache.get(expr) {
+        Some(Some(cached)) => Some(cached.clone()),
+        Some(None) => None,
+        None => {
+            let parsed = parse_expr(expr);
+            cache.insert(expr.to_string(), parsed.clone());
+            parsed
+        }
+    };
+    let Some(ast) = ast else {
         return Type::Unknown;
     };
     infer_ast(&ast, env, functions)

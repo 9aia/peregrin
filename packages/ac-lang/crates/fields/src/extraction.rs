@@ -19,8 +19,8 @@ pub fn extract_fields(
 ) -> Result<ExtractedFields, String> {
     let mut schemas = Vec::new();
     let mut functions = Vec::new();
-    let mut data = value.clone();
 
+    // Borrow the value to extract schemas and functions, then move it into data.
     if let Some(obj) = value.as_object() {
         if let Some(fields) = obj.get("fields").and_then(|v| v.as_object()) {
             for (name, schema_val) in fields {
@@ -31,9 +31,6 @@ pub fn extract_fields(
                 }
                 schemas.push((name.clone(), schema_val.clone()));
             }
-            if let Some(data_obj) = data.as_object_mut() {
-                data_obj.remove("fields");
-            }
         }
 
         if let Some(fns) = obj.get("functions").and_then(|v| v.as_object()) {
@@ -41,55 +38,51 @@ pub fn extract_fields(
                 let sig = parse_function_signature(sig_val)?;
                 functions.push((name.clone(), sig));
             }
-            if let Some(data_obj) = data.as_object_mut() {
-                data_obj.remove("functions");
-            }
         }
     }
 
-    // Extract inheritable and immutable field names from schemas
-    let inheritable: Vec<String> = schemas
-        .iter()
-        .filter(|(_, raw)| raw.get("inheritable").and_then(|v| v.as_bool()) == Some(true))
-        .map(|(name, _)| name.clone())
-        .collect();
-    let immutable: Vec<String> = schemas
-        .iter()
-        .filter(|(_, raw)| raw.get("mutable").and_then(|v| v.as_bool()) == Some(false))
-        .map(|(name, _)| name.clone())
-        .collect();
+    // Move the value into data (no clone), then remove the `fields` and
+    // `functions` keys so data contains only the document's own values.
+    let mut data = value;
+    if let Some(data_obj) = data.as_object_mut() {
+        data_obj.remove("fields");
+        data_obj.remove("functions");
+    }
 
-    // Extract computed field expressions from schemas
-    let computed: Vec<ComputedField> = schemas
-        .iter()
-        .filter_map(|(name, raw)| {
-            raw.get("expr")
-                .and_then(|v| v.as_str())
-                .map(|s| {
-                    let arg = raw.get("arg").and_then(|v| {
-                        if v.is_boolean() && v.as_bool() == Some(true) {
-                            Some(ArgSpec::Untyped)
-                        } else if v.is_object() {
-                            Some(ArgSpec::Typed(v.clone()))
-                        } else {
-                            None
-                        }
-                    });
-                    ComputedField {
-                        name: name.clone(),
-                        expr: s.to_string(),
-                        arg,
-                    }
-                })
-        })
-        .collect();
+    // Single-pass extraction of inheritable, immutable, computed, and merge
+    // field metadata from schemas.
+    let mut inheritable = Vec::new();
+    let mut immutable = Vec::new();
+    let mut computed = Vec::new();
+    let mut merge = Vec::new();
 
-    // Extract merge field names from schemas
-    let merge: Vec<String> = schemas
-        .iter()
-        .filter(|(_, raw)| raw.get("merge").and_then(|v| v.as_bool()) == Some(true))
-        .map(|(name, _)| name.clone())
-        .collect();
+    for (name, raw) in &schemas {
+        if raw.get("inheritable").and_then(|v| v.as_bool()) == Some(true) {
+            inheritable.push(name.clone());
+        }
+        if raw.get("mutable").and_then(|v| v.as_bool()) == Some(false) {
+            immutable.push(name.clone());
+        }
+        if let Some(expr_str) = raw.get("expr").and_then(|v| v.as_str()) {
+            let arg = raw.get("arg").and_then(|v| {
+                if v.is_boolean() && v.as_bool() == Some(true) {
+                    Some(ArgSpec::Untyped)
+                } else if v.is_object() {
+                    Some(ArgSpec::Typed(v.clone()))
+                } else {
+                    None
+                }
+            });
+            computed.push(ComputedField {
+                name: name.clone(),
+                expr: expr_str.to_string(),
+                arg,
+            });
+        }
+        if raw.get("merge").and_then(|v| v.as_bool()) == Some(true) {
+            merge.push(name.clone());
+        }
+    }
 
     Ok(ExtractedFields { schemas, functions, data, inheritable, immutable, computed, merge })
 }

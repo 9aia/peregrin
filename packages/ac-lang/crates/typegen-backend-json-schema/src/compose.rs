@@ -1,3 +1,4 @@
+use indexmap::IndexMap;
 use serde_json::{json, Value as JsonValue};
 
 /// Compose a root JSON Schema from clean field schema fragments.
@@ -8,7 +9,7 @@ use serde_json::{json, Value as JsonValue};
 /// - `type: object`
 /// - `properties` built from the fragments
 /// - `additionalProperties: false`
-pub fn compose_schema(fields: &[(String, JsonValue)]) -> JsonValue {
+pub fn compose_schema(fields: &IndexMap<String, JsonValue>) -> JsonValue {
     let mut properties = serde_json::Map::new();
     for (name, schema) in fields {
         properties.insert(name.clone(), schema.clone());

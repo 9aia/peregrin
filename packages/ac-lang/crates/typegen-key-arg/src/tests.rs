@@ -16,7 +16,7 @@ fn strip_removes_arg_key() {
     ];
     let mut ctx = TypegenContext::from_schemas(&schemas);
     strip_key(&mut ctx);
-    let (_, schema) = &ctx.fields[0];
+    let schema = &ctx.fields["host"];
     assert!(!schema.as_object().unwrap().contains_key(KEY));
     assert_eq!(schema["type"], "string");
 }

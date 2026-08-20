@@ -10,6 +10,10 @@ use ac_engine_core::{Compilation, Config, Pass};
 pub struct TypecheckPass;
 
 impl Pass for TypecheckPass {
+    fn should_run(&self, compilation: &Compilation, _config: &Config) -> bool {
+        compilation.extracted.is_some()
+    }
+
     fn run(&self, compilation: &mut Compilation, config: &Config) -> Result<(), String> {
         let extracted = compilation
             .extracted
@@ -37,6 +41,15 @@ impl Pass for TypecheckPass {
         let function_table =
             ac_typecheck_infer::FunctionTable::from_signatures(&fn_sigs, interpreter);
 
+        let inheritable_schemas: Vec<(String, serde_json::Value)> = extracted
+            .schemas
+            .iter()
+            .filter(|(name, _)| extracted.inheritable.contains(name))
+            .cloned()
+            .collect();
+
+        let base = compilation.source.base_path();
+
         let mut errors = Vec::new();
 
         errors.extend(ac_typecheck_key_expr::check(
@@ -57,12 +70,6 @@ impl Pass for TypecheckPass {
             &env,
         ));
 
-        let inheritable_schemas: Vec<(String, serde_json::Value)> = extracted
-            .schemas
-            .iter()
-            .filter(|(name, _)| extracted.inheritable.contains(name))
-            .cloned()
-            .collect();
         errors.extend(ac_typecheck_key_inherit::check(
             &inheritable_schemas,
             &data,
@@ -74,7 +81,6 @@ impl Pass for TypecheckPass {
             &data,
         ));
 
-        let base = compilation.source.base_path();
         errors.extend(ac_typecheck_import::check_imports(
             &extracted.schemas,
             &extracted.merge,

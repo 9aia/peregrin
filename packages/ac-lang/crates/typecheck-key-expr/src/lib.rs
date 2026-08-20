@@ -9,8 +9,10 @@
 //!
 //! > **The inferred type must be compatible with the declared type.**
 
+use std::collections::HashMap;
+
 use ac_typecheck_core::{is_compatible, SchemaInterpreter, TypeEnv, TypeError};
-use ac_typecheck_infer::{infer, FunctionTable};
+use ac_typecheck_infer::{infer_cached, FunctionTable};
 use serde_json::Value as JsonValue;
 
 /// The AC key this crate handles.
@@ -38,7 +40,43 @@ pub fn check_field(
     };
 
     let declared = interpreter.interpret(schema);
-    let inferred = infer(&expr_str, env, functions);
+    let mut cache = HashMap::new();
+    let inferred = infer_cached(&expr_str, env, functions, &mut cache);
+
+    if inferred.is_unknown() {
+        return Ok(());
+    }
+
+    if !is_compatible(&inferred, &declared) {
+        return Err(TypeError::mismatch(
+            field_name,
+            declared,
+            inferred,
+            "",
+        ));
+    }
+
+    Ok(())
+}
+
+/// Check a single field's `expr` with an AST cache.
+///
+/// Like [`check_field`] but reuses a parse cache across multiple calls
+/// to avoid re-parsing the same expression strings.
+pub fn check_field_cached(
+    field_name: &str,
+    schema: &JsonValue,
+    env: &TypeEnv,
+    functions: &FunctionTable,
+    interpreter: &dyn SchemaInterpreter,
+    cache: &mut HashMap<String, Option<ac_typecheck_infer::ExprAst>>,
+) -> Result<(), TypeError> {
+    let Some(expr_str) = get_expr(schema) else {
+        return Ok(());
+    };
+
+    let declared = interpreter.interpret(schema);
+    let inferred = infer_cached(&expr_str, env, functions, cache);
 
     if inferred.is_unknown() {
         return Ok(());
@@ -67,8 +105,9 @@ pub fn check(
     interpreter: &dyn SchemaInterpreter,
 ) -> Vec<TypeError> {
     let mut errors = Vec::new();
+    let mut cache: HashMap<String, Option<ac_typecheck_infer::ExprAst>> = HashMap::new();
     for (name, schema) in schemas {
-        if let Err(e) = check_field(name, schema, env, functions, interpreter) {
+        if let Err(e) = check_field_cached(name, schema, env, functions, interpreter, &mut cache) {
             errors.push(e);
         }
     }

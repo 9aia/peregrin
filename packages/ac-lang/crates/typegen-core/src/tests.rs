@@ -75,8 +75,8 @@ fn from_schemas_clones_raw() {
     ];
     let ctx = TypegenContext::from_schemas(&schemas);
     assert_eq!(ctx.fields.len(), 1);
-    assert_eq!(ctx.fields[0].1["type"], "string");
-    assert_eq!(ctx.fields[0].1["expr"], "x");
+    assert_eq!(ctx.fields["host"]["type"], "string");
+    assert_eq!(ctx.fields["host"]["expr"], "x");
 }
 
 #[test]
@@ -89,7 +89,7 @@ fn remove_fields_excludes_named() {
     let mut ctx = TypegenContext::from_schemas(&schemas);
     ctx.remove_fields(&["_base".to_string()]);
     assert_eq!(ctx.fields.len(), 2);
-    assert!(!ctx.fields.iter().any(|(n, _)| n == "_base"));
+    assert!(!ctx.fields.contains_key("_base"));
 }
 
 #[test]
@@ -101,11 +101,11 @@ fn ctx_strip_keys_strips_all_fields() {
     let mut ctx = TypegenContext::from_schemas(&schemas);
     ctx.strip_keys(&["expr", "arg", "inheritable"]);
 
-    let host = &ctx.fields.iter().find(|(n, _)| n == "host").unwrap().1;
+    let host = &ctx.fields["host"];
     assert!(!host.as_object().unwrap().contains_key("expr"));
     assert!(!host.as_object().unwrap().contains_key("arg"));
 
-    let port = &ctx.fields.iter().find(|(n, _)| n == "port").unwrap().1;
+    let port = &ctx.fields["port"];
     assert!(!port.as_object().unwrap().contains_key("inheritable"));
 }
 
@@ -122,7 +122,7 @@ fn merge_fields_parent_wins() {
     ];
     ctx.merge_fields(&imported);
 
-    let (_, host_schema) = ctx.fields.iter().find(|(n, _)| n == "host").unwrap();
+    let host_schema = &ctx.fields["host"];
     assert_eq!(host_schema["type"], "number");
-    assert!(ctx.fields.iter().any(|(n, _)| n == "port"));
+    assert!(ctx.fields.contains_key("port"));
 }

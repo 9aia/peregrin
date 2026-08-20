@@ -65,7 +65,7 @@ port: 8080
     assert!(compilation.typegen_ctx.is_some());
     let ctx = compilation.typegen_ctx.unwrap();
     // After stripping, the schemas should not contain AC keys
-    let host_schema = ctx.fields.iter().find(|(n, _)| n == "host");
+    let host_schema = ctx.fields.iter().find(|(n, _)| n.as_str() == "host");
     assert!(host_schema.is_some());
     let (_, host) = host_schema.unwrap();
     assert!(host.get("mutable").is_none());
@@ -88,6 +88,6 @@ host: override.com
     assert!(compilation.typegen_ctx.is_some());
     let ctx = compilation.typegen_ctx.unwrap();
     // _base should be filtered out from schemas
-    let base = ctx.fields.iter().find(|(n, _)| n == "_base");
+    let base = ctx.fields.iter().find(|(n, _)| n.as_str() == "_base");
     assert!(base.is_none());
 }

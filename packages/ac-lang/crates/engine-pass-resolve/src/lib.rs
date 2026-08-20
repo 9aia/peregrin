@@ -13,6 +13,10 @@ use ac_engine_core::{Compilation, Config, Pass};
 pub struct ResolvePass;
 
 impl Pass for ResolvePass {
+    fn should_run(&self, compilation: &Compilation, _config: &Config) -> bool {
+        compilation.extracted.is_some()
+    }
+
     fn run(&self, compilation: &mut Compilation, config: &Config) -> Result<(), String> {
         let extracted = compilation
             .extracted
@@ -27,7 +31,7 @@ impl Pass for ResolvePass {
             ac_typegen_key_arg::KEY,
         ];
 
-        let data = extracted.data.inner().clone();
+        let data = extracted.data.inner();
 
         let mut ctx = ac_typegen_core::TypegenContext::from_schemas(&extracted.schemas);
         ac_typegen_key_merge::filter_fields(&mut ctx, &extracted.merge);
@@ -38,7 +42,7 @@ impl Pass for ResolvePass {
             &mut ctx,
             &extracted.schemas,
             &extracted.merge,
-            &data,
+            data,
             config.resolver.as_ref(),
             base.as_deref(),
             ac_keys,

@@ -13,6 +13,8 @@ AC is a configuration and expression language built around three orthogonal axes
 
 A document can describe its own structure (`fields:`), declare function signatures (`functions:`), and interpolate values (`${...}`) — all validated by the same schema system.
 
+The language also provides compile-time tooling: a **type system** for static type checking, a **type generation** pipeline that produces JSON Schema from field declarations, and a **module resolution** system for importing external documents. These are composed via a pluggable **engine pipeline** with passes for parsing, extraction, resolution, type checking, and generation.
+
 ### Design principles
 
 1. **Core is dependency-free.** The core module defines expression trees and field bindings with zero external dependencies.
@@ -20,6 +22,8 @@ A document can describe its own structure (`fields:`), declare function signatur
 3. **Schemas are pluggable.** Any validation system can implement the schema interface. JSON Schema is one implementation, not the abstraction.
 4. **Functions are host-provided.** The VM has no built-in functions. All capabilities come from the host.
 5. **Interpolation is domain logic.** Field extraction, interpolation, and function call resolution live in the fields module, not CLI plumbing.
+6. **AC keys are isolated.** Each AC-specific key (`expr`, `arg`, `merge`, `inheritable`, `mutable`) has its own crate for type checking and type generation. The core type system and typegen context have no knowledge of AC keys.
+7. **Pipeline is composable.** The engine pipeline is a sequence of stateless passes. Custom passes (linting, optimization, JIT) slot in without core changes.
 
 ### Naming: "fields" not "keys"
 
@@ -32,27 +36,93 @@ The reserved `fields:` key declares typed, validated members of a document. The 
 
 ## 2. Architecture
 
-### Module responsibilities
+The workspace is organized into five layers, each building on the one below. No layer depends on a layer above it.
 
-| Module            | Responsibility                                                                         | Dependencies          |
-| ----------------- | -------------------------------------------------------------------------------------- | --------------------- |
-| **core**          | Expression trees and field bindings — generic, no external dependencies                | None                  |
-| **runtime**       | Concrete value type and frontend interface                                             | core                  |
-| **vm**            | Execution engine, host interface, execution context, errors                            | core, runtime         |
-| **schema**        | Abstract schema interface and validation error                                         | None                  |
-| **schema-json**   | JSON Schema implementation of the schema interface                                     | schema, runtime       |
-| **fields**        | Field extraction, interpolation, computed fields, function call resolution, validation | core, runtime, schema |
-| **frontend-json** | JSON frontend                                                                          | runtime               |
-| **frontend-yaml** | YAML frontend                                                                          | runtime               |
-| **frontend-toml** | TOML frontend                                                                          | runtime               |
-| **cli**           | `ac` CLI binary — parse, evaluate, validate, fields                                    | all of the above      |
+```
+Layer 5 — CLI                     ac-cli
+Layer 4 — Engine pipeline         ac-engine, ac-engine-core, ac-engine-pass-*
+Layer 3 — Type system & generation ac-typecheck-*, ac-typegen-*, ac-resolver-*
+Layer 2 — Domain logic            ac-fields, ac-host, ac-frontend
+Layer 1 — Core                    ac-core, ac-runtime, ac-vm, ac-schema, ac-schema-json, ac-frontend-*
+```
+
+### Crate inventory
+
+#### Layer 1 — Core
+
+| Crate             | Responsibility                                               | Dependencies    |
+| ----------------- | ------------------------------------------------------------ | --------------- |
+| **core**          | `Expr<V>`, `Field<V>` — generic, zero external dependencies  | None            |
+| **runtime**       | `RuntimeValue` (wraps `serde_json::Value`), `Frontend` trait | core            |
+| **vm**            | `Vm<H>`, `Host`, `Function`, `Context`, `Error`              | core, runtime   |
+| **schema**        | `Schema<V>` trait, `ValidationError` — zero dependencies     | None            |
+| **schema-json**   | `JsonSchema` — JSON Schema implementation of `Schema<V>`     | schema, runtime |
+| **frontend-json** | JSON parse/serialize → `RuntimeValue`                        | runtime         |
+| **frontend-yaml** | YAML parse/serialize → `RuntimeValue`                        | runtime         |
+| **frontend-toml** | TOML parse/serialize → `RuntimeValue`                        | runtime         |
+
+#### Layer 2 — Domain logic
+
+| Crate        | Responsibility                                                             | Dependencies                     |
+| ------------ | -------------------------------------------------------------------------- | -------------------------------- |
+| **fields**   | Field extraction, interpolation, computed fields, merge, scope, validation | core, runtime, schema            |
+| **host**     | `DefaultHost` with `Add`, `Mul`, `Concat`, `Len` primitives                | runtime, vm                      |
+| **frontend** | `frontend_for()` factory — maps format names to `Frontend` impls           | runtime, frontend-json/yaml/toml |
+
+#### Layer 3 — Type system, type generation, module resolution
+
+| Crate                           | Responsibility                                                                       | Dependencies                                        |
+| ------------------------------- | ------------------------------------------------------------------------------------ | --------------------------------------------------- |
+| **typecheck-core**              | `Type`, `FunctionType`, `TypeEnv`, `TypeError`, `SchemaInterpreter`, `is_compatible` | None (uses serde_json)                              |
+| **typecheck-infer**             | Expression type inference: `infer()`, `FunctionTable`, `ExprAst`, `parse_expr()`     | typecheck-core                                      |
+| **typecheck-schema-json**       | `JsonSchemaInterpreter` — JSON Schema → `Type` mapping                               | typecheck-core                                      |
+| **typecheck-key-expr**          | Typecheck `expr` key — inferred type vs declared type                                | typecheck-core, typecheck-infer                     |
+| **typecheck-key-arg**           | Typecheck `arg` key — arg type vs declared type                                      | typecheck-core                                      |
+| **typecheck-key-merge**         | Typecheck `merge` key — merge fields must be objects, props compatible               | typecheck-core                                      |
+| **typecheck-key-inherit**       | Typecheck `inheritable` key — override types compatible with parent                  | typecheck-core                                      |
+| **typecheck-key-mutable**       | Typecheck `mutable` key — immutable fields not overridden                            | typecheck-core                                      |
+| **typecheck-import**            | Cross-module type checking via `ModuleResolver`                                      | typecheck-core, resolver-core                       |
+| **typegen-core**                | `TypegenContext`, `TypegenBackend` trait, `strip_keys`                               | None (uses serde_json, indexmap)                    |
+| **typegen-key-merge**           | Filter merge fields from output, strip `merge` key                                   | typegen-core                                        |
+| **typegen-key-inherit**         | Strip `inheritable` key from schemas                                                 | typegen-core                                        |
+| **typegen-key-mutable**         | Strip `mutable` key from schemas                                                     | typegen-core                                        |
+| **typegen-key-expr**            | Strip `expr` key, read expr values for import detection                              | typegen-core                                        |
+| **typegen-key-arg**             | Strip `arg` key from schemas                                                         | typegen-core                                        |
+| **typegen-import**              | Follow `import()` expressions, merge imported schemas into context                   | typegen-core, typegen-key-merge/expr, resolver-core |
+| **typegen-backend-json-schema** | `JsonSchemaBackend` — produces JSON Schema (draft-07) from clean fragments           | typegen-core                                        |
+| **resolver-core**               | `ModuleResolver` trait, `ResolvedModule`, `CachingResolver` wrapper                  | None (uses serde_json)                              |
+| **resolver-file**               | `FileResolver` — filesystem-based module loading                                     | resolver-core, fields, frontend-*                   |
+| **resolver-virtual**            | `VirtualResolver` — in-memory module loading (for tests)                             | resolver-core, fields, frontend-yaml                |
+
+#### Layer 4 — Engine pipeline
+
+| Crate                     | Responsibility                                                                                 | Dependencies                                                                                                    |
+| ------------------------- | ---------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| **engine-core**           | `Compilation`, `Source`, `Config`, `Pass` trait, `Pipeline` builder                            | fields, runtime, typecheck-core, typegen-core                                                                   |
+| **engine-pass-parse**     | `ParsePass` — parse source text into `RuntimeValue`                                            | engine-core, frontend                                                                                           |
+| **engine-pass-extract**   | `ExtractPass` — extract fields, functions, data from parsed document                           | engine-core, fields                                                                                             |
+| **engine-pass-resolve**   | `ResolvePass` — resolve imports, build `TypegenContext`                                        | engine-core, typegen-core, typegen-key-*, typegen-import                                                        |
+| **engine-pass-typecheck** | `TypecheckPass` — typecheck all AC keys and cross-module imports                               | engine-core, typecheck-core, typecheck-*, resolver-core                                                         |
+| **engine-pass-generate**  | `GeneratePass` — generate output from resolved `TypegenContext`                                | engine-core, typegen-core                                                                                       |
+| **engine**                | Preset pipelines + non-pipeline operations (parse, eval, validate, fields, typegen, typecheck) | engine-core, all pass crates, host, frontend, resolver-file, typecheck-schema-json, typegen-backend-json-schema |
+| **engine-tests**          | Integration tests for the full pipeline                                                        | engine                                                                                                          |
+
+#### Layer 5 — CLI
+
+| Crate   | Responsibility                                    | Dependencies |
+| ------- | ------------------------------------------------- | ------------ |
+| **cli** | `ac` CLI binary — thin wrapper around `ac-engine` | engine, clap |
 
 ### Dependency constraints
 
 - **core** and **schema** have zero external dependencies.
-- **runtime** is the only module that couples to a JSON value library.
+- **runtime** is the only crate that couples to a JSON value library for values.
 - **fields** does not depend on **vm** — the caller bridges the two via a function resolver interface.
-- All other modules depend on one or both of the core modules.
+- **typecheck-core** and **typegen-core** have no knowledge of AC-specific keys (`expr`, `arg`, `merge`, `inheritable`, `mutable`). Each key has its own crate.
+- **resolver-core** defines the `ModuleResolver` trait; implementations (`resolver-file`, `resolver-virtual`) do the I/O.
+- **engine-core** is pass-agnostic — it defines the `Pass` trait and `Pipeline` builder but depends on no pass crates.
+- **engine** depends on all pass crates and provides preset pipelines.
+- **cli** depends only on **engine** — all logic lives in the engine.
 
 ## 3. Core types
 
@@ -164,13 +234,17 @@ A frontend parses a text input into a `RuntimeValue` and serializes a `RuntimeVa
 
 ### 7.2 Built-in frontends
 
-| Module          | Format |
+| Crate           | Format |
 | --------------- | ------ |
 | `frontend-json` | JSON   |
 | `frontend-yaml` | YAML   |
 | `frontend-toml` | TOML   |
 
-Adding a new format (XML, INI, etc.) requires only implementing the frontend interface. The core, VM, and schema system are unaffected.
+### 7.3 Frontend factory
+
+The `frontend` crate provides a `frontend_for(format)` function that returns a boxed `Frontend` for the requested format name. Supported formats: `yaml`/`yml`, `json`, `toml`. This crate is interface-agnostic — usable from CLI, MCP, or any consumer that needs to parse/serialize AC documents.
+
+Adding a new format (XML, INI, etc.) requires only implementing the frontend interface and adding a match arm to `frontend_for`. The core, VM, and schema system are unaffected.
 
 ## 8. Fields system
 
@@ -390,32 +464,255 @@ Computation evaluates each field's expression and inserts the result into the da
 
 If a computed field is also present in the data, the `expr:` value takes precedence.
 
-## 9. CLI
+## 9. Type system
 
-### 9.1 Commands
+The type system provides static type checking of AC documents before runtime evaluation. It is schema-system-agnostic — the `SchemaInterpreter` trait converts any schema language's vocabulary into a neutral `Type` enum.
+
+### 9.1 Type representation
+
+| Variant    | Meaning                                                      |
+| ---------- | ------------------------------------------------------------ |
+| `String`   | String type                                                  |
+| `Number`   | Number type (includes integers — no integer subtyping yet)   |
+| `Boolean`  | Boolean type                                                 |
+| `Null`     | Null type                                                    |
+| `Array(T)` | Array with element type `T`                                  |
+| `Object`   | Object with named property types (`BTreeMap<String, Type>`)  |
+| `Function` | Function type — parameter names/types and return type        |
+| `Unknown`  | Cannot be statically determined — compatible with everything |
+| `Never`    | Impossible code path — compatible with everything            |
+
+`Unknown` represents types that cannot be statically determined (e.g., an unresolvable path or unknown function). `Never` represents uninhabited code paths. Both are compatible with all other types.
+
+### 9.2 Type environment
+
+`TypeEnv` maps field names to their declared types. It supports scope chaining for inheritance: a child scope inherits all bindings from its parent and can override individual fields. Lookups walk the chain from child to parent.
+
+### 9.3 Schema interpreter
+
+The `SchemaInterpreter` trait converts a raw schema fragment into a `Type`. Each schema language implements this trait:
+
+- `JsonSchemaInterpreter` (in `typecheck-schema-json`) — maps JSON Schema `type` keywords to `Type` values. Handles `string`, `number`/`integer`, `boolean`, `null`, `array` (with `items`), `object` (with `properties`), and `enum` (infers type from first enum value).
+
+### 9.4 Expression type inference
+
+The `typecheck-infer` crate parses expression strings (same syntax as `${...}` and `expr:` fields) and infers their static type given a `TypeEnv` and `FunctionTable`.
+
+**Expression AST:**
+
+| Variant   | Form               | Example                                    |
+| --------- | ------------------ | ------------------------------------------ |
+| `Literal` | Typed literal      | `"hello"`, `42`, `true`, `null`            |
+| `Path`    | Dotted path lookup | `doc.name`, `env.HOME`, `name` (shorthand) |
+| `Call`    | Function call      | `add(1, 2)`, `mul(x, 2)`                   |
+
+Inference walks the AST:
+
+- **Literal** → the literal's type.
+- **Path** → looks up the first segment in `TypeEnv`; if not found, tries `doc` namespace shorthand. Walks remaining segments into object types.
+- **Call** → looks up the function in `FunctionTable`, infers argument types, checks compatibility with param types, and returns the function's return type. Returns `Unknown` if the function is not found or argument counts mismatch.
+
+A `FunctionTable` maps function names to `FunctionType`s, built from declared function signatures via the `SchemaInterpreter`.
+
+### 9.5 Type compatibility
+
+`is_compatible(actual, expected)` checks whether `actual` can be used where `expected` is required:
+
+- `Unknown` is compatible with anything (both directions).
+- `Never` is compatible with anything (both directions).
+- Exact primitive matches are compatible.
+- `Array<T>` is compatible if item types are compatible.
+- `Object` is compatible if every expected property exists with a compatible type. Extra properties in `actual` are allowed.
+- `Function` is compatible if param count matches and all param/return types are compatible.
+
+### 9.6 Per-key type checking
+
+Each AC-specific key has its own typecheck crate. The `TypecheckPass` orchestrator composes them:
+
+| Crate                   | Key           | Check                                                              |
+| ----------------------- | ------------- | ------------------------------------------------------------------ |
+| `typecheck-key-expr`    | `expr`        | Inferred expression type must be compatible with declared type     |
+| `typecheck-key-arg`     | `arg`         | Arg type must be compatible with field's declared type             |
+| `typecheck-key-merge`   | `merge`       | Merge fields must be `object`; merged props compatible with parent |
+| `typecheck-key-inherit` | `inheritable` | Override values in nested data must be type-compatible with root   |
+| `typecheck-key-mutable` | `mutable`     | Immutable fields (`mutable: false`) must not be overridden         |
+| `typecheck-import`      | `import()`    | Imported field types must be compatible with parent scope          |
+
+All checks return `Vec<TypeError>`. Errors carry the field name, expected/actual types (if known), a human-readable message, and a dotted path to the location within the document.
+
+### 9.7 Type errors
+
+A `TypeError` carries:
+
+- **field** — the field name where the error was detected.
+- **expected** — the expected type, if known.
+- **actual** — the actual (inferred) type, if known.
+- **message** — human-readable explanation.
+- **path** — dotted path to the location within the document (e.g., `config.server`).
+
+## 10. Type generation
+
+Type generation produces clean schema output from field declarations. It strips AC-specific keys (`expr`, `arg`, `merge`, `inheritable`, `mutable`), resolves imports, and emits a schema document via a pluggable backend.
+
+### 10.1 Typegen context
+
+`TypegenContext` holds field name → schema fragment pairs. It is built from raw schemas and then processed by AC-key crates:
+
+1. **Filter merge fields** — merge fields are excluded from output (they're spread and removed at runtime).
+2. **Strip AC keys** — `expr`, `arg`, `merge`, `inheritable`, `mutable` are removed from all field schemas.
+3. **Merge imports** — imported module schemas are merged in (parent wins — existing fields are not overwritten).
+
+### 10.2 Per-key typegen crates
+
+Each AC key has a typegen crate that either filters or strips the key:
+
+| Crate                 | Key           | Action                                                      |
+| --------------------- | ------------- | ----------------------------------------------------------- |
+| `typegen-key-merge`   | `merge`       | Filter merge fields from context; strip `merge` key         |
+| `typegen-key-inherit` | `inheritable` | Strip `inheritable` key from all schemas                    |
+| `typegen-key-mutable` | `mutable`     | Strip `mutable` key from all schemas                        |
+| `typegen-key-expr`    | `expr`        | Strip `expr` key; provide `get_expr()` for import detection |
+| `typegen-key-arg`     | `arg`         | Strip `arg` key from all schemas                            |
+
+### 10.3 Import resolution for typegen
+
+The `typegen-import` crate follows `import()` expressions in merge fields, resolves them via a `ModuleResolver`, and merges imported schemas into the parent context. It detects both static paths (`import('path')`) and data-driven paths (`import(arg)`). Imported schemas are filtered (merge fields removed) and stripped (AC keys removed) before merging.
+
+### 10.4 Typegen backend
+
+The `TypegenBackend` trait produces output from a `TypegenContext`:
+
+| Implementation      | Output      | Extension      |
+| ------------------- | ----------- | -------------- |
+| `JsonSchemaBackend` | JSON Schema | `.schema.json` |
+
+The backend also provides an IDE hint comment (e.g., `# yaml-language-server: $schema=<path>`) for editor integration and a file extension for emitted files.
+
+Future backends: TypeScript `.d.ts`, Rust structs, Python `TypedDict`.
+
+## 11. Module resolution
+
+Module resolution abstracts how `import()` paths are loaded. The `ModuleResolver` trait in `resolver-core` defines the interface; implementations do the I/O.
+
+### 11.1 Module resolver interface
+
+A `ModuleResolver` resolves a module path (relative to an optional base path) and returns a `ResolvedModule` containing:
+
+- **schemas** — field name → raw schema fragment pairs (AC keys still present).
+- **merge** — field names marked `merge: true` in the imported module.
+- **data** — the document's data values.
+- **base_path** — base path for resolving nested imports from this module.
+
+### 11.2 Caching resolver
+
+`CachingResolver<R>` wraps any `ModuleResolver` with memoization. Subsequent calls with the same `(path, base)` key return a cached clone without re-invoking the inner resolver. This eliminates redundant disk I/O, parsing, and field extraction for repeated imports — including when `ResolvePass` and `TypecheckPass` both resolve the same import graph.
+
+### 11.3 Implementations
+
+| Crate              | Implementation    | I/O                         |
+| ------------------ | ----------------- | --------------------------- |
+| `resolver-file`    | `FileResolver`    | `std::fs` — reads from disk |
+| `resolver-virtual` | `VirtualResolver` | In-memory `HashMap`         |
+
+`FileResolver` auto-detects format by file extension (YAML/JSON/TOML), parses, and extracts fields. `VirtualResolver` stores pre-parsed documents in memory — ideal for tests and embedded scenarios.
+
+Future implementations: `resolver-git`, `resolver-http`.
+
+## 12. Engine pipeline
+
+The engine provides a composable pipeline for compile-time operations: parsing, field extraction, import resolution, type checking, and type generation. The pipeline is a sequence of stateless `Pass`es that run in order, each receiving `&mut Compilation` and `&Config`.
+
+### 12.1 Compilation
+
+A `Compilation` flows through the pipeline, accumulating state as each pass runs:
+
+| Field         | Populated by     | Type                             |
+| ------------- | ---------------- | -------------------------------- |
+| `source`      | Created at start | `Source` (input + format + path) |
+| `parsed`      | `ParsePass`      | `Option<RuntimeValue>`           |
+| `extracted`   | `ExtractPass`    | `Option<ExtractedFields>`        |
+| `typegen_ctx` | `ResolvePass`    | `Option<TypegenContext>`         |
+| `type_errors` | `TypecheckPass`  | `Vec<TypeError>`                 |
+| `output`      | `GeneratePass`   | `Option<JsonValue>`              |
+
+### 12.2 Configuration
+
+`Config` holds the pluggable components as trait objects:
+
+- **resolver** — `Box<dyn ModuleResolver>` — how modules are loaded.
+- **interpreter** — `Box<dyn SchemaInterpreter>` — how schema fragments become types.
+- **backend** — `Option<Box<dyn TypegenBackend>>` — how types are emitted (optional for typecheck-only runs).
+
+The `engine` crate provides default configurations:
+
+- `default_cli_config()` — `FileResolver` + `JsonSchemaInterpreter` + `JsonSchemaBackend`.
+- `typecheck_only_config()` — `FileResolver` + `JsonSchemaInterpreter` + no backend.
+
+### 12.3 Pass trait
+
+Each pass implements `Pass`:
+
+```rust
+pub trait Pass {
+    fn run(&self, compilation: &mut Compilation, config: &Config) -> Result<(), String>;
+    fn should_run(&self, _compilation: &Compilation, _config: &Config) -> bool { true }
+}
+```
+
+`should_run` allows passes to skip when their preconditions are not met (e.g., skip `TypecheckPass` when no `expr` or `arg` keys exist). Custom passes (linting, optimization, JIT) implement `Pass` and slot into the pipeline without core changes.
+
+### 12.4 Built-in passes
+
+| Pass            | Crate                   | Input → Output                              |
+| --------------- | ----------------------- | ------------------------------------------- |
+| `ParsePass`     | `engine-pass-parse`     | source text → `parsed: RuntimeValue`        |
+| `ExtractPass`   | `engine-pass-extract`   | `parsed` → `extracted: ExtractedFields`     |
+| `ResolvePass`   | `engine-pass-resolve`   | `extracted` → `typegen_ctx: TypegenContext` |
+| `TypecheckPass` | `engine-pass-typecheck` | `extracted` → `type_errors: Vec<TypeError>` |
+| `GeneratePass`  | `engine-pass-generate`  | `typegen_ctx` → `output: JsonValue`         |
+
+### 12.5 Preset pipelines
+
+The `engine` crate provides preset pipelines:
+
+| Preset      | Passes                                           | Use case                           |
+| ----------- | ------------------------------------------------ | ---------------------------------- |
+| `typegen`   | parse → extract → resolve → generate             | Generate JSON Schema from fields   |
+| `typecheck` | parse → extract → typecheck                      | Static type checking               |
+| `full`      | parse → extract → resolve → typecheck → generate | Type safety before code generation |
+
+### 12.6 Non-pipeline operations
+
+`parse`, `eval`, `validate`, and `fields` have their own entry points in the `engine` crate — they don't need the pipeline. These are runtime operations that use the VM, host, and fields module directly.
+
+## 13. CLI
+
+### 13.1 Commands
 
 ```
-ac parse    --input <file> --format <yaml|json|toml>
-ac eval     --input <file> --format <yaml|json|toml> --output <yaml|json|toml>
-ac validate --input <file> --format <yaml|json|toml> --schema <schema.json>
-ac fields   --input <file> --format <yaml|json|toml>
+ac parse      --input <file> --format <yaml|json|toml>
+ac eval       --input <file> --format <yaml|json|toml> --output <yaml|json|toml>
+ac validate   --input <file> --format <yaml|json|toml> --schema <schema.json>
+ac fields     --input <file> --format <yaml|json|toml>
+ac typegen    --input <file> --format <yaml|json|toml> [--stdout] [--output-dir <dir>]
+ac typecheck  --input <file> --format <yaml|json|toml>
 ```
 
-If `--input` is omitted, reads from stdin.
+If `--input` is omitted, reads from stdin (except `typegen` which requires `--input`).
 
-### 9.2 `parse`
+### 13.2 `parse`
 
 Parses input in the specified format, outputs as YAML.
 
-### 9.3 `eval`
+### 13.3 `eval`
 
 Parses input, evaluates as an expression tree, outputs the result in the specified output format. If the input is an object, each key is defined as a variable in the execution context.
 
-### 9.4 `validate`
+### 13.4 `validate`
 
 Parses input, validates against an external JSON Schema file. Outputs `valid` or `invalid: <error>`.
 
-### 9.5 `fields`
+### 13.5 `fields`
 
 Processes a self-describing document:
 
@@ -423,10 +720,26 @@ Processes a self-describing document:
 2. **Build** namespaces (`doc` from data, `env` from environment).
 3. **Interpolate** `${...}` patterns in all data values (path lookups + function calls).
 4. **Compute** fields with `expr:` key (after interpolation, multiple passes for dependencies).
-5. **Validate** each field against its declared schema.
-6. **Report** undeclared fields.
+5. **Merge** fields with `merge: true` (spread computed object into parent, remove field).
+6. **Validate** each field against its declared schema.
+7. **Report** undeclared fields and immutability violations.
 
-### 9.6 Built-in host functions
+### 13.6 `typegen`
+
+Generates type definitions from `fields:` declarations. Runs the typegen pipeline (parse → extract → resolve → generate) and writes JSON Schema output.
+
+Options:
+
+- `--stdout` — print schema to stdout instead of writing files.
+- `--output-dir <dir>` — output directory for generated schema files (default: `.ac/generated/schemas`).
+
+When writing to disk, also injects an IDE hint comment into the source file (e.g., `# yaml-language-server: $schema=<path>`) for editor integration.
+
+### 13.7 `typecheck`
+
+Static type checking of `fields:` declarations. Runs the typecheck pipeline (parse → extract → typecheck) and reports any type errors. Outputs `ok` or a list of type errors with field names, expected/actual types, and paths.
+
+### 13.8 Built-in host functions
 
 The CLI provides these functions via its default host:
 
@@ -438,7 +751,9 @@ The CLI provides these functions via its default host:
 | `len`    | `string \| array \| object` | `integer` | Length of the argument                                                                                                                                                                                                           |
 | `import` | `string`                    | `object`  | Loads an external document by path, extracts its data (strips `fields:`/`functions:`), and returns it. Paths resolve relative to the input file. Results are cached by resolved path. Format is auto-detected by file extension. |
 
-## 10. Processing pipeline
+## 14. Processing pipeline
+
+### 14.1 Runtime pipeline (`ac fields`)
 
 ```
 Input file (YAML/JSON/TOML)
@@ -483,20 +798,57 @@ Input file (YAML/JSON/TOML)
   Output: all fields valid / N validation error(s)
 ```
 
-## 11. Extension points
+### 14.2 Compile-time pipeline (`ac typegen` / `ac typecheck`)
 
-| Extension                | How                                                  | Touches             |
-| ------------------------ | ---------------------------------------------------- | ------------------- |
-| New format               | Implement the frontend interface                     | New module only     |
-| New schema language      | Implement the schema interface                       | New module only     |
-| New host function        | Implement the function interface, register with host | Host impl only      |
-| Custom namespace         | Insert into the namespaces map                       | Caller code         |
-| Custom function resolver | Implement the function resolver interface            | Caller code         |
-| Native values            | Extend `RuntimeValue` with a native variant          | Runtime module only |
+```
+Input file (YAML/JSON/TOML)
+     │
+     ▼
+  ParsePass → parsed: RuntimeValue
+     │
+     ▼
+  ExtractPass → extracted: ExtractedFields
+     │
+     ├── Typegen path:
+     │      ▼
+     │   ResolvePass → typegen_ctx: TypegenContext
+     │      │  ├── Filter merge fields
+     │      │  ├── Strip AC keys (expr, arg, merge, inheritable, mutable)
+     │      │  └── Resolve imports via ModuleResolver
+     │      ▼
+     │   GeneratePass → output: JsonValue (JSON Schema)
+     │
+     └── Typecheck path:
+            ▼
+         TypecheckPass → type_errors: Vec<TypeError>
+            │  ├── Check expr key types (inferred vs declared)
+            │  ├── Check arg key types (arg vs declared)
+            │  ├── Check merge key types (must be object, props compatible)
+            │  ├── Check inheritable key types (overrides compatible)
+            │  ├── Check mutable key (immutable not overridden)
+            │  └── Check import types (cross-module compatibility)
+            ▼
+         Output: ok / N type error(s)
+```
 
-## 12. Examples
+## 15. Extension points
 
-### 12.1 Self-describing document with interpolation
+| Extension                | How                                                        | Touches            |
+| ------------------------ | ---------------------------------------------------------- | ------------------ |
+| New format               | Implement the frontend interface + add to `frontend_for()` | New crate only     |
+| New schema language      | Implement the `Schema<V>` interface                        | New crate only     |
+| New schema interpreter   | Implement `SchemaInterpreter` for type checking            | New crate only     |
+| New typegen backend      | Implement `TypegenBackend` for type generation             | New crate only     |
+| New module resolver      | Implement `ModuleResolver`                                 | New crate only     |
+| New host function        | Implement `Function`, register with host                   | Host impl only     |
+| Custom namespace         | Insert into the namespaces map                             | Caller code        |
+| Custom function resolver | Implement `FunctionResolver`                               | Caller code        |
+| Custom pipeline pass     | Implement `Pass`, add to `Pipeline`                        | New crate only     |
+| Native values            | Extend `RuntimeValue` with a native variant                | Runtime crate only |
+
+## 16. Examples
+
+### 16.1 Self-describing document with interpolation
 
 ```yaml
 fields:
@@ -532,7 +884,7 @@ After processing:
 - `greeting` → `"hello, alice!"` (string, valid)
 - `doubled` → `2` (number, valid — `double` is user-defined via `body: "mul(x, 2)"`)
 
-### 12.2 Computed fields
+### 16.2 Computed fields
 
 Fields with an `expr:` key are computed after interpolation. The expression uses the same syntax as `${...}` content: function calls, path lookups, and literals. Computed fields can reference other fields (via the `doc` namespace) and can depend on other computed fields — multiple passes resolve dependencies in order.
 
@@ -563,7 +915,7 @@ After processing:
 
 If a computed field is also present in the data, the `expr:` value takes precedence. If the expression cannot be evaluated (e.g. references an unknown function), an error is reported.
 
-### 12.3 Nested function calls
+### 16.3 Nested function calls
 
 ```yaml
 fields:
@@ -580,7 +932,7 @@ sum: "${add(add(1, 2), 3)}"
 
 After processing: `sum` → `6`.
 
-### 12.4 Environment variable interpolation
+### 16.4 Environment variable interpolation
 
 ```yaml
 fields:
@@ -589,7 +941,7 @@ fields:
 home_dir: "${env.HOME}"
 ```
 
-### 12.5 Shorthand path syntax
+### 16.5 Shorthand path syntax
 
 ```yaml
 fields:
@@ -603,7 +955,7 @@ greeting: "hello, ${name}!"
 
 `${name}` is equivalent to `${doc.name}`.
 
-### 12.6 User-defined function composition
+### 16.6 User-defined function composition
 
 ```yaml
 fields:
@@ -630,7 +982,7 @@ quadrupled: "${quadruple(5)}"
 
 After processing: `quadrupled` → `20` (`quadruple` calls `double` which calls `mul`).
 
-### 12.7 Importing external documents
+### 16.7 Importing external documents
 
 A field with `expr: "import('path')"` loads an external file and uses its data as the field value. The imported document's `fields:` and `functions:` are stripped from the data, but declared `functions:` are merged into the importer's function table — making imported functions available to the importer's expressions.
 
@@ -715,7 +1067,7 @@ fields:
 
 This evaluates `concat('./common_', 'base.yml')` → `'./common_base.yml'`, then loads the file. Enables environment-driven or conditional loading when combined with `env` namespace references.
 
-### 12.8 Scoped inheritance
+### 16.8 Scoped inheritance
 
 ```yaml
 fields:
@@ -740,7 +1092,7 @@ After processing:
 - `config.server.message` → `"read-write"` (inherited from `config.server` override)
 - `config.deep.message` → `"read-only"` (inherited from `config`, no override)
 
-### 12.9 Merge fields (`merge: true`)
+### 16.9 Merge fields (`merge: true`)
 
 A field with `merge: true` spreads its computed value (must be an object) into the parent scope after computation, then removes the field itself. This closes the merge gap: instead of accessing imported data via a prefix (`${_base.name}`), the contents are flattened into the parent.
 
@@ -780,7 +1132,7 @@ After processing:
 - `host` → `"example.com"` (from merged `_base`)
 - `port` → `8080` (from merged `_base`)
 
-### 12.10 Parameterized computed fields (`arg:`)
+### 16.10 Parameterized computed fields (`arg:`)
 
 A field's own data value becomes available as `${arg}` inside its `expr:` expression. Normally, `expr:` fields have their data value ignored or overridden. With `arg:`, the data value is an input to the computation.
 
@@ -818,12 +1170,15 @@ doubled: 5
 
 If `doubled` were a string, the arg type check would fail before the expression runs.
 
-## 13. Future directions
+## 17. Future directions
 
 - **Full JSON Schema** — replace the minimal validator with a complete implementation (draft 2020-12).
-- **Module system** — `import()` host function for loading external documents as computed fields. A field with `expr: "import('./common.yml')"` loads the file via the host's `FunctionResolver` and injects the result as the field's value. The host controls I/O (filesystem, HTTP, embedded), caching, and AOT optimization for static path arguments. No new traits or pipeline stages — `import()` is a regular host function, consistent with the existing `add`/`mul`/`concat`/`len` pattern. Scoped imports work via nested `fields:` declarations.
+- **Additional typegen backends** — TypeScript `.d.ts`, Rust structs, Python `TypedDict`.
+- **Additional module resolvers** — `resolver-git`, `resolver-http` for loading documents from remote sources.
+- **Integer subtyping** — `integer` as a subtype of `number` in the type system.
+- **AOT optimization** — pre-evaluate static `import()` paths at compile time instead of runtime.
 
-## 14. Emergent patterns
+## 18. Emergent patterns
 
 The AC language kernel is intentionally small — seven primitives:
 

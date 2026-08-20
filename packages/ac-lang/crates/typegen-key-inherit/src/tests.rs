@@ -9,7 +9,7 @@ fn strip_removes_inheritable_key() {
     ];
     let mut ctx = TypegenContext::from_schemas(&schemas);
     strip_key(&mut ctx);
-    let (_, schema) = &ctx.fields[0];
+    let schema = &ctx.fields["port"];
     assert!(!schema.as_object().unwrap().contains_key(KEY));
     assert_eq!(schema["type"], "number");
 }

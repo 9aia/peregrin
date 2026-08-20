@@ -32,28 +32,42 @@
 //! └── future: ac-resolver-git, ac-resolver-http
 //! ```
 
+use indexmap::IndexMap;
 use serde_json::Value as JsonValue;
+
+/// Recursively remove the given keys from a JSON value, in place.
+///
+/// Walks objects and arrays, removing any key in `keys` from object maps.
+/// Non-object values are left unchanged. This avoids the deep cloning
+/// that the returning variant [`strip_keys`] performs.
+pub fn strip_keys_in_place(value: &mut JsonValue, keys: &[&str]) {
+    match value {
+        JsonValue::Object(map) => {
+            map.retain(|key, _| !keys.contains(&key.as_str()));
+            for (_, val) in map.iter_mut() {
+                strip_keys_in_place(val, keys);
+            }
+        }
+        JsonValue::Array(arr) => {
+            for item in arr.iter_mut() {
+                strip_keys_in_place(item, keys);
+            }
+        }
+        _ => {}
+    }
+}
 
 /// Recursively remove the given keys from a JSON value.
 ///
 /// Walks objects and arrays, removing any key in `keys` from object maps.
 /// Non-object values are returned unchanged.
+///
+/// Prefer [`strip_keys_in_place`] when you own the value — it avoids
+/// a full deep clone.
 pub fn strip_keys(value: &JsonValue, keys: &[&str]) -> JsonValue {
-    match value {
-        JsonValue::Object(map) => {
-            let mut cleaned = serde_json::Map::new();
-            for (key, val) in map {
-                if !keys.contains(&key.as_str()) {
-                    cleaned.insert(key.clone(), strip_keys(val, keys));
-                }
-            }
-            JsonValue::Object(cleaned)
-        }
-        JsonValue::Array(arr) => {
-            JsonValue::Array(arr.iter().map(|v| strip_keys(v, keys)).collect())
-        }
-        other => other.clone(),
-    }
+    let mut cloned = value.clone();
+    strip_keys_in_place(&mut cloned, keys);
+    cloned
 }
 
 /// Schema-system-agnostic generation context.
@@ -64,7 +78,10 @@ pub fn strip_keys(value: &JsonValue, keys: &[&str]) -> JsonValue {
 /// consume the final clean fragments.
 pub struct TypegenContext {
     /// Field name → schema fragment.
-    pub fields: Vec<(String, JsonValue)>,
+    ///
+    /// Uses `IndexMap` to preserve insertion order while providing O(1)
+    /// lookups for `remove_fields` and `merge_fields`.
+    pub fields: IndexMap<String, JsonValue>,
 }
 
 impl TypegenContext {
@@ -72,7 +89,7 @@ impl TypegenContext {
     ///
     /// The orchestrator applies AC-key crates after this.
     pub fn from_schemas(schemas: &[(String, JsonValue)]) -> Self {
-        let fields: Vec<(String, JsonValue)> = schemas
+        let fields: IndexMap<String, JsonValue> = schemas
             .iter()
             .map(|(name, raw)| (name.clone(), raw.clone()))
             .collect();
@@ -83,15 +100,15 @@ impl TypegenContext {
     ///
     /// Used by `ac-typegen-merge` to exclude merge fields.
     pub fn remove_fields(&mut self, names: &[String]) {
-        self.fields.retain(|(n, _)| !names.iter().any(|name| name == n));
+        self.fields.retain(|n, _| !names.iter().any(|name| name == n));
     }
 
-    /// Recursively strip the given keys from all field schemas.
+    /// Recursively strip the given keys from all field schemas, in place.
     ///
     /// Used by each AC-key crate to strip its specific key.
     pub fn strip_keys(&mut self, keys: &[&str]) {
         for (_, schema) in &mut self.fields {
-            *schema = strip_keys(schema, keys);
+            strip_keys_in_place(schema, keys);
         }
     }
 
@@ -101,8 +118,8 @@ impl TypegenContext {
     /// Used by `ac-typegen-import` to merge resolved import schemas.
     pub fn merge_fields(&mut self, imported: &[(String, JsonValue)]) {
         for (name, schema) in imported {
-            if !self.fields.iter().any(|(n, _)| n == name) {
-                self.fields.push((name.clone(), schema.clone()));
+            if !self.fields.contains_key(name) {
+                self.fields.insert(name.clone(), schema.clone());
             }
         }
     }
