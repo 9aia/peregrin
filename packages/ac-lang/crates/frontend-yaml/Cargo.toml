@@ -1,0 +1,9 @@
+[package]
+name = "ac-frontend-yaml"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-runtime.workspace = true
+serde_json = "1"
+serde_yaml = "0.9"

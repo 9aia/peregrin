@@ -1,0 +1,11 @@
+fields:
+  import:
+    type: object
+    arg: { type: string }
+    expr: "import(arg)"
+    merge: true
+  host:
+    type: string
+  port:
+    type: number
+import: "./import_field_base.yml"

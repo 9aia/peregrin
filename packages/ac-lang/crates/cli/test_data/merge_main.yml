@@ -1,0 +1,9 @@
+fields:
+  _base:
+    type: object
+    merge: true
+    expr: "import('./merge_base.yml')"
+  host:
+    type: string
+  port:
+    type: number

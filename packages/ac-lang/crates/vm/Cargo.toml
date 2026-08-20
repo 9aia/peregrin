@@ -1,0 +1,8 @@
+[package]
+name = "ac-vm"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-core.workspace = true
+ac-runtime.workspace = true

@@ -35,3 +35,6 @@ project/
 repos/
 
 /docs/.vitepress/cache/deps
+
+# rust
+target/

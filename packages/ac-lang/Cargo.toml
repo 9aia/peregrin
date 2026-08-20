@@ -1,0 +1,67 @@
+[package]
+name = "ac-lang"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+members = [
+  "crates/core",
+  "crates/runtime",
+  "crates/vm",
+  "crates/frontend-json",
+  "crates/frontend-yaml",
+  "crates/frontend-toml",
+  "crates/schema",
+  "crates/schema-json",
+  "crates/fields",
+  "crates/typegen",
+  "crates/typegen-json",
+  "crates/cli",
+  "crates/integration-tests",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+ac-core = { path = "crates/core" }
+ac-runtime = { path = "crates/runtime" }
+ac-vm = { path = "crates/vm" }
+ac-frontend-json = { path = "crates/frontend-json" }
+ac-frontend-yaml = { path = "crates/frontend-yaml" }
+ac-frontend-toml = { path = "crates/frontend-toml" }
+ac-schema = { path = "crates/schema" }
+ac-schema-json = { path = "crates/schema-json" }
+ac-fields = { path = "crates/fields" }
+ac-cli = { path = "crates/cli" }
+ac-integration-tests = { path = "crates/integration-tests" }
+ac-typegen = { path = "crates/typegen" }
+ac-typegen-json = { path = "crates/typegen-json" }
+
+[dependencies]
+ac-core.workspace = true
+ac-runtime.workspace = true
+ac-vm.workspace = true
+ac-frontend-json.workspace = true
+ac-frontend-yaml.workspace = true
+ac-frontend-toml.workspace = true
+ac-schema.workspace = true
+ac-schema-json.workspace = true
+ac-fields.workspace = true
+
+[dev-dependencies]
+serde_json = "1"
+
+[[example]]
+name = "basic"
+path = "examples/basic/main.rs"
+
+[[example]]
+name = "functions"
+path = "examples/functions/main.rs"
+
+[[example]]
+name = "fields"
+path = "examples/fields/main.rs"

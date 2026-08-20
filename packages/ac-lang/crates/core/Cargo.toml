@@ -1,0 +1,6 @@
+[package]
+name = "ac-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

@@ -1,0 +1,13 @@
+fields:
+  host:
+    type: string
+  port:
+    type: number
+functions:
+  make_label:
+    params:
+      h: { type: string }
+    return: { type: string }
+    body: 'concat(h, "-service")'
+host: example.com
+port: 8080
