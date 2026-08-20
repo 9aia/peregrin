@@ -31,3 +31,9 @@ The language spec fixes syntax. The Rust implementation, however, abstracts the 
 The canonical `AcDialect` implements the spec syntax: `${...}` for interpolation, `.` for paths, `fn()` for calls. It is the only shipped dialect. The trait exists so the implementation is structured around a single source of truth for syntax, rather than hardcoding `"${"`, `'.'`, and `'('` across dozens of functions.
 
 This does not contradict the fixed-syntax principle. The spec says there is one syntax; the implementation says that syntax lives in one place. A custom dialect would produce documents that are not portable and tools that do not interoperate — the problems described above. The trait is not an extension point for users; it is an internal organizing principle.
+
+## Internal schema abstraction in the Rust implementation
+
+The same pattern applies to schema validation. The Rust implementation abstracts schema validation behind a `Schema<V>` trait in the `ac-schema` crate — a generic interface that knows nothing about JSON Schema, `$ref`, `allOf`, or any concrete schema vocabulary. The canonical implementation, `JsonSchema` in the `ac-schema-json` crate, wraps the `jsonschema` crate for full JSON Schema draft 2020-12 validation. It is the only shipped implementation.
+
+The `Schema<V>` trait is used generically throughout the engine (e.g., function argument and return validation in `ac-fields`). The engine never depends on a specific schema vocabulary — it depends on the trait. `JsonSchema` is wired in at the edges. This mirrors the `Dialect` trait: the spec fixes JSON Schema draft 2020-12 as the schema vocabulary; the implementation says that vocabulary lives behind one interface. A custom `Schema<V>` implementation would be an internal organizing possibility, not a user extension point — the language spec expects JSON Schema, and only JSON Schema is exposed.
