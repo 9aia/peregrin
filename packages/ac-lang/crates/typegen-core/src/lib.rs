@@ -133,7 +133,7 @@ impl TypegenContext {
 /// - `ac-typegen-json` → JSON Schema (`JsonValue`)
 /// - `ac-typegen-typescript` → TypeScript `.d.ts` (string)
 /// - Future: Rust structs, Python TypedDict, etc.
-pub trait TypegenBackend {
+pub trait TypegenBackend: Send + Sync {
     type Output;
     /// Generate a single document's type definition.
     fn generate(&self, ctx: &TypegenContext) -> Self::Output;

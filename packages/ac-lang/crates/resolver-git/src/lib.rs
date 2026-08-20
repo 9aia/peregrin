@@ -15,9 +15,9 @@
 
 mod parse;
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use ac_fields::extract_fields;
 use ac_frontend::frontend_for;
@@ -39,7 +39,7 @@ pub use parse::{parse_git_url, GitTarget};
 pub struct GitResolver<C: ModuleCache = NoCache> {
     cache_dir: PathBuf,
     module_cache: C,
-    repo_cache: RefCell<HashMap<String, PathBuf>>,
+    repo_cache: Mutex<HashMap<String, PathBuf>>,
 }
 
 impl GitResolver<NoCache> {
@@ -48,7 +48,7 @@ impl GitResolver<NoCache> {
         GitResolver {
             cache_dir,
             module_cache: NoCache,
-            repo_cache: RefCell::new(HashMap::new()),
+            repo_cache: Mutex::new(HashMap::new()),
         }
     }
 
@@ -65,7 +65,7 @@ impl<C: ModuleCache> GitResolver<C> {
         GitResolver {
             cache_dir,
             module_cache,
-            repo_cache: RefCell::new(HashMap::new()),
+            repo_cache: Mutex::new(HashMap::new()),
         }
     }
 

@@ -50,48 +50,70 @@ impl Pass for TypecheckPass {
 
         let base = compilation.source.base_path();
 
-        let mut errors = Vec::new();
+        let (mut local_errors, data_errors) = rayon::join(
+            || {
+                let (mut expr_errors, (arg_errors, merge_errors)) = rayon::join(
+                    || ac_typecheck_key_expr::check(
+                        &extracted.schemas,
+                        &env,
+                        &function_table,
+                        interpreter,
+                    ),
+                    || rayon::join(
+                        || ac_typecheck_key_arg::check(&extracted.schemas, interpreter),
+                        || {
+                            ac_typecheck_key_merge::check(
+                                &extracted.schemas,
+                                interpreter,
+                                &env,
+                            )
+                        },
+                    ),
+                );
+                expr_errors.extend(arg_errors);
+                expr_errors.extend(merge_errors);
+                expr_errors
+            },
+            || {
+                let (mut inherit_errors, (mutable_errors, import_errors)) =
+                    rayon::join(
+                        || {
+                            ac_typecheck_key_inherit::check(
+                                &inheritable_schemas,
+                                &data,
+                                interpreter,
+                            )
+                        },
+                        || {
+                            rayon::join(
+                                || {
+                                    ac_typecheck_key_mutable::check(
+                                        &extracted.immutable,
+                                        &data,
+                                    )
+                                },
+                                || {
+                                    ac_typecheck_import::check_imports(
+                                        &extracted.schemas,
+                                        &extracted.merge,
+                                        &data,
+                                        config.resolver.as_ref(),
+                                        interpreter,
+                                        &env,
+                                        base.as_deref(),
+                                    )
+                                },
+                            )
+                        },
+                    );
+                inherit_errors.extend(mutable_errors);
+                inherit_errors.extend(import_errors);
+                inherit_errors
+            },
+        );
+        local_errors.extend(data_errors);
 
-        errors.extend(ac_typecheck_key_expr::check(
-            &extracted.schemas,
-            &env,
-            &function_table,
-            interpreter,
-        ));
-
-        errors.extend(ac_typecheck_key_arg::check(
-            &extracted.schemas,
-            interpreter,
-        ));
-
-        errors.extend(ac_typecheck_key_merge::check(
-            &extracted.schemas,
-            interpreter,
-            &env,
-        ));
-
-        errors.extend(ac_typecheck_key_inherit::check(
-            &inheritable_schemas,
-            &data,
-            interpreter,
-        ));
-
-        errors.extend(ac_typecheck_key_mutable::check(
-            &extracted.immutable,
-            &data,
-        ));
-
-        errors.extend(ac_typecheck_import::check_imports(
-            &extracted.schemas,
-            &extracted.merge,
-            &data,
-            config.resolver.as_ref(),
-            interpreter,
-            &env,
-            base.as_deref(),
-        ));
-
-        compilation.type_errors = errors;
+        compilation.type_errors = local_errors;
         Ok(())
     }
 }

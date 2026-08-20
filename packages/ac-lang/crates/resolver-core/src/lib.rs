@@ -14,9 +14,9 @@
 //! linting) can take `&dyn ModuleResolver` without caring where modules
 //! come from.
 
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
 use serde_json::Value as JsonValue;
 
@@ -27,7 +27,7 @@ use serde_json::Value as JsonValue;
 /// - `ac-resolver-virtual` — in-memory (`HashMap`)
 /// - `ac-resolver-http` — HTTP(S) via `ureq`
 /// - `ac-resolver-git` — Git repositories via `git2`
-pub trait ModuleResolver {
+pub trait ModuleResolver: Send + Sync {
     /// Resolve a module path to its extracted fields + data.
     ///
     /// `base` is the base path of the importing document (for relative
@@ -65,7 +65,7 @@ pub struct ResolvedModule {
 ///
 /// Implementations must be thread-safe (`Send`) since resolvers may be
 /// shared across passes (`ResolvePass` + `TypecheckPass`).
-pub trait ModuleCache: Send {
+pub trait ModuleCache: Send + Sync {
     fn get(&self, key: &str) -> Option<ResolvedModule>;
     fn insert(&self, key: &str, module: ResolvedModule);
     fn clear(&self);
@@ -75,18 +75,18 @@ pub trait ModuleCache: Send {
     }
 }
 
-/// Default in-memory cache backed by a `RefCell<HashMap>`.
+/// Default in-memory cache backed by a `Mutex<HashMap>`.
 ///
-/// Suitable for single-threaded usage (the common pipeline case).
-/// For multi-threaded scenarios, wrap with a `Mutex`-backed impl.
+/// Thread-safe — suitable for both single-threaded and multi-threaded
+/// pipeline usage (e.g. parallel type checking with rayon).
 pub struct MemoryModuleCache {
-    map: RefCell<HashMap<String, ResolvedModule>>,
+    map: Mutex<HashMap<String, ResolvedModule>>,
 }
 
 impl MemoryModuleCache {
     pub fn new() -> Self {
         MemoryModuleCache {
-            map: RefCell::new(HashMap::new()),
+            map: Mutex::new(HashMap::new()),
         }
     }
 }
@@ -99,19 +99,19 @@ impl Default for MemoryModuleCache {
 
 impl ModuleCache for MemoryModuleCache {
     fn get(&self, key: &str) -> Option<ResolvedModule> {
-        self.map.borrow().get(key).cloned()
+        self.map.lock().unwrap().get(key).cloned()
     }
 
     fn insert(&self, key: &str, module: ResolvedModule) {
-        self.map.borrow_mut().insert(key.to_string(), module);
+        self.map.lock().unwrap().insert(key.to_string(), module);
     }
 
     fn clear(&self) {
-        self.map.borrow_mut().clear();
+        self.map.lock().unwrap().clear();
     }
 
     fn len(&self) -> usize {
-        self.map.borrow().len()
+        self.map.lock().unwrap().len()
     }
 }
 

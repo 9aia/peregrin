@@ -12,7 +12,7 @@ use crate::Type;
 /// Implementations:
 /// - `ac-typecheck-schema-json` — JSON Schema → Type
 /// - Future: Cue, custom schema languages
-pub trait SchemaInterpreter {
+pub trait SchemaInterpreter: Send + Sync {
     /// Interpret a raw schema fragment as a [`Type`].
     fn interpret(&self, schema: &JsonValue) -> Type;
 }
