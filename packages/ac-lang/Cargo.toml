@@ -13,6 +13,7 @@ members = [
   "crates/frontend-toml",
   "crates/schema",
   "crates/schema-json",
+  "crates/source",
   "crates/fields",
   "crates/typegen-core",
   "crates/typegen-key-merge",
@@ -61,6 +62,7 @@ ac-frontend-yaml = { path = "crates/frontend-yaml" }
 ac-frontend-toml = { path = "crates/frontend-toml" }
 ac-schema = { path = "crates/schema" }
 ac-schema-json = { path = "crates/schema-json" }
+ac-source = { path = "crates/source" }
 ac-fields = { path = "crates/fields" }
 ac-cli = { path = "crates/cli" }
 ac-frontend = { path = "crates/frontend" }
