@@ -1,4 +1,4 @@
-use super::*;
+use super::validation_error::ValidationError;
 
 #[test]
 fn validation_error_display_no_path() {
