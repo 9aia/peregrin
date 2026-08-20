@@ -10,8 +10,8 @@ use std::path::PathBuf;
 
 use ac_dialect_canonical::AC_DIALECT;
 use ac_runtime::RuntimeValue;
-use ac_schema::Schema;
-use ac_schema_json::JsonSchema;
+use ac_dialect::Schema;
+use ac_dialect_canonical::JsonSchema;
 
 fn main() {
     let yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))

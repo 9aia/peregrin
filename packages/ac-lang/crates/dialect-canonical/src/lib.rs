@@ -16,9 +16,12 @@
 //! This is the only shipped dialect. See [DIALECT.md](../../docs/DIALECT.md)
 //! for the full dialect specification.
 
-use ac_dialect::Dialect;
+use ac_dialect::{Dialect, SchemaVocabulary};
 use ac_runtime::RuntimeValue;
-use ac_schema::SchemaVocabulary;
+
+mod schema_json;
+
+pub use schema_json::{JsonSchema, JsonSchemaVocabulary, JSON_SCHEMA_VOCABULARY};
 
 /// The canonical AC language dialect.
 ///
@@ -117,7 +120,7 @@ impl Dialect for AcDialect {
     }
 
     fn schema_vocabulary(&self) -> &dyn SchemaVocabulary<RuntimeValue> {
-        &ac_schema_json::JSON_SCHEMA_VOCABULARY
+        &JSON_SCHEMA_VOCABULARY
     }
 }
 
@@ -253,3 +256,6 @@ mod tests {
         assert_eq!(d.schema_vocabulary().id(), "json-schema-draft-2020-12");
     }
 }
+
+#[cfg(test)]
+mod validator_tests;

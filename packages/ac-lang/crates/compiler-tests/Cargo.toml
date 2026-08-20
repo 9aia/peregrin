@@ -21,7 +21,5 @@ ac-frontend.workspace = true
 ac-frontend-json.workspace = true
 ac-frontend-yaml.workspace = true
 ac-frontend-toml.workspace = true
-ac-schema.workspace = true
-ac-schema-json.workspace = true
 ac-fields.workspace = true
 serde_json = "1"

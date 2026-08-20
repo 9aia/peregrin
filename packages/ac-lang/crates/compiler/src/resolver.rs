@@ -16,7 +16,7 @@ use ac_fields::{self, FunctionResolver};
 use ac_host::DefaultHost;
 use ac_resolver_core::{ModuleResolver, IMPORT_FUNCTION};
 use ac_runtime::RuntimeValue;
-use ac_schema::Schema;
+use ac_dialect::Schema;
 use ac_vm::{Context, Vm};
 
 /// Bridges `FunctionResolver` to the VM + Host.

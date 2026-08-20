@@ -1,5 +1,5 @@
 use super::*;
-use ac_schema::Schema;
+use ac_dialect::Schema;
 use ac_runtime::RuntimeValue;
 
 // ── type ───────────────────────────────────────────────────────
@@ -376,7 +376,7 @@ fn validate_error_has_location_field() {
     }));
     let result = schema.validate(&RuntimeValue::new(serde_json::json!({"age": -1})));
     let err = result.unwrap_err();
-    assert!(err.location.is_none(), "location should be None from validator; engine resolves it post-hoc");
+    assert!(err.location.is_none(), "location should be None from validator; compiler resolves it post-hoc");
 }
 
 #[test]

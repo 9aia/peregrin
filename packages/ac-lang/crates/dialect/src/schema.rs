@@ -15,7 +15,7 @@ pub struct ValidationError {
     pub path: String,
 
     /// Source location (line:column) of the offending value, if known.
-    /// Populated by the engine after validation, using the original
+    /// Populated by the compiler after validation, using the original
     /// source text.
     pub location: Option<SourceLocation>,
 }
@@ -65,7 +65,7 @@ impl<S: Schema<V> + ?Sized, V> Schema<V> for Box<S> {
 ///
 /// This trait abstracts which schema language a dialect uses. The
 /// canonical implementation is JSON Schema draft 2020-12, provided by
-/// `ac-schema-json` as `JsonSchemaVocabulary`.
+/// `ac-dialect-canonical` as `JsonSchemaVocabulary`.
 ///
 /// Generic over `V` so the abstraction works with any value type,
 /// not just `RuntimeValue`.

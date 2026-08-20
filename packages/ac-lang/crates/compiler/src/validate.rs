@@ -1,7 +1,7 @@
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_frontend::frontend_for;
-use ac_schema::Schema;
+use ac_dialect::Schema;
 
 pub fn run(input: &str, format: &str, schema_str: &str) -> Result<(), String> {
     let frontend = frontend_for(format)?;

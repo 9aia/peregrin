@@ -13,8 +13,6 @@ members = [
   "crates/frontend-json",
   "crates/frontend-yaml",
   "crates/frontend-toml",
-  "crates/schema",
-  "crates/schema-json",
   "crates/source",
   "crates/fields",
   "crates/typegen-core",
@@ -67,8 +65,6 @@ ac-vm = { path = "crates/vm" }
 ac-frontend-json = { path = "crates/frontend-json" }
 ac-frontend-yaml = { path = "crates/frontend-yaml" }
 ac-frontend-toml = { path = "crates/frontend-toml" }
-ac-schema = { path = "crates/schema" }
-ac-schema-json = { path = "crates/schema-json" }
 ac-source = { path = "crates/source" }
 ac-fields = { path = "crates/fields" }
 ac-cli = { path = "crates/cli" }
@@ -119,8 +115,6 @@ ac-vm.workspace = true
 ac-frontend-json.workspace = true
 ac-frontend-yaml.workspace = true
 ac-frontend-toml.workspace = true
-ac-schema.workspace = true
-ac-schema-json.workspace = true
 ac-fields.workspace = true
 ac-source.workspace = true
 ac-host.workspace = true

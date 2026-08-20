@@ -62,8 +62,6 @@ dependencies = [
  "ac-resolver-core",
  "ac-resolver-file",
  "ac-runtime",
- "ac-schema",
- "ac-schema-json",
  "ac-source",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
@@ -189,8 +187,6 @@ dependencies = [
  "ac-frontend-yaml",
  "ac-resolver-virtual",
  "ac-runtime",
- "ac-schema",
- "ac-schema-json",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
@@ -203,7 +199,8 @@ name = "ac-dialect"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
- "ac-schema",
+ "ac-source",
+ "serde_json",
 ]
 
 [[package]]
@@ -212,8 +209,9 @@ version = "0.1.0"
 dependencies = [
  "ac-dialect",
  "ac-runtime",
- "ac-schema",
- "ac-schema-json",
+ "ac-source",
+ "jsonschema",
+ "serde_json",
 ]
 
 [[package]]
@@ -223,7 +221,6 @@ dependencies = [
  "ac-dialect",
  "ac-dialect-canonical",
  "ac-runtime",
- "ac-schema",
  "serde_json",
 ]
 
@@ -297,8 +294,6 @@ dependencies = [
  "ac-resolver-file",
  "ac-resolver-virtual",
  "ac-runtime",
- "ac-schema",
- "ac-schema-json",
  "ac-source",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
@@ -378,25 +373,6 @@ name = "ac-runtime"
 version = "0.1.0"
 dependencies = [
  "ac-source",
- "serde_json",
-]
-
-[[package]]
-name = "ac-schema"
-version = "0.1.0"
-dependencies = [
- "ac-source",
- "serde_json",
-]
-
-[[package]]
-name = "ac-schema-json"
-version = "0.1.0"
-dependencies = [
- "ac-runtime",
- "ac-schema",
- "ac-source",
- "jsonschema",
  "serde_json",
 ]
 

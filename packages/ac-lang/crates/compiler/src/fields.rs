@@ -8,7 +8,7 @@ use ac_dialect_canonical::AC_DIALECT;
 use ac_frontend::frontend_for;
 use ac_host::DefaultHost;
 use ac_runtime::RuntimeValue;
-use ac_schema::Schema;
+use ac_dialect::Schema;
 
 use crate::resolver::VmResolver;
 
@@ -103,7 +103,7 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
     let mut ok = Vec::new();
 
     for (name, schema) in &schemas {
-        let type_name = ac_schema_json::JsonSchema::new(
+        let type_name = ac_dialect_canonical::JsonSchema::new(
             field_schemas.iter().find(|(n, _)| n == name).unwrap().1.clone()
         ).type_name().unwrap_or("any").to_string();
         field_types.push((name.clone(), type_name));

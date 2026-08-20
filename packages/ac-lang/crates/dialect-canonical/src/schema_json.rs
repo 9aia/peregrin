@@ -1,4 +1,4 @@
-use ac_schema::{Schema, SchemaVocabulary, ValidationError};
+use ac_dialect::{Schema, SchemaVocabulary, ValidationError};
 use ac_runtime::RuntimeValue;
 use serde_json::Value as JsonValue;
 

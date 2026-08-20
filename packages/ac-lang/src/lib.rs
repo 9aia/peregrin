@@ -16,8 +16,8 @@
 //! | `ac-frontend-json` | JSON frontend — implements `Frontend`. |
 //! | `ac-frontend-yaml` | YAML frontend — implements `Frontend`. |
 //! | `ac-frontend-toml` | TOML frontend — implements `Frontend`. |
-//! | `ac-schema` | Abstract `Schema<V>` trait — zero deps. |
-//! | `ac-schema-json` | JSON Schema implementation of `Schema<RuntimeValue>`. |
+//! | `ac-dialect` | Dialect abstraction — `Dialect` trait, `Schema<V>`, `SchemaVocabulary<V>`, `ValidationError`. |
+//! | `ac-dialect-canonical` | Canonical dialect impl — `AcDialect`, `AC_DIALECT`, `JsonSchema`, `JsonSchemaVocabulary`. |
 //! | `ac-fields` | Field extraction, interpolation, function calls, undeclared-field detection. |
 //! | `ac-source` | Source location tracking — `SourceLocation`, `SourceMap`. |
 //! | `ac-host` | Default host implementation — built-in functions (`add`, `mul`, `concat`, `len`). |
@@ -38,7 +38,7 @@
 //! ```text
 //!                          ac-lang (facade)
 //!                /      /      |       |       \      \
-//!           ac-compiler  ac-vm  f-json  f-yaml  f-toml  ac-schema
+//!           ac-compiler  ac-vm  f-json  f-yaml  f-toml  ac-dialect
 //!              / \       |      |       |       |        |
 //!   ac-resolver  ac-typecheck-*  ac-runtime ◄──┴───────┘
 //!      |              |              |
@@ -57,8 +57,8 @@ pub use ac_runtime as runtime;
 pub use ac_frontend_json as json;
 pub use ac_frontend_toml as toml;
 pub use ac_frontend_yaml as yaml;
-pub use ac_schema as schema;
-pub use ac_schema_json as schema_json;
+pub use ac_dialect as dialect;
+pub use ac_dialect_canonical as dialect_canonical;
 pub use ac_vm as vm;
 pub use ac_fields as fields;
 pub use ac_source as source;
@@ -84,8 +84,8 @@ pub mod prelude {
     pub use ac_frontend_json;
     pub use ac_frontend_toml;
     pub use ac_frontend_yaml;
-    pub use ac_schema::{Schema, ValidationError};
-    pub use ac_schema_json::JsonSchema;
+    pub use ac_dialect::{Schema, ValidationError};
+    pub use ac_dialect_canonical::JsonSchema;
     pub use ac_vm::{Context, Error, Function, Host, Vm};
     pub use ac_source::{SourceLocation, SourceMap};
     pub use ac_host::DefaultHost;

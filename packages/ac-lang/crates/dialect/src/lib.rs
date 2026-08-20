@@ -15,7 +15,10 @@
 //! The `Dialect` trait lets the Rust implementation be parameterized without
 //! changing the spec. The canonical implementation lives in `ac-dialect-canonical`.
 
-use ac_schema::SchemaVocabulary;
+mod schema;
+
+pub use schema::{Schema, SchemaVocabulary, ValidationError};
+
 use ac_runtime::RuntimeValue;
 
 /// A dialect for parsing and evaluating AC expressions and documents.
@@ -151,3 +154,6 @@ pub trait Dialect: Send + Sync {
     /// The canonical dialect returns a JSON Schema draft 2020-12 vocabulary.
     fn schema_vocabulary(&self) -> &dyn SchemaVocabulary<RuntimeValue>;
 }
+
+#[cfg(test)]
+mod schema_tests;
