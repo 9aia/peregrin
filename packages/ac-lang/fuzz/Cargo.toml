@@ -12,6 +12,7 @@ cargo-fuzz = true
 [dependencies]
 libfuzzer-sys = "0.4"
 ac-fields = { path = "../crates/fields" }
+ac-dialect = { path = "../crates/dialect" }
 ac-typecheck-infer = { path = "../crates/typecheck-infer" }
 serde_json = "1"
 

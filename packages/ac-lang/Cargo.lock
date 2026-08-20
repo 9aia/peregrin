@@ -264,6 +264,7 @@ name = "ac-lang"
 version = "0.1.0"
 dependencies = [
  "ac-ast",
+ "ac-dialect",
  "ac-engine",
  "ac-engine-core",
  "ac-fields",

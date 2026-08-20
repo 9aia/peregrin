@@ -217,7 +217,6 @@ fields:
   greeting:
     type: string
     expr: 'concat(arg, "!")'
-    arg: true
 greeting: hello
 ```
 
