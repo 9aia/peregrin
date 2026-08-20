@@ -1,6 +1,6 @@
 use super::*;
-use ac_typecheck_core::Type;
-use serde_json::json;
+use ac_typecheck_core::{SchemaInterpreter, Type};
+use serde_json::{json, Value as JsonValue};
 
 struct JsonInterpreter;
 

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ac_typecheck_core::{is_compatible, SchemaInterpreter, Type, TypeError};
+use ac_typecheck_core::{SchemaInterpreter, Type, TypeError};
 use serde_json::Value as JsonValue;
 
 use crate::walker::check_in_children;

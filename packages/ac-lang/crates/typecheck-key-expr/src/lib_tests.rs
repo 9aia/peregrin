@@ -1,7 +1,7 @@
 use super::*;
-use ac_typecheck_core::{FunctionType, Type};
+use ac_typecheck_core::{FunctionType, SchemaInterpreter, Type, TypeEnv};
 use ac_typecheck_infer::FunctionTable;
-use serde_json::json;
+use serde_json::{json, Value as JsonValue};
 
 struct JsonInterpreter;
 
