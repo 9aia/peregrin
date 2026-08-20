@@ -16,7 +16,7 @@ pub fn run(args: ValidateArgs) -> i32 {
             return 1;
         }
     };
-    match ac_engine::validate::run(&input, &args.format, &schema_str) {
+    match ac_compiler::validate::run(&input, &args.format, &schema_str) {
         Ok(()) => {
             println!("valid");
             0

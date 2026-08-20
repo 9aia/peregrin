@@ -5,13 +5,13 @@ edition.workspace = true
 publish = false
 
 [dependencies]
-ac-engine-core.workspace = true
+ac-compiler-core.workspace = true
 ac-dialect.workspace = true
 ac-dialect-canonical.workspace = true
-ac-engine.workspace = true
-ac-engine-pass-parse.workspace = true
-ac-engine-pass-extract.workspace = true
-ac-engine-pass-typecheck.workspace = true
+ac-compiler.workspace = true
+ac-compiler-pass-parse.workspace = true
+ac-compiler-pass-extract.workspace = true
+ac-compiler-pass-typecheck.workspace = true
 ac-frontend.workspace = true
 ac-resolver-virtual.workspace = true
 ac-typecheck-core.workspace = true

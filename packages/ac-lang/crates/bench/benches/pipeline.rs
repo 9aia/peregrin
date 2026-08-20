@@ -4,10 +4,10 @@
 //! feature mixes, as well as individual pass costs.
 
 use ac_bench::*;
-use ac_engine_core::{Compilation, Config, Pass, Source};
-use ac_engine_pass_extract::ExtractPass;
-use ac_engine_pass_parse::ParsePass;
-use ac_engine_pass_typecheck::TypecheckPass;
+use ac_compiler_core::{Compilation, Config, Pass, Source};
+use ac_compiler_pass_extract::ExtractPass;
+use ac_compiler_pass_parse::ParsePass;
+use ac_compiler_pass_typecheck::TypecheckPass;
 use ac_resolver_virtual::VirtualResolver;
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};

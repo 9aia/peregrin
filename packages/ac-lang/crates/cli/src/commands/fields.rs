@@ -11,7 +11,7 @@ pub fn run(args: FieldsArgs) -> i32 {
     };
     let base_path = args.input.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
 
-    match ac_engine::fields::run(&input, &args.format, base_path.as_deref()) {
+    match ac_compiler::fields::run(&input, &args.format, base_path.as_deref()) {
         Ok(report) => {
             println!("fields:");
             for (name, type_name) in &report.field_types {

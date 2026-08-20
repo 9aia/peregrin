@@ -41,14 +41,14 @@ members = [
   "crates/typecheck-schema-json",
   "crates/frontend",
   "crates/host",
-  "crates/engine-core",
-  "crates/engine-pass-parse",
-  "crates/engine-pass-extract",
-  "crates/engine-pass-resolve",
-  "crates/engine-pass-typecheck",
-  "crates/engine-pass-generate",
-  "crates/engine",
-  "crates/engine-tests",
+  "crates/compiler-core",
+  "crates/compiler-pass-parse",
+  "crates/compiler-pass-extract",
+  "crates/compiler-pass-resolve",
+  "crates/compiler-pass-typecheck",
+  "crates/compiler-pass-generate",
+  "crates/compiler",
+  "crates/compiler-tests",
   "crates/bench",
   "crates/cli",
 ]
@@ -74,14 +74,14 @@ ac-fields = { path = "crates/fields" }
 ac-cli = { path = "crates/cli" }
 ac-frontend = { path = "crates/frontend" }
 ac-host = { path = "crates/host" }
-ac-engine-core = { path = "crates/engine-core" }
-ac-engine-pass-parse = { path = "crates/engine-pass-parse" }
-ac-engine-pass-extract = { path = "crates/engine-pass-extract" }
-ac-engine-pass-resolve = { path = "crates/engine-pass-resolve" }
-ac-engine-pass-typecheck = { path = "crates/engine-pass-typecheck" }
-ac-engine-pass-generate = { path = "crates/engine-pass-generate" }
-ac-engine = { path = "crates/engine" }
-ac-engine-tests = { path = "crates/engine-tests" }
+ac-compiler-core = { path = "crates/compiler-core" }
+ac-compiler-pass-parse = { path = "crates/compiler-pass-parse" }
+ac-compiler-pass-extract = { path = "crates/compiler-pass-extract" }
+ac-compiler-pass-resolve = { path = "crates/compiler-pass-resolve" }
+ac-compiler-pass-typecheck = { path = "crates/compiler-pass-typecheck" }
+ac-compiler-pass-generate = { path = "crates/compiler-pass-generate" }
+ac-compiler = { path = "crates/compiler" }
+ac-compiler-tests = { path = "crates/compiler-tests" }
 ac-typegen-core = { path = "crates/typegen-core" }
 ac-typegen-key-merge = { path = "crates/typegen-key-merge" }
 ac-typegen-key-inherit = { path = "crates/typegen-key-inherit" }
@@ -124,8 +124,8 @@ ac-schema-json.workspace = true
 ac-fields.workspace = true
 ac-source.workspace = true
 ac-host.workspace = true
-ac-engine.workspace = true
-ac-engine-core.workspace = true
+ac-compiler.workspace = true
+ac-compiler-core.workspace = true
 ac-resolver-core.workspace = true
 ac-resolver-file.workspace = true
 ac-resolver-virtual.workspace = true

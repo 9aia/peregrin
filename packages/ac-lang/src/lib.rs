@@ -21,8 +21,8 @@
 //! | `ac-fields` | Field extraction, interpolation, function calls, undeclared-field detection. |
 //! | `ac-source` | Source location tracking — `SourceLocation`, `SourceMap`. |
 //! | `ac-host` | Default host implementation — built-in functions (`add`, `mul`, `concat`, `len`). |
-//! | `ac-engine` | Pipeline engine — parse → extract → resolve → typecheck → generate. |
-//! | `ac-engine-core` | Pipeline core — `Config`, `Pass`, `Pipeline`, `Compilation`, `Source`. |
+//! | `ac-compiler` | Compilation pipeline — parse → extract → resolve → typecheck → generate. |
+//! | `ac-compiler-core` | Pipeline core — `Config`, `Pass`, `Pipeline`, `Compilation`, `Source`. |
 //! | `ac-resolver-core` | Module resolution trait — `ModuleResolver`, `CachingResolver`. |
 //! | `ac-resolver-file` | Filesystem `ModuleResolver` implementation. |
 //! | `ac-resolver-virtual` | In-memory `ModuleResolver` implementation. |
@@ -38,7 +38,7 @@
 //! ```text
 //!                          ac-lang (facade)
 //!                /      /      |       |       \      \
-//!           ac-engine  ac-vm  f-json  f-yaml  f-toml  ac-schema
+//!           ac-compiler  ac-vm  f-json  f-yaml  f-toml  ac-schema
 //!              / \       |      |       |       |        |
 //!   ac-resolver  ac-typecheck-*  ac-runtime ◄──┴───────┘
 //!      |              |              |
@@ -49,7 +49,7 @@
 //!
 //! `ac-ast` has no dependencies — it is generic over the value
 //! type. `ac-runtime` provides the concrete `RuntimeValue` wrapping
-//! `serde_json::Value`. The engine, typecheck, typegen, and resolver
+//! `serde_json::Value`. The compiler, typecheck, typegen, and resolver
 //! crates build on top of the core layers to provide the full pipeline.
 
 pub use ac_ast as core;
@@ -63,8 +63,8 @@ pub use ac_vm as vm;
 pub use ac_fields as fields;
 pub use ac_source as source;
 pub use ac_host as host;
-pub use ac_engine as engine;
-pub use ac_engine_core as engine_core;
+pub use ac_compiler as compiler;
+pub use ac_compiler_core as compiler_core;
 pub use ac_resolver_core as resolver_core;
 pub use ac_resolver_file as resolver_file;
 pub use ac_resolver_virtual as resolver_virtual;
@@ -89,8 +89,8 @@ pub mod prelude {
     pub use ac_vm::{Context, Error, Function, Host, Vm};
     pub use ac_source::{SourceLocation, SourceMap};
     pub use ac_host::DefaultHost;
-    pub use ac_engine::{Compilation, Config, Pass, Pipeline, Source};
-    pub use ac_engine::{default_cli_config, typecheck_only_config, typegen_pipeline, typecheck_pipeline, full_pipeline};
+    pub use ac_compiler::{Compilation, Config, Pass, Pipeline, Source};
+    pub use ac_compiler::{default_cli_config, typecheck_only_config, typegen_pipeline, typecheck_pipeline, full_pipeline};
     pub use ac_resolver_core::{ModuleResolver, ResolvedModule, ModuleCache, MemoryModuleCache, NoCache, CachingResolver, ChainResolver};
     pub use ac_resolver_file::FileResolver;
     pub use ac_resolver_virtual::VirtualResolver;

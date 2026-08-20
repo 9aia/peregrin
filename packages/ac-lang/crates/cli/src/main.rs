@@ -2,7 +2,7 @@
 //!
 //! Command-line interface for the AC language.
 //!
-//! Thin wrapper around `ac-engine` — handles argument parsing, I/O,
+//! Thin wrapper around `ac-compiler` — handles argument parsing, I/O,
 //! and output formatting. All logic lives in the engine crate.
 
 mod cli;

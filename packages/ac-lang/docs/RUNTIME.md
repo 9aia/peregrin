@@ -17,7 +17,7 @@ The runtime provides:
 - **Module resolution** — file, HTTP, and Git resolvers for `import()` calls.
 - **Schema validation** — JSON Schema (draft 2020-12) validation of field values.
 - **Source location tracking** — line:column mapping for error reporting.
-- **Engine pipeline** — composable passes for parsing, extraction, import resolution, type checking, and type generation.
+- **Compiler pipeline** — composable passes for parsing, extraction, import resolution, type checking, and type generation.
 - **CLI** — the `ac` command-line tool.
 
 ## 2. Architecture
@@ -26,7 +26,7 @@ The runtime is organized into five layers, each building on the one below. No la
 
 ```
 Layer 5 — CLI                     CLI tool
-Layer 4 — Engine pipeline         engine, pipeline core, pass implementations, benchmarks
+Layer 4 — Compiler pipeline         compiler, pipeline core, pass implementations, benchmarks
 Layer 3 — Type system & generation type checking, type generation, module resolution
 Layer 2 — Domain logic            fields, host functions, frontend factory
 Layer 1 — Core                    AST, values, VM, schema, source locations, format frontends
@@ -74,11 +74,11 @@ Layer 1 — Core                    AST, values, VM, schema, source locations, f
 | **Resolver HTTP**         | HTTP(S) module loading                                                                |
 | **Resolver Git**          | Git repository module loading                                                         |
 
-#### Layer 4 — Engine pipeline
+#### Layer 4 — Compiler pipeline
 
 | Component           | Responsibility                                                                                 |
 | ------------------- | ---------------------------------------------------------------------------------------------- |
-| **Engine core**     | Compilation state, configuration, pass interface, pipeline builder                             |
+| **Compiler core**   | Compilation state, configuration, pass interface, pipeline builder                             |
 | **Pass: parse**     | Parse source text into values + source map                                                     |
 | **Pass: extract**   | Extract fields, functions, data from parsed document                                           |
 | **Pass: resolve**   | Resolve imports, build typegen context                                                         |
@@ -89,9 +89,9 @@ Layer 1 — Core                    AST, values, VM, schema, source locations, f
 
 #### Layer 5 — CLI
 
-| Component | Responsibility                                          |
-| --------- | ------------------------------------------------------- |
-| **CLI**   | `ac` command-line tool — thin wrapper around the engine |
+| Component | Responsibility                                            |
+| --------- | --------------------------------------------------------- |
+| **CLI**   | `ac` command-line tool — thin wrapper around the compiler |
 
 ### 2.2 Dependency constraints
 
@@ -102,9 +102,9 @@ Layer 1 — Core                    AST, values, VM, schema, source locations, f
 - The fields module does not depend on the VM — the caller bridges the two via a function resolver interface.
 - The typecheck core and typegen core have no knowledge of AC-specific keys (`expr`, `arg`, `merge`, `inheritable`, `mutable`). Each key has its own handler.
 - The resolver core defines the module resolver and module cache interfaces; implementations (file, virtual, HTTP, Git) do the I/O.
-- The engine core is pass-agnostic — it defines the pass interface and pipeline builder but depends on no specific passes.
-- The engine depends on all pass implementations and provides preset pipelines.
-- The CLI depends only on the engine — all logic lives in the engine.
+- The compiler core is pass-agnostic — it defines the pass interface and pipeline builder but depends on no specific passes.
+- The compiler depends on all pass implementations and provides preset pipelines.
+- The CLI depends only on the compiler — all logic lives in the compiler.
 
 ## 3. Value type
 
@@ -188,7 +188,7 @@ A validation error carries:
 
 - **message** — human-readable description of the failure.
 - **path** — dotted path to the offending element within the value (empty for root).
-- **location** — optional source location (line:column), populated by the engine from the source map after validation.
+- **location** — optional source location (line:column), populated by the compiler from the source map after validation.
 
 ### 5.3 JSON Schema validator
 
@@ -304,9 +304,9 @@ The VmResolver bridges the function resolver interface to the VM + host. Key beh
 - **Param validation** — before dispatching to the VM or evaluating a body, args are validated against param schemas using the schema validator.
 - **Return validation** — after the call, the return value is validated against the return schema (if declared).
 
-## 10. Engine pipeline
+## 10. Compiler pipeline
 
-The engine provides a composable pipeline for compile-time operations: parsing, field extraction, import resolution, type checking, and type generation. The pipeline is a sequence of stateless passes that run in order, each receiving the compilation state and configuration.
+The compiler provides a composable pipeline for compile-time operations: parsing, field extraction, import resolution, type checking, and type generation. The pipeline is a sequence of stateless passes that run in order, each receiving the compilation state and configuration.
 
 ### 10.1 Compilation state
 
@@ -332,7 +332,7 @@ The configuration holds the pluggable components:
 - **interpreter** — how schema fragments become types (schema interpreter).
 - **backend** — how types are emitted (typegen backend, optional for typecheck-only runs).
 
-The engine provides default configurations:
+The compiler provides default configurations:
 
 - **Default** — file resolver (with memory cache) + JSON Schema interpreter + JSON Schema backend.
 - **Typecheck-only** — file resolver (with memory cache) + JSON Schema interpreter + no backend.
@@ -375,7 +375,7 @@ The module resolver and module cache must be thread-safe to support this.
 
 ## 11. CLI
 
-The `ac` command-line tool is a thin wrapper around the engine. It provides argument parsing and delegates all logic to the engine.
+The `ac` command-line tool is a thin wrapper around the compiler. It provides argument parsing and delegates all logic to the compiler.
 
 Commands: `parse`, `eval`, `validate`, `fields`, `typegen`, `typecheck`.
 
@@ -442,6 +442,6 @@ When porting the runtime to another language:
 7. **Implement interpolation** — recursive `${...}` replacement with path lookup and function call resolution.
 8. **Implement the expression parser** — recursive descent for function calls, path lookups, and literals. Handle string literals, nested parens, and comma-separated arguments.
 9. **Implement module resolvers** — at minimum a file resolver. Use the module cache pattern for memoization.
-10. **Implement the engine pipeline** — pass interface + pipeline builder. Each pass reads/writes a compilation state.
+10. **Implement the compiler pipeline** — pass interface + pipeline builder. Each pass reads/writes a compilation state.
 11. **Source location tracking** — scan source text during parsing to build a path → location map. Resolve error locations after all passes.
 12. **Parallel type checking** — if the target language supports parallelism, parallelize independent type checks. The module resolver and module cache must be thread-safe.

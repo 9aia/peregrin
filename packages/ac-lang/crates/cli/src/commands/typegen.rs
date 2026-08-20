@@ -10,7 +10,7 @@ pub fn run(args: TypegenArgs) -> i32 {
         }
     };
 
-    let engine_input = ac_engine::typegen::TypegenInput {
+    let engine_input = ac_compiler::typegen::TypegenInput {
         input: &input,
         format: &args.format,
         input_path: &args.input,
@@ -19,12 +19,12 @@ pub fn run(args: TypegenArgs) -> i32 {
         stdout: args.stdout,
     };
 
-    match ac_engine::typegen::run(&engine_input) {
-        Ok(ac_engine::typegen::TypegenResult::Stdout(json)) => {
+    match ac_compiler::typegen::run(&engine_input) {
+        Ok(ac_compiler::typegen::TypegenResult::Stdout(json)) => {
             println!("{json}");
             0
         }
-        Ok(ac_engine::typegen::TypegenResult::FileWritten(path)) => {
+        Ok(ac_compiler::typegen::TypegenResult::FileWritten(path)) => {
             println!("schema written to {}", path.display());
             0
         }

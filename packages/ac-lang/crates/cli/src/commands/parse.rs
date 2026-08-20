@@ -9,7 +9,7 @@ pub fn run(args: ParseArgs) -> i32 {
             return 1;
         }
     };
-    match ac_engine::parse::run(&input, &args.format) {
+    match ac_compiler::parse::run(&input, &args.format) {
         Ok(output) => {
             print!("{output}");
             0

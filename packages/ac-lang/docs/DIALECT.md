@@ -131,7 +131,7 @@ A custom dialect implements the same interface with different token values and p
 | --------------- | ------------------ | ------------------- |
 | Interpolation   | `${...}`           | `{{...}}`           |
 | Path separator  | `.`                | `/`                 |
-| Call syntax     | `fn(args)`         | `fn[args]`          |
+| Call syntax     | `fn(args)`         | `fn args`           |
 | String literals | `"..."` or `'...'` | `"..."` only        |
 
 ### 4.1 What a custom dialect must preserve
@@ -172,7 +172,7 @@ Documents written with one dialect are not portable to another. `doc.name` and `
 | Runtime configuration         | Runtime spec  | [RUNTIME.md](./RUNTIME.md)                        |
 | Fixed-syntax rationale        | Explanation   | [fixed-syntax.md](./explanations/fixed-syntax.md) |
 
-The language spec defines **what the canonical syntax is**. This spec defines **how implementations abstract that syntax behind an interface**. The runtime spec defines **how the canonical dialect is wired into the engine**.
+The language spec defines **what the canonical syntax is**. This spec defines **how implementations abstract that syntax behind an interface**. The runtime spec defines **how the canonical dialect is wired into the compiler**.
 
 ## 6. Reference implementation
 
@@ -185,4 +185,4 @@ The Rust implementation provides:
 
 Every function that parses or evaluates expressions accepts `&dyn Dialect` (from `ac-dialect`). Every function that extracts fields reads key names from the dialect. Every function that validates schemas uses the dialect's `SchemaVocabulary`. The canonical `AC_DIALECT` (from `ac-dialect-canonical`) is passed at call sites. No function hardcodes `"${"`, `'.'`, `'('`, `"fields"`, `"expr"`, or `JsonSchema`.
 
-See [RUNTIME.md](./RUNTIME.md) for how the dialect integrates into the engine pipeline.
+See [RUNTIME.md](./RUNTIME.md) for how the dialect integrates into the compiler pipeline.
