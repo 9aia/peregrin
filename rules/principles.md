@@ -29,3 +29,9 @@ General coding principles for all code in the workspace.
 - Names reveal intent. `resolveInstance` not `processConfig`. `UserStore` not `UserManager`.
 - Symmetry over cleverness. If `create` exists, `delete` exists. If `save` returns `Effect`, so does `load`.
 - Prefer composition over inheritance. Services for behavior, data types for data, `Layer` for wiring.
+
+## Extensibility
+
+- Built-ins emerge from the community. New capabilities start as declarative, YML-driven extension points (driver presets, functions, adapters) and are promoted to built-in, compiled code only when they are widely used or performance-critical.
+- Declarative first. Prefer solving a problem in a workflow, driver preset, or function file before adding a new package or runtime feature.
+- Graceful promotion. A YML extension that becomes a bottleneck must be easy to rewrite as a TypeScript binding without changing the user-facing surface. Names, parameters, and semantics must stay stable across the boundary.
