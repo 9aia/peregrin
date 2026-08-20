@@ -1,7 +1,14 @@
 import http from "node:http";
 import { Layer } from "effect";
-import { Observer, type Span, type Workflow, type Node, type Event } from "ac-core";
-import { Live as MemoryStoreLive } from "ac-store-memory";
+import {
+  Observer,
+  type Span,
+  type Workflow,
+  type Node,
+  type Event,
+  type StateStore,
+} from "ac-core";
+import { EventStoreLive, StateStoreLive } from "ac-store-memory";
 import { NoopSpan, Layer as NoopObserverLayer } from "ac-observer-noop";
 import { Live as LiteLLMLive, LiteLLMDriver } from "ac-plugin-litellm";
 import { Live as AppriseLive, AppriseDriver } from "ac-plugin-apprise";
@@ -39,10 +46,16 @@ const DefaultDriverRegistryLive = Layer.succeed(DriverRegistry, registry);
 
 const plugins = Layer.merge(LiteLLMLive, AppriseLive);
 
-export const makeDefaultsLive = (observer: Layer.Layer<Observer>) => {
-  const base = Layer.merge(Layer.merge(MemoryStoreLive, observer), plugins);
+export const makeDefaultsLive = (
+  observer: Layer.Layer<Observer>,
+  stateStore: Layer.Layer<StateStore> = StateStoreLive,
+) => {
+  const base = Layer.merge(Layer.merge(EventStoreLive, observer), plugins);
   const withBus = EventBusLiveLayer.pipe(Layer.provide(base));
-  const withRegistry = Layer.merge(Layer.merge(withBus, DefaultDriverRegistryLive), observer);
+  const withRegistry = Layer.merge(
+    Layer.merge(Layer.merge(withBus, DefaultDriverRegistryLive), observer),
+    stateStore,
+  );
   return RunnerLiveLayer.pipe(Layer.provide(withRegistry));
 };
 

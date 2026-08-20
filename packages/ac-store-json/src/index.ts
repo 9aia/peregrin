@@ -1,4 +1,4 @@
-import { Event, EventStore } from "ac-core";
+import { Event, EventStore, StateStore } from "ac-core";
 import { Data, Effect, Layer } from "effect";
 import fs from "node:fs";
 import path from "node:path";
@@ -103,5 +103,60 @@ export class JsonStore implements EventStore {
   }
 }
 
+export class JsonStateStore implements StateStore {
+  private data: Record<string, unknown> = {};
+
+  private constructor(readonly filePath: string) {
+    if (fs.existsSync(this.filePath)) {
+      const content = fs.readFileSync(this.filePath, "utf8").trim();
+      if (content !== "") {
+        this.data = JSON.parse(content) as Record<string, unknown>;
+      }
+      fs.chmodSync(this.filePath, 0o600);
+    }
+  }
+
+  private persist(): void {
+    const dir = path.dirname(this.filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(this.filePath, JSON.stringify(this.data), { mode: 0o600 });
+  }
+
+  get(key: string): unknown {
+    return this.data[key];
+  }
+
+  set(key: string, value: unknown): void {
+    this.data[key] = value;
+    this.persist();
+  }
+
+  toRecord(): Readonly<Record<string, unknown>> {
+    return { ...this.data };
+  }
+
+  clear(): void {
+    this.data = {};
+    if (fs.existsSync(this.filePath)) {
+      fs.rmSync(this.filePath, { force: true });
+    }
+  }
+
+  close(): void {
+    this.persist();
+  }
+
+  static make(filePath: string): Effect.Effect<StateStore, JsonStoreError, never> {
+    return Effect.try(() => new JsonStateStore(filePath) as StateStore).pipe(
+      Effect.mapError((error) => new JsonStoreError({ reason: String(error) })),
+    );
+  }
+}
+
 export const Live = (filePath: string): Layer.Layer<EventStore, JsonStoreError, never> =>
   Layer.effect(EventStore, JsonStore.make(filePath));
+
+export const StateStoreLive = (filePath: string): Layer.Layer<StateStore, JsonStoreError, never> =>
+  Layer.effect(StateStore, JsonStateStore.make(filePath));

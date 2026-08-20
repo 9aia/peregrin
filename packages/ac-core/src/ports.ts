@@ -73,3 +73,13 @@ export interface Observer {
 }
 
 export const Observer = Context.GenericTag<Observer>("ac/Observer");
+
+export interface StateStore {
+  get(key: string): unknown;
+  set(key: string, value: unknown): void;
+  toRecord(): Readonly<Record<string, unknown>>;
+  clear(): void;
+  close(): void;
+}
+
+export const StateStore = Context.GenericTag<StateStore>("ac/StateStore");

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/nodes/pr.schema.json
 # pr: push branch and create a GitHub PR.
 # Reusable by any workflow that needs to open a PR.
 #

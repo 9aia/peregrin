@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/nodes/verify.schema.json
 # verify: run vp check + targeted tests in the worktree.
 # Reusable by any workflow that needs to validate changes.
 #

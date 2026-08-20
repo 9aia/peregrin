@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/nodes/abort.schema.json
 # abort: print abort summary when any node fails.
 # Reusable by any workflow — listens for <workflow>.aborted.
 

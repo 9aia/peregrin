@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/nodes/review.schema.json
 # review: spawn a normal-mode agent to review the diff.
 # Reusable by any workflow that needs agent review before PR.
 #

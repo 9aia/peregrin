@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/nodes/reproduce.schema.json
 # reproduce: install deps and run baseline checks in the worktree.
 # Reusable by any workflow that needs a baseline before making changes.
 #

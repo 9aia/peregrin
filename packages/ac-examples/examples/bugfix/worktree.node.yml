@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/nodes/worktree.schema.json
 # worktree: create a git worktree from origin/main.
 # Reusable by any workflow that needs an isolated branch.
 #

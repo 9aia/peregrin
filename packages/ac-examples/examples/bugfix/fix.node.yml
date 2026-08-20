@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/nodes/fix.schema.json
 # fix: spawn an agent to apply the fix.
 # Bugfix-specific — uses devin -p to edit files following ndocs-3 conventions.
 #

@@ -1,10 +1,11 @@
-import { Event, EventStore } from "ac-core";
+import { Event, EventStore, StateStore } from "ac-core";
 import { Layer } from "effect";
 
 export class MemoryStore implements EventStore {
   private eventList: Array<Event> = [];
   private eventsByType: Record<string, Array<Event>> = {};
   private seenSet: Set<string> = new Set();
+  private stateMap = new Map<string, unknown>();
 
   append(event: Event): void {
     this.eventList.push(event);
@@ -33,9 +34,29 @@ export class MemoryStore implements EventStore {
     this.eventList = [];
     this.eventsByType = {};
     this.seenSet = new Set();
+    this.stateMap.clear();
   }
 
   close(): void {}
+
+  get(key: string): unknown {
+    return this.stateMap.get(key);
+  }
+
+  set(key: string, value: unknown): void {
+    this.stateMap.set(key, value);
+  }
+
+  toRecord(): Readonly<Record<string, unknown>> {
+    return Object.fromEntries(this.stateMap.entries()) as Readonly<Record<string, unknown>>;
+  }
 }
 
-export const Live: Layer.Layer<EventStore> = Layer.succeed(EventStore, new MemoryStore());
+const liveStore = new MemoryStore();
+
+export const EventStoreLive: Layer.Layer<EventStore> = Layer.succeed(EventStore, liveStore);
+export const StateStoreLive: Layer.Layer<StateStore> = Layer.succeed(StateStore, liveStore);
+export const Live: Layer.Layer<EventStore | StateStore> = Layer.merge(
+  EventStoreLive,
+  StateStoreLive,
+);

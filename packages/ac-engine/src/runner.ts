@@ -7,13 +7,14 @@ import {
   DriverError,
   DeadLetterQueue,
   Observer,
+  StateStore,
   TemplateError,
 } from "ac-core";
-import type { ExecutionContext, StateStore } from "ac-core";
+import type { ExecutionContext } from "ac-core";
 import { captureWildcards, EventBus } from "./bus.js";
 import { DriverRegistry } from "./registry.js";
 import { buildValidator, CapabilityChecker, ResourceGate } from "ac-safety";
-import { resolveValueForNode } from "ac-template-engine";
+import { resolveTemplate, resolveValueForNode } from "ac-template-engine";
 
 function resolveForward(fwdType: string, captures: Record<string, string>): string {
   const parts = fwdType.split(".");
@@ -30,20 +31,32 @@ function resolveForward(fwdType: string, captures: Record<string, string>): stri
   return out.join(".");
 }
 
-class SimpleStateStore implements StateStore {
+class ScopedStateStore {
   private data = new Map<string, unknown>();
 
-  get(key: string) {
+  constructor(initial: Record<string, unknown> = {}) {
+    for (const [k, v] of Object.entries(initial)) {
+      this.data.set(k, v);
+    }
+  }
+
+  get(key: string): unknown {
     return this.data.get(key);
   }
 
-  set(key: string, value: unknown) {
+  set(key: string, value: unknown): void {
     this.data.set(key, value);
   }
 
-  toRecord() {
+  toRecord(): Readonly<Record<string, unknown>> {
     return Object.fromEntries(this.data.entries()) as Readonly<Record<string, unknown>>;
   }
+
+  clear(): void {
+    this.data.clear();
+  }
+
+  close(): void {}
 }
 
 const noOpDeadLetterQueue: DeadLetterQueue = {
@@ -78,6 +91,7 @@ class RunnerLive implements Runner {
     private observer: Observer,
     private resourceGate: ResourceGate,
     private dlq: DeadLetterQueue,
+    private stateStore: StateStore,
   ) {}
 
   run(workflow: Workflow, options: RunOptions = {}) {
@@ -237,6 +251,7 @@ class RunnerLive implements Runner {
           log,
           requestShutdown,
           "",
+          this.stateStore,
         );
 
         const resolvedEither = yield* resolveValueForNode(node.with_, triggers, preCtx, node).pipe(
@@ -251,6 +266,49 @@ class RunnerLive implements Runner {
         }
 
         const resolvedWith = resolvedEither.right as Readonly<Record<string, unknown>>;
+        let stateKey = "";
+        let nodeState: StateStore = this.stateStore;
+        const stateKeyTemplate = node.state["key"];
+        if (typeof stateKeyTemplate === "string" && stateKeyTemplate.length > 0) {
+          stateKey = yield* resolveTemplate(stateKeyTemplate, triggers, preCtx, node).pipe(
+            Effect.mapError((error: TemplateError) => new DriverError({ reason: error.reason })),
+          );
+          const record = this.stateStore.get(stateKey);
+          const initial: Record<string, unknown> =
+            record !== null && typeof record === "object" && !Array.isArray(record)
+              ? { ...(record as Record<string, unknown>) }
+              : {};
+          nodeState = new ScopedStateStore(initial);
+          const skipIf = node.state["skip_if"];
+          if (typeof skipIf === "string" && skipIf.length > 0) {
+            const skipCtx = this.makeContext(
+              node,
+              fires,
+              `${node.id}:skip`,
+              pending,
+              dryRun,
+              secrets,
+              workflow,
+              log,
+              requestShutdown,
+              "",
+              nodeState,
+            );
+            const rendered = yield* resolveTemplate(skipIf, triggers, skipCtx, node).pipe(
+              Effect.mapError((error: TemplateError) => new DriverError({ reason: error.reason })),
+            );
+            if (["true", "yes", "1", "ok"].includes(rendered.trim().toLowerCase())) {
+              const skipped = new Event(
+                "node.skipped",
+                { node: node.id, state_key: stateKey },
+                node.id,
+              );
+              this.observer.onNodeEnd(node, [skipped], null, span);
+              return [skipped];
+            }
+          }
+        }
+
         const capChecker = new CapabilityChecker(workflow.capabilities, workflow.strict);
         const effective = capChecker.merge(node.capabilities);
         const check = new CapabilityChecker(effective, workflow.strict);
@@ -279,6 +337,7 @@ class RunnerLive implements Runner {
             log,
             requestShutdown,
             span.getTraceparent(),
+            nodeState,
           );
 
         const driverEvents = node.fanIn
@@ -311,7 +370,12 @@ class RunnerLive implements Runner {
         if (workflow.strict) {
           const allowedEmits = new Set(node.emits);
           for (const event of all) {
-            if (event.type === "node.failed" || event.type === "circuit.open") continue;
+            if (
+              event.type === "node.failed" ||
+              event.type === "circuit.open" ||
+              event.type === "node.skipped"
+            )
+              continue;
             if (!allowedEmits.has(event.type)) {
               const fail = Event.nodeFailed(
                 node.id,
@@ -321,6 +385,10 @@ class RunnerLive implements Runner {
               return [fail];
             }
           }
+        }
+
+        if (stateKey.length > 0 && !driverEvents.some((event) => event.type === "node.failed")) {
+          this.stateStore.set(stateKey, nodeState.toRecord());
         }
 
         this.observer.onNodeEnd(node, all, null, span);
@@ -520,8 +588,8 @@ class RunnerLive implements Runner {
     log: ReadonlyArray<Event>,
     requestShutdown: () => void,
     traceparent: string,
+    state: StateStore,
   ): ExecutionContext {
-    const state = new SimpleStateStore();
     const missingSecrets: Array<string> = [];
     const secretProxy = new Proxy(secrets, {
       get: (target, prop) => {
@@ -572,6 +640,14 @@ export const RunnerLiveLayer = Layer.effect(
     const bus = yield* EventBus;
     const registry = yield* DriverRegistry;
     const observer = yield* Observer;
-    return new RunnerLive(bus, registry, observer, new ResourceGate(), noOpDeadLetterQueue);
+    const stateStore = yield* StateStore;
+    return new RunnerLive(
+      bus,
+      registry,
+      observer,
+      new ResourceGate(),
+      noOpDeadLetterQueue,
+      stateStore,
+    );
   }),
 );

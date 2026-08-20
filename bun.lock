@@ -454,6 +454,24 @@
         "vite-plus": "catalog:",
       },
     },
+    "packages/tests": {
+      "name": "@ac/tests",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/node": "^24.13.3",
+        "ac-core": "workspace:*",
+        "ac-engine": "workspace:*",
+        "ac-file-router": "workspace:*",
+        "ac-loader-yaml": "workspace:*",
+        "ac-safety": "workspace:*",
+        "ac-store-memory": "workspace:*",
+        "ac-template-engine": "workspace:*",
+        "ac-testing-library": "workspace:*",
+        "effect": "^3.22.1",
+        "typescript": "~6.0.2",
+        "vite-plus": "catalog:",
+      },
+    },
     "packages/utils": {
       "name": "utils",
       "version": "0.0.0",
@@ -473,6 +491,8 @@
     "vite-plus": "0.2.9",
   },
   "packages": {
+    "@ac/tests": ["@ac/tests@workspace:packages/tests"],
+
     "@algolia/abtesting": ["@algolia/abtesting@1.22.0", "", { "dependencies": { "@algolia/client-common": "5.56.0", "@algolia/requester-browser-xhr": "5.56.0", "@algolia/requester-fetch": "5.56.0", "@algolia/requester-node-http": "5.56.0" } }, "sha512-BFR6zNowNKcY7Ou7TaJc9QWexES4YKPbmf/OTFofpdsdhz4x6q0lbxp3duO0EHnyrN7rE4ba/TSXuY+BDGu4+g=="],
 
     "@algolia/autocomplete-core": ["@algolia/autocomplete-core@1.17.7", "", { "dependencies": { "@algolia/autocomplete-plugin-algolia-insights": "1.17.7", "@algolia/autocomplete-shared": "1.17.7" } }, "sha512-BjiPOW6ks90UKl7TwMv7oNQMnzU+t/wk9mgIDi6b1tXpUek7MW0lbNOUHpvam9pe3lVCf4xPFT+lK7s+e+fs7Q=="],

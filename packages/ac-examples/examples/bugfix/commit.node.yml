@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/nodes/commit.schema.json
 # commit: stage and commit changes with a conventional message.
 # Reusable by any workflow that needs to commit work.
 #

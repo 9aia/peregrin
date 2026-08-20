@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import type { StateStore } from "./ports.js";
 
 function coerceToString(value: unknown, fallback = ""): string {
   if (typeof value === "string") return value;
@@ -134,10 +135,12 @@ export class Node {
     readonly forward: ReadonlyArray<string> = [],
     readonly resources: Readonly<Record<string, unknown>> = {},
     readonly capabilities: Readonly<Record<string, unknown>> = {},
+    readonly state: Readonly<Record<string, unknown>> = {},
   ) {}
 
   static fromDict(raw: Readonly<Record<string, unknown>>): Node {
     const poll = raw.poll as Readonly<Record<string, unknown>> | undefined;
+    const state = (raw.state as Record<string, unknown>) ?? {};
     if (poll) {
       const nodeId = coerceToString(raw.id);
       const tick = `${nodeId}.tick`;
@@ -173,6 +176,7 @@ export class Node {
         Array.from<string>((raw.forward as Array<string>) ?? []),
         (raw.resources as Record<string, unknown>) ?? {},
         (raw.capabilities as Record<string, unknown>) ?? {},
+        state,
       );
     }
     return new Node(
@@ -193,6 +197,7 @@ export class Node {
       Array.from<string>((raw.forward as Array<string>) ?? []),
       (raw.resources as Record<string, unknown>) ?? {},
       (raw.capabilities as Record<string, unknown>) ?? {},
+      state,
     );
   }
 
@@ -217,6 +222,7 @@ export class Node {
     if (this.forward.length > 0) d.forward = [...this.forward];
     if (Object.keys(this.resources).length > 0) d.resources = this.resources;
     if (Object.keys(this.capabilities).length > 0) d.capabilities = this.capabilities;
+    if (Object.keys(this.state).length > 0) d.state = this.state;
     return d;
   }
 }
@@ -233,6 +239,7 @@ export class Workflow {
     readonly payloadSchemas: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {},
     readonly capabilities: Readonly<Record<string, unknown>> = {},
     readonly strict: boolean = false,
+    readonly state: Readonly<Record<string, unknown>> = {},
   ) {}
 
   static fromDict(raw: Readonly<Record<string, unknown>>): Workflow {
@@ -254,6 +261,7 @@ export class Workflow {
       (raw.payload_schemas as Record<string, Record<string, unknown>>) ?? {},
       (raw.capabilities as Record<string, unknown>) ?? {},
       Boolean(raw.strict),
+      (raw.state as Record<string, unknown>) ?? {},
     );
   }
 
@@ -277,6 +285,7 @@ export class Workflow {
     if (this.stopOn.length > 0) d.stop_on = [...this.stopOn];
     if (Object.keys(this.capabilities).length > 0) d.capabilities = this.capabilities;
     if (this.strict) d.strict = true;
+    if (Object.keys(this.state).length > 0) d.state = this.state;
     return d;
   }
 
@@ -293,12 +302,6 @@ export class Workflow {
       }
     }
   }
-}
-
-export interface StateStore {
-  get(key: string): unknown;
-  set(key: string, value: unknown): void;
-  toRecord(): Readonly<Record<string, unknown>>;
 }
 
 export interface Runner {

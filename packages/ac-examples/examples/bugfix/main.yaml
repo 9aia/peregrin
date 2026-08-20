@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/main.schema.json
 # bugfix: end-to-end bugfix workflow for ndocs-3.
 #
 # Pipeline:

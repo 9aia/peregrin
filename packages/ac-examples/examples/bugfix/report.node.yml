@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/nodes/report.schema.json
 # report: print completion summary.
 # Reusable by any workflow — change the header text via merge override.
 

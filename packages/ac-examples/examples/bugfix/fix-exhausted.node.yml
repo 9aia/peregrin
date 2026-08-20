@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=.ac/generated/schemas/nodes/fix-exhausted.schema.json
 # fix-exhausted: report when max fix attempts reached without passing verify.
 # Bugfix-specific.
 
