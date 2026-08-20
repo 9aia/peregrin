@@ -21,11 +21,7 @@ with:
     source /tmp/ac-bugfix-env
     cd "$WORKTREE_PATH"
 
-    ATTEMPT_FILE="/tmp/ac-bugfix-attempt"
-    ATTEMPT=$(cat "$ATTEMPT_FILE" 2>/dev/null || echo 0)
-    ATTEMPT=$((ATTEMPT + 1))
-    echo "$ATTEMPT" > "$ATTEMPT_FILE"
-
+    ATTEMPT="${node.fires}"
     echo "=== Fix attempt $ATTEMPT/${config.max_fix_attempts} ==="
 
     devin -p "You are fixing a bug in the ndocs-3 project (Effect + Bun + Vite+).

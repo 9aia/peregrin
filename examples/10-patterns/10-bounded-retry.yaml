@@ -24,29 +24,17 @@ nodes:
         0: op.success
         default: op.retry
       cmd: |
-        ATTEMPT_FILE="/tmp/peregrin-attempt"
-        ATTEMPT=$(cat "$ATTEMPT_FILE" 2>/dev/null || echo 0)
-        ATTEMPT=$((ATTEMPT + 1))
-        echo "$ATTEMPT" > "$ATTEMPT_FILE"
-        echo "attempt $ATTEMPT"
-        if [ "$ATTEMPT" -ge "${config.success_on_attempt}" ]; then
-          echo "success on attempt $ATTEMPT"
+        echo "attempt ${node.fires}"
+        if [ "${node.fires}" -ge "${config.success_on_attempt}" ]; then
+          echo "success on attempt ${node.fires}"
           exit 0
-        else
-          echo "fail on attempt $ATTEMPT"
-          exit 1
         fi
-
-  - id: cleanup
-    driver: shell
-    on: [op.success]
-    emits: [cleanup.done]
-    with:
-      cmd: "rm -f /tmp/peregrin-attempt && echo 'cleaned up'"
+        echo "fail on attempt ${node.fires}"
+        exit 1
 
   - id: notify-success
     driver: shell
-    on: [cleanup.done]
+    on: [op.success]
     emits: [workflow.done]
     with:
       cmd: "echo 'operation succeeded after retries'"

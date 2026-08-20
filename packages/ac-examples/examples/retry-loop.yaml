@@ -33,30 +33,17 @@ nodes:
         default: op.retry
       # Simulate: fail first 2 times, succeed on 3rd
       cmd: |
-        ATTEMPT_FILE="/tmp/ac-retry-attempt"
-        ATTEMPT=$(cat "$ATTEMPT_FILE" 2>/dev/null || echo 0)
-        ATTEMPT=$((ATTEMPT + 1))
-        echo "$ATTEMPT" > "$ATTEMPT_FILE"
-        echo "attempt $ATTEMPT"
-        if [ "$ATTEMPT" -ge 3 ]; then
-          echo "success on attempt $ATTEMPT"
+        echo "attempt ${node.fires}"
+        if [ "${node.fires}" -ge 3 ]; then
+          echo "success on attempt ${node.fires}"
           exit 0
-        else
-          echo "fail on attempt $ATTEMPT"
-          exit 1
         fi
-
-  # On success: clean up and notify
-  - id: cleanup
-    driver: shell
-    on: [op.success]
-    emits: [cleanup.done]
-    with:
-      cmd: "rm -f /tmp/ac-retry-attempt && echo 'cleaned up'"
+        echo "fail on attempt ${node.fires}"
+        exit 1
 
   - id: notify-success
     driver: shell
-    on: [cleanup.done]
+    on: [op.success]
     emits: [notify.done]
     with:
       cmd: "echo 'operation succeeded after retries'"

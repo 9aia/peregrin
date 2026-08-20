@@ -35,6 +35,21 @@ export const ShellDriver: Driver = {
       const stdout = result.stdout ?? "";
       const stderr = result.stderr ?? "";
 
+      const emitMap = with_.emit as Record<string, string> | undefined;
+      const rcKey = String(rc);
+      const mapEvent =
+        emitMap && typeof emitMap === "object" && !Array.isArray(emitMap)
+          ? Object.hasOwn(emitMap, rcKey)
+            ? emitMap[rcKey]
+            : Object.hasOwn(emitMap, "default")
+              ? emitMap["default"]
+              : undefined
+          : undefined;
+
+      if (mapEvent !== undefined) {
+        return [new Event(mapEvent, { stdout, rc, cmd }, node.id)];
+      }
+
       if (rc === 0) {
         return [new Event("cmd.done", { stdout, rc, cmd }, node.id)];
       }
