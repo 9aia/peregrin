@@ -4,6 +4,7 @@
 //! the effect of AST caching across repeated calls.
 
 use ac_bench::*;
+use ac_dialect::AC_DIALECT;
 use ac_typecheck_core::{Type, TypeEnv};
 use ac_typecheck_infer::{infer, infer_cached, parse_expr, FunctionTable};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
@@ -16,7 +17,7 @@ fn bench_parse_literals(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(n), &exprs, |b, exprs| {
             b.iter(|| {
                 for e in exprs {
-                    black_box(parse_expr(e));
+                    black_box(parse_expr(e, &AC_DIALECT));
                 }
             });
         });
@@ -30,7 +31,7 @@ fn bench_parse_nested_calls(c: &mut Criterion) {
     for depth in [1, 3, 5, 10, 20] {
         let expr = nested_call_expr(depth);
         group.bench_with_input(BenchmarkId::from_parameter(depth), &expr, |b, expr| {
-            b.iter(|| black_box(parse_expr(black_box(expr))));
+            b.iter(|| black_box(parse_expr(black_box(expr), &AC_DIALECT)));
         });
     }
     group.finish();
@@ -46,7 +47,7 @@ fn bench_infer_batch(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(n), &exprs, |b, exprs| {
             b.iter(|| {
                 for e in exprs {
-                    black_box(infer(black_box(e), black_box(&env), black_box(&functions)));
+                    black_box(infer(black_box(e), black_box(&env), black_box(&functions), &AC_DIALECT));
                 }
             });
         });
@@ -72,6 +73,7 @@ fn bench_infer_cached(c: &mut Criterion) {
                             black_box(&env),
                             black_box(&functions),
                             black_box(&mut cache),
+                            &AC_DIALECT,
                         ));
                     }
                 }
@@ -100,7 +102,7 @@ fn bench_infer_nested_calls(c: &mut Criterion) {
         let expr = nested_call_expr(depth);
         group.bench_with_input(BenchmarkId::from_parameter(depth), &expr, |b, expr| {
             b.iter(|| {
-                black_box(infer(black_box(expr), black_box(&env), black_box(&functions)));
+                black_box(infer(black_box(expr), black_box(&env), black_box(&functions), &AC_DIALECT));
             });
         });
     }
