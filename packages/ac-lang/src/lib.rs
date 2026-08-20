@@ -91,7 +91,7 @@ pub mod prelude {
     pub use ac_host::DefaultHost;
     pub use ac_engine::{Compilation, Config, Pass, Pipeline, Source};
     pub use ac_engine::{default_cli_config, typecheck_only_config, typegen_pipeline, typecheck_pipeline, full_pipeline};
-    pub use ac_resolver_core::{ModuleResolver, ResolvedModule, ModuleCache, MemoryModuleCache, NoCache, CachingResolver};
+    pub use ac_resolver_core::{ModuleResolver, ResolvedModule, ModuleCache, MemoryModuleCache, NoCache, CachingResolver, ChainResolver};
     pub use ac_resolver_file::FileResolver;
     pub use ac_resolver_virtual::VirtualResolver;
     pub use ac_typecheck_core::{Type, TypeEnv, TypeError, TypeResult, SchemaInterpreter};
