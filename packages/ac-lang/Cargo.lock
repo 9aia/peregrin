@@ -10,6 +10,7 @@ version = "0.1.0"
 name = "ac-bench"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-engine",
  "ac-engine-core",
  "ac-engine-pass-extract",
@@ -42,10 +43,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-dialect"
+version = "0.1.0"
+
+[[package]]
 name = "ac-engine"
 version = "0.1.0"
 dependencies = [
  "ac-ast",
+ "ac-dialect",
  "ac-engine-core",
  "ac-engine-pass-extract",
  "ac-engine-pass-generate",
@@ -170,6 +176,7 @@ name = "ac-engine-tests"
 version = "0.1.0"
 dependencies = [
  "ac-ast",
+ "ac-dialect",
  "ac-engine",
  "ac-engine-core",
  "ac-engine-pass-extract",
@@ -194,6 +201,7 @@ dependencies = [
 name = "ac-fields"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-runtime",
  "ac-schema",
  "serde_json",
@@ -396,6 +404,7 @@ dependencies = [
 name = "ac-typecheck-infer"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-typecheck-core",
  "serde_json",
 ]
@@ -412,6 +421,7 @@ dependencies = [
 name = "ac-typecheck-key-expr"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-typecheck-core",
  "ac-typecheck-infer",
  "serde_json",

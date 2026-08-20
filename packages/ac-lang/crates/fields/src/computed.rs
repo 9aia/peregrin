@@ -1,5 +1,6 @@
 use crate::expression::eval_expression;
 use crate::types::{ArgSpec, ComputedField, FunctionResolver, Namespaces, DEFAULT_NAMESPACE};
+use ac_dialect::Dialect;
 use serde_json::Value as JsonValue;
 
 /// Evaluates computed field expressions and inserts results into `data`.
@@ -20,6 +21,7 @@ pub fn compute_fields(
     computed: &[ComputedField],
     namespaces: &mut Namespaces,
     resolver: &dyn FunctionResolver,
+    dialect: &dyn Dialect,
 ) -> Vec<String> {
     if computed.is_empty() {
         return Vec::new();
@@ -59,10 +61,13 @@ pub fn compute_fields(
                 namespaces.insert("arg".to_string(), arg_val.clone());
             }
 
-            if let Some(val) = eval_expression(&field.expr, namespaces, resolver) {
+            if let Some(val) = eval_expression(&field.expr, namespaces, resolver, dialect) {
                 if let Some(obj) = data.as_object_mut() {
-                    obj.insert(field.name.clone(), val);
+                    obj.insert(field.name.clone(), val.clone());
                 }
+                // Sync the default namespace so later fields in this pass
+                // read the stored value rather than a stale one.
+                namespaces.insert(DEFAULT_NAMESPACE.to_string(), data.clone());
             } else {
                 still_remaining.push(field.clone());
             }

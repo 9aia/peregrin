@@ -1,3 +1,4 @@
+use ac_resolver_core::IMPORT_FUNCTION;
 use serde_json::Value as JsonValue;
 
 /// The kind of import detected in a field's `expr`.
@@ -19,12 +20,13 @@ pub enum ImportKind {
 /// - Anything else → `ImportKind::None`
 pub fn detect_import_path(expr: &str) -> ImportKind {
     let trimmed = expr.trim();
+    let import_prefix = format!("{IMPORT_FUNCTION}(");
 
-    if trimmed == "import(arg)" {
+    if trimmed == format!("{IMPORT_FUNCTION}(arg)") {
         return ImportKind::DataDriven;
     }
 
-    if let Some(rest) = trimmed.strip_prefix("import(") {
+    if let Some(rest) = trimmed.strip_prefix(&import_prefix) {
         let rest = rest.trim_end();
         let rest = rest.strip_suffix(')').unwrap_or(rest);
 

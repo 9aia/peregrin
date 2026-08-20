@@ -10,9 +10,10 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use ac_ast::Expr;
+use ac_dialect::AC_DIALECT;
 use ac_fields::{self, FunctionResolver};
 use ac_host::DefaultHost;
-use ac_resolver_core::ModuleResolver;
+use ac_resolver_core::{ModuleResolver, IMPORT_FUNCTION};
 use ac_runtime::RuntimeValue;
 use ac_schema_json::JsonSchema;
 use ac_vm::{Context, Vm};
@@ -80,7 +81,7 @@ impl<'a> VmResolver<'a> {
                 .zip(args.iter())
                 .map(|((name, _), val)| (name.clone(), val.clone()))
                 .collect();
-            let result = ac_fields::eval_body(body, &params, &self.namespaces, self)
+            let result = ac_fields::eval_body(body, &params, &self.namespaces, self, &AC_DIALECT)
                 .ok_or_else(|| format!("failed to evaluate body for '{name}'"))?;
 
             if let Some(ret_raw) = &sig.return_schema {
@@ -90,7 +91,7 @@ impl<'a> VmResolver<'a> {
             return Ok(result);
         }
 
-        if name == "import" {
+        if name == IMPORT_FUNCTION {
             return self.call_import(args);
         }
 

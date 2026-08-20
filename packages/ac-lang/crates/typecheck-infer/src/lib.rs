@@ -20,6 +20,8 @@ mod table;
 
 use std::collections::HashMap;
 
+use ac_dialect::Dialect;
+
 pub use parser::{parse_expr, ExprAst};
 pub use table::{FunctionTable, RawFnSig};
 
@@ -38,11 +40,11 @@ pub const DEFAULT_NAMESPACE: &str = "doc";
 /// Parses the expression, then walks the AST to determine the result type.
 /// Returns [`Type::Unknown`] if the type cannot be determined (e.g., an
 /// unknown function or an unresolvable path).
-pub fn infer(expr: &str, env: &TypeEnv, functions: &FunctionTable) -> Type {
-    let Some(ast) = parse_expr(expr) else {
+pub fn infer(expr: &str, env: &TypeEnv, functions: &FunctionTable, dialect: &dyn Dialect) -> Type {
+    let Some(ast) = parse_expr(expr, dialect) else {
         return Type::Unknown;
     };
-    infer_ast(&ast, env, functions)
+    infer_ast(&ast, env, functions, dialect)
 }
 
 /// Infer the type of an expression string, with AST caching.
@@ -56,12 +58,13 @@ pub fn infer_cached(
     env: &TypeEnv,
     functions: &FunctionTable,
     cache: &mut HashMap<String, Option<ExprAst>>,
+    dialect: &dyn Dialect,
 ) -> Type {
     let ast = match cache.get(expr) {
         Some(Some(cached)) => Some(cached.clone()),
         Some(None) => None,
         None => {
-            let parsed = parse_expr(expr);
+            let parsed = parse_expr(expr, dialect);
             cache.insert(expr.to_string(), parsed.clone());
             parsed
         }
@@ -69,16 +72,16 @@ pub fn infer_cached(
     let Some(ast) = ast else {
         return Type::Unknown;
     };
-    infer_ast(&ast, env, functions)
+    infer_ast(&ast, env, functions, dialect)
 }
 
 /// Infer the type of a parsed expression AST.
-pub fn infer_ast(ast: &ExprAst, env: &TypeEnv, functions: &FunctionTable) -> Type {
+pub fn infer_ast(ast: &ExprAst, env: &TypeEnv, functions: &FunctionTable, dialect: &dyn Dialect) -> Type {
     match ast {
         ExprAst::Literal(ty) => ty.clone(),
 
         ExprAst::Path(path) => {
-            let parts: Vec<&str> = path.split('.').collect();
+            let parts: Vec<&str> = path.split(dialect.path_separator()).collect();
             if parts.is_empty() {
                 return Type::Unknown;
             }
@@ -104,7 +107,7 @@ pub fn infer_ast(ast: &ExprAst, env: &TypeEnv, functions: &FunctionTable) -> Typ
         ExprAst::Call(name, args) => {
             let arg_types: Vec<Type> = args
                 .iter()
-                .map(|a| infer_ast(a, env, functions))
+                .map(|a| infer_ast(a, env, functions, dialect))
                 .collect();
 
             let Some(fn_type) = functions.lookup(name) else {

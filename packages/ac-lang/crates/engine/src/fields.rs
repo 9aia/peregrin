@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use ac_fields;
+use ac_dialect::AC_DIALECT;
 use ac_frontend::frontend_for;
 use ac_host::DefaultHost;
 use ac_runtime::RuntimeValue;
@@ -75,13 +76,14 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
         &namespaces,
         &inheritable,
         &resolver,
+        &AC_DIALECT,
     );
     let mut data = RuntimeValue::new(interpolated);
 
     let mut errors = Vec::new();
 
     let compute_errors =
-        ac_fields::compute_fields(data.inner_mut(), &computed, &mut namespaces, &resolver);
+        ac_fields::compute_fields(data.inner_mut(), &computed, &mut namespaces, &resolver, &AC_DIALECT);
     errors.extend(compute_errors);
 
     let merge_errors = ac_fields::merge_fields(data.inner_mut(), &merge);

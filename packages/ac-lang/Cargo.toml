@@ -5,6 +5,7 @@ edition = "2024"
 
 [workspace]
 members = [
+  "crates/dialect",
   "crates/ast",
   "crates/runtime",
   "crates/vm",
@@ -57,6 +58,7 @@ version = "0.1.0"
 edition = "2024"
 
 [workspace.dependencies]
+ac-dialect = { path = "crates/dialect" }
 ac-ast = { path = "crates/ast" }
 ac-runtime = { path = "crates/runtime" }
 ac-vm = { path = "crates/vm" }

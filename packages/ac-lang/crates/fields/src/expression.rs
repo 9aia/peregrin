@@ -1,10 +1,11 @@
 use crate::path::resolve_path;
 use crate::types::{FunctionResolver, Namespaces, DEFAULT_NAMESPACE};
+use ac_dialect::Dialect;
 use serde_json::Value as JsonValue;
 
 /// Evaluates a single expression to a `JsonValue`.
 ///
-/// The expression uses the same syntax as the content inside `${...}`:
+/// The expression uses the syntax defined by the dialect:
 /// - Function calls: `add(1, 2)`, `mul(x, 2)`
 /// - Path lookups: `doc.name`, `env.HOME`, `name` (shorthand for `doc.name`)
 /// - Literals: `"string"`, `123`, `true`, `false`, `null`
@@ -14,13 +15,14 @@ pub fn eval_expression(
     expr: &str,
     namespaces: &Namespaces,
     resolver: &dyn FunctionResolver,
+    dialect: &dyn Dialect,
 ) -> Option<JsonValue> {
     let expr = expr.trim();
     if expr.is_empty() {
         return None;
     }
 
-    eval_expr_inner(expr, namespaces, resolver)
+    eval_expr_inner(expr, namespaces, resolver, dialect)
 }
 
 /// Evaluates a user-defined function body expression.
@@ -36,6 +38,7 @@ pub fn eval_body(
     params: &[(String, JsonValue)],
     namespaces: &Namespaces,
     resolver: &dyn FunctionResolver,
+    dialect: &dyn Dialect,
 ) -> Option<JsonValue> {
     let mut merged = namespaces.clone();
     let mut doc_obj = merged
@@ -47,7 +50,7 @@ pub fn eval_body(
         doc_obj.insert(name.clone(), value.clone());
     }
     merged.insert(DEFAULT_NAMESPACE.to_string(), JsonValue::Object(doc_obj));
-    eval_expression(body, &merged, resolver)
+    eval_expression(body, &merged, resolver, dialect)
 }
 
 /// Internal expression evaluator shared by `eval_expression` and interpolation.
@@ -55,6 +58,7 @@ pub(crate) fn eval_expr_inner(
     expr: &str,
     namespaces: &Namespaces,
     resolver: &dyn FunctionResolver,
+    dialect: &dyn Dialect,
 ) -> Option<JsonValue> {
     let expr = expr.trim();
     if expr.is_empty() {
@@ -62,39 +66,19 @@ pub(crate) fn eval_expr_inner(
     }
 
     // Function call: name(args)
-    if let Some(paren_pos) = find_open_paren(expr)
-        && expr.ends_with(')')
+    if let Some(paren_pos) = dialect.find_call_open(expr)
+        && expr.ends_with(dialect.call_close())
         && paren_pos < expr.len() - 1
         && !expr[..paren_pos].trim().is_empty()
     {
         let name = &expr[..paren_pos];
         let args_str = &expr[paren_pos + 1..expr.len() - 1];
-        let args = parse_args(args_str, namespaces, resolver)?;
+        let args = parse_args(args_str, namespaces, resolver, dialect)?;
         resolver.call(name.trim(), &args).ok()
     } else {
         // Path lookup: ns.key.subkey or shorthand key
-        resolve_path(expr, namespaces)
+        resolve_path(expr, namespaces, dialect.path_separator())
     }
-}
-
-/// Finds the position of the opening `(` for a function call.
-/// Returns `None` if there is no `(` or it's inside a string literal.
-fn find_open_paren(s: &str) -> Option<usize> {
-    let mut in_string = false;
-    let mut quote_char = '\0';
-    for (i, ch) in s.char_indices() {
-        if in_string {
-            if ch == quote_char {
-                in_string = false;
-            }
-        } else if ch == '"' || ch == '\'' {
-            in_string = true;
-            quote_char = ch;
-        } else if ch == '(' {
-            return Some(i);
-        }
-    }
-    None
 }
 
 /// Parses function call arguments, evaluating each one.
@@ -102,6 +86,7 @@ fn parse_args(
     args_str: &str,
     namespaces: &Namespaces,
     resolver: &dyn FunctionResolver,
+    dialect: &dyn Dialect,
 ) -> Option<Vec<JsonValue>> {
     let args_str = args_str.trim();
     if args_str.is_empty() {
@@ -109,9 +94,9 @@ fn parse_args(
     }
 
     let mut args = Vec::new();
-    for arg in split_args(args_str) {
+    for arg in dialect.split_args(args_str) {
         let arg = arg.trim();
-        let val = eval_arg(arg, namespaces, resolver)?;
+        let val = eval_arg(arg, namespaces, resolver, dialect)?;
         args.push(val);
     }
     Some(args)
@@ -124,24 +109,24 @@ fn parse_args(
 /// - `true` / `false` → boolean literal
 /// - `${...}` → nested interpolation (recursive)
 /// - `ns.path` or `shorthand` → path lookup
-fn eval_arg(arg: &str, namespaces: &Namespaces, resolver: &dyn FunctionResolver) -> Option<JsonValue> {
+fn eval_arg(arg: &str, namespaces: &Namespaces, resolver: &dyn FunctionResolver, dialect: &dyn Dialect) -> Option<JsonValue> {
     let arg = arg.trim();
 
-    // Nested ${...}
-    if arg.starts_with("${") && arg.ends_with('}') {
-        let inner = &arg[2..arg.len() - 1];
-        return eval_expr_inner(inner, namespaces, resolver);
+    // Nested interpolation (e.g. ${...} for canonical dialect)
+    let prefix = dialect.interpolation_prefix();
+    let suffix = dialect.interpolation_suffix();
+    if arg.starts_with(prefix) && arg.ends_with(suffix) && arg.len() > prefix.len() + suffix.len() {
+        let inner = &arg[prefix.len()..arg.len() - suffix.len()];
+        return eval_expr_inner(inner, namespaces, resolver, dialect);
     }
 
     // String literal
-    if (arg.starts_with('"') && arg.ends_with('"') && arg.len() >= 2)
-        || (arg.starts_with('\'') && arg.ends_with('\'') && arg.len() >= 2)
-    {
-        return Some(JsonValue::String(arg[1..arg.len() - 1].to_string()));
+    if let Some(s) = dialect.parse_string_literal(arg) {
+        return Some(JsonValue::String(s));
     }
 
     // Number literal
-    if let Ok(n) = arg.parse::<f64>() {
+    if let Some(n) = dialect.parse_number_literal(arg) {
         return serde_json::Number::from_f64(n).map(JsonValue::Number);
     }
 
@@ -157,47 +142,10 @@ fn eval_arg(arg: &str, namespaces: &Namespaces, resolver: &dyn FunctionResolver)
     }
 
     // Nested function call
-    if find_open_paren(arg).is_some() {
-        return eval_expr_inner(arg, namespaces, resolver);
+    if dialect.find_call_open(arg).is_some() {
+        return eval_expr_inner(arg, namespaces, resolver, dialect);
     }
 
     // Path lookup (namespace or shorthand)
-    resolve_path(arg, namespaces)
-}
-
-/// Splits function arguments by commas, respecting nested parens and string literals.
-fn split_args(s: &str) -> Vec<String> {
-    let mut result = Vec::new();
-    let mut current = String::new();
-    let mut depth = 0i32;
-    let mut in_string = false;
-    let mut quote_char = '\0';
-
-    for ch in s.chars() {
-        if in_string {
-            current.push(ch);
-            if ch == quote_char {
-                in_string = false;
-            }
-        } else if ch == '"' || ch == '\'' {
-            in_string = true;
-            quote_char = ch;
-            current.push(ch);
-        } else if ch == '(' {
-            depth += 1;
-            current.push(ch);
-        } else if ch == ')' {
-            depth -= 1;
-            current.push(ch);
-        } else if ch == ',' && depth == 0 {
-            result.push(current.clone());
-            current.clear();
-        } else {
-            current.push(ch);
-        }
-    }
-    if !current.trim().is_empty() {
-        result.push(current);
-    }
-    result
+    resolve_path(arg, namespaces, dialect.path_separator())
 }

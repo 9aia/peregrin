@@ -11,12 +11,15 @@ pub(crate) fn resolve_segment<'a>(value: &'a JsonValue, part: &str) -> Option<&'
     }
 }
 
-/// Resolves a dotted path like `doc.name` or `env.HOME` or `name` (shorthand).
+/// Resolves a path like `doc.name` or `env.HOME` or `name` (shorthand).
+///
+/// The path separator is provided by the dialect (e.g. `.` for the canonical
+/// AC dialect).
 ///
 /// Shorthand: if the first segment is not a known namespace, try the default
 /// namespace (`DEFAULT_NAMESPACE`, conventionally `"doc"`).
-pub(crate) fn resolve_path(expr: &str, namespaces: &Namespaces) -> Option<JsonValue> {
-    let parts: Vec<&str> = expr.split('.').collect();
+pub(crate) fn resolve_path(expr: &str, namespaces: &Namespaces, path_separator: char) -> Option<JsonValue> {
+    let parts: Vec<&str> = expr.split(path_separator).collect();
     if parts.is_empty() {
         return None;
     }

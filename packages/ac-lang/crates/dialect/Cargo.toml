@@ -1,0 +1,6 @@
+[package]
+name = "ac-dialect"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]

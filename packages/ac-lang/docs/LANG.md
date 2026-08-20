@@ -5,7 +5,7 @@
 
 ## 1. Overview
 
-AC is a configuration and expression language for self-describing documents. A document can declare its own structure (`fields:`), define functions (`functions:`), compute values (`expr:`), interpolate (`${...}`), and import external documents (`import()`) — all validated by a schema system.
+AC is a configuration and expression language for self-describing documents. A document can declare its own structure (`fields:`), define functions (`functions:`), compute values (`expr:`), interpolate (`${...}`), and load external documents — all validated by a schema system.
 
 The language is designed to be portable: the specification is independent of any particular runtime or host language. See [RUNTIME.md](./RUNTIME.md) for the reference runtime implementation.
 
@@ -16,14 +16,6 @@ The language is designed to be portable: the specification is independent of any
 3. **Functions are host-provided.** The language defines no built-in functions. All capabilities (`add`, `mul`, `concat`, `len`, `import`, etc.) come from the runtime host.
 4. **Composition over keywords.** The language has a small set of primitives. Complex patterns (imports, config spreading, conditional loading) emerge from composition, not from dedicated syntax.
 5. **Format-agnostic.** Documents can be written in YAML, JSON, TOML, or any format that maps to JSON-compatible values.
-
-### Naming: "fields" not "keys"
-
-The reserved `fields:` key declares typed, validated members of a document. The term "fields" is deliberate:
-
-- **Fields imply schema.** A field has a name, a type, and constraints. "Keys" is generic — every object property in JSON/YAML is already a key.
-- **Self-reference breaks.** `fields:` is a reserved key that cannot be declared as a field name. Renaming to `keys:` yields "keys is a reserved key that cannot be declared as a key name" — the sentence collapses.
-- **Convention.** Schema languages (protobuf, Avro, SQL, JSON Schema's "properties") use "fields" or "properties" for typed, declared members.
 
 ## 2. Document structure
 
@@ -197,9 +189,20 @@ fields:
     expr: "mul(doubled, 2)"
 ```
 
-Computation evaluates each field's expression and inserts the result into the data. The default namespace (conventionally `doc`) is updated with the data before each pass so expressions see current field values. Multiple passes resolve dependencies between computed fields — if field A depends on field B, B is computed first and A resolves in the next pass. If no progress is made in a pass (circular or unresolvable dependencies), errors are reported for the remaining fields.
+Computation runs in passes. Before each pass, the default namespace (conventionally `doc`) is populated with all known field values (data values plus results from previous passes). During a pass, each computed field's `expr:` is evaluated **once** — the result is stored in the namespace, and any other expression referencing that field reads the stored value rather than triggering a re-evaluation. Multiple passes resolve dependencies between computed fields — if field A depends on field B, B is computed in an earlier pass and A reads its stored value in the next pass. If no progress is made in a pass (circular or unresolvable dependencies), errors are reported for the remaining fields.
 
-If a computed field is also present in the data, the `expr:` value takes precedence.
+If a computed field is also present in the data, the `expr:` value takes precedence — the expression runs and its result replaces the data value:
+
+```yaml
+fields:
+  greeting:
+    type: string
+    expr: 'concat(arg, "!")'
+    arg: true
+greeting: hello
+```
+
+Here `greeting` has a data value (`"hello"`) and an `expr:`. The expression runs with `arg` bound to `"hello"`, producing `"hello!"`, which replaces the original data value.
 
 ### 6.3 Parameterized computed fields (`arg:`)
 
@@ -348,7 +351,9 @@ Function arguments and return values are validated using the schema system — t
 
 ## 8. Module system
 
-The `import()` host function loads an external document by path. The imported document's `fields:` and `functions:` are stripped from the data, but declared `functions:` are merged into the importer's function table — making imported functions available to the importer's expressions.
+The language defines no built-in functions. Module loading is a **runtime host capability** — the reference runtime conventionally provides an `import()` host function that loads an external document by path. The imported document's `fields:` and `functions:` are stripped from the data, but declared `functions:` are merged into the importer's function table — making imported functions available to the importer's expressions.
+
+A runtime host may provide module loading under a different function name, through a different mechanism, or not at all. The module system semantics described below apply to the reference runtime's `import()` convention.
 
 ### 8.1 Import
 

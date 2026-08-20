@@ -23,3 +23,12 @@ pub use resolver::{ModuleResolver, ResolvedModule};
 pub use cache::{ModuleCache, MemoryModuleCache, NoCache};
 pub use caching::CachingResolver;
 pub use chain::ChainResolver;
+
+/// The conventional name of the host function that triggers module resolution.
+///
+/// This is a runtime host convention, not a language-level requirement.
+/// The language defines no built-in functions — `import` is simply the name
+/// the reference runtime uses for the function that loads external documents.
+/// A runtime host may use a different name or provide module loading through
+/// a different mechanism entirely.
+pub const IMPORT_FUNCTION: &str = "import";

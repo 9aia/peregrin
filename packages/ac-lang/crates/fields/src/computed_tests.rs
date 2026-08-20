@@ -1,6 +1,7 @@
 use super::*;
 use crate::test_helpers::{ConcatResolver, MulResolver};
 use crate::types::{ArgSpec, ComputedField, Namespaces, NoFunctions};
+use ac_dialect::AC_DIALECT;
 
 #[test]
 fn compute_fields_basic() {
@@ -12,7 +13,7 @@ fn compute_fields_basic() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver, &AC_DIALECT);
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(6.0));
 }
@@ -27,7 +28,7 @@ fn compute_fields_path_lookup() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &ConcatResolver);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &ConcatResolver, &AC_DIALECT);
     assert!(errors.is_empty());
     assert_eq!(data["full"], "alicesmith");
 }
@@ -43,7 +44,7 @@ fn compute_fields_chained() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver, &AC_DIALECT);
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(10.0));
     assert_eq!(data["quadrupled"].as_f64(), Some(20.0));
@@ -59,7 +60,7 @@ fn compute_fields_overrides_existing() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver, &AC_DIALECT);
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(6.0));
 }
@@ -74,7 +75,7 @@ fn compute_fields_unresolvable() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &NoFunctions);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &NoFunctions, &AC_DIALECT);
     assert_eq!(errors.len(), 1);
     assert!(errors[0].contains("bad"));
 }
@@ -83,7 +84,7 @@ fn compute_fields_unresolvable() {
 fn compute_fields_empty_is_noop() {
     let mut data = serde_json::json!({"name": "ac"});
     let mut ns = Namespaces::new();
-    let errors = compute_fields(&mut data, &[], &mut ns, &NoFunctions);
+    let errors = compute_fields(&mut data, &[], &mut ns, &NoFunctions, &AC_DIALECT);
     assert!(errors.is_empty());
 }
 
@@ -101,7 +102,7 @@ fn compute_fields_with_arg_string() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &ConcatResolver);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &ConcatResolver, &AC_DIALECT);
     assert!(errors.is_empty());
     assert_eq!(data["greeting"], "hello!");
 }
@@ -120,7 +121,7 @@ fn compute_fields_with_arg_number() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver, &AC_DIALECT);
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(10.0));
 }
@@ -141,7 +142,7 @@ fn compute_fields_with_arg_object_path() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &NoFunctions);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &NoFunctions, &AC_DIALECT);
     assert!(errors.is_empty());
     assert_eq!(data["endpoint"], "example.com");
 }
@@ -162,7 +163,7 @@ fn compute_fields_with_arg_array_index() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &NoFunctions);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &NoFunctions, &AC_DIALECT);
     assert!(errors.is_empty());
     assert_eq!(data["first_item"], "a");
 }
@@ -181,7 +182,7 @@ fn compute_fields_with_arg_typed_valid() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver, &AC_DIALECT);
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(10.0));
 }
@@ -200,10 +201,30 @@ fn compute_fields_with_arg_typed_invalid() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver, &AC_DIALECT);
     assert_eq!(errors.len(), 1);
     assert!(errors[0].contains("arg"));
     assert!(errors[0].contains("expected type number"));
+}
+
+#[test]
+fn compute_fields_chained_with_stale_data() {
+    // `doubled` has a stale data value (0). In pass 1, `doubled` computes
+    // to 10 and the namespace is updated within the pass, so `quadrupled`
+    // reads 10 (not 0) and computes 20 in the same pass.
+    let mut data = serde_json::json!({"version": 5, "doubled": 0});
+    let computed: Vec<ComputedField> = vec![
+        ComputedField::from(("doubled".to_string(), "mul(version, 2)".to_string())),
+        ComputedField::from(("quadrupled".to_string(), "mul(doubled, 2)".to_string())),
+    ];
+
+    let mut ns = Namespaces::new();
+    ns.insert("doc".to_string(), data.clone());
+
+    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver, &AC_DIALECT);
+    assert!(errors.is_empty());
+    assert_eq!(data["doubled"].as_f64(), Some(10.0));
+    assert_eq!(data["quadrupled"].as_f64(), Some(20.0));
 }
 
 #[test]
@@ -216,7 +237,7 @@ fn compute_fields_without_arg_backward_compat() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver);
+    let errors = compute_fields(&mut data, &computed, &mut ns, &MulResolver, &AC_DIALECT);
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(6.0));
 }

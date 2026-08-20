@@ -1,3 +1,4 @@
+use ac_dialect::Dialect;
 use ac_typecheck_core::Type;
 
 /// A parsed expression AST — the intermediate representation for type inference.
@@ -5,7 +6,7 @@ use ac_typecheck_core::Type;
 pub enum ExprAst {
     /// A literal value with its inferred type.
     Literal(Type),
-    /// A dotted path lookup (e.g., `doc.name`, `env.HOME`, `name`).
+    /// A path lookup (e.g., `doc.name`, `env.HOME`, `name`).
     Path(String),
     /// A function call: name + argument expressions.
     Call(String, Vec<ExprAst>),
@@ -14,28 +15,30 @@ pub enum ExprAst {
 /// Parse an expression string into an [`ExprAst`].
 ///
 /// Returns `None` if the expression cannot be parsed.
-pub fn parse_expr(s: &str) -> Option<ExprAst> {
+pub fn parse_expr(s: &str, dialect: &dyn Dialect) -> Option<ExprAst> {
     let s = s.trim();
     if s.is_empty() {
         return None;
     }
 
-    if s.starts_with("${") && s.ends_with('}') && s.len() > 3 {
-        return parse_expr(&s[2..s.len() - 1]);
+    let prefix = dialect.interpolation_prefix();
+    let suffix = dialect.interpolation_suffix();
+    if s.starts_with(prefix) && s.ends_with(suffix) && s.len() > prefix.len() + suffix.len() {
+        return parse_expr(&s[prefix.len()..s.len() - suffix.len()], dialect);
     }
 
-    if let Some(paren_pos) = find_open_paren(s)
-        && s.ends_with(')')
+    if let Some(paren_pos) = dialect.find_call_open(s)
+        && s.ends_with(dialect.call_close())
         && paren_pos < s.len() - 1
         && !s[..paren_pos].trim().is_empty()
     {
         let name = s[..paren_pos].trim();
         let inner = &s[paren_pos + 1..s.len() - 1];
-        let args = parse_args(inner)?;
+        let args = parse_args(inner, dialect)?;
         return Some(ExprAst::Call(name.to_string(), args));
     }
 
-    if let Some(lit) = parse_literal(s) {
+    if let Some(lit) = parse_literal(s, dialect) {
         return Some(lit);
     }
 
@@ -43,16 +46,14 @@ pub fn parse_expr(s: &str) -> Option<ExprAst> {
 }
 
 /// Parse a literal value into an [`ExprAst::Literal`].
-fn parse_literal(s: &str) -> Option<ExprAst> {
+fn parse_literal(s: &str, dialect: &dyn Dialect) -> Option<ExprAst> {
     let s = s.trim();
 
-    if (s.starts_with('"') && s.ends_with('"') && s.len() >= 2)
-        || (s.starts_with('\'') && s.ends_with('\'') && s.len() >= 2)
-    {
+    if dialect.parse_string_literal(s).is_some() {
         return Some(ExprAst::Literal(Type::String));
     }
 
-    if s.parse::<f64>().is_ok() {
+    if dialect.parse_number_literal(s).is_some() {
         return Some(ExprAst::Literal(Type::Number));
     }
 
@@ -68,74 +69,17 @@ fn parse_literal(s: &str) -> Option<ExprAst> {
 }
 
 /// Parse comma-separated arguments into a list of [`ExprAst`].
-fn parse_args(s: &str) -> Option<Vec<ExprAst>> {
+fn parse_args(s: &str, dialect: &dyn Dialect) -> Option<Vec<ExprAst>> {
     let s = s.trim();
     if s.is_empty() {
         return Some(Vec::new());
     }
 
     let mut result = Vec::new();
-    for arg in split_args(s) {
+    for arg in dialect.split_args(s) {
         let arg = arg.trim();
-        let parsed = parse_expr(arg)?;
+        let parsed = parse_expr(arg, dialect)?;
         result.push(parsed);
     }
     Some(result)
-}
-
-/// Find the position of the opening `(` for a function call.
-/// Returns `None` if there is no `(` or it's inside a string literal.
-fn find_open_paren(s: &str) -> Option<usize> {
-    let mut in_string = false;
-    let mut quote_char = '\0';
-    for (i, ch) in s.char_indices() {
-        if in_string {
-            if ch == quote_char {
-                in_string = false;
-            }
-        } else if ch == '"' || ch == '\'' {
-            in_string = true;
-            quote_char = ch;
-        } else if ch == '(' {
-            return Some(i);
-        }
-    }
-    None
-}
-
-/// Split function arguments by commas, respecting nested parens and string literals.
-fn split_args(s: &str) -> Vec<String> {
-    let mut result = Vec::new();
-    let mut current = String::new();
-    let mut depth = 0i32;
-    let mut in_string = false;
-    let mut quote_char = '\0';
-
-    for ch in s.chars() {
-        if in_string {
-            current.push(ch);
-            if ch == quote_char {
-                in_string = false;
-            }
-        } else if ch == '"' || ch == '\'' {
-            in_string = true;
-            quote_char = ch;
-            current.push(ch);
-        } else if ch == '(' {
-            depth += 1;
-            current.push(ch);
-        } else if ch == ')' {
-            depth -= 1;
-            current.push(ch);
-        } else if ch == ',' && depth == 0 {
-            result.push(current.clone());
-            current.clear();
-        } else {
-            current.push(ch);
-        }
-    }
-    if !current.trim().is_empty() {
-        result.push(current);
-    }
-    result
 }

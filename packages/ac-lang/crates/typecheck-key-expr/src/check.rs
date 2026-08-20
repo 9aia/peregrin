@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use ac_dialect::AC_DIALECT;
 use ac_typecheck_core::{is_compatible, SchemaInterpreter, TypeEnv, TypeError};
 use ac_typecheck_infer::{infer_cached, FunctionTable};
 use serde_json::Value as JsonValue;
@@ -31,7 +32,7 @@ pub fn check_field(
 
     let declared = interpreter.interpret(schema);
     let mut cache = HashMap::new();
-    let inferred = infer_cached(&expr_str, env, functions, &mut cache);
+    let inferred = infer_cached(&expr_str, env, functions, &mut cache, &AC_DIALECT);
 
     if inferred.is_unknown() {
         return Ok(());
@@ -67,7 +68,7 @@ pub fn check_field_cached(
     };
 
     let declared = interpreter.interpret(schema);
-    let inferred = infer_cached(&expr_str, env, functions, cache);
+    let inferred = infer_cached(&expr_str, env, functions, cache, &AC_DIALECT);
 
     if inferred.is_unknown() {
         return Ok(());

@@ -11,6 +11,7 @@ ac-engine-pass-resolve.workspace = true
 ac-engine-pass-typecheck.workspace = true
 ac-engine-pass-generate.workspace = true
 ac-ast.workspace = true
+ac-dialect.workspace = true
 ac-runtime.workspace = true
 ac-vm.workspace = true
 ac-frontend.workspace = true

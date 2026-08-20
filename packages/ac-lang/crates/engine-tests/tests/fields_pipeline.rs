@@ -7,6 +7,7 @@ use ac_fields::{
     self, extract_fields, interpolate, compute_fields, merge_fields,
     build_doc_namespace, FunctionResolver, Namespaces,
 };
+use ac_dialect::AC_DIALECT;
 use ac_frontend_yaml;
 use ac_runtime::RuntimeValue;
 use ac_schema::Schema;
@@ -59,10 +60,10 @@ version: 3
     let mut namespaces = Namespaces::new();
     namespaces.insert("doc".to_string(), build_doc_namespace(&extracted.data));
 
-    let interpolated = interpolate(extracted.data.inner(), &namespaces, &AddResolver);
+    let interpolated = interpolate(extracted.data.inner(), &namespaces, &AddResolver, &AC_DIALECT);
     let mut data = RuntimeValue::new(interpolated);
 
-    let compute_errors = compute_fields(data.inner_mut(), &extracted.computed, &mut namespaces, &AddResolver);
+    let compute_errors = compute_fields(data.inner_mut(), &extracted.computed, &mut namespaces, &AddResolver, &AC_DIALECT);
     assert!(compute_errors.is_empty());
 
     assert_eq!(data.get("name").unwrap().as_str(), Some("ac"));
