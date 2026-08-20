@@ -125,3 +125,15 @@ fn type_error_custom_message() {
     assert_eq!(err.actual, None);
     assert!(err.display().contains("immutable"));
 }
+
+#[test]
+fn type_error_display_with_location() {
+    let err = TypeError::mismatch("version", Type::Number, Type::String, "config");
+    let displayed = err.display();
+    assert!(!displayed.contains("["), "without location, no bracket prefix: {displayed}");
+
+    let mut err = err;
+    err.location = Some(ac_source::SourceLocation::new(5, 10));
+    let displayed = err.display();
+    assert!(displayed.contains("[5:10]"), "with location, display should contain [5:10]: {displayed}");
+}

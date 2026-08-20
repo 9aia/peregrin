@@ -35,6 +35,7 @@ dependencies = [
  "ac-runtime",
  "ac-schema",
  "ac-schema-json",
+ "ac-source",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
@@ -51,6 +52,7 @@ dependencies = [
  "ac-resolver-core",
  "ac-resolver-virtual",
  "ac-runtime",
+ "ac-source",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
@@ -283,6 +285,7 @@ version = "0.1.0"
 dependencies = [
  "ac-runtime",
  "ac-schema",
+ "ac-source",
  "jsonschema",
  "serde_json",
 ]
@@ -295,6 +298,7 @@ version = "0.1.0"
 name = "ac-typecheck-core"
 version = "0.1.0"
 dependencies = [
+ "ac-source",
  "serde_json",
 ]
 

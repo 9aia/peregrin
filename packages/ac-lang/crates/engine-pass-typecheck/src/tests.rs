@@ -18,6 +18,7 @@ fn parse_extract_typecheck(yaml: &str) -> Compilation {
     ParsePass.run(&mut compilation, &config).unwrap();
     ExtractPass.run(&mut compilation, &config).unwrap();
     TypecheckPass.run(&mut compilation, &config).unwrap();
+    compilation.resolve_error_locations();
     compilation
 }
 
@@ -92,6 +93,24 @@ host: example.com
 "#);
     // merge field with type string (not object) should be an error
     assert!(!compilation.type_errors.is_empty());
+}
+
+#[test]
+fn typecheck_pass_merge_error_has_source_location() {
+    let compilation = parse_extract_typecheck(r#"
+fields:
+  _base:
+    type: string
+    merge: true
+  host:
+    type: string
+
+_base: hello
+host: example.com
+"#);
+    assert!(!compilation.type_errors.is_empty());
+    let err = &compilation.type_errors[0];
+    assert!(err.location.is_some(), "error should have a source location, got: {err}");
 }
 
 #[test]

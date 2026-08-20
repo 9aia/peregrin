@@ -8,5 +8,13 @@ pub fn run(input: &str, format: &str, schema_str: &str) -> Result<(), String> {
 
     let schema = JsonSchema::parse(schema_str).map_err(|e| format!("failed to parse schema: {e}"))?;
 
-    schema.validate(&value).map_err(|e| e.to_string())
+    schema.validate(&value).map_err(|e| {
+        let map = ac_source::SourceMap::new(input);
+        let location = map.resolve_path(&e.path);
+        if let Some(loc) = location {
+            format!("[{loc}] {e}")
+        } else {
+            e.to_string()
+        }
+    })
 }

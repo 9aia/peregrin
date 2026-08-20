@@ -1,3 +1,4 @@
+use ac_source::SourceLocation;
 use crate::Type;
 
 /// A type error detected during static checking.
@@ -13,6 +14,10 @@ pub struct TypeError {
     pub message: String,
     /// Dotted path to the location within the document (e.g. `config.server`).
     pub path: String,
+    /// Source location (line:column) of the offending value, if known.
+    /// Populated by the engine after typechecking, using the original
+    /// source text.
+    pub location: Option<SourceLocation>,
 }
 
 impl TypeError {
@@ -35,6 +40,7 @@ impl TypeError {
             expected: Some(expected),
             actual: Some(actual),
             path,
+            location: None,
         }
     }
 
@@ -46,15 +52,21 @@ impl TypeError {
             actual: None,
             message: message.into(),
             path: path.into(),
+            location: None,
         }
     }
 
     /// Format the error for display.
     pub fn display(&self) -> String {
-        if self.path.is_empty() {
-            format!("{}: {}", self.field, self.message)
+        let prefix = if let Some(loc) = self.location {
+            format!("[{loc}] ")
         } else {
-            format!("{}.{}: {}", self.path, self.field, self.message)
+            String::new()
+        };
+        if self.path.is_empty() {
+            format!("{prefix}{}: {}", self.field, self.message)
+        } else {
+            format!("{prefix}{}.{}: {}", self.path, self.field, self.message)
         }
     }
 }

@@ -47,6 +47,7 @@ impl Schema<RuntimeValue> for JsonSchema {
             .map_err(|e| ValidationError {
                 message: format!("invalid JSON schema: {e}"),
                 path: String::new(),
+                location: None,
             })?;
 
         validator
@@ -54,6 +55,7 @@ impl Schema<RuntimeValue> for JsonSchema {
             .map_err(|e| ValidationError {
                 message: e.to_string(),
                 path: e.instance_path().to_string(),
+                location: None,
             })
     }
 }

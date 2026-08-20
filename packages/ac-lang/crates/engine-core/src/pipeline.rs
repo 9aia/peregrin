@@ -83,6 +83,7 @@ impl Pipeline {
                 pass.run(&mut compilation, &self.config)?;
             }
         }
+        compilation.resolve_error_locations();
         Ok(compilation)
     }
 }

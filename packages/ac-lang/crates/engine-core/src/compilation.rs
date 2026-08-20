@@ -86,4 +86,19 @@ impl Compilation {
     pub fn extracted(&self) -> Option<&ExtractedFields> {
         self.extracted.as_ref()
     }
+
+    /// Resolve source locations for all type errors using the original
+    /// source text. Errors that already have a location are left as-is.
+    /// Errors whose path cannot be resolved keep `location: None`.
+    pub fn resolve_error_locations(&mut self) {
+        if self.type_errors.is_empty() {
+            return;
+        }
+        let map = ac_source::SourceMap::new(&self.source.input);
+        for err in &mut self.type_errors {
+            if err.location.is_none() {
+                err.location = map.resolve_path(&err.path);
+            }
+        }
+    }
 }
