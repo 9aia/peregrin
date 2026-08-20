@@ -9,6 +9,7 @@ use std::path::PathBuf;
 
 use ac_fields::ExtractedFields;
 use ac_runtime::RuntimeValue;
+use ac_source::SourceMap;
 use ac_typecheck_core::TypeError;
 use ac_typegen_core::TypegenContext;
 use serde_json::Value as JsonValue;
@@ -63,6 +64,9 @@ pub struct Compilation {
     pub typegen_ctx: Option<TypegenContext>,
     pub type_errors: Vec<TypeError>,
     pub output: Option<JsonValue>,
+    /// Source location map built by the frontend during parsing.
+    /// Used to resolve error locations post-hoc.
+    pub source_map: SourceMap,
 }
 
 impl Compilation {
@@ -74,6 +78,7 @@ impl Compilation {
             typegen_ctx: None,
             type_errors: Vec::new(),
             output: None,
+            source_map: SourceMap::new(),
         }
     }
 
@@ -87,17 +92,13 @@ impl Compilation {
         self.extracted.as_ref()
     }
 
-    /// Resolve source locations for all type errors using the original
-    /// source text. Errors that already have a location are left as-is.
-    /// Errors whose path cannot be resolved keep `location: None`.
+    /// Resolve source locations for all type errors using the source map
+    /// built by the frontend during parsing. Errors that already have a
+    /// location are left as-is.
     pub fn resolve_error_locations(&mut self) {
-        if self.type_errors.is_empty() {
-            return;
-        }
-        let map = ac_source::SourceMap::new(&self.source.input);
         for err in &mut self.type_errors {
             if err.location.is_none() {
-                err.location = map.resolve_path(&err.path);
+                err.location = self.source_map.resolve_path(&err.path);
             }
         }
     }

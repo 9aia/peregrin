@@ -181,6 +181,7 @@ dependencies = [
  "ac-frontend-toml",
  "ac-frontend-yaml",
  "ac-runtime",
+ "ac-source",
 ]
 
 [[package]]
@@ -188,6 +189,7 @@ name = "ac-frontend-json"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
+ "ac-source",
  "serde_json",
 ]
 
@@ -196,6 +198,7 @@ name = "ac-frontend-toml"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
+ "ac-source",
  "serde_json",
  "toml",
 ]
@@ -205,6 +208,7 @@ name = "ac-frontend-yaml"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
+ "ac-source",
  "serde_json",
  "serde_yaml",
 ]
@@ -269,6 +273,7 @@ dependencies = [
 name = "ac-runtime"
 version = "0.1.0"
 dependencies = [
+ "ac-source",
  "serde_json",
 ]
 

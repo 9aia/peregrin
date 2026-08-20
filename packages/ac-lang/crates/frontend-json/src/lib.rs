@@ -10,6 +10,8 @@
 //!
 //! > **Formats translate external representations.**
 
+mod scanner;
+
 use ac_runtime::{Frontend, RuntimeValue};
 
 /// Errors that can occur during JSON parsing.
@@ -93,6 +95,12 @@ impl Frontend for JsonFrontend {
 
     fn serialize(&self, value: &RuntimeValue) -> Result<String, Self::Error> {
         to_string_pretty(value)
+    }
+
+    fn parse_with_locations(&self, input: &str) -> Result<(RuntimeValue, ac_source::SourceMap), Self::Error> {
+        let value = parse(input)?;
+        let map = scanner::build_source_map(input, value.inner());
+        Ok((value, map))
     }
 }
 

@@ -12,6 +12,7 @@
 
 mod error;
 mod convert;
+mod scanner;
 
 pub use error::TomlError;
 pub use convert::{toml_to_json, json_to_toml};
@@ -76,6 +77,12 @@ impl Frontend for TomlFrontend {
 
     fn serialize(&self, value: &RuntimeValue) -> Result<String, Self::Error> {
         to_string(value)
+    }
+
+    fn parse_with_locations(&self, input: &str) -> Result<(RuntimeValue, ac_source::SourceMap), Self::Error> {
+        let value = parse(input)?;
+        let map = scanner::build_source_map(input, value.inner());
+        Ok((value, map))
     }
 }
 

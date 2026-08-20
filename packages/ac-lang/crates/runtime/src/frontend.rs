@@ -11,6 +11,7 @@
 //! > `RuntimeValue` and serialize back can implement it.
 
 use crate::RuntimeValue;
+use ac_source::SourceMap;
 
 /// A format frontend that parses and serializes `RuntimeValue`s.
 pub trait Frontend {
@@ -22,4 +23,15 @@ pub trait Frontend {
 
     /// Serializes a [`RuntimeValue`] to a string in this format.
     fn serialize(&self, value: &RuntimeValue) -> Result<String, Self::Error>;
+
+    /// Parses a string and builds a [`SourceMap`] mapping dotted paths
+    /// to [`ac_source::SourceLocation`]s.
+    ///
+    /// Default implementation calls [`parse`](Self::parse) and returns
+    /// an empty `SourceMap`. Frontends override this to provide
+    /// format-specific location tracking.
+    fn parse_with_locations(&self, input: &str) -> Result<(RuntimeValue, SourceMap), Self::Error> {
+        let value = self.parse(input)?;
+        Ok((value, SourceMap::new()))
+    }
 }
