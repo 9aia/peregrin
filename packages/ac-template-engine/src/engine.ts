@@ -1,31 +1,22 @@
-import fs from "node:fs";
-import path from "node:path";
-import cp from "node:child_process";
 import { Effect } from "effect";
-import { template } from "lodash-es";
-import type { ExecutionContext } from "ac-core";
-import { Event, Node, TemplateError } from "ac-core";
+import { Event, Node, TemplateError, type ExecutionContext } from "ac-core";
+import { parseCall } from "./parse.js";
+import { templateFunctions } from "./functions/index.js";
 
-const knownPrefixes = ["event", "config", "secret", "node", "state", "file", "shell"];
-
-function readFile(filePath: string): string {
-  const resolved = path.isAbsolute(filePath) ? filePath : path.join(process.cwd(), filePath);
-  try {
-    const buffer = fs.readFileSync(resolved);
-    return new TextDecoder("utf-8", { fatal: false }).decode(buffer);
-  } catch {
-    return "";
-  }
-}
-
-function runShell(cmd: string): string {
-  try {
-    const output = cp.execSync(cmd, { encoding: "utf8" });
-    return output.replace(/\s+$/, "");
-  } catch {
-    return "";
-  }
-}
+const knownPrefixes = [
+  "event",
+  "config",
+  "secret",
+  "node",
+  "params",
+  "state",
+  "file",
+  "shell",
+  "env",
+  "random",
+  "uuid",
+  "now",
+];
 
 function toStringSafe(value: unknown): string {
   if (value == null) return "";
@@ -47,35 +38,6 @@ function toStringSafe(value: unknown): string {
   return JSON.stringify(value);
 }
 
-const templateSettings = {
-  escape: /[^\s\S]/g,
-  evaluate: /[^\s\S]/g,
-  interpolate: /\$\{([\s\S]+?)\}/g,
-  imports: { __s: toStringSafe, file: readFile, shell: runShell },
-};
-
-function isJinjaExpr(content: string): boolean {
-  const stripped = content.trim();
-  if (stripped.includes("|")) return false;
-  for (const prefix of knownPrefixes) {
-    if (stripped === prefix || stripped.startsWith(prefix + ".")) return true;
-    if (stripped.startsWith(prefix + "(")) return true;
-  }
-  return false;
-}
-
-function resolvePlaceholder(placeholder: string, context: Record<string, unknown>): string {
-  if (!placeholder.startsWith("${") || !placeholder.endsWith("}")) return placeholder;
-  const content = placeholder.slice(2, -1);
-  if (!isJinjaExpr(content)) return placeholder;
-  try {
-    const compiled = template(`__s(${placeholder})`, templateSettings);
-    return compiled(context);
-  } catch {
-    return placeholder;
-  }
-}
-
 function findMatchingBrace(text: string, start: number): number {
   let depth = 0;
   for (let i = start; i < text.length; i++) {
@@ -88,7 +50,22 @@ function findMatchingBrace(text: string, start: number): number {
   return -1;
 }
 
-function resolveDefaults(input: string, context: Record<string, unknown>): string {
+function isJinjaExpr(content: string): boolean {
+  const stripped = content.trim();
+  if (stripped.includes("|")) return false;
+  for (const prefix of knownPrefixes) {
+    if (
+      stripped === prefix ||
+      stripped.startsWith(prefix + ".") ||
+      stripped.startsWith(prefix + "(")
+    ) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function resolveDefaults(input: string): string {
   const result: string[] = [];
   let i = 0;
   while (i < input.length) {
@@ -103,18 +80,9 @@ function resolveDefaults(input: string, context: Record<string, unknown>): strin
       if (sep !== -1) {
         const varPart = inner.slice(0, sep).trim();
         const defaultPart = inner.slice(sep + 2);
-        if (isJinjaExpr(varPart)) {
-          const resolved = resolvePlaceholder("${" + varPart + "}", context);
-          if (resolved) {
-            result.push(resolved);
-          } else {
-            result.push(resolveDefaults(defaultPart, context));
-          }
-        } else {
-          result.push("${" + varPart + ":-");
-          result.push(resolveDefaults(defaultPart, context));
-          result.push("}");
-        }
+        result.push("${" + varPart + ":-");
+        result.push(resolveDefaults(defaultPart));
+        result.push("}");
         i = end + 1;
       } else {
         result.push(input.slice(i, end + 1));
@@ -128,21 +96,73 @@ function resolveDefaults(input: string, context: Record<string, unknown>): strin
   return result.join("");
 }
 
-function renderTemplate(input: string, context: Record<string, unknown>): string {
+function resolvePlaceholderEffect(
+  placeholder: string,
+  ctx: ExecutionContext,
+  node: Node | undefined,
+): Effect.Effect<string, TemplateError> {
+  if (!placeholder.startsWith("${") || !placeholder.endsWith("}")) {
+    return Effect.succeed(placeholder);
+  }
+  const content = placeholder.slice(2, -1);
+  const call = parseCall(content);
+  if (call === null) return Effect.succeed(placeholder);
+  const fn = templateFunctions[call.name];
+  if (fn === undefined) return Effect.succeed(placeholder);
+  const caps = ctx.capabilities;
+  if (caps[call.name] === undefined || caps[call.name] === false) {
+    return Effect.succeed(placeholder);
+  }
+  return Effect.gen(function* () {
+    const value = yield* fn.call(call.args, ctx, node, call.method);
+    return toStringSafe(value);
+  });
+}
+
+function renderTemplateEffect(
+  input: string,
+  ctx: ExecutionContext,
+  node: Node | undefined,
+): Effect.Effect<string, TemplateError> {
   const re = /\$\{([^}]+)\}/g;
-  const segments: string[] = [];
+  const textParts: string[] = [];
+  const placeholders: string[] = [];
   let lastEnd = 0;
   let match: RegExpExecArray | null;
   while ((match = re.exec(input)) !== null) {
-    if (match.index > lastEnd) segments.push(input.slice(lastEnd, match.index));
-    segments.push(resolvePlaceholder(match[0], context));
+    textParts.push(input.slice(lastEnd, match.index));
+    placeholders.push(match[0]);
     lastEnd = match.index + match[0].length;
   }
-  if (lastEnd < input.length) segments.push(input.slice(lastEnd));
-  return segments.join("");
+  textParts.push(input.slice(lastEnd));
+  return Effect.gen(function* () {
+    const resolved: string[] = [];
+    for (const p of placeholders) {
+      resolved.push(yield* resolvePlaceholderEffect(p, ctx, node));
+    }
+    let out = "";
+    for (let i = 0; i < resolved.length; i++) {
+      out += textParts[i] + resolved[i];
+    }
+    out += textParts[resolved.length];
+    return out;
+  });
 }
 
-function findAllPlaceholders(input: string): ReadonlyArray<string> {
+function isUnresolvable(content: string, ctx: ExecutionContext): boolean {
+  const call = parseCall(content);
+  if (call !== null) {
+    const caps = ctx.capabilities;
+    return !(
+      templateFunctions[call.name] !== undefined &&
+      caps[call.name] !== undefined &&
+      caps[call.name] !== false
+    );
+  }
+  return !isJinjaExpr(content);
+}
+
+function findAllPlaceholders(input: string, ctx: ExecutionContext): ReadonlyArray<string> {
   const found: string[] = [];
   let i = 0;
   while (i < input.length) {
@@ -153,7 +173,7 @@ function findAllPlaceholders(input: string): ReadonlyArray<string> {
         break;
       }
       const inner = input.slice(i + 2, end).trim();
-      if (!isJinjaExpr(inner)) found.push(input.slice(i, end + 1));
+      if (isUnresolvable(inner, ctx)) found.push(input.slice(i, end + 1));
       i = end + 1;
     } else {
       i++;
@@ -162,108 +182,17 @@ function findAllPlaceholders(input: string): ReadonlyArray<string> {
   return found;
 }
 
-function captureWildcards(pattern: string, eventType: string): Record<string, string> | null {
-  const ps = pattern.split(".");
-  const es = eventType.split(".");
-  const caps: Record<string, string> = {};
-  function backtrack(i: number, j: number, n: number): boolean {
-    if (i === ps.length && j === es.length) return true;
-    if (i === ps.length || j > es.length) return false;
-    const p = ps[i];
-    if (p === "**") {
-      const max = es.length - (ps.length - i - 1) - j;
-      for (let k = 0; k <= max; k++) {
-        const value = es.slice(j, j + k).join(".");
-        caps[String(n)] = value;
-        if (n === 1) caps["shard"] = value;
-        if (backtrack(i + 1, j + k, n + 1)) return true;
-      }
-      return false;
-    }
-    if (p === "*") {
-      if (j >= es.length) return false;
-      const value = es[j];
-      caps[String(n)] = value;
-      if (n === 1) caps["shard"] = value;
-      return backtrack(i + 1, j + 1, n + 1);
-    }
-    if (es[j] !== p) return false;
-    return backtrack(i + 1, j + 1, n);
-  }
-  return backtrack(0, 0, 1) ? caps : null;
-}
-
-function eventCapturesForNode(triggers: ReadonlyArray<Event>, node: Node): Record<string, string> {
-  if (triggers.length === 0) return {};
-  const eventType = triggers[0].type;
-  for (const pattern of node.on) {
-    const caps = captureWildcards(pattern, eventType);
-    if (caps !== null) return caps;
-  }
-  return {};
-}
-
-const sentinel: Record<string | symbol, unknown> = new Proxy(
-  {
-    toString: () => "",
-    valueOf: () => 0,
-    [Symbol.toPrimitive]: () => "",
-  },
-  {
-    get: (target, prop) => (prop in target ? Reflect.get(target, prop) : sentinel),
-  },
-);
-
-function makeContext(
-  triggers: ReadonlyArray<Event>,
-  ctx: ExecutionContext,
-  node?: Node,
-): Record<string, unknown> {
-  const rawEvent = triggers[0];
-  const captures = node ? eventCapturesForNode(triggers, node) : {};
-  const event: unknown =
-    Object.keys(captures).length > 0 && rawEvent
-      ? new Proxy(rawEvent, {
-          get: (target, prop) => {
-            if (prop === "shard") return captures["shard"] ?? "";
-            if (prop === "match") return captures;
-            return Reflect.get(target, prop);
-          },
-        })
-      : (rawEvent ?? sentinel);
-  const nodeView: unknown = node ? { ...node.toDict(), fires: ctx.fires } : sentinel;
-  return {
-    event,
-    config: ctx.config,
-    secret: ctx.secrets,
-    node: nodeView,
-    state: ctx.state.toRecord(),
-  };
-}
-
-function resolveTemplateImpl(
-  templateStr: string,
-  triggers: ReadonlyArray<Event>,
-  ctx: ExecutionContext,
-  node?: Node,
-): string {
-  const context = makeContext(triggers, ctx, node);
-  const pre = resolveDefaults(templateStr, context);
-  return renderTemplate(pre, context);
-}
-
 export const resolveTemplate = (
   templateStr: string,
-  triggers: ReadonlyArray<Event>,
+  _triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
   node?: Node,
 ): Effect.Effect<string, TemplateError> =>
   Effect.gen(function* () {
-    const rendered = yield* Effect.sync(() =>
-      resolveTemplateImpl(templateStr, triggers, ctx, node),
-    );
+    const pre = resolveDefaults(templateStr);
+    const rendered = yield* renderTemplateEffect(pre, ctx, node);
     if (ctx.strict) {
-      const unresolved = findAllPlaceholders(rendered);
+      const unresolved = findAllPlaceholders(rendered, ctx);
       if (unresolved.length > 0) {
         return yield* Effect.fail(
           new TemplateError({

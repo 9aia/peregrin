@@ -1,3 +1,5 @@
+import crypto from "node:crypto";
+import fs from "node:fs";
 import { describe, it, expect } from "vite-plus/test";
 import { Effect } from "effect";
 import { resolveTemplate, resolveValue, resolveValueForNode } from "../src/index.ts";
@@ -8,6 +10,8 @@ const makeCtx = (
   secrets: Record<string, string> = {},
   state: Record<string, unknown> = {},
   fires = 0,
+  strict = false,
+  capabilities: Record<string, unknown> = {},
 ): ExecutionContext => ({
   config,
   secrets,
@@ -27,8 +31,8 @@ const makeCtx = (
   fires,
   requestShutdown: () => {},
   getSecret: () => "",
-  strict: false,
-  capabilities: {},
+  strict,
+  capabilities,
   workflowCapabilities: {},
   resources: {},
   missingSecrets: [],
@@ -130,5 +134,64 @@ describe("ac-template-engine", () => {
       b: ["${secret.y}", 123],
       c: { d: "literal" },
     });
+  });
+
+  it("resolves env with a default", async () => {
+    const ctx = makeCtx({}, {}, {}, 0, false, { env: true });
+    const text = await Effect.runPromise(resolveTemplate('${env("MISSING", "fallback")}', [], ctx));
+    expect(text).toBe("fallback");
+  });
+
+  it("resolves random", async () => {
+    const ctx = makeCtx({}, {}, {}, 0, false, { random: true });
+    const text = await Effect.runPromise(resolveTemplate("${random(1, 10)}", [], ctx));
+    const n = Number(text);
+    expect(n).toBeGreaterThanOrEqual(1);
+    expect(n).toBeLessThanOrEqual(10);
+  });
+
+  it("resolves uuid", async () => {
+    const ctx = makeCtx({}, {}, {}, 0, false, { uuid: true });
+    const text = await Effect.runPromise(resolveTemplate("${uuid()}", [], ctx));
+    expect(text).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+  });
+
+  it("resolves now", async () => {
+    const ctx = makeCtx({}, {}, {}, 0, false, { now: true });
+    const text = await Effect.runPromise(resolveTemplate("${now()}", [], ctx));
+    expect(text).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("resolves now.iso", async () => {
+    const ctx = makeCtx({}, {}, {}, 0, false, { now: true });
+    const text = await Effect.runPromise(resolveTemplate("${now.iso()}", [], ctx));
+    expect(text).toMatch(/^\d{4}-\d{2}-\d{2}T/);
+  });
+
+  it("resolves now.unix", async () => {
+    const ctx = makeCtx({}, {}, {}, 0, false, { now: true });
+    const text = await Effect.runPromise(resolveTemplate("${now.unix()}", [], ctx));
+    expect(Number(text)).toBeGreaterThan(0);
+  });
+
+  it("resolves file", async () => {
+    const ctx = makeCtx({}, {}, {}, 0, false, { file: true });
+    const path = `/tmp/template-test-${crypto.randomUUID()}`;
+    fs.writeFileSync(path, "hello");
+    const text = await Effect.runPromise(resolveTemplate('${file("' + path + '")}', [], ctx));
+    fs.unlinkSync(path);
+    expect(text).toBe("hello");
+  });
+
+  it("resolves shell", async () => {
+    const ctx = makeCtx({}, {}, {}, 0, false, { shell: { allow: ["echo *"] } });
+    const text = await Effect.runPromise(resolveTemplate('${shell("echo hello")}', [], ctx));
+    expect(text).toBe("hello");
+  });
+
+  it("preserves unwhitelisted functions", async () => {
+    const ctx = makeCtx();
+    const text = await Effect.runPromise(resolveTemplate("${random(1, 10)}", [], ctx));
+    expect(text).toBe("${random(1, 10)}");
   });
 });
