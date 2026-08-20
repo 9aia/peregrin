@@ -30,7 +30,7 @@ const program = Effect.gen(function* () {
 }).pipe(Effect.provide(DefaultsLive));
 ```
 
-A driver only needs a `name` string and an `invoke` function that returns `Effect<ReadonlyArray<Event>, DriverError>`.
+A driver only needs a `name` string and an `invoke` function that returns `Effect<ReadonlyArray<Event>, DriverError>`. A driver may also declare an `input` schema for the `with`/`params` map it accepts and an `output` map of event schemas for the events it emits. The runner validates resolved `with`/`params` against `input` and emitted payloads against `output` before they reach the bus.
 
 ## Agent prefix convention
 

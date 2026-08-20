@@ -8,6 +8,7 @@ import {
   LoadBreaker,
   ResourceGate,
   makePreexec,
+  validateObject,
 } from "../src/index.ts";
 import { Event, EventSchema } from "ac-core";
 
@@ -75,5 +76,20 @@ describe("ac-safety", () => {
 
   it("makePreexec returns null with no limits", () => {
     expect(makePreexec()).toBeNull();
+  });
+
+  it("validateObject reports missing required and type errors", () => {
+    const schema = new EventSchema("input", { cmd: "string", timeout: "integer?" });
+    const missing = validateObject(schema, {});
+    expect(missing.some((e) => e.includes("cmd") && e.includes("missing required"))).toBe(true);
+    const wrongType = validateObject(schema, { cmd: "ls", timeout: "fast" });
+    expect(
+      wrongType.some((e) => e.includes("timeout") && e.includes("expected type integer")),
+    ).toBe(true);
+  });
+
+  it("validateObject returns empty for an empty schema", () => {
+    const schema = new EventSchema("input");
+    expect(validateObject(schema, { anything: 1 })).toEqual([]);
   });
 });

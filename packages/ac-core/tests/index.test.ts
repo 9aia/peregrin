@@ -87,6 +87,51 @@ describe("ac-core", () => {
     expect(node.annotations).toEqual({ title: "A" });
   });
 
+  it("parses input and output on a node", () => {
+    const node = Node.fromDict({
+      id: "a",
+      driver: "shell",
+      input: {
+        fields: { cmd: "string" },
+      },
+      output: {
+        "cmd.done": { fields: { stdout: "string" } },
+      },
+    });
+    expect(node.input?.fields).toEqual({ cmd: "string" });
+    expect(node.output).toHaveLength(1);
+    expect(node.output[0].type).toBe("cmd.done");
+  });
+
+  it("includes input and output in Node.toDict", () => {
+    const node = new Node(
+      "a",
+      "shell",
+      "",
+      [],
+      [],
+      "any",
+      {},
+      1,
+      [],
+      [],
+      {},
+      {},
+      null,
+      null,
+      [],
+      {},
+      {},
+      {},
+      {},
+      new EventSchema("", { cmd: "string" }),
+      [new EventSchema("cmd.done", { stdout: "string" })],
+    );
+    const d = node.toDict();
+    expect(d).toHaveProperty("input", { fields: { cmd: "string" } });
+    expect(d).toHaveProperty("output", { "cmd.done": { fields: { stdout: "string" } } });
+  });
+
   it("includes annotations in Node.toDict when non-empty and omits when empty", () => {
     const withAnnotations = new Node(
       "a",

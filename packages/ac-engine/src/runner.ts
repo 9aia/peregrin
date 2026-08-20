@@ -1,7 +1,9 @@
 import { Context, Duration, Effect, Either, Layer } from "effect";
 import type { Adapter } from "effect/Effect";
 import {
+  Driver,
   Event,
+  EventSchema,
   Node,
   Workflow,
   DriverError,
@@ -11,9 +13,9 @@ import {
   TemplateError,
 } from "ac-core";
 import type { ExecutionContext } from "ac-core";
-import { captureWildcards, EventBus } from "./bus.js";
+import { captureWildcards, EventBus, matches } from "./bus.js";
 import { DriverRegistry } from "./registry.js";
-import { buildValidator, CapabilityChecker, ResourceGate } from "ac-safety";
+import { buildValidator, CapabilityChecker, ResourceGate, validateObject } from "ac-safety";
 import { resolveTemplate, resolveValueForNode } from "ac-template-engine";
 
 function resolveForward(fwdType: string, captures: Record<string, string>): string {
@@ -29,6 +31,29 @@ function resolveForward(fwdType: string, captures: Record<string, string>): stri
     }
   }
   return out.join(".");
+}
+
+function resolveOutputSchemas(
+  driver: ReadonlyArray<EventSchema>,
+  node: ReadonlyArray<EventSchema>,
+): ReadonlyArray<EventSchema> {
+  const byType = new Map<string, EventSchema>();
+  for (const s of driver) byType.set(s.type, s);
+  for (const s of node) byType.set(s.type, s);
+  return Array.from(byType.values());
+}
+
+function matchingOutputSchema(
+  schemas: ReadonlyArray<EventSchema>,
+  eventType: string,
+): EventSchema | null {
+  for (const s of schemas) {
+    if (s.type === eventType) return s;
+  }
+  for (const s of schemas) {
+    if (s.type.includes("*") && matches(s.type, eventType)) return s;
+  }
+  return null;
 }
 
 class ScopedStateStore {
@@ -266,6 +291,30 @@ class RunnerLive implements Runner {
         }
 
         const resolvedWith = resolvedEither.right as Readonly<Record<string, unknown>>;
+
+        if (!node.driver) {
+          this.observer.onNodeEnd(node, [], null, span);
+          return [];
+        }
+        const driver = yield* this.registry.resolve(node.driver);
+        const inputSchema = node.input ?? driver.input ?? null;
+        if (inputSchema !== null) {
+          const inputErrors = validateObject(inputSchema, resolvedWith);
+          if (inputErrors.length > 0) {
+            const invalid = Event.eventInvalid("node.input", node.id, inputErrors, resolvedWith);
+            if (workflow.strict) {
+              const fail = Event.nodeFailed(
+                node.id,
+                `input validation failed: ${inputErrors.join("; ")}`,
+              );
+              this.observer.onNodeEnd(node, [invalid, fail], null, span);
+              return [invalid, fail];
+            }
+            this.observer.onNodeEnd(node, [invalid], null, span);
+            return [invalid];
+          }
+        }
+
         let stateKey = "";
         let nodeState: StateStore = this.stateStore;
         const stateKeyTemplate = node.state["key"];
@@ -342,7 +391,7 @@ class RunnerLive implements Runner {
 
         const driverEvents = node.fanIn
           ? ([] as ReadonlyArray<Event>)
-          : yield* this.runWithRetry(node, triggers, makeCtx, dryRun);
+          : yield* this.runWithRetry(node, triggers, makeCtx, dryRun, driver, workflow);
 
         if (node.poll) {
           const tick = `${node.id}.tick`;
@@ -465,6 +514,8 @@ class RunnerLive implements Runner {
     triggers: ReadonlyArray<Event>,
     makeCtx: (idempotencyKey: string) => ExecutionContext,
     dryRun: boolean,
+    driver: Driver,
+    workflow: Workflow,
   ) {
     return Effect.gen(this, function* (this: RunnerLive, _resume: Adapter) {
       let now = yield* Effect.clockWith((clock) => clock.currentTimeMillis);
@@ -479,11 +530,13 @@ class RunnerLive implements Runner {
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
         const idempotencyKey = `${node.id}:${++this.idempotencyCounter}`;
         const ctx = makeCtx(idempotencyKey);
-        const result = yield* this.runDriver(node, triggers, ctx, dryRun).pipe(Effect.either);
+        const result = yield* this.runDriver(node, driver, triggers, ctx, dryRun).pipe(
+          Effect.either,
+        );
         if (Either.isRight(result)) {
           this.recordSuccess(node);
           this.retryCounts.delete(node.id);
-          return result.right;
+          return this.validateOutput(node, driver, result.right, workflow);
         }
         lastError = result.left;
 
@@ -524,6 +577,7 @@ class RunnerLive implements Runner {
 
   private runDriver(
     node: Node,
+    driver: Driver,
     triggers: ReadonlyArray<Event>,
     ctx: ExecutionContext,
     dryRun: boolean,
@@ -532,12 +586,38 @@ class RunnerLive implements Runner {
       if (dryRun) {
         return [new Event(node.emits[0] ?? `${node.id}.done`, { dry_run: true }, node.id)];
       }
-      if (!node.driver) {
-        return [];
-      }
-      const driver = yield* this.registry.resolve(node.driver);
       return yield* driver.invoke(node, triggers, ctx);
     });
+  }
+
+  private validateOutput(
+    node: Node,
+    driver: Driver,
+    events: ReadonlyArray<Event>,
+    workflow: Workflow,
+  ): ReadonlyArray<Event> {
+    const schemas = resolveOutputSchemas(driver.output ?? [], node.output);
+    if (schemas.length === 0) return events;
+    const out: Array<Event> = [];
+    let hasInvalid = false;
+    for (const event of events) {
+      const schema = matchingOutputSchema(schemas, event.type);
+      if (schema === null) {
+        out.push(event);
+        continue;
+      }
+      const errors = validateObject(schema, event.payload);
+      if (errors.length === 0) {
+        out.push(event);
+        continue;
+      }
+      hasInvalid = true;
+      out.push(Event.eventInvalid(event.type, node.id, errors, event.payload));
+    }
+    if (hasInvalid && workflow.strict) {
+      out.push(Event.nodeFailed(node.id, "driver output validation failed"));
+    }
+    return out;
   }
 
   private isCircuitOpen(node: Node, now: number): boolean {

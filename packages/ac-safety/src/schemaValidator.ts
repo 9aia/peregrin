@@ -41,6 +41,39 @@ function formatError(path: string, message: string): string {
   return `${path}: ${message}`;
 }
 
+export function validateRecord(
+  schema: Readonly<Record<string, unknown>>,
+  payload: Readonly<Record<string, unknown>>,
+): ReadonlyArray<string> {
+  const errors: string[] = [];
+  const required = asStringArray(schema["required"]);
+  for (const name of required) {
+    if (!(name in payload)) {
+      errors.push(formatError(name, "missing required property"));
+    }
+  }
+
+  const properties = (schema["properties"] ?? {}) as Record<string, { type?: string }>;
+  for (const [name, spec] of Object.entries(properties)) {
+    if (!(name in payload)) continue;
+    const expected = spec.type as JsonType | undefined;
+    if (expected !== undefined && !typeMatches(payload[name], expected)) {
+      errors.push(formatError(name, `expected type ${expected}`));
+    }
+  }
+
+  return errors;
+}
+
+export function validateObject(
+  schema: EventSchema,
+  value: Readonly<Record<string, unknown>>,
+): ReadonlyArray<string> {
+  const compiled = schema.compiledSchema();
+  if (compiled === null) return [];
+  return validateRecord(compiled as Record<string, unknown>, value);
+}
+
 export class SchemaValidator {
   private readonly _validators: Record<string, Readonly<Record<string, unknown>>> = {};
 
@@ -61,30 +94,13 @@ export class SchemaValidator {
     const schema = this._validators[event.type];
     if (schema === undefined) return [];
 
-    const errors: string[] = [];
     const payload = event.payload;
 
     if (typeof payload !== "object" || payload === null) {
       return [formatError("(root)", "payload must be an object")];
     }
 
-    const required = asStringArray(schema["required"]);
-    for (const name of required) {
-      if (!(name in payload)) {
-        errors.push(formatError(name, "missing required property"));
-      }
-    }
-
-    const properties = (schema["properties"] ?? {}) as Record<string, { type?: string }>;
-    for (const [name, spec] of Object.entries(properties)) {
-      if (!(name in payload)) continue;
-      const expected = spec.type as JsonType | undefined;
-      if (expected !== undefined && !typeMatches(payload[name], expected)) {
-        errors.push(formatError(name, `expected type ${expected}`));
-      }
-    }
-
-    return errors;
+    return validateRecord(schema, payload as Record<string, unknown>);
   }
 }
 

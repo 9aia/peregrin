@@ -1,6 +1,6 @@
 import { Context, Data } from "effect";
 import type { Effect } from "effect";
-import { Event, type ExecutionContext, Node, Workflow } from "./model.js";
+import { Event, EventSchema, type ExecutionContext, Node, Workflow } from "./model.js";
 
 export class DriverError extends Data.TaggedError("DriverError")<{
   readonly reason: string;
@@ -24,6 +24,8 @@ export const DeadLetterQueue = Context.GenericTag<DeadLetterQueue>("ac/DeadLette
 
 export interface Driver {
   readonly name: string;
+  readonly input?: EventSchema | null;
+  readonly output?: ReadonlyArray<EventSchema>;
   readonly invoke: (
     node: Node,
     triggers: ReadonlyArray<Event>,

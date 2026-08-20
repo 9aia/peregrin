@@ -122,8 +122,8 @@ export class EventSchema {
     const d: Record<string, unknown> = {
       type: this.type,
       fields: this.fields,
-      schema: this.schema,
     };
+    if (Object.keys(this.schema).length > 0) d.schema = this.schema;
     if (Object.keys(this.annotations).length > 0) d.annotations = this.annotations;
     return d;
   }
@@ -133,6 +133,24 @@ function parseMaxFires(value: unknown, defaultValue: number | "unlimited"): numb
   if (value === "unlimited") return "unlimited";
   if (typeof value === "number" && Number.isInteger(value) && value > 0) return value;
   return defaultValue;
+}
+
+function parseNodeInput(raw: unknown): EventSchema | null {
+  if (!isRecord(raw)) return null;
+  return EventSchema.fromDict({ ...raw, type: "" });
+}
+
+function parseNodeOutput(raw: unknown): ReadonlyArray<EventSchema> {
+  if (!isRecord(raw)) return [];
+  const out: Array<EventSchema> = [];
+  for (const [type, value] of Object.entries(raw)) {
+    if (isRecord(value)) {
+      out.push(EventSchema.fromDict({ type, ...value }));
+    } else {
+      out.push(new EventSchema(type));
+    }
+  }
+  return out;
 }
 
 export class Node {
@@ -156,6 +174,8 @@ export class Node {
     readonly capabilities: Readonly<Record<string, unknown>> = {},
     readonly state: Readonly<Record<string, unknown>> = {},
     readonly annotations: Readonly<Record<string, unknown>> = {},
+    readonly input: EventSchema | null = null,
+    readonly output: ReadonlyArray<EventSchema> = [],
   ) {}
 
   static fromDict(raw: Readonly<Record<string, unknown>>): Node {
@@ -199,6 +219,8 @@ export class Node {
         (raw.capabilities as Record<string, unknown>) ?? {},
         state,
         annotations,
+        parseNodeInput(raw.input),
+        parseNodeOutput(raw.output),
       );
     }
     return new Node(
@@ -221,6 +243,8 @@ export class Node {
       (raw.capabilities as Record<string, unknown>) ?? {},
       state,
       annotations,
+      parseNodeInput(raw.input),
+      parseNodeOutput(raw.output),
     );
   }
 
@@ -246,6 +270,19 @@ export class Node {
     if (Object.keys(this.resources).length > 0) d.resources = this.resources;
     if (Object.keys(this.capabilities).length > 0) d.capabilities = this.capabilities;
     if (Object.keys(this.state).length > 0) d.state = this.state;
+    if (this.input !== null) {
+      const s = this.input.toDict();
+      const { type: _type, ...rest } = s;
+      d.input = rest;
+    }
+    if (this.output.length > 0) {
+      const output: Record<string, unknown> = {};
+      for (const s of this.output) {
+        const { type, ...rest } = s.toDict();
+        output[String(type)] = rest;
+      }
+      d.output = output;
+    }
     if (Object.keys(this.annotations).length > 0) d.annotations = this.annotations;
     return d;
   }

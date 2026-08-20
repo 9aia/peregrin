@@ -1,10 +1,25 @@
 import cp from "node:child_process";
 import { Effect, Layer } from "effect";
-import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
+import { Driver, DriverError, Event, EventSchema, type ExecutionContext, type Node } from "ac-core";
 import { resolveValueForNode } from "ac-template-engine";
 
 export const ShellDriver: Driver = {
   name: "shell",
+  input: new EventSchema("", {
+    cmd: "string",
+    timeout: "integer?",
+    emit: "object?",
+    env: "object?",
+  }),
+  output: [
+    new EventSchema("cmd.done", { stdout: "string", rc: "integer" }),
+    new EventSchema("node.failed", {
+      error: "string",
+      rc: "integer",
+      stdout: "string?",
+      stderr: "string?",
+    }),
+  ],
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
       const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
@@ -23,8 +38,14 @@ export const ShellDriver: Driver = {
         return [new Event("cmd.done", { cmd, dryRun: true, stdout: "" }, node.id)];
       }
 
+      const env = with_.env as Record<string, string> | undefined;
       const result = yield* Effect.sync(() =>
-        cp.spawnSync(cmd, { shell: true, encoding: "utf-8", timeout: 30000 }),
+        cp.spawnSync(cmd, {
+          shell: true,
+          encoding: "utf-8",
+          timeout: 30000,
+          env: env ? { ...process.env, ...env } : process.env,
+        }),
       );
 
       if (result.error) {
