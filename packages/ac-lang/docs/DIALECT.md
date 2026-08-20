@@ -113,7 +113,7 @@ A string is a function call if it contains the call-open token outside string li
 
 ### 3.2 Argument splitting
 
-Arguments are split by ``, at depth 0 (outside nested calls and string literals). Nested calls increase depth; the call-close token decreases it. String literals are transparent to depth tracking.
+Arguments are split by `,` at depth 0 (outside nested calls and string literals). Nested calls increase depth; the call-close token decreases it. String literals are transparent to depth tracking.
 
 ### 3.3 String literal parsing
 
