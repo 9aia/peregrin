@@ -37,4 +37,122 @@ describe("ac-core", () => {
     expect(workflow.name).toBe("demo");
     expect(workflow.nodes).toHaveLength(0);
   });
+
+  it("stores annotations on EventSchema constructor", () => {
+    const schema = new EventSchema("x", { name: "string" }, {}, { title: "User" });
+    expect(schema.annotations).toEqual({ title: "User" });
+  });
+
+  it("parses annotations from EventSchema.fromDict", () => {
+    const schema = EventSchema.fromDict({
+      type: "x",
+      fields: { name: "string" },
+      annotations: { title: "User" },
+    });
+    expect(schema.annotations).toEqual({ title: "User" });
+  });
+
+  it("defaults EventSchema annotations to {}", () => {
+    const schema = EventSchema.fromDict({ type: "x" });
+    expect(schema.annotations).toEqual({});
+  });
+
+  it("parses annotations from Node.fromDict", () => {
+    const node = Node.fromDict({ id: "a", driver: "noop", annotations: { title: "A" } });
+    expect(node.annotations).toEqual({ title: "A" });
+  });
+
+  it("stores annotations on Node constructor", () => {
+    const node = new Node(
+      "a",
+      "noop",
+      "",
+      [],
+      [],
+      "any",
+      {},
+      1,
+      [],
+      [],
+      {},
+      {},
+      null,
+      null,
+      [],
+      {},
+      {},
+      {},
+      { title: "A" },
+    );
+    expect(node.annotations).toEqual({ title: "A" });
+  });
+
+  it("includes annotations in Node.toDict when non-empty and omits when empty", () => {
+    const withAnnotations = new Node(
+      "a",
+      "noop",
+      "",
+      [],
+      [],
+      "any",
+      {},
+      1,
+      [],
+      [],
+      {},
+      {},
+      null,
+      null,
+      [],
+      {},
+      {},
+      {},
+      { title: "A" },
+    );
+    expect(withAnnotations.toDict()).toHaveProperty("annotations", { title: "A" });
+    const withoutAnnotations = new Node("b", "noop");
+    expect(withoutAnnotations.toDict()).not.toHaveProperty("annotations");
+  });
+
+  it("parses workflow annotations", () => {
+    const workflow = Workflow.fromDict({ name: "demo", nodes: [], annotations: { title: "Demo" } });
+    expect(workflow.annotations).toEqual({ title: "Demo" });
+  });
+
+  it("passes through event and node annotations in Workflow.fromDict", () => {
+    const workflow = Workflow.fromDict({
+      name: "demo",
+      events: [{ type: "x", fields: {}, annotations: { title: "X" } }],
+      nodes: [{ id: "a", driver: "noop", annotations: { title: "A" } }],
+    });
+    expect(workflow.events[0].annotations).toEqual({ title: "X" });
+    expect(workflow.nodes[0].annotations).toEqual({ title: "A" });
+  });
+
+  it("includes annotations in Workflow.toDict when non-empty and omits when empty", () => {
+    const nonEmpty = Workflow.fromDict({
+      name: "demo",
+      events: [{ type: "x", fields: {}, annotations: { title: "X" } }],
+      nodes: [{ id: "a", driver: "noop", annotations: { title: "A" } }],
+      annotations: { title: "Demo" },
+    });
+    const d = nonEmpty.toDict();
+    expect(d).toHaveProperty("annotations", { title: "Demo" });
+    expect((d.events as Array<Record<string, unknown>>)[0]).toHaveProperty("annotations", {
+      title: "X",
+    });
+    expect((d.nodes as Array<Record<string, unknown>>)[0]).toHaveProperty("annotations", {
+      title: "A",
+    });
+
+    const empty = Workflow.fromDict({
+      name: "empty",
+      events: [{ type: "x" }],
+      nodes: [{ id: "a", driver: "noop" }],
+    });
+    const e = empty.toDict();
+    expect(e).not.toHaveProperty("annotations");
+    expect((e.events as Array<Record<string, unknown>>)[0]).not.toHaveProperty("annotations");
+    expect((e.nodes as Array<Record<string, unknown>>)[0]).not.toHaveProperty("annotations");
+  });
 });

@@ -84,6 +84,7 @@ export class EventSchema {
     readonly type: string,
     readonly fields: Readonly<Record<string, string>> = {},
     readonly schema: Readonly<Record<string, unknown>> = {},
+    readonly annotations: Readonly<Record<string, unknown>> = {},
   ) {}
 
   compiledSchema(): Readonly<Record<string, unknown>> | null {
@@ -106,6 +107,25 @@ export class EventSchema {
     const compiled: Record<string, unknown> = { type: "object", properties };
     if (required.length > 0) compiled.required = required;
     return compiled;
+  }
+
+  static fromDict(raw: Readonly<Record<string, unknown>>): EventSchema {
+    return new EventSchema(
+      coerceToString(raw.type),
+      (raw.fields as Record<string, string>) ?? {},
+      (raw.schema as Record<string, unknown>) ?? {},
+      (raw.annotations as Record<string, unknown>) ?? {},
+    );
+  }
+
+  toDict(): Record<string, unknown> {
+    const d: Record<string, unknown> = {
+      type: this.type,
+      fields: this.fields,
+      schema: this.schema,
+    };
+    if (Object.keys(this.annotations).length > 0) d.annotations = this.annotations;
+    return d;
   }
 }
 
@@ -135,11 +155,13 @@ export class Node {
     readonly resources: Readonly<Record<string, unknown>> = {},
     readonly capabilities: Readonly<Record<string, unknown>> = {},
     readonly state: Readonly<Record<string, unknown>> = {},
+    readonly annotations: Readonly<Record<string, unknown>> = {},
   ) {}
 
   static fromDict(raw: Readonly<Record<string, unknown>>): Node {
     const poll = raw.poll as Readonly<Record<string, unknown>> | undefined;
     const state = (raw.state as Record<string, unknown>) ?? {};
+    const annotations = (raw.annotations as Record<string, unknown>) ?? {};
     if (poll) {
       const nodeId = coerceToString(raw.id);
       const tick = `${nodeId}.tick`;
@@ -176,6 +198,7 @@ export class Node {
         (raw.resources as Record<string, unknown>) ?? {},
         (raw.capabilities as Record<string, unknown>) ?? {},
         state,
+        annotations,
       );
     }
     return new Node(
@@ -197,6 +220,7 @@ export class Node {
       (raw.resources as Record<string, unknown>) ?? {},
       (raw.capabilities as Record<string, unknown>) ?? {},
       state,
+      annotations,
     );
   }
 
@@ -222,6 +246,7 @@ export class Node {
     if (Object.keys(this.resources).length > 0) d.resources = this.resources;
     if (Object.keys(this.capabilities).length > 0) d.capabilities = this.capabilities;
     if (Object.keys(this.state).length > 0) d.state = this.state;
+    if (Object.keys(this.annotations).length > 0) d.annotations = this.annotations;
     return d;
   }
 }
@@ -239,19 +264,13 @@ export class Workflow {
     readonly capabilities: Readonly<Record<string, unknown>> = {},
     readonly strict: boolean = false,
     readonly state: Readonly<Record<string, unknown>> = {},
+    readonly annotations: Readonly<Record<string, unknown>> = {},
   ) {}
 
   static fromDict(raw: Readonly<Record<string, unknown>>): Workflow {
     return new Workflow(
       coerceToString(raw.name),
-      ((raw.events as Array<Record<string, unknown>>) ?? []).map(
-        (e) =>
-          new EventSchema(
-            String(e.type),
-            (e.fields as Record<string, string>) ?? {},
-            (e.schema as Record<string, unknown>) ?? {},
-          ),
-      ),
+      ((raw.events as Array<Record<string, unknown>>) ?? []).map((e) => EventSchema.fromDict(e)),
       ((raw.nodes as Array<Record<string, unknown>>) ?? []).map((node) => Node.fromDict(node)),
       (raw.config as Record<string, unknown>) ?? {},
       Array.from<string>((raw.include as Array<string>) ?? (raw.includes as Array<string>) ?? []),
@@ -261,17 +280,14 @@ export class Workflow {
       (raw.capabilities as Record<string, unknown>) ?? {},
       Boolean(raw.strict),
       (raw.state as Record<string, unknown>) ?? {},
+      (raw.annotations as Record<string, unknown>) ?? {},
     );
   }
 
   toDict(): Record<string, unknown> {
     const d: Record<string, unknown> = {
       name: this.name,
-      events: this.events.map((e) => ({
-        type: e.type,
-        fields: e.fields,
-        schema: e.schema,
-      })),
+      events: this.events.map((e) => e.toDict()),
       nodes: this.nodes.map((n) => n.toDict()),
       config: this.config,
     };
@@ -285,6 +301,7 @@ export class Workflow {
     if (Object.keys(this.capabilities).length > 0) d.capabilities = this.capabilities;
     if (this.strict) d.strict = true;
     if (Object.keys(this.state).length > 0) d.state = this.state;
+    if (Object.keys(this.annotations).length > 0) d.annotations = this.annotations;
     return d;
   }
 
