@@ -1,8 +1,9 @@
+use ac_dialect::Dialect;
 use ac_runtime::RuntimeValue;
 use serde_json::Value as JsonValue;
 
 use crate::types::{
-    ArgSpec, ComputedField, ExtractedFields, FunctionSignature, RESERVED_FIELDS,
+    ArgSpec, ComputedField, ExtractedFields, FunctionSignature,
 };
 
 /// Extracts the `fields` and `functions` keys from a value, returning
@@ -13,29 +14,37 @@ use crate::types::{
 /// The caller is responsible for constructing `Schema<V>`
 /// implementations from the raw values.
 ///
+/// Key names are read from the dialect — a custom dialect may use
+/// different key names for `fields`, `functions`, `expr`, etc.
+///
 /// Returns an error if a declared field name is reserved.
 pub fn extract_fields(
     value: RuntimeValue,
+    dialect: &dyn Dialect,
 ) -> Result<ExtractedFields, String> {
     let mut schemas = Vec::new();
     let mut functions = Vec::new();
 
+    let fields_key = dialect.fields_key();
+    let functions_key = dialect.functions_key();
+    let reserved = dialect.reserved_keys();
+
     // Borrow the value to extract schemas and functions, then move it into data.
     if let Some(obj) = value.as_object() {
-        if let Some(fields) = obj.get("fields").and_then(|v| v.as_object()) {
+        if let Some(fields) = obj.get(fields_key).and_then(|v| v.as_object()) {
             for (name, schema_val) in fields {
-                if RESERVED_FIELDS.contains(&name.as_str()) {
+                if reserved.contains(&name.as_str()) {
                     return Err(format!(
-                        "'{name}' is a reserved field name and cannot be declared in fields:"
+                        "'{name}' is a reserved field name and cannot be declared in {fields_key}:"
                     ));
                 }
                 schemas.push((name.clone(), schema_val.clone()));
             }
         }
 
-        if let Some(fns) = obj.get("functions").and_then(|v| v.as_object()) {
+        if let Some(fns) = obj.get(functions_key).and_then(|v| v.as_object()) {
             for (name, sig_val) in fns {
-                let sig = parse_function_signature(sig_val)?;
+                let sig = parse_function_signature(sig_val, dialect)?;
                 functions.push((name.clone(), sig));
             }
         }
@@ -45,8 +54,8 @@ pub fn extract_fields(
     // `functions` keys so data contains only the document's own values.
     let mut data = value;
     if let Some(data_obj) = data.as_object_mut() {
-        data_obj.remove("fields");
-        data_obj.remove("functions");
+        data_obj.remove(fields_key);
+        data_obj.remove(functions_key);
     }
 
     // Single-pass extraction of inheritable, immutable, computed, and merge
@@ -56,15 +65,21 @@ pub fn extract_fields(
     let mut computed = Vec::new();
     let mut merge = Vec::new();
 
+    let inheritable_key = dialect.inheritable_key();
+    let mutable_key = dialect.mutable_key();
+    let expr_key = dialect.expr_key();
+    let arg_key = dialect.arg_key();
+    let merge_key = dialect.merge_key();
+
     for (name, raw) in &schemas {
-        if raw.get("inheritable").and_then(|v| v.as_bool()) == Some(true) {
+        if raw.get(inheritable_key).and_then(|v| v.as_bool()) == Some(true) {
             inheritable.push(name.clone());
         }
-        if raw.get("mutable").and_then(|v| v.as_bool()) == Some(false) {
+        if raw.get(mutable_key).and_then(|v| v.as_bool()) == Some(false) {
             immutable.push(name.clone());
         }
-        if let Some(expr_str) = raw.get("expr").and_then(|v| v.as_str()) {
-            let arg = raw.get("arg").and_then(|v| {
+        if let Some(expr_str) = raw.get(expr_key).and_then(|v| v.as_str()) {
+            let arg = raw.get(arg_key).and_then(|v| {
                 if v.is_boolean() && v.as_bool() == Some(true) {
                     Some(ArgSpec::Untyped)
                 } else if v.is_object() {
@@ -79,7 +94,7 @@ pub fn extract_fields(
                 arg,
             });
         }
-        if raw.get("merge").and_then(|v| v.as_bool()) == Some(true) {
+        if raw.get(merge_key).and_then(|v| v.as_bool()) == Some(true) {
             merge.push(name.clone());
         }
     }
@@ -89,22 +104,16 @@ pub fn extract_fields(
 
 /// Parses a function signature from a raw JSON value.
 ///
-/// Expected format:
-/// ```json
-/// {
-///   "params": { "x": { "type": "number" }, "y": { "type": "string" } },
-///   "return": { "type": "number" }
-/// }
-/// ```
-fn parse_function_signature(val: &JsonValue) -> Result<FunctionSignature, String> {
+/// Key names (`params`, `return`, `body`) are read from the dialect.
+fn parse_function_signature(val: &JsonValue, dialect: &dyn Dialect) -> Result<FunctionSignature, String> {
     let mut params = Vec::new();
-    if let Some(p) = val.get("params").and_then(|v| v.as_object()) {
+    if let Some(p) = val.get(dialect.params_key()).and_then(|v| v.as_object()) {
         for (name, schema) in p {
             params.push((name.clone(), schema.clone()));
         }
     }
-    let return_schema = val.get("return").cloned();
-    let body = val.get("body").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let return_schema = val.get(dialect.return_key()).cloned();
+    let body = val.get(dialect.body_key()).and_then(|v| v.as_str()).map(|s| s.to_string());
     Ok(FunctionSignature { params, return_schema, body })
 }
 

@@ -8,6 +8,7 @@
 
 use std::path::PathBuf;
 
+use ac_dialect::AC_DIALECT;
 use ac_runtime::RuntimeValue;
 use ac_schema::Schema;
 use ac_schema_json::JsonSchema;
@@ -22,7 +23,7 @@ fn main() {
     println!("parsed from {}:", yaml_path.display());
     println!("{}", ac_frontend_yaml::to_string(&value).unwrap());
 
-    let extracted = ac_fields::extract_fields(value).unwrap_or_else(|e| {
+    let extracted = ac_fields::extract_fields(value, &AC_DIALECT).unwrap_or_else(|e| {
         eprintln!("error: {e}");
         std::process::exit(1);
     });

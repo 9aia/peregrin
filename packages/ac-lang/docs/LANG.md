@@ -154,6 +154,8 @@ Fields are declared in the `fields:` section. Each field has a schema (type and 
 
 Schemas use [JSON Schema draft 2020-12](https://json-schema.org/) vocabulary. The reference runtime validates fields with a full draft 2020-12 validator — all standard keywords are supported.
 
+The schema vocabulary is defined by the [dialect](./DIALECT.md) — the canonical dialect uses JSON Schema draft 2020-12. The key names used in field declarations (`fields`, `functions`, `expr`, `arg`, `merge`, `inheritable`, `mutable`) are also defined by the dialect.
+
 The `type` keyword declares the field's type. Supported types: `string`, `number`, `integer`, `boolean`, `null`, `array`, `object`. Multi-type is allowed via arrays (`["string", "null"]`).
 
 ```yaml

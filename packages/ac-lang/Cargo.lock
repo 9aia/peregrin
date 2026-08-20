@@ -45,6 +45,11 @@ dependencies = [
 [[package]]
 name = "ac-dialect"
 version = "0.1.0"
+dependencies = [
+ "ac-runtime",
+ "ac-schema",
+ "ac-schema-json",
+]
 
 [[package]]
 name = "ac-engine"
@@ -95,6 +100,7 @@ dependencies = [
 name = "ac-engine-pass-extract"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-engine-core",
  "ac-engine-pass-parse",
  "ac-fields",
@@ -299,6 +305,7 @@ dependencies = [
 name = "ac-resolver-file"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-fields",
  "ac-frontend",
  "ac-resolver-core",
@@ -309,6 +316,7 @@ dependencies = [
 name = "ac-resolver-git"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-fields",
  "ac-frontend",
  "ac-resolver-core",
@@ -324,6 +332,7 @@ dependencies = [
 name = "ac-resolver-http"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-fields",
  "ac-frontend",
  "ac-resolver-core",
@@ -337,6 +346,7 @@ dependencies = [
 name = "ac-resolver-virtual"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-fields",
  "ac-frontend-yaml",
  "ac-resolver-core",
@@ -357,6 +367,7 @@ name = "ac-schema"
 version = "0.1.0"
 dependencies = [
  "ac-source",
+ "serde_json",
 ]
 
 [[package]]
@@ -464,6 +475,7 @@ dependencies = [
 name = "ac-typegen-backend-json-schema"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-fields",
  "ac-runtime",
  "ac-typegen-core",
@@ -488,6 +500,7 @@ dependencies = [
 name = "ac-typegen-import"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-fields",
  "ac-resolver-core",
  "ac-resolver-virtual",

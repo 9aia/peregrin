@@ -10,12 +10,12 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use ac_ast::Expr;
-use ac_dialect::AC_DIALECT;
+use ac_dialect::{AC_DIALECT, Dialect};
 use ac_fields::{self, FunctionResolver};
 use ac_host::DefaultHost;
 use ac_resolver_core::{ModuleResolver, IMPORT_FUNCTION};
 use ac_runtime::RuntimeValue;
-use ac_schema_json::JsonSchema;
+use ac_schema::Schema;
 use ac_vm::{Context, Vm};
 
 /// Bridges `FunctionResolver` to the VM + Host.
@@ -63,11 +63,13 @@ impl<'a> VmResolver<'a> {
             .or(imported_sig.as_ref());
 
         if let Some(sig) = sig {
-            let param_schemas: Vec<JsonSchema> = sig
+            let vocab = AC_DIALECT.schema_vocabulary();
+            let param_schemas: Vec<Box<dyn Schema<RuntimeValue>>> = sig
                 .params
                 .iter()
-                .map(|(_, raw)| JsonSchema::new(raw.clone()))
-                .collect();
+                .map(|(_, raw)| vocab.compile(raw))
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|e| format!("invalid param schema: {e}"))?;
             let args_rv: Vec<RuntimeValue> = args.iter().map(|v| RuntimeValue::new(v.clone())).collect();
             ac_fields::validate_args(&args_rv, &param_schemas)?;
         }
@@ -85,8 +87,9 @@ impl<'a> VmResolver<'a> {
                 .ok_or_else(|| format!("failed to evaluate body for '{name}'"))?;
 
             if let Some(ret_raw) = &sig.return_schema {
-                let ret_schema = JsonSchema::new(ret_raw.clone());
-                ac_fields::validate_return(&RuntimeValue::new(result.clone()), &ret_schema)?;
+                let ret_schema = AC_DIALECT.schema_vocabulary().compile(ret_raw)
+                    .map_err(|e| format!("invalid return schema: {e}"))?;
+                ac_fields::validate_return(&RuntimeValue::new(result.clone()), ret_schema.as_ref())?;
             }
             return Ok(result);
         }
@@ -107,8 +110,9 @@ impl<'a> VmResolver<'a> {
         if let Some(sig) = sig
             && let Some(ret_raw) = &sig.return_schema
         {
-            let ret_schema = JsonSchema::new(ret_raw.clone());
-            ac_fields::validate_return(&result, &ret_schema)?;
+            let ret_schema = AC_DIALECT.schema_vocabulary().compile(ret_raw)
+                .map_err(|e| format!("invalid return schema: {e}"))?;
+            ac_fields::validate_return(&result, ret_schema.as_ref())?;
         }
 
         Ok(result.into_inner())

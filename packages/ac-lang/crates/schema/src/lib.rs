@@ -38,7 +38,7 @@
 
 mod schema;
 
-pub use schema::{Schema, ValidationError};
+pub use schema::{Schema, SchemaVocabulary, ValidationError};
 
 #[cfg(test)]
 mod schema_tests;

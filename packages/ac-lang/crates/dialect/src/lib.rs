@@ -16,12 +16,20 @@
 //! The `Dialect` trait lets the Rust implementation be parameterized without
 //! changing the spec. `AcDialect` is the only shipped implementation.
 
+use ac_schema::SchemaVocabulary;
+use ac_runtime::RuntimeValue;
+
 /// A syntax dialect for parsing and evaluating AC expressions.
 ///
 /// The AC language specification defines one canonical syntax.
 /// This trait abstracts the syntax decisions so the implementation
 /// can be structured around a single [`AcDialect`], with the
 /// architecture allowing others if needed.
+///
+/// In addition to expression syntax, the dialect defines the
+/// AC-specific key names used in documents (`fields`, `functions`,
+/// `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`,
+/// `return`, `body`) and the schema vocabulary used for validation.
 pub trait Dialect: Send + Sync {
     /// The interpolation prefix — e.g. `"${"` for the canonical dialect.
     fn interpolation_prefix(&self) -> &str;
@@ -52,6 +60,81 @@ pub trait Dialect: Send + Sync {
 
     /// Check if `s` is a number literal and return its value.
     fn parse_number_literal(&self, s: &str) -> Option<f64>;
+
+    // --- AC-specific key names ---
+
+    /// The top-level key for field declarations. Canonical: `"fields"`.
+    fn fields_key(&self) -> &str {
+        "fields"
+    }
+
+    /// The top-level key for function declarations. Canonical: `"functions"`.
+    fn functions_key(&self) -> &str {
+        "functions"
+    }
+
+    /// The field-level key for computed field expressions. Canonical: `"expr"`.
+    fn expr_key(&self) -> &str {
+        "expr"
+    }
+
+    /// The field-level key for parameterized computed field type. Canonical: `"arg"`.
+    fn arg_key(&self) -> &str {
+        "arg"
+    }
+
+    /// The field-level key for merge field flag. Canonical: `"merge"`.
+    fn merge_key(&self) -> &str {
+        "merge"
+    }
+
+    /// The field-level key for scoped inheritance flag. Canonical: `"inheritable"`.
+    fn inheritable_key(&self) -> &str {
+        "inheritable"
+    }
+
+    /// The field-level key for immutability flag. Canonical: `"mutable"`.
+    fn mutable_key(&self) -> &str {
+        "mutable"
+    }
+
+    /// The function-level key for parameters. Canonical: `"params"`.
+    fn params_key(&self) -> &str {
+        "params"
+    }
+
+    /// The function-level key for return schema. Canonical: `"return"`.
+    fn return_key(&self) -> &str {
+        "return"
+    }
+
+    /// The function-level key for user-defined function body. Canonical: `"body"`.
+    fn body_key(&self) -> &str {
+        "body"
+    }
+
+    /// All AC-specific field-level keys (used for stripping during typegen).
+    fn ac_field_keys(&self) -> Vec<&str> {
+        vec![
+            self.expr_key(),
+            self.arg_key(),
+            self.merge_key(),
+            self.inheritable_key(),
+            self.mutable_key(),
+        ]
+    }
+
+    /// Reserved top-level keys that cannot be declared as field names.
+    fn reserved_keys(&self) -> Vec<&str> {
+        vec![self.fields_key(), self.functions_key()]
+    }
+
+    // --- Schema vocabulary ---
+
+    /// The schema vocabulary used for field and function validation.
+    ///
+    /// The canonical dialect returns a JSON Schema draft 2020-12 vocabulary.
+    fn schema_vocabulary(&self) -> &dyn SchemaVocabulary<RuntimeValue>;
 }
 
 /// The canonical AC language dialect.
@@ -64,6 +147,7 @@ pub trait Dialect: Send + Sync {
 /// - Number literals: `42`, `1.5`, `-3`
 /// - Boolean literals: `true`, `false`
 /// - Null literal: `null`
+/// - Schema vocabulary: JSON Schema draft 2020-12
 pub struct AcDialect;
 
 impl Dialect for AcDialect {
@@ -155,6 +239,10 @@ impl Dialect for AcDialect {
     fn parse_number_literal(&self, s: &str) -> Option<f64> {
         s.trim().parse::<f64>().ok()
     }
+
+    fn schema_vocabulary(&self) -> &dyn SchemaVocabulary<RuntimeValue> {
+        &ac_schema_json::JSON_SCHEMA_VOCABULARY
+    }
 }
 
 /// The canonical AC dialect as a static singleton.
@@ -230,5 +318,45 @@ mod tests {
         assert_eq!(d.parse_number_literal("1.5"), Some(1.5));
         assert_eq!(d.parse_number_literal("-3"), Some(-3.0));
         assert_eq!(d.parse_number_literal("not a number"), None);
+    }
+
+    #[test]
+    fn key_names() {
+        let d = AcDialect;
+        assert_eq!(d.fields_key(), "fields");
+        assert_eq!(d.functions_key(), "functions");
+        assert_eq!(d.expr_key(), "expr");
+        assert_eq!(d.arg_key(), "arg");
+        assert_eq!(d.merge_key(), "merge");
+        assert_eq!(d.inheritable_key(), "inheritable");
+        assert_eq!(d.mutable_key(), "mutable");
+        assert_eq!(d.params_key(), "params");
+        assert_eq!(d.return_key(), "return");
+        assert_eq!(d.body_key(), "body");
+    }
+
+    #[test]
+    fn reserved_keys() {
+        let d = AcDialect;
+        let reserved = d.reserved_keys();
+        assert!(reserved.contains(&"fields"));
+        assert!(reserved.contains(&"functions"));
+    }
+
+    #[test]
+    fn ac_field_keys() {
+        let d = AcDialect;
+        let keys = d.ac_field_keys();
+        assert!(keys.contains(&"expr"));
+        assert!(keys.contains(&"arg"));
+        assert!(keys.contains(&"merge"));
+        assert!(keys.contains(&"inheritable"));
+        assert!(keys.contains(&"mutable"));
+    }
+
+    #[test]
+    fn schema_vocabulary_id() {
+        let d = AcDialect;
+        assert_eq!(d.schema_vocabulary().id(), "json-schema-draft-2020-12");
     }
 }

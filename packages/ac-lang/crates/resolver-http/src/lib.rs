@@ -15,6 +15,7 @@ mod url;
 
 use std::path::Path;
 
+use ac_dialect::AC_DIALECT;
 use ac_fields::extract_fields;
 use ac_frontend::frontend_for;
 use ac_resolver_core::{ModuleCache, ModuleResolver, NoCache, ResolvedModule};
@@ -74,7 +75,7 @@ impl<C: ModuleCache> ModuleResolver for HttpResolver<C> {
 
         let frontend = frontend_for(format).ok()?;
         let value = frontend.parse(&content).ok()?;
-        let extracted = extract_fields(value).ok()?;
+        let extracted = extract_fields(value, &AC_DIALECT).ok()?;
 
         let module = ResolvedModule {
             schemas: extracted.schemas,

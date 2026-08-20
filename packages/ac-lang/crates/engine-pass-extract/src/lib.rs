@@ -2,6 +2,7 @@
 //!
 //! Pipeline pass: extract fields, functions, and data from parsed document.
 
+use ac_dialect::AC_DIALECT;
 use ac_engine_core::{Compilation, Config, Pass};
 
 /// Extract fields, functions, and data from the parsed document.
@@ -14,7 +15,7 @@ impl Pass for ExtractPass {
             .take()
             .ok_or("ExtractPass: no parsed value — run ParsePass first")?;
 
-        let extracted = ac_fields::extract_fields(parsed)?;
+        let extracted = ac_fields::extract_fields(parsed, &AC_DIALECT)?;
 
         if extracted.schemas.is_empty() {
             return Err("no `fields:` section found in input".to_string());

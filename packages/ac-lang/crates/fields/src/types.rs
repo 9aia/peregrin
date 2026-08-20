@@ -3,9 +3,6 @@ use std::collections::HashMap;
 use ac_runtime::RuntimeValue;
 use serde_json::Value as JsonValue;
 
-/// Reserved top-level keys that cannot be declared as field names.
-pub const RESERVED_FIELDS: &[&str] = &["fields", "functions"];
-
 /// The conventional name of the default namespace used for shorthand
 /// path resolution (bare `name` → `DEFAULT_NAMESPACE.name`).
 ///

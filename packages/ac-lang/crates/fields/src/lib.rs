@@ -42,7 +42,7 @@ mod validation;
 
 pub use types::{
     ArgSpec, ComputedField, ExtractedFields, FunctionResolver, FunctionSignature,
-    Namespaces, NoFunctions, DEFAULT_NAMESPACE, RESERVED_FIELDS,
+    Namespaces, NoFunctions, DEFAULT_NAMESPACE,
 };
 pub use extraction::{extract_fields, undeclared_fields};
 pub use interpolation::{interpolate, interpolate_scoped};

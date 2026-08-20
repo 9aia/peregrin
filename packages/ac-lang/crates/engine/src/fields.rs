@@ -3,12 +3,11 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use ac_fields;
-use ac_dialect::AC_DIALECT;
+use ac_dialect::{AC_DIALECT, Dialect};
 use ac_frontend::frontend_for;
 use ac_host::DefaultHost;
 use ac_runtime::RuntimeValue;
 use ac_schema::Schema;
-use ac_schema_json::JsonSchema;
 
 use crate::resolver::VmResolver;
 
@@ -38,7 +37,7 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
     let frontend = frontend_for(format)?;
     let value = frontend.parse(input)?;
 
-    let extracted = ac_fields::extract_fields(value)?;
+    let extracted = ac_fields::extract_fields(value, &AC_DIALECT)?;
 
     if extracted.schemas.is_empty() {
         return Err("no `fields:` section found in input".to_string());
@@ -89,17 +88,23 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
     let merge_errors = ac_fields::merge_fields(data.inner_mut(), &merge);
     errors.extend(merge_errors);
 
-    let schemas: Vec<(String, JsonSchema)> = field_schemas
+    let vocab = AC_DIALECT.schema_vocabulary();
+    let schemas: Vec<(String, Box<dyn Schema<RuntimeValue>>)> = field_schemas
         .iter()
         .filter(|(name, _)| !merge.iter().any(|m| m == name))
-        .map(|(name, raw)| (name.clone(), JsonSchema::new(raw.clone())))
-        .collect();
+        .map(|(name, raw)| {
+            let compiled = vocab.compile(raw).map_err(|e| format!("{name}: invalid schema — {e}"))?;
+            Ok::<_, String>((name.clone(), compiled))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
 
     let mut field_types = Vec::new();
     let mut ok = Vec::new();
 
     for (name, schema) in &schemas {
-        let type_name = schema.type_name().unwrap_or("any").to_string();
+        let type_name = ac_schema_json::JsonSchema::new(
+            field_schemas.iter().find(|(n, _)| n == name).unwrap().1.clone()
+        ).type_name().unwrap_or("any").to_string();
         field_types.push((name.clone(), type_name));
 
         let field_value = data.get(name).unwrap_or(&serde_json::Value::Null);

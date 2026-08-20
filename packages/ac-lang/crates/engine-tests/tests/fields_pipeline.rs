@@ -52,7 +52,7 @@ version: 3
 "#;
 
     let value = ac_frontend_yaml::parse(yaml).unwrap();
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
 
     assert_eq!(extracted.schemas.len(), 3);
     assert_eq!(extracted.computed.len(), 1);
@@ -97,7 +97,7 @@ host: override.com
 "#;
 
     let value = ac_frontend_yaml::parse(yaml).unwrap();
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
 
     assert_eq!(extracted.merge, vec!["_base"]);
 
@@ -138,7 +138,7 @@ extra: true
 "#;
 
     let value = ac_frontend_yaml::parse(yaml).unwrap();
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
 
     let declared: Vec<&str> = extracted.schemas.iter().map(|(n, _)| n.as_str()).collect();
     let undeclared = ac_fields::undeclared_fields(&extracted.data, &declared);

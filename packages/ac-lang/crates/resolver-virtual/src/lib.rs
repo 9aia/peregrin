@@ -10,6 +10,7 @@ use std::path::Path;
 
 use serde_json::Value as JsonValue;
 
+use ac_dialect::AC_DIALECT;
 use ac_fields::extract_fields;
 use ac_runtime::RuntimeValue;
 use ac_resolver_core::{ModuleResolver, ResolvedModule};
@@ -54,7 +55,7 @@ impl ModuleResolver for VirtualResolver {
     fn resolve(&self, path: &str, _base: Option<&Path>) -> Option<ResolvedModule> {
         let data = self.modules.get(path)?;
         let value = RuntimeValue::new(data.clone());
-        let extracted = extract_fields(value).ok()?;
+        let extracted = extract_fields(value, &AC_DIALECT).ok()?;
 
         Some(ResolvedModule {
             schemas: extracted.schemas,

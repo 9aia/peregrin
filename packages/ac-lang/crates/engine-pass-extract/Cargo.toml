@@ -6,6 +6,7 @@ edition.workspace = true
 [dependencies]
 ac-engine-core.workspace = true
 ac-fields.workspace = true
+ac-dialect.workspace = true
 
 [dev-dependencies]
 ac-frontend.workspace = true

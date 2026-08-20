@@ -5,23 +5,24 @@
 
 The AC Language Specification ([LANG.md](./LANG.md)) fixes one canonical syntax. This document specifies the Dialect API — the interface that abstracts the three syntax decisions behind a single contract, so implementations can be structured around one source of truth rather than hardcoding tokens across dozens of functions.
 
-The canonical dialect is the only shipped dialect. Custom dialects are architecturally possible but not exposed to users. See [fixed-syntax.md](./explanations/fixed-syntax.md) for the rationale.
+The canonical dialect is the only shipped dialect. Custom dialects are architecturally possible but not exposed officially to users. See [fixed-syntax.md](./explanations/fixed-syntax.md) for the rationale.
 
 ## 1. Overview
 
-A **dialect** is a set of syntax tokens and parsing rules for AC expressions. It defines:
+A **dialect** is a set of syntax tokens, key names, and parsing rules for AC documents. It defines:
 
 - **Interpolation markers** — how expressions are embedded in strings.
 - **Path separator** — how namespace paths are segmented.
 - **Call syntax** — how function calls are delimited.
 - **Literal parsing** — how string, number, boolean, and null literals are recognized.
+- **Special key names** — the reserved keys used in AC documents (`fields`, `functions`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body`).
+- **Schema vocabulary** — which schema language is used for field and function validation.
 
 The dialect does **not** define:
 
 - Which namespaces exist (runtime host decision — see [RUNTIME.md](./RUNTIME.md)).
 - Which functions exist (runtime host decision).
 - The document format (YAML, JSON, TOML — frontend decision).
-- The schema vocabulary (JSON Schema draft 2020-12 — see [LANG.md](./LANG.md) §6.1).
 
 ## 2. The Dialect interface
 
@@ -54,20 +55,55 @@ Boolean literals (`true`, `false`) and the null literal (`null`) are recognized 
 
 The argument separator is implicitly ``,` in the canonical dialect. It is not a separate token on the interface —`split_args`encapsulates the splitting logic, including nesting awareness. This means a custom dialect could use a different separator (e.g.`;`) by implementing `split_args`accordingly, without exposing a separate`argument_separator` token.
 
+### 2.4 Special key names
+
+The dialect defines the reserved key names used in AC documents. These keys have special meaning during field extraction, type checking, and type generation:
+
+| Key               | Level          | Purpose                                    | Canonical value |
+| ----------------- | -------------- | ------------------------------------------ | --------------- |
+| `fields_key`      | Top-level      | Field declarations                         | `fields`        |
+| `functions_key`   | Top-level      | Function declarations                      | `functions`     |
+| `expr_key`        | Field-level    | Computed field expression                  | `expr`          |
+| `arg_key`         | Field-level    | Parameterized computed field argument type | `arg`           |
+| `merge_key`       | Field-level    | Merge field flag                           | `merge`         |
+| `inheritable_key` | Field-level    | Scoped inheritance flag                    | `inheritable`   |
+| `mutable_key`     | Field-level    | Immutability flag                          | `mutable`       |
+| `params_key`      | Function-level | Function parameters                        | `params`        |
+| `return_key`      | Function-level | Function return schema                     | `return`        |
+| `body_key`        | Function-level | User-defined function body                 | `body`          |
+
+The dialect also provides two convenience aggregations:
+
+- **`ac_field_keys()`** — all field-level AC keys (`expr`, `arg`, `merge`, `inheritable`, `mutable`), used for stripping during type generation.
+- **`reserved_keys()`** — top-level keys that cannot be declared as field names (`fields`, `functions`).
+
+### 2.5 Schema vocabulary
+
+The dialect defines which schema vocabulary is used for field and function validation. The schema vocabulary is an abstract interface that compiles raw schema documents into validators:
+
+| Operation | Input               | Output                | Description                                                    |
+| --------- | ------------------- | --------------------- | -------------------------------------------------------------- |
+| `id`      | None                | Vocabulary identifier | e.g. `"json-schema-draft-2020-12"`                             |
+| `compile` | Raw schema document | Validator             | Compiles a schema into a `Schema<V>` that can validate values. |
+
+The canonical dialect uses JSON Schema draft 2020-12. See [LANG.md](./LANG.md) §6.1 for the language-level specification of schemas.
+
 ## 3. Canonical dialect
 
 The canonical dialect implements the syntax defined in [LANG.md](./LANG.md):
 
-| Token              | Value              | Used in                                                 |
-| ------------------ | ------------------ | ------------------------------------------------------- |
-| Interpolation      | `${...}`           | String interpolation, `expr:` fields, `body:` functions |
-| Path separator     | `.`                | `ns.key`, `ns.key.sub`, shorthand `key`                 |
-| Call syntax        | `fn(args)`         | `add(1, 2)`, `mul(x, 2)`, `concat(doc.name, "!")`       |
-| String literals    | `"..."` or `'...'` | `"hello"`, `'hello'`                                    |
-| Number literals    | `42`, `1.5`, `-3`  | IEEE 754 doubles                                        |
-| Boolean literals   | `true`, `false`    | Keywords (not dialect-configurable)                     |
-| Null literal       | `null`             | Keyword (not dialect-configurable)                      |
-| Argument separator | `,`                | `add(1, 2, 3)`                                          |
+| Token              | Value                                                                                               | Used in                                                 |
+| ------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Interpolation      | `${...}`                                                                                            | String interpolation, `expr:` fields, `body:` functions |
+| Path separator     | `.`                                                                                                 | `ns.key`, `ns.key.sub`, shorthand `key`                 |
+| Call syntax        | `fn(args)`                                                                                          | `add(1, 2)`, `mul(x, 2)`, `concat(doc.name, "!")`       |
+| String literals    | `"..."` or `'...'`                                                                                  | `"hello"`, `'hello'`                                    |
+| Number literals    | `42`, `1.5`, `-3`                                                                                   | IEEE 754 doubles                                        |
+| Boolean literals   | `true`, `false`                                                                                     | Keywords (not dialect-configurable)                     |
+| Null literal       | `null`                                                                                              | Keyword (not dialect-configurable)                      |
+| Argument separator | `,`                                                                                                 | `add(1, 2, 3)`                                          |
+| Schema vocabulary  | JSON Schema 2020-12                                                                                 | Field and function validation                           |
+| Special keys       | `fields`, `functions`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body` | Document structure                                      |
 
 ### 3.1 Call detection
 
@@ -114,6 +150,8 @@ A custom dialect changes **surface syntax** only. It must not change:
 - Argument separator (within `split_args`)
 - String literal quote characters
 - Number literal format (within `parse_number_literal`)
+- Special key names (e.g. `fields` → `properties`, `expr` → `compute`)
+- Schema vocabulary (e.g. a non-JSON-Schema validator)
 
 ### 4.3 Portability
 
@@ -124,6 +162,8 @@ Documents written with one dialect are not portable to another. `doc.name` and `
 | Concern                       | Defined by    | Document                                          |
 | ----------------------------- | ------------- | ------------------------------------------------- |
 | Expression syntax (canonical) | Language spec | [LANG.md](./LANG.md) §4                           |
+| Schema vocabulary (canonical) | Language spec | [LANG.md](./LANG.md) §6.1                         |
+| Special key names (canonical) | Language spec | [LANG.md](./LANG.md) §6                           |
 | Dialect interface (abstract)  | This spec     | DIALECT.md                                        |
 | Runtime configuration         | Runtime spec  | [RUNTIME.md](./RUNTIME.md)                        |
 | Fixed-syntax rationale        | Explanation   | [fixed-syntax.md](./explanations/fixed-syntax.md) |
@@ -135,9 +175,11 @@ The language spec defines **what the canonical syntax is**. This spec defines **
 The Rust implementation provides:
 
 - **`ac-dialect`** crate — defines the `Dialect` trait and the canonical `AcDialect` struct.
-- **`AcDialect`** — the only shipped dialect. Implements all canonical tokens and parsing rules.
+- **`ac-schema`** crate — defines the `Schema<V>` and `SchemaVocabulary<V>` traits (abstract schema validation).
+- **`ac-schema-json`** crate — implements `JsonSchema` (`Schema<V>`) and `JsonSchemaVocabulary` (`SchemaVocabulary<V>`) for JSON Schema draft 2020-12.
+- **`AcDialect`** — the only shipped dialect. Implements all canonical tokens, key names, and the JSON Schema vocabulary.
 - **`AC_DIALECT`** — a static singleton of `AcDialect`, used throughout the engine.
 
-Every function that parses or evaluates expressions accepts `&dyn Dialect`. The canonical `AC_DIALECT` is passed at call sites. No function hardcodes `"${"`, `'.'`, or `'('`.
+Every function that parses or evaluates expressions accepts `&dyn Dialect`. Every function that extracts fields reads key names from the dialect. Every function that validates schemas uses the dialect's `SchemaVocabulary`. The canonical `AC_DIALECT` is passed at call sites. No function hardcodes `"${"`, `'.'`, `'('`, `"fields"`, `"expr"`, or `JsonSchema`.
 
 See [RUNTIME.md](./RUNTIME.md) for how the dialect integrates into the engine pipeline.

@@ -5,9 +5,9 @@ use ac_schema::Schema;
 ///
 /// Returns `Ok(())` if all args validate, or an error message.
 /// The caller provides a `Schema<V>` implementation for each param.
-pub fn validate_args<S: Schema<RuntimeValue>>(
+pub fn validate_args(
     args: &[RuntimeValue],
-    param_schemas: &[S],
+    param_schemas: &[Box<dyn Schema<RuntimeValue>>],
 ) -> Result<(), String> {
     if args.len() != param_schemas.len() {
         return Err(format!(
@@ -25,9 +25,9 @@ pub fn validate_args<S: Schema<RuntimeValue>>(
 /// Validates a function return value against a declared return schema.
 ///
 /// Returns `Ok(())` if the value validates, or an error message.
-pub fn validate_return<S: Schema<RuntimeValue>>(
+pub fn validate_return(
     value: &RuntimeValue,
-    return_schema: &S,
+    return_schema: &dyn Schema<RuntimeValue>,
 ) -> Result<(), String> {
     return_schema.validate(value).map_err(|e| format!("return: {e}"))
 }

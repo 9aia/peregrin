@@ -1,5 +1,6 @@
 use super::*;
 use crate::types::ArgSpec;
+use ac_dialect::AC_DIALECT;
 use ac_runtime::RuntimeValue;
 
 #[test]
@@ -12,7 +13,7 @@ fn extract_fields_basic() {
         "name": "ac",
         "version": 1
     }));
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert_eq!(extracted.schemas.len(), 2);
     assert_eq!(extracted.schemas[0].0, "name");
     assert_eq!(extracted.schemas[1].0, "version");
@@ -34,7 +35,7 @@ fn extract_fields_with_functions() {
         },
         "name": "ac"
     }));
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert_eq!(extracted.schemas.len(), 1);
     assert_eq!(extracted.functions.len(), 1);
     assert_eq!(extracted.functions[0].0, "double");
@@ -51,13 +52,13 @@ fn extract_fields_reserved_name() {
             "fields": { "type": "string" }
         }
     }));
-    assert!(extract_fields(value).is_err());
+    assert!(extract_fields(value, &AC_DIALECT).is_err());
 }
 
 #[test]
 fn extract_fields_no_fields_section() {
     let value = RuntimeValue::new(serde_json::json!({"name": "ac"}));
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert!(extracted.schemas.is_empty());
     assert!(extracted.functions.is_empty());
     assert_eq!(extracted.data.get("name").unwrap().as_str(), Some("ac"));
@@ -86,7 +87,7 @@ fn extract_fields_inheritable() {
         "permission_mode": "read-only",
         "env_name": "prod"
     }));
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     let inheritable_set: std::collections::HashSet<&str> =
         extracted.inheritable.iter().map(|s| s.as_str()).collect();
     assert_eq!(inheritable_set, ["permission_mode", "env_name"].into_iter().collect());
@@ -108,7 +109,7 @@ fn extract_fields_with_function_body() {
         },
         "name": "ac"
     }));
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert_eq!(extracted.functions.len(), 1);
     let (_, sig) = &extracted.functions[0];
     assert_eq!(sig.body.as_deref(), Some("mul(x, 2)"));
@@ -123,7 +124,7 @@ fn extract_fields_with_computed() {
         },
         "version": 1
     }));
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert_eq!(extracted.computed.len(), 1);
     assert_eq!(extracted.computed[0].name, "doubled");
     assert_eq!(extracted.computed[0].expr, "mul(version, 2)");
@@ -136,7 +137,7 @@ fn extract_fields_no_computed() {
         "fields": { "name": { "type": "string" } },
         "name": "ac"
     }));
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert!(extracted.computed.is_empty());
 }
 
@@ -149,7 +150,7 @@ fn extract_fields_with_merge() {
         },
         "host": "example.com"
     }));
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert_eq!(extracted.merge, vec!["_base"]);
 }
 
@@ -161,7 +162,7 @@ fn extract_fields_with_arg_untyped() {
         },
         "greeting": "hello"
     }));
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert_eq!(extracted.computed.len(), 1);
     assert_eq!(extracted.computed[0].name, "greeting");
     assert!(matches!(extracted.computed[0].arg, Some(ArgSpec::Untyped)));
@@ -179,7 +180,7 @@ fn extract_fields_with_arg_typed() {
         },
         "doubled": 5
     }));
-    let extracted = extract_fields(value).unwrap();
+    let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert_eq!(extracted.computed.len(), 1);
     assert!(matches!(extracted.computed[0].arg, Some(ArgSpec::Typed(_))));
 }

@@ -2,9 +2,10 @@
 //!
 //! JSON Schema validation for the AC language.
 //!
-//! Implements the abstract [`ac_schema::Schema<V>`] trait for
-//! `RuntimeValue` using the [`jsonschema`](https://crates.io/crates/jsonschema)
-//! crate, which provides full JSON Schema draft 2020-12 support.
+//! Implements the abstract [`ac_schema::Schema<V>`] and
+//! [`ac_schema::SchemaVocabulary<V>`] traits for `RuntimeValue` using
+//! the [`jsonschema`](https://crates.io/crates/jsonschema) crate, which
+//! provides full JSON Schema draft 2020-12 support.
 //!
 //! ## Architectural rule
 //!
@@ -12,7 +13,7 @@
 
 mod schema;
 
-pub use schema::JsonSchema;
+pub use schema::{JsonSchema, JsonSchemaVocabulary, JSON_SCHEMA_VOCABULARY};
 
 #[cfg(test)]
 mod validator_tests;
