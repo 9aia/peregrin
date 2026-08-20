@@ -43,14 +43,15 @@ pub fn compute_fields(
 
         let mut still_remaining = Vec::new();
         for field in &remaining {
-            // If the field has an arg, get its current data value
-            // and insert it as the `arg` namespace.
-            if let Some(arg_spec) = &field.arg
-                && let Some(obj) = data.as_object()
+            // `arg` is always bound when the field has a data value,
+            // regardless of whether `arg:` is declared. The `arg:` property
+            // only adds type validation.
+            let mut arg_bound = false;
+            if let Some(obj) = data.as_object()
                 && let Some(arg_val) = obj.get(&field.name)
             {
                 // Validate arg type if declared
-                if let ArgSpec::Typed(schema) = arg_spec
+                if let Some(ArgSpec::Typed(schema)) = &field.arg
                     && let Err(e) = check_arg_type(arg_val, schema)
                 {
                     errors.push(format!(
@@ -59,6 +60,7 @@ pub fn compute_fields(
                     continue;
                 }
                 namespaces.insert("arg".to_string(), arg_val.clone());
+                arg_bound = true;
             }
 
             if let Some(val) = eval_expression(&field.expr, namespaces, resolver, dialect) {
@@ -73,7 +75,7 @@ pub fn compute_fields(
             }
 
             // Clean up arg namespace
-            if field.arg.is_some() {
+            if arg_bound {
                 namespaces.remove("arg");
             }
         }

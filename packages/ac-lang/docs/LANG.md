@@ -148,7 +148,7 @@ Each function argument is evaluated independently:
 
 ## 6. Field declarations
 
-Fields are declared in the `fields:` section. Each field has a schema (type and constraints) and optional AC-specific keys.
+Fields are declared in the `fields:` section. Each field has a schema (type and constraints) and optional AC-specific keys (metadata).
 
 ### 6.1 Schema
 
@@ -198,17 +198,16 @@ fields:
   greeting:
     type: string
     expr: 'concat(arg, "!")'
-    arg: true
 greeting: hello
 ```
 
-Here `greeting` has a data value (`"hello"`) and an `expr:`. The expression runs with `arg` bound to `"hello"`, producing `"hello!"`, which replaces the original data value.
+Here `greeting` has a data value (`"hello"`) and an `expr:`. The expression runs with `arg` bound to `"hello"`, producing `"hello!"`, which replaces the original data value. Using `${arg}` is optional — an `expr:` field that doesn't reference `${arg}` behaves the same as before (it simply doesn't see its own data value).
 
 ### 6.3 Parameterized computed fields (`arg:`)
 
-A field's own data value becomes available as `${arg}` inside its `expr:` expression. With `arg:`, the data value is an input to the computation.
+When a field has both a data value and an `expr:`, the data value is automatically available as `${arg}` inside the expression. No declaration is needed — `arg` is always bound when data is present.
 
-The parameter is scoped to the field and disappears after computation. An optional `arg:` property declares the expected type (validated before the expr runs); without it, the value is available untyped. Backward-compatible — existing `expr:` fields that don't reference `${arg}` behave unchanged.
+The parameter is scoped to the field and disappears after computation. The optional `arg:` property is only for **type validation** — it declares the expected type and is checked before the expression runs. Without `arg:`, the value is available untyped.
 
 Path indexing applies naturally: `${arg}` for a scalar, `${arg.0}` for an array element, `${arg.host}` for an object key.
 
@@ -234,6 +233,8 @@ doubled: 5
 ```
 
 If `doubled` were a string, the arg type check would fail before the expression runs.
+
+Fields with `expr:` that don't reference `${arg}` are unaffected — the feature is purely opt-in by using `${arg}` in the expression.
 
 ### 6.4 Merge fields (`merge: true`)
 

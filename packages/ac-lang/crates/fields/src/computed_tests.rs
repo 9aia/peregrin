@@ -228,6 +228,27 @@ fn compute_fields_chained_with_stale_data() {
 }
 
 #[test]
+fn compute_fields_arg_without_declaration() {
+    // `arg` is bound automatically when data is present, even without
+    // an `arg:` declaration. The `arg:` property only adds type validation.
+    let mut data = serde_json::json!({"greeting": "hello"});
+    let computed: Vec<ComputedField> = vec![
+        ComputedField {
+            name: "greeting".to_string(),
+            expr: "concat(arg, \"!\")".to_string(),
+            arg: None,
+        },
+    ];
+
+    let mut ns = Namespaces::new();
+    ns.insert("doc".to_string(), data.clone());
+
+    let errors = compute_fields(&mut data, &computed, &mut ns, &ConcatResolver, &AC_DIALECT);
+    assert!(errors.is_empty());
+    assert_eq!(data["greeting"], "hello!");
+}
+
+#[test]
 fn compute_fields_without_arg_backward_compat() {
     let mut data = serde_json::json!({"version": 3});
     let computed: Vec<ComputedField> = vec![
