@@ -300,14 +300,41 @@ const buildDefs = (
     id: { type: "string" },
     driver: anyOf({ type: "string", enum: DRIVER_TYPES }),
     handler: anyOf(handlerProp),
-    on: anyOf({ type: "array", items: { type: "string", enum: eventTypes } }),
+    on: anyOf({
+      type: "array",
+      items: {
+        anyOf: [
+          { type: "string", enum: eventTypes },
+          { type: "string", pattern: "^\\*\\*?$" },
+          placeholder,
+        ],
+      },
+    }),
     emits: anyOf({ type: "array", items: { type: "string" } }),
     snippet: anyOf(snippetProp),
     mode: anyOf({ type: "string", enum: ["any", "all"] }),
     with: { type: "object" },
-    max_fires: { type: "integer", minimum: 0 },
-    until: anyOf({ type: "array", items: { type: "string", enum: eventTypes } }),
-    retire_on: anyOf({ type: "array", items: { type: "string", enum: eventTypes } }),
+    max_fires: anyOf({ type: "integer", minimum: 1 }, { type: "string", enum: ["unlimited"] }),
+    until: anyOf({
+      type: "array",
+      items: {
+        anyOf: [
+          { type: "string", enum: eventTypes },
+          { type: "string", pattern: "^\\*\\*?$" },
+          placeholder,
+        ],
+      },
+    }),
+    retire_on: anyOf({
+      type: "array",
+      items: {
+        anyOf: [
+          { type: "string", enum: eventTypes },
+          { type: "string", pattern: "^\\*\\*?$" },
+          placeholder,
+        ],
+      },
+    }),
     retry: {
       type: "object",
       properties: {
@@ -336,7 +363,16 @@ const buildDefs = (
   const snippetProperties: Record<string, unknown> = {
     driver: anyOf({ type: "string", enum: DRIVER_TYPES }),
     handler: anyOf(handlerProp),
-    on: anyOf({ type: "array", items: { type: "string", enum: eventTypes } }),
+    on: anyOf({
+      type: "array",
+      items: {
+        anyOf: [
+          { type: "string", enum: eventTypes },
+          { type: "string", pattern: "^\\*\\*?$" },
+          placeholder,
+        ],
+      },
+    }),
     emits: anyOf({ type: "array", items: { type: "string" } }),
     snippet: anyOf(snippetProp),
     with: { type: "object" },
@@ -490,7 +526,14 @@ const typegen = Command.make(
               type: "object",
               properties: {
                 type: { $ref: "_defs.schema.json#/$defs/eventEnum" },
-                fields: { type: "object" },
+                fields: {
+                  type: "object",
+                  additionalProperties: {
+                    type: "string",
+                    pattern: "^(string|integer|number|boolean|array|object|null)\\??$",
+                  },
+                },
+                schema: { type: "object" },
               },
               required: ["type"],
             },
@@ -501,6 +544,9 @@ const typegen = Command.make(
             properties: defs.snippets ? (defs.snippets as Record<string, unknown>).properties : {},
           },
           config: { type: "object" },
+          strict: { type: "boolean" },
+          state: { type: "object" },
+          payload_schemas: { type: "object" },
           nodes: {
             type: "array",
             items: { $ref: "_defs.schema.json#/$defs/node" },

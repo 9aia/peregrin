@@ -112,7 +112,6 @@ export class EventSchema {
 function parseMaxFires(value: unknown, defaultValue: number | "unlimited"): number | "unlimited" {
   if (value === "unlimited") return "unlimited";
   if (typeof value === "number" && Number.isInteger(value) && value > 0) return value;
-  if (value === 0) return "unlimited";
   return defaultValue;
 }
 
@@ -148,7 +147,7 @@ export class Node {
       const emits = Array.from<string>((raw.emits as Array<string>) ?? []);
       if (!on.includes(tick)) on.push(tick);
       if (!emits.includes(tick)) emits.push(tick);
-      const maxFires = parseMaxFires(raw.max_fires, 1);
+      const maxFires = parseMaxFires(raw.max_fires, "unlimited");
       const until = Array.from<string>((raw.until as Array<string>) ?? []);
       const pollUntil = Array.from<string>((poll.until as Array<string>) ?? []);
       for (const e of pollUntil) if (!until.includes(e)) until.push(e);
