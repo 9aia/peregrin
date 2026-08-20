@@ -43,21 +43,20 @@ pub fn compute_fields(
         for field in &remaining {
             // If the field has an arg, get its current data value
             // and insert it as the `arg` namespace.
-            if let Some(arg_spec) = &field.arg {
-                if let Some(obj) = data.as_object() {
-                    if let Some(arg_val) = obj.get(&field.name) {
-                        // Validate arg type if declared
-                        if let ArgSpec::Typed(schema) = arg_spec {
-                            if let Err(e) = check_arg_type(arg_val, schema) {
-                                errors.push(format!(
-                                    "could not compute field '{}': {e}", field.name
-                                ));
-                                continue;
-                            }
-                        }
-                        namespaces.insert("arg".to_string(), arg_val.clone());
-                    }
+            if let Some(arg_spec) = &field.arg
+                && let Some(obj) = data.as_object()
+                && let Some(arg_val) = obj.get(&field.name)
+            {
+                // Validate arg type if declared
+                if let ArgSpec::Typed(schema) = arg_spec
+                    && let Err(e) = check_arg_type(arg_val, schema)
+                {
+                    errors.push(format!(
+                        "could not compute field '{}': {e}", field.name
+                    ));
+                    continue;
                 }
+                namespaces.insert("arg".to_string(), arg_val.clone());
             }
 
             if let Some(val) = eval_expression(&field.expr, namespaces, resolver) {
@@ -106,10 +105,10 @@ fn check_arg_type(value: &JsonValue, schema: &JsonValue) -> Result<(), String> {
             JsonValue::Object(_) => "object",
         };
         if type_name == "integer" {
-            if let JsonValue::Number(n) = value {
-                if n.as_f64().is_some_and(|f| f.fract() == 0.0) {
-                    return Ok(());
-                }
+            if let JsonValue::Number(n) = value
+                && n.as_f64().is_some_and(|f| f.fract() == 0.0)
+            {
+                return Ok(());
             }
             return Err(format!(
                 "arg: expected type integer, got {actual}"
