@@ -57,11 +57,11 @@ fn parse_literal(s: &str, dialect: &dyn Dialect) -> Option<ExprAst> {
         return Some(ExprAst::Literal(Type::Number));
     }
 
-    if s == "true" || s == "false" {
+    if dialect.parse_bool_literal(s).is_some() {
         return Some(ExprAst::Literal(Type::Boolean));
     }
 
-    if s == "null" {
+    if dialect.is_null_literal(s) {
         return Some(ExprAst::Literal(Type::Null));
     }
 

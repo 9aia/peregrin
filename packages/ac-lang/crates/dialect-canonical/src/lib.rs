@@ -197,6 +197,23 @@ mod tests {
     }
 
     #[test]
+    fn parse_bool_literal() {
+        let d = AcDialect;
+        assert_eq!(d.parse_bool_literal("true"), Some(true));
+        assert_eq!(d.parse_bool_literal("false"), Some(false));
+        assert_eq!(d.parse_bool_literal("yes"), None);
+        assert_eq!(d.parse_bool_literal("null"), None);
+    }
+
+    #[test]
+    fn is_null_literal() {
+        let d = AcDialect;
+        assert!(d.is_null_literal("null"));
+        assert!(!d.is_null_literal("none"));
+        assert!(!d.is_null_literal("true"));
+    }
+
+    #[test]
     fn key_names() {
         let d = AcDialect;
         assert_eq!(d.fields_key(), "fields");

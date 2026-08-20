@@ -60,6 +60,22 @@ pub trait Dialect: Send + Sync {
     /// Check if `s` is a number literal and return its value.
     fn parse_number_literal(&self, s: &str) -> Option<f64>;
 
+    /// Check if `s` is a boolean literal and return its value.
+    /// Canonical: `"true"` → `true`, `"false"` → `false`.
+    fn parse_bool_literal(&self, s: &str) -> Option<bool> {
+        match s.trim() {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        }
+    }
+
+    /// Check if `s` is the null literal.
+    /// Canonical: `"null"`.
+    fn is_null_literal(&self, s: &str) -> bool {
+        s.trim() == "null"
+    }
+
     // --- AC-specific key names ---
 
     /// The top-level key for field declarations. Canonical: `"fields"`.

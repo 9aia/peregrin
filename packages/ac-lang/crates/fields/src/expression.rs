@@ -131,13 +131,12 @@ fn eval_arg(arg: &str, namespaces: &Namespaces, resolver: &dyn FunctionResolver,
     }
 
     // Boolean literal
-    if arg == "true" {
-        return Some(JsonValue::Bool(true));
+    if let Some(b) = dialect.parse_bool_literal(arg) {
+        return Some(JsonValue::Bool(b));
     }
-    if arg == "false" {
-        return Some(JsonValue::Bool(false));
-    }
-    if arg == "null" {
+
+    // Null literal
+    if dialect.is_null_literal(arg) {
         return Some(JsonValue::Null);
     }
 

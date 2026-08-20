@@ -48,8 +48,10 @@ These tokens are the minimal syntax surface. Every parser, interpolator, and typ
 | `split_args`           | Argument list string | List of argument strings | Splits arguments by the separator (`,` in canonical), respecting nested call tokens and string literals. |
 | `parse_string_literal` | Trimmed string       | Content or none          | Recognizes string literals (e.g. `"hello"` or `'hello'`) and returns the inner content.                  |
 | `parse_number_literal` | Trimmed string       | Number or none           | Recognizes number literals (e.g. `42`, `1.5`, `-3`) and returns the value.                               |
+| `parse_bool_literal`   | Trimmed string       | Boolean or none          | Recognizes boolean literals (e.g. `true`, `false`) and returns the value.                                |
+| `is_null_literal`      | Trimmed string       | Boolean                  | Recognizes the null literal (e.g. `null`).                                                               |
 
-Boolean literals (`true`, `false`) and the null literal (`null`) are recognized as keywords — they are not dialect-configurable. A dialect that changed `true` to `yes` would break the value type system (see [LANG.md](./LANG.md) §3).
+All literal parsing is dialect-configurable. A dialect that uses `yes`/`no` for booleans or `nil` for null implements `parse_bool_literal` and `is_null_literal` accordingly. The value type system (see [LANG.md](./LANG.md) §3) defines the _output_ types — `bool`, `null`, `f64`, `string` — not the _input_ syntax. A dialect changes how literals are recognized; the values they produce remain the same.
 
 ### 2.3 Argument separator
 
@@ -99,8 +101,8 @@ The canonical dialect implements the syntax defined in [LANG.md](./LANG.md):
 | Call syntax        | `fn(args)`                                                                                          | `add(1, 2)`, `mul(x, 2)`, `concat(doc.name, "!")`       |
 | String literals    | `"..."` or `'...'`                                                                                  | `"hello"`, `'hello'`                                    |
 | Number literals    | `42`, `1.5`, `-3`                                                                                   | IEEE 754 doubles                                        |
-| Boolean literals   | `true`, `false`                                                                                     | Keywords (not dialect-configurable)                     |
-| Null literal       | `null`                                                                                              | Keyword (not dialect-configurable)                      |
+| Boolean literals   | `true`, `false`                                                                                     | Dialect-configurable (`parse_bool_literal`)             |
+| Null literal       | `null`                                                                                              | Dialect-configurable (`is_null_literal`)                |
 | Argument separator | `,`                                                                                                 | `add(1, 2, 3)`                                          |
 | Schema vocabulary  | JSON Schema 2020-12                                                                                 | Field and function validation                           |
 | Special keys       | `fields`, `functions`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body` | Document structure                                      |
@@ -150,6 +152,8 @@ A custom dialect changes **surface syntax** only. It must not change:
 - Argument separator (within `split_args`)
 - String literal quote characters
 - Number literal format (within `parse_number_literal`)
+- Boolean literal keywords (within `parse_bool_literal`)
+- Null literal keyword (within `is_null_literal`)
 - Special key names (e.g. `fields` → `properties`, `expr` → `compute`)
 - Schema vocabulary (e.g. a non-JSON-Schema validator)
 
