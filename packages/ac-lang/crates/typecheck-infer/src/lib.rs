@@ -21,7 +21,7 @@ mod table;
 use std::collections::HashMap;
 
 pub use parser::{parse_expr, ExprAst};
-pub use table::FunctionTable;
+pub use table::{FunctionTable, RawFnSig};
 
 use ac_typecheck_core::{is_compatible, Type, TypeEnv};
 
@@ -124,10 +124,10 @@ fn walk_path(ty: &Type, parts: &[&str]) -> Type {
         return ty.clone();
     }
 
-    if let Type::Object(props) = ty {
-        if let Some(child_ty) = props.get(parts[0]) {
-            return walk_path(child_ty, &parts[1..]);
-        }
+    if let Type::Object(props) = ty
+        && let Some(child_ty) = props.get(parts[0])
+    {
+        return walk_path(child_ty, &parts[1..]);
     }
 
     Type::Unknown

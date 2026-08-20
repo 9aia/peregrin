@@ -135,8 +135,7 @@ impl KeyMatcher {
         let sep = self.separator;
 
         // Unquoted: key<sep>
-        if line.starts_with(key) {
-            let after = &line[key.len()..];
+        if let Some(after) = line.strip_prefix(key) {
             let after_trimmed = after.trim_start();
             if after_trimmed.starts_with(sep) {
                 let leading = after.len() - after_trimmed.len();
@@ -206,10 +205,10 @@ impl KeyMatcher {
                 continue;
             }
 
-            if let Some(min) = min_indent {
-                if indent < min {
-                    break;
-                }
+            if let Some(min) = min_indent
+                && indent < min
+            {
+                break;
             }
 
             if let Some(key_len) = self.match_key(trimmed, key) {

@@ -3,6 +3,12 @@ use std::collections::BTreeMap;
 use ac_typecheck_core::{FunctionType, SchemaInterpreter, Type};
 use serde_json::Value as JsonValue;
 
+/// A raw function signature: `(name, params, return_schema)`.
+///
+/// `params` is a list of `(param_name, raw_schema)` pairs.
+/// `return_schema` is the raw return type schema, if declared.
+pub type RawFnSig = (String, Vec<(String, JsonValue)>, Option<JsonValue>);
+
 /// A lookup table for function types — maps function names to their
 /// [`FunctionType`] (param types + return type).
 ///
@@ -26,7 +32,7 @@ impl FunctionTable {
     /// `params` is a list of `(param_name, raw_schema)` pairs and
     /// `return_schema` is the raw return type schema (if declared).
     pub fn from_signatures(
-        sigs: &[(String, Vec<(String, JsonValue)>, Option<JsonValue>)],
+        sigs: &[RawFnSig],
         interpreter: &dyn SchemaInterpreter,
     ) -> Self {
         let mut table = FunctionTable::new();

@@ -99,7 +99,8 @@ impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
     fn resolve(&self, path: &str, base: Option<&Path>) -> Option<ResolvedModule> {
         let target = if path.starts_with("git+") {
             parse_git_url(path)?
-        } else if let Some(base) = base {
+        } else {
+            let base = base?;
             let base_str = base.to_str()?;
             if base_str.starts_with("git+") {
                 let base_target = parse_git_url(base_str)?;
@@ -112,8 +113,6 @@ impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
             } else {
                 return None;
             }
-        } else {
-            return None;
         };
 
         let module_key = format!("{}@{}/{}", target.repo_url, target.reference, target.path);

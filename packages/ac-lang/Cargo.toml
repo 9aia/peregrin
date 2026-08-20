@@ -47,6 +47,7 @@ members = [
   "crates/engine-pass-generate",
   "crates/engine",
   "crates/engine-tests",
+  "crates/bench",
   "crates/cli",
 ]
 resolver = "3"

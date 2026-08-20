@@ -6,10 +6,10 @@ use serde_json::Value as JsonValue;
 /// Convert a JSON Schema fragment into a [`Type`].
 pub fn interpret_schema(schema: &JsonValue) -> Type {
     let Some(type_name) = schema.get("type").and_then(|v| v.as_str()) else {
-        if let Some(enum_vals) = schema.get("enum").and_then(|v| v.as_array()) {
-            if let Some(first) = enum_vals.first() {
-                return infer_json_type(first);
-            }
+        if let Some(enum_vals) = schema.get("enum").and_then(|v| v.as_array())
+            && let Some(first) = enum_vals.first()
+        {
+            return infer_json_type(first);
         }
         if schema.is_object() {
             return Type::Unknown;
@@ -25,7 +25,7 @@ pub fn interpret_schema(schema: &JsonValue) -> Type {
         "array" => {
             let item_type = schema
                 .get("items")
-                .map(|i| interpret_schema(i))
+                .map(interpret_schema)
                 .unwrap_or(Type::Unknown);
             Type::Array(Box::new(item_type))
         }

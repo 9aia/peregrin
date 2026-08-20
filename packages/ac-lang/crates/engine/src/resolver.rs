@@ -115,7 +115,7 @@ impl<'a> VmResolver<'a> {
 
     fn call_import(&self, args: &[serde_json::Value]) -> Result<serde_json::Value, String> {
         let path_str = args
-            .get(0)
+            .first()
             .and_then(|v| v.as_str())
             .ok_or("import() requires a string path argument")?;
 

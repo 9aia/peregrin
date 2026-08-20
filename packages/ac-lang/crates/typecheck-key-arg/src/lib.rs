@@ -35,6 +35,7 @@ pub fn get_arg_schema(schema: &JsonValue) -> Option<&JsonValue> {
 ///
 /// Returns a [`TypeError`] if the arg type is incompatible with the
 /// declared type. Returns `Ok(())` if the arg is absent or compatible.
+#[allow(clippy::result_large_err)]
 pub fn check_field(
     field_name: &str,
     schema: &JsonValue,

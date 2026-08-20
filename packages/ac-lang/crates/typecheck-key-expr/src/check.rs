@@ -17,6 +17,7 @@ pub fn get_expr(schema: &JsonValue) -> Option<String> {
 /// Returns a [`TypeError`] if the inferred type is incompatible with
 /// the declared type. Returns `Ok(())` if the expression is absent or
 /// the types are compatible.
+#[allow(clippy::result_large_err)]
 pub fn check_field(
     field_name: &str,
     schema: &JsonValue,
@@ -52,6 +53,7 @@ pub fn check_field(
 ///
 /// Like [`check_field`] but reuses a parse cache across multiple calls
 /// to avoid re-parsing the same expression strings.
+#[allow(clippy::result_large_err)]
 pub fn check_field_cached(
     field_name: &str,
     schema: &JsonValue,

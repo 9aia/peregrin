@@ -72,6 +72,7 @@ pub fn check_imports(
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 fn check_imports_inner(
     schemas: &[(String, JsonValue)],
     merge_fields: &[String],
@@ -115,15 +116,15 @@ fn check_imports_inner(
 
         for (name, schema) in &imported_schemas {
             let imported_type = interpreter.interpret(schema);
-            if let Some(parent_type) = parent_env.lookup(name) {
-                if !imported_type.is_unknown() && !is_compatible(&imported_type, parent_type) {
-                    errors.push(TypeError::mismatch(
-                        name,
-                        parent_type.clone(),
-                        imported_type,
-                        &format!("import:{path}"),
-                    ));
-                }
+            if let Some(parent_type) = parent_env.lookup(name)
+                && !imported_type.is_unknown() && !is_compatible(&imported_type, parent_type)
+            {
+                errors.push(TypeError::mismatch(
+                    name,
+                    parent_type.clone(),
+                    imported_type,
+                    format!("import:{path}"),
+                ));
             }
         }
 

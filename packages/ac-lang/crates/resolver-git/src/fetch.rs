@@ -57,14 +57,14 @@ impl GitFetcher {
     /// `repo_cache` lookup).
     pub fn fetch_file_at(&self, target: &GitTarget, local: &Path) -> Option<String> {
         if !local.exists() {
-            std::fs::create_dir_all(&local).ok()?;
+            std::fs::create_dir_all(local).ok()?;
             let mut builder = git2::build::RepoBuilder::new();
             builder.bare(true);
             builder.fetch_options(self.fetch_options());
-            builder.clone(&target.repo_url, &local).ok()?;
+            builder.clone(&target.repo_url, local).ok()?;
         }
 
-        let repo = git2::Repository::open(&local).ok()?;
+        let repo = git2::Repository::open(local).ok()?;
 
         // Refresh the ref from the remote to avoid stale data.
         let refname = format!("refs/remotes/origin/{}", target.reference);

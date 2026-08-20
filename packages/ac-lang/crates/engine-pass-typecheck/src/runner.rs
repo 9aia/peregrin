@@ -17,7 +17,7 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
         }
     }
 
-    let fn_sigs: Vec<(String, Vec<(String, serde_json::Value)>, Option<serde_json::Value>)> =
+    let fn_sigs: Vec<ac_typecheck_infer::RawFnSig> =
         extracted
             .functions
             .iter()

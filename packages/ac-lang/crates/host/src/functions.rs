@@ -47,8 +47,8 @@ pub struct Len;
 impl Function for Len {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let arg = args
-            .get(0)
-            .ok_or_else(|| Error::ArgumentCount { expected: 1, got: 0 })?;
+            .first()
+            .ok_or(Error::ArgumentCount { expected: 1, got: 0 })?;
         let len = match arg.inner() {
             serde_json::Value::String(s) => s.len(),
             serde_json::Value::Array(a) => a.len(),

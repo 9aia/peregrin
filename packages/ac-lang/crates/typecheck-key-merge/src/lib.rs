@@ -32,6 +32,7 @@ pub fn is_merge_field(schema: &JsonValue) -> bool {
 /// - The field is an object but its properties conflict with parent types.
 ///
 /// `parent_env` provides the parent scope's types for compatibility checks.
+#[allow(clippy::result_large_err)]
 pub fn check_field(
     field_name: &str,
     schema: &JsonValue,
@@ -56,15 +57,15 @@ pub fn check_field(
     };
 
     for (prop_name, prop_type) in merge_props {
-        if let Some(parent_type) = parent_env.lookup(prop_name) {
-            if !is_compatible(prop_type, parent_type) {
-                return Err(TypeError::mismatch(
-                    prop_name,
-                    parent_type.clone(),
-                    prop_type.clone(),
-                    field_name,
-                ));
-            }
+        if let Some(parent_type) = parent_env.lookup(prop_name)
+            && !is_compatible(prop_type, parent_type)
+        {
+            return Err(TypeError::mismatch(
+                prop_name,
+                parent_type.clone(),
+                prop_type.clone(),
+                field_name,
+            ));
         }
     }
 

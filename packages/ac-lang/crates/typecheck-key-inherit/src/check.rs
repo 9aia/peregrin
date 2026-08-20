@@ -46,7 +46,7 @@ pub fn check(
                     data,
                     field_name,
                     root_type,
-                    &root_val,
+                    root_val,
                     interpreter,
                     &mut errors,
                     "",
