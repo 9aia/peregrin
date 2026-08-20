@@ -6,11 +6,21 @@ use serde_json::Value as JsonValue;
 /// Reserved top-level keys that cannot be declared as field names.
 pub const RESERVED_FIELDS: &[&str] = &["fields", "functions"];
 
+/// The conventional name of the default namespace used for shorthand
+/// path resolution (bare `name` → `DEFAULT_NAMESPACE.name`).
+///
+/// This is a runtime host convention, not a language-level requirement.
+/// A runtime host may use a different name by inserting it into the
+/// namespaces map under a different key and adjusting shorthand resolution
+/// accordingly.
+pub const DEFAULT_NAMESPACE: &str = "doc";
+
 /// A collection of named namespaces for `${ns.key}` interpolation.
 ///
-/// `doc` is typically built from the document's own data fields.
-/// `env` is typically built from environment variables.
-/// Custom namespaces can be added by the caller.
+/// The default namespace (conventionally `doc`) is typically built from
+/// the document's own data fields. `env` is typically built from
+/// environment variables. Custom namespaces can be added by the caller.
+/// Which namespaces exist is a runtime host decision.
 pub type Namespaces = HashMap<String, JsonValue>;
 
 /// Resolves function calls during interpolation.

@@ -1,5 +1,5 @@
 use crate::path::resolve_path;
-use crate::types::{FunctionResolver, Namespaces};
+use crate::types::{FunctionResolver, Namespaces, DEFAULT_NAMESPACE};
 use serde_json::Value as JsonValue;
 
 /// Evaluates a single expression to a `JsonValue`.
@@ -25,7 +25,7 @@ pub fn eval_expression(
 
 /// Evaluates a user-defined function body expression.
 ///
-/// Params are merged into the `doc` namespace (shadowing doc fields
+/// Params are merged into the default namespace (shadowing fields
 /// with the same name), so bare names like `x` resolve via shorthand.
 /// The resolver is passed through, so the body can call host primitives
 /// and other user-defined functions.
@@ -39,14 +39,14 @@ pub fn eval_body(
 ) -> Option<JsonValue> {
     let mut merged = namespaces.clone();
     let mut doc_obj = merged
-        .get("doc")
+        .get(DEFAULT_NAMESPACE)
         .and_then(|v| v.as_object())
         .cloned()
         .unwrap_or_default();
     for (name, value) in params {
         doc_obj.insert(name.clone(), value.clone());
     }
-    merged.insert("doc".to_string(), JsonValue::Object(doc_obj));
+    merged.insert(DEFAULT_NAMESPACE.to_string(), JsonValue::Object(doc_obj));
     eval_expression(body, &merged, resolver)
 }
 

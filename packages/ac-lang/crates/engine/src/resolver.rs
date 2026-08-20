@@ -2,7 +2,7 @@
 //!
 //! Bridges the `FunctionResolver` trait to the VM + Host. For functions
 //! with a `body:` field, evaluates the body expression by merging params
-//! into the `doc` namespace. For functions without a body, dispatches to
+//! into the default namespace. For functions without a body, dispatches to
 //! the VM. Includes a recursion depth limit.
 
 use std::cell::{Cell, RefCell};
@@ -20,7 +20,7 @@ use ac_vm::{Context, Vm};
 /// Bridges `FunctionResolver` to the VM + Host.
 ///
 /// For functions with a `body:` field, evaluates the body expression
-/// by merging params into the `doc` namespace and recursively resolving
+/// by merging params into the default namespace and recursively resolving
 /// via `eval_body`. For functions without a body, dispatches to the VM.
 ///
 /// Includes a recursion depth limit to prevent infinite recursion

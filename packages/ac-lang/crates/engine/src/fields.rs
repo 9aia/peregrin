@@ -52,7 +52,7 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
     let data = extracted.data;
 
     let mut namespaces = ac_fields::Namespaces::new();
-    namespaces.insert("doc".to_string(), ac_fields::build_doc_namespace(&data));
+    namespaces.insert(ac_fields::DEFAULT_NAMESPACE.to_string(), ac_fields::build_doc_namespace(&data));
     namespaces.insert("env".to_string(), ac_fields::build_env_namespace());
 
     let host = DefaultHost::default();

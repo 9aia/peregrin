@@ -1,5 +1,5 @@
 use crate::expression::eval_expression;
-use crate::types::{ArgSpec, ComputedField, FunctionResolver, Namespaces};
+use crate::types::{ArgSpec, ComputedField, FunctionResolver, Namespaces, DEFAULT_NAMESPACE};
 use serde_json::Value as JsonValue;
 
 /// Evaluates computed field expressions and inserts results into `data`.
@@ -7,10 +7,10 @@ use serde_json::Value as JsonValue;
 /// Fields declared with an `expr:` key are computed after interpolation.
 /// The expression uses the same syntax as `${...}` content: function calls,
 /// path lookups (via namespaces), and literals. Computed fields can reference
-/// other fields via the `doc` namespace and can depend on other computed
+/// other fields via the default namespace and can depend on other computed
 /// fields — multiple passes resolve dependencies in order.
 ///
-/// The `doc` namespace in `namespaces` is updated with `data` before each
+/// The default namespace in `namespaces` is updated with `data` before each
 /// pass so expressions see current field values.
 ///
 /// Returns a list of error messages for any computed fields that could not
@@ -36,8 +36,8 @@ pub fn compute_fields(
             break;
         }
 
-        // Sync doc namespace with current data state
-        namespaces.insert("doc".to_string(), data.clone());
+        // Sync default namespace with current data state
+        namespaces.insert(DEFAULT_NAMESPACE.to_string(), data.clone());
 
         let mut still_remaining = Vec::new();
         for field in &remaining {

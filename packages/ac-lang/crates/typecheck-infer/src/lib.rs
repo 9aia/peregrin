@@ -25,6 +25,14 @@ pub use table::{FunctionTable, RawFnSig};
 
 use ac_typecheck_core::{is_compatible, Type, TypeEnv};
 
+/// The conventional name of the default namespace used for shorthand
+/// path resolution in type inference (bare `name` → `DEFAULT_NAMESPACE.name`).
+///
+/// This is a runtime host convention, not a language-level requirement.
+/// It mirrors `ac_fields::DEFAULT_NAMESPACE` — kept as a separate constant
+/// because `ac-typecheck-infer` does not depend on `ac-fields`.
+pub const DEFAULT_NAMESPACE: &str = "doc";
+
 /// Infer the type of an expression string.
 ///
 /// Parses the expression, then walks the AST to determine the result type.
@@ -80,7 +88,7 @@ pub fn infer_ast(ast: &ExprAst, env: &TypeEnv, functions: &FunctionTable) -> Typ
 
             if let Some(ty) = lookup(first) {
                 walk_path(&ty, &parts[1..])
-            } else if let Some(ty) = lookup("doc").and_then(|doc_ty| {
+            } else if let Some(ty) = lookup(DEFAULT_NAMESPACE).and_then(|doc_ty| {
                 if let Type::Object(props) = doc_ty {
                     props.get(first).cloned()
                 } else {

@@ -1,12 +1,12 @@
 use ac_runtime::RuntimeValue;
 use serde_json::Value as JsonValue;
 
-/// Builds the `doc` namespace from the document's data fields.
+/// Builds the default namespace from the document's data fields.
 pub fn build_doc_namespace(data: &RuntimeValue) -> JsonValue {
     data.inner().clone()
 }
 
-/// Builds the `env` namespace from process environment variables.
+/// Builds an `env` namespace from process environment variables.
 pub fn build_env_namespace() -> JsonValue {
     let mut map = serde_json::Map::new();
     for (key, value) in std::env::vars() {

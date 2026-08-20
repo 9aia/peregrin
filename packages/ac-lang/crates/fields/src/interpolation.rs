@@ -1,5 +1,5 @@
 use crate::expression::eval_expr_inner;
-use crate::types::{FunctionResolver, Namespaces};
+use crate::types::{FunctionResolver, Namespaces, DEFAULT_NAMESPACE};
 use serde_json::Value as JsonValue;
 
 /// Recursively interpolates `${...}` patterns in string values.
@@ -36,7 +36,7 @@ pub fn interpolate(
 /// Recursively interpolates `${...}` patterns with scope inheritance.
 ///
 /// Like [`interpolate`], but as the recursion descends into nested objects,
-/// fields declared as `inheritable: true` are merged into the `doc` namespace.
+/// fields declared as `inheritable: true` are merged into the default namespace.
 /// Child objects inherit the parent's scope and can override inheritable fields
 /// locally — the override applies to that subtree only.
 ///
@@ -57,7 +57,7 @@ pub fn interpolate_scoped(
 }
 
 /// Internal: scope-aware interpolation. Carries a `scope` (inheritable field
-/// values from parent objects) and merges it into the `doc` namespace at each
+/// values from parent objects) and merges it into the default namespace at each
 /// object level.
 fn interpolate_with_scope(
     value: &JsonValue,
@@ -76,10 +76,10 @@ fn interpolate_with_scope(
                 }
             }
 
-            // Build merged namespace for children: doc + scope
+            // Build merged namespace for children: default namespace + scope
             let mut child_ns = namespaces.clone();
             let doc_obj = child_ns
-                .entry("doc".to_string())
+                .entry(DEFAULT_NAMESPACE.to_string())
                 .or_insert(JsonValue::Object(serde_json::Map::new()));
             if let Some(doc_map) = doc_obj.as_object_mut() {
                 for (key, val) in &current_scope {
