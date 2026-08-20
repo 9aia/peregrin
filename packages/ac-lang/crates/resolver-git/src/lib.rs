@@ -117,12 +117,31 @@ impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
         };
 
         let module_key = format!("{}@{}/{}", target.repo_url, target.reference, target.path);
+        let repo_key = format!("{}@{}", target.repo_url, target.reference);
 
         if let Some(cached) = self.module_cache.get(&module_key) {
             return Some(cached);
         }
 
-        let content = self.fetcher.fetch_file(&target)?;
+        let local = self
+            .repo_cache
+            .lock()
+            .unwrap()
+            .get(&repo_key)
+            .cloned();
+
+        let content = match local {
+            Some(path) => self.fetcher.fetch_file_at(&target, &path)?,
+            None => {
+                let path = self.fetcher.cache_path(&target);
+                let content = self.fetcher.fetch_file_at(&target, &path)?;
+                self.repo_cache
+                    .lock()
+                    .unwrap()
+                    .insert(repo_key, path);
+                content
+            }
+        };
 
         let format = target
             .path

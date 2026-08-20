@@ -49,7 +49,13 @@ impl GitFetcher {
     /// before reading. New clones are bare and shallow.
     pub fn fetch_file(&self, target: &GitTarget) -> Option<String> {
         let local = self.cache_path(target);
+        self.fetch_file_at(target, &local)
+    }
 
+    /// Like [`fetch_file`](Self::fetch_file) but uses a caller-supplied cache
+    /// path (e.g. from a prior [`cache_path`](Self::cache_path) call or a
+    /// `repo_cache` lookup).
+    pub fn fetch_file_at(&self, target: &GitTarget, local: &Path) -> Option<String> {
         if !local.exists() {
             std::fs::create_dir_all(&local).ok()?;
             let mut builder = git2::build::RepoBuilder::new();
