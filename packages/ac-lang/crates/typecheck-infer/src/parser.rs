@@ -24,9 +24,13 @@ pub fn parse_expr(s: &str) -> Option<ExprAst> {
         return parse_expr(&s[2..s.len() - 1]);
     }
 
-    if let Some(paren_pos) = find_open_paren(s) {
+    if let Some(paren_pos) = find_open_paren(s)
+        && s.ends_with(')')
+        && paren_pos < s.len() - 1
+        && !s[..paren_pos].trim().is_empty()
+    {
         let name = s[..paren_pos].trim();
-        let inner = &s[paren_pos + 1..s.len().saturating_sub(1)];
+        let inner = &s[paren_pos + 1..s.len() - 1];
         let args = parse_args(inner)?;
         return Some(ExprAst::Call(name.to_string(), args));
     }

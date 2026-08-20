@@ -62,9 +62,13 @@ pub(crate) fn eval_expr_inner(
     }
 
     // Function call: name(args)
-    if let Some(paren_pos) = find_open_paren(expr) {
+    if let Some(paren_pos) = find_open_paren(expr)
+        && expr.ends_with(')')
+        && paren_pos < expr.len() - 1
+        && !expr[..paren_pos].trim().is_empty()
+    {
         let name = &expr[..paren_pos];
-        let args_str = &expr[paren_pos + 1..expr.len().saturating_sub(1)];
+        let args_str = &expr[paren_pos + 1..expr.len() - 1];
         let args = parse_args(args_str, namespaces, resolver)?;
         resolver.call(name.trim(), &args).ok()
     } else {

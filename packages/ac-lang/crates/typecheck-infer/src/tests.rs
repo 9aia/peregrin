@@ -222,3 +222,16 @@ fn infer_shorthand_resolves_via_doc() {
     let funcs = FunctionTable::new();
     assert_eq!(infer("name", &env, &funcs), Type::String);
 }
+
+#[test]
+fn parse_unmatched_open_paren() {
+    assert!(parse_expr("(").is_some());
+    assert!(parse_expr("foo(").is_some());
+    assert!(parse_expr("foo(bar").is_some());
+}
+
+#[test]
+fn parse_empty_function_name() {
+    let ast = parse_expr("(x)").unwrap();
+    assert_eq!(ast, ExprAst::Path("(x)".to_string()));
+}

@@ -1,6 +1,6 @@
 use super::*;
 use crate::test_helpers::{MathResolver, MulResolver};
-use crate::types::Namespaces;
+use crate::types::{Namespaces, NoFunctions};
 
 #[test]
 fn eval_body_user_defined() {
@@ -28,4 +28,25 @@ fn eval_body_with_doc_namespace() {
     let params = vec![("x".to_string(), serde_json::json!(2))];
     let result = eval_body("mul(x, doc.version)", &params, &ns, &MulResolver);
     assert_eq!(result.unwrap().as_f64(), Some(6.0));
+}
+
+#[test]
+fn eval_expression_open_paren_no_close() {
+    let ns = Namespaces::new();
+    let result = eval_expression("(", &ns, &NoFunctions);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn eval_expression_open_paren_only() {
+    let ns = Namespaces::new();
+    let result = eval_expression("foo(", &ns, &NoFunctions);
+    assert_eq!(result, None);
+}
+
+#[test]
+fn eval_expression_unmatched_parens() {
+    let ns = Namespaces::new();
+    let result = eval_expression("foo(bar", &ns, &NoFunctions);
+    assert_eq!(result, None);
 }

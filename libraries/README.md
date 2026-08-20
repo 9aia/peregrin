@@ -13,6 +13,7 @@ workflows. Each file is a domain-namespaced artifact that the loader can
 | `display/`  | `display.*`  | User-facing reports and abort controls.            |
 | `git/`      | `git.*`      | Git worktrees, commits, and branches.              |
 | `github/`   | `github.*`   | GitHub PRs, reviews, and merges.                   |
+| `lang/`     | `lang.*`     | AC language reusable field patterns.               |
 | `meta/`     | `meta.*`     | Meta-operations and workspace introspection.       |
 | `peregrin/` | `peregrin.*` | Peregrin-project-specific orchestrations.          |
 | `test/`     | `test.*`     | Test execution and reporting.                      |
@@ -30,6 +31,7 @@ purpose and may be copied into other projects.
 - `.prompt.yml` — domain-local prompt text, included with
   `params.prompt: ${include(...)}`.
 - `.event.json` — a reusable payload schema for an event type.
+- `.field.yml` — a reusable AC language field pattern (see `lang/`).
 - `.yaml` with a top-level `name:` — a runnable workflow.
 
 ## Use a library node in your workflow
