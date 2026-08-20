@@ -1,0 +1,17 @@
+[package]
+name = "ac-typegen-backend-json-schema"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-typegen-core.workspace = true
+serde_json = "1"
+
+[dev-dependencies]
+ac-fields.workspace = true
+ac-runtime.workspace = true
+ac-typegen-key-merge.workspace = true
+ac-typegen-key-inherit.workspace = true
+ac-typegen-key-mutable.workspace = true
+ac-typegen-key-expr.workspace = true
+ac-typegen-key-arg.workspace = true

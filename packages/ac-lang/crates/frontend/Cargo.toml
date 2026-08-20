@@ -1,0 +1,10 @@
+[package]
+name = "ac-frontend"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-runtime.workspace = true
+ac-frontend-json.workspace = true
+ac-frontend-yaml.workspace = true
+ac-frontend-toml.workspace = true

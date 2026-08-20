@@ -8,16 +8,7 @@ name = "ac"
 path = "src/main.rs"
 
 [dependencies]
-ac-core.workspace = true
-ac-runtime.workspace = true
-ac-vm.workspace = true
-ac-frontend-json.workspace = true
-ac-frontend-yaml.workspace = true
-ac-frontend-toml.workspace = true
-ac-schema.workspace = true
-ac-schema-json.workspace = true
-ac-fields.workspace = true
-ac-typegen.workspace = true
-ac-typegen-json.workspace = true
+ac-engine.workspace = true
+ac-typecheck-core.workspace = true
 clap = { version = "4", features = ["derive"] }
 serde_json = "1"

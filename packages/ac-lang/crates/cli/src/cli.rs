@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "ac", about = "AC language — parse, evaluate, validate")]
+#[command(name = "ac", about = "AC language — parse, evaluate, validate, typecheck")]
 pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
@@ -19,6 +19,8 @@ pub enum Command {
     Fields(FieldsArgs),
     /// Generate type definitions from `fields:` declarations.
     Typegen(TypegenArgs),
+    /// Static type checking of `fields:` declarations.
+    Typecheck(TypecheckArgs),
 }
 
 #[derive(Args)]
@@ -94,4 +96,15 @@ pub struct TypegenArgs {
     /// Output directory for generated schema files.
     #[arg(long, default_value = ".ac/generated/schemas")]
     pub output_dir: std::path::PathBuf,
+}
+
+#[derive(Args)]
+pub struct TypecheckArgs {
+    /// Input file path. Reads from stdin if omitted.
+    #[arg(short, long)]
+    pub input: Option<std::path::PathBuf>,
+
+    /// Input format (yaml, json, or toml). Defaults to yaml.
+    #[arg(short = 'f', long, default_value = "yaml")]
+    pub format: String,
 }

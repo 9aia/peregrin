@@ -6,17 +6,8 @@ version = 4
 name = "ac-cli"
 version = "0.1.0"
 dependencies = [
- "ac-core",
- "ac-fields",
- "ac-frontend-json",
- "ac-frontend-toml",
- "ac-frontend-yaml",
- "ac-runtime",
- "ac-schema",
- "ac-schema-json",
- "ac-typegen",
- "ac-typegen-json",
- "ac-vm",
+ "ac-engine",
+ "ac-typecheck-core",
  "clap",
  "serde_json",
 ]
@@ -26,12 +17,168 @@ name = "ac-core"
 version = "0.1.0"
 
 [[package]]
+name = "ac-engine"
+version = "0.1.0"
+dependencies = [
+ "ac-core",
+ "ac-engine-core",
+ "ac-engine-pass-extract",
+ "ac-engine-pass-generate",
+ "ac-engine-pass-parse",
+ "ac-engine-pass-resolve",
+ "ac-engine-pass-typecheck",
+ "ac-fields",
+ "ac-frontend",
+ "ac-host",
+ "ac-resolver-core",
+ "ac-resolver-file",
+ "ac-runtime",
+ "ac-schema",
+ "ac-schema-json",
+ "ac-typecheck-core",
+ "ac-typecheck-schema-json",
+ "ac-typegen-backend-json-schema",
+ "ac-typegen-core",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-engine-core"
+version = "0.1.0"
+dependencies = [
+ "ac-fields",
+ "ac-resolver-core",
+ "ac-resolver-virtual",
+ "ac-runtime",
+ "ac-typecheck-core",
+ "ac-typecheck-schema-json",
+ "ac-typegen-backend-json-schema",
+ "ac-typegen-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-engine-pass-extract"
+version = "0.1.0"
+dependencies = [
+ "ac-engine-core",
+ "ac-engine-pass-parse",
+ "ac-fields",
+ "ac-frontend",
+ "ac-resolver-virtual",
+ "ac-typecheck-schema-json",
+]
+
+[[package]]
+name = "ac-engine-pass-generate"
+version = "0.1.0"
+dependencies = [
+ "ac-engine-core",
+ "ac-engine-pass-extract",
+ "ac-engine-pass-parse",
+ "ac-engine-pass-resolve",
+ "ac-frontend",
+ "ac-resolver-virtual",
+ "ac-typecheck-schema-json",
+ "ac-typegen-backend-json-schema",
+ "ac-typegen-core",
+]
+
+[[package]]
+name = "ac-engine-pass-parse"
+version = "0.1.0"
+dependencies = [
+ "ac-engine-core",
+ "ac-frontend",
+ "ac-resolver-virtual",
+ "ac-typecheck-schema-json",
+]
+
+[[package]]
+name = "ac-engine-pass-resolve"
+version = "0.1.0"
+dependencies = [
+ "ac-engine-core",
+ "ac-engine-pass-extract",
+ "ac-engine-pass-parse",
+ "ac-frontend",
+ "ac-resolver-virtual",
+ "ac-typecheck-schema-json",
+ "ac-typegen-backend-json-schema",
+ "ac-typegen-core",
+ "ac-typegen-import",
+ "ac-typegen-key-arg",
+ "ac-typegen-key-expr",
+ "ac-typegen-key-inherit",
+ "ac-typegen-key-merge",
+ "ac-typegen-key-mutable",
+]
+
+[[package]]
+name = "ac-engine-pass-typecheck"
+version = "0.1.0"
+dependencies = [
+ "ac-engine-core",
+ "ac-engine-pass-extract",
+ "ac-engine-pass-parse",
+ "ac-frontend",
+ "ac-resolver-virtual",
+ "ac-typecheck-core",
+ "ac-typecheck-import",
+ "ac-typecheck-infer",
+ "ac-typecheck-key-arg",
+ "ac-typecheck-key-expr",
+ "ac-typecheck-key-inherit",
+ "ac-typecheck-key-merge",
+ "ac-typecheck-key-mutable",
+ "ac-typecheck-schema-json",
+ "ac-typegen-backend-json-schema",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-engine-tests"
+version = "0.1.0"
+dependencies = [
+ "ac-core",
+ "ac-engine",
+ "ac-engine-core",
+ "ac-engine-pass-extract",
+ "ac-engine-pass-parse",
+ "ac-fields",
+ "ac-frontend",
+ "ac-frontend-json",
+ "ac-frontend-toml",
+ "ac-frontend-yaml",
+ "ac-resolver-virtual",
+ "ac-runtime",
+ "ac-schema",
+ "ac-schema-json",
+ "ac-typecheck-core",
+ "ac-typecheck-schema-json",
+ "ac-typegen-backend-json-schema",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
 name = "ac-fields"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
  "ac-schema",
  "serde_json",
+]
+
+[[package]]
+name = "ac-frontend"
+version = "0.1.0"
+dependencies = [
+ "ac-frontend-json",
+ "ac-frontend-toml",
+ "ac-frontend-yaml",
+ "ac-runtime",
 ]
 
 [[package]]
@@ -61,18 +208,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "ac-integration-tests"
+name = "ac-host"
 version = "0.1.0"
 dependencies = [
- "ac-core",
- "ac-fields",
- "ac-frontend-json",
- "ac-frontend-toml",
- "ac-frontend-yaml",
- "ac-lang",
  "ac-runtime",
- "ac-schema",
- "ac-schema-json",
  "ac-vm",
  "serde_json",
 ]
@@ -90,6 +229,37 @@ dependencies = [
  "ac-schema",
  "ac-schema-json",
  "ac-vm",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-resolver-core"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
+name = "ac-resolver-file"
+version = "0.1.0"
+dependencies = [
+ "ac-fields",
+ "ac-frontend-json",
+ "ac-frontend-toml",
+ "ac-frontend-yaml",
+ "ac-resolver-core",
+ "ac-runtime",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-resolver-virtual"
+version = "0.1.0"
+dependencies = [
+ "ac-fields",
+ "ac-frontend-yaml",
+ "ac-resolver-core",
+ "ac-runtime",
  "serde_json",
 ]
 
@@ -114,24 +284,161 @@ dependencies = [
 ]
 
 [[package]]
-name = "ac-typegen"
+name = "ac-typecheck-core"
 version = "0.1.0"
 dependencies = [
- "ac-fields",
- "ac-frontend-json",
- "ac-frontend-toml",
- "ac-frontend-yaml",
- "ac-runtime",
  "serde_json",
 ]
 
 [[package]]
-name = "ac-typegen-json"
+name = "ac-typecheck-import"
+version = "0.1.0"
+dependencies = [
+ "ac-fields",
+ "ac-frontend-yaml",
+ "ac-resolver-core",
+ "ac-resolver-virtual",
+ "ac-runtime",
+ "ac-typecheck-core",
+ "ac-typecheck-infer",
+ "ac-typecheck-key-expr",
+ "ac-typecheck-schema-json",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typecheck-infer"
+version = "0.1.0"
+dependencies = [
+ "ac-typecheck-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typecheck-key-arg"
+version = "0.1.0"
+dependencies = [
+ "ac-typecheck-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typecheck-key-expr"
+version = "0.1.0"
+dependencies = [
+ "ac-typecheck-core",
+ "ac-typecheck-infer",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typecheck-key-inherit"
+version = "0.1.0"
+dependencies = [
+ "ac-typecheck-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typecheck-key-merge"
+version = "0.1.0"
+dependencies = [
+ "ac-typecheck-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typecheck-key-mutable"
+version = "0.1.0"
+dependencies = [
+ "ac-typecheck-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typecheck-schema-json"
+version = "0.1.0"
+dependencies = [
+ "ac-typecheck-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typegen-backend-json-schema"
 version = "0.1.0"
 dependencies = [
  "ac-fields",
  "ac-runtime",
- "ac-typegen",
+ "ac-typegen-core",
+ "ac-typegen-key-arg",
+ "ac-typegen-key-expr",
+ "ac-typegen-key-inherit",
+ "ac-typegen-key-merge",
+ "ac-typegen-key-mutable",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typegen-core"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typegen-import"
+version = "0.1.0"
+dependencies = [
+ "ac-fields",
+ "ac-resolver-core",
+ "ac-resolver-virtual",
+ "ac-runtime",
+ "ac-typegen-core",
+ "ac-typegen-key-arg",
+ "ac-typegen-key-expr",
+ "ac-typegen-key-inherit",
+ "ac-typegen-key-merge",
+ "ac-typegen-key-mutable",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typegen-key-arg"
+version = "0.1.0"
+dependencies = [
+ "ac-typegen-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typegen-key-expr"
+version = "0.1.0"
+dependencies = [
+ "ac-typegen-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typegen-key-inherit"
+version = "0.1.0"
+dependencies = [
+ "ac-typegen-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typegen-key-merge"
+version = "0.1.0"
+dependencies = [
+ "ac-typegen-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typegen-key-mutable"
+version = "0.1.0"
+dependencies = [
+ "ac-typegen-core",
  "serde_json",
 ]
 

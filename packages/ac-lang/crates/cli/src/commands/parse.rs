@@ -1,5 +1,4 @@
 use crate::cli::ParseArgs;
-use crate::frontend;
 use crate::io;
 
 pub fn run(args: ParseArgs) -> i32 {
@@ -10,27 +9,14 @@ pub fn run(args: ParseArgs) -> i32 {
             return 1;
         }
     };
-    let frontend = match frontend::frontend_for(&args.format) {
-        Ok(f) => f,
+    match ac_engine::parse::run(&input, &args.format) {
+        Ok(output) => {
+            print!("{output}");
+            0
+        }
         Err(e) => {
             eprintln!("error: {e}");
-            return 1;
+            1
         }
-    };
-    let value = match frontend.parse(&input) {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("error: {e}");
-            return 1;
-        }
-    };
-    let output = match ac_frontend_yaml::to_string(&value) {
-        Ok(s) => s,
-        Err(e) => {
-            eprintln!("error: {e}");
-            return 1;
-        }
-    };
-    print!("{output}");
-    0
+    }
 }

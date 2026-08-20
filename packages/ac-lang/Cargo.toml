@@ -14,10 +14,37 @@ members = [
   "crates/schema",
   "crates/schema-json",
   "crates/fields",
-  "crates/typegen",
-  "crates/typegen-json",
+  "crates/typegen-core",
+  "crates/typegen-key-merge",
+  "crates/typegen-key-inherit",
+  "crates/typegen-key-mutable",
+  "crates/typegen-key-expr",
+  "crates/typegen-key-arg",
+  "crates/resolver-core",
+  "crates/resolver-file",
+  "crates/resolver-virtual",
+  "crates/typegen-import",
+  "crates/typegen-backend-json-schema",
+  "crates/typecheck-core",
+  "crates/typecheck-infer",
+  "crates/typecheck-key-expr",
+  "crates/typecheck-key-arg",
+  "crates/typecheck-key-merge",
+  "crates/typecheck-key-inherit",
+  "crates/typecheck-key-mutable",
+  "crates/typecheck-import",
+  "crates/typecheck-schema-json",
+  "crates/frontend",
+  "crates/host",
+  "crates/engine-core",
+  "crates/engine-pass-parse",
+  "crates/engine-pass-extract",
+  "crates/engine-pass-resolve",
+  "crates/engine-pass-typecheck",
+  "crates/engine-pass-generate",
+  "crates/engine",
+  "crates/engine-tests",
   "crates/cli",
-  "crates/integration-tests",
 ]
 resolver = "3"
 
@@ -36,9 +63,36 @@ ac-schema = { path = "crates/schema" }
 ac-schema-json = { path = "crates/schema-json" }
 ac-fields = { path = "crates/fields" }
 ac-cli = { path = "crates/cli" }
-ac-integration-tests = { path = "crates/integration-tests" }
-ac-typegen = { path = "crates/typegen" }
-ac-typegen-json = { path = "crates/typegen-json" }
+ac-frontend = { path = "crates/frontend" }
+ac-host = { path = "crates/host" }
+ac-engine-core = { path = "crates/engine-core" }
+ac-engine-pass-parse = { path = "crates/engine-pass-parse" }
+ac-engine-pass-extract = { path = "crates/engine-pass-extract" }
+ac-engine-pass-resolve = { path = "crates/engine-pass-resolve" }
+ac-engine-pass-typecheck = { path = "crates/engine-pass-typecheck" }
+ac-engine-pass-generate = { path = "crates/engine-pass-generate" }
+ac-engine = { path = "crates/engine" }
+ac-engine-tests = { path = "crates/engine-tests" }
+ac-typegen-core = { path = "crates/typegen-core" }
+ac-typegen-key-merge = { path = "crates/typegen-key-merge" }
+ac-typegen-key-inherit = { path = "crates/typegen-key-inherit" }
+ac-typegen-key-mutable = { path = "crates/typegen-key-mutable" }
+ac-typegen-key-expr = { path = "crates/typegen-key-expr" }
+ac-typegen-key-arg = { path = "crates/typegen-key-arg" }
+ac-resolver-core = { path = "crates/resolver-core" }
+ac-resolver-file = { path = "crates/resolver-file" }
+ac-resolver-virtual = { path = "crates/resolver-virtual" }
+ac-typegen-import = { path = "crates/typegen-import" }
+ac-typegen-backend-json-schema = { path = "crates/typegen-backend-json-schema" }
+ac-typecheck-core = { path = "crates/typecheck-core" }
+ac-typecheck-infer = { path = "crates/typecheck-infer" }
+ac-typecheck-key-expr = { path = "crates/typecheck-key-expr" }
+ac-typecheck-key-arg = { path = "crates/typecheck-key-arg" }
+ac-typecheck-key-merge = { path = "crates/typecheck-key-merge" }
+ac-typecheck-key-inherit = { path = "crates/typecheck-key-inherit" }
+ac-typecheck-key-mutable = { path = "crates/typecheck-key-mutable" }
+ac-typecheck-import = { path = "crates/typecheck-import" }
+ac-typecheck-schema-json = { path = "crates/typecheck-schema-json" }
 
 [dependencies]
 ac-core.workspace = true

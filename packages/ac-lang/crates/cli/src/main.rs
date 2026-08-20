@@ -2,16 +2,12 @@
 //!
 //! Command-line interface for the AC language.
 //!
-//! Parses input files (YAML, JSON, or TOML), evaluates expressions,
-//! and outputs results. Validates against external JSON Schema or
-//! inline `fields:` declarations.
+//! Thin wrapper around `ac-engine` — handles argument parsing, I/O,
+//! and output formatting. All logic lives in the engine crate.
 
 mod cli;
 mod commands;
-mod frontend;
-mod host;
 mod io;
-mod resolver;
 
 use clap::Parser;
 
@@ -25,6 +21,7 @@ fn main() {
         Command::Validate(args) => commands::validate::run(args),
         Command::Fields(args) => commands::fields::run(args),
         Command::Typegen(args) => commands::typegen::run(args),
+        Command::Typecheck(args) => commands::typecheck::run(args),
     };
     std::process::exit(code);
 }

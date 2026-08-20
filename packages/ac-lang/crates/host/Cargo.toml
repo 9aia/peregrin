@@ -1,0 +1,9 @@
+[package]
+name = "ac-host"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-runtime.workspace = true
+ac-vm.workspace = true
+serde_json = "1"
