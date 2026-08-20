@@ -26,7 +26,7 @@ No successful config or expression language does this. YAML, JSON, TOML, HCL, Dh
 
 ## Internal dialect abstraction in the Rust implementation
 
-The language spec fixes syntax. The Rust implementation, however, abstracts the three syntax decisions — interpolation markers, path separator, and call syntax — behind a `Dialect` trait in the `ac-dialect` crate. This is an implementation detail, not a language-level feature.
+The language spec fixes syntax. The Rust implementation, however, abstracts the three syntax decisions — interpolation markers, path separator, and call syntax — behind a `Dialect` trait in the `ac-dialect` crate. This is an implementation detail, not a language-level feature. The full dialect interface is specified in [DIALECT.md](../DIALECT.md).
 
 The canonical `AcDialect` implements the spec syntax: `${...}` for interpolation, `.` for paths, `fn()` for calls. It is the only shipped dialect. The trait exists so the implementation is structured around a single source of truth for syntax, rather than hardcoding `"${"`, `'.'`, and `'('` across dozens of functions.
 

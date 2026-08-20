@@ -7,7 +7,7 @@
 
 AC is a configuration and expression language for self-describing documents. A document can declare its own structure (`fields:`), define functions (`functions:`), compute values (`expr:`), interpolate (`${...}`), and load external documents — all validated by a schema system.
 
-The language is designed to be portable: the specification is independent of any particular runtime or host language. See [RUNTIME.md](./RUNTIME.md) for the reference runtime implementation.
+The language is designed to be portable: the specification is independent of any particular runtime or host language. See [RUNTIME.md](./RUNTIME.md) for the reference runtime implementation and [DIALECT.md](./DIALECT.md) for the dialect interface that abstracts the canonical syntax in implementations.
 
 ### Design principles
 

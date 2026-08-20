@@ -5,7 +5,7 @@
 
 The AC runtime is the execution environment for AC language documents. It is analogous to Node.js — it provides the host functions, module resolution, environment access, and tooling pipeline that make AC documents executable and validatable.
 
-For the language specification itself, see [LANG.md](./LANG.md).
+For the language specification itself, see [LANG.md](./LANG.md). For the dialect interface that abstracts the canonical syntax in implementations, see [DIALECT.md](./DIALECT.md).
 
 ## 1. Overview
 
