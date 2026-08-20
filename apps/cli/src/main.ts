@@ -1,15 +1,15 @@
 import { Args, Command, Options } from "@effect/cli";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
-import { Console, Effect, Option } from "effect";
-import { Event } from "ac-core";
+import { Console, Effect, Layer, Option } from "effect";
+import { Event, Observer } from "ac-core";
 import { loadWorkflow, LoaderError, loadRaw } from "ac-loader-yaml";
 import { discover } from "ac-file-router";
 import { Runner, type RunOptions } from "ac-engine";
 import {
   makeDefaultsLive,
-  MetricsObserverLive,
+  MetricsObserver,
   NoopObserverLayer,
-  OtelObserverLive,
+  OtelObserver,
 } from "ac-cli-defaults";
 import fs from "node:fs";
 import path from "node:path";
@@ -22,12 +22,40 @@ const replayOption = Options.optional(
   Options.text("replay").pipe(Options.withDescription("Path to a JSON/JSONL event log to replay")),
 );
 
+const dryRunOption = Options.boolean("dry-run", { ifPresent: true }).pipe(
+  Options.withDescription("Simulate workflow without side effects"),
+);
+
 const otelOption = Options.boolean("otel", { ifPresent: true }).pipe(
   Options.withDescription("Enable OpenTelemetry observer"),
 );
 
+const otelEndpointOption = Options.optional(
+  Options.text("otel-endpoint").pipe(
+    Options.withDescription("OTLP collector endpoint (e.g. http://collector:4318/v1/traces)"),
+  ),
+);
+
+const otelProtocolOption = Options.optional(
+  Options.text("otel-protocol").pipe(Options.withDescription("OTLP protocol: grpc or http")),
+);
+
+const otelServiceNameOption = Options.optional(
+  Options.text("otel-service-name").pipe(Options.withDescription("OTLP service name")),
+);
+
+const logFormatOption = Options.optional(
+  Options.text("log-format").pipe(Options.withDescription("Log format: text or json")),
+);
+
 const metricsOption = Options.boolean("metrics", { ifPresent: true }).pipe(
-  Options.withDescription("Emit runtime metrics"),
+  Options.withDescription("Expose Prometheus /metrics and /health endpoints"),
+);
+
+const metricsPortOption = Options.optional(
+  Options.text("metrics-port").pipe(
+    Options.withDescription("Port for the metrics HTTP server (default: 9090)"),
+  ),
 );
 
 const loadReplayEvents = (
@@ -66,9 +94,49 @@ const loadReplayEvents = (
     );
   });
 
-const selectObserver = (flags: { otel: boolean; metrics: boolean }) => {
-  if (flags.metrics) return MetricsObserverLive;
-  if (flags.otel) return OtelObserverLive;
+const parseMetricsPort = (value: Option.Option<string>): number => {
+  if (Option.isNone(value)) return 9090;
+  const parsed = Number(value.value);
+  return Number.isNaN(parsed) || parsed <= 0 ? 9090 : parsed;
+};
+
+const selectObserver = (config: {
+  otel: boolean;
+  otelEndpoint: Option.Option<string>;
+  otelProtocol: Option.Option<string>;
+  otelServiceName: Option.Option<string>;
+  logFormat: Option.Option<string>;
+  metrics: boolean;
+  metricsPort: Option.Option<string>;
+}) => {
+  const logFormat = Option.getOrElse(config.logFormat, () => "text");
+  if (config.metrics) {
+    const port = parseMetricsPort(config.metricsPort);
+    return Layer.succeed(Observer, new MetricsObserver({ port, logFormat }));
+  }
+  if (config.otel || Option.isSome(config.otelEndpoint)) {
+    const endpoint = Option.match(config.otelEndpoint, {
+      onNone: () => undefined,
+      onSome: (value) => value,
+    });
+    const protocol = Option.match(config.otelProtocol, {
+      onNone: () => undefined,
+      onSome: (value) => value,
+    });
+    const serviceName = Option.match(config.otelServiceName, {
+      onNone: () => undefined,
+      onSome: (value) => value,
+    });
+    return Layer.succeed(
+      Observer,
+      new OtelObserver({
+        endpoint,
+        protocol,
+        serviceName,
+        logFormat,
+      }),
+    );
+  }
   return NoopObserverLayer;
 };
 
@@ -77,18 +145,46 @@ const run = Command.make(
   {
     workflow: workflowArg,
     replay: replayOption,
+    dryRun: dryRunOption,
     otel: otelOption,
+    otelEndpoint: otelEndpointOption,
+    otelProtocol: otelProtocolOption,
+    otelServiceName: otelServiceNameOption,
+    logFormat: logFormatOption,
     metrics: metricsOption,
+    metricsPort: metricsPortOption,
   },
-  ({ workflow, replay, otel, metrics }) =>
+  ({
+    workflow,
+    replay,
+    dryRun,
+    otel,
+    otelEndpoint,
+    otelProtocol,
+    otelServiceName,
+    logFormat,
+    metrics,
+    metricsPort,
+  }) =>
     Effect.gen(function* () {
       const wf = yield* loadWorkflow(workflow);
       let replayEvents: ReadonlyArray<Event> = [];
       if (Option.isSome(replay)) {
         replayEvents = yield* loadReplayEvents(replay.value);
       }
-      const runOptions: RunOptions = replayEvents.length > 0 ? { replayEvents } : {};
-      const observer = selectObserver({ otel, metrics });
+      const runOptions: RunOptions = {
+        ...(replayEvents.length > 0 ? { replayEvents } : {}),
+        dryRun,
+      };
+      const observer = selectObserver({
+        otel,
+        otelEndpoint,
+        otelProtocol,
+        otelServiceName,
+        logFormat,
+        metrics,
+        metricsPort,
+      });
       const runWorkflow = Effect.gen(function* () {
         const runner = yield* Runner;
         const events = yield* runner.run(wf, runOptions);

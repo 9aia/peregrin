@@ -6,6 +6,29 @@ function coerceToString(value: unknown, fallback = ""): string {
   return fallback;
 }
 
+export interface PythonImport {
+  readonly file: string;
+  readonly as: string;
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function parsePythonImports(value: unknown): ReadonlyArray<PythonImport> {
+  if (value === undefined || value === null) return [];
+  const items = Array.isArray(value) ? value : [value];
+  const out: Array<PythonImport> = [];
+  for (const item of items) {
+    if (typeof item === "string") {
+      out.push({ file: item, as: "" });
+    } else if (isRecord(item) && typeof item.file === "string") {
+      out.push({ file: item.file, as: typeof item.as === "string" ? item.as : "" });
+    }
+  }
+  return out;
+}
+
 export type TriggerMode = "any" | "all";
 
 export class Event {
@@ -205,6 +228,7 @@ export class Workflow {
     readonly nodes: ReadonlyArray<Node> = [],
     readonly config: Readonly<Record<string, unknown>> = {},
     readonly imports: ReadonlyArray<string> = [],
+    readonly pythonImports: ReadonlyArray<PythonImport> = [],
     readonly stopOn: ReadonlyArray<string> = [],
     readonly payloadSchemas: Readonly<Record<string, Readonly<Record<string, unknown>>>> = {},
     readonly capabilities: Readonly<Record<string, unknown>> = {},
@@ -225,6 +249,7 @@ export class Workflow {
       ((raw.nodes as Array<Record<string, unknown>>) ?? []).map((node) => Node.fromDict(node)),
       (raw.config as Record<string, unknown>) ?? {},
       Array.from<string>((raw.include as Array<string>) ?? (raw.includes as Array<string>) ?? []),
+      parsePythonImports(raw.import),
       Array.from<string>((raw.stop_on as Array<string>) ?? []),
       (raw.payload_schemas as Record<string, Record<string, unknown>>) ?? {},
       (raw.capabilities as Record<string, unknown>) ?? {},
@@ -244,6 +269,11 @@ export class Workflow {
       config: this.config,
     };
     if (this.imports.length > 0) d.include = [...this.imports];
+    if (this.pythonImports.length > 0) {
+      d.import = this.pythonImports.map((i) =>
+        i.as.length > 0 ? { file: i.file, as: i.as } : i.file,
+      );
+    }
     if (this.stopOn.length > 0) d.stop_on = [...this.stopOn];
     if (Object.keys(this.capabilities).length > 0) d.capabilities = this.capabilities;
     if (this.strict) d.strict = true;
@@ -293,4 +323,5 @@ export interface ExecutionContext {
   readonly capabilities: Readonly<Record<string, unknown>>;
   readonly resources: Readonly<Record<string, unknown>>;
   readonly workflowCapabilities: Readonly<Record<string, unknown>>;
+  readonly pythonImports?: ReadonlyArray<PythonImport>;
 }

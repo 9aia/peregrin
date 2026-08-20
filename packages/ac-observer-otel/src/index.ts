@@ -8,6 +8,13 @@ function generateTraceparent(): string {
   return `00-${traceId}-${spanId}-01`;
 }
 
+export interface OtelObserverConfig {
+  readonly endpoint?: string;
+  readonly protocol?: string;
+  readonly logFormat?: string;
+  readonly serviceName?: string;
+}
+
 class OtelSpan implements Span {
   private isEnded = false;
   private attributes: Record<string, unknown> = {};
@@ -21,9 +28,6 @@ class OtelSpan implements Span {
   end(): void {
     if (this.isEnded) return;
     this.isEnded = true;
-    console.log(
-      `[otel:span:end] ${this.name} traceparent=${this.traceparent} attributes=${JSON.stringify(this.attributes)}`,
-    );
   }
 
   setAttribute(key: string, value: unknown): void {
@@ -32,7 +36,6 @@ class OtelSpan implements Span {
 
   recordError(error: Error): void {
     this.setAttribute("error", `${error.name}: ${error.message}`);
-    console.log(`[otel:span:error] ${this.name} ${error.name}: ${error.message}`);
   }
 
   getTraceparent(): string {
@@ -45,6 +48,35 @@ export class OtelObserver implements Observer {
   readonly events: Array<Event> = [];
   readonly retirements: Array<string> = [];
   private workflowSpan = Option.none<OtelSpan>();
+  private endpoint?: string;
+  private protocol = "grpc";
+  private logFormat = "text";
+  private serviceName = "agent-campaign";
+
+  constructor(config: OtelObserverConfig = {}) {
+    this.endpoint = config.endpoint;
+    this.protocol = config.protocol ?? "grpc";
+    this.logFormat = config.logFormat ?? "text";
+    this.serviceName = config.serviceName ?? "agent-campaign";
+  }
+
+  private emit(level: string, message: string, extra: Record<string, unknown> = {}): void {
+    if (this.logFormat === "json") {
+      console.log(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          level,
+          source: "otel",
+          service: this.serviceName,
+          message,
+          ...extra,
+        }),
+      );
+      return;
+    }
+    const suffix = Object.keys(extra).length > 0 ? ` ${JSON.stringify(extra)}` : "";
+    console.log(`[otel:${level}] ${message}${suffix}`);
+  }
 
   onWorkflowStart(workflow: Workflow): void {
     const span = new OtelSpan(`workflow:${workflow.name}`);
@@ -52,7 +84,12 @@ export class OtelObserver implements Observer {
     span.setAttribute("workflow.nodes", workflow.nodes.length);
     this.spans.push(span);
     this.workflowSpan = Option.some(span);
-    console.log(`[otel:workflow:start] ${workflow.name}`);
+    const extra: Record<string, unknown> = { nodes: workflow.nodes.length };
+    if (this.endpoint) {
+      extra.endpoint = this.endpoint;
+      extra.protocol = this.protocol;
+    }
+    this.emit("workflow:start", workflow.name, extra);
   }
 
   onWorkflowEnd(eventCount: number, cancelled: boolean, cycle: boolean, failed: boolean): void {
@@ -65,9 +102,12 @@ export class OtelObserver implements Observer {
         span.setAttribute("workflow.failed", failed);
         span.end();
         this.workflowSpan = Option.none();
-        console.log(
-          `[otel:workflow:end] ${span.name} events=${eventCount} cancelled=${cancelled} cycle=${cycle} failed=${failed}`,
-        );
+        this.emit("workflow:end", span.name, {
+          events: eventCount,
+          cancelled,
+          cycle,
+          failed,
+        });
       },
     });
   }
@@ -79,7 +119,11 @@ export class OtelObserver implements Observer {
     span.setAttribute("node.handler", node.handler);
     span.setAttribute("node.triggers", triggers.length);
     this.spans.push(span);
-    console.log(`[otel:node:start] ${node.id} traceparent=${span.getTraceparent()}`);
+    this.emit("node:start", node.id, {
+      traceparent: span.getTraceparent(),
+      driver: node.driver,
+      handler: node.handler,
+    });
     return span;
   }
 
@@ -87,21 +131,21 @@ export class OtelObserver implements Observer {
     span.setAttribute("node.emitted", events.length);
     if (error) span.recordError(error);
     span.end();
-    console.log(`[otel:node:end] ${node.id} emitted=${events.length}`);
+    this.emit("node:end", node.id, { emitted: events.length });
   }
 
   onEvent(event: Event): void {
     this.events.push(event);
-    console.log(`[otel:event] ${event.type}`);
+    this.emit("event", event.type, { source: event.source });
   }
 
   onInject(nodeSpecs: ReadonlyArray<Record<string, unknown>>): void {
-    console.log(`[otel:inject] ${JSON.stringify(nodeSpecs)}`);
+    this.emit("inject", `${nodeSpecs.length} nodes`, { nodes: nodeSpecs.length });
   }
 
   onRetire(nodeId: string): void {
     this.retirements.push(nodeId);
-    console.log(`[otel:retire] ${nodeId}`);
+    this.emit("retire", nodeId);
   }
 }
 

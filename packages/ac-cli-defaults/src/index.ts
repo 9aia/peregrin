@@ -1,3 +1,4 @@
+import http from "node:http";
 import { Layer } from "effect";
 import { Observer, type Span, type Workflow, type Node, type Event } from "ac-core";
 import { Live as MemoryStoreLive } from "ac-store-memory";
@@ -45,21 +46,30 @@ export const makeDefaultsLive = (observer: Layer.Layer<Observer>) => {
   return RunnerLiveLayer.pipe(Layer.provide(withRegistry));
 };
 
+export interface MetricsObserverConfig {
+  readonly port?: number;
+  readonly host?: string;
+  readonly logFormat?: string;
+}
+
 export class MetricsObserver implements Observer {
   private eventCounts = new Map<string, number>();
   private nodeFires = new Map<string, number>();
   private circuitTrips = 0;
   private dlq = 0;
+  private workflowStatus = 0;
+  private port = 0;
+  private host = "127.0.0.1";
+  private logFormat = "text";
+  private server: http.Server | null = null;
 
-  onWorkflowStart(_workflow: Workflow): void {
-    this.eventCounts.clear();
-    this.nodeFires.clear();
-    this.circuitTrips = 0;
-    this.dlq = 0;
+  constructor(config: MetricsObserverConfig = {}) {
+    this.port = config.port ?? 0;
+    this.host = config.host ?? "127.0.0.1";
+    this.logFormat = config.logFormat ?? "text";
   }
 
-  onWorkflowEnd(_eventCount: number, _cancelled: boolean, _cycle: boolean, failed: boolean): void {
-    const status = failed ? -1 : 0;
+  private renderMetrics(): string {
     const lines: Array<string> = [];
     lines.push("# HELP ac_events_total Total events emitted by type");
     lines.push("# TYPE ac_events_total counter");
@@ -85,8 +95,72 @@ export class MetricsObserver implements Observer {
       "# HELP ac_workflow_status Workflow status (1=done, 0=running, -1=failed/cancelled)",
     );
     lines.push("# TYPE ac_workflow_status gauge");
-    lines.push(`ac_workflow_status ${status}`);
-    console.log(lines.join("\n"));
+    lines.push(`ac_workflow_status ${this.workflowStatus}`);
+    return lines.join("\n") + "\n";
+  }
+
+  private emitMetrics(): void {
+    if (this.port > 0) return;
+    if (this.logFormat === "json") {
+      const events: Record<string, number> = {};
+      for (const [type, count] of this.eventCounts) events[type] = count;
+      const nodes: Record<string, number> = {};
+      for (const [id, count] of this.nodeFires) nodes[id] = count;
+      console.log(
+        JSON.stringify({
+          ts: new Date().toISOString(),
+          source: "metrics",
+          events,
+          nodes,
+          circuit_trips: this.circuitTrips,
+          dlq: this.dlq,
+          workflow_status: this.workflowStatus,
+        }),
+      );
+      return;
+    }
+    console.log(this.renderMetrics());
+  }
+
+  private handleRequest(req: http.IncomingMessage, res: http.ServerResponse): void {
+    if (req.url === "/metrics") {
+      res.writeHead(200, { "Content-Type": "text/plain; version=0.0.4" });
+      res.end(this.renderMetrics());
+      return;
+    }
+    if (req.url === "/health") {
+      res.writeHead(200, { "Content-Type": "application/json" });
+      res.end(JSON.stringify({ status: "ok", events: this.eventCounts.size }));
+      return;
+    }
+    res.writeHead(404);
+    res.end("Not found\n");
+  }
+
+  onWorkflowStart(_workflow: Workflow): void {
+    this.eventCounts.clear();
+    this.nodeFires.clear();
+    this.circuitTrips = 0;
+    this.dlq = 0;
+    this.workflowStatus = 0;
+    if (this.port <= 0) return;
+    this.server = http.createServer((req, res) => this.handleRequest(req, res));
+    this.server.on("error", (err) => {
+      console.error(`[metrics] server error: ${err.message}`);
+    });
+    try {
+      this.server.listen(this.port, this.host, () => {
+        console.log(`[metrics] listening on http://${this.host}:${this.port}`);
+      });
+    } catch (err) {
+      console.error(`[metrics] failed to start: ${String(err)}`);
+    }
+  }
+
+  onWorkflowEnd(_eventCount: number, cancelled: boolean, _cycle: boolean, failed: boolean): void {
+    const status = cancelled || failed ? -1 : 1;
+    this.workflowStatus = status;
+    this.emitMetrics();
   }
 
   onNodeStart(node: Node, _triggers: ReadonlyArray<Event>): Span {
@@ -121,5 +195,5 @@ export { DefaultDriverRegistryLive };
 export { RunnerLiveLayer, EventBusLiveLayer } from "ac-engine";
 export { Live as MemoryStoreLive } from "ac-store-memory";
 export { Layer as NoopObserverLayer } from "ac-observer-noop";
-export { OtelObserverLive } from "ac-observer-otel";
+export { OtelObserver, OtelObserverLive } from "ac-observer-otel";
 export { DefaultsLive };

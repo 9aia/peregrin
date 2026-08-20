@@ -561,6 +561,7 @@ class RunnerLive implements Runner {
       workflowCapabilities: workflow.capabilities,
       strict: workflow.strict,
       missingSecrets,
+      pythonImports: workflow.pythonImports,
     };
   }
 }

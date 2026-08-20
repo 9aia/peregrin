@@ -1,7 +1,18 @@
 import cp from "node:child_process";
+import path from "node:path";
 import { Effect, Layer } from "effect";
 import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
 import { resolveValueForNode } from "ac-template-engine";
+
+function findPythonImport(ctx: ExecutionContext, alias: string): string | undefined {
+  for (const imp of ctx.pythonImports ?? []) {
+    if (imp.as === alias) return imp.file;
+    if (imp.as.length > 0) continue;
+    const base = path.basename(imp.file).replace(/\.py$/i, "");
+    if (base === alias) return imp.file;
+  }
+  return undefined;
+}
 
 export const PythonDriver: Driver = {
   name: "python",
@@ -12,11 +23,42 @@ export const PythonDriver: Driver = {
       );
 
       const with_ = resolved as Record<string, unknown>;
+      const handlerName =
+        typeof node.handler === "string" && node.handler.length > 0
+          ? node.handler
+          : typeof with_.handler === "string"
+            ? with_.handler
+            : "";
       const script = with_.script;
       const module_ = with_.module;
       const function_ = with_.function;
       const args = Array.isArray(with_.args) ? with_.args.map(String) : [];
       const timeout = typeof with_.timeout === "number" ? with_.timeout : 30000;
+
+      if (handlerName.includes(":")) {
+        const [alias, fn] = handlerName.split(":");
+        const file = findPythonImport(ctx, alias);
+        if (file === undefined) {
+          return yield* Effect.fail(
+            new DriverError({
+              reason: `python node '${node.id}' handler '${handlerName}' has no matching import`,
+            }),
+          );
+        }
+        if (ctx.dryRun) {
+          return [new Event("python.done", { dryRun: true, file, alias, function: fn }, node.id)];
+        }
+        const fileJson = JSON.stringify(file);
+        const fnJson = JSON.stringify(fn);
+        const code =
+          `import importlib.util; spec = importlib.util.spec_from_file_location("${alias}", ${fileJson}); ` +
+          `mod = importlib.util.module_from_spec(spec); spec.loader.exec_module(mod); ` +
+          `print(getattr(mod, ${fnJson})())`;
+        const result = yield* Effect.sync(() =>
+          cp.spawnSync("python", ["-c", code], { encoding: "utf-8", timeout }),
+        );
+        return yield* makeEvents(node, result, { file, alias, function: fn });
+      }
 
       if (typeof script === "string" && script.length > 0) {
         if (ctx.dryRun) {
