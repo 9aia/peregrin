@@ -15,32 +15,64 @@
 
 mod parse;
 
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
 use ac_fields::extract_fields;
 use ac_frontend::frontend_for;
-use ac_resolver_core::{ModuleResolver, ResolvedModule};
+use ac_resolver_core::{ModuleCache, ModuleResolver, NoCache, ResolvedModule};
 
 pub use parse::{parse_git_url, GitTarget};
 
 /// Git-based module resolver.
 ///
 /// Clones repositories to a temp cache and reads files from the working
-/// tree. Cached by `(repo_url, ref)` to avoid re-cloning.
-pub struct GitResolver {
+/// tree. Two levels of caching:
+///
+/// 1. **Repo cache** (internal) — keyed by `(repo_url, ref)`. Clones
+///    once per repo+ref; subsequent files from the same repo read from
+///    the cached clone.
+/// 2. **Module cache** (via [`ModuleCache`]) — keyed by
+///    `repo_url@ref/path`. Memoizes the extracted `ResolvedModule` so
+///    the same file is parsed only once.
+pub struct GitResolver<C: ModuleCache = NoCache> {
     cache_dir: PathBuf,
+    module_cache: C,
+    repo_cache: RefCell<HashMap<String, PathBuf>>,
 }
 
-impl GitResolver {
-    /// Create a resolver with a specific cache directory.
+impl GitResolver<NoCache> {
+    /// Create a resolver with a specific cache directory and no module cache.
     pub fn new(cache_dir: PathBuf) -> Self {
-        GitResolver { cache_dir }
+        GitResolver {
+            cache_dir,
+            module_cache: NoCache,
+            repo_cache: RefCell::new(HashMap::new()),
+        }
     }
 
-    /// Create a resolver using the system temp directory.
+    /// Create a resolver using the system temp directory and no module cache.
     pub fn temp() -> Self {
         let cache_dir = std::env::temp_dir().join("ac-resolver-git");
-        GitResolver { cache_dir }
+        GitResolver::new(cache_dir)
+    }
+}
+
+impl<C: ModuleCache> GitResolver<C> {
+    /// Create a resolver with a specific cache directory and module cache.
+    pub fn with_cache(cache_dir: PathBuf, module_cache: C) -> Self {
+        GitResolver {
+            cache_dir,
+            module_cache,
+            repo_cache: RefCell::new(HashMap::new()),
+        }
+    }
+
+    /// Create a resolver using the system temp directory and a module cache.
+    pub fn temp_with_cache(module_cache: C) -> Self {
+        let cache_dir = std::env::temp_dir().join("ac-resolver-git");
+        GitResolver::with_cache(cache_dir, module_cache)
     }
 
     /// Compute the local cache path for a repo URL + ref.
@@ -83,7 +115,7 @@ impl GitResolver {
     }
 }
 
-impl ModuleResolver for GitResolver {
+impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
     fn resolve(&self, path: &str, base: Option<&Path>) -> Option<ResolvedModule> {
         let target = if path.starts_with("git+") {
             parse_git_url(path)?
@@ -104,6 +136,12 @@ impl ModuleResolver for GitResolver {
             return None;
         };
 
+        let module_key = format!("{}@{}/{}", target.repo_url, target.reference, target.path);
+
+        if let Some(cached) = self.module_cache.get(&module_key) {
+            return Some(cached);
+        }
+
         let content = self.fetch_file(&target)?;
 
         let format = target
@@ -122,12 +160,15 @@ impl ModuleResolver for GitResolver {
         );
         let base_path = PathBuf::from(base_path);
 
-        Some(ResolvedModule {
+        let module = ResolvedModule {
             schemas: extracted.schemas,
             merge: extracted.merge,
             data: extracted.data.inner().clone(),
             base_path: Some(base_path),
-        })
+        };
+
+        self.module_cache.insert(&module_key, module.clone());
+        Some(module)
     }
 }
 

@@ -35,12 +35,14 @@ pub use ac_engine_core::{Compilation, Config, Pass, Pipeline, Source};
 pub use resolver::VmResolver;
 
 /// Default configuration for CLI usage:
-/// - `FileResolver` for filesystem imports
+/// - `FileResolver` with `MemoryModuleCache` for filesystem imports
 /// - `JsonSchemaInterpreter` for type inference
 /// - `JsonSchemaBackend` for JSON Schema generation
 pub fn default_cli_config() -> Config {
     Config {
-        resolver: Box::new(ac_resolver_core::CachingResolver::new(ac_resolver_file::FileResolver)),
+        resolver: Box::new(ac_resolver_file::FileResolver::with_cache(
+            ac_resolver_core::MemoryModuleCache::new(),
+        )),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
         backend: Some(Box::new(
             ac_typegen_backend_json_schema::JsonSchemaBackend,
@@ -51,7 +53,9 @@ pub fn default_cli_config() -> Config {
 /// Typecheck-only config — no backend needed.
 pub fn typecheck_only_config() -> Config {
     Config {
-        resolver: Box::new(ac_resolver_core::CachingResolver::new(ac_resolver_file::FileResolver)),
+        resolver: Box::new(ac_resolver_file::FileResolver::with_cache(
+            ac_resolver_core::MemoryModuleCache::new(),
+        )),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
         backend: None,
     }
