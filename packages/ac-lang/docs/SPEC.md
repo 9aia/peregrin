@@ -1172,7 +1172,6 @@ If `doubled` were a string, the arg type check would fail before the expression 
 
 ## 17. Future directions
 
-- **Full JSON Schema** — replace the minimal validator with a complete implementation (draft 2020-12).
 - **Additional typegen backends** — TypeScript `.d.ts`, Rust structs, Python `TypedDict`.
 - **Additional module resolvers** — `resolver-git`, `resolver-http` for loading documents from remote sources.
 - **Integer subtyping** — `integer` as a subtype of `number` in the type system.

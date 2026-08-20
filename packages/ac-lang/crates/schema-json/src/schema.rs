@@ -5,7 +5,8 @@ use serde_json::Value as JsonValue;
 /// A JSON Schema document that can validate `RuntimeValue`s.
 ///
 /// Stores the raw schema as a `serde_json::Value` and implements
-/// [`Schema<RuntimeValue>`] with a built-in minimal validator.
+/// [`Schema<RuntimeValue>`] using the [`jsonschema`] crate for full
+/// JSON Schema draft 2020-12 validation.
 #[derive(Debug, Clone)]
 pub struct JsonSchema {
     /// The raw schema document.
@@ -26,32 +27,33 @@ impl JsonSchema {
     }
 
     /// Returns the schema's declared type, if any.
+    ///
+    /// For single-type schemas (e.g. `"type": "string"`) returns the
+    /// type name. For multi-type schemas (e.g. `"type": ["string",
+    /// "null"]`) returns the first type. Returns `None` if no `type`
+    /// keyword is present.
     pub fn type_name(&self) -> Option<&str> {
-        self.raw.get("type").and_then(|v| v.as_str())
+        match self.raw.get("type") {
+            Some(JsonValue::String(s)) => Some(s.as_str()),
+            Some(JsonValue::Array(arr)) => arr.first().and_then(|v| v.as_str()),
+            _ => None,
+        }
     }
 }
 
 impl Schema<RuntimeValue> for JsonSchema {
     fn validate(&self, value: &RuntimeValue) -> Result<(), ValidationError> {
-        if let Some(type_name) = self.type_name() {
-            crate::validator::check_type(value.inner(), type_name, "")?;
-        }
+        let validator = jsonschema::draft202012::new(&self.raw)
+            .map_err(|e| ValidationError {
+                message: format!("invalid JSON schema: {e}"),
+                path: String::new(),
+            })?;
 
-        if let Some(required) = self.raw.get("required").and_then(|v| v.as_array())
-            && let Some(entries) = value.inner().as_object()
-        {
-            for req in required {
-                if let Some(field) = req.as_str()
-                    && !entries.contains_key(field)
-                {
-                    return Err(ValidationError {
-                        message: format!("missing required field: {field}"),
-                        path: String::new(),
-                    });
-                }
-            }
-        }
-
-        Ok(())
+        validator
+            .validate(value.inner())
+            .map_err(|e| ValidationError {
+                message: e.to_string(),
+                path: e.instance_path().to_string(),
+            })
     }
 }

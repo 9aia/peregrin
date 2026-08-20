@@ -3,18 +3,14 @@
 //! JSON Schema validation for the AC language.
 //!
 //! Implements the abstract [`ac_schema::Schema<V>`] trait for
-//! `RuntimeValue` using a minimal JSON Schema validator.
-//!
-//! Supports the `type` and `required` keywords. This is not a
-//! complete JSON Schema implementation — it covers the most common
-//! cases. Replace with a full validator when needed.
+//! `RuntimeValue` using the [`jsonschema`](https://crates.io/crates/jsonschema)
+//! crate, which provides full JSON Schema draft 2020-12 support.
 //!
 //! ## Architectural rule
 //!
 //! > **JSON Schema is an implementation, not the abstraction.**
 
 mod schema;
-mod validator;
 
 pub use schema::JsonSchema;
 
