@@ -55,7 +55,7 @@ All literal parsing is dialect-configurable. A dialect that uses `yes`/`no` for 
 
 ### 2.3 Argument separator
 
-The argument separator is implicitly ``,` in the canonical dialect. It is not a separate token on the interface —`split_args`encapsulates the splitting logic, including nesting awareness. This means a custom dialect could use a different separator (e.g.`;`) by implementing `split_args`accordingly, without exposing a separate`argument_separator` token.
+The argument separator (`,` in canonical) is not a separate token on the interface. `split_args` encapsulates the splitting logic, including nesting awareness. A custom dialect could use a different separator (e.g. `;`) by implementing `split_args` accordingly, without exposing a separate `argument_separator` token.
 
 ### 2.4 Special key names
 
