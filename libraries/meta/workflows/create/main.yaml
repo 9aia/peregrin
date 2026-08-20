@@ -1,0 +1,84 @@
+# meta/workflows/create: up-to-date reusable meta-workflow that generates a workflow.
+#
+# Usage:
+#   SPEC_PATH=/path/to/spec.md \
+#   WORKFLOW_PATH=campaigns/my-campaign/main.yaml \
+#   WORKFLOW_NAME=my-campaign \
+#   ac run libraries/meta/workflows/create/main.yaml
+
+name: meta-create
+
+annotations:
+  title: Meta workflow creator
+  description: Generate, validate, and review a new workflow spec.
+  author: peregrin
+  tags: [meta, workflow, create]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+config:
+  repo: "."
+  agent_runner: devin
+
+events:
+  - type: start
+  - type: agent.generate.done
+    fields: { stdout: string }
+  - type: agent.generate.failed
+    fields: { stderr: string }
+  - type: peregrin.validate.passed
+    fields: { stdout: string }
+  - type: peregrin.validate.failed
+    fields: { stdout: string }
+  - type: peregrin.dryrun.done
+    fields: { stdout: string }
+  - type: peregrin.dryrun.failed
+    fields: { stdout: string }
+  - type: agent.review.approved
+    fields: { stdout: string }
+  - type: agent.review.rejected
+    fields: { stdout: string }
+  - type: agent.fix.done
+    fields: { stdout: string }
+  - type: agent.fix.failed
+    fields: { stderr: string }
+  - type: meta.complete
+  - type: meta.aborted
+    fields: { reason: string }
+  - type: node.exhausted
+
+nodes:
+  - include: ../../../agent/generate.node.yml
+    params:
+      prompt: ${include(../../generate.prompt.yml)}
+
+  - include: ../../../peregrin/validate.node.yml
+    on: [agent.generate.done, agent.fix.done]
+
+  - include: ../../../peregrin/dryrun.node.yml
+    on: [peregrin.validate.passed]
+
+  - include: ../../../agent/review.node.yml
+    on: [peregrin.dryrun.done]
+    params:
+      prompt: ${include(../../review.prompt.yml)}
+
+  - include: ../../../agent/fix.node.yml
+    on: [peregrin.validate.failed, agent.review.rejected]
+    max_fires: 3
+    params:
+      prompt: ${include(../../fix.prompt.yml)}
+
+  - include: ../../../display/abort.node.yml
+    on: [agent.generate.failed, peregrin.dryrun.failed, agent.fix.failed, node.exhausted]
+    emits: [meta.aborted]
+    params:
+      emit:
+        0: meta.aborted
+
+  - include: ../../../display/report.node.yml
+    on: [agent.review.approved]
+    emits: [meta.complete]
+    params:
+      emit:
+        0: meta.complete

@@ -1,0 +1,265 @@
+# common/new-feat: end-to-end feature implementation workflow.
+#
+# Pipeline:
+#   worktree → adr → write-tests → commit-tests
+#   → impl → commit-impl → test
+#   → (fix + docs + commit) up to 3 times until tests pass
+#   → pr → review
+#   → (rework + commit) up to 3 times until approved
+#   → squash-merge
+#
+# Usage:
+#   FEAT_ID=my-feature \
+#   FEAT_DESCRIPTION="add a reusable snippet library" \
+#   ac run libraries/common/new-feat/main.yaml
+
+name: new-feat
+
+annotations:
+  title: New feature workflow
+  description: End-to-end feature implementation workflow from worktree to squash-merge.
+  author: peregrin
+  tags: [common, new-feat, workflow]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+config:
+  repo: "."
+  worktree_base: "."
+  test_cmd: "bun test"
+  agent_runner: "devin"
+  pr_base: "main"
+
+events:
+  - type: start
+  - type: new-feat.worktree.ready
+  - type: new-feat.worktree.failed
+  - type: new-feat.adr.done
+  - type: new-feat.adr.failed
+  - type: new-feat.write-tests.done
+  - type: new-feat.write-tests.failed
+  - type: new-feat.commit.tests.done
+  - type: new-feat.commit.tests.failed
+  - type: new-feat.impl.done
+  - type: new-feat.impl.failed
+  - type: new-feat.commit.impl.done
+  - type: new-feat.commit.impl.failed
+  - type: new-feat.test.passed
+  - type: new-feat.test.failed
+  - type: new-feat.fix.done
+  - type: new-feat.fix.failed
+  - type: new-feat.commit.fix.done
+  - type: new-feat.commit.fix.failed
+  - type: new-feat.pr.created
+  - type: new-feat.pr.failed
+  - type: new-feat.review.approved
+  - type: new-feat.review.rejected
+  - type: new-feat.rework.done
+  - type: new-feat.rework.failed
+  - type: new-feat.commit.rework.done
+  - type: new-feat.commit.rework.failed
+  - type: new-feat.merged
+  - type: new-feat.merge.failed
+  - type: new-feat.complete
+  - type: new-feat.aborted
+  - type: node.exhausted
+
+nodes:
+  - include: ../../git/worktree.node.yml
+
+  - include: ../../agent/base.node.yml
+    id: new-feat.adr
+    on: [new-feat.worktree.ready]
+    emits: [new-feat.adr.done, new-feat.adr.failed]
+    params:
+      permission_mode: normal
+      timeout: 600
+      prompt: |
+        ${include(./new-feat.prompt.yml)}
+        Write or update the ADR at docs/adr/${state.feat_id}.md.
+      emit:
+        0: new-feat.adr.done
+        default: new-feat.adr.failed
+
+  - include: ../../agent/base.node.yml
+    id: new-feat.write-tests
+    on: [new-feat.adr.done]
+    emits: [new-feat.write-tests.done, new-feat.write-tests.failed]
+    params:
+      permission_mode: dangerous
+      timeout: 900
+      prompt: |
+        ${include(./new-feat.prompt.yml)}
+        Write tests first, before any implementation. Commit is handled next.
+      emit:
+        0: new-feat.write-tests.done
+        default: new-feat.write-tests.failed
+
+  - include: ../../git/commit.node.yml
+    id: new-feat.commit-tests
+    on: [new-feat.write-tests.done]
+    emits: [new-feat.commit.tests.done, new-feat.commit.tests.failed]
+    params:
+      env:
+        COMMIT_SUBJECT: "test: add tests for ${state.feat_id}"
+        COMMIT_BODY: "Generated with agent-campaign new-feat workflow"
+      emit:
+        0: new-feat.commit.tests.done
+        default: new-feat.commit.tests.failed
+
+  - include: ../../agent/base.node.yml
+    id: new-feat.impl
+    on: [new-feat.commit.tests.done]
+    emits: [new-feat.impl.done, new-feat.impl.failed]
+    params:
+      permission_mode: dangerous
+      timeout: 1200
+      prompt: |
+        ${include(./new-feat.prompt.yml)}
+        Tests are already in place. Implement the feature to make the tests pass.
+        Do not update docs yet unless required for the implementation.
+      emit:
+        0: new-feat.impl.done
+        default: new-feat.impl.failed
+
+  - include: ../../git/commit.node.yml
+    id: new-feat.commit-impl
+    on: [new-feat.impl.done]
+    emits: [new-feat.commit.impl.done, new-feat.commit.impl.failed]
+    params:
+      env:
+        COMMIT_SUBJECT: "feat: implement ${state.feat_id}"
+        COMMIT_BODY: "Generated with agent-campaign new-feat workflow"
+      emit:
+        0: new-feat.commit.impl.done
+        default: new-feat.commit.impl.failed
+
+  - include: ../../test/run.node.yml
+    id: new-feat.test
+    on: [new-feat.commit.impl.done, new-feat.commit.fix.done]
+    emits: [new-feat.test.passed, new-feat.test.failed]
+    params:
+      emit:
+        0: new-feat.test.passed
+        default: new-feat.test.failed
+
+  - include: ../../agent/base.node.yml
+    id: new-feat.fix
+    on: [new-feat.test.failed]
+    emits: [new-feat.fix.done, new-feat.fix.failed]
+    max_fires: 3
+    params:
+      permission_mode: dangerous
+      timeout: 900
+      prompt: |
+        ${include(./new-feat.prompt.yml)}
+        Feature "${state.feat_id}" implementation is failing tests in ${state.worktree_path}.
+        Fix the implementation, then update docs/adr/${state.feat_id}.md and any README/docs as needed.
+      emit:
+        0: new-feat.fix.done
+        default: new-feat.fix.failed
+
+  - include: ../../git/commit.node.yml
+    id: new-feat.commit-fix
+    on: [new-feat.fix.done]
+    emits: [new-feat.commit.fix.done, new-feat.commit.fix.failed]
+    params:
+      env:
+        COMMIT_SUBJECT: "fix: address tests for ${state.feat_id}"
+        COMMIT_BODY: "Generated with agent-campaign new-feat workflow"
+      emit:
+        0: new-feat.commit.fix.done
+        default: new-feat.commit.fix.failed
+
+  - include: ../../github/pr.node.yml
+    id: new-feat.pr
+    on: [new-feat.test.passed]
+    emits: [new-feat.pr.created, new-feat.pr.failed]
+    params:
+      env:
+        PR_TITLE: "feat: ${state.feat_id}"
+        PR_BODY: "## Summary\n\n${state.feat_description}\n\nGenerated with agent-campaign new-feat workflow"
+      emit:
+        0: new-feat.pr.created
+        default: new-feat.pr.failed
+
+  - include: ../../agent/base.node.yml
+    id: new-feat.review
+    on: [new-feat.pr.created, new-feat.commit.rework.done]
+    emits: [new-feat.review.approved, new-feat.review.rejected]
+    params:
+      permission_mode: normal
+      timeout: 600
+      prompt: ${include(./review.prompt.yml)}
+      emit:
+        0: new-feat.review.approved
+        default: new-feat.review.rejected
+
+  - include: ../../agent/base.node.yml
+    id: new-feat.rework
+    on: [new-feat.review.rejected]
+    emits: [new-feat.rework.done, new-feat.rework.failed]
+    max_fires: 3
+    params:
+      permission_mode: dangerous
+      timeout: 900
+      prompt: |
+        ${include(./new-feat.prompt.yml)}
+        The PR for feature "${state.feat_id}" was rejected.
+        Review feedback: ${event.payload.stdout}
+        Apply the feedback in ${state.worktree_path} and update the PR.
+      emit:
+        0: new-feat.rework.done
+        default: new-feat.rework.failed
+
+  - include: ../../git/commit.node.yml
+    id: new-feat.commit-rework
+    on: [new-feat.rework.done]
+    emits: [new-feat.commit.rework.done, new-feat.commit.rework.failed]
+    params:
+      env:
+        COMMIT_SUBJECT: "chore: apply review feedback for ${state.feat_id}"
+        COMMIT_BODY: "Generated with agent-campaign new-feat workflow"
+      emit:
+        0: new-feat.commit.rework.done
+        default: new-feat.commit.rework.failed
+
+  - include: ../../github/merge.node.yml
+    id: new-feat.merge
+    on: [new-feat.review.approved]
+    emits: [new-feat.merged, new-feat.merge.failed]
+    params:
+      emit:
+        0: new-feat.merged
+        default: new-feat.merge.failed
+
+  - include: ../../display/report.node.yml
+    id: new-feat.report
+    on: [new-feat.merged]
+    emits: [new-feat.complete]
+    params:
+      emit:
+        0: new-feat.complete
+
+  - include: ../../display/abort.node.yml
+    id: new-feat.abort
+    on:
+      [
+        new-feat.worktree.failed,
+        new-feat.adr.failed,
+        new-feat.write-tests.failed,
+        new-feat.commit.tests.failed,
+        new-feat.impl.failed,
+        new-feat.commit.impl.failed,
+        new-feat.fix.failed,
+        new-feat.commit.fix.failed,
+        new-feat.pr.failed,
+        new-feat.rework.failed,
+        new-feat.commit.rework.failed,
+        new-feat.merge.failed,
+        node.exhausted,
+      ]
+    emits: [new-feat.aborted]
+    params:
+      emit:
+        0: new-feat.aborted

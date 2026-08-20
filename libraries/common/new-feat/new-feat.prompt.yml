@@ -1,0 +1,3 @@
+|
+  We are implementing feature "${state.feat_id}": ${state.feat_description}.
+  Working in ${state.worktree_path}.

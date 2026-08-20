@@ -1,0 +1,19 @@
+# libraries/display/abort: hard-failure banner.
+annotations:
+  title: Abort display
+  description: Display a hard-failure banner when a workflow aborts.
+  author: peregrin
+  tags: [display, banner, abort]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+driver: shell
+id: display.abort
+max_fires: 1
+params:
+  cmd: |
+    echo "========================================"
+    echo "  WORKFLOW ABORTED"
+    echo "========================================"
+    echo "  Reason: ${event.payload.stderr}"
+    echo "========================================"

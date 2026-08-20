@@ -1,0 +1,28 @@
+# meta/snippets/agent/generate: generic generator agent.
+# Parent must set params.prompt or params.prompt_file.
+annotations:
+  title: Generate agent
+  description: Generic generator agent that creates new content from a prompt or prompt file.
+  author: peregrin
+  tags: [agent, generate, snippet]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+id: agent.generate
+driver: agent
+on: [start]
+emits: [agent.generate.done, agent.generate.failed]
+max_fires: 1
+retry:
+  max_attempts: 2
+  delay: 1000
+  backoff: fixed
+params:
+  runner: "${config.agent_runner:-devin}"
+  permission_mode: dangerous
+  trust: false
+  timeout: 900
+  cwd: "${config.repo:-.}"
+  emit:
+    0: agent.generate.done
+    default: agent.generate.failed

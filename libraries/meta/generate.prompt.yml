@@ -1,0 +1,5 @@
+|
+  Generate an agent-campaign workflow YAML and save it to ${WORKFLOW_PATH}.
+  Name the workflow ${WORKFLOW_NAME}.
+  Read the spec at ${SPEC_PATH} and the DSL reference under libraries/.
+  Emit only the YAML body and any required prompt files.

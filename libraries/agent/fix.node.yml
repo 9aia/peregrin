@@ -1,0 +1,27 @@
+# meta/snippets/agent/fix: generic fix agent.
+# Parent must set params.prompt or params.prompt_file and on events.
+annotations:
+  title: Fix agent
+  description: Generic fix agent that edits existing work based on a prompt or prompt file.
+  author: peregrin
+  tags: [agent, fix, snippet]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+id: agent.fix
+driver: agent
+emits: [agent.fix.done, agent.fix.failed]
+max_fires: 1
+retry:
+  max_attempts: 2
+  delay: 1000
+  backoff: fixed
+params:
+  runner: "${config.agent_runner:-devin}"
+  permission_mode: dangerous
+  trust: false
+  timeout: 600
+  cwd: "${config.repo:-.}"
+  emit:
+    0: agent.fix.done
+    default: agent.fix.failed

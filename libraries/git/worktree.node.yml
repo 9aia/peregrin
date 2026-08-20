@@ -1,0 +1,42 @@
+# common/snippets/git/worktree: create a clean worktree and branch from origin/main.
+annotations:
+  title: Git worktree
+  description: Create a clean git worktree and branch from origin/main.
+  author: peregrin
+  tags: [git, worktree, branch, snippet]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+id: git.worktree
+driver: shell
+on: [start]
+emits: [git.worktree.ready, git.worktree.failed]
+max_fires: 1
+retry:
+  max_attempts: 2
+  delay: 1000
+  backoff: fixed
+params:
+  cmd: |
+    REPO="${config.repo}"
+    BASE="${config.worktree_base}"
+    ID="${FEAT_ID:-${config.feat_id:-new-feat}}"
+    DESC="${FEAT_DESCRIPTION:-${config.feat_description:-}}"
+    BRANCH="${BRANCH_PREFIX:-feat}/${ID}"
+    SLUG=$(echo "$ID" | tr '/' '-' | tr ' ' '-')
+    WORKTREE="$BASE/${WORKTREE_PREFIX:-wt}-${SLUG}"
+    cd "$REPO"
+    git fetch origin main
+    git worktree remove "$WORKTREE" --force 2>/dev/null || true
+    git branch -D "$BRANCH" 2>/dev/null || true
+    git worktree add "$WORKTREE" -b "$BRANCH" origin/main
+    echo "worktree_path=$WORKTREE"
+    echo "branch=$BRANCH"
+    echo "repo=$REPO"
+    echo "feat_id=$ID"
+    echo "feat_description=$DESC"
+  set_state_from_stdout: true
+  emit:
+    0: git.worktree.ready
+    default: git.worktree.failed
+  timeout: 120

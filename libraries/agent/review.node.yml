@@ -1,0 +1,27 @@
+# meta/snippets/agent/review: generic reviewer agent.
+# Parent must set params.prompt or params.prompt_file.
+annotations:
+  title: Review agent
+  description: Generic review agent that approves or rejects work based on a prompt or prompt file.
+  author: peregrin
+  tags: [agent, review, snippet]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+id: agent.review
+driver: agent
+emits: [agent.review.approved, agent.review.rejected]
+max_fires: 1
+retry:
+  max_attempts: 2
+  delay: 1000
+  backoff: fixed
+params:
+  runner: "${config.agent_runner:-devin}"
+  permission_mode: normal
+  trust: false
+  timeout: 300
+  cwd: "${config.repo:-.}"
+  emit:
+    0: agent.review.approved
+    default: agent.review.rejected

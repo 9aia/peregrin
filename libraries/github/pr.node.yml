@@ -1,0 +1,28 @@
+# common/snippets/github/pr: push branch and open a GitHub PR.
+# Parent must set id, on, emits, params.emit and params.env.PR_TITLE/PR_BODY.
+annotations:
+  title: GitHub pull request
+  description: Push a branch and open a GitHub pull request.
+  author: peregrin
+  tags: [github, pr, snippet]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+driver: shell
+id: github.pr
+max_fires: 1
+retry:
+  max_attempts: 2
+  delay: 1000
+  backoff: fixed
+params:
+  cmd: |
+    cd "${state.worktree_path}"
+    git push -u origin "${state.branch}"
+    PR_URL=$(gh pr create \
+      --title "${PR_TITLE}" \
+      --body "${PR_BODY}" \
+      --base "${config.pr_base:-main}" \
+      --head "${state.branch}")
+    echo "$PR_URL"
+  timeout: 120

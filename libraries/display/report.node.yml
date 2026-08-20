@@ -1,0 +1,20 @@
+# libraries/display/report: success banner.
+annotations:
+  title: Report display
+  description: Display a success banner when a workflow completes.
+  author: peregrin
+  tags: [display, banner, report]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+driver: shell
+id: display.report
+max_fires: 1
+params:
+  cmd: |
+    echo "========================================"
+    echo "  WORKFLOW COMPLETE"
+    echo "========================================"
+    echo "  Branch: ${state.branch}"
+    echo "  Worktree: ${state.worktree_path}"
+    echo "========================================"

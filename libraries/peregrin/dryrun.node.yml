@@ -1,0 +1,21 @@
+# libraries/peregrin/dryrun: run ac --dry-run on a workflow path.
+# Expects WORKFLOW_PATH env var or config.workflow_path.
+annotations:
+  title: Peregrin dry run
+  description: Run `ac --dry-run` on a workflow path to verify structure.
+  author: peregrin
+  tags: [peregrin, dryrun, validate]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+id: peregrin.dryrun
+driver: shell
+emits: [peregrin.dryrun.done, peregrin.dryrun.failed]
+params:
+  cmd: |
+    cd "${config.repo:-.}"
+    ac run "${WORKFLOW_PATH}" --dry-run --no-store 2>&1
+  emit:
+    0: peregrin.dryrun.done
+    default: peregrin.dryrun.failed
+  timeout: 60

@@ -1,0 +1,4 @@
+|
+  Review the generated workflow at ${WORKFLOW_PATH}.
+  Check structural correctness, event flow, and common DSL gotchas.
+  Emit approval or a rejection with actionable feedback.

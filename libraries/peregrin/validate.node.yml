@@ -1,0 +1,21 @@
+# libraries/peregrin/validate: run ac validate on a workflow path.
+# Expects WORKFLOW_PATH env var or config.workflow_path.
+annotations:
+  title: Peregrin validate
+  description: Run `ac validate` on a workflow path to verify correctness.
+  author: peregrin
+  tags: [peregrin, validate, lint]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+id: peregrin.validate
+driver: shell
+emits: [peregrin.validate.passed, peregrin.validate.failed]
+params:
+  cmd: |
+    cd "${config.repo:-.}"
+    ac validate "${WORKFLOW_PATH}" 2>&1
+  emit:
+    0: peregrin.validate.passed
+    default: peregrin.validate.failed
+  timeout: 30

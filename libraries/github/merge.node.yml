@@ -1,0 +1,21 @@
+# common/snippets/github/merge: squash-merge the PR into main.
+annotations:
+  title: GitHub merge
+  description: Squash-merge a pull request into the base branch.
+  author: peregrin
+  tags: [github, merge, snippet]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+driver: shell
+id: github.merge
+max_fires: 1
+retry:
+  max_attempts: 2
+  delay: 1000
+  backoff: fixed
+params:
+  cmd: |
+    cd "${state.worktree_path}"
+    gh pr merge --admin --squash
+  timeout: 120

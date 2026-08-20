@@ -1,0 +1,18 @@
+# common/snippets/agent/base: bare agent node with devin defaults.
+# Parent must set id, on, emits, params.prompt and params.emit.
+annotations:
+  title: Base agent
+  description: Bare agent node preset with Devin defaults for parent customization.
+  author: peregrin
+  tags: [agent, base, snippet]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+driver: agent
+id: agent.base
+params:
+  runner: "${config.agent_runner:-devin}"
+  permission_mode: dangerous
+  trust: false
+  timeout: 900
+  cwd: "${state.worktree_path}"

@@ -1,0 +1,5 @@
+|
+  Review the pull request for feature "${state.feat_id}": ${state.feat_description}.
+  Branch: ${state.branch}
+  Base: ${config.pr_base}
+  Approve if the implementation and tests look correct, otherwise reject with feedback.
