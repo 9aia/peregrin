@@ -152,7 +152,9 @@ Fields are declared in the `fields:` section. Each field has a schema (type and 
 
 ### 6.1 Schema
 
-Schemas use JSON Schema vocabulary. The `type` keyword declares the field's type:
+Schemas use [JSON Schema draft 2020-12](https://json-schema.org/) vocabulary. The reference runtime validates fields with a full draft 2020-12 validator — all standard keywords are supported.
+
+The `type` keyword declares the field's type. Supported types: `string`, `number`, `integer`, `boolean`, `null`, `array`, `object`. Multi-type is allowed via arrays (`["string", "null"]`).
 
 ```yaml
 fields:
@@ -172,6 +174,50 @@ fields:
       port:
         type: number
 ```
+
+**Validation keywords** (non-exhaustive — see the JSON Schema spec for the full list):
+
+- **String**: `minLength`, `maxLength`, `pattern`
+- **Number**: `minimum`, `maximum`, `exclusiveMinimum`, `exclusiveMaximum`, `multipleOf`
+- **Array**: `items`, `prefixItems`, `minItems`, `maxItems`, `uniqueItems`, `contains`
+- **Object**: `required`, `properties`, `patternProperties`, `additionalProperties`, `minProperties`, `maxProperties`
+- **Combinators**: `allOf`, `anyOf`, `oneOf`, `not`
+- **Conditional**: `if` / `then` / `else`
+- **Enum/const**: `enum`, `const`
+- **References**: `$ref`, `$defs`
+- **Boolean schemas**: `true` (accepts anything), `false` (rejects everything)
+
+Example with constraints:
+
+```yaml
+fields:
+  mode:
+    type: string
+    enum: [read-only, read-write, admin]
+  port:
+    type: integer
+    minimum: 1
+    maximum: 65535
+  tags:
+    type: array
+    items:
+      type: string
+    minItems: 1
+    uniqueItems: true
+  config:
+    type: object
+    properties:
+      host:
+        type: string
+        pattern: "^[a-z]"
+      retries:
+        type: integer
+        minimum: 0
+    required: [host]
+    additionalProperties: false
+```
+
+**Reserved field names**: `fields` and `functions` cannot be declared as field names — they are reserved top-level keys.
 
 ### 6.2 Computed fields (`expr:`)
 
