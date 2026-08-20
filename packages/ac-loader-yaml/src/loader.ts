@@ -400,7 +400,16 @@ const autoDiscover = (
           functionList.push(parsed);
         }
       }
-      const existing = Array.isArray(raw.functions) ? [...raw.functions] : [];
+      const existing: Array<Record<string, unknown>> = [];
+      if (Array.isArray(raw.functions)) {
+        for (const f of raw.functions) {
+          if (isRecord(f)) existing.push(f);
+        }
+      } else if (isRecord(raw.functions)) {
+        for (const [name, body] of Object.entries(raw.functions)) {
+          existing.push(isRecord(body) ? { ...body, name } : { name });
+        }
+      }
       raw.functions = [...functionList, ...existing];
     }
   });

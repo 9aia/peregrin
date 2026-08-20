@@ -348,13 +348,22 @@ export class Workflow {
   ) {}
 
   static fromDict(raw: Readonly<Record<string, unknown>>): Workflow {
+    const rawFunctions = raw.functions;
+    const functionRecords: Array<Record<string, unknown>> = [];
+    if (Array.isArray(rawFunctions)) {
+      for (const f of rawFunctions) {
+        if (isRecord(f)) functionRecords.push(f);
+      }
+    } else if (isRecord(rawFunctions)) {
+      for (const [name, body] of Object.entries(rawFunctions)) {
+        functionRecords.push(isRecord(body) ? { ...body, name } : { name });
+      }
+    }
     return new Workflow(
       coerceToString(raw.name),
       ((raw.events as Array<Record<string, unknown>>) ?? []).map((e) => EventSchema.fromDict(e)),
       ((raw.nodes as Array<Record<string, unknown>>) ?? []).map((node) => Node.fromDict(node)),
-      ((raw.functions as Array<Record<string, unknown>>) ?? []).map((fn) =>
-        FunctionDefinition.fromDict(fn),
-      ),
+      functionRecords.map((fn) => FunctionDefinition.fromDict(fn)),
       (raw.config as Record<string, unknown>) ?? {},
       Array.from<string>((raw.include as Array<string>) ?? (raw.includes as Array<string>) ?? []),
       parsePythonImports(raw.import),
@@ -374,7 +383,13 @@ export class Workflow {
       nodes: this.nodes.map((n) => n.toDict()),
       config: this.config,
     };
-    if (this.functions.length > 0) d.functions = this.functions.map((f) => f.toDict());
+    if (this.functions.length > 0) {
+      const functions: Record<string, unknown> = {};
+      for (const f of this.functions) {
+        functions[f.name] = f.toDict();
+      }
+      d.functions = functions;
+    }
     if (this.imports.length > 0) d.include = [...this.imports];
     if (this.pythonImports.length > 0) {
       d.import = this.pythonImports.map((i) =>
