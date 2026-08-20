@@ -2,7 +2,7 @@
 //!
 //! Pipeline pass: extract fields, functions, and data from parsed document.
 
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_engine_core::{Compilation, Config, Pass};
 
 /// Extract fields, functions, and data from the parsed document.

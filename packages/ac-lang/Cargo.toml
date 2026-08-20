@@ -6,6 +6,7 @@ edition = "2024"
 [workspace]
 members = [
   "crates/dialect",
+  "crates/dialect-canonical",
   "crates/ast",
   "crates/runtime",
   "crates/vm",
@@ -59,6 +60,7 @@ edition = "2024"
 
 [workspace.dependencies]
 ac-dialect = { path = "crates/dialect" }
+ac-dialect-canonical = { path = "crates/dialect-canonical" }
 ac-ast = { path = "crates/ast" }
 ac-runtime = { path = "crates/runtime" }
 ac-vm = { path = "crates/vm" }
@@ -111,6 +113,7 @@ thiserror = "2"
 [dependencies]
 ac-ast.workspace = true
 ac-dialect.workspace = true
+ac-dialect-canonical.workspace = true
 ac-runtime.workspace = true
 ac-vm.workspace = true
 ac-frontend-json.workspace = true

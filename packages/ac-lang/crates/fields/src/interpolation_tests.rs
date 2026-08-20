@@ -1,7 +1,7 @@
 use super::*;
 use crate::test_helpers::{AddResolver, DoubleResolver, LenResolver, MathResolver};
 use crate::types::{Namespaces, NoFunctions};
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 
 #[test]
 fn interpolate_basic() {

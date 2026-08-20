@@ -1,6 +1,6 @@
 use serde_json::json;
 
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
 use ac_runtime::RuntimeValue;
 use ac_typegen_core::{TypegenBackend, TypegenContext};

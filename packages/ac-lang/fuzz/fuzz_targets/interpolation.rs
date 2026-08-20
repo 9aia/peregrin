@@ -10,5 +10,5 @@ fuzz_target!(|data: String| {
     ns.insert("env".to_string(), serde_json::json!({"HOME": "/tmp"}));
 
     let value = JsonValue::String(data);
-    let _ = interpolate(&value, &ns, &NoFunctions, &ac_dialect::AC_DIALECT);
+    let _ = interpolate(&value, &ns, &NoFunctions, &ac_dialect_canonical::AC_DIALECT);
 });

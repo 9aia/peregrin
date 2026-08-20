@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_typecheck_core::{is_compatible, SchemaInterpreter, TypeEnv, TypeError};
 use ac_typecheck_infer::{infer_cached, FunctionTable};
 use serde_json::Value as JsonValue;

@@ -10,7 +10,7 @@ use std::path::Path;
 
 use serde_json::Value as JsonValue;
 
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
 use ac_runtime::RuntimeValue;
 use ac_resolver_core::{ModuleResolver, ResolvedModule};

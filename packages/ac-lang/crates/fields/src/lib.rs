@@ -52,7 +52,7 @@ pub use merge::merge_fields;
 pub use scope::validate_mutable;
 pub use namespace::{build_doc_namespace, build_env_namespace};
 pub use validation::{validate_args, validate_return};
-pub use ac_dialect::{AcDialect, Dialect, AC_DIALECT};
+pub use ac_dialect::Dialect;
 
 #[cfg(test)]
 mod test_helpers;

@@ -11,6 +11,7 @@ name = "ac-bench"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-engine",
  "ac-engine-core",
  "ac-engine-pass-extract",
@@ -48,6 +49,15 @@ version = "0.1.0"
 dependencies = [
  "ac-runtime",
  "ac-schema",
+]
+
+[[package]]
+name = "ac-dialect-canonical"
+version = "0.1.0"
+dependencies = [
+ "ac-dialect",
+ "ac-runtime",
+ "ac-schema",
  "ac-schema-json",
 ]
 
@@ -57,6 +67,7 @@ version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-engine-core",
  "ac-engine-pass-extract",
  "ac-engine-pass-generate",
@@ -101,6 +112,7 @@ name = "ac-engine-pass-extract"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-engine-core",
  "ac-engine-pass-parse",
  "ac-fields",
@@ -183,6 +195,7 @@ version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-engine",
  "ac-engine-core",
  "ac-engine-pass-extract",
@@ -208,6 +221,7 @@ name = "ac-fields"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-runtime",
  "ac-schema",
  "serde_json",
@@ -271,6 +285,7 @@ version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-engine",
  "ac-engine-core",
  "ac-fields",
@@ -306,6 +321,7 @@ name = "ac-resolver-file"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend",
  "ac-resolver-core",
@@ -317,6 +333,7 @@ name = "ac-resolver-git"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend",
  "ac-resolver-core",
@@ -333,6 +350,7 @@ name = "ac-resolver-http"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend",
  "ac-resolver-core",
@@ -347,6 +365,7 @@ name = "ac-resolver-virtual"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend-yaml",
  "ac-resolver-core",
@@ -417,6 +436,7 @@ name = "ac-typecheck-infer"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-typecheck-core",
  "serde_json",
 ]
@@ -434,6 +454,7 @@ name = "ac-typecheck-key-expr"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
+ "ac-dialect-canonical",
  "ac-typecheck-core",
  "ac-typecheck-infer",
  "serde_json",
@@ -475,7 +496,7 @@ dependencies = [
 name = "ac-typegen-backend-json-schema"
 version = "0.1.0"
 dependencies = [
- "ac-dialect",
+ "ac-dialect-canonical",
  "ac-fields",
  "ac-runtime",
  "ac-typegen-core",
@@ -500,7 +521,7 @@ dependencies = [
 name = "ac-typegen-import"
 version = "0.1.0"
 dependencies = [
- "ac-dialect",
+ "ac-dialect-canonical",
  "ac-fields",
  "ac-resolver-core",
  "ac-resolver-virtual",

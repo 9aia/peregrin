@@ -22,5 +22,5 @@ fuzz_target!(|data: String| {
         }
     });
 
-    let _ = interpolate_scoped(&value, &ns, &inheritable, &NoFunctions, &ac_dialect::AC_DIALECT);
+    let _ = interpolate_scoped(&value, &ns, &inheritable, &NoFunctions, &ac_dialect_canonical::AC_DIALECT);
 });

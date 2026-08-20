@@ -1,7 +1,7 @@
 use super::*;
 use crate::test_helpers::{ConcatResolver, MulResolver};
 use crate::types::{ArgSpec, ComputedField, Namespaces, NoFunctions};
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 
 #[test]
 fn compute_fields_basic() {

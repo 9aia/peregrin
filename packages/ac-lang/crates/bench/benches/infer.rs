@@ -4,7 +4,7 @@
 //! the effect of AST caching across repeated calls.
 
 use ac_bench::*;
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_typecheck_core::{Type, TypeEnv};
 use ac_typecheck_infer::{infer, infer_cached, parse_expr, FunctionTable};
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};

@@ -7,7 +7,7 @@ use ac_fields::{
     self, extract_fields, interpolate, compute_fields, merge_fields,
     build_doc_namespace, FunctionResolver, Namespaces,
 };
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_frontend_yaml;
 use ac_runtime::RuntimeValue;
 use ac_schema::Schema;

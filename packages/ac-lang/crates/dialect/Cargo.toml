@@ -5,5 +5,4 @@ edition.workspace = true
 
 [dependencies]
 ac-schema.workspace = true
-ac-schema-json.workspace = true
 ac-runtime.workspace = true

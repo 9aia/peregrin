@@ -1,4 +1,5 @@
-use ac_dialect::{AC_DIALECT, Dialect};
+use ac_dialect::Dialect;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_frontend::frontend_for;
 use ac_schema::Schema;
 

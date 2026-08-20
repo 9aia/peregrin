@@ -10,7 +10,8 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use ac_ast::Expr;
-use ac_dialect::{AC_DIALECT, Dialect};
+use ac_dialect::Dialect;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, FunctionResolver};
 use ac_host::DefaultHost;
 use ac_resolver_core::{ModuleResolver, IMPORT_FUNCTION};

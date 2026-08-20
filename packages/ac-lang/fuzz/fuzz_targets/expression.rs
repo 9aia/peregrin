@@ -8,5 +8,5 @@ fuzz_target!(|data: String| {
     ns.insert("doc".to_string(), serde_json::json!({"name": "test", "value": 42}));
     ns.insert("env".to_string(), serde_json::json!({"HOME": "/tmp"}));
 
-    let _ = eval_expression(&data, &ns, &NoFunctions, &ac_dialect::AC_DIALECT);
+    let _ = eval_expression(&data, &ns, &NoFunctions, &ac_dialect_canonical::AC_DIALECT);
 });

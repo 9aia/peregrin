@@ -1,5 +1,5 @@
 use super::*;
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_typecheck_core::{FunctionType, Type, TypeEnv};
 
 #[test]

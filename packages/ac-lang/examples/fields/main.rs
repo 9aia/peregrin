@@ -8,7 +8,7 @@
 
 use std::path::PathBuf;
 
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_runtime::RuntimeValue;
 use ac_schema::Schema;
 use ac_schema_json::JsonSchema;
@@ -55,7 +55,7 @@ fn main() {
     namespaces.insert("env".to_string(), ac_fields::build_env_namespace());
 
     // Interpolate ${doc.*} and ${env.*} in all data values
-    let interpolated = ac_fields::interpolate(data.inner(), &namespaces, &ac_fields::NoFunctions, &ac_dialect::AC_DIALECT);
+    let interpolated = ac_fields::interpolate(data.inner(), &namespaces, &ac_fields::NoFunctions, &ac_dialect_canonical::AC_DIALECT);
     let data = RuntimeValue::new(interpolated);
 
     println!("interpolated values:");

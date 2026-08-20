@@ -7,6 +7,7 @@ edition.workspace = true
 ac-engine-core.workspace = true
 ac-engine.workspace = true
 ac-dialect.workspace = true
+ac-dialect-canonical.workspace = true
 ac-engine-pass-parse.workspace = true
 ac-engine-pass-extract.workspace = true
 ac-resolver-virtual.workspace = true

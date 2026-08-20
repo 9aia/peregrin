@@ -15,7 +15,7 @@ mod url;
 
 use std::path::Path;
 
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
 use ac_frontend::frontend_for;
 use ac_resolver_core::{ModuleCache, ModuleResolver, NoCache, ResolvedModule};

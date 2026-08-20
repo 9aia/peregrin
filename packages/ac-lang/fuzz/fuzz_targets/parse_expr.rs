@@ -4,7 +4,7 @@ use ac_typecheck_infer::parse_expr;
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &str| {
-    if let Some(ast) = parse_expr(data, &ac_dialect::AC_DIALECT) {
+    if let Some(ast) = parse_expr(data, &ac_dialect_canonical::AC_DIALECT) {
         assert_valid_ast(&ast);
     }
 });

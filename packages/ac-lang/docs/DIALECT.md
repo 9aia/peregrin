@@ -174,12 +174,11 @@ The language spec defines **what the canonical syntax is**. This spec defines **
 
 The Rust implementation provides:
 
-- **`ac-dialect`** crate — defines the `Dialect` trait and the canonical `AcDialect` struct.
+- **`ac-dialect`** crate — defines the `Dialect` trait (the abstraction). No implementation, no dependencies on a specific schema vocabulary.
+- **`ac-dialect-canonical`** crate — implements the canonical `AcDialect` struct and `AC_DIALECT` static singleton. Depends on `ac-schema-json` for the JSON Schema vocabulary.
 - **`ac-schema`** crate — defines the `Schema<V>` and `SchemaVocabulary<V>` traits (abstract schema validation).
 - **`ac-schema-json`** crate — implements `JsonSchema` (`Schema<V>`) and `JsonSchemaVocabulary` (`SchemaVocabulary<V>`) for JSON Schema draft 2020-12.
-- **`AcDialect`** — the only shipped dialect. Implements all canonical tokens, key names, and the JSON Schema vocabulary.
-- **`AC_DIALECT`** — a static singleton of `AcDialect`, used throughout the engine.
 
-Every function that parses or evaluates expressions accepts `&dyn Dialect`. Every function that extracts fields reads key names from the dialect. Every function that validates schemas uses the dialect's `SchemaVocabulary`. The canonical `AC_DIALECT` is passed at call sites. No function hardcodes `"${"`, `'.'`, `'('`, `"fields"`, `"expr"`, or `JsonSchema`.
+Every function that parses or evaluates expressions accepts `&dyn Dialect` (from `ac-dialect`). Every function that extracts fields reads key names from the dialect. Every function that validates schemas uses the dialect's `SchemaVocabulary`. The canonical `AC_DIALECT` (from `ac-dialect-canonical`) is passed at call sites. No function hardcodes `"${"`, `'.'`, `'('`, `"fields"`, `"expr"`, or `JsonSchema`.
 
 See [RUNTIME.md](./RUNTIME.md) for how the dialect integrates into the engine pipeline.

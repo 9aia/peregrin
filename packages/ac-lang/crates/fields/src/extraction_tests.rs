@@ -1,6 +1,6 @@
 use super::*;
 use crate::types::ArgSpec;
-use ac_dialect::AC_DIALECT;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_runtime::RuntimeValue;
 
 #[test]
