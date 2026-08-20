@@ -101,6 +101,7 @@ ac-typecheck-import = { path = "crates/typecheck-import" }
 ac-typecheck-schema-json = { path = "crates/typecheck-schema-json" }
 indexmap = "2"
 rayon = "1"
+sha2 = "0.10"
 
 [dependencies]
 ac-ast.workspace = true
