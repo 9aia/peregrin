@@ -1,0 +1,34 @@
+# import.field.yml
+# Reusable AC language field pattern: "import" field
+#
+# Emerges from four primitives — no compiler support needed:
+#   arg:    field's data value (a path string) is the input
+#   expr:   call import() on that path
+#   type:   output must be object (required by merge)
+#   merge:  spread result into parent scope, remove field
+#
+# Usage in any AC document:
+#
+#   fields:
+#     import:
+#       type: object
+#       arg: { type: string }
+#       expr: "import(arg)"
+#       merge: true
+#     host:
+#       type: string
+#     port:
+#       type: number
+#
+#   import: "./base.yml"
+#
+# The data value (e.g. "./base.yml") is type-checked as a string by arg:,
+# passed to import() via expr:, the result is validated as an object by type:,
+# then spread into the parent scope by merge: true.
+
+fields:
+  import:
+    type: object
+    arg: { type: string }
+    expr: "import(arg)"
+    merge: true
