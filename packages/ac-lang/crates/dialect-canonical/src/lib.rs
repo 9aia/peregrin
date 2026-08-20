@@ -229,17 +229,17 @@ mod tests {
     }
 
     #[test]
-    fn reserved_keys() {
+    fn top_level_reserved_keys() {
         let d = AcDialect;
-        let reserved = d.reserved_keys();
+        let reserved = d.top_level_reserved_keys();
         assert!(reserved.contains(&"fields"));
         assert!(reserved.contains(&"functions"));
     }
 
     #[test]
-    fn ac_field_keys() {
+    fn reserved_field_keys() {
         let d = AcDialect;
-        let keys = d.ac_field_keys();
+        let keys = d.reserved_field_keys();
         assert!(keys.contains(&"expr"));
         assert!(keys.contains(&"arg"));
         assert!(keys.contains(&"merge"));

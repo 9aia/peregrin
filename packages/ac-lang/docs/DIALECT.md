@@ -76,8 +76,8 @@ The dialect defines the reserved key names used in AC documents. These keys have
 
 The dialect also provides two convenience aggregations:
 
-- **`ac_field_keys()`** — all field-level AC keys (`expr`, `arg`, `merge`, `inheritable`, `mutable`), used for stripping during type generation.
-- **`reserved_keys()`** — top-level keys that cannot be declared as field names (`fields`, `functions`).
+- **`reserved_field_keys()`** — all field-level reserved keys (`expr`, `arg`, `merge`, `inheritable`, `mutable`), used for stripping during type generation.
+- **`top_level_reserved_keys()`** — top-level keys that cannot be declared as field names (`fields`, `functions`).
 
 ### 2.5 Schema vocabulary
 

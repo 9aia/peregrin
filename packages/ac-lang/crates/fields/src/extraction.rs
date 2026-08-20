@@ -27,7 +27,7 @@ pub fn extract_fields(
 
     let fields_key = dialect.fields_key();
     let functions_key = dialect.functions_key();
-    let reserved = dialect.reserved_keys();
+    let reserved = dialect.top_level_reserved_keys();
 
     // Borrow the value to extract schemas and functions, then move it into data.
     if let Some(obj) = value.as_object() {

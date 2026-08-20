@@ -128,8 +128,8 @@ pub trait Dialect: Send + Sync {
         "body"
     }
 
-    /// All AC-specific field-level keys (used for stripping during typegen).
-    fn ac_field_keys(&self) -> Vec<&str> {
+    /// All field-level reserved keys (used for stripping during typegen).
+    fn reserved_field_keys(&self) -> Vec<&str> {
         vec![
             self.expr_key(),
             self.arg_key(),
@@ -140,7 +140,7 @@ pub trait Dialect: Send + Sync {
     }
 
     /// Reserved top-level keys that cannot be declared as field names.
-    fn reserved_keys(&self) -> Vec<&str> {
+    fn top_level_reserved_keys(&self) -> Vec<&str> {
         vec![self.fields_key(), self.functions_key()]
     }
 
