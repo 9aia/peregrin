@@ -20,6 +20,7 @@ export class DiscoveredFiles {
     readonly config: ReadonlyArray<string> = [],
     readonly secrets: ReadonlyArray<Entry> = [],
     readonly env: ReadonlyArray<string> = [],
+    readonly functions: ReadonlyArray<Entry> = [],
   ) {}
 }
 
@@ -34,6 +35,8 @@ const SUFFIX_KINDS: ReadonlyArray<readonly [string, string]> = [
   [".config.yaml", "config"],
   [".secret.yml", "secret"],
   [".secret.yaml", "secret"],
+  [".fn.yml", "function"],
+  [".fn.yaml", "function"],
 ];
 
 const matchSuffix = (filename: string): readonly [string, string] | null => {
@@ -97,6 +100,7 @@ export const discover = (baseDir: string): Effect.Effect<DiscoveredFiles, Discov
       event: new Map(),
       handler: new Map(),
       secret: new Map(),
+      function: new Map(),
     };
     const nodes: Array<Entry> = [];
     const snippets: Array<Entry> = [];
@@ -105,6 +109,7 @@ export const discover = (baseDir: string): Effect.Effect<DiscoveredFiles, Discov
     const config: Array<string> = [];
     const secrets: Array<Entry> = [];
     const env: Array<string> = [];
+    const functions: Array<Entry> = [];
     for (const root of roots) {
       const collected = yield* collect(root, root !== acDir);
       for (const [fpath, fname] of collected) {
@@ -125,11 +130,12 @@ export const discover = (baseDir: string): Effect.Effect<DiscoveredFiles, Discov
           else if (kind === "event") events.push(entry);
           else if (kind === "handler") handlers.push(entry);
           else if (kind === "secret") secrets.push(entry);
+          else if (kind === "function") functions.push(entry);
         } else if (kind === "config") {
           config.push(fpath);
         }
       }
     }
     config.sort();
-    return new DiscoveredFiles(nodes, snippets, events, handlers, config, secrets, env);
+    return new DiscoveredFiles(nodes, snippets, events, handlers, config, secrets, env, functions);
   });

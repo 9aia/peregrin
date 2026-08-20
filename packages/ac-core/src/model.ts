@@ -129,6 +129,43 @@ export class EventSchema {
   }
 }
 
+export class FunctionDefinition {
+  constructor(
+    readonly name: string = "",
+    readonly driver: string = "",
+    readonly params: Readonly<Record<string, unknown>> = {},
+    readonly capabilities: Readonly<Record<string, unknown>> = {},
+    readonly requiresCapability: boolean = false,
+    readonly deterministic: boolean = false,
+    readonly returns: string | null = null,
+  ) {}
+
+  static fromDict(raw: Readonly<Record<string, unknown>>): FunctionDefinition {
+    return new FunctionDefinition(
+      coerceToString(raw.name),
+      coerceToString(raw.driver),
+      (raw.params as Record<string, unknown>) ?? {},
+      (raw.capabilities as Record<string, unknown>) ?? {},
+      Boolean(raw.requires_capability),
+      Boolean(raw.deterministic),
+      typeof raw.returns === "string" ? raw.returns : null,
+    );
+  }
+
+  toDict(): Record<string, unknown> {
+    const d: Record<string, unknown> = {
+      name: this.name,
+      driver: this.driver,
+    };
+    if (Object.keys(this.params).length > 0) d.params = this.params;
+    if (Object.keys(this.capabilities).length > 0) d.capabilities = this.capabilities;
+    if (this.requiresCapability) d.requires_capability = true;
+    if (this.deterministic) d.deterministic = true;
+    if (this.returns !== null) d.returns = this.returns;
+    return d;
+  }
+}
+
 function parseMaxFires(value: unknown, defaultValue: number | "unlimited"): number | "unlimited" {
   if (value === "unlimited") return "unlimited";
   if (typeof value === "number" && Number.isInteger(value) && value > 0) return value;
@@ -161,7 +198,7 @@ export class Node {
     readonly on: ReadonlyArray<string> = [],
     readonly emits: ReadonlyArray<string> = [],
     readonly mode: TriggerMode = "any",
-    readonly with_: Readonly<Record<string, unknown>> = {},
+    readonly params: Readonly<Record<string, unknown>> = {},
     readonly maxFires: number | "unlimited" = 1,
     readonly until: ReadonlyArray<string> = [],
     readonly retireOn: ReadonlyArray<string> = [],
@@ -189,15 +226,15 @@ export class Node {
       const emits = Array.from<string>((raw.emits as Array<string>) ?? []);
       if (!on.includes(tick)) on.push(tick);
       if (!emits.includes(tick)) emits.push(tick);
-      const maxFires = parseMaxFires(raw.max_fires, "unlimited");
+      const maxFires = parseMaxFires(raw.max_fires, 1);
       const until = Array.from<string>((raw.until as Array<string>) ?? []);
       const pollUntil = Array.from<string>((poll.until as Array<string>) ?? []);
       for (const e of pollUntil) if (!until.includes(e)) until.push(e);
-      const with_: Record<string, unknown> = {
-        ...(raw.with as Record<string, unknown>),
+      const params: Record<string, unknown> = {
+        ...(raw.params as Record<string, unknown>),
       };
-      if (typeof poll.interval === "number" && !("interval" in with_)) {
-        with_.interval = poll.interval;
+      if (typeof poll.interval === "number" && !("interval" in params)) {
+        params.interval = poll.interval;
       }
       return new Node(
         nodeId,
@@ -206,7 +243,7 @@ export class Node {
         on,
         emits,
         (raw.mode as TriggerMode) ?? "any",
-        with_,
+        params,
         maxFires,
         until,
         Array.from<string>((raw.retire_on as Array<string>) ?? []),
@@ -223,6 +260,11 @@ export class Node {
         parseNodeOutput(raw.output),
       );
     }
+    const rawParams = (raw.params as Record<string, unknown>) ?? {};
+    const isSelfTrigger =
+      (coerceToString(raw.driver) === "cli" || coerceToString(raw.driver) === "polling") &&
+      rawParams.mode !== "interval";
+    const defaultMaxFires = isSelfTrigger ? 100 : 1;
     return new Node(
       coerceToString(raw.id),
       coerceToString(raw.driver),
@@ -230,8 +272,8 @@ export class Node {
       Array.from<string>((raw.on as Array<string>) ?? []),
       Array.from<string>((raw.emits as Array<string>) ?? []),
       (raw.mode as TriggerMode) ?? "any",
-      (raw.with as Record<string, unknown>) ?? {},
-      parseMaxFires(raw.max_fires, 1),
+      rawParams,
+      parseMaxFires(raw.max_fires, defaultMaxFires),
       Array.from<string>((raw.until as Array<string>) ?? []),
       Array.from<string>((raw.retire_on as Array<string>) ?? []),
       (raw.retry as Record<string, unknown>) ?? {},
@@ -256,7 +298,7 @@ export class Node {
       on: [...this.on],
       emits: [...this.emits],
       mode: this.mode,
-      with: this.with_,
+      params: this.params,
     };
     const defaultFires = 1;
     if (this.maxFires !== defaultFires) d.max_fires = this.maxFires;
@@ -293,6 +335,7 @@ export class Workflow {
     readonly name: string = "",
     readonly events: ReadonlyArray<EventSchema> = [],
     readonly nodes: ReadonlyArray<Node> = [],
+    readonly functions: ReadonlyArray<FunctionDefinition> = [],
     readonly config: Readonly<Record<string, unknown>> = {},
     readonly imports: ReadonlyArray<string> = [],
     readonly pythonImports: ReadonlyArray<PythonImport> = [],
@@ -309,6 +352,9 @@ export class Workflow {
       coerceToString(raw.name),
       ((raw.events as Array<Record<string, unknown>>) ?? []).map((e) => EventSchema.fromDict(e)),
       ((raw.nodes as Array<Record<string, unknown>>) ?? []).map((node) => Node.fromDict(node)),
+      ((raw.functions as Array<Record<string, unknown>>) ?? []).map((fn) =>
+        FunctionDefinition.fromDict(fn),
+      ),
       (raw.config as Record<string, unknown>) ?? {},
       Array.from<string>((raw.include as Array<string>) ?? (raw.includes as Array<string>) ?? []),
       parsePythonImports(raw.import),
@@ -328,6 +374,7 @@ export class Workflow {
       nodes: this.nodes.map((n) => n.toDict()),
       config: this.config,
     };
+    if (this.functions.length > 0) d.functions = this.functions.map((f) => f.toDict());
     if (this.imports.length > 0) d.include = [...this.imports];
     if (this.pythonImports.length > 0) {
       d.import = this.pythonImports.map((i) =>
@@ -347,6 +394,12 @@ export class Workflow {
     for (const event of other.events) {
       if (!existingTypes.has(event.type)) {
         (this.events as EventSchema[]).push(event);
+      }
+    }
+    const existingFunctions = new Set(this.functions.map((f) => f.name));
+    for (const fn of other.functions) {
+      if (!existingFunctions.has(fn.name)) {
+        (this.functions as FunctionDefinition[]).push(fn);
       }
     }
     for (const [key, val] of Object.entries(other.config)) {

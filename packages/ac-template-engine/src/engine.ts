@@ -1,7 +1,7 @@
 import { Effect } from "effect";
 import { Event, Node, TemplateError, type ExecutionContext } from "ac-core";
 import { parseCall } from "./parse.js";
-import { templateFunctions } from "./functions/index.js";
+import { templateFunctions, type TemplateFunction } from "./functions/index.js";
 
 const knownPrefixes = [
   "event",
@@ -96,10 +96,19 @@ function resolveDefaults(input: string): string {
   return result.join("");
 }
 
+function allFunctions(
+  customFunctions?: Readonly<Record<string, TemplateFunction>>,
+): Readonly<Record<string, TemplateFunction>> {
+  if (customFunctions === undefined || Object.keys(customFunctions).length === 0)
+    return templateFunctions;
+  return { ...templateFunctions, ...customFunctions };
+}
+
 function resolvePlaceholderEffect(
   placeholder: string,
   ctx: ExecutionContext,
   node: Node | undefined,
+  customFunctions?: Readonly<Record<string, TemplateFunction>>,
 ): Effect.Effect<string, TemplateError> {
   if (!placeholder.startsWith("${") || !placeholder.endsWith("}")) {
     return Effect.succeed(placeholder);
@@ -107,7 +116,8 @@ function resolvePlaceholderEffect(
   const content = placeholder.slice(2, -1);
   const call = parseCall(content);
   if (call === null) return Effect.succeed(placeholder);
-  const fn = templateFunctions[call.name];
+  const fns = allFunctions(customFunctions);
+  const fn = fns[call.name];
   if (fn === undefined) return Effect.succeed(placeholder);
   const caps = ctx.capabilities;
   if (caps[call.name] === undefined || caps[call.name] === false) {
@@ -123,6 +133,7 @@ function renderTemplateEffect(
   input: string,
   ctx: ExecutionContext,
   node: Node | undefined,
+  customFunctions?: Readonly<Record<string, TemplateFunction>>,
 ): Effect.Effect<string, TemplateError> {
   const re = /\$\{([^}]+)\}/g;
   const textParts: string[] = [];
@@ -138,7 +149,7 @@ function renderTemplateEffect(
   return Effect.gen(function* () {
     const resolved: string[] = [];
     for (const p of placeholders) {
-      resolved.push(yield* resolvePlaceholderEffect(p, ctx, node));
+      resolved.push(yield* resolvePlaceholderEffect(p, ctx, node, customFunctions));
     }
     let out = "";
     for (let i = 0; i < resolved.length; i++) {
@@ -149,12 +160,17 @@ function renderTemplateEffect(
   });
 }
 
-function isUnresolvable(content: string, ctx: ExecutionContext): boolean {
+function isUnresolvable(
+  content: string,
+  ctx: ExecutionContext,
+  customFunctions?: Readonly<Record<string, TemplateFunction>>,
+): boolean {
   const call = parseCall(content);
   if (call !== null) {
+    const fns = allFunctions(customFunctions);
     const caps = ctx.capabilities;
     return !(
-      templateFunctions[call.name] !== undefined &&
+      fns[call.name] !== undefined &&
       caps[call.name] !== undefined &&
       caps[call.name] !== false
     );
@@ -162,7 +178,11 @@ function isUnresolvable(content: string, ctx: ExecutionContext): boolean {
   return !isJinjaExpr(content);
 }
 
-function findAllPlaceholders(input: string, ctx: ExecutionContext): ReadonlyArray<string> {
+function findAllPlaceholders(
+  input: string,
+  ctx: ExecutionContext,
+  customFunctions?: Readonly<Record<string, TemplateFunction>>,
+): ReadonlyArray<string> {
   const found: string[] = [];
   let i = 0;
   while (i < input.length) {
@@ -173,7 +193,7 @@ function findAllPlaceholders(input: string, ctx: ExecutionContext): ReadonlyArra
         break;
       }
       const inner = input.slice(i + 2, end).trim();
-      if (isUnresolvable(inner, ctx)) found.push(input.slice(i, end + 1));
+      if (isUnresolvable(inner, ctx, customFunctions)) found.push(input.slice(i, end + 1));
       i = end + 1;
     } else {
       i++;
@@ -187,12 +207,13 @@ export const resolveTemplate = (
   _triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
   node?: Node,
+  customFunctions?: Readonly<Record<string, TemplateFunction>>,
 ): Effect.Effect<string, TemplateError> =>
   Effect.gen(function* () {
     const pre = resolveDefaults(templateStr);
-    const rendered = yield* renderTemplateEffect(pre, ctx, node);
+    const rendered = yield* renderTemplateEffect(pre, ctx, node, customFunctions);
     if (ctx.strict) {
-      const unresolved = findAllPlaceholders(rendered, ctx);
+      const unresolved = findAllPlaceholders(rendered, ctx, customFunctions);
       if (unresolved.length > 0) {
         return yield* Effect.fail(
           new TemplateError({
@@ -216,22 +237,23 @@ function resolveValueEffect(
   triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
   node?: Node,
+  customFunctions?: Readonly<Record<string, TemplateFunction>>,
 ): Effect.Effect<unknown, TemplateError> {
   return Effect.gen(function* () {
     if (typeof value === "string") {
-      return yield* resolveTemplate(value, triggers, ctx, node);
+      return yield* resolveTemplate(value, triggers, ctx, node, customFunctions);
     }
     if (Array.isArray(value)) {
       const out: Array<unknown> = [];
       for (const v of value) {
-        out.push(yield* resolveValueEffect(v, triggers, ctx, node));
+        out.push(yield* resolveValueEffect(v, triggers, ctx, node, customFunctions));
       }
       return out;
     }
     if (value !== null && typeof value === "object") {
       const out: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(value)) {
-        out[k] = yield* resolveValueEffect(v, triggers, ctx, node);
+        out[k] = yield* resolveValueEffect(v, triggers, ctx, node, customFunctions);
       }
       return out;
     }
@@ -243,11 +265,15 @@ export const resolveValue = (
   value: unknown,
   triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
-): Effect.Effect<unknown, TemplateError> => resolveValueEffect(value, triggers, ctx);
+  customFunctions?: Readonly<Record<string, TemplateFunction>>,
+): Effect.Effect<unknown, TemplateError> =>
+  resolveValueEffect(value, triggers, ctx, undefined, customFunctions);
 
 export const resolveValueForNode = (
   value: unknown,
   triggers: ReadonlyArray<Event>,
   ctx: ExecutionContext,
   node: Node,
-): Effect.Effect<unknown, TemplateError> => resolveValueEffect(value, triggers, ctx, node);
+  customFunctions?: Readonly<Record<string, TemplateFunction>>,
+): Effect.Effect<unknown, TemplateError> =>
+  resolveValueEffect(value, triggers, ctx, node, customFunctions);

@@ -4,6 +4,7 @@ import {
   Driver,
   Event,
   EventSchema,
+  FunctionDefinition,
   Node,
   Workflow,
   DriverError,
@@ -16,7 +17,7 @@ import type { ExecutionContext } from "ac-core";
 import { captureWildcards, EventBus, matches } from "./bus.js";
 import { DriverRegistry } from "./registry.js";
 import { buildValidator, CapabilityChecker, ResourceGate, validateObject } from "ac-safety";
-import { resolveTemplate, resolveValueForNode } from "ac-template-engine";
+import { resolveTemplate, resolveValueForNode, type TemplateFunction } from "ac-template-engine";
 
 function resolveForward(fwdType: string, captures: Record<string, string>): string {
   const parts = fwdType.split(".");
@@ -104,6 +105,94 @@ export interface Runner {
 }
 
 export const Runner = Context.GenericTag<Runner>("ac/Runner");
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function applyArgs(value: unknown, args: ReadonlyArray<unknown>): unknown {
+  if (typeof value === "string") {
+    return value.replace(/\$\{(\d+)\}/g, (_, index) => {
+      const i = Number(index);
+      return i < args.length ? String(args[i]) : `$\{${i}}`;
+    });
+  }
+  if (Array.isArray(value)) return value.map((v) => applyArgs(v, args));
+  if (isRecord(value)) {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      out[k] = applyArgs(v, args);
+    }
+    return out;
+  }
+  return value;
+}
+
+function getPath(value: unknown, path: string): unknown {
+  const parts = path.split(".");
+  let current: unknown = value;
+  for (const part of parts) {
+    if (!isRecord(current)) return undefined;
+    current = current[part];
+  }
+  return current;
+}
+
+function makeCustomFunction(def: FunctionDefinition, registry: DriverRegistry): TemplateFunction {
+  return {
+    name: def.name,
+    deterministic: def.deterministic,
+    requiresCapability: def.requiresCapability,
+    call: (args, ctx, _node, _method) =>
+      Effect.gen(function* () {
+        const driver = yield* registry
+          .resolve(def.driver)
+          .pipe(Effect.mapError((error) => new TemplateError({ reason: error.reason })));
+        const resolvedParams = applyArgs(def.params, args) as Record<string, unknown>;
+        const node = new Node(
+          `fn:${def.name}`,
+          def.driver,
+          "",
+          [],
+          ["fn.done"],
+          "any",
+          resolvedParams,
+          1,
+          [],
+          [],
+          {},
+          {},
+          null,
+          null,
+          [],
+          {},
+          def.capabilities,
+          {},
+          {},
+          null,
+          [],
+        );
+        const events = yield* driver
+          .invoke(node, [], ctx)
+          .pipe(Effect.mapError((error) => new TemplateError({ reason: error.reason })));
+        const first = events[0];
+        if (first === undefined) {
+          return yield* Effect.fail(
+            new TemplateError({ reason: `function '${def.name}' produced no output` }),
+          );
+        }
+        if (first.type.includes("failed") || first.type === "node.failed") {
+          const payload = first.payload;
+          const reason =
+            isRecord(payload) && typeof payload.error === "string"
+              ? payload.error
+              : `function '${def.name}' failed: ${first.type}`;
+          return yield* Effect.fail(new TemplateError({ reason }));
+        }
+        return def.returns ? getPath(first.payload, def.returns) : first.payload;
+      }),
+  };
+}
 
 class RunnerLive implements Runner {
   private idempotencyCounter = 0;
@@ -237,6 +326,15 @@ class RunnerLive implements Runner {
     });
   }
 
+  private buildCustomFunctions(workflow: Workflow): Readonly<Record<string, TemplateFunction>> {
+    const out: Record<string, TemplateFunction> = {};
+    for (const def of workflow.functions) {
+      if (def.name.length === 0 || def.driver.length === 0) continue;
+      out[def.name] = makeCustomFunction(def, this.registry);
+    }
+    return out;
+  }
+
   private resetState(): void {
     this.idempotencyCounter = 0;
     this.retryCounts.clear();
@@ -264,6 +362,7 @@ class RunnerLive implements Runner {
       const [log, fires] = yield* Effect.all([this.bus.log, this.bus.fireCount(node.id)]);
 
       const run = Effect.gen(this, function* (this: RunnerLive, _resume: Adapter) {
+        const customFunctions = this.buildCustomFunctions(workflow);
         const preKey = `${node.id}:pre`;
         const preCtx = this.makeContext(
           node,
@@ -279,7 +378,13 @@ class RunnerLive implements Runner {
           this.stateStore,
         );
 
-        const resolvedEither = yield* resolveValueForNode(node.with_, triggers, preCtx, node).pipe(
+        const resolvedEither = yield* resolveValueForNode(
+          node.params,
+          triggers,
+          preCtx,
+          node,
+          customFunctions,
+        ).pipe(
           Effect.mapError((error: TemplateError) => new DriverError({ reason: error.reason })),
           Effect.either,
         );
@@ -290,7 +395,7 @@ class RunnerLive implements Runner {
           return [fail];
         }
 
-        const resolvedWith = resolvedEither.right as Readonly<Record<string, unknown>>;
+        const resolvedParams = resolvedEither.right as Readonly<Record<string, unknown>>;
 
         if (!node.driver) {
           this.observer.onNodeEnd(node, [], null, span);
@@ -299,9 +404,9 @@ class RunnerLive implements Runner {
         const driver = yield* this.registry.resolve(node.driver);
         const inputSchema = node.input ?? driver.input ?? null;
         if (inputSchema !== null) {
-          const inputErrors = validateObject(inputSchema, resolvedWith);
+          const inputErrors = validateObject(inputSchema, resolvedParams);
           if (inputErrors.length > 0) {
-            const invalid = Event.eventInvalid("node.input", node.id, inputErrors, resolvedWith);
+            const invalid = Event.eventInvalid("node.input", node.id, inputErrors, resolvedParams);
             if (workflow.strict) {
               const fail = Event.nodeFailed(
                 node.id,
@@ -319,7 +424,13 @@ class RunnerLive implements Runner {
         let nodeState: StateStore = this.stateStore;
         const stateKeyTemplate = node.state["key"];
         if (typeof stateKeyTemplate === "string" && stateKeyTemplate.length > 0) {
-          stateKey = yield* resolveTemplate(stateKeyTemplate, triggers, preCtx, node).pipe(
+          stateKey = yield* resolveTemplate(
+            stateKeyTemplate,
+            triggers,
+            preCtx,
+            node,
+            customFunctions,
+          ).pipe(
             Effect.mapError((error: TemplateError) => new DriverError({ reason: error.reason })),
           );
           const record = this.stateStore.get(stateKey);
@@ -343,7 +454,13 @@ class RunnerLive implements Runner {
               "",
               nodeState,
             );
-            const rendered = yield* resolveTemplate(skipIf, triggers, skipCtx, node).pipe(
+            const rendered = yield* resolveTemplate(
+              skipIf,
+              triggers,
+              skipCtx,
+              node,
+              customFunctions,
+            ).pipe(
               Effect.mapError((error: TemplateError) => new DriverError({ reason: error.reason })),
             );
             if (["true", "yes", "1", "ok"].includes(rendered.trim().toLowerCase())) {
@@ -361,7 +478,7 @@ class RunnerLive implements Runner {
         const capChecker = new CapabilityChecker(workflow.capabilities, workflow.strict);
         const effective = capChecker.merge(node.capabilities);
         const check = new CapabilityChecker(effective, workflow.strict);
-        const violations = check.check(node.driver, resolvedWith);
+        const violations = check.check(node.driver, resolvedParams);
 
         if (violations.length > 0) {
           const events: Array<Event> = [Event.capabilityViolation(node.id, violations)];
@@ -397,8 +514,8 @@ class RunnerLive implements Runner {
           const tick = `${node.id}.tick`;
           const isTick = triggers.some((event) => event.type === tick);
           const interval =
-            typeof node.with_.interval === "number"
-              ? node.with_.interval
+            typeof node.params.interval === "number"
+              ? node.params.interval
               : typeof node.poll?.interval === "number"
                 ? node.poll.interval
                 : 0;
@@ -497,8 +614,8 @@ class RunnerLive implements Runner {
     if (node.poll) {
       const tick = `${node.id}.tick`;
       const interval =
-        typeof node.with_.interval === "number"
-          ? node.with_.interval
+        typeof node.params.interval === "number"
+          ? node.params.interval
           : typeof node.poll?.interval === "number"
             ? node.poll.interval
             : 0;

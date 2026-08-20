@@ -41,18 +41,18 @@ describe("ac-loader-yaml", () => {
             "    driver: shell",
             "    on: [start]",
             "    emits: [deploy.done]",
-            "    with:",
+            "    params:",
             "      include: env.yaml",
             "      cmd: deploy.sh",
           ].join("\n"),
           tmp,
         ),
       );
-      const with_ = wf.nodes[0].with_;
-      expect(with_.env).toEqual({ REGION: "us-east-1" });
-      expect(with_.timeout).toBe(300);
-      expect(with_.cmd).toBe("deploy.sh");
-      expect(with_.include).toBeUndefined();
+      const params = wf.nodes[0].params;
+      expect(params.env).toEqual({ REGION: "us-east-1" });
+      expect(params.timeout).toBe(300);
+      expect(params.cmd).toBe("deploy.sh");
+      expect(params.include).toBeUndefined();
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
@@ -70,14 +70,14 @@ describe("ac-loader-yaml", () => {
             "  - id: deploy",
             "    driver: shell",
             "    on: [start]",
-            "    with:",
+            "    params:",
             "      env: ${include(env.yaml)}",
             "      cmd: deploy.sh",
           ].join("\n"),
           tmp,
         ),
       );
-      expect(wf.nodes[0].with_.env).toEqual({ REGION: "us-east-1", CLUSTER: "prod" });
+      expect(wf.nodes[0].params.env).toEqual({ REGION: "us-east-1", CLUSTER: "prod" });
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
@@ -113,14 +113,14 @@ describe("ac-loader-yaml", () => {
             "  - id: deploy",
             "    driver: shell",
             "    on: [start]",
-            "    with:",
+            "    params:",
             "      cmd: echo version ${include(version.yaml)}",
           ].join("\n"),
           tmp,
         ),
       );
       expect(wf.name).toBe("deploy-1.2.3");
-      expect(wf.nodes[0].with_.cmd).toBe("echo version 1.2.3");
+      expect(wf.nodes[0].params.cmd).toBe("echo version 1.2.3");
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
@@ -163,13 +163,13 @@ describe("ac-loader-yaml", () => {
             "  - id: deploy",
             "    driver: shell",
             "    on: [start]",
-            "    with:",
+            "    params:",
             "      include: prod.yaml",
           ].join("\n"),
           tmp,
         ),
       );
-      expect(wf.nodes[0].with_.env).toEqual({
+      expect(wf.nodes[0].params.env).toEqual({
         PYTHONPATH: "/app",
         REGION: "us-east-1",
       });
@@ -191,13 +191,13 @@ describe("ac-loader-yaml", () => {
             "  - id: deploy",
             "    driver: shell",
             "    on: [start]",
-            "    with:",
+            "    params:",
             "      env: ${include(prod.yaml)}",
           ].join("\n"),
           tmp,
         ),
       );
-      const env = wf.nodes[0].with_.env as Record<string, unknown>;
+      const env = wf.nodes[0].params.env as Record<string, unknown>;
       expect(env.PYTHONPATH).toBe("/app");
       expect(env.REGION).toBe("us-east-1");
     } finally {
@@ -224,7 +224,7 @@ describe("ac-loader-yaml", () => {
       await expect(
         Effect.runPromise(
           loadRaw(
-            ["nodes:", "  - id: x", "    with:", "      val: ${include(a.yaml)}"].join("\n"),
+            ["nodes:", "  - id: x", "    params:", "      val: ${include(a.yaml)}"].join("\n"),
             tmp,
           ),
         ),
@@ -249,11 +249,11 @@ describe("ac-loader-yaml", () => {
     try {
       fs.writeFileSync(
         path.join(tmp, "main.yaml"),
-        "nodes:\n  - id: x\n    with:\n      include: missing.yaml\n",
+        "nodes:\n  - id: x\n    params:\n      include: missing.yaml\n",
       );
       await expect(
         Effect.runPromise(
-          loadWorkflowFromText("nodes:\n  - id: x\n    with:\n      include: missing.yaml", tmp),
+          loadWorkflowFromText("nodes:\n  - id: x\n    params:\n      include: missing.yaml", tmp),
         ),
       ).rejects.toBeDefined();
     } finally {
@@ -272,7 +272,7 @@ describe("ac-loader-yaml", () => {
             "  base:",
             "    driver: shell",
             "    emits: [base.done]",
-            "    with:",
+            "    params:",
             "      timeout: 600",
             "      env:",
             "        A: 1",
@@ -280,7 +280,7 @@ describe("ac-loader-yaml", () => {
             "  - id: n",
             "    snippet: base",
             "    on: [start]",
-            "    with:",
+            "    params:",
             "      env:",
             "        B: 2",
           ].join("\n"),
@@ -290,8 +290,8 @@ describe("ac-loader-yaml", () => {
       const node = wf.nodes[0];
       expect(node.driver).toBe("shell");
       expect(node.emits).toEqual(["base.done"]);
-      expect(node.with_.timeout).toBe(600);
-      expect(node.with_.env).toEqual({ A: 1, B: 2 });
+      expect(node.params.timeout).toBe(600);
+      expect(node.params.env).toEqual({ A: 1, B: 2 });
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
@@ -310,13 +310,13 @@ describe("ac-loader-yaml", () => {
             "  - id: n",
             "    driver: shell",
             "    on: [start]",
-            "    with:",
+            "    params:",
             "      cmd: ${snippet(cmd)}",
           ].join("\n"),
           tmp,
         ),
       );
-      expect(wf.nodes[0].with_.cmd).toBe("echo hello");
+      expect(wf.nodes[0].params.cmd).toBe("echo hello");
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
@@ -335,7 +335,7 @@ describe("ac-loader-yaml", () => {
             "  - id: n",
             "    driver: shell",
             "    on: ${snippet(triggers)}",
-            "    with:",
+            "    params:",
             "      cmd: echo ok",
           ].join("\n"),
           tmp,
@@ -362,14 +362,14 @@ describe("ac-loader-yaml", () => {
             "  - id: n",
             "    driver: shell",
             "    on: [start]",
-            "    with:",
+            "    params:",
             "      env: ${snippet(env)}",
             "      cmd: echo ok",
           ].join("\n"),
           tmp,
         ),
       );
-      expect(wf.nodes[0].with_.env).toEqual({
+      expect(wf.nodes[0].params.env).toEqual({
         REGION: "us-east-1",
         CLUSTER: "prod",
       });
@@ -391,13 +391,13 @@ describe("ac-loader-yaml", () => {
             "  - id: n",
             "    driver: shell",
             "    on: [start]",
-            "    with:",
+            "    params:",
             "      cmd: run --model ${snippet(model)}",
           ].join("\n"),
           tmp,
         ),
       );
-      expect(wf.nodes[0].with_.cmd).toBe("run --model sonnet");
+      expect(wf.nodes[0].params.cmd).toBe("run --model sonnet");
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
@@ -430,15 +430,15 @@ describe("ac-loader-yaml", () => {
             "name: test",
             "snippets:",
             "  a:",
-            "    with:",
+            "    params:",
             "      x: 1",
             "  b:",
             "    snippet: a",
-            "    with:",
+            "    params:",
             "      y: 2",
             "  c:",
             "    snippet: b",
-            "    with:",
+            "    params:",
             "      z: 3",
             "nodes:",
             "  - id: n",
@@ -448,10 +448,10 @@ describe("ac-loader-yaml", () => {
           tmp,
         ),
       );
-      const with_ = wf.nodes[0].with_;
-      expect(with_.x).toBe(1);
-      expect(with_.y).toBe(2);
-      expect(with_.z).toBe(3);
+      const params = wf.nodes[0].params;
+      expect(params.x).toBe(1);
+      expect(params.y).toBe(2);
+      expect(params.z).toBe(3);
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
@@ -489,7 +489,7 @@ describe("ac-loader-yaml", () => {
       fs.mkdirSync(acDir);
       fs.writeFileSync(
         path.join(acDir, "shared.snippet.yml"),
-        ["driver: shell", "with:", "  timeout: 1200"].join("\n"),
+        ["driver: shell", "params:", "  timeout: 1200"].join("\n"),
       );
       fs.writeFileSync(
         path.join(acDir, "auto.node.yml"),
@@ -506,7 +506,7 @@ describe("ac-loader-yaml", () => {
       expect(wf.nodes).toHaveLength(2);
       expect(wf.nodes[0].id).toBe("auto");
       expect(wf.nodes[1].id).toBe("n");
-      expect(wf.nodes[1].with_.timeout).toBe(1200);
+      expect(wf.nodes[1].params.timeout).toBe(1200);
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }

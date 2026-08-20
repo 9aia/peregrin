@@ -388,6 +388,37 @@ const autoDiscover = (
       }
       raw.payload_schemas = schemas;
     }
+    if (discovered.functions.length > 0) {
+      const functionList: unknown[] = [];
+      for (const entry of discovered.functions) {
+        const text = yield* readTextFile(entry.path);
+        const parsed = yield* parseYaml(text);
+        if (isRecord(parsed)) {
+          if (!("name" in parsed) || typeof parsed.name !== "string" || parsed.name.length === 0) {
+            parsed.name = entry.name;
+          }
+          functionList.push(parsed);
+        }
+      }
+      const existing = Array.isArray(raw.functions) ? [...raw.functions] : [];
+      raw.functions = [...functionList, ...existing];
+    }
+  });
+
+const rejectWithKey = (raw: Record<string, unknown>): Effect.Effect<void, LoaderError, never> =>
+  Effect.gen(function* () {
+    const nodes = raw.nodes;
+    if (!Array.isArray(nodes)) return;
+    for (const n of nodes) {
+      if (isRecord(n) && "with" in n) {
+        const id = typeof n.id === "string" ? ` '${n.id}'` : "";
+        return yield* Effect.fail(
+          new LoaderError({
+            reason: `Node${id} uses removed 'with' field; use 'params' instead`,
+          }),
+        );
+      }
+    }
   });
 
 export const loadRaw = (
@@ -419,6 +450,7 @@ export const loadRaw = (
       string,
       unknown
     >;
+    yield* rejectWithKey(raw);
     return raw;
   });
 
