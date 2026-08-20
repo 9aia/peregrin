@@ -18,22 +18,22 @@ export const PythonDriver: Driver = {
   name: "python",
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
-      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+      const resolved = yield* resolveValueForNode(node.params, triggers, ctx, node).pipe(
         Effect.mapError((error) => new DriverError({ reason: String(error) })),
       );
 
-      const with_ = resolved as Record<string, unknown>;
+      const params = resolved as Record<string, unknown>;
       const handlerName =
         typeof node.handler === "string" && node.handler.length > 0
           ? node.handler
-          : typeof with_.handler === "string"
-            ? with_.handler
+          : typeof params.handler === "string"
+            ? params.handler
             : "";
-      const script = with_.script;
-      const module_ = with_.module;
-      const function_ = with_.function;
-      const args = Array.isArray(with_.args) ? with_.args.map(String) : [];
-      const timeout = typeof with_.timeout === "number" ? with_.timeout : 30000;
+      const script = params.script;
+      const module_ = params.module;
+      const function_ = params.function;
+      const args = Array.isArray(params.args) ? params.args.map(String) : [];
+      const timeout = typeof params.timeout === "number" ? params.timeout : 30000;
 
       if (handlerName.includes(":")) {
         const [alias, fn] = handlerName.split(":");
@@ -98,7 +98,7 @@ export const PythonDriver: Driver = {
 
       return yield* Effect.fail(
         new DriverError({
-          reason: `python node '${node.id}' missing 'with.script' or 'with.module' and 'with.function'`,
+          reason: `python node '${node.id}' missing 'params.script' or 'params.module' and 'params.function'`,
         }),
       );
     }),

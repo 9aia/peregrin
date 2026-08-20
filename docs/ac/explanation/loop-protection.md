@@ -29,7 +29,7 @@ emit `node.exhausted`; that is the intended stop, not exhaustion.
   driver: shell
   on: [node.exhausted]
   emits: [workflow.aborted]
-  with:
+  params:
     cmd: |
       echo "FIX EXHAUSTED — node '${event.payload.node}'"
       echo "  hit max_fires=${event.payload.max_fires}"

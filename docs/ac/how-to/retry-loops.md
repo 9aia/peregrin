@@ -13,7 +13,7 @@ nodes:
     emits: [op.success, op.retry]
     max_fires: 5
     until: [op.success]
-    with:
+    params:
       emit:
         0: op.success
         default: op.retry
@@ -22,7 +22,7 @@ nodes:
 
 - `max_fires: 5` — the node fires at most 5 times.
 - `until: [op.success]` — stops firing once `op.success` exists in the log.
-- `with.emit` — maps exit codes to events.
+- `params.emit` — maps exit codes to events.
 
 ## Poll until condition
 
@@ -34,7 +34,7 @@ nodes:
     emits: [poll.ready, poll.tick]
     max_fires: unlimited
     until: [poll.ready]
-    with:
+    params:
       emit:
         0: poll.ready
         default: poll.tick

@@ -77,7 +77,7 @@ nodes:
     driver: agent
     on: [start]
     emits: [generate.done, generate.failed]
-    with:
+    params:
       runner: "${config.agent_runner}"
       prompt_file: workflows/create-workflow/generate.prompt.md
       permission_mode: dangerous
@@ -95,7 +95,7 @@ nodes:
     driver: shell
     on: [generate.done, fix.done]
     emits: [validate.passed, validate.failed]
-    with:
+    params:
       cmd: |
         cd "${config.repo}"
         ac validate "${WORKFLOW_PATH}" 2>&1
@@ -112,7 +112,7 @@ nodes:
     driver: shell
     on: [validate.passed]
     emits: [dryrun.done, dryrun.failed]
-    with:
+    params:
       cmd: |
         cd "${config.repo}"
         ac run "${WORKFLOW_PATH}" --dry-run --no-store 2>&1
@@ -131,7 +131,7 @@ nodes:
     driver: agent
     on: [dryrun.done]
     emits: [review.approved, review.rejected]
-    with:
+    params:
       runner: "${config.agent_runner}"
       prompt_file: workflows/create-workflow/review.prompt.md
       permission_mode: normal
@@ -154,7 +154,7 @@ nodes:
     on: [validate.failed, review.rejected]
     emits: [fix.done, fix.failed]
     max_fires: 3
-    with:
+    params:
       runner: "${config.agent_runner}"
       prompt_file: workflows/create-workflow/fix.prompt.md
       permission_mode: dangerous
@@ -171,7 +171,7 @@ nodes:
     driver: shell
     on: [review.approved]
     emits: [create-workflow.complete]
-    with:
+    params:
       cmd: |
         echo ""
         echo "========================================"
@@ -189,7 +189,7 @@ nodes:
     driver: shell
     on: [generate.failed, dryrun.failed, fix.failed]
     emits: [create-workflow.aborted]
-    with:
+    params:
       cmd: |
         echo ""
         echo "========================================"
@@ -207,7 +207,7 @@ nodes:
     driver: shell
     on: [node.exhausted]
     emits: [create-workflow.aborted]
-    with:
+    params:
       cmd: |
         echo ""
         echo "========================================"

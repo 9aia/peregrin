@@ -33,14 +33,14 @@ contract. There is nothing to soften — decoupling is a property of the medium.
 - id: notify-desktop
   on: [notify.requested]
   driver: shell
-  with:
+  params:
     cmd: "notify-send '${event.payload.message}'"
 
 # Implementation 2: also log to file (just add another subscriber)
 - id: notify-log
   on: [notify.requested]
   driver: shell
-  with:
+  params:
     cmd: "echo '${event.payload.message}' >> /var/log/builds.log"
 ```
 

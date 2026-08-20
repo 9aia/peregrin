@@ -26,7 +26,7 @@ nodes:
     driver: python
     on: [start]
     emits: [generate.done]
-    with:
+    params:
       module: examples.conf
       function: generate
 
@@ -34,7 +34,7 @@ nodes:
     driver: python
     on: [generate.done]
     emits: [review.done]
-    with:
+    params:
       module: examples.conf
       function: review
 
@@ -47,7 +47,7 @@ nodes:
     driver: shell
     on: [capability.violation]
     emits: [confinement.demonstrated]
-    with:
+    params:
       cmd: |
         echo "=== CAPABILITY CONFINEMENT DEMONSTRATED ==="
         echo "Blocked node:  ${event.payload.node}"
@@ -57,7 +57,7 @@ nodes:
     driver: shell
     on: [safe-op.done]
     emits: [confinement.demonstrated]
-    with:
+    params:
       cmd: |
         echo "Safe node (echo) ran; dangerous node (rm) was blocked."
 
@@ -65,5 +65,5 @@ nodes:
     driver: shell
     on: [confinement.demonstrated]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'Capability confinement example complete'"

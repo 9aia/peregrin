@@ -3,15 +3,15 @@ import { Effect, Layer } from "effect";
 import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
 import { resolveValueForNode } from "ac-template-engine";
 
-function buildEnv(with_: Record<string, unknown>, ctx: ExecutionContext): NodeJS.ProcessEnv {
+function buildEnv(params: Record<string, unknown>, ctx: ExecutionContext): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };
-  const configEnv = with_.env;
+  const configEnv = params.env;
   if (configEnv !== null && typeof configEnv === "object") {
     for (const [key, value] of Object.entries(configEnv as Record<string, unknown>)) {
       env[key] = String(value);
     }
   }
-  const secrets = with_.secrets;
+  const secrets = params.secrets;
   if (Array.isArray(secrets)) {
     for (const key of secrets) {
       if (typeof key === "string") {
@@ -26,24 +26,24 @@ export const CliDriver: Driver = {
   name: "cli",
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
-      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+      const resolved = yield* resolveValueForNode(node.params, triggers, ctx, node).pipe(
         Effect.mapError((error) => new DriverError({ reason: String(error) })),
       );
 
-      const with_ = resolved as Record<string, unknown>;
-      const cmd = with_.cmd;
+      const params = resolved as Record<string, unknown>;
+      const cmd = params.cmd;
       if (typeof cmd !== "string" || cmd.length === 0) {
         return yield* Effect.fail(
-          new DriverError({ reason: `cli node '${node.id}' missing 'with.cmd'` }),
+          new DriverError({ reason: `cli node '${node.id}' missing 'params.cmd'` }),
         );
       }
 
-      const interval = typeof with_.interval === "number" ? with_.interval : 60;
-      const parseJson = with_.parse_json === true;
-      const mode = with_.mode === "interval" ? "interval" : "self-trigger";
+      const interval = typeof params.interval === "number" ? params.interval : 60;
+      const parseJson = params.parse_json === true;
+      const mode = params.mode === "interval" ? "interval" : "self-trigger";
       const eventType =
-        typeof with_.event_type === "string" && with_.event_type.length > 0
-          ? with_.event_type
+        typeof params.event_type === "string" && params.event_type.length > 0
+          ? params.event_type
           : (node.emits[0] ?? `${node.id}.line`);
       const tickEvent = `${node.id}.tick`;
       const doneEvent = `${node.id}.done`;
@@ -52,7 +52,7 @@ export const CliDriver: Driver = {
         return [new Event(eventType, { cmd, dryRun: true, interval, mode }, node.id)];
       }
 
-      const env = buildEnv(with_, ctx);
+      const env = buildEnv(params, ctx);
 
       const result = yield* Effect.try({
         try: () =>

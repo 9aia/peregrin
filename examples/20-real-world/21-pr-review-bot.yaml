@@ -17,7 +17,7 @@ nodes:
     driver: http
     on: [start]
     emits: [pr.fetched, pr.fetch_failed]
-    with:
+    params:
       emit:
         200: pr.fetched
         default: pr.fetch_failed
@@ -33,7 +33,7 @@ nodes:
     driver: shell
     on: [pr.fetched]
     emits: [lint.passed, lint.failed]
-    with:
+    params:
       emit:
         0: lint.passed
         default: lint.failed
@@ -43,7 +43,7 @@ nodes:
     driver: shell
     on: [pr.fetched]
     emits: [test.passed, test.failed]
-    with:
+    params:
       emit:
         0: test.passed
         default: test.failed
@@ -54,7 +54,7 @@ nodes:
     on: [lint.passed, test.passed]
     mode: all
     emits: [review.approved, review.requested]
-    with:
+    params:
       runner: devin
       prompt: "Review PR #${config.pr_number} in ${config.repo}. Approve if the diff is safe."
       permission_mode: safe
@@ -66,7 +66,7 @@ nodes:
     driver: http
     on: [review.approved]
     emits: [bot.done]
-    with:
+    params:
       method: POST
       url: "https://api.github.com/repos/${config.repo}/issues/${config.pr_number}/comments"
       auth:
@@ -79,7 +79,7 @@ nodes:
     driver: http
     on: [review.requested]
     emits: [bot.done]
-    with:
+    params:
       method: POST
       url: "https://api.github.com/repos/${config.repo}/issues/${config.pr_number}/comments"
       auth:
@@ -92,5 +92,5 @@ nodes:
     driver: shell
     on: [bot.done]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'PR review bot finished'"

@@ -19,7 +19,7 @@ nodes:
     emits: [op.success, op.retry]
     max_fires: 5
     until: [op.success]
-    with:
+    params:
       emit:
         0: op.success
         default: op.retry
@@ -36,5 +36,5 @@ nodes:
     driver: shell
     on: [op.success]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'operation succeeded after retries'"

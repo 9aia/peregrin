@@ -217,31 +217,31 @@ export const AppriseDriver: Driver = {
   name: "apprise",
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
-      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+      const resolved = yield* resolveValueForNode(node.params, triggers, ctx, node).pipe(
         Effect.mapError((error) => new DriverError({ reason: String(error) })),
       );
 
-      const with_ = resolved as Record<string, unknown>;
+      const params = resolved as Record<string, unknown>;
       const handler = node.handler === "send_multi" ? "send_multi" : "send";
-      const title = asString(with_.title);
-      const body = asString(with_.body);
-      const bodyFormat = asString(with_.body_format);
+      const title = asString(params.title);
+      const body = asString(params.body);
+      const bodyFormat = asString(params.body_format);
       const timeout =
-        typeof with_.timeout === "number" && with_.timeout > 0 ? with_.timeout : undefined;
+        typeof params.timeout === "number" && params.timeout > 0 ? params.timeout : undefined;
 
       if (handler === "send") {
-        const target = asString(with_.target);
+        const target = asString(params.target);
         if (target === undefined) {
           return yield* Effect.fail(
             new DriverError({
-              reason: `apprise node '${node.id}' missing 'with.target'`,
+              reason: `apprise node '${node.id}' missing 'params.target'`,
             }),
           );
         }
         if (body === undefined) {
           return yield* Effect.fail(
             new DriverError({
-              reason: `apprise node '${node.id}' missing 'with.body'`,
+              reason: `apprise node '${node.id}' missing 'params.body'`,
             }),
           );
         }
@@ -271,19 +271,19 @@ export const AppriseDriver: Driver = {
         return [new Event(eventType, { ...result.right, body, title, success }, node.id)];
       }
 
-      const rawTargets = with_.targets;
+      const rawTargets = params.targets;
       const targets = asStringArray(rawTargets);
       if (targets === null) {
         return yield* Effect.fail(
           new DriverError({
-            reason: `apprise node '${node.id}' missing 'with.targets'`,
+            reason: `apprise node '${node.id}' missing 'params.targets'`,
           }),
         );
       }
       if (body === undefined) {
         return yield* Effect.fail(
           new DriverError({
-            reason: `apprise node '${node.id}' missing 'with.body'`,
+            reason: `apprise node '${node.id}' missing 'params.body'`,
           }),
         );
       }

@@ -9,7 +9,7 @@ The `python` driver spawns the `python` interpreter. It is a shell-out driver, n
   driver: python
   on: [data.ready]
   emits: [analyse.done, analyse.failed]
-  with:
+  params:
     script: scripts/analyse.py
     args: ["--input", "${event.payload.path}"]
     timeout: 60000
@@ -24,7 +24,7 @@ The `python` driver spawns the `python` interpreter. It is a shell-out driver, n
   driver: python
   on: [start]
   emits: [compute.done, compute.failed]
-  with:
+  params:
     module: myapp.math
     function: compute_total
 ```
@@ -35,7 +35,7 @@ The driver runs:
 python -c "from myapp.math import compute_total; print(compute_total())"
 ```
 
-## Common `with` fields
+## Common `params` fields
 
 | Field      | Type   | Description                             |
 | ---------- | ------ | --------------------------------------- |

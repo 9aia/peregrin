@@ -77,7 +77,7 @@ nodes:
     driver: shell
     on: [capability.violation]
     emits: [confinement.demonstrated]
-    with:
+    params:
       cmd: |
         echo "=== CAPABILITY CONFINEMENT DEMONSTRATED ==="
         echo "Blocked node:  ${event.payload.node}"
@@ -92,7 +92,7 @@ nodes:
     driver: shell
     on: [dangerous-op.done]
     emits: [confinement.failed]
-    with:
+    params:
       cmd: |
         echo "ERROR: dangerous-op was NOT blocked!"
         echo "Capability enforcement failed — the workflow caps did not catch it."

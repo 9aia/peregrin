@@ -11,7 +11,7 @@ nodes:
     handler: agent_campaign.handlers:plan_dynamic
     on: [start]
     emits: [plan.ready]
-    with:
+    params:
       tasks:
         - cmd: "echo 'task A'"
         - cmd: "echo 'task B'"
@@ -28,5 +28,5 @@ nodes:
     driver: shell
     on: [absorb.done]
     emits: [workflow.complete]
-    with:
+    params:
       cmd: "echo 'dynamic workflow complete'"

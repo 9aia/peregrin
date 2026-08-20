@@ -23,7 +23,7 @@ const writeFiles = (dir: string, files: Record<string, string>) => {
 const pythonDriver: Driver = {
   name: "python",
   invoke(node: Node) {
-    const raw = node.with_.ids;
+    const raw = node.params.ids;
     const ids = Array.isArray(raw) ? (raw as ReadonlyArray<string>) : ["a", "b", "c"];
     const template = node.emits[0] ?? `${node.id}.done`;
     return Effect.succeed(ids.map((id) => new Event(template.replace("*", id), { id }, node.id)));
@@ -34,7 +34,7 @@ const shellDriver: Driver = {
   name: "shell",
   invoke(node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) {
     return Effect.gen(function* () {
-      const raw = typeof node.with_.cmd === "string" ? node.with_.cmd : "";
+      const raw = typeof node.params.cmd === "string" ? node.params.cmd : "";
       const cmd = yield* resolveTemplate(raw, triggers, ctx, node).pipe(
         Effect.mapError((error: TemplateError) => new DriverError({ reason: error.reason })),
       );
@@ -75,7 +75,7 @@ describe("@ac/tests integration", () => {
           snippets:
             greet:
               driver: shell
-              with:
+              params:
                 cmd: "echo hello \${name}"
         `,
         "workflow.yaml": `
@@ -108,8 +108,8 @@ describe("@ac/tests integration", () => {
           driver: python
           on: [start]
           emits: [shard.*.ready]
-          max_fires: 0
-          with:
+          max_fires: unlimited
+          params:
             ids: ["1", "2"]
         `,
         "workflow.yaml": `
@@ -125,7 +125,7 @@ describe("@ac/tests integration", () => {
               driver: shell
               on: [reduce.done]
               emits: [reduce.complete]
-              with:
+              params:
                 cmd: "echo reduced"
         `,
       });
@@ -151,8 +151,8 @@ describe("@ac/tests integration", () => {
           driver: python
           on: [start]
           emits: [shard.*.ready]
-          max_fires: 0
-          with:
+          max_fires: unlimited
+          params:
             ids: ["1", "2"]
         `,
         "workflow.yaml": `
@@ -161,13 +161,13 @@ describe("@ac/tests integration", () => {
             - id: bridge
               on: [shard.*.ready]
               forward: [proc.*.run]
-              max_fires: 0
+              max_fires: unlimited
             - id: sink
               driver: shell
               on: [proc.*.run]
               emits: [sink.*.done]
-              max_fires: 0
-              with:
+              max_fires: unlimited
+              params:
                 cmd: "echo done"
         `,
       });
@@ -207,13 +207,13 @@ describe("@ac/tests integration", () => {
               driver: shell
               on: [start]
               emits: [safe.done]
-              with:
+              params:
                 cmd: "echo hello"
             - id: danger
               driver: shell
               on: [safe.done]
               emits: [danger.done]
-              with:
+              params:
                 cmd: "rm -rf /"
         `,
       });
@@ -247,7 +247,7 @@ describe("@ac/tests integration", () => {
               driver: shell
               on: [loop.success]
               emits: [after.done]
-              with:
+              params:
                 cmd: "echo done"
         `,
       });

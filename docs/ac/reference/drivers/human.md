@@ -10,7 +10,7 @@ events.
   driver: human
   on: [tests.passed]
   emits: [merge-gate.approved, merge-gate.rejected]
-  with:
+  params:
     prompt: "Approve merge?"
     expect: "yes"
     timeout: 60
@@ -18,7 +18,7 @@ events.
     emit_reject: merge-gate.rejected
 ```
 
-## `with:` fields
+## `params:` fields
 
 | Field         | Type   | Default                | Description                              |
 | ------------- | ------ | ---------------------- | ---------------------------------------- |

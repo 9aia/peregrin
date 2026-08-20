@@ -19,7 +19,7 @@ interface Driver {
 }
 ```
 
-- `node` — the node definition (`id`, `driver`, `with_`, `emits`, ...).
+- `node` — the node definition (`id`, `driver`, `params`, `emits`, ...).
 - `triggers` — the events that caused the node to fire.
 - `ctx` — the execution context (config, secrets, event log, `emit`, `inject`, ...).
 
@@ -35,9 +35,9 @@ const HttpDriver: Driver = {
   name: "http",
   invoke: (node, _triggers, _ctx) =>
     Effect.gen(function* () {
-      const with_ = node.with_ as Record<string, unknown>;
-      const method = String(with_.method ?? "GET");
-      const url = String(with_.url);
+      const params = node.params as Record<string, unknown>;
+      const method = String(params.method ?? "GET");
+      const url = String(params.url);
       const response = yield* Effect.tryPromise({
         try: () => fetch(url, { method }),
         catch: (error) => new DriverError({ reason: String(error) }),
@@ -61,7 +61,7 @@ Use in a workflow:
   driver: http
   on: [deploy.ready]
   emits: [webhook.sent, webhook.failed]
-  with:
+  params:
     method: POST
     url: "https://api.slack.com/services/notify"
     body:
@@ -87,7 +87,7 @@ import { DefaultsLive } from "ac-cli-defaults";
 const echoDriver: Driver = {
   name: "echo",
   invoke: (node, _triggers, _ctx) =>
-    Effect.succeed([new Event(`${node.id}.done`, { message: node.with_.message }, node.id)]),
+    Effect.succeed([new Event(`${node.id}.done`, { message: node.params.message }, node.id)]),
 };
 
 const program = Effect.gen(function* () {
@@ -110,7 +110,7 @@ For `agent:*` driver names, the registry resolves the prefix. Register a driver 
   driver: agent:claude
   on: [pr.opened]
   emits: [review.done]
-  with:
+  params:
     prompt: "Review this PR: ${event.payload.url}"
 ```
 

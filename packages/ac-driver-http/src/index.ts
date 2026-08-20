@@ -38,26 +38,26 @@ export const HttpDriver: Driver = {
   name: "http",
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
-      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+      const resolved = yield* resolveValueForNode(node.params, triggers, ctx, node).pipe(
         Effect.mapError((error) => new DriverError({ reason: String(error) })),
       );
 
-      const with_ = resolved as Record<string, unknown>;
-      const url = with_.url;
+      const params = resolved as Record<string, unknown>;
+      const url = params.url;
       if (typeof url !== "string" || url.length === 0) {
         return yield* Effect.fail(
-          new DriverError({ reason: `http node '${node.id}' missing 'with.url'` }),
+          new DriverError({ reason: `http node '${node.id}' missing 'params.url'` }),
         );
       }
 
-      const method = typeof with_.method === "string" ? with_.method.toUpperCase() : "GET";
-      const rawHeaders = with_.headers;
+      const method = typeof params.method === "string" ? params.method.toUpperCase() : "GET";
+      const rawHeaders = params.headers;
       const headers: Record<string, string> =
         rawHeaders !== null && typeof rawHeaders === "object" && !Array.isArray(rawHeaders)
           ? { ...(rawHeaders as Record<string, string>) }
           : {};
-      const timeout = typeof with_.timeout === "number" ? with_.timeout : 300;
-      const body = makeBody(with_.body, headers);
+      const timeout = typeof params.timeout === "number" ? params.timeout : 300;
+      const body = makeBody(params.body, headers);
 
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
@@ -89,12 +89,12 @@ export const HttpDriver: Driver = {
         headers: responseHeaders,
       };
 
-      const appriseTarget = with_.apprise;
-      if (with_.notify === true && typeof appriseTarget === "string" && appriseTarget.length > 0) {
+      const appriseTarget = params.apprise;
+      if (params.notify === true && typeof appriseTarget === "string" && appriseTarget.length > 0) {
         const apprise = yield* Apprise;
         const notifyBody =
-          typeof with_.message === "string" && with_.message.length > 0
-            ? with_.message
+          typeof params.message === "string" && params.message.length > 0
+            ? params.message
             : typeof responseBody === "string"
               ? responseBody
               : String(responseBody);
@@ -102,7 +102,7 @@ export const HttpDriver: Driver = {
           target: appriseTarget,
           body: notifyBody,
           title:
-            typeof with_.title === "string" && with_.title.length > 0 ? with_.title : undefined,
+            typeof params.title === "string" && params.title.length > 0 ? params.title : undefined,
         });
 
         return [

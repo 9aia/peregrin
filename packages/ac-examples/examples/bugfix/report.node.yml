@@ -6,7 +6,7 @@ id: report
 driver: shell
 on: [pr.created]
 emits: [bugfix.complete]
-with:
+params:
   cmd: |
     source /tmp/ac-bugfix-env
     echo "════════════════════════════════════════"

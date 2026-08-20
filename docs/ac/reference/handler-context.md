@@ -36,7 +36,7 @@ const exampleDriver = {
           driver: "shell",
           on: ["start"],
           emits: ["dynamic-1.done"],
-          with: { cmd: "echo hi" },
+          params: { cmd: "echo hi" },
         },
       ]);
 

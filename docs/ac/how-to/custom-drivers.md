@@ -11,7 +11,7 @@ The `shell` driver is the universal tool — most CLI agents are just shell comm
   driver: shell
   on: [pr.opened]
   emits: [review.done, review.failed]
-  with:
+  params:
     cmd: "claude --print 'Review this PR: ${event.payload.url}'"
 ```
 
@@ -24,13 +24,13 @@ The `shell` driver emits `cmd.done` on exit code `0` and `node.failed` on any no
   driver: shell
   on: [test.passed]
   emits: [deploy.done, deploy.failed]
-  with:
+  params:
     cmd: "deploy.sh"
     timeout: 300
 ```
 
-- `with.cmd` — the command to run.
-- `with.timeout` — timeout in milliseconds (default `30000`).
+- `params.cmd` — the command to run.
+- `params.timeout` — timeout in milliseconds (default `30000`).
 
 ## The `python` driver
 
@@ -41,13 +41,13 @@ The `python` driver spawns the `python` interpreter. It is not a Python SDK.
   driver: python
   on: [data.ready]
   emits: [analyse.done, analyse.failed]
-  with:
+  params:
     script: scripts/analyse.py
     args: ["--input", "${event.payload.path}"]
     timeout: 60000
 ```
 
-### `with` fields
+### `params` fields
 
 | Field      | Type   | Description                             |
 | ---------- | ------ | --------------------------------------- |
@@ -57,14 +57,14 @@ The `python` driver spawns the `python` interpreter. It is not a Python SDK.
 | `args`     | array  | Command-line arguments for `script`     |
 | `timeout`  | number | Timeout in milliseconds (default 30000) |
 
-Use `with.module` and `with.function` to call a single function:
+Use `params.module` and `params.function` to call a single function:
 
 ```yaml
 - id: compute
   driver: python
   on: [start]
   emits: [compute.done, compute.failed]
-  with:
+  params:
     module: myapp.math
     function: compute_total
 ```
@@ -82,7 +82,7 @@ import { Driver, Event } from "ac-core";
 const GreeterDriver: Driver = {
   name: "greeter",
   invoke: (node, _triggers, _ctx) =>
-    Effect.succeed([new Event(`${node.id}.done`, { text: `Hello, ${node.with_.name}` }, node.id)]),
+    Effect.succeed([new Event(`${node.id}.done`, { text: `Hello, ${node.params.name}` }, node.id)]),
 };
 ```
 
@@ -115,7 +115,7 @@ For `agent:*` driver names, the registry resolves the prefix. Register a driver 
   driver: agent:claude
   on: [pr.opened]
   emits: [review.done]
-  with:
+  params:
     prompt: "Review this PR: ${event.payload.url}"
 ```
 

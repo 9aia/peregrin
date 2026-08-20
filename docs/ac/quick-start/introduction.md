@@ -48,11 +48,11 @@ nodes:
     driver: shell
     on: [start]
     emits: [greet.done]
-    with:
+    params:
       cmd: "echo 'Hello, ${event.payload.name}'"
 ```
 
-The `driver` decides how the handler runs. The `on` field declares the trigger. The `emits` field lists the possible next events. The `with` object carries the driver-specific payload and supports `${...}` placeholders.
+The `driver` decides how the handler runs. The `on` field declares the trigger. The `emits` field lists the possible next events. The `params` object carries the driver-specific payload and supports `${...}` placeholders.
 
 YAML also makes it easy to generate, review, and version workflows alongside the code they affect.
 

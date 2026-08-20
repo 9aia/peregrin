@@ -19,7 +19,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [build.done, build.failed]
-    with:
+    params:
       emit:
         0: build.done
         default: build.failed
@@ -29,7 +29,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [test.done, test.failed]
-    with:
+    params:
       emit:
         0: test.done
         default: test.failed
@@ -40,7 +40,7 @@ nodes:
     on: [build.done, test.done]
     mode: all
     emits: [approve.approved, approve.rejected]
-    with:
+    params:
       prompt: "Approve deploy to ${config.target}? (yes/no)"
       expect: "yes"
       timeout: 300
@@ -51,7 +51,7 @@ nodes:
     driver: shell
     on: [approve.approved]
     emits: [deploy.done, deploy.failed]
-    with:
+    params:
       emit:
         0: deploy.done
         default: deploy.failed
@@ -61,19 +61,19 @@ nodes:
     driver: shell
     on: [deploy.done]
     emits: [deploy.complete]
-    with:
+    params:
       cmd: "echo 'Deployment to ${config.target} succeeded'"
 
   - id: rollback
     driver: shell
     on: [deploy.failed]
     emits: [deploy.complete]
-    with:
+    params:
       cmd: "echo 'Rolling back ${config.target}'"
 
   - id: finish
     driver: shell
     on: [deploy.complete]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'Deploy pipeline finished'"

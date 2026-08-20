@@ -4,5 +4,5 @@ id: lint
 driver: shell
 on: [start]
 emits: [lint.passed, lint.failed]
-with:
+params:
   cmd: "ruff check ."

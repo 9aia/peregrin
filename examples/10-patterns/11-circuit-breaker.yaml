@@ -19,7 +19,7 @@ nodes:
       threshold: 3
       reset_after: 60
       on_trip: circuit.open
-    with:
+    params:
       method: GET
       url: "https://httpbin.org/status/500"
 
@@ -27,19 +27,19 @@ nodes:
     driver: shell
     on: [circuit.open]
     emits: [circuit.handled]
-    with:
+    params:
       cmd: "echo 'Circuit is open; using cached fallback'"
 
   - id: use-result
     driver: shell
     on: [api.success]
     emits: [circuit.handled]
-    with:
+    params:
       cmd: "echo 'API call succeeded'"
 
   - id: finish
     driver: shell
     on: [circuit.handled]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'Circuit breaker example complete'"

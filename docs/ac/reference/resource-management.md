@@ -21,7 +21,7 @@ falls back to count-only.
   on: [start]
   emits: [test.passed, test.failed]
   resources: { weight: 4 }
-  with: { cmd: "vitest run" }
+  params: { cmd: "vitest run" }
 ```
 
 `weight` defaults to 1 and is capped to `max-concurrency`.
@@ -43,7 +43,7 @@ Trips after sustained overload and emits `system.overloaded`.
   driver: agent
   on: [start]
   emits: [agent.done]
-  with:
+  params:
     runner: devin
     prompt: "..."
     mem_limit_mb: 4096

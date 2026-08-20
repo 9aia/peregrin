@@ -14,7 +14,7 @@ id: test.install
 driver: shell
 on: [test.install.run]
 emits: [test.install.done, test.install.failed]
-with:
+params:
   cmd: |
     cd "${state.worktree_path}"
     ${config.install_cmd:-bun install}

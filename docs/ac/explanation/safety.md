@@ -73,17 +73,17 @@ workflow's baseline.
 Enforcement lives in `NodeExecutor.run_node` (`node_executor.py`), at the
 single dispatch point, _before_ any driver is invoked:
 
-- **Shell check** — `with.cmd` is matched against `shell.allow` (glob patterns
+- **Shell check** — `params.cmd` is matched against `shell.allow` (glob patterns
   via `fnmatch`) and `shell.deny`. Deny always wins. If no allow list is
   declared under deny-all, everything is blocked.
-- **HTTP check** — `with.url` is matched against `http.allow` and `http.deny`
+- **HTTP check** — `params.url` is matched against `http.allow` and `http.deny`
   (glob patterns).
-- **Agent check** — `with.runner` must be in `agents` (exact match).
-- **Python check** — `node.handler` (or `with.handler`) is matched against
+- **Agent check** — `params.runner` must be in `agents` (exact match).
+- **Python check** — `node.handler` (or `params.handler`) is matched against
   `python.allow` and `python.deny` (glob patterns). Supports `module:func`
   notation — `allow: ["myapp:*"]` grants any function from `myapp`,
   `deny: ["os:*"]` blocks the entire `os` module.
-- **Webhook check** — `with.port`, `with.host`, `with.path` are checked
+- **Webhook check** — `params.port`, `params.host`, `params.path` are checked
   against `webhook.ports` (exact), `webhook.hosts` (exact), and
   `webhook.paths` (glob). `webhook.require_auth: true` blocks webhooks
   without auth config.
@@ -104,7 +104,7 @@ executes.
 
 ### Violation handling
 
-When a node's resolved `with:` block violates its capabilities:
+When a node's resolved `params:` block violates its capabilities:
 
 1. A `capability.violation` event is emitted.
 2. The node is **not** executed.
@@ -169,9 +169,9 @@ Webhooks receive untrusted input from the network.
      constant-time comparison.
    - `auth.type: hmac` — HMAC-SHA256 signature verification. Optional
      `timestamp_header` + `replay_window` prevents replay attacks.
-3. **Transport security** — `with.tls: {cert, key}` enables HTTPS.
+3. **Transport security** — `params.tls: {cert, key}` enables HTTPS.
 
-Additionally, `with.max_body_size` (default 1MB) prevents memory exhaustion
+Additionally, `params.max_body_size` (default 1MB) prevents memory exhaustion
 from oversized request bodies.
 
 ## Build order

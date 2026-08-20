@@ -13,7 +13,7 @@ import { DefaultsLive } from "ac-cli-defaults";
 const EchoDriver: Driver = {
   name: "echo",
   invoke: (node, _triggers, _ctx) =>
-    Effect.succeed([new Event(`${node.id}.done`, { text: node.with_.text }, node.id)]),
+    Effect.succeed([new Event(`${node.id}.done`, { text: node.params.text }, node.id)]),
 };
 
 const program = Effect.gen(function* () {
@@ -32,7 +32,7 @@ const program = Effect.gen(function* () {
   driver: echo
   on: [start]
   emits: [custom.done]
-  with:
+  params:
     text: "hello"
 ```
 

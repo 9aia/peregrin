@@ -17,7 +17,7 @@ nodes:
     on: [shard.*.ready]
     emits: [shard.done]
     max_fires: unlimited
-    with:
+    params:
       cmd: "process ${event.payload.id}"
 
   - id: reduce
@@ -25,7 +25,7 @@ nodes:
     on: [shard.**.done]
     mode: all
     emits: [reduce.done]
-    with:
+    params:
       cmd: "echo 'all shards done'"
 ```
 

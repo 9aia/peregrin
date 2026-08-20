@@ -13,7 +13,7 @@ agent-campaign, read this before trusting the safety claims.
 | **Workflow author** | Human who writes the workflow YAML and its `capabilities:`    | Trusted                      | The capability boundary (the "constitution")       |
 | **Generator**       | AI that creates new nodes                                     | Untrusted                    | Node specs (data)                                  |
 | **Reviewer**        | AI that reduces the generator's capabilities before injection | Semi-trusted                 | Which self-attested caps survive                   |
-| **Engine**          | `NodeExecutor.run_node` — the dispatch-time check             | Trusted (mechanical)         | Whether a node's `with:` is allowed to run         |
+| **Engine**          | `NodeExecutor.run_node` — the dispatch-time check             | Trusted (mechanical)         | Whether a node's `params:` is allowed to run       |
 | **Driver**          | shell, python, http, agent, webhook — executes the node       | Untrusted (runs after check) | Side effects within the granted capability surface |
 | **Agent runtime**   | The LLM inside a `driver: agent` node                         | Untrusted                    | Behaviour within its sandbox/permission_mode       |
 
@@ -52,7 +52,7 @@ caps, emits `capability.violation`, and does not run. **Blast radius: the
 node does not execute. No side effects. This is the safe failure mode.**
 
 **Reviewer is too permissive (leaves a dangerous cap in place):** If the
-reviewer leaves `shell.allow: ["*"]` on a node with `with.cmd: "rm -rf /"`,
+reviewer leaves `shell.allow: ["*"]` on a node with `params.cmd: "rm -rf /"`,
 and `merge: false` replaces the workflow caps, the node's caps now allow
 `rm`. **Blast radius: the node executes with the self-attested caps. The
 workflow boundary is bypassed for that node.**
@@ -75,11 +75,11 @@ load-bearing trust assumption.**
 
 ### Confined (the engine guarantees this)
 
-- **Which shell commands run** — `with.cmd` is checked before the shell starts.
-- **Which URLs are fetched** — `with.url` is checked before the HTTP request.
-- **Which agent runners are invoked** — `with.runner` is checked.
+- **Which shell commands run** — `params.cmd` is checked before the shell starts.
+- **Which URLs are fetched** — `params.url` is checked before the HTTP request.
+- **Which agent runners are invoked** — `params.runner` is checked.
 - **Which Python handlers run** — `node.handler` is checked before the handler is called.
-- **Where webhooks bind** — `with.port`/`host`/`path` are checked.
+- **Where webhooks bind** — `params.port`/`host`/`path` are checked.
 - **Which secrets are visible** — `Context.secrets` is filtered.
 
 ### Not confined (the engine does NOT guarantee this)

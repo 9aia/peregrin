@@ -9,21 +9,21 @@ export const HumanDriver: Driver = {
   name: "human",
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
-      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+      const resolved = yield* resolveValueForNode(node.params, triggers, ctx, node).pipe(
         Effect.mapError((error) => new DriverError({ reason: String(error) })),
       );
 
-      const with_ = resolved as Record<string, unknown>;
-      const prompt = with_.prompt;
+      const params = resolved as Record<string, unknown>;
+      const prompt = params.prompt;
       if (typeof prompt !== "string" || prompt.length === 0) {
         return yield* Effect.fail(
-          new DriverError({ reason: `human node '${node.id}' missing 'with.prompt'` }),
+          new DriverError({ reason: `human node '${node.id}' missing 'params.prompt'` }),
         );
       }
 
       let finalPrompt = prompt;
 
-      const promptFile = with_.prompt_file;
+      const promptFile = params.prompt_file;
       if (typeof promptFile === "string" && promptFile.length > 0) {
         const filePath = path.isAbsolute(promptFile)
           ? promptFile
@@ -35,14 +35,15 @@ export const HumanDriver: Driver = {
         finalPrompt = fileContents.length > 0 ? fileContents + "\n" + prompt : prompt;
       }
 
-      const expectValue = typeof with_.expect === "string" ? with_.expect : undefined;
+      const expectValue = typeof params.expect === "string" ? params.expect : undefined;
 
-      const rawTimeout = with_.timeout;
-      const timeoutSeconds = typeof rawTimeout === "number" ? rawTimeout : Number(rawTimeout ?? 0);
+      const rawTimeout = params.timeout;
+      const timeoutSeconds =
+        typeof rawTimeout === "number" ? rawTimeout : Number(rawTimeout ?? 300);
       const timeoutMs = timeoutSeconds > 0 ? timeoutSeconds * 1000 : 0;
 
-      const emitOk = typeof with_.emit_ok === "string" ? with_.emit_ok : undefined;
-      const emitReject = typeof with_.emit_reject === "string" ? with_.emit_reject : undefined;
+      const emitOk = typeof params.emit_ok === "string" ? params.emit_ok : undefined;
+      const emitReject = typeof params.emit_reject === "string" ? params.emit_reject : undefined;
 
       if (ctx.dryRun) {
         const eventType = emitOk ?? node.emits[0] ?? `${node.id}.ok`;

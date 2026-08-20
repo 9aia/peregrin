@@ -17,7 +17,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [greet.done]
-    with:
+    params:
       cmd: "echo 'hello world'"
 ```
 

@@ -169,11 +169,11 @@ const complete = (request: LiteLLMRequest): Effect.Effect<string, DriverError> =
     return result.content;
   });
 
-const makeMessages = (with_: Record<string, unknown>): ReadonlyArray<Message> | null => {
+const makeMessages = (params: Record<string, unknown>): ReadonlyArray<Message> | null => {
   const system =
-    typeof with_.system === "string" && with_.system.length > 0 ? with_.system : undefined;
-  const rawMessages = with_.messages;
-  const prompt = with_.prompt;
+    typeof params.system === "string" && params.system.length > 0 ? params.system : undefined;
+  const rawMessages = params.messages;
+  const prompt = params.prompt;
 
   const messages: Array<Message> = [];
   if (system !== undefined) {
@@ -202,11 +202,11 @@ const makeMessages = (with_: Record<string, unknown>): ReadonlyArray<Message> | 
 };
 
 const resolveApiKey = (
-  with_: Record<string, unknown>,
+  params: Record<string, unknown>,
   ctx: ExecutionContext,
 ): string | undefined => {
   const fromWith =
-    typeof with_.api_key === "string" && with_.api_key.length > 0 ? with_.api_key : undefined;
+    typeof params.api_key === "string" && params.api_key.length > 0 ? params.api_key : undefined;
   return fromWith ?? ctx.secrets["LITELLM_API_KEY"];
 };
 
@@ -214,27 +214,29 @@ export const LiteLLMDriver: Driver = {
   name: "litellm",
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
-      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+      const resolved = yield* resolveValueForNode(node.params, triggers, ctx, node).pipe(
         Effect.mapError((error) => new DriverError({ reason: String(error) })),
       );
 
-      const with_ = resolved as Record<string, unknown>;
+      const params = resolved as Record<string, unknown>;
       const model =
-        typeof with_.model === "string" && with_.model.length > 0 ? with_.model : "openai/gpt-4o";
+        typeof params.model === "string" && params.model.length > 0
+          ? params.model
+          : "openai/gpt-4o";
 
-      const messages = makeMessages(with_);
+      const messages = makeMessages(params);
       if (messages === null) {
         return yield* Effect.fail(
           new DriverError({
-            reason: `litellm node '${node.id}' missing 'with.messages' or 'with.prompt'`,
+            reason: `litellm node '${node.id}' missing 'params.messages' or 'params.prompt'`,
           }),
         );
       }
 
       const responseFormat =
         node.handler === "complete_struct"
-          ? isRecord(with_.schema)
-            ? { type: "json_schema", json_schema: with_.schema }
+          ? isRecord(params.schema)
+            ? { type: "json_schema", json_schema: params.schema }
             : { type: "json_object" }
           : undefined;
 
@@ -242,13 +244,14 @@ export const LiteLLMDriver: Driver = {
         model,
         messages,
         endpoint:
-          typeof with_.endpoint === "string" && with_.endpoint.length > 0
-            ? with_.endpoint
+          typeof params.endpoint === "string" && params.endpoint.length > 0
+            ? params.endpoint
             : undefined,
-        apiKey: resolveApiKey(with_, ctx),
-        temperature: typeof with_.temperature === "number" ? with_.temperature : undefined,
-        maxTokens: typeof with_.max_tokens === "number" ? with_.max_tokens : undefined,
-        timeout: typeof with_.timeout === "number" && with_.timeout > 0 ? with_.timeout : undefined,
+        apiKey: resolveApiKey(params, ctx),
+        temperature: typeof params.temperature === "number" ? params.temperature : undefined,
+        maxTokens: typeof params.max_tokens === "number" ? params.max_tokens : undefined,
+        timeout:
+          typeof params.timeout === "number" && params.timeout > 0 ? params.timeout : undefined,
         responseFormat,
       }).pipe(Effect.either);
 

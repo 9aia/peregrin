@@ -12,7 +12,7 @@ id: git.push
 driver: shell
 on: [git.push.run]
 emits: [git.push.done, git.push.failed]
-with:
+params:
   cmd: |
     cd "${state.worktree_path}"
     git push -u origin "${state.branch}"

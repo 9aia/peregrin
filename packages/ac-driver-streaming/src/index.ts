@@ -7,7 +7,7 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
 const resolveWith = (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
-  resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+  resolveValueForNode(node.params, triggers, ctx, node).pipe(
     Effect.mapError((error) => new DriverError({ reason: String(error) })),
   );
 
@@ -47,12 +47,12 @@ const makeBody = (
   return undefined;
 };
 
-const shellStream = (node: Node, with_: Record<string, unknown>, ctx: ExecutionContext) =>
+const shellStream = (node: Node, params: Record<string, unknown>, ctx: ExecutionContext) =>
   Effect.gen(function* () {
-    const cmd = with_.cmd;
+    const cmd = params.cmd;
     if (typeof cmd !== "string" || cmd.length === 0) {
       return yield* Effect.fail(
-        new DriverError({ reason: `streaming node '${node.id}' missing 'with.cmd'` }),
+        new DriverError({ reason: `streaming node '${node.id}' missing 'params.cmd'` }),
       );
     }
 
@@ -60,10 +60,10 @@ const shellStream = (node: Node, with_: Record<string, unknown>, ctx: ExecutionC
       return [new Event(lineEvent(node), { cmd, dryRun: true, rc: 0 }, node.id)];
     }
 
-    const timeout = typeof with_.timeout === "number" ? with_.timeout : 300;
-    const envOverride = isRecord(with_.env) ? (with_.env as Record<string, string>) : {};
+    const timeout = typeof params.timeout === "number" ? params.timeout : 300;
+    const envOverride = isRecord(params.env) ? (params.env as Record<string, string>) : {};
     const env = { ...process.env, ...envOverride };
-    const cwd = typeof with_.cwd === "string" ? with_.cwd : undefined;
+    const cwd = typeof params.cwd === "string" ? params.cwd : undefined;
 
     const result = yield* Effect.tryPromise({
       try: () =>
@@ -108,28 +108,28 @@ const shellStream = (node: Node, with_: Record<string, unknown>, ctx: ExecutionC
     return events;
   });
 
-const httpStream = (node: Node, with_: Record<string, unknown>, ctx: ExecutionContext) =>
+const httpStream = (node: Node, params: Record<string, unknown>, ctx: ExecutionContext) =>
   Effect.gen(function* () {
-    const url = with_.url;
+    const url = params.url;
     if (typeof url !== "string" || url.length === 0) {
       return yield* Effect.fail(
-        new DriverError({ reason: `streaming node '${node.id}' missing 'with.url'` }),
+        new DriverError({ reason: `streaming node '${node.id}' missing 'params.url'` }),
       );
     }
 
-    const method = typeof with_.method === "string" ? with_.method.toUpperCase() : "GET";
+    const method = typeof params.method === "string" ? params.method.toUpperCase() : "GET";
 
     if (ctx.dryRun) {
       return [new Event(lineEvent(node), { method, url, dryRun: true, status: 200 }, node.id)];
     }
 
-    const rawHeaders = with_.headers;
+    const rawHeaders = params.headers;
     const headers: Record<string, string> =
       rawHeaders !== null && typeof rawHeaders === "object" && !Array.isArray(rawHeaders)
         ? { ...(rawHeaders as Record<string, string>) }
         : {};
-    const timeout = typeof with_.timeout === "number" ? with_.timeout : 300;
-    const body = makeBody(with_.body, with_.json, headers);
+    const timeout = typeof params.timeout === "number" ? params.timeout : 300;
+    const body = makeBody(params.body, params.json, headers);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), timeout * 1000);
@@ -169,19 +169,19 @@ export const StreamingDriver: Driver = {
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
       const resolved = yield* resolveWith(node, triggers, ctx);
-      const with_ = resolved as Record<string, unknown>;
+      const params = resolved as Record<string, unknown>;
 
-      if (typeof with_.cmd === "string" && with_.cmd.length > 0) {
-        return yield* shellStream(node, with_, ctx);
+      if (typeof params.cmd === "string" && params.cmd.length > 0) {
+        return yield* shellStream(node, params, ctx);
       }
 
-      if (typeof with_.url === "string" && with_.url.length > 0) {
-        return yield* httpStream(node, with_, ctx);
+      if (typeof params.url === "string" && params.url.length > 0) {
+        return yield* httpStream(node, params, ctx);
       }
 
       return yield* Effect.fail(
         new DriverError({
-          reason: `streaming node '${node.id}' requires 'with.cmd' or 'with.url'`,
+          reason: `streaming node '${node.id}' requires 'params.cmd' or 'params.url'`,
         }),
       );
     }),

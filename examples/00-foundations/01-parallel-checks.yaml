@@ -16,7 +16,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [lint.passed, lint.failed]
-    with:
+    params:
       emit:
         0: lint.passed
         default: lint.failed
@@ -33,7 +33,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [test.passed, test.failed]
-    with:
+    params:
       emit:
         0: test.passed
         default: test.failed
@@ -51,7 +51,7 @@ nodes:
     on: [lint.passed, test.passed]
     mode: all
     emits: [summary.ready]
-    with:
+    params:
       cmd: "echo 'Lint and tests passed'"
 
   - id: report-failure
@@ -59,12 +59,12 @@ nodes:
     on: [lint.failed, test.failed]
     mode: any
     emits: [summary.ready]
-    with:
+    params:
       cmd: "echo 'One or more checks failed'"
 
   - id: finish
     driver: shell
     on: [summary.ready]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'Parallel checks complete'"

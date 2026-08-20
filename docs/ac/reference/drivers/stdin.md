@@ -11,7 +11,7 @@ so the workflow does not quiesce while waiting for input. On EOF, emits
   driver: stdin
   on: [start]
   emits: [line.received]
-  with:
+  params:
     event_type: line.received
     parse_json: false
 ```
@@ -28,7 +28,7 @@ to the first declared `emits` value.
   driver: stdin
   on: [start, alert, info]
   emits: [alert, info]
-  with:
+  params:
     parse_json: true
 ```
 
@@ -42,7 +42,7 @@ configured `event_type` is used.
 - `<node-id>.done` on EOF.
 - One event per line, using the configured or inferred type.
 
-## Common `with:` fields
+## Common `params:` fields
 
 | Field        | Type   | Description                                       |
 | ------------ | ------ | ------------------------------------------------- |

@@ -313,7 +313,7 @@ const buildDefs = (
     emits: anyOf({ type: "array", items: { type: "string" } }),
     snippet: anyOf(snippetProp),
     mode: anyOf({ type: "string", enum: ["any", "all"] }),
-    with: { type: "object" },
+    params: { type: "object" },
     max_fires: anyOf({ type: "integer", minimum: 1 }, { type: "string", enum: ["unlimited"] }),
     until: anyOf({
       type: "array",
@@ -375,7 +375,7 @@ const buildDefs = (
     }),
     emits: anyOf({ type: "array", items: { type: "string" } }),
     snippet: anyOf(snippetProp),
-    with: { type: "object" },
+    params: { type: "object" },
   };
 
   const snippetPropertiesMap: Record<string, unknown> = {};

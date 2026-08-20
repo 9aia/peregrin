@@ -17,7 +17,7 @@ nodes:
       threshold: 10
       reset_after: 300
       on_trip: api.circuit_open
-    with:
+    params:
       method: GET
       url: "https://api.example.com/data"
 
@@ -25,14 +25,14 @@ nodes:
     driver: shell
     on: [api.circuit_open]
     emits: [alerted]
-    with:
+    params:
       cmd: "echo 'API circuit breaker opened'"
 
   - id: dlq-alert
     driver: shell
     on: [dlq.event]
     emits: [dlq.alerted]
-    with:
+    params:
       cmd: "echo 'Event sent to DLQ: ${event.payload.node}'"
 ```
 
@@ -57,7 +57,7 @@ Add resource hints so heavy retries do not drown the machine:
     max_attempts: 3
     backoff: exponential
     delay: 1
-  with:
+  params:
     method: GET
     url: "https://api.example.com/data"
 ```

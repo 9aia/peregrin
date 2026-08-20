@@ -16,7 +16,7 @@ id: worktree
 driver: shell
 on: [start]
 emits: [worktree.ready, bugfix.aborted]
-with:
+params:
   cmd: |
     REPO="${config.repo}"
     BASE="${config.worktree_base}"

@@ -5,7 +5,7 @@ id: review
 driver: agent
 on: [git.commit.done]
 emits: [agent.review.done, bugfix-v2.aborted]
-with:
+params:
   runner: devin
   prompt_file: examples/bugfix-v2/review.prompt.md
   permission_mode: normal

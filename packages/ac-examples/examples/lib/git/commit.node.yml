@@ -16,7 +16,7 @@ id: git.commit
 driver: shell
 on: [git.commit.run]
 emits: [git.commit.done, git.commit.failed]
-with:
+params:
   cmd: |
     cd "${state.worktree_path}"
     SUMMARY="${state.commit_summary:-${state.commit_message:-${BUG_DESCRIPTION:-changes}}}"

@@ -11,7 +11,7 @@ id: pr
 driver: shell
 on: [review.done]
 emits: [pr.created, bugfix.aborted]
-with:
+params:
   cmd: |
     source /tmp/ac-bugfix-env
     cd "$WORKTREE_PATH"

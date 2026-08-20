@@ -24,14 +24,14 @@ nodes:
     driver: shell
     on: [start]
     emits: [lint.passed, lint.failed]
-    with:
+    params:
       cmd: "ruff check . || true; exit $?"
 
   - id: test
     driver: shell
     on: [start]
     emits: [test.passed, test.failed]
-    with:
+    params:
       cmd: "pytest --tb=short -q || true; exit $?"
 
   # --- fan-in: wait for both lint and test ---
@@ -40,7 +40,7 @@ nodes:
     on: [lint.passed, test.passed]
     mode: all
     emits: [summary.done]
-    with:
+    params:
       cmd: "echo 'Lint: ${event.payload.stdout} | Tests: ${event.payload.stdout}'"
 
   # --- notify on any failure ---
@@ -49,12 +49,12 @@ nodes:
     on: [lint.failed, test.failed]
     mode: any
     emits: [notify.done]
-    with:
+    params:
       cmd: "echo 'FAIL: check lint/test output'"
 
   - id: notify-success
     driver: shell
     on: [summary.done]
     emits: [notify.done]
-    with:
+    params:
       cmd: "echo 'All checks passed'"

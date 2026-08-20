@@ -5,7 +5,7 @@ Three composition mechanisms — includes (path-based) and snippets (name-based)
 ## 1. `include:` — merge whole files (dict-level)
 
 Deep-merges the file's content into the parent mapping. Local values
-override included. Works in any mapping — nodes, `with` blocks, top-level.
+override included. Works in any mapping — nodes, `params` blocks, top-level.
 
 ### Inline node includes
 
@@ -15,7 +15,7 @@ id: lint
 driver: shell
 on: [start]
 emits: [lint.passed, lint.failed]
-with:
+params:
   cmd: "ruff check ."
 ```
 
@@ -29,7 +29,7 @@ nodes:
     emits: [custom.done]
 ```
 
-### `with` block includes
+### `params` block includes
 
 ```yaml
 # snippets/prod-env.yaml
@@ -45,7 +45,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [deploy.done]
-    with:
+    params:
       include: snippets/prod-env.yaml
       cmd: "deploy.sh"
       timeout: 60
@@ -64,7 +64,7 @@ nodes:
 ### Multiple includes
 
 ```yaml
-with:
+params:
   include: [env.yaml, secrets.yaml]
   cmd: "deploy.sh"
 ```
@@ -77,7 +77,7 @@ dict, list, scalar. Also works as string interpolation.
 ### Inject a dict
 
 ```yaml
-with:
+params:
   env: ${include(snippets/prod-env.yaml)}
   cmd: "deploy.sh"
 ```
@@ -89,7 +89,7 @@ with:
 us-east-1
 
 # main.yaml
-with:
+params:
   cmd: "deploy --region=${include(snippets/region.yaml)} --force"
 ```
 
@@ -117,7 +117,7 @@ snippets:
   devin:
     driver: shell
     emits: [devin.done, devin.failed]
-    with:
+    params:
       cmd: "devin run --prompt '${event.payload.prompt}'"
       timeout: 1800
 
@@ -125,7 +125,7 @@ nodes:
   - id: review
     snippet: devin
     on: [pr.opened]
-    with:
+    params:
       timeout: 3600
 ```
 
@@ -139,11 +139,11 @@ snippets:
   base-llm:
     driver: shell
     emits: [llm.done, llm.failed]
-    with:
+    params:
       timeout: 600
   devin:
     snippet: base-llm
-    with:
+    params:
       cmd: "devin run"
       timeout: 1800
 ```
@@ -158,7 +158,7 @@ snippets:
   devin:
     driver: shell
     emits: [devin.done]
-    with:
+    params:
       cmd: "devin run"
 
 # main.yaml
@@ -186,7 +186,7 @@ nodes:
     driver: shell
     on: ${snippet(pr-triggers)}
     emits: [review.done]
-    with:
+    params:
       env: ${snippet(prod-env)}
       cmd: "devin run --model ${snippet(model)}"
 ```
@@ -288,4 +288,4 @@ so editors do not flag them as type errors.
 
 ## See also
 
-- [Write a workflow](../tutorials/write-a-workflow.md) — node fields and `with` blocks
+- [Write a workflow](../tutorials/write-a-workflow.md) — node fields and `params` blocks

@@ -38,7 +38,7 @@ From a shell node:
   driver: shell
   on: [pr.opened]
   emits: [pr.approved, pr.changes_requested]
-  with:
+  params:
     cmd: "claude --print 'Review: ${event.payload.url}'"
 ```
 

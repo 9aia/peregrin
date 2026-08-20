@@ -26,7 +26,7 @@ generated agent-campaign workflow.
 ## Common fixes (from real experience)
 
 1. **Fan-in node doesn't emit** → add `driver: shell` and
-   `with: { cmd: "echo 'done'" }`.
+   `params: { cmd: "echo 'done'" }`.
 
 2. **Event collision on repeated check** → inline the check with distinct
    event types (`verify1.passed` instead of `test.check.passed`).

@@ -6,7 +6,7 @@ id: abort
 driver: shell
 on: [bugfix.aborted]
 emits: [bugfix.failed]
-with:
+params:
   cmd: |
     source /tmp/ac-bugfix-env 2>/dev/null || true
     echo "════════════════════════════════════════"

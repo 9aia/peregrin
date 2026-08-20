@@ -9,7 +9,7 @@ and deep-merges its content into the parent mapping. The `include` key is
 removed after resolution.
 
 ```yaml
-with:
+params:
   include: snippets/prod-env.yaml
   cmd: "deploy.sh"
 ```
@@ -21,7 +21,7 @@ with:
 - Lists: concatenated (local first, included appended).
 
 **Where it works:** any mapping in the YAML — top-level, node definitions,
-`with` blocks, event schemas, nested dicts.
+`params` blocks, event schemas, nested dicts.
 
 **Why merge, not replace:** you want to include a base config and override
 specific fields. Merge gives you that for free.
@@ -32,7 +32,7 @@ Works in any string value. The loader finds the expression, loads the file,
 and replaces the expression with the file's content.
 
 ```yaml
-with:
+params:
   env: ${include(snippets/prod-env.yaml)}
   cmd: "deploy --region=${include(snippets/region.yaml)}"
 ```
@@ -57,7 +57,7 @@ deep-merges it into the parent, and removes the `snippet` key.
 snippets:
   devin:
     driver: shell
-    with:
+    params:
       cmd: "devin run"
       timeout: 1800
 
@@ -65,7 +65,7 @@ nodes:
   - id: review
     snippet: devin
     on: [pr.opened]
-    with:
+    params:
       timeout: 3600
 ```
 
@@ -89,7 +89,7 @@ snippets:
 nodes:
   - id: review
     on: ${snippet(pr-triggers)}
-    with:
+    params:
       cmd: "devin run --model ${snippet(model)}"
 ```
 
@@ -117,14 +117,14 @@ directory. Absolute paths also work.
 
 ## When to use which
 
-| Need                                        | Use                                              |
-| ------------------------------------------- | ------------------------------------------------ |
-| Include a whole node definition             | `include: snippets/lint.yaml`                    |
-| Include config defaults into a `with` block | `include: snippets/prod-env.yaml`                |
-| Include event schemas at top level          | `include: [events.yaml]`                         |
-| Inject a dict as a specific value           | `env: ${include(snippets/env.yaml)}`             |
-| Inject a scalar into a string               | `cmd: "deploy --region=${include(region.yaml)}"` |
-| Inject a list as a specific value           | `on: ${include(snippets/triggers.yaml)}`         |
-| Reusable node template by name              | `snippet: devin`                                 |
-| Reusable value fragment by name             | `on: ${snippet(pr-triggers)}`                    |
-| Share snippets across workflows             | `include: [snippets.yaml]` then `snippet: name`  |
+| Need                                          | Use                                              |
+| --------------------------------------------- | ------------------------------------------------ |
+| Include a whole node definition               | `include: snippets/lint.yaml`                    |
+| Include config defaults into a `params` block | `include: snippets/prod-env.yaml`                |
+| Include event schemas at top level            | `include: [events.yaml]`                         |
+| Inject a dict as a specific value             | `env: ${include(snippets/env.yaml)}`             |
+| Inject a scalar into a string                 | `cmd: "deploy --region=${include(region.yaml)}"` |
+| Inject a list as a specific value             | `on: ${include(snippets/triggers.yaml)}`         |
+| Reusable node template by name                | `snippet: devin`                                 |
+| Reusable value fragment by name               | `on: ${snippet(pr-triggers)}`                    |
+| Share snippets across workflows               | `include: [snippets.yaml]` then `snippet: name`  |

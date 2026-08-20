@@ -1,4 +1,4 @@
-# Shared environment config — included into `with` blocks.
+# Shared environment config — included into `params` blocks.
 env:
   PYTHONPATH: /app
   LOG_LEVEL: INFO

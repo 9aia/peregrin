@@ -11,7 +11,7 @@ id: reproduce
 driver: shell
 on: [worktree.ready]
 emits: [reproduce.done, bugfix.aborted]
-with:
+params:
   cmd: |
     source /tmp/ac-bugfix-env
     cd "$WORKTREE_PATH"

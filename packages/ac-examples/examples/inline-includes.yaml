@@ -18,8 +18,8 @@ nodes:
     on: [lint.passed, test.passed]
     mode: all
     emits: [summary.done]
-    with:
-      include: snippets/prod-env.yaml # merge: env + timeout into this with block
+    params:
+      include: snippets/prod-env.yaml # merge: env + timeout into this params block
       cmd: "echo 'all checks passed'"
 
   # --- ${include()} injects a scalar into a string ---
@@ -27,7 +27,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [region.logged]
-    with:
+    params:
       cmd: "echo 'deploying to ${include(snippets/region.yaml)}'"
 
   # --- ${include()} injects a dict into a value ---
@@ -35,6 +35,6 @@ nodes:
     driver: shell
     on: [summary.done]
     emits: [deploy.done]
-    with:
+    params:
       env: ${include(snippets/prod-env.yaml)} # inject the whole dict as the env value
       cmd: "echo deploying"

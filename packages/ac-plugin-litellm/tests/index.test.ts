@@ -183,7 +183,7 @@ it.effect("llm:complete fails when prompt and messages are missing", () =>
 
     expect(Either.isLeft(result)).toBe(true);
     if (Either.isLeft(result)) {
-      expect(result.left.reason).toContain("missing 'with.messages' or 'with.prompt'");
+      expect(result.left.reason).toContain("missing 'params.messages' or 'params.prompt'");
     }
   }),
 );

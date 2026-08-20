@@ -12,7 +12,7 @@ id: investigate
 driver: shell
 on: [reproduce.done]
 emits: [investigate.done, bugfix.aborted]
-with:
+params:
   cmd: |
     source /tmp/ac-bugfix-env
     cd "$WORKTREE_PATH"

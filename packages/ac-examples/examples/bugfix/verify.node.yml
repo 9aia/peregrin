@@ -12,7 +12,7 @@ id: verify
 driver: shell
 on: [fix.done]
 emits: [verify.passed, verify.failed]
-with:
+params:
   cmd: |
     source /tmp/ac-bugfix-env
     cd "$WORKTREE_PATH"

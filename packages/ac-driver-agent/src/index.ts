@@ -10,18 +10,18 @@ export const AgentDriver: Driver = {
   name: "agent",
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
-      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+      const resolved = yield* resolveValueForNode(node.params, triggers, ctx, node).pipe(
         Effect.mapError((error) => new DriverError({ reason: String(error) })),
       );
 
-      const with_ = resolved as Record<string, unknown>;
-      const runner = typeof with_.runner === "string" ? with_.runner : "devin";
-      const cwd = typeof with_.cwd === "string" ? with_.cwd : process.cwd();
-      const timeoutMs = (typeof with_.timeout === "number" ? with_.timeout : 600) * 1000;
+      const params = resolved as Record<string, unknown>;
+      const runner = typeof params.runner === "string" ? params.runner : "devin";
+      const cwd = typeof params.cwd === "string" ? params.cwd : process.cwd();
+      const timeoutMs = (typeof params.timeout === "number" ? params.timeout : 600) * 1000;
 
-      const resolvedEnv = with_.env as Record<string, string> | undefined;
-      const requestedSecrets = Array.isArray(with_.secrets)
-        ? (with_.secrets as ReadonlyArray<unknown>)
+      const resolvedEnv = params.env as Record<string, string> | undefined;
+      const requestedSecrets = Array.isArray(params.secrets)
+        ? (params.secrets as ReadonlyArray<unknown>)
         : [];
       const env: Record<string, string | undefined> = { ...process.env, ...resolvedEnv };
       for (const key of requestedSecrets) {
@@ -32,12 +32,12 @@ export const AgentDriver: Driver = {
 
       let promptText = "";
 
-      if (typeof with_.prompt === "string" && with_.prompt.length > 0) {
-        promptText = with_.prompt;
-      } else if (typeof with_.prompt_file === "string" && with_.prompt_file.length > 0) {
-        const filePath = path.isAbsolute(with_.prompt_file)
-          ? with_.prompt_file
-          : path.join(process.cwd(), with_.prompt_file);
+      if (typeof params.prompt === "string" && params.prompt.length > 0) {
+        promptText = params.prompt;
+      } else if (typeof params.prompt_file === "string" && params.prompt_file.length > 0) {
+        const filePath = path.isAbsolute(params.prompt_file)
+          ? params.prompt_file
+          : path.join(process.cwd(), params.prompt_file);
         promptText = yield* Effect.try({
           try: () => fs.readFileSync(filePath, "utf-8"),
           catch: (error) =>
@@ -48,13 +48,13 @@ export const AgentDriver: Driver = {
       } else {
         return yield* Effect.fail(
           new DriverError({
-            reason: `agent node '${node.id}' missing 'with.prompt' or 'with.prompt_file'`,
+            reason: `agent node '${node.id}' missing 'params.prompt' or 'params.prompt_file'`,
           }),
         );
       }
 
-      const model = with_.model;
-      const provider = with_.provider;
+      const model = params.model;
+      const provider = params.provider;
       if (typeof model === "string" && model.length > 0) {
         if (ctx.dryRun) {
           return [
@@ -68,23 +68,25 @@ export const AgentDriver: Driver = {
           provider: typeof provider === "string" && provider.length > 0 ? provider : undefined,
           prompt: promptText,
           endpoint:
-            typeof with_.endpoint === "string" && with_.endpoint.length > 0
-              ? with_.endpoint
+            typeof params.endpoint === "string" && params.endpoint.length > 0
+              ? params.endpoint
               : undefined,
           apiKey:
-            typeof with_.api_key === "string" && with_.api_key.length > 0
-              ? with_.api_key
+            typeof params.api_key === "string" && params.api_key.length > 0
+              ? params.api_key
               : env.LITELLM_API_KEY,
           system:
-            typeof with_.system === "string" && with_.system.length > 0 ? with_.system : undefined,
+            typeof params.system === "string" && params.system.length > 0
+              ? params.system
+              : undefined,
         });
 
         return [new Event("agent.litellm", { content, model, provider }, node.id)];
       }
 
       const permissionMode =
-        typeof with_.permission_mode === "string" ? with_.permission_mode : undefined;
-      const trust = with_.trust === true;
+        typeof params.permission_mode === "string" ? params.permission_mode : undefined;
+      const trust = params.trust === true;
 
       let binary = "";
       let argv: string[] = [];
@@ -94,8 +96,8 @@ export const AgentDriver: Driver = {
         binary = "devin";
         argv = ["-p"];
 
-        if (typeof with_.prompt_file === "string" && with_.prompt_file.length > 0) {
-          argv.push("--prompt-file", with_.prompt_file);
+        if (typeof params.prompt_file === "string" && params.prompt_file.length > 0) {
+          argv.push("--prompt-file", params.prompt_file);
         } else {
           argv.push(promptText);
         }
@@ -106,42 +108,42 @@ export const AgentDriver: Driver = {
 
         argv.push("--respect-workspace-trust", trust ? "true" : "false");
       } else if (runner === "custom") {
-        if (typeof with_.binary !== "string" || with_.binary.length === 0) {
+        if (typeof params.binary !== "string" || params.binary.length === 0) {
           return yield* Effect.fail(
             new DriverError({
-              reason: `agent node '${node.id}' custom runner missing 'with.binary'`,
+              reason: `agent node '${node.id}' custom runner missing 'params.binary'`,
             }),
           );
         }
 
-        binary = with_.binary;
+        binary = params.binary;
 
         if (
-          !Array.isArray(with_.flags) ||
-          !(with_.flags as ReadonlyArray<unknown>).every((item) => typeof item === "string")
+          !Array.isArray(params.flags) ||
+          !(params.flags as ReadonlyArray<unknown>).every((item) => typeof item === "string")
         ) {
           return yield* Effect.fail(
             new DriverError({
-              reason: `agent node '${node.id}' custom runner 'with.flags' must be an array of strings`,
+              reason: `agent node '${node.id}' custom runner 'params.flags' must be an array of strings`,
             }),
           );
         }
 
-        argv = [...(with_.flags as ReadonlyArray<string>)];
+        argv = [...(params.flags as ReadonlyArray<string>)];
 
-        if (with_.extra_args !== undefined) {
+        if (params.extra_args !== undefined) {
           if (
-            !Array.isArray(with_.extra_args) ||
-            !(with_.extra_args as ReadonlyArray<unknown>).every((item) => typeof item === "string")
+            !Array.isArray(params.extra_args) ||
+            !(params.extra_args as ReadonlyArray<unknown>).every((item) => typeof item === "string")
           ) {
             return yield* Effect.fail(
               new DriverError({
-                reason: `agent node '${node.id}' custom runner 'with.extra_args' must be an array of strings`,
+                reason: `agent node '${node.id}' custom runner 'params.extra_args' must be an array of strings`,
               }),
             );
           }
 
-          argv.push(...(with_.extra_args as ReadonlyArray<string>));
+          argv.push(...(params.extra_args as ReadonlyArray<string>));
         }
 
         if (promptText.length > 0) {
@@ -156,7 +158,7 @@ export const AgentDriver: Driver = {
       }
 
       const getEventType = (rc: number): string => {
-        const emit = with_.emit as Record<string, string> | undefined;
+        const emit = params.emit as Record<string, string> | undefined;
 
         if (emit && typeof emit === "object" && !Array.isArray(emit)) {
           if (emit[String(rc)] !== undefined) return emit[String(rc)];

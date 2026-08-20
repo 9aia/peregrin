@@ -12,7 +12,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [thing.done]
-    with:
+    params:
       cmd: "echo 'doing the thing'"
 ```
 
@@ -29,14 +29,14 @@ nodes:
     driver: shell
     on: [start]
     emits: [lint.passed, lint.failed]
-    with:
+    params:
       cmd: "ruff check ."
 
   - id: test
     driver: shell
     on: [start]
     emits: [test.passed, test.failed]
-    with:
+    params:
       cmd: "pytest -q"
 ```
 
@@ -50,7 +50,7 @@ nodes:
   on: [lint.passed, test.passed]
   mode: all
   emits: [summary.done]
-  with:
+  params:
     cmd: "echo 'all passed'"
 ```
 
@@ -63,14 +63,14 @@ for branching:
 - id: notify-success
   on: [summary.done]
   emits: [notify.done]
-  with:
+  params:
     cmd: "echo 'success'"
 
 - id: notify-failure
   on: [lint.failed, test.failed]
   mode: any
   emits: [notify.done]
-  with:
+  params:
     cmd: "echo 'failed'"
 ```
 
@@ -83,18 +83,18 @@ for branching:
   driver: shell
   on: [start]
   emits: [deploy.success, deploy.failed]
-  with:
+  params:
     cmd: "deploy.sh"
 ```
 
-Explicit exit-code mapping with `with.emit`:
+Explicit exit-code mapping with `params.emit`:
 
 ```yaml
 - id: deploy
   driver: shell
   on: [start]
   emits: [deploy.success, deploy.retry, deploy.failed]
-  with:
+  params:
     emit:
       0: deploy.success
       1: deploy.retry
@@ -104,10 +104,10 @@ Explicit exit-code mapping with `with.emit`:
 
 ## Payload placeholders
 
-All `with` fields support `${...}` substitution, powered by [lodash-es `_.template`](https://lodash.com/docs/4.17.15#template). Expressions are JavaScript and run inside a `with` context of known variables.
+All `params` fields support `${...}` substitution, powered by [lodash-es `_.template`](https://lodash.com/docs/4.17.15#template). Expressions are JavaScript and run inside a `params` context of known variables.
 
 ```yaml
-with:
+params:
   cmd: "echo '${event.payload.message}'" # trigger event payload
   cmd: "echo '${event.type}'" # trigger event type
   cmd: "echo '${event.source}'" # source node id
@@ -119,7 +119,7 @@ with:
   cmd: 'echo ${shell("git rev-parse --short HEAD")}' # shell command output
 ```
 
-Works in any string field inside `with`, recursively.
+Works in any string field inside `params`, recursively.
 
 ### Built-in variables
 
@@ -153,7 +153,7 @@ created by an earlier node in the same workflow.
   driver: shell
   on: [report.generated]
   emits: [review.done]
-  with:
+  params:
     cmd: |
       devin -p "Review this report:
       ${file("/tmp/ac-report.txt")}"
@@ -169,7 +169,7 @@ that are not known until the workflow runs.
   driver: shell
   on: [start]
   emits: [deploy.done]
-  with:
+  params:
     cmd: |
       echo "Deploying ${shell("git rev-parse --short HEAD")}"
 ```
@@ -207,7 +207,7 @@ Subscribe to `node.failed` to react to failures:
 - id: alert-on-failure
   on: [node.failed]
   emits: [alert.sent]
-  with:
+  params:
     cmd: "echo 'node ${event.payload.node} failed: ${event.payload.error}'"
 ```
 
@@ -236,8 +236,8 @@ You can subscribe to any of them with `on:`.
 | `on`              | `[]`     | Event types that trigger this node                                              |
 | `emits`           | `[]`     | Event types this node produces                                                  |
 | `mode`            | `any`    | `any` (first match) or `all` (wait for every pattern)                           |
-| `with`            | `{}`     | Config/inputs passed to the handler                                             |
-| `max_fires`       | `1`      | Max times this node fires (0 = unlimited, N = bounded)                          |
+| `params`          | `{}`     | Config/inputs passed to the handler                                             |
+| `max_fires`       | `1`      | Max times this node fires (`unlimited` or a positive integer)                   |
 | `until`           | `[]`     | Stop firing once any of these event types exists                                |
 | `retire_on`       | `[]`     | Remove this node from the graph once these events exist                         |
 | `retry`           | `{}`     | Retry config. See [Retry](../reference/retry.md).                               |
@@ -270,12 +270,12 @@ nodes:
     driver: stdin
     on: [start]
     emits: [line.received]
-    with:
+    params:
       event_type: line.received
   - id: process
     driver: shell
     on: [line.received]
     emits: [process.done]
-    with:
+    params:
       cmd: "echo 'got: ${event.payload.line}'"
 ```

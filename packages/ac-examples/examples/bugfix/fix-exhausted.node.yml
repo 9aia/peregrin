@@ -6,7 +6,7 @@ id: fix-exhausted
 driver: shell
 on: [fix.failed]
 emits: [bugfix.failed]
-with:
+params:
   cmd: |
     echo "════════════════════════════════════════"
     echo "  BUGFIX FAILED — max fix attempts reached"

@@ -51,17 +51,17 @@ export const StdinDriver: Driver = {
   name: "stdin",
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
-      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+      const resolved = yield* resolveValueForNode(node.params, triggers, ctx, node).pipe(
         Effect.mapError((error) => new DriverError({ reason: String(error) })),
       );
 
-      const with_ = resolved as Record<string, unknown>;
-      const rawEventType = with_.event_type;
+      const params = resolved as Record<string, unknown>;
+      const rawEventType = params.event_type;
       const eventType =
         typeof rawEventType === "string" && rawEventType.length > 0
           ? rawEventType
           : (node.emits[0] ?? `${node.id}.line`);
-      const parseJson = with_.parse_json === true || with_.parse_json === "true";
+      const parseJson = params.parse_json === true || params.parse_json === "true";
       const doneEvent = `${node.id}.done`;
 
       if (ctx.dryRun) {

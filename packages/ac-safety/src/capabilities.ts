@@ -76,21 +76,21 @@ export class CapabilityChecker {
     return result;
   }
 
-  check(driver: string, resolvedWith: Readonly<Record<string, unknown>>): ReadonlyArray<string> {
+  check(driver: string, resolvedParams: Readonly<Record<string, unknown>>): ReadonlyArray<string> {
     if (this._defaultPolicy === "allow") return [];
 
     const violations: string[] = [];
 
     if (driver === "shell") {
-      violations.push(...this._checkGlobField(asString(resolvedWith["cmd"]), "shell"));
+      violations.push(...this._checkGlobField(asString(resolvedParams["cmd"]), "shell"));
     } else if (driver === "http") {
-      violations.push(...this._checkGlobField(asString(resolvedWith["url"]), "http"));
+      violations.push(...this._checkGlobField(asString(resolvedParams["url"]), "http"));
     } else if (driver === "agent") {
-      violations.push(...this._checkAgent(asString(resolvedWith["runner"])));
+      violations.push(...this._checkAgent(asString(resolvedParams["runner"])));
     } else if (driver === "python") {
-      violations.push(...this._checkPython(resolvedWith));
+      violations.push(...this._checkPython(resolvedParams));
     } else if (driver === "webhook") {
-      violations.push(...this._checkWebhook(resolvedWith));
+      violations.push(...this._checkWebhook(resolvedParams));
     }
 
     return violations;
@@ -135,23 +135,23 @@ export class CapabilityChecker {
     return result;
   }
 
-  private _checkPython(resolvedWith: Readonly<Record<string, unknown>>): ReadonlyArray<string> {
-    const handler = asString(resolvedWith["handler"]);
+  private _checkPython(resolvedParams: Readonly<Record<string, unknown>>): ReadonlyArray<string> {
+    const handler = asString(resolvedParams["handler"]);
     if (!handler) return ["python node missing handler name"];
     return this._checkGlobField(handler, "python");
   }
 
-  private _checkWebhook(resolvedWith: Readonly<Record<string, unknown>>): ReadonlyArray<string> {
+  private _checkWebhook(resolvedParams: Readonly<Record<string, unknown>>): ReadonlyArray<string> {
     const caps = (this._wfCaps["webhook"] ?? {}) as Readonly<Record<string, unknown>>;
     if (Object.keys(caps).length === 0) {
       return ["webhook blocked (deny-all, no webhook capabilities)"];
     }
 
     const violations: string[] = [];
-    const port = asNumber(resolvedWith["port"], 8080);
-    const host = asString(resolvedWith["host"], "127.0.0.1");
-    const path = asString(resolvedWith["path"], "/events");
-    const auth = resolvedWith["auth"] as Readonly<Record<string, unknown>> | undefined;
+    const port = asNumber(resolvedParams["port"], 8080);
+    const host = asString(resolvedParams["host"], "127.0.0.1");
+    const path = asString(resolvedParams["path"], "/events");
+    const auth = resolvedParams["auth"] as Readonly<Record<string, unknown>> | undefined;
 
     const allowedPorts = asList(caps["ports"]);
     if (allowedPorts.length === 0) {

@@ -10,7 +10,7 @@ Polls a shell command on an interval and emits one event per output line.
   on: [start, poll-prs.tick]
   emits: [pr.discovered, poll-prs.tick]
   max_fires: unlimited
-  with:
+  params:
     cmd: "gh pr list --json number,title --state open"
     interval: 60
     event_type: pr.discovered
@@ -26,7 +26,7 @@ with `max_fires`, `until`, and cycle detection.
   driver: cli
   on: [start]
   emits: [pr.discovered]
-  with:
+  params:
     cmd: "gh pr list --json number,title --state open"
     interval: 60
     mode: interval
@@ -43,7 +43,7 @@ Loops internally with `keep_alive`. No self-triggering needed.
   on: [start, poll-events.tick]
   emits: [alert, info, poll-events.tick]
   max_fires: unlimited
-  with:
+  params:
     cmd: "curl -s https://api.example.com/events"
     interval: 30
     parse_json: true
@@ -57,7 +57,7 @@ If an output line is valid JSON and has a `type` field, that type is used.
 - One event per output line, with `rc` in the payload.
 - `<node-id>.done` when the driver stops.
 
-## Common `with:` fields
+## Common `params:` fields
 
 | Field        | Type   | Description                                  |
 | ------------ | ------ | -------------------------------------------- |

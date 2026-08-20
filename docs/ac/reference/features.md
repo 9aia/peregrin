@@ -9,7 +9,7 @@
 - **webhook** — HTTP server that emits events from POSTs, auth, health check, localhost bind by default
 - **stdin** — read lines from stdin, emit one event per line, JSON parsing
 - **cli** — poll a command on an interval, emit one event per output line, self-trigger or interval mode
-- **agent** — invoke external AI coding agents (devin, cline, claude-code, codex, custom) with `permission_mode`, `trust`, `prompt`/`prompt_file`, `timeout` as declarative `with:` fields. Cross-agent fallback (`runners: [devin, cline]`) with rate-limit detection, exponential backoff + jitter, and a shared per-provider cooldown so concurrent nodes don't dogpile a throttled provider
+- **agent** — invoke external AI coding agents (devin, cline, claude-code, codex, custom) with `permission_mode`, `trust`, `prompt`/`prompt_file`, `timeout` as declarative `params:` fields. Cross-agent fallback (`runners: [devin, cline]`) with rate-limit detection, exponential backoff + jitter, and a shared per-provider cooldown so concurrent nodes don't dogpile a throttled provider
 - **human** — human-in-the-loop gates with `prompt`, `expect`, `timeout`
 
 ## Flow control
@@ -68,7 +68,7 @@
 
 ## Streaming and dry-run
 
-- **Streaming:** `with.stream: true` on shell/http — emit one event per line as output arrives
+- **Streaming:** `params.stream: true` on shell/http — emit one event per line as output arrives
 - **Dry-run:** `--dry-run` simulates without side effects (shell/http/webhook print instead of execute)
 
 ## Placeholders and state

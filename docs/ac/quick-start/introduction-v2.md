@@ -85,28 +85,28 @@ nodes:
     driver: shell
     on: [pr.opened]
     emits: [build.done, build.failed, build.timeout]
-    with:
+    params:
       cmd: "npm test"
 
   - id: human-approve
     driver: human
     on: [build.done]
     emits: [human.approved, human.rejected]
-    with:
+    params:
       prompt: "Approve deploy for ${event.payload.branch}?"
 
   - id: release-notes
     driver: agent
     on: [human.approved]
     emits: [agent.notes]
-    with:
+    params:
       prompt: "Write release notes from ${events.pr.opened.payload}"
 
   - id: deploy
     driver: shell
     on: [agent.notes]
     emits: [deploy.done]
-    with:
+    params:
       cmd: "npm run deploy"
 ```
 
@@ -117,7 +117,7 @@ the campaign log. Nodes can fire repeatedly as matching events arrive; use
 `max_fires` to limit that. The `emits` field lists the event types the node can
 produce.
 
-In a `with` template, `event` refers to the trigger event. `events.<type>`
+In a `params` template, `event` refers to the trigger event. `events.<type>`
 refers to an event of that type from the campaign log.
 
 ## Campaigns can grow as they run
@@ -167,7 +167,7 @@ nodes:
   - id: upgrade
     driver: runner
     on: [start]
-    with:
+    params:
       workflow: dependency-upgrade
 ```
 

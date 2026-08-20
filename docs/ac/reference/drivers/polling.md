@@ -11,7 +11,7 @@ Four ways to poll.
     interval: 60
     until: [pr.complete]
   emits: [pr.discovered]
-  with:
+  params:
     cmd: "gh pr list --json number,title --state open"
 ```
 
@@ -19,9 +19,11 @@ The `poll:` modifier expands to:
 
 - `on: [start, <id>.tick]`
 - `emits: [..., <id>.tick]`
-- `max_fires: unlimited`
 - `until: [...]`
-- `with.interval` (if the driver supports it)
+
+A `poll:` node without an explicit `max_fires` defaults to `1`. Add `max_fires: unlimited` (or a large integer) explicitly to poll forever.
+
+- `params.interval` (if the driver supports it)
 - After each successful run, the runner auto-emits `<id>.tick` delayed by
   `interval` seconds.
 
@@ -38,7 +40,7 @@ Purpose-built polling driver with per-line events and JSON parsing. See
   on: [start, poll-prs.tick]
   emits: [pr.discovered, poll-prs.tick]
   max_fires: unlimited
-  with:
+  params:
     cmd: "sleep 60 && gh pr list --json number,title --state open"
 ```
 
@@ -50,7 +52,7 @@ Purpose-built polling driver with per-line events and JSON parsing. See
   on: [start, poll-api.tick]
   emits: [api.response, poll-api.tick]
   max_fires: unlimited
-  with:
+  params:
     method: GET
     url: "https://api.example.com/status"
 ```

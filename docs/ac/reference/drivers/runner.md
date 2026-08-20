@@ -28,7 +28,7 @@ driver takes that payload and injects the node specs into the graph.
 - Injected nodes usually subscribe to a later event (for example `absorb.done`)
   to start.
 
-## Common `with:` fields
+## Common `params:` fields
 
 None. The `runner` driver only needs the `nodes` list from the trigger
 event payload.

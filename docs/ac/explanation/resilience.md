@@ -19,7 +19,7 @@ Retry failed nodes automatically with configurable backoff.
     max_attempts: 3
     backoff: exponential
     delay: 1
-  with:
+  params:
     method: GET
     url: "https://api.example.com/data"
 ```
@@ -44,7 +44,7 @@ services time to recover.
     threshold: 5
     reset_after: 60
     on_trip: circuit.open
-  with:
+  params:
     method: GET
     url: "https://flaky-api.example.com/data"
 ```

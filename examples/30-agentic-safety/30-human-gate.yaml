@@ -16,14 +16,14 @@ nodes:
     driver: shell
     on: [start]
     emits: [prepare.done]
-    with:
+    params:
       cmd: "echo 'Preparing release for ${config.target}'"
 
   - id: gate
     driver: human
     on: [prepare.done]
     emits: [gate.approved, gate.rejected]
-    with:
+    params:
       prompt: "Approve destructive deploy to ${config.target}? (approve)"
       expect: "approve"
       timeout: 120
@@ -34,19 +34,19 @@ nodes:
     driver: shell
     on: [gate.approved]
     emits: [deploy.done]
-    with:
+    params:
       cmd: "echo 'Deploying to ${config.target}'"
 
   - id: abort
     driver: shell
     on: [gate.rejected]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'Deploy rejected. No action taken.'"
 
   - id: finish
     driver: shell
     on: [deploy.done]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'Human-gated deploy completed'"

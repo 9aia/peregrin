@@ -14,7 +14,7 @@ failures and gives the downstream service time to recover.
     threshold: 5
     reset_after: 60
     on_trip: circuit.open
-  with:
+  params:
     method: GET
     url: "https://flaky-api.example.com/data"
 ```
@@ -42,7 +42,7 @@ When the circuit opens:
   driver: shell
   on: [circuit.open]
   emits: [alerted]
-  with:
+  params:
     cmd: "pagerduty-alert 'Circuit open for ${event.payload.node}'"
 ```
 

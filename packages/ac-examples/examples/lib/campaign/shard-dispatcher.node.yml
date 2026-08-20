@@ -23,4 +23,4 @@ driver: python
 handler: agent_campaign.handlers:dispatch_shards
 on: [start]
 emits: [shard.**.start]
-max_fires: 0
+max_fires: unlimited

@@ -1,6 +1,6 @@
 # Streaming (shell and http)
 
-Both `shell` and `http` drivers support `with.stream: true` — emit one
+Both `shell` and `http` drivers support `params.stream: true` — emit one
 event per line or chunk as output arrives, instead of waiting for completion.
 
 ## Shell streaming
@@ -10,7 +10,7 @@ event per line or chunk as output arrives, instead of waiting for completion.
   driver: shell
   on: [start]
   emits: [log.line]
-  with:
+  params:
     cmd: "tail -f /var/log/app.log"
     stream: true
 ```
@@ -25,7 +25,7 @@ Emits `log.line` (the first declared `emits`) per line of stdout. Emits
   driver: http
   on: [start]
   emits: [sse.event]
-  with:
+  params:
     method: GET
     url: "https://api.example.com/events/stream"
     stream: true
@@ -41,7 +41,7 @@ the status code when the response completes.
 - One event per line/chunk, using the first declared `emits` value.
 - `<node-id>.done` when the stream ends (shell exit or HTTP response close).
 
-## Common `with:` fields
+## Common `params:` fields
 
 | Field    | Type | Description      |
 | -------- | ---- | ---------------- |

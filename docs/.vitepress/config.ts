@@ -36,6 +36,7 @@ export default defineConfig({
         collapsed: false,
         items: [
           { text: "Compose from fragments", link: "/ac/how-to/compose-from-fragments" },
+          { text: "Compose workflows", link: "/ac/how-to/compose-workflows" },
           { text: "Custom drivers and handlers", link: "/ac/how-to/custom-drivers" },
           { text: "Write a custom driver", link: "/ac/how-to/write-a-custom-driver" },
           { text: "Build a plugin library", link: "/ac/how-to/build-a-plugin-library" },

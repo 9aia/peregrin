@@ -88,7 +88,7 @@ it.effect("notify:send emits notify.failed when the target is missing", () =>
 
     expect(Either.isLeft(result)).toBe(true);
     if (Either.isLeft(result)) {
-      expect(result.left.reason).toContain("missing 'with.target'");
+      expect(result.left.reason).toContain("missing 'params.target'");
     }
   }),
 );
@@ -206,7 +206,7 @@ it.effect("notify:send_multi fails when targets are missing", () =>
 
     expect(Either.isLeft(result)).toBe(true);
     if (Either.isLeft(result)) {
-      expect(result.left.reason).toContain("missing 'with.targets'");
+      expect(result.left.reason).toContain("missing 'params.targets'");
     }
   }),
 );

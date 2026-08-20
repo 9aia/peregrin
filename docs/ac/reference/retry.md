@@ -13,7 +13,7 @@ Retry failed nodes automatically with configurable backoff.
     max_attempts: 3
     backoff: exponential
     delay: 1
-  with:
+  params:
     method: GET
     url: "https://api.example.com/data"
 ```

@@ -78,15 +78,16 @@ export const WebhookDriver: Driver = {
   name: "webhook",
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
-      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+      const resolved = yield* resolveValueForNode(node.params, triggers, ctx, node).pipe(
         Effect.mapError((error) => new DriverError({ reason: String(error) })),
       );
-      const with_ = resolved as Record<string, unknown>;
-      const port = typeof with_.port === "number" ? with_.port : 8080;
-      const path = typeof with_.path === "string" ? with_.path : "/events";
-      const host = typeof with_.host === "string" ? with_.host : "127.0.0.1";
-      const response = with_.response;
-      const timeout = typeof with_.timeout === "number" ? with_.timeout : 0;
+      const params = resolved as Record<string, unknown>;
+      const port = typeof params.port === "number" ? params.port : 8080;
+      const path = typeof params.path === "string" ? params.path : "/events";
+      const host = typeof params.host === "string" ? params.host : "127.0.0.1";
+      const response = params.response;
+      const timeout = typeof params.timeout === "number" ? params.timeout : 300;
+      const timeoutMs = timeout > 0 ? timeout * 1000 : 0;
 
       if (ctx.dryRun) {
         return [new Event("webhook.listening", { port, path, dryRun: true }, node.id)];
@@ -105,8 +106,11 @@ export const WebhookDriver: Driver = {
 
       const post = waitForPost(server, path, response).pipe(Effect.ensuring(closeServer(server)));
       const wait =
-        timeout > 0
-          ? Effect.raceFirst(post, Effect.sleep(timeout).pipe(Effect.map(() => "timeout" as const)))
+        timeoutMs > 0
+          ? Effect.raceFirst(
+              post,
+              Effect.sleep(timeoutMs).pipe(Effect.map(() => "timeout" as const)),
+            )
           : post;
 
       const result = yield* wait.pipe(

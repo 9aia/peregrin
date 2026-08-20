@@ -16,7 +16,7 @@ id: campaign.merge-gate
 driver: human
 on: [gate.merge.run]
 emits: [gate.merge.ok, gate.merge.rejected]
-with:
+params:
   prompt: |
     ========================================
       PRs created. Merge them to main.

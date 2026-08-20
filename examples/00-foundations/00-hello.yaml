@@ -12,5 +12,5 @@ nodes:
     driver: shell
     on: [start]
     emits: [hello.done]
-    with:
+    params:
       cmd: "echo 'Hello from Peregrin'"

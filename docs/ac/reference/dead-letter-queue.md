@@ -20,7 +20,7 @@ payload:
   driver: shell
   on: [dlq.event]
   emits: [alerted]
-  with:
+  params:
     cmd: "echo 'DLQ: node ${event.payload.node} failed: ${event.payload.error}'"
 ```
 

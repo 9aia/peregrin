@@ -31,7 +31,7 @@ generate (AI creates nodes, self-attests broad caps)
 
 The workflow's capability boundary is the **mechanical last line of defense**.
 Even if the AI reviewer were fallible or compromised, the engine checks every
-node's `with:` block against the workflow caps at dispatch time — before the
+node's `params:` block against the workflow caps at dispatch time — before the
 driver runs. The check lives in `NodeExecutor.run_node`, the only path from
 "a node is ready" to "a driver executes." A handler cannot bypass it because
 the handler is invoked _by_ the driver, which is invoked _after_ the check

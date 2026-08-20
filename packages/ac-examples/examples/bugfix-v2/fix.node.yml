@@ -10,7 +10,7 @@ driver: agent
 on: [agent.investigate.done, test.check.failed]
 emits: [agent.fix.done, agent.fix.failed]
 max_fires: 3
-with:
+params:
   runner: devin
   prompt_file: examples/bugfix-v2/fix.prompt.md
   permission_mode: dangerous

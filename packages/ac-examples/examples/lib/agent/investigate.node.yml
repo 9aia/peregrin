@@ -17,7 +17,7 @@ id: agent.investigate
 driver: agent
 on: [agent.investigate.run]
 emits: [agent.investigate.done, agent.investigate.failed]
-with:
+params:
   runner: devin
   permission_mode: normal
   trust: false

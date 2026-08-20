@@ -20,6 +20,6 @@ ac run packages/ac-examples/workflows/create-workflow/main.yaml
 
 - `capability-confinement` and the reusable `lib/` nodes rely on pure data
   where possible. Example-specific Python handlers have been omitted in favor
-  of the TypeScript `python` driver (`with.script` / `with.module` / `with.function`).
+  of the TypeScript `python` driver (`params.script` / `params.module` / `params.function`).
 - Real campaign data under the original `campaigns/` directory was not
   ported because it contains proprietary workflows.

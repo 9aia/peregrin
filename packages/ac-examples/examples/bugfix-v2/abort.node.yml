@@ -5,7 +5,7 @@ id: abort
 driver: shell
 on: [bugfix-v2.aborted]
 emits: [bugfix-v2.failed]
-with:
+params:
   cmd: |
     echo "════════════════════════════════════════"
     echo "  BUGFIX ABORTED"

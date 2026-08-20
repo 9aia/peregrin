@@ -9,7 +9,7 @@ Makes HTTP requests and maps status codes to emitted events.
   driver: http
   on: [start]
   emits: [api.success, api.failed]
-  with:
+  params:
     method: GET
     url: "https://api.github.com/repos/${event.payload.repo}"
 ```
@@ -23,7 +23,7 @@ Makes HTTP requests and maps status codes to emitted events.
   driver: http
   on: [deploy.done]
   emits: [ok, not_found, server_error, other]
-  with:
+  params:
     method: POST
     url: "https://api.example.com/webhook"
     json:
@@ -41,7 +41,7 @@ Makes HTTP requests and maps status codes to emitted events.
 Bearer:
 
 ```yaml
-with:
+params:
   url: "https://api.example.com/data"
   auth:
     type: bearer
@@ -51,7 +51,7 @@ with:
 Basic:
 
 ```yaml
-with:
+params:
   auth:
     type: basic
     user: admin
@@ -61,7 +61,7 @@ with:
 Custom header:
 
 ```yaml
-with:
+params:
   auth:
     type: header
     key: X-API-Key
@@ -71,7 +71,7 @@ with:
 ## Query params, headers, and timeout
 
 ```yaml
-with:
+params:
   method: GET
   url: "https://api.example.com/search"
   params:
@@ -105,7 +105,7 @@ nodes:
     driver: http
     on: [pr.opened]
     emits: [pr.fetched, pr.fetch_failed]
-    with:
+    params:
       method: GET
       url: "https://api.github.com/repos/${event.payload.repo}/pulls/${event.payload.pr_number}"
       auth:
@@ -118,7 +118,7 @@ nodes:
     driver: http
     on: [pr.fetched]
     emits: [notified]
-    with:
+    params:
       method: POST
       url: "https://hooks.slack.com/services/${secret.SLACK_WEBHOOK}"
       json:
@@ -128,7 +128,7 @@ nodes:
     driver: http
     on: [pr.fetch_failed]
     emits: [alerted]
-    with:
+    params:
       method: POST
       url: "https://hooks.slack.com/services/${secret.SLACK_WEBHOOK}"
       json:
@@ -137,4 +137,4 @@ nodes:
 
 ## See also
 
-- [Streaming](streaming.md) — `with.stream` for HTTP
+- [Streaming](streaming.md) — `params.stream` for HTTP

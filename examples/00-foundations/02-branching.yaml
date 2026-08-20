@@ -17,7 +17,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [decision.success, decision.failure]
-    with:
+    params:
       emit:
         0: decision.success
         default: decision.failure
@@ -34,19 +34,19 @@ nodes:
     driver: shell
     on: [decision.success]
     emits: [branching.done]
-    with:
+    params:
       cmd: "echo 'Success branch'"
 
   - id: on-failure
     driver: shell
     on: [decision.failure]
     emits: [branching.done]
-    with:
+    params:
       cmd: "echo 'Failure branch'"
 
   - id: finish
     driver: shell
     on: [branching.done]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'Branching complete'"

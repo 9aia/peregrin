@@ -14,12 +14,12 @@ include: [events.yaml]
 snippets:
   shell-base:
     driver: shell
-    with:
+    params:
       timeout: 30
 
   devin:
     snippet: shell-base # snippet inheritance
-    with:
+    params:
       cmd: "devin run"
 
   # Scalar snippet — injected via ${snippet(name)} at any value position
@@ -31,7 +31,7 @@ nodes:
     snippet: shell-base
     on: [start]
     emits: [lint.done]
-    with:
+    params:
       cmd: "ruff check ." # local overrides snippet
 
   # snippet with inheritance — gets cmd + model + timeout from "devin"
@@ -45,5 +45,5 @@ nodes:
     driver: shell
     on: [review.done]
     emits: [deploy.done]
-    with:
+    params:
       cmd: "deploy --model=${snippet(model)}"

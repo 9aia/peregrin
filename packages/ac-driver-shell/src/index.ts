@@ -22,15 +22,15 @@ export const ShellDriver: Driver = {
   ],
   invoke: (node: Node, triggers: ReadonlyArray<Event>, ctx: ExecutionContext) =>
     Effect.gen(function* () {
-      const resolved = yield* resolveValueForNode(node.with_, triggers, ctx, node).pipe(
+      const resolved = yield* resolveValueForNode(node.params, triggers, ctx, node).pipe(
         Effect.mapError((error) => new DriverError({ reason: String(error) })),
       );
 
-      const with_ = resolved as Record<string, unknown>;
-      const cmd = with_.cmd;
+      const params = resolved as Record<string, unknown>;
+      const cmd = params.cmd;
       if (typeof cmd !== "string" || cmd.length === 0) {
         return yield* Effect.fail(
-          new DriverError({ reason: `shell node '${node.id}' missing 'with.cmd'` }),
+          new DriverError({ reason: `shell node '${node.id}' missing 'params.cmd'` }),
         );
       }
 
@@ -38,7 +38,7 @@ export const ShellDriver: Driver = {
         return [new Event("cmd.done", { cmd, dryRun: true, stdout: "" }, node.id)];
       }
 
-      const env = with_.env as Record<string, string> | undefined;
+      const env = params.env as Record<string, string> | undefined;
       const result = yield* Effect.sync(() =>
         cp.spawnSync(cmd, {
           shell: true,
@@ -56,7 +56,7 @@ export const ShellDriver: Driver = {
       const stdout = result.stdout ?? "";
       const stderr = result.stderr ?? "";
 
-      const emitMap = with_.emit as Record<string, string> | undefined;
+      const emitMap = params.emit as Record<string, string> | undefined;
       const rcKey = String(rc);
       const mapEvent =
         emitMap && typeof emitMap === "object" && !Array.isArray(emitMap)

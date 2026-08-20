@@ -11,7 +11,7 @@ id: commit
 driver: shell
 on: [verify.passed]
 emits: [commit.done, bugfix.aborted]
-with:
+params:
   cmd: |
     source /tmp/ac-bugfix-env
     cd "$WORKTREE_PATH"

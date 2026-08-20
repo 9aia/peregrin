@@ -15,14 +15,14 @@ snippets:
   devin:
     driver: shell
     emits: [devin.done, devin.failed]
-    with:
+    params:
       cmd: "echo 'devin run --prompt ${event.payload.prompt} --workspace ${event.payload.workspace}'"
       timeout: 1800
 
   # Inherit from devin, override timeout
   devin-long:
     snippet: devin
-    with:
+    params:
       timeout: 3600
 
   # Reusable value fragments — any YAML type
@@ -37,7 +37,7 @@ nodes:
   - id: review
     snippet: devin
     on: ${snippet(pr-triggers)} # inject list of triggers
-    with:
+    params:
       env: ${snippet(prod-env)} # inject dict
       timeout: 3600 # local overrides snippet's 1800
 
@@ -45,7 +45,7 @@ nodes:
   - id: deep-analysis
     snippet: devin-long
     on: [review.done]
-    with:
+    params:
       cmd: "echo 'devin run --model ${snippet(default-model)} --prompt ${event.payload.prompt}'"
 
   # Plain node using ${snippet()} for just the cmd string
@@ -53,5 +53,5 @@ nodes:
     driver: shell
     on: [start]
     emits: [check.done]
-    with:
+    params:
       cmd: "echo 'using model ${snippet(default-model)} for quick check'"

@@ -17,7 +17,7 @@ id: test.run
 driver: shell
 on: [test.run.run]
 emits: [test.run.passed, test.run.failed, test.run.skipped]
-with:
+params:
   cmd: |
     cd "${state.worktree_path}"
     [ -z "${TEST_PATH:-}" ] && echo "no TEST_PATH — skipping" && exit 0

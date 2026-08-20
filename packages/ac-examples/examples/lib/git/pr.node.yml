@@ -17,7 +17,7 @@ id: git.pr
 driver: shell
 on: [git.pr.run]
 emits: [git.pr.created, git.pr.failed]
-with:
+params:
   cmd: |
     cd "${state.worktree_path}"
     TITLE="${state.pr_title:-fix: ${state.branch}}"

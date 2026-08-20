@@ -15,7 +15,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [hello.done]
-    with:
+    params:
       cmd: "echo 'hello'"
 ```
 
@@ -26,7 +26,7 @@ nodes:
 | Event schemas               | Missing schemas are allowed.                                                 | Every event listed in `events` must have a schema. Payloads are validated before the event is accepted. |
 | `emits`                     | A driver can return any event.                                               | Every node must declare an explicit `emits` list. Undeclared emitted events are rejected.               |
 | `on` / `emits`              | Missing `on` or `emits` is tolerated.                                        | A node without `on` or `emits` is an error.                                                             |
-| Placeholders                | Unresolved `${...}` expressions are left as-is or rendered as empty strings. | Any unresolved placeholder in a `with` value becomes a `TemplateError`.                                 |
+| Placeholders                | Unresolved `${...}` expressions are left as-is or rendered as empty strings. | Any unresolved placeholder in a `params` value becomes a `TemplateError`.                               |
 | Secrets                     | Missing secrets return an empty string.                                      | Referencing a missing secret fails the node.                                                            |
 | Driver / handler references | Unknown drivers may be tolerated.                                            | Referencing an unregistered driver fails immediately.                                                   |
 | Capabilities                | Capabilities can be inferred.                                                | Capabilities and resources must be explicitly declared.                                                 |

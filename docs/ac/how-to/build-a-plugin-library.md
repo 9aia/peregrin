@@ -12,7 +12,7 @@ id: lint
 driver: shell
 on: [start]
 emits: [lint.passed, lint.failed]
-with:
+params:
   cmd: "ruff check ."
 ```
 
@@ -22,7 +22,7 @@ id: test
 driver: shell
 on: [start]
 emits: [test.passed, test.failed]
-with:
+params:
   cmd: "pytest -q"
 ```
 
@@ -32,7 +32,7 @@ id: coverage
 driver: shell
 on: [test.passed]
 emits: [coverage.passed, coverage.failed]
-with:
+params:
   cmd: "pytest --cov --cov-fail-under=80"
 ```
 
@@ -50,7 +50,7 @@ nodes:
     on: [lint.passed, test.passed, coverage.passed]
     mode: all
     emits: [ci.passed]
-    with:
+    params:
       cmd: "echo 'all checks passed'"
 
   - id: alert
@@ -58,7 +58,7 @@ nodes:
     on: [lint.failed, test.failed, coverage.failed]
     mode: any
     emits: [ci.failed]
-    with:
+    params:
       cmd: "echo 'CI failed'"
 ```
 
@@ -70,7 +70,7 @@ id: notify-slack
 driver: shell
 on: [notify.requested]
 emits: [notify.done]
-with:
+params:
   cmd: 'curl -X POST -H ''Content-type: application/json'' --data ''{"text":"${event.payload.message}"}'' ${secret.SLACK_WEBHOOK_URL}'
 ```
 
@@ -80,7 +80,7 @@ id: notify-email
 driver: shell
 on: [notify.requested]
 emits: [notify.done]
-with:
+params:
   cmd: "echo '${event.payload.message}' | mail -s 'Notification' ${event.payload.to}"
 ```
 
@@ -90,7 +90,7 @@ id: notify-pagerduty
 driver: shell
 on: [alert.critical]
 emits: [notify.done]
-with:
+params:
   cmd: "pagerduty-cli trigger --severity critical --description '${event.payload.message}'"
 ```
 
@@ -106,28 +106,28 @@ nodes:
     driver: shell
     on: [start]
     emits: [build.done, build.failed]
-    with:
+    params:
       cmd: "make build"
 
   - id: deploy
     driver: shell
     on: [build.done]
     emits: [deploy.done, deploy.failed]
-    with:
+    params:
       cmd: "make deploy"
 
   - id: notify-success
     driver: shell
     on: [deploy.done]
     emits: [notify.requested]
-    with:
+    params:
       cmd: "echo 'deploy succeeded'"
 
   - id: alert-failure
     driver: shell
     on: [deploy.failed]
     emits: [alert.critical]
-    with:
+    params:
       cmd: "echo 'deploy failed'"
 ```
 
@@ -159,7 +159,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [deploy.done]
-    with:
+    params:
       include: snippets/prod-env.yaml
       cmd: "deploy.sh"
       timeout: 60

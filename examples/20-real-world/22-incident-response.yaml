@@ -14,7 +14,7 @@ nodes:
     driver: webhook
     on: [start]
     emits: [alert.received]
-    with:
+    params:
       port: 8080
       path: /webhook
       host: 127.0.0.1
@@ -23,7 +23,7 @@ nodes:
     driver: shell
     on: [alert.received]
     emits: [incident.critical, incident.minor]
-    with:
+    params:
       emit:
         0: incident.critical
         default: incident.minor
@@ -40,7 +40,7 @@ nodes:
     driver: human
     on: [incident.critical]
     emits: [page.acknowledged, page.rejected]
-    with:
+    params:
       prompt: "CRITICAL incident. Acknowledge? (ack)"
       expect: "ack"
       timeout: 120
@@ -52,7 +52,7 @@ nodes:
     on: [incident.critical, incident.minor]
     mode: any
     emits: [ticket.created]
-    with:
+    params:
       method: POST
       url: "https://api.example.com/tickets"
       json:
@@ -63,7 +63,7 @@ nodes:
     driver: shell
     on: [page.acknowledged]
     emits: [remediation.done, remediation.failed]
-    with:
+    params:
       emit:
         0: remediation.done
         default: remediation.failed
@@ -74,7 +74,7 @@ nodes:
     on: [remediation.done, ticket.created]
     mode: any
     emits: [incident.closed]
-    with:
+    params:
       cmd: "echo 'Incident closed'"
 
   - id: escalate
@@ -82,7 +82,7 @@ nodes:
     on: [page.rejected, remediation.failed]
     mode: any
     emits: [incident.escalated]
-    with:
+    params:
       method: POST
       url: "https://api.example.com/escalate"
       json:

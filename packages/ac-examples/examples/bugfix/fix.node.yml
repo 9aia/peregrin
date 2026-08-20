@@ -16,7 +16,7 @@ driver: shell
 on: [investigate.done, verify.failed]
 emits: [fix.done, fix.failed]
 max_fires: 3
-with:
+params:
   cmd: |
     source /tmp/ac-bugfix-env
     cd "$WORKTREE_PATH"

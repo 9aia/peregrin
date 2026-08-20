@@ -3,5 +3,5 @@ id: test
 driver: shell
 on: [start]
 emits: [test.passed, test.failed]
-with:
+params:
   cmd: "pytest -q"

@@ -56,7 +56,7 @@ nodes:
   - id: alert-on-bad-payload
     on: [event.invalid]
     driver: shell
-    with:
+    params:
       cmd: "echo 'Bad payload on ${event.payload.event_type}: ${event.payload.errors}'"
 ```
 

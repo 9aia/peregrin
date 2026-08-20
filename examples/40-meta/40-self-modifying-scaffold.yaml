@@ -19,7 +19,7 @@ nodes:
     driver: python
     on: [start]
     emits: [plan.ready]
-    with:
+    params:
       handler: examples.plan:generate
       args: ["--count", "3"]
 
@@ -32,5 +32,5 @@ nodes:
     driver: shell
     on: [absorb.done]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'Self-modifying scaffold complete'"

@@ -18,7 +18,7 @@ nodes:
     driver: shell
     on: [start]
     emits: [reserve.done, reserve.failed]
-    with:
+    params:
       emit:
         0: reserve.done
         default: reserve.failed
@@ -33,7 +33,7 @@ nodes:
     driver: shell
     on: [reserve.done]
     emits: [charge.done, charge.failed]
-    with:
+    params:
       emit:
         0: charge.done
         default: charge.failed
@@ -48,7 +48,7 @@ nodes:
     driver: shell
     on: [charge.done]
     emits: [ship.done, ship.failed]
-    with:
+    params:
       emit:
         0: ship.done
         default: ship.failed
@@ -64,7 +64,7 @@ nodes:
     on: [ship.failed, workflow.failed]
     mode: any
     emits: [compensation.ship.cancelled]
-    with:
+    params:
       cmd: "echo 'Compensated: cancelled shipping'"
 
   - id: refund-charge
@@ -72,7 +72,7 @@ nodes:
     on: [charge.failed, compensation.ship.cancelled]
     mode: any
     emits: [compensation.charge.refunded]
-    with:
+    params:
       cmd: "echo 'Compensated: refunded charge'"
 
   - id: release-reservation
@@ -80,12 +80,12 @@ nodes:
     on: [reserve.failed, compensation.charge.refunded]
     mode: any
     emits: [compensation.done]
-    with:
+    params:
       cmd: "echo 'Compensated: released reservation'"
 
   - id: finish
     driver: shell
     on: [ship.done]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "echo 'Saga completed'"

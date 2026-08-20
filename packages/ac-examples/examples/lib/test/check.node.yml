@@ -14,7 +14,7 @@ id: test.check
 driver: shell
 on: [test.check.run]
 emits: [test.check.passed, test.check.failed]
-with:
+params:
   cmd: |
     cd "${state.worktree_path}"
     ${config.check_cmd:-vp check}

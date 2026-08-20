@@ -22,7 +22,7 @@ driver: agent
 on: [agent.fix.run, verify.failed]
 emits: [agent.fix.done, agent.fix.failed]
 max_fires: 3
-with:
+params:
   runner: devin
   permission_mode: dangerous
   trust: false

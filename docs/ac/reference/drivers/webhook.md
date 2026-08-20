@@ -11,7 +11,7 @@ waiting for requests.
   driver: webhook
   on: [start]
   emits: [webhook.received]
-  with:
+  params:
     port: 8080
     path: /events
     host: 127.0.0.1
@@ -34,7 +34,7 @@ Binds to `127.0.0.1` by default. Use `host: 0.0.0.0` to expose to the network.
   driver: webhook
   on: [start]
   emits: [webhook.received]
-  with:
+  params:
     port: 8080
     path: /events
     auth:
@@ -50,7 +50,7 @@ Binds to `127.0.0.1` by default. Use `host: 0.0.0.0` to expose to the network.
   driver: webhook
   on: [start]
   emits: [webhook.received]
-  with:
+  params:
     port: 8080
     path: /webhook
     auth:
@@ -69,7 +69,7 @@ Binds to `127.0.0.1` by default. Use `host: 0.0.0.0` to expose to the network.
   driver: webhook
   on: [start]
   emits: [webhook.received]
-  with:
+  params:
     port: 8443
     path: /events
     tls:
@@ -80,13 +80,13 @@ Binds to `127.0.0.1` by default. Use `host: 0.0.0.0` to expose to the network.
 ## Body size limit
 
 ```yaml
-with:
+params:
   max_body_size: 1048576
 ```
 
 Default is 1MB. Oversized requests are rejected with 413.
 
-## Common `with:` fields
+## Common `params:` fields
 
 | Field              | Type   | Description                                          |
 | ------------------ | ------ | ---------------------------------------------------- |

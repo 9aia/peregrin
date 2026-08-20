@@ -15,7 +15,7 @@ id: notify-slack
 driver: shell
 on: [notify.requested]
 emits: [notify.done]
-with:
+params:
   cmd: 'curl -X POST -H ''Content-type: application/json'' --data ''{"text":"${event.payload.message}"}'' ${secret.SLACK_WEBHOOK_URL}'
 ```
 

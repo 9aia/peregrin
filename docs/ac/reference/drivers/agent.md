@@ -9,7 +9,7 @@ Runs an external AI coding agent CLI and maps exit codes to events.
   driver: agent
   on: [investigate.done]
   emits: [fix.done, fix.failed]
-  with:
+  params:
     runner: devin
     prompt_file: campaigns/my/fix.prompt.md
     permission_mode: dangerous
@@ -25,9 +25,9 @@ Runs an external AI coding agent CLI and maps exit codes to events.
 The current TypeScript port supports:
 
 - `devin` — runs `devin -p [--prompt-file <path> | <prompt>] [--permission-mode <mode>] --respect-workspace-trust <true|false>`
-- `custom` — runs the binary and flags provided in `with.binary` and `with.flags`
+- `custom` — runs the binary and flags provided in `params.binary` and `params.flags`
 
-## Common `with:` fields
+## Common `params:` fields
 
 | Field             | Type   | Description                                           |
 | ----------------- | ------ | ----------------------------------------------------- |

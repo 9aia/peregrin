@@ -20,7 +20,7 @@ nodes:
       interval: 5
       until: [service.ready]
     emits: [service.ready]
-    with:
+    params:
       cmd: |
         if [ -f /tmp/peregrin-service-ready ]; then
           echo "ready"
@@ -33,5 +33,5 @@ nodes:
     driver: shell
     on: [service.ready]
     emits: [workflow.done]
-    with:
+    params:
       cmd: "rm -f /tmp/peregrin-service-ready && echo 'service is ready'"

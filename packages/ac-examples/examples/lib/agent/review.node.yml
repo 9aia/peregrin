@@ -17,7 +17,7 @@ id: agent.review
 driver: agent
 on: [agent.review.run]
 emits: [agent.review.done, agent.review.failed]
-with:
+params:
   runner: devin
   permission_mode: normal
   trust: false

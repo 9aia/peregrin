@@ -9,7 +9,7 @@ Runs a command, maps exit code to emitted events.
   driver: shell
   on: [start]
   emits: [lint.passed, lint.failed]
-  with:
+  params:
     cmd: "ruff check ."
 ```
 
@@ -23,7 +23,7 @@ Runs a command, maps exit code to emitted events.
   driver: shell
   on: [start]
   emits: [deploy.success, deploy.retry, deploy.failed]
-  with:
+  params:
     emit:
       0: deploy.success
       1: deploy.retry
@@ -38,7 +38,7 @@ Runs a command, maps exit code to emitted events.
   driver: shell
   on: [start]
   emits: [deploy.done]
-  with:
+  params:
     cmd: "deploy.sh"
     env:
       REGION: us-east-1
@@ -46,7 +46,7 @@ Runs a command, maps exit code to emitted events.
     timeout: 300
 ```
 
-## Common `with:` fields
+## Common `params:` fields
 
 | Field     | Type   | Description                                                    |
 | --------- | ------ | -------------------------------------------------------------- |
@@ -60,4 +60,4 @@ Runs a command, maps exit code to emitted events.
 ## See also
 
 - [Polling](polling.md) — polling patterns with any driver
-- [Streaming](streaming.md) — `with.stream` on shell and http
+- [Streaming](streaming.md) — `params.stream` on shell and http
