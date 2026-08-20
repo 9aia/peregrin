@@ -51,7 +51,7 @@ These tokens are the minimal syntax surface. Every parser, interpolator, and typ
 | `parse_bool_literal`   | Trimmed string       | Boolean or none          | Recognizes boolean literals (in canonical: `true`, `false`) and returns the value.                       |
 | `is_null_literal`      | Trimmed string       | Boolean                  | Recognizes the null literal (in canonical: `null`).                                                      |
 
-All literal parsing is dialect-configurable. A dialect that uses `yes`/`no` for booleans or `nil` for null implements `parse_bool_literal` and `is_null_literal` accordingly. The value type system (see [LANG.md](./LANG.md) §3) defines the _output_ types — `bool`, `null`, `f64`, `string` — not the _input_ syntax. A dialect changes how literals are recognized; the values they produce remain the same.
+All literal parsing is dialect-configurable. A dialect that uses `yes`/`no` for booleans or `nil` for null implements `parse_bool_literal` and `is_null_literal` accordingly. The value type system (see [LANG.md](./LANG.md) §3) defines the _output_ types — boolean, null, floating-point number, string — not the _input_ syntax. A dialect changes how literals are recognized; the values they produce remain the same.
 
 ### 2.3 Argument separator
 
@@ -83,10 +83,10 @@ The dialect also provides two convenience aggregations:
 
 The dialect defines which schema vocabulary is used for field and function validation. The schema vocabulary is an abstract interface that compiles raw schema documents into validators:
 
-| Operation | Input               | Output                | Description                                                    |
-| --------- | ------------------- | --------------------- | -------------------------------------------------------------- |
-| `id`      | None                | Vocabulary identifier | e.g. `"json-schema-draft-2020-12"`                             |
-| `compile` | Raw schema document | Validator             | Compiles a schema into a `Schema<V>` that can validate values. |
+| Operation | Input               | Output                | Description                                                  |
+| --------- | ------------------- | --------------------- | ------------------------------------------------------------ |
+| `id`      | None                | Vocabulary identifier | e.g. `"json-schema-draft-2020-12"`                           |
+| `compile` | Raw schema document | Validator             | Compiles a schema into a validator that can validate values. |
 
 The canonical dialect uses JSON Schema draft 2020-12. See [LANG.md](./LANG.md) §6.1 for the language-level specification of schemas.
 
@@ -142,7 +142,7 @@ A custom dialect changes **surface syntax** only. It must not change:
 - **Value types** — JSON-compatible values, IEEE 754 doubles, boolean/null values.
 - **Namespace concept** — named scopes for path lookups. The path separator changes, but the mechanism does not.
 - **Default namespace shorthand** — bare `key` resolves to `default.key` (in canonical) regardless of separator.
-- **Expression AST** — `Literal`, `Path`, `Call` variants. The parser produces the same AST; only the token recognition differs.
+- **Expression AST** — `Literal`, `Path`, and `Call` node types. The parser produces the same AST; only the token recognition differs.
 
 ### 4.2 What a custom dialect may change
 
@@ -174,15 +174,17 @@ Documents written with one dialect are not portable to another. `doc.name` and `
 
 The language spec defines **what the canonical syntax is**. This spec defines **how implementations abstract that syntax behind an interface**. The runtime spec defines **how the canonical dialect is wired into the compiler**.
 
+### 5.1 Implementation principle
+
+Every function that parses or evaluates expressions should accept a dialect instance rather than hardcoding syntax tokens. Every function that extracts fields should read key names from the dialect. Every function that validates schemas should use the dialect's schema vocabulary. The canonical dialect instance is passed at call sites. No function should hardcode `"${"`, `'.'`, `'('`, `"fields"`, `"expr"`, or a specific schema implementation.
+
 ## 6. Reference implementation
 
 The Rust implementation provides:
 
-- **`ac-dialect`** crate — defines the `Dialect` trait (the abstraction). No implementation, no dependencies on a specific schema vocabulary.
-- **`ac-dialect-canonical`** crate — implements the canonical `AcDialect` struct and `AC_DIALECT` static singleton. Depends on `ac-schema-json` for the JSON Schema vocabulary.
-- **`ac-schema`** crate — defines the `Schema<V>` and `SchemaVocabulary<V>` traits (abstract schema validation).
-- **`ac-schema-json`** crate — implements `JsonSchema` (`Schema<V>`) and `JsonSchemaVocabulary` (`SchemaVocabulary<V>`) for JSON Schema draft 2020-12.
+- **`ac-dialect`** crate — defines the `Dialect` trait, `Schema<V>`, `SchemaVocabulary<V>`, and `ValidationError` (the abstractions). No implementation, no dependencies on a specific schema vocabulary.
+- **`ac-dialect-canonical`** crate — implements the canonical `AcDialect` struct, `AC_DIALECT` static singleton, `JsonSchema` (`Schema<V>`), and `JsonSchemaVocabulary` (`SchemaVocabulary<V>`) for JSON Schema draft 2020-12.
 
-Every function that parses or evaluates expressions accepts `&dyn Dialect` (from `ac-dialect`). Every function that extracts fields reads key names from the dialect. Every function that validates schemas uses the dialect's `SchemaVocabulary`. The canonical `AC_DIALECT` (from `ac-dialect-canonical`) is passed at call sites. No function hardcodes `"${"`, `'.'`, `'('`, `"fields"`, `"expr"`, or `JsonSchema`.
+In the Rust implementation, every function that parses or evaluates expressions accepts `&dyn Dialect` (from `ac-dialect`). Every function that extracts fields reads key names from the dialect. Every function that validates schemas uses the dialect's `SchemaVocabulary`. The canonical `AC_DIALECT` (from `ac-dialect-canonical`) is passed at call sites. No function hardcodes `"${"`, `'.'`, `'('`, `"fields"`, `"expr"`, or `JsonSchema`.
 
 See [RUNTIME.md](./RUNTIME.md) for how the dialect integrates into the compiler pipeline.
