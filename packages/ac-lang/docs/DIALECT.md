@@ -11,12 +11,12 @@ The canonical dialect is the only shipped dialect. Custom dialects are architect
 
 A **dialect** is a set of syntax tokens, key names, and parsing rules for AC documents. It defines:
 
-- **Interpolation markers** — how expressions are embedded in strings.
-- **Path separator** — how namespace paths are segmented.
-- **Call syntax** — how function calls are delimited.
-- **Literal parsing** — how string, number, boolean, and null literals are recognized.
-- **Special key names** — the reserved keys used in AC documents (`fields`, `functions`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body`).
-- **Schema vocabulary** — which schema language is used for field and function validation.
+- **Interpolation markers** — how expressions are embedded in strings (in canonical: `${...}`).
+- **Path separator** — how namespace paths are segmented (in canonical: `.`).
+- **Call syntax** — how function calls are delimited (in canonical: `fn(args)`).
+- **Literal parsing** — how string, number, boolean, and null literals are recognized (in canonical: `"..."`, `42`, `true`, `null`).
+- **Special key names** — the reserved keys used in AC documents (in canonical: `fields`, `functions`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body`).
+- **Schema vocabulary** — which schema language is used for field and function validation (in canonical: JSON Schema draft 2020-12).
 
 The dialect does **not** define:
 
@@ -46,10 +46,10 @@ These tokens are the minimal syntax surface. Every parser, interpolator, and typ
 | ---------------------- | -------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------- |
 | `find_call_open`       | Expression string    | Position or none         | Finds the call-open token outside string literals. Used to distinguish function calls from path lookups. |
 | `split_args`           | Argument list string | List of argument strings | Splits arguments by the separator (`,` in canonical), respecting nested call tokens and string literals. |
-| `parse_string_literal` | Trimmed string       | Content or none          | Recognizes string literals (e.g. `"hello"` or `'hello'`) and returns the inner content.                  |
-| `parse_number_literal` | Trimmed string       | Number or none           | Recognizes number literals (e.g. `42`, `1.5`, `-3`) and returns the value.                               |
-| `parse_bool_literal`   | Trimmed string       | Boolean or none          | Recognizes boolean literals (e.g. `true`, `false`) and returns the value.                                |
-| `is_null_literal`      | Trimmed string       | Boolean                  | Recognizes the null literal (e.g. `null`).                                                               |
+| `parse_string_literal` | Trimmed string       | Content or none          | Recognizes string literals (in canonical: `"hello"` or `'hello'`) and returns the inner content.         |
+| `parse_number_literal` | Trimmed string       | Number or none           | Recognizes number literals (in canonical: `42`, `1.5`, `-3`) and returns the value.                      |
+| `parse_bool_literal`   | Trimmed string       | Boolean or none          | Recognizes boolean literals (in canonical: `true`, `false`) and returns the value.                       |
+| `is_null_literal`      | Trimmed string       | Boolean                  | Recognizes the null literal (in canonical: `null`).                                                      |
 
 All literal parsing is dialect-configurable. A dialect that uses `yes`/`no` for booleans or `nil` for null implements `parse_bool_literal` and `is_null_literal` accordingly. The value type system (see [LANG.md](./LANG.md) §3) defines the _output_ types — `bool`, `null`, `f64`, `string` — not the _input_ syntax. A dialect changes how literals are recognized; the values they produce remain the same.
 
@@ -141,7 +141,7 @@ A custom dialect changes **surface syntax** only. It must not change:
 - **Semantics** — interpolation, path lookup, and function calls work identically. Only the tokens differ.
 - **Value types** — JSON-compatible values, IEEE 754 doubles, boolean/null values.
 - **Namespace concept** — named scopes for path lookups. The path separator changes, but the mechanism does not.
-- **Default namespace shorthand** — bare `key` resolves to `default.key` regardless of separator.
+- **Default namespace shorthand** — bare `key` resolves to `default.key` (in canonical) regardless of separator.
 - **Expression AST** — `Literal`, `Path`, `Call` variants. The parser produces the same AST; only the token recognition differs.
 
 ### 4.2 What a custom dialect may change
