@@ -127,19 +127,19 @@ Numbers are parsed as IEEE 754 doubles. Integers (`42`) and floats (`1.5`) are t
 
 A custom dialect implements the same interface with different token values and parsing rules. For example:
 
-| Token           | Canonical           | Hypothetical custom |
-| --------------- | ------------------- | ------------------- |
-| Interpolation   | `${...}`            | `{{...}}`           |
-| Path separator  | `.`                 | `/`                 |
-| Call syntax     | `fn(args)`          | `fn[args]`          |
-| String literals | `"..."` or `'...''` | `"..."` only        |
+| Token           | Canonical          | Hypothetical custom |
+| --------------- | ------------------ | ------------------- |
+| Interpolation   | `${...}`           | `{{...}}`           |
+| Path separator  | `.`                | `/`                 |
+| Call syntax     | `fn(args)`         | `fn[args]`          |
+| String literals | `"..."` or `'...'` | `"..."` only        |
 
 ### 4.1 What a custom dialect must preserve
 
 A custom dialect changes **surface syntax** only. It must not change:
 
 - **Semantics** — interpolation, path lookup, and function calls work identically. Only the tokens differ.
-- **Value types** — JSON-compatible values, IEEE 754 doubles, boolean/null keywords.
+- **Value types** — JSON-compatible values, IEEE 754 doubles, boolean/null values.
 - **Namespace concept** — named scopes for path lookups. The path separator changes, but the mechanism does not.
 - **Default namespace shorthand** — bare `key` resolves to `default.key` regardless of separator.
 - **Expression AST** — `Literal`, `Path`, `Call` variants. The parser produces the same AST; only the token recognition differs.
