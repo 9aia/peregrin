@@ -2,7 +2,7 @@
 //!
 //! Each component is a trait object, so callers can swap implementations:
 //!
-//! - `resolver`: how modules are loaded (`ac-resolver-file`, `ac-resolver-virtual`, future git/http)
+//! - `resolver`: how modules are loaded (`ac-resolver-file`, `ac-resolver-virtual`, `ac-resolver-http`, `ac-resolver-git`)
 //! - `interpreter`: how schema fragments become types (`ac-typecheck-schema-json`, future custom)
 //! - `backend`: how types are emitted (`ac-typegen-backend-json-schema`, future TypeScript, Cue)
 //!

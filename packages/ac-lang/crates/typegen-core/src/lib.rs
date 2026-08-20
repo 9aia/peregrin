@@ -29,13 +29,13 @@
 //! ac-resolver-core — ModuleResolver trait (not typegen-specific)
 //! ├── ac-resolver-file    — FileResolver (filesystem I/O)
 //! ├── ac-resolver-virtual — VirtualResolver (in-memory)
-//! └── future: ac-resolver-git, ac-resolver-http
+//! ├── ac-resolver-http    — HttpResolver (HTTP via ureq)
+//! └── ac-resolver-git     — GitResolver (Git via git2)
 //! ```
 
 use indexmap::IndexMap;
 use serde_json::Value as JsonValue;
 
-/// Recursively remove the given keys from a JSON value, in place.
 ///
 /// Walks objects and arrays, removing any key in `keys` from object maps.
 /// Non-object values are left unchanged. This avoids the deep cloning

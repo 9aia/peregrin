@@ -7,7 +7,8 @@
 //!
 //! - `ac-resolver-file` — filesystem-based (`std::fs`)
 //! - `ac-resolver-virtual` — in-memory (`HashMap`)
-//! - Future: `ac-resolver-git`, `ac-resolver-http`
+//! - `ac-resolver-http` — HTTP(S) via `ureq`
+//! - `ac-resolver-git` — Git repositories via `git2`
 //!
 //! Any system that needs to follow `import()` calls (typegen, validation,
 //! linting) can take `&dyn ModuleResolver` without caring where modules
@@ -24,7 +25,8 @@ use serde_json::Value as JsonValue;
 /// Implementations:
 /// - `ac-resolver-file` — filesystem-based (`std::fs`)
 /// - `ac-resolver-virtual` — in-memory (`HashMap`)
-/// - Future: `ac-resolver-git`, `ac-resolver-http`
+/// - `ac-resolver-http` — HTTP(S) via `ureq`
+/// - `ac-resolver-git` — Git repositories via `git2`
 pub trait ModuleResolver {
     /// Resolve a module path to its extracted fields + data.
     ///

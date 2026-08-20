@@ -24,6 +24,8 @@ members = [
   "crates/resolver-core",
   "crates/resolver-file",
   "crates/resolver-virtual",
+  "crates/resolver-http",
+  "crates/resolver-git",
   "crates/typegen-import",
   "crates/typegen-backend-json-schema",
   "crates/typecheck-core",
@@ -84,6 +86,8 @@ ac-typegen-key-arg = { path = "crates/typegen-key-arg" }
 ac-resolver-core = { path = "crates/resolver-core" }
 ac-resolver-file = { path = "crates/resolver-file" }
 ac-resolver-virtual = { path = "crates/resolver-virtual" }
+ac-resolver-http = { path = "crates/resolver-http" }
+ac-resolver-git = { path = "crates/resolver-git" }
 ac-typegen-import = { path = "crates/typegen-import" }
 ac-typegen-backend-json-schema = { path = "crates/typegen-backend-json-schema" }
 ac-typecheck-core = { path = "crates/typecheck-core" }
@@ -108,6 +112,17 @@ ac-frontend-toml.workspace = true
 ac-schema.workspace = true
 ac-schema-json.workspace = true
 ac-fields.workspace = true
+ac-source.workspace = true
+ac-host.workspace = true
+ac-engine.workspace = true
+ac-engine-core.workspace = true
+ac-resolver-core.workspace = true
+ac-resolver-file.workspace = true
+ac-resolver-virtual.workspace = true
+ac-typecheck-core.workspace = true
+ac-typecheck-schema-json.workspace = true
+ac-typegen-core.workspace = true
+ac-typegen-backend-json-schema.workspace = true
 
 [dev-dependencies]
 serde_json = "1"
