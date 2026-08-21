@@ -33,11 +33,7 @@ fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error
 }
 
 fn number_to_string(n: f64) -> String {
-    if n.fract() == 0.0 && n.is_finite() {
-        format!("{}", n as i64)
-    } else {
-        format!("{}", n)
-    }
+    format!("{}", n)
 }
 
 #[derive(Clone, Copy)]
@@ -70,7 +66,11 @@ impl Function for ToNumber {
         } else if let Some(b) = arg.as_bool() {
             if b { 1.0 } else { 0.0 }
         } else if let Some(s) = arg.as_str() {
-            s.trim().parse::<f64>().unwrap_or(0.0)
+            let trimmed = s.trim();
+            match trimmed.parse::<f64>() {
+                Ok(parsed) if parsed.is_finite() => parsed,
+                _ => 0.0,
+            }
         } else if arg.is_null() {
             0.0
         } else if let Some(arr) = arg.as_array() {

@@ -395,3 +395,268 @@ fn to_bool_no_args_errors() {
     let result = call_err(&TypeModule, "to_bool", &[]);
     assert!(matches!(result, Err(Error::ArgumentCount { .. })));
 }
+
+// ── edge cases: large numbers, NaN, Infinity ─────────────────────
+
+#[test]
+fn to_string_from_large_integer() {
+    let result = call(&TypeModule, "to_string", &[n(1e20)]);
+    assert_eq!(result.as_str(), Some("100000000000000000000"));
+}
+
+#[test]
+fn to_string_from_very_small_float() {
+    let result = call(&TypeModule, "to_string", &[n(0.0001)]);
+    assert_eq!(result.as_str(), Some("0.0001"));
+}
+
+#[test]
+fn to_string_from_nan() {
+    let result = call(&TypeModule, "to_string", &[NonFunctionValue::new(serde_json::json!(f64::NAN))]);
+    // serde_json serializes NaN as null, so this becomes "null"
+    assert_eq!(result.as_str(), Some("null"));
+}
+
+#[test]
+fn to_string_from_infinity() {
+    let result = call(&TypeModule, "to_string", &[NonFunctionValue::new(serde_json::json!(f64::INFINITY))]);
+    // serde_json serializes Infinity as null
+    assert_eq!(result.as_str(), Some("null"));
+}
+
+#[test]
+fn to_string_from_nested_array() {
+    let result = call(&TypeModule, "to_string", &[arr(&[serde_json::json!([1, 2])])]);
+    assert_eq!(result.as_str(), Some("[[1,2]]"));
+}
+
+#[test]
+fn to_string_from_nested_object() {
+    let result = call(&TypeModule, "to_string", &[obj(&[("a", serde_json::json!({"b": 2}))])]);
+    assert_eq!(result.as_str(), Some("{\"a\":{\"b\":2}}"));
+}
+
+#[test]
+fn to_string_from_array_with_mixed_types() {
+    let result = call(&TypeModule, "to_string", &[arr(&[
+        serde_json::json!(1),
+        serde_json::json!("two"),
+        serde_json::json!(true),
+        serde_json::json!(null),
+    ])]);
+    assert_eq!(result.as_str(), Some("[1,\"two\",true,null]"));
+}
+
+#[test]
+fn to_number_from_string_inf_returns_zero() {
+    assert_eq!(
+        call(&TypeModule, "to_number", &[s("inf")]).as_number(),
+        Some(0.0)
+    );
+}
+
+#[test]
+fn to_number_from_string_infinity_returns_zero() {
+    assert_eq!(
+        call(&TypeModule, "to_number", &[s("infinity")]).as_number(),
+        Some(0.0)
+    );
+}
+
+#[test]
+fn to_number_from_string_nan_returns_zero() {
+    assert_eq!(
+        call(&TypeModule, "to_number", &[s("nan")]).as_number(),
+        Some(0.0)
+    );
+}
+
+#[test]
+fn to_number_from_string_scientific_notation() {
+    assert_eq!(
+        call(&TypeModule, "to_number", &[s("1e5")]).as_number(),
+        Some(100000.0)
+    );
+}
+
+#[test]
+fn to_number_from_string_with_leading_plus() {
+    assert_eq!(
+        call(&TypeModule, "to_number", &[s("+42")]).as_number(),
+        Some(42.0)
+    );
+}
+
+#[test]
+fn to_number_from_string_float_with_exponent() {
+    assert_eq!(
+        call(&TypeModule, "to_number", &[s("1.5e3")]).as_number(),
+        Some(1500.0)
+    );
+}
+
+#[test]
+fn to_number_from_nested_array_returns_length() {
+    assert_eq!(
+        call(&TypeModule, "to_number", &[arr(&[
+            serde_json::json!([1, 2]),
+            serde_json::json!("x"),
+        ])])
+        .as_number(),
+        Some(2.0)
+    );
+}
+
+#[test]
+fn to_number_from_nested_object_returns_key_count() {
+    assert_eq!(
+        call(&TypeModule, "to_number", &[obj(&[
+            ("a", serde_json::json!({"inner": 1})),
+            ("b", serde_json::json!(2)),
+            ("c", serde_json::json!([1, 2, 3])),
+        ])])
+        .as_number(),
+        Some(3.0)
+    );
+}
+
+#[test]
+fn to_bool_from_nan() {
+    let result = call(&TypeModule, "to_bool", &[NonFunctionValue::new(serde_json::json!(f64::NAN))]);
+    // serde_json serializes NaN as null, so is_null() is true → false
+    assert_eq!(result.as_bool(), Some(false));
+}
+
+#[test]
+fn to_bool_from_infinity() {
+    let result = call(&TypeModule, "to_bool", &[NonFunctionValue::new(serde_json::json!(f64::INFINITY))]);
+    // serde_json serializes Infinity as null → false
+    assert_eq!(result.as_bool(), Some(false));
+}
+
+#[test]
+fn to_bool_from_nested_array_nonempty() {
+    assert_eq!(
+        call(&TypeModule, "to_bool", &[arr(&[serde_json::json!([1])])]).as_bool(),
+        Some(true)
+    );
+}
+
+#[test]
+fn to_bool_from_nested_object_nonempty() {
+    assert_eq!(
+        call(&TypeModule, "to_bool", &[obj(&[("a", serde_json::json!({}))])]).as_bool(),
+        Some(true)
+    );
+}
+
+// ── extra args silently ignored (consistent with other modules) ──
+
+#[test]
+fn to_string_extra_args_ignored() {
+    assert_eq!(
+        call(&TypeModule, "to_string", &[s("hi"), n(42.0)]).as_str(),
+        Some("hi")
+    );
+}
+
+#[test]
+fn to_number_extra_args_ignored() {
+    assert_eq!(
+        call(&TypeModule, "to_number", &[n(1.0), n(2.0)]).as_number(),
+        Some(1.0)
+    );
+}
+
+#[test]
+fn to_bool_extra_args_ignored() {
+    assert_eq!(
+        call(&TypeModule, "to_bool", &[b(true), b(false)]).as_bool(),
+        Some(true)
+    );
+}
+
+// ── VM integration tests ─────────────────────────────────────────
+
+use ac_ast::Expr;
+use ac_runtime_core::ModuleHost;
+use ac_vm::{Host, Vm};
+
+fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
+    let host = ModuleHost::new().with(TypeModule);
+    let vm = Vm::new(host);
+    let mut ctx = Context::new();
+    vm.eval(expr, &mut ctx).expect("eval succeeds")
+}
+
+fn eval_expr_result(expr: &Expr<NonFunctionValue>) -> Result<NonFunctionValue, Error> {
+    let host = ModuleHost::new().with(TypeModule);
+    let vm = Vm::new(host);
+    let mut ctx = Context::new();
+    vm.eval(expr, &mut ctx)
+}
+
+#[test]
+fn vm_to_string_from_number() {
+    let expr = Expr::call("type.to_string", vec![Expr::value(n(42.0))]);
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_str(), Some("42"));
+}
+
+#[test]
+fn vm_to_string_from_bool() {
+    let expr = Expr::call("type.to_string", vec![Expr::value(b(true))]);
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_str(), Some("true"));
+}
+
+#[test]
+fn vm_to_string_from_null() {
+    let expr = Expr::call("type.to_string", vec![Expr::value(null())]);
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_str(), Some("null"));
+}
+
+#[test]
+fn vm_to_number_from_string() {
+    let expr = Expr::call("type.to_number", vec![Expr::value(s("3.14"))]);
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_number(), Some(3.14));
+}
+
+#[test]
+fn vm_to_number_from_bool() {
+    let expr = Expr::call("type.to_number", vec![Expr::value(b(true))]);
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_number(), Some(1.0));
+}
+
+#[test]
+fn vm_to_bool_from_number() {
+    let expr = Expr::call("type.to_bool", vec![Expr::value(n(0.0))]);
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_bool(), Some(false));
+}
+
+#[test]
+fn vm_to_bool_from_string() {
+    let expr = Expr::call("type.to_bool", vec![Expr::value(s("hello"))]);
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_bool(), Some(true));
+}
+
+#[test]
+fn vm_unknown_function_errors() {
+    let expr = Expr::call("type.nonexistent", vec![]);
+    let result = eval_expr_result(&expr);
+    assert!(result.is_err());
+}
+
+#[test]
+fn vm_resolves_via_module_host() {
+    let host = ModuleHost::new().with(TypeModule);
+    assert!(host.function("type.to_string").is_some());
+    assert!(host.function("type.to_number").is_some());
+    assert!(host.function("type.to_bool").is_some());
+    assert!(host.function("type.nonexistent").is_none());
+}
