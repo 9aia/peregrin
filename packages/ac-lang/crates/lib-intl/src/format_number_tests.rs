@@ -126,6 +126,78 @@ fn format_number_compact() {
     assert!(!formatted.is_empty());
 }
 
+// ── Percent style ────────────────────────────────────────────────
+
+#[test]
+fn format_number_percent_half() {
+    let result = call(&IntlModule, "format_number", &[n(0.5), s("en"), obj(&[("style", "percent")])]);
+    let formatted = result.as_str().expect("string result");
+    assert!(formatted.contains("50") && formatted.contains("%"));
+}
+
+#[test]
+fn format_number_percent_whole() {
+    let result = call(&IntlModule, "format_number", &[n(1.0), s("en"), obj(&[("style", "percent")])]);
+    let formatted = result.as_str().expect("string result");
+    assert!(formatted.contains("100") && formatted.contains("%"));
+}
+
+#[test]
+fn format_number_percent_decimal() {
+    let result = call(&IntlModule, "format_number", &[n(0.1234), s("en"), obj(&[("style", "percent")])]);
+    let formatted = result.as_str().expect("string result");
+    assert!(formatted.contains("%"));
+}
+
+#[test]
+fn format_number_percent_german() {
+    let result = call(&IntlModule, "format_number", &[n(0.5), s("de"), obj(&[("style", "percent")])]);
+    let formatted = result.as_str().expect("string result");
+    assert!(formatted.contains("50") && formatted.contains("%"));
+}
+
+// ── Currency style ───────────────────────────────────────────────
+
+#[test]
+fn format_number_currency_usd_symbol() {
+    let result = call(&IntlModule, "format_number", &[n(1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD")])]);
+    let formatted = result.as_str().expect("string result");
+    assert!(formatted.contains("1") && formatted.contains("234") && formatted.contains("56"));
+}
+
+#[test]
+fn format_number_currency_usd_code() {
+    let result = call(&IntlModule, "format_number", &[n(1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD"), ("currencyDisplay", "code")])]);
+    let formatted = result.as_str().expect("string result");
+    assert!(formatted.contains("USD") && formatted.contains("1") && formatted.contains("234"));
+}
+
+#[test]
+fn format_number_currency_eur_german() {
+    let result = call(&IntlModule, "format_number", &[n(999.99), s("de"), obj(&[("style", "currency"), ("currency", "EUR")])]);
+    let formatted = result.as_str().expect("string result");
+    assert!(formatted.contains("999") && formatted.contains("99"));
+}
+
+#[test]
+fn format_number_currency_jpy() {
+    let result = call(&IntlModule, "format_number", &[n(5000.0), s("ja"), obj(&[("style", "currency"), ("currency", "JPY")])]);
+    let formatted = result.as_str().expect("string result");
+    assert!(formatted.contains("5") && formatted.contains("000"));
+}
+
+#[test]
+fn format_number_currency_missing_code_errors() {
+    let result = call_err(&IntlModule, "format_number", &[n(100.0), s("en"), obj(&[("style", "currency")])]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn format_number_currency_invalid_code_errors() {
+    let result = call_err(&IntlModule, "format_number", &[n(100.0), s("en"), obj(&[("style", "currency"), ("currency", "dollar")])]);
+    assert!(result.is_err());
+}
+
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast::Expr;
