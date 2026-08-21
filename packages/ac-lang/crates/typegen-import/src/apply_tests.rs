@@ -24,7 +24,7 @@ fn apply_imports_static() {
     resolver.add(
         "base.yml",
         json!({
-            "fields": {
+            "$": {
                 "host": { "type": "string" },
                 "port": { "type": "number" }
             }
@@ -32,7 +32,7 @@ fn apply_imports_static() {
     );
 
     let doc = json!({
-        "fields": {
+        "$": {
             "import": {
                 "type": "object",
                 "expr": "import('base.yml')",
@@ -58,7 +58,7 @@ fn apply_imports_data_driven() {
     resolver.add(
         "base.yml",
         json!({
-            "fields": {
+            "$": {
                 "host": { "type": "string" },
                 "port": { "type": "number" }
             }
@@ -66,7 +66,7 @@ fn apply_imports_data_driven() {
     );
 
     let doc = json!({
-        "fields": {
+        "$": {
             "import": {
                 "type": "object",
                 "arg": { "type": "string" },
@@ -94,7 +94,7 @@ fn apply_imports_parent_wins() {
     resolver.add(
         "base.yml",
         json!({
-            "fields": {
+            "$": {
                 "host": { "type": "string" },
                 "port": { "type": "number" }
             }
@@ -102,7 +102,7 @@ fn apply_imports_parent_wins() {
     );
 
     let doc = json!({
-        "fields": {
+        "$": {
             "import": {
                 "type": "object",
                 "expr": "import('base.yml')",
@@ -126,7 +126,7 @@ fn apply_imports_no_imports_is_noop() {
     let resolver = VirtualResolver::new();
 
     let doc = json!({
-        "fields": {
+        "$": {
             "host": { "type": "string" },
             "port": { "type": "number" }
         }

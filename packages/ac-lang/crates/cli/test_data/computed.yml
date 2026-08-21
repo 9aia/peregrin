@@ -1,4 +1,4 @@
-fields:
+$:
   name:
     type: string
   version:
@@ -12,6 +12,8 @@ fields:
   label:
     type: string
     expr: 'concat(name, "-v2")'
+  functions:
+    type: object
 functions:
   mul:
     params:

@@ -17,14 +17,7 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
         }
     }
 
-    let fn_sigs: Vec<ac_typecheck_infer::RawFnSig> =
-        extracted
-            .functions
-            .iter()
-            .map(|(name, sig)| {
-                (name.clone(), sig.params.clone(), sig.return_schema.clone())
-            })
-            .collect();
+    let fn_sigs: Vec<ac_typecheck_infer::RawFnSig> = Vec::new();
     let function_table =
         ac_typecheck_infer::FunctionTable::from_signatures(&fn_sigs, interpreter);
 

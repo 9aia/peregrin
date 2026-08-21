@@ -4,18 +4,20 @@
 //! for self-describing documents.
 //!
 //! This crate provides the domain logic for documents that declare
-//! their own field schemas inline using a `fields:` section. It
+//! their own field schemas inline using a `$:` section. It
 //! handles:
 //!
-//! - Extracting the `fields:` and `functions:` sections from data.
+//! - Extracting the `$:` section from data.
 //! - `${...}` interpolation supporting:
 //!   - Namespace paths: `${doc.name}`, `${env.HOME}`, `${doc.author.email}`
 //!   - Shorthand paths: `${name}` (equivalent to `${doc.name}`)
 //!   - Function calls: `${now()}`, `${add(1, 2)}`, `${concat(doc.name, "!")}`
 //!   - Nested calls: `${add(mul(2, 3), 4)}`
 //! - Typed/validated function params via the `Schema<V>` system.
-//! - User-defined function bodies (`body:` field) that compose via
+//! - User-defined function bodies that compose via
 //!   host primitives — no Rust code needed for new functions.
+//!   Functions are plain data (objects with a `body` field), callable
+//!   via the `apply` host primitive.
 //! - Scoped inheritance: `inheritable: true` fields propagate into nested
 //!   objects; `mutable: false` fields cannot be overridden in child scopes.
 //! - Detecting undeclared fields.
@@ -41,7 +43,7 @@ mod namespace;
 mod validation;
 
 pub use types::{
-    ArgSpec, ComputedField, ExtractedFields, FunctionResolver, FunctionSignature,
+    APPLY_FUNCTION, ArgSpec, ComputedField, ExtractedFields, FunctionResolver,
     Namespaces, NoFunctions, DEFAULT_NAMESPACE,
 };
 pub use extraction::{extract_fields, undeclared_fields};

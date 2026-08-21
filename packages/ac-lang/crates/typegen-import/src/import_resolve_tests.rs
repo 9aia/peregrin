@@ -11,7 +11,7 @@ fn make_resolver() -> VirtualResolver {
     resolver.add(
         "base.yml",
         json!({
-            "fields": {
+            "$": {
                 "host": { "type": "string" },
                 "port": { "type": "number" }
             }
@@ -124,7 +124,7 @@ fn strips_ac_keys_from_imported_schemas() {
     resolver.add(
         "base3.yml",
         json!({
-            "fields": {
+            "$": {
                 "host": {
                     "type": "string",
                     "expr": "compute()",
@@ -162,7 +162,7 @@ fn resolves_nested_imports() {
     resolver.add(
         "child.yml",
         json!({
-            "fields": {
+            "$": {
                 "child_field": { "type": "string" }
             }
         }),
@@ -170,7 +170,7 @@ fn resolves_nested_imports() {
     resolver.add(
         "parent.yml",
         json!({
-            "fields": {
+            "$": {
                 "parent_field": { "type": "number" },
                 "nested": {
                     "type": "object",

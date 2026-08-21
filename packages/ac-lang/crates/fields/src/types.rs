@@ -12,6 +12,16 @@ use serde_json::Value as JsonValue;
 /// accordingly.
 pub const DEFAULT_NAMESPACE: &str = "doc";
 
+/// The conventional name of the host function that applies a first-class
+/// function value to arguments.
+///
+/// This is a runtime host convention, not a language-level requirement.
+/// The language defines no built-in functions — `apply` is simply the name
+/// the reference runtime uses for the function that evaluates a function
+/// value's body with bound arguments. A runtime host may use a different
+/// name or provide function application through a different mechanism.
+pub const APPLY_FUNCTION: &str = "apply";
+
 /// A collection of named namespaces for `${ns.key}` interpolation.
 ///
 /// The default namespace (conventionally `doc`) is typically built from
@@ -49,7 +59,7 @@ pub enum ArgSpec {
     Typed(JsonValue),
 }
 
-/// A computed field declaration extracted from `fields:`.
+/// A computed field declaration extracted from `$:`.
 ///
 /// Fields with an `expr:` key are computed after interpolation.
 /// The `arg` field, if present, makes the field's own data value
@@ -70,33 +80,11 @@ impl From<(String, String)> for ComputedField {
     }
 }
 
-/// A function signature declared in the `functions:` section.
-///
-/// Each param has a name and a raw schema value. The return type
-/// also has a raw schema value. Callers construct `Schema<V>`
-/// implementations from these raw values.
-#[derive(Debug, Clone)]
-pub struct FunctionSignature {
-    /// `(param_name, raw_schema_value)` pairs, in declaration order.
-    pub params: Vec<(String, JsonValue)>,
-    /// Raw schema value for the return type, if declared.
-    pub return_schema: Option<JsonValue>,
-    /// Expression body for user-defined functions, if declared.
-    ///
-    /// When present, the function is evaluated by parsing this
-    /// expression and resolving it via the `FunctionResolver`.
-    /// Params are available as bare names (e.g. `x` in `mul(x, 2)`).
-    /// When absent, the function must be provided by the host.
-    pub body: Option<String>,
-}
-
-/// Result of [`extract_fields`]: field schemas, function signatures, and data.
+/// Result of [`extract_fields`]: field schemas and data.
 pub struct ExtractedFields {
     /// `(name, raw_schema_value)` pairs for each declared field.
     pub schemas: Vec<(String, JsonValue)>,
-    /// `(name, FunctionSignature)` pairs for each declared function.
-    pub functions: Vec<(String, FunctionSignature)>,
-    /// The document data with `fields:` and `functions:` removed.
+    /// The document data with `$:` removed.
     pub data: RuntimeValue,
     /// Field names declared with `inheritable: true`.
     /// These propagate into nested objects during scoped interpolation.

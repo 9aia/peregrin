@@ -38,7 +38,7 @@ impl FunctionResolver for AddResolver {
 #[test]
 fn full_pipeline_parse_extract_interpolate_compute_validate() {
     let yaml = r#"
-fields:
+$:
   name:
     type: string
   version:
@@ -81,7 +81,7 @@ version: 3
 #[test]
 fn full_pipeline_with_merge() {
     let yaml = r#"
-fields:
+$:
   _base:
     type: object
     merge: true
@@ -129,7 +129,7 @@ fn full_pipeline_yaml_to_json_to_toml_roundtrip() {
 #[test]
 fn full_pipeline_undeclared_detection() {
     let yaml = r#"
-fields:
+$:
   name:
     type: string
 

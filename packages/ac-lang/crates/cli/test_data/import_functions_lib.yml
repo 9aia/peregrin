@@ -1,8 +1,10 @@
-fields:
+$:
   host:
     type: string
   port:
     type: number
+  functions:
+    type: object
 functions:
   make_label:
     params:

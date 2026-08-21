@@ -8,15 +8,18 @@ use ac_compiler_core::{Compilation, Config, Pass, Source};
 use ac_compiler_pass_extract::ExtractPass;
 use ac_compiler_pass_parse::ParsePass;
 use ac_compiler_pass_typecheck::TypecheckPass;
-use ac_resolver_virtual::VirtualResolver;
+use ac_module_resolver_virtual::VirtualResolver;
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
 
 fn typecheck_config() -> Config {
     Config {
+        dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
         resolver: Box::new(VirtualResolver::new()),
         interpreter: Box::new(JsonSchemaInterpreter),
         backend: None,
+        key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
+        import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }
 }
 

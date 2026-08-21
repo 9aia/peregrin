@@ -6,7 +6,7 @@ use ac_runtime::RuntimeValue;
 #[test]
 fn extract_fields_basic() {
     let value = RuntimeValue::new(serde_json::json!({
-        "fields": {
+        "$": {
             "name": { "type": "string" },
             "version": { "type": "number" }
         },
@@ -17,15 +17,16 @@ fn extract_fields_basic() {
     assert_eq!(extracted.schemas.len(), 2);
     assert_eq!(extracted.schemas[0].0, "name");
     assert_eq!(extracted.schemas[1].0, "version");
-    assert!(extracted.functions.is_empty());
-    assert!(extracted.data.as_object().unwrap().get("fields").is_none());
+    assert!(extracted.data.as_object().unwrap().get("$").is_none());
 }
 
 #[test]
-fn extract_fields_with_functions() {
+fn extract_fields_with_functions_as_data() {
+    // `functions:` is no longer a reserved key — it stays in data as regular fields.
     let value = RuntimeValue::new(serde_json::json!({
-        "fields": {
-            "name": { "type": "string" }
+        "$": {
+            "name": { "type": "string" },
+            "functions": { "type": "object" }
         },
         "functions": {
             "double": {
@@ -36,20 +37,16 @@ fn extract_fields_with_functions() {
         "name": "ac"
     }));
     let extracted = extract_fields(value, &AC_DIALECT).unwrap();
-    assert_eq!(extracted.schemas.len(), 1);
-    assert_eq!(extracted.functions.len(), 1);
-    assert_eq!(extracted.functions[0].0, "double");
-    assert_eq!(extracted.functions[0].1.params.len(), 1);
-    assert_eq!(extracted.functions[0].1.params[0].0, "x");
-    assert!(extracted.functions[0].1.return_schema.is_some());
-    assert!(extracted.data.as_object().unwrap().get("functions").is_none());
+    assert_eq!(extracted.schemas.len(), 2);
+    // `functions` stays in data as a regular field
+    assert!(extracted.data.as_object().unwrap().get("functions").is_some());
 }
 
 #[test]
 fn extract_fields_reserved_name() {
     let value = RuntimeValue::new(serde_json::json!({
-        "fields": {
-            "fields": { "type": "string" }
+        "$": {
+            "$": { "type": "string" }
         }
     }));
     assert!(extract_fields(value, &AC_DIALECT).is_err());
@@ -60,7 +57,6 @@ fn extract_fields_no_fields_section() {
     let value = RuntimeValue::new(serde_json::json!({"name": "ac"}));
     let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert!(extracted.schemas.is_empty());
-    assert!(extracted.functions.is_empty());
     assert_eq!(extracted.data.get("name").unwrap().as_str(), Some("ac"));
 }
 
@@ -78,7 +74,7 @@ fn undeclared_fields_detection() {
 #[test]
 fn extract_fields_inheritable() {
     let value = RuntimeValue::new(serde_json::json!({
-        "fields": {
+        "$": {
             "name": { "type": "string" },
             "permission_mode": { "type": "string", "inheritable": true },
             "env_name": { "type": "string", "inheritable": true, "mutable": false }
@@ -95,9 +91,11 @@ fn extract_fields_inheritable() {
 }
 
 #[test]
-fn extract_fields_with_function_body() {
+fn extract_fields_with_function_body_in_data() {
+    // Functions with `body` stay in data as regular values.
+    // They are callable via `apply` at runtime.
     let value = RuntimeValue::new(serde_json::json!({
-        "fields": {
+        "$": {
             "name": { "type": "string" }
         },
         "functions": {
@@ -110,15 +108,16 @@ fn extract_fields_with_function_body() {
         "name": "ac"
     }));
     let extracted = extract_fields(value, &AC_DIALECT).unwrap();
-    assert_eq!(extracted.functions.len(), 1);
-    let (_, sig) = &extracted.functions[0];
-    assert_eq!(sig.body.as_deref(), Some("mul(x, 2)"));
+    // `functions` stays in data
+    let functions = extracted.data.get("functions").unwrap();
+    let double = functions.get("double").unwrap();
+    assert_eq!(double.get("body").unwrap().as_str(), Some("mul(x, 2)"));
 }
 
 #[test]
 fn extract_fields_with_computed() {
     let value = RuntimeValue::new(serde_json::json!({
-        "fields": {
+        "$": {
             "version": { "type": "number" },
             "doubled": { "type": "number", "expr": "mul(version, 2)" }
         },
@@ -134,7 +133,7 @@ fn extract_fields_with_computed() {
 #[test]
 fn extract_fields_no_computed() {
     let value = RuntimeValue::new(serde_json::json!({
-        "fields": { "name": { "type": "string" } },
+        "$": { "name": { "type": "string" } },
         "name": "ac"
     }));
     let extracted = extract_fields(value, &AC_DIALECT).unwrap();
@@ -144,7 +143,7 @@ fn extract_fields_no_computed() {
 #[test]
 fn extract_fields_with_merge() {
     let value = RuntimeValue::new(serde_json::json!({
-        "fields": {
+        "$": {
             "_base": { "type": "object", "merge": true, "expr": "import('./base.yml')" },
             "host": { "type": "string" }
         },
@@ -157,7 +156,7 @@ fn extract_fields_with_merge() {
 #[test]
 fn extract_fields_with_arg_untyped() {
     let value = RuntimeValue::new(serde_json::json!({
-        "fields": {
+        "$": {
             "greeting": { "type": "string", "expr": "concat(arg, \"!\")", "arg": true }
         },
         "greeting": "hello"
@@ -171,7 +170,7 @@ fn extract_fields_with_arg_untyped() {
 #[test]
 fn extract_fields_with_arg_typed() {
     let value = RuntimeValue::new(serde_json::json!({
-        "fields": {
+        "$": {
             "doubled": {
                 "type": "number",
                 "expr": "mul(arg, 2)",

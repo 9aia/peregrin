@@ -3,9 +3,12 @@ use crate::ParsePass;
 
 fn test_config() -> Config {
     Config {
-        resolver: Box::new(ac_resolver_virtual::VirtualResolver::new()),
+        dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
+        resolver: Box::new(ac_module_resolver_virtual::VirtualResolver::new()),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
         backend: None,
+        key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
+        import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }
 }
 

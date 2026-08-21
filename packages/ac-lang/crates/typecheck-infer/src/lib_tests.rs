@@ -236,3 +236,74 @@ fn parse_empty_function_name() {
     let ast = parse_expr("(x)", &AC_DIALECT).unwrap();
     assert_eq!(ast, ExprAst::Path("(x)".to_string()));
 }
+
+#[test]
+fn infer_call_function_typed_binding() {
+    let mut env = TypeEnv::new();
+    env.insert(
+        "f",
+        Type::Function(FunctionType {
+            params: vec![("x".to_string(), Type::Number)],
+            return_type: Box::new(Type::Number),
+        }),
+    );
+
+    let funcs = FunctionTable::new();
+    assert_eq!(infer("f(42)", &env, &funcs, &AC_DIALECT), Type::Number);
+}
+
+#[test]
+fn infer_call_function_typed_field_via_shorthand() {
+    let mut env = TypeEnv::new();
+    let mut doc_props = std::collections::BTreeMap::new();
+    doc_props.insert(
+        "transform".to_string(),
+        Type::Function(FunctionType {
+            params: vec![("x".to_string(), Type::Number)],
+            return_type: Box::new(Type::Number),
+        }),
+    );
+    env.insert("doc", Type::Object(doc_props));
+
+    let funcs = FunctionTable::new();
+    assert_eq!(infer("transform(5)", &env, &funcs, &AC_DIALECT), Type::Number);
+}
+
+#[test]
+fn infer_call_function_typed_arg_mismatch() {
+    let mut env = TypeEnv::new();
+    env.insert(
+        "f",
+        Type::Function(FunctionType {
+            params: vec![("x".to_string(), Type::Number)],
+            return_type: Box::new(Type::Number),
+        }),
+    );
+
+    let funcs = FunctionTable::new();
+    assert_eq!(infer("f(\"hello\")", &env, &funcs, &AC_DIALECT), Type::Unknown);
+}
+
+#[test]
+fn infer_call_function_typed_arity_mismatch() {
+    let mut env = TypeEnv::new();
+    env.insert(
+        "f",
+        Type::Function(FunctionType {
+            params: vec![("x".to_string(), Type::Number)],
+            return_type: Box::new(Type::Number),
+        }),
+    );
+
+    let funcs = FunctionTable::new();
+    assert_eq!(infer("f(1, 2)", &env, &funcs, &AC_DIALECT), Type::Unknown);
+}
+
+#[test]
+fn infer_call_non_function_binding() {
+    let mut env = TypeEnv::new();
+    env.insert("f", Type::Number);
+
+    let funcs = FunctionTable::new();
+    assert_eq!(infer("f(1)", &env, &funcs, &AC_DIALECT), Type::Unknown);
+}

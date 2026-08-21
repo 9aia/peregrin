@@ -12,7 +12,7 @@ For the language specification itself, see [LANG.md](./LANG.md). For the dialect
 The runtime provides:
 
 - **VM** — evaluates expression trees with host-provided functions.
-- **Host functions** — `add`, `mul`, `concat`, `len`, `import`, and user-defined function bodies.
+- **Host functions** — `add`, `mul`, `concat`, `len`, `import`, `apply`, and user-defined function bodies.
 - **Environment access** — `env` namespace exposes process environment variables.
 - **Module resolution** — file, HTTP, and Git resolvers for `import()` calls.
 - **Schema validation** — JSON Schema (draft 2020-12) validation of field values.
@@ -141,12 +141,15 @@ The host provides function lookups by name. The VM has no built-in functions —
 
 The default host provides these primitives:
 
-| Function | Params                     | Returns  | Description               |
-| -------- | -------------------------- | -------- | ------------------------- |
-| `add`    | `x: number, y: number`     | `number` | Arithmetic addition       |
-| `mul`    | `x: number, y: number`     | `number` | Arithmetic multiplication |
-| `concat` | `x: string, y: string`     | `string` | String concatenation      |
-| `len`    | `x: array\|string\|object` | `number` | Length of collection      |
+| Function | Params                     | Returns  | Description                        |
+| -------- | -------------------------- | -------- | ---------------------------------- |
+| `add`    | `x: number, y: number`     | `number` | Arithmetic addition                |
+| `mul`    | `x: number, y: number`     | `number` | Arithmetic multiplication          |
+| `concat` | `x: string, y: string`     | `string` | String concatenation               |
+| `len`    | `x: array\|string\|object` | `number` | Length of collection               |
+| `apply`  | `fn: function, ...args`    | _any_    | Apply a first-class function value |
+
+The `apply` function is the bridge between data and computation: it takes a function value (an object with a `body` field, params, and optional return schema) and remaining arguments, binds the arguments to the function's params, and evaluates the body. This is what makes functions first-class — `double(5)` desugars to `apply(double, 5)` when `double` resolves to a function value via path lookup.
 
 ### 4.4 Function interface
 
@@ -379,7 +382,7 @@ The `ac` command-line tool is a thin wrapper around the compiler. It provides ar
 
 Commands: `parse`, `eval`, `validate`, `fields`, `typegen`, `typecheck`.
 
-The CLI provides default host functions (`add`, `mul`, `concat`, `len`, `import`) via the default host and VmResolver.
+The CLI provides default host functions (`add`, `mul`, `concat`, `len`, `import`, `apply`) via the default host and VmResolver.
 
 ## 12. Facade
 

@@ -12,7 +12,7 @@ fn resolve_unknown_path_returns_none() {
 #[test]
 fn resolve_added_module() {
     let mut resolver = VirtualResolver::new();
-    resolver.add("base", json!({"fields": {"name": {"type": "string"}}}));
+    resolver.add("base", json!({"$": {"name": {"type": "string"}}}));
 
     let module = resolver.resolve("base", None).unwrap();
     assert_eq!(module.schemas.len(), 1);
@@ -22,7 +22,7 @@ fn resolve_added_module() {
 #[test]
 fn resolve_added_raw_module() {
     let mut resolver = VirtualResolver::new();
-    resolver.add_raw("base", "fields:\n  name:\n    type: string\n");
+    resolver.add_raw("base", "$:\n  name:\n    type: string\n");
 
     let module = resolver.resolve("base", None).unwrap();
     assert_eq!(module.schemas.len(), 1);
@@ -32,8 +32,8 @@ fn resolve_added_raw_module() {
 #[test]
 fn resolve_multiple_modules() {
     let mut resolver = VirtualResolver::new();
-    resolver.add("a", json!({"fields": {"x": {"type": "string"}}}));
-    resolver.add("b", json!({"fields": {"y": {"type": "number"}}}));
+    resolver.add("a", json!({"$": {"x": {"type": "string"}}}));
+    resolver.add("b", json!({"$": {"y": {"type": "number"}}}));
 
     let a = resolver.resolve("a", None).unwrap();
     let b = resolver.resolve("b", None).unwrap();
@@ -45,7 +45,7 @@ fn resolve_multiple_modules() {
 #[test]
 fn resolve_base_path_is_none() {
     let mut resolver = VirtualResolver::new();
-    resolver.add("base", json!({"fields": {"name": {"type": "string"}}}));
+    resolver.add("base", json!({"$": {"name": {"type": "string"}}}));
 
     let module = resolver.resolve("base", None).unwrap();
     assert!(module.base_path.is_none());

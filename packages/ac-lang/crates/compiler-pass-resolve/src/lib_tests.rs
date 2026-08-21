@@ -5,11 +5,14 @@ use crate::ResolvePass;
 
 fn test_config() -> Config {
     Config {
-        resolver: Box::new(ac_resolver_virtual::VirtualResolver::new()),
+        dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
+        resolver: Box::new(ac_module_resolver_virtual::VirtualResolver::new()),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
         backend: Some(Box::new(
             ac_typegen_backend_json_schema::JsonSchemaBackend,
         )),
+        key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
+        import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }
 }
 
@@ -26,7 +29,7 @@ fn parse_extract_resolve(yaml: &str) -> Compilation {
 #[test]
 fn resolve_pass_populates_typegen_ctx() {
     let compilation = parse_extract_resolve(r#"
-fields:
+$:
   host:
     type: string
   port:
@@ -51,7 +54,7 @@ fn resolve_pass_without_extracted_returns_error() {
 #[test]
 fn resolve_pass_strips_ac_keys() {
     let compilation = parse_extract_resolve(r#"
-fields:
+$:
   host:
     type: string
     mutable: true
@@ -74,7 +77,7 @@ port: 8080
 #[test]
 fn resolve_pass_filters_merge_fields() {
     let compilation = parse_extract_resolve(r#"
-fields:
+$:
   _base:
     type: object
     merge: true

@@ -1,4 +1,7 @@
-use crate::types::{FunctionResolver, Namespaces};
+use crate::expression::eval_body;
+use crate::types::{APPLY_FUNCTION, FunctionResolver, Namespaces};
+use ac_dialect::Dialect;
+use ac_runtime::FunctionValue;
 use serde_json::Value as JsonValue;
 
 pub struct MulResolver;
@@ -103,4 +106,40 @@ pub fn ns_with_doc(data: &JsonValue) -> Namespaces {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
     ns
+}
+
+/// A `FunctionResolver` wrapper that adds `apply` support to any
+/// inner resolver. When `apply` is called, it extracts the function
+/// value (object with `body` field) from the first argument, binds
+/// params to remaining args, and evaluates the body via `eval_body`.
+/// All other function names delegate to the inner resolver.
+pub struct ApplyResolver<'a, R: FunctionResolver> {
+    pub inner: &'a R,
+    pub namespaces: &'a Namespaces,
+    pub dialect: &'a dyn Dialect,
+}
+
+impl<'a, R: FunctionResolver> FunctionResolver for ApplyResolver<'a, R> {
+    fn call(&self, name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
+        if name == APPLY_FUNCTION {
+            let fn_value = args
+                .first()
+                .ok_or("apply() requires at least one argument (the function value)")?;
+            let fn_val = FunctionValue::from_json(fn_value)
+                .ok_or("apply(): first argument is not a function value")?;
+
+            let fn_args = &args[1..];
+            let params: Vec<(String, JsonValue)> = fn_val
+                .params
+                .iter()
+                .zip(fn_args.iter())
+                .map(|((pname, _), arg)| (pname.clone(), arg.clone()))
+                .collect();
+
+            eval_body(&fn_val.body, &params, self.namespaces, self, self.dialect)
+                .ok_or_else(|| "apply(): failed to evaluate function body".to_string())
+        } else {
+            self.inner.call(name, args)
+        }
+    }
 }

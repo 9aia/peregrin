@@ -20,7 +20,7 @@ fn typecheck_config() -> Config {
 #[test]
 fn typegen_pipeline_generates_json_schema() {
     let yaml = r#"
-fields:
+$:
   host:
     type: string
   port:
@@ -42,7 +42,7 @@ port: 8080
 #[test]
 fn typegen_pipeline_with_merge_fields() {
     let yaml = r#"
-fields:
+$:
   _base:
     type: object
     merge: true
@@ -66,7 +66,7 @@ host: override.com
 #[test]
 fn typegen_pipeline_with_ac_keys_stripped() {
     let yaml = r#"
-fields:
+$:
   host:
     type: string
     mutable: true
@@ -101,7 +101,7 @@ fn typegen_pipeline_no_fields_returns_error() {
     let pipeline = ac_compiler::typegen_pipeline(default_config());
     let result = pipeline.run(source);
     match &result {
-        Err(e) => assert!(e.contains("no `fields:` section")),
+        Err(e) => assert!(e.contains("no `$:` section")),
         Ok(_) => panic!("expected error"),
     }
 }
@@ -111,7 +111,7 @@ fn typegen_pipeline_no_fields_returns_error() {
 #[test]
 fn typecheck_pipeline_valid_fields_no_errors() {
     let yaml = r#"
-fields:
+$:
   host:
     type: string
   port:
@@ -130,7 +130,7 @@ port: 8080
 #[test]
 fn typecheck_pipeline_merge_non_object_reports_error() {
     let yaml = r#"
-fields:
+$:
   _base:
     type: string
     merge: true
@@ -152,7 +152,7 @@ host: example.com
 #[test]
 fn full_pipeline_typecheck_then_generate() {
     let yaml = r#"
-fields:
+$:
   host:
     type: string
   port:
@@ -174,7 +174,7 @@ port: 8080
 #[test]
 fn custom_pipeline_parse_extract_only() {
     let yaml = r#"
-fields:
+$:
   host:
     type: string
 
@@ -213,7 +213,7 @@ fn custom_pipeline_with_custom_pass() {
     }
 
     let yaml = r#"
-fields:
+$:
   host:
     type: string
   port:

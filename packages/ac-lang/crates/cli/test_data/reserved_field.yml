@@ -1,6 +1,6 @@
-fields:
+$:
   name:
     type: string
-  fields:
+  $:
     type: string
 name: alice

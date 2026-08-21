@@ -1,5 +1,5 @@
 use super::*;
-use ac_resolver_core::{ModuleResolver, ResolvedModule};
+use ac_module_resolver_core::{ModuleResolver, ResolvedModule};
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
 use serde_json::{json, Value as JsonValue};
 
@@ -56,7 +56,6 @@ impl ModuleResolver for StaticResolver {
         Some(ResolvedModule {
             schemas,
             merge,
-            functions: Vec::new(),
             data,
             base_path: None,
         })

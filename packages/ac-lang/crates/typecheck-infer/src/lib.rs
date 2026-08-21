@@ -25,7 +25,7 @@ use ac_dialect::Dialect;
 pub use parser::{parse_expr, ExprAst};
 pub use table::{FunctionTable, RawFnSig};
 
-use ac_typecheck_core::{is_compatible, Type, TypeEnv};
+use ac_typecheck_core::{is_compatible, FunctionType, Type, TypeEnv};
 
 /// The conventional name of the default namespace used for shorthand
 /// path resolution in type inference (bare `name` → `DEFAULT_NAMESPACE.name`).
@@ -81,27 +81,7 @@ pub fn infer_ast(ast: &ExprAst, env: &TypeEnv, functions: &FunctionTable, dialec
         ExprAst::Literal(ty) => ty.clone(),
 
         ExprAst::Path(path) => {
-            let parts: Vec<&str> = path.split(dialect.syntax().path_separator()).collect();
-            if parts.is_empty() {
-                return Type::Unknown;
-            }
-
-            let first = parts[0];
-            let lookup = |name: &str| env.lookup(name).cloned();
-
-            if let Some(ty) = lookup(first) {
-                walk_path(&ty, &parts[1..])
-            } else if let Some(ty) = lookup(DEFAULT_NAMESPACE).and_then(|doc_ty| {
-                if let Type::Object(props) = doc_ty {
-                    props.get(first).cloned()
-                } else {
-                    None
-                }
-            }) {
-                walk_path(&ty, &parts[1..])
-            } else {
-                Type::Unknown
-            }
+            resolve_path_type(path, env, dialect)
         }
 
         ExprAst::Call(name, args) => {
@@ -110,21 +90,18 @@ pub fn infer_ast(ast: &ExprAst, env: &TypeEnv, functions: &FunctionTable, dialec
                 .map(|a| infer_ast(a, env, functions, dialect))
                 .collect();
 
-            let Some(fn_type) = functions.lookup(name) else {
-                return Type::Unknown;
-            };
-
-            if fn_type.params.len() != arg_types.len() {
-                return Type::Unknown;
+            // Try named function table first.
+            if let Some(fn_type) = functions.lookup(name) {
+                return check_call(&fn_type, &arg_types);
             }
 
-            for ((_, param_ty), arg_ty) in fn_type.params.iter().zip(&arg_types) {
-                if !is_compatible(arg_ty, param_ty) {
-                    return Type::Unknown;
-                }
+            // Try resolving as a path to a function-typed value.
+            let ty = resolve_path_type(name, env, dialect);
+            if let Type::Function(fn_type) = ty {
+                return check_call(&fn_type, &arg_types);
             }
 
-            (*fn_type.return_type).clone()
+            Type::Unknown
         }
     }
 }
@@ -142,6 +119,51 @@ fn walk_path(ty: &Type, parts: &[&str]) -> Type {
     }
 
     Type::Unknown
+}
+
+/// Resolve a dotted path string to a [`Type`] via the [`TypeEnv`].
+///
+/// Handles both qualified paths (`doc.name`) and shorthand (`name`
+/// resolves via the default namespace).
+fn resolve_path_type(path: &str, env: &TypeEnv, dialect: &dyn Dialect) -> Type {
+    let parts: Vec<&str> = path.split(dialect.syntax().path_separator()).collect();
+    if parts.is_empty() {
+        return Type::Unknown;
+    }
+
+    let first = parts[0];
+
+    if let Some(ty) = env.lookup(first).cloned() {
+        return walk_path(&ty, &parts[1..]);
+    }
+
+    if let Some(ty) = env.lookup(DEFAULT_NAMESPACE).and_then(|doc_ty| {
+        if let Type::Object(props) = doc_ty {
+            props.get(first).cloned()
+        } else {
+            None
+        }
+    }) {
+        return walk_path(&ty, &parts[1..]);
+    }
+
+    Type::Unknown
+}
+
+/// Check call arguments against a function type, returning the return type
+/// or [`Type::Unknown`] if args don't match.
+fn check_call(fn_type: &FunctionType, arg_types: &[Type]) -> Type {
+    if fn_type.params.len() != arg_types.len() {
+        return Type::Unknown;
+    }
+
+    for ((_, param_ty), arg_ty) in fn_type.params.iter().zip(arg_types) {
+        if !is_compatible(arg_ty, param_ty) {
+            return Type::Unknown;
+        }
+    }
+
+    (*fn_type.return_type).clone()
 }
 
 #[cfg(test)]

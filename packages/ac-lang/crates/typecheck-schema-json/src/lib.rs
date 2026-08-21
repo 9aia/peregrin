@@ -15,7 +15,7 @@ mod interpret;
 use ac_typecheck_core::{SchemaInterpreter, Type};
 use serde_json::Value as JsonValue;
 
-pub use interpret::{interpret_schema, interpret_function};
+pub use interpret::{infer_json_type, interpret_function, interpret_schema};
 
 /// JSON Schema interpreter — converts JSON Schema fragments to [`Type`]s.
 #[derive(Debug, Clone, Copy, Default)]

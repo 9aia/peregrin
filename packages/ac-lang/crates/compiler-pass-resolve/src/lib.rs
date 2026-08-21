@@ -7,9 +7,9 @@ use ac_compiler_core::{Compilation, Config, Pass};
 /// Resolve imports and build a `TypegenContext`.
 ///
 /// 1. Builds a `TypegenContext` from extracted schemas.
-/// 2. Filters merge fields.
-/// 3. Strips all AC keys.
-/// 4. Resolves imports via the configured `ModuleResolver`.
+/// 2. Filters merge fields via the configured `KeyHandler`.
+/// 3. Strips all special keys via the configured `KeyHandler`.
+/// 4. Resolves imports via the configured `ImportResolver`.
 pub struct ResolvePass;
 
 impl Pass for ResolvePass {
@@ -23,29 +23,23 @@ impl Pass for ResolvePass {
             .as_ref()
             .ok_or("ResolvePass: no extracted fields — run ExtractPass first")?;
 
-        let ac_keys: &[&str] = &[
-            ac_typegen_key_merge::KEY,
-            ac_typegen_key_inherit::KEY,
-            ac_typegen_key_mutable::KEY,
-            ac_typegen_key_expr::KEY,
-            ac_typegen_key_arg::KEY,
-        ];
+        let vocab = config.dialect.document_vocabulary();
 
         let data = extracted.data.inner();
 
         let mut ctx = ac_typegen_core::TypegenContext::from_schemas(&extracted.schemas);
-        ac_typegen_key_merge::filter_fields(&mut ctx, &extracted.merge);
-        ctx.strip_keys(ac_keys);
+        config.key_handler.filter_fields(&mut ctx, &extracted.merge);
+        config.key_handler.strip_keys(&mut ctx, &*vocab);
 
         let base = compilation.source.base_path();
-        ac_typegen_import::apply_imports(
+        config.import_resolver.resolve_imports(
             &mut ctx,
             &extracted.schemas,
             &extracted.merge,
             data,
             config.resolver.as_ref(),
             base.as_deref(),
-            ac_keys,
+            &*vocab,
         );
 
         compilation.typegen_ctx = Some(ctx);

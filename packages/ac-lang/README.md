@@ -134,10 +134,10 @@ ac fields --input config.yaml
 
 ### Self-describing documents
 
-A file can declare its own field schemas inline using a `fields:` section. Each field is validated against its declared schema. The `fields:` key is a reserved built-in — it cannot be declared as a data field.
+A file can declare its own field schemas inline using a `$:` section. Each field is validated against its declared schema. The `$:` key is a reserved built-in — it cannot be declared as a data field.
 
 ```yaml
-fields:
+$:
   name:
     type: string
     enum:
@@ -155,9 +155,9 @@ tags:
   - user
 ```
 
-The `fields:` key is extracted and each remaining key is validated against its corresponding schema. Undeclared fields are reported as errors.
+The `$:` key is extracted and each remaining key is validated against its corresponding schema. Undeclared fields are reported as errors.
 
-The schema language used inside `fields:` is whatever the CLI is configured with — by default JSON Schema, but any `Schema<V>` implementation works.
+The schema language used inside `$:` is whatever the CLI is configured with — by default JSON Schema, but any `Schema<V>` implementation works.
 
 ### Variable interpolation
 
@@ -171,7 +171,7 @@ Field values can reference other fields and environment variables using `${...}`
 The discriminator is `()` — if the expression contains `(`, it's a function call. Otherwise, it's a path lookup.
 
 ```yaml
-fields:
+$:
   name:
     type: string
   version:
@@ -229,7 +229,7 @@ functions:
     return: { type: number }
 ```
 
-The `functions:` key is reserved, like `fields:`. Function implementations come from two sources:
+The `functions:` key is reserved, like `$:`. Function implementations come from two sources:
 
 1. **Host primitives** — provided by the host (the CLI provides `add`, `mul`, `concat`, `len`). These are Rust functions implementing the `Function` trait.
 2. **User-defined functions** — declared inline with a `body:` field. No Rust code needed.
@@ -271,7 +271,7 @@ The `FunctionResolver` trait in `ac-fields` bridges interpolation to the VM. The
 Fields can be declared `inheritable: true` to propagate their values into nested objects. Child objects inherit the parent's scope and can override inheritable fields locally — the override applies to that subtree only.
 
 ```yaml
-fields:
+$:
   permission_mode:
     type: string
     inheritable: true
@@ -296,7 +296,7 @@ The scope is merged into the `doc` namespace as interpolation descends. Shorthan
 Fields can also be declared `mutable: false` to prevent overrides in nested scopes:
 
 ```yaml
-fields:
+$:
   env_name:
     type: string
     inheritable: true
@@ -313,7 +313,7 @@ The `validate_mutable` function walks the data tree and reports any nested overr
 Fields with an `expr:` key are computed after interpolation. The expression uses the same syntax as `${...}` content: function calls, path lookups, and literals. Computed fields can reference other fields and can depend on other computed fields — multiple passes resolve dependencies in order.
 
 ```yaml
-fields:
+$:
   version:
     type: number
   doubled:
@@ -345,7 +345,7 @@ The same document works regardless of frontend. This is valid JSON:
 
 ```json
 {
-  "fields": {
+  "$": {
     "name": { "type": "string" },
     "version": { "type": "number" }
   },
@@ -357,7 +357,7 @@ The same document works regardless of frontend. This is valid JSON:
 And this is the same document in YAML:
 
 ```yaml
-fields:
+$:
   name:
     type: string
   version:

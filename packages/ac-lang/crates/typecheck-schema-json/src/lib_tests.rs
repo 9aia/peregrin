@@ -139,3 +139,66 @@ fn json_schema_interpreter_trait() {
     assert_eq!(interp.interpret(&json!({ "type": "string" })), Type::String);
     assert_eq!(interp.interpret(&json!({ "type": "number" })), Type::Number);
 }
+
+#[test]
+fn interprets_function_type() {
+    let schema = json!({
+        "type": "function",
+        "params": [
+            {"name": "x", "schema": {"type": "number"}},
+            {"name": "y", "schema": {"type": "number"}}
+        ],
+        "return": {"type": "number"}
+    });
+    let ty = interpret_schema(&schema);
+    match ty {
+        Type::Function(fn_type) => {
+            assert_eq!(fn_type.params.len(), 2);
+            assert_eq!(fn_type.params[0].0, "x");
+            assert_eq!(fn_type.params[0].1, Type::Number);
+            assert_eq!(fn_type.params[1].0, "y");
+            assert_eq!(*fn_type.return_type, Type::Number);
+        }
+        _ => panic!("expected function type"),
+    }
+}
+
+#[test]
+fn interprets_function_without_return() {
+    let schema = json!({
+        "type": "function",
+        "params": [{"name": "x", "schema": {"type": "string"}}]
+    });
+    let ty = interpret_schema(&schema);
+    match ty {
+        Type::Function(fn_type) => {
+            assert_eq!(fn_type.params.len(), 1);
+            assert_eq!(*fn_type.return_type, Type::Unknown);
+        }
+        _ => panic!("expected function type"),
+    }
+}
+
+#[test]
+fn infer_json_type_detects_function_value() {
+    let fn_json = json!({
+        "params": [{"name": "x", "schema": {"type": "number"}}],
+        "return": {"type": "number"},
+        "body": "mul(x, 2)"
+    });
+    let ty = infer_json_type(&fn_json);
+    match ty {
+        Type::Function(fn_type) => {
+            assert_eq!(fn_type.params.len(), 1);
+            assert_eq!(fn_type.params[0].0, "x");
+            assert_eq!(*fn_type.return_type, Type::Number);
+        }
+        _ => panic!("expected function type"),
+    }
+}
+
+#[test]
+fn infer_json_type_regular_object_stays_unknown() {
+    let ty = infer_json_type(&json!({"key": "value"}));
+    assert_eq!(ty, Type::Unknown);
+}

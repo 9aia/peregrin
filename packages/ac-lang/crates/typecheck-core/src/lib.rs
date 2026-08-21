@@ -28,7 +28,7 @@
 //! ├── ac-typecheck-import          — cross-module type checking (via resolver)
 //! └── ac-typecheck-schema-json     — JSON Schema → Type mapping
 //!
-//! ac-resolver-core — ModuleResolver trait (shared with typegen)
+//! ac-module-resolver-core — ModuleResolver trait (shared with typegen)
 //! ```
 
 mod compat;

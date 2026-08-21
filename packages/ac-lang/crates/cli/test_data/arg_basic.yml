@@ -1,8 +1,10 @@
-fields:
+$:
   greeting:
     type: string
     expr: 'concat(arg, "!")'
     arg: true
+  functions:
+    type: object
 functions:
   concat:
     params:

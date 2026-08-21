@@ -41,11 +41,10 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
     let extracted = ac_fields::extract_fields(value, &AC_DIALECT)?;
 
     if extracted.schemas.is_empty() {
-        return Err("no `fields:` section found in input".to_string());
+        return Err("no `$:` section found in input".to_string());
     }
 
     let field_schemas = extracted.schemas;
-    let function_sigs = extracted.functions;
     let inheritable = extracted.inheritable;
     let immutable = extracted.immutable;
     let computed = extracted.computed;
@@ -57,17 +56,15 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
     namespaces.insert("env".to_string(), ac_fields::build_env_namespace());
 
     let host = DefaultHost::default();
-    let file_resolver = ac_resolver_file::FileResolver::with_cache(
-        ac_resolver_core::MemoryModuleCache::new(),
+    let file_resolver = ac_module_resolver_file::FileResolver::with_cache(
+        ac_module_resolver_memory::MemoryModuleCache::new(),
     );
     let resolver = VmResolver {
         host,
-        function_sigs: &function_sigs,
         namespaces: namespaces.clone(),
         depth: Cell::new(0),
         base_path: base_path.map(|p| p.to_path_buf()),
         import_cache: RefCell::new(HashMap::new()),
-        imported_functions: RefCell::new(Vec::new()),
         resolver: Some(&file_resolver),
     };
 
@@ -119,7 +116,7 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
     let declared: Vec<&str> = schemas.iter().map(|(n, _)| n.as_str()).collect();
     let undeclared: Vec<String> = ac_fields::undeclared_fields(&data, &declared)
         .into_iter()
-        .map(|name| format!("{name}: UNDECLARED — not in fields:"))
+        .map(|name| format!("{name}: UNDECLARED — not in $:"))
         .collect();
 
     for msg in ac_fields::validate_mutable(data.inner(), &immutable) {

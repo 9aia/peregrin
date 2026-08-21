@@ -1,0 +1,9 @@
+[package]
+name = "ac-lib-platform-std"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-lib-platform.workspace = true
+serde_json = "1"
+ureq = "2"

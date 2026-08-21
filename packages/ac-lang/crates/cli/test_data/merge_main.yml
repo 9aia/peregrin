@@ -1,4 +1,4 @@
-fields:
+$:
   _base:
     type: object
     merge: true

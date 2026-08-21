@@ -18,7 +18,7 @@ impl Pass for ExtractPass {
         let extracted = ac_fields::extract_fields(parsed, &AC_DIALECT)?;
 
         if extracted.schemas.is_empty() {
-            return Err("no `fields:` section found in input".to_string());
+            return Err("no `$:` section found in input".to_string());
         }
 
         compilation.extracted = Some(extracted);

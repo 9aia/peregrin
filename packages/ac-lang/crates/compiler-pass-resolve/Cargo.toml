@@ -6,17 +6,14 @@ edition.workspace = true
 [dependencies]
 ac-compiler-core.workspace = true
 ac-typegen-core.workspace = true
-ac-typegen-key-merge.workspace = true
-ac-typegen-key-inherit.workspace = true
-ac-typegen-key-mutable.workspace = true
-ac-typegen-key-expr.workspace = true
-ac-typegen-key-arg.workspace = true
-ac-typegen-import.workspace = true
 
 [dev-dependencies]
+ac-dialect-canonical.workspace = true
 ac-frontend.workspace = true
 ac-compiler-pass-parse.workspace = true
 ac-compiler-pass-extract.workspace = true
-ac-resolver-virtual.workspace = true
+ac-module-resolver-virtual.workspace = true
 ac-typecheck-schema-json.workspace = true
 ac-typegen-backend-json-schema.workspace = true
+ac-typegen-key-set-special.workspace = true
+ac-typegen-import.workspace = true

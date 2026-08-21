@@ -8,5 +8,8 @@ ac-compiler-core.workspace = true
 ac-frontend.workspace = true
 
 [dev-dependencies]
-ac-resolver-virtual.workspace = true
+ac-dialect-canonical.workspace = true
+ac-module-resolver-virtual.workspace = true
 ac-typecheck-schema-json.workspace = true
+ac-typegen-key-set-special.workspace = true
+ac-typegen-import.workspace = true

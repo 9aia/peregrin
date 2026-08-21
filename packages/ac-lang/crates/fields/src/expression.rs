@@ -1,5 +1,5 @@
 use crate::path::resolve_path;
-use crate::types::{FunctionResolver, Namespaces, DEFAULT_NAMESPACE};
+use crate::types::{APPLY_FUNCTION, FunctionResolver, Namespaces, DEFAULT_NAMESPACE};
 use ac_dialect::Dialect;
 use serde_json::Value as JsonValue;
 
@@ -74,7 +74,24 @@ pub(crate) fn eval_expr_inner(
         let name = &expr[..paren_pos];
         let args_str = &expr[paren_pos + 1..expr.len() - 1];
         let args = parse_args(args_str, namespaces, resolver, dialect)?;
-        resolver.call(name.trim(), &args).ok()
+
+        let name_trimmed = name.trim();
+
+        // Try resolving the name as a path. If it resolves to a
+        // function value, dispatch via `apply`. If it resolves to
+        // a non-function (e.g. a field named "import" that holds
+        // a string), apply fails and we fall through to the host
+        // function call. If it doesn't resolve at all, fall through.
+        if let Some(val) = resolve_path(name_trimmed, namespaces, dialect.syntax().path_separator())
+        {
+            let mut apply_args = vec![val];
+            apply_args.extend(args.iter().cloned());
+            if let Some(result) = resolver.call(APPLY_FUNCTION, &apply_args).ok() {
+                return Some(result);
+            }
+        }
+
+        resolver.call(name_trimmed, &args).ok()
     } else {
         // Path lookup: ns.key.subkey or shorthand key
         resolve_path(expr, namespaces, dialect.syntax().path_separator())

@@ -15,11 +15,11 @@ pub enum Command {
     Eval(EvalArgs),
     /// Validate a file against a JSON Schema.
     Validate(ValidateArgs),
-    /// Validate a self-describing file with inline `fields:` schemas.
+    /// Validate a self-describing file with inline `$:` schemas.
     Fields(FieldsArgs),
-    /// Generate type definitions from `fields:` declarations.
+    /// Generate type definitions from `$:` declarations.
     Typegen(TypegenArgs),
-    /// Static type checking of `fields:` declarations.
+    /// Static type checking of `$:` declarations.
     Typecheck(TypecheckArgs),
 }
 

@@ -17,11 +17,13 @@
 
 mod context;
 mod error;
+mod eval;
 mod host;
 mod vm;
 
 pub use context::Context;
 pub use error::Error;
+pub use eval::Eval;
 pub use host::{Function, Host};
 pub use vm::Vm;
 

@@ -19,7 +19,7 @@ dependencies = [
  "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend",
- "ac-resolver-virtual",
+ "ac-module-resolver-virtual",
  "ac-runtime",
  "ac-typecheck-core",
  "ac-typecheck-infer",
@@ -29,6 +29,8 @@ dependencies = [
  "ac-typecheck-key-merge",
  "ac-typecheck-key-mutable",
  "ac-typecheck-schema-json",
+ "ac-typegen-import",
+ "ac-typegen-key-set-special",
  "criterion",
  "serde_json",
 ]
@@ -59,14 +61,17 @@ dependencies = [
  "ac-fields",
  "ac-frontend",
  "ac-host",
- "ac-resolver-core",
- "ac-resolver-file",
+ "ac-module-resolver-core",
+ "ac-module-resolver-file",
+ "ac-module-resolver-memory",
  "ac-runtime",
  "ac-source",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
  "ac-typegen-core",
+ "ac-typegen-import",
+ "ac-typegen-key-set-special",
  "ac-vm",
  "serde_json",
 ]
@@ -75,15 +80,19 @@ dependencies = [
 name = "ac-compiler-core"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
+ "ac-dialect-canonical",
  "ac-fields",
- "ac-resolver-core",
- "ac-resolver-virtual",
+ "ac-module-resolver-core",
+ "ac-module-resolver-virtual",
  "ac-runtime",
  "ac-source",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
  "ac-typegen-core",
+ "ac-typegen-import",
+ "ac-typegen-key-set-special",
  "serde_json",
 ]
 
@@ -97,8 +106,10 @@ dependencies = [
  "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend",
- "ac-resolver-virtual",
+ "ac-module-resolver-virtual",
  "ac-typecheck-schema-json",
+ "ac-typegen-import",
+ "ac-typegen-key-set-special",
 ]
 
 [[package]]
@@ -109,11 +120,14 @@ dependencies = [
  "ac-compiler-pass-extract",
  "ac-compiler-pass-parse",
  "ac-compiler-pass-resolve",
+ "ac-dialect-canonical",
  "ac-frontend",
- "ac-resolver-virtual",
+ "ac-module-resolver-virtual",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
  "ac-typegen-core",
+ "ac-typegen-import",
+ "ac-typegen-key-set-special",
 ]
 
 [[package]]
@@ -121,9 +135,12 @@ name = "ac-compiler-pass-parse"
 version = "0.1.0"
 dependencies = [
  "ac-compiler-core",
+ "ac-dialect-canonical",
  "ac-frontend",
- "ac-resolver-virtual",
+ "ac-module-resolver-virtual",
  "ac-typecheck-schema-json",
+ "ac-typegen-import",
+ "ac-typegen-key-set-special",
 ]
 
 [[package]]
@@ -133,17 +150,14 @@ dependencies = [
  "ac-compiler-core",
  "ac-compiler-pass-extract",
  "ac-compiler-pass-parse",
+ "ac-dialect-canonical",
  "ac-frontend",
- "ac-resolver-virtual",
+ "ac-module-resolver-virtual",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
  "ac-typegen-core",
  "ac-typegen-import",
- "ac-typegen-key-arg",
- "ac-typegen-key-expr",
- "ac-typegen-key-inherit",
- "ac-typegen-key-merge",
- "ac-typegen-key-mutable",
+ "ac-typegen-key-set-special",
 ]
 
 [[package]]
@@ -153,8 +167,9 @@ dependencies = [
  "ac-compiler-core",
  "ac-compiler-pass-extract",
  "ac-compiler-pass-parse",
+ "ac-dialect-canonical",
  "ac-frontend",
- "ac-resolver-virtual",
+ "ac-module-resolver-virtual",
  "ac-typecheck-core",
  "ac-typecheck-import",
  "ac-typecheck-infer",
@@ -165,6 +180,8 @@ dependencies = [
  "ac-typecheck-key-mutable",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
+ "ac-typegen-import",
+ "ac-typegen-key-set-special",
  "rayon",
  "serde_json",
 ]
@@ -185,7 +202,7 @@ dependencies = [
  "ac-frontend-json",
  "ac-frontend-toml",
  "ac-frontend-yaml",
- "ac-resolver-virtual",
+ "ac-module-resolver-virtual",
  "ac-runtime",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
@@ -290,10 +307,18 @@ dependencies = [
  "ac-frontend-toml",
  "ac-frontend-yaml",
  "ac-host",
- "ac-resolver-core",
- "ac-resolver-file",
- "ac-resolver-virtual",
+ "ac-lib-kv",
+ "ac-lib-kv-hashmap",
+ "ac-lib-platform",
+ "ac-lib-platform-std",
+ "ac-lib-utils",
+ "ac-module-resolver-core",
+ "ac-module-resolver-file",
+ "ac-module-resolver-memory",
+ "ac-module-resolver-noop",
+ "ac-module-resolver-virtual",
  "ac-runtime",
+ "ac-runtime-core",
  "ac-source",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
@@ -304,35 +329,87 @@ dependencies = [
 ]
 
 [[package]]
-name = "ac-resolver-core"
+name = "ac-lib-kv"
 version = "0.1.0"
 dependencies = [
- "ac-fields",
- "serde_json",
-]
-
-[[package]]
-name = "ac-resolver-file"
-version = "0.1.0"
-dependencies = [
- "ac-dialect",
- "ac-dialect-canonical",
- "ac-fields",
- "ac-frontend",
- "ac-resolver-core",
- "serde_json",
-]
-
-[[package]]
-name = "ac-resolver-git"
-version = "0.1.0"
-dependencies = [
- "ac-dialect",
- "ac-dialect-canonical",
- "ac-fields",
- "ac-frontend",
- "ac-resolver-core",
  "ac-runtime",
+ "ac-runtime-core",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-lib-kv-hashmap"
+version = "0.1.0"
+dependencies = [
+ "ac-lib-kv",
+ "ac-runtime",
+ "ac-runtime-core",
+ "ac-vm",
+]
+
+[[package]]
+name = "ac-lib-platform"
+version = "0.1.0"
+dependencies = [
+ "ac-runtime",
+ "ac-runtime-core",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-lib-platform-std"
+version = "0.1.0"
+dependencies = [
+ "ac-lib-platform",
+ "serde_json",
+ "ureq",
+]
+
+[[package]]
+name = "ac-lib-utils"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-host",
+ "ac-runtime",
+ "ac-runtime-core",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-module-resolver-core"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
+name = "ac-module-resolver-file"
+version = "0.1.0"
+dependencies = [
+ "ac-dialect",
+ "ac-dialect-canonical",
+ "ac-fields",
+ "ac-frontend",
+ "ac-module-resolver-core",
+ "ac-module-resolver-memory",
+ "ac-module-resolver-noop",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-module-resolver-git"
+version = "0.1.0"
+dependencies = [
+ "ac-dialect",
+ "ac-dialect-canonical",
+ "ac-fields",
+ "ac-frontend",
+ "ac-module-resolver-core",
+ "ac-module-resolver-noop",
  "git2",
  "hex",
  "serde_json",
@@ -341,29 +418,45 @@ dependencies = [
 ]
 
 [[package]]
-name = "ac-resolver-http"
+name = "ac-module-resolver-http"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
  "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend",
- "ac-resolver-core",
- "ac-runtime",
+ "ac-module-resolver-core",
+ "ac-module-resolver-noop",
  "serde_json",
  "ureq",
  "url",
 ]
 
 [[package]]
-name = "ac-resolver-virtual"
+name = "ac-module-resolver-memory"
+version = "0.1.0"
+dependencies = [
+ "ac-module-resolver-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-module-resolver-noop"
+version = "0.1.0"
+dependencies = [
+ "ac-module-resolver-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-module-resolver-virtual"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
  "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend-yaml",
- "ac-resolver-core",
+ "ac-module-resolver-core",
  "ac-runtime",
  "serde_json",
 ]
@@ -374,6 +467,15 @@ version = "0.1.0"
 dependencies = [
  "ac-source",
  "serde_json",
+]
+
+[[package]]
+name = "ac-runtime-core"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-runtime",
+ "ac-vm",
 ]
 
 [[package]]
@@ -397,8 +499,8 @@ version = "0.1.0"
 dependencies = [
  "ac-fields",
  "ac-frontend-yaml",
- "ac-resolver-core",
- "ac-resolver-virtual",
+ "ac-module-resolver-core",
+ "ac-module-resolver-virtual",
  "ac-runtime",
  "ac-typecheck-core",
  "ac-typecheck-infer",
@@ -472,15 +574,11 @@ dependencies = [
 name = "ac-typegen-backend-json-schema"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-dialect-canonical",
  "ac-fields",
  "ac-runtime",
  "ac-typegen-core",
- "ac-typegen-key-arg",
- "ac-typegen-key-expr",
- "ac-typegen-key-inherit",
- "ac-typegen-key-merge",
- "ac-typegen-key-mutable",
  "indexmap",
  "serde_json",
 ]
@@ -489,6 +587,8 @@ dependencies = [
 name = "ac-typegen-core"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
+ "ac-module-resolver-core",
  "indexmap",
  "serde_json",
 ]
@@ -497,56 +597,21 @@ dependencies = [
 name = "ac-typegen-import"
 version = "0.1.0"
 dependencies = [
+ "ac-dialect",
  "ac-dialect-canonical",
  "ac-fields",
- "ac-resolver-core",
- "ac-resolver-virtual",
+ "ac-module-resolver-core",
+ "ac-module-resolver-virtual",
  "ac-runtime",
  "ac-typegen-core",
- "ac-typegen-key-arg",
- "ac-typegen-key-expr",
- "ac-typegen-key-inherit",
- "ac-typegen-key-merge",
- "ac-typegen-key-mutable",
  "serde_json",
 ]
 
 [[package]]
-name = "ac-typegen-key-arg"
+name = "ac-typegen-key-set-special"
 version = "0.1.0"
 dependencies = [
- "ac-typegen-core",
- "serde_json",
-]
-
-[[package]]
-name = "ac-typegen-key-expr"
-version = "0.1.0"
-dependencies = [
- "ac-typegen-core",
- "serde_json",
-]
-
-[[package]]
-name = "ac-typegen-key-inherit"
-version = "0.1.0"
-dependencies = [
- "ac-typegen-core",
- "serde_json",
-]
-
-[[package]]
-name = "ac-typegen-key-merge"
-version = "0.1.0"
-dependencies = [
- "ac-typegen-core",
- "serde_json",
-]
-
-[[package]]
-name = "ac-typegen-key-mutable"
-version = "0.1.0"
-dependencies = [
+ "ac-dialect",
  "ac-typegen-core",
  "serde_json",
 ]
@@ -951,6 +1016,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "877a4ace8713b0bcf2a4e7eec82529c029f1d0619886d18145fea96c3ffe5c0f"
 
 [[package]]
+name = "experiment-host-sugar"
+version = "0.1.0"
+dependencies = [
+ "ac-compiler",
+ "ac-dialect-canonical",
+ "ac-fields",
+ "ac-host",
+ "ac-module-resolver-core",
+ "ac-module-resolver-file",
+ "ac-module-resolver-memory",
+ "ac-runtime",
+ "serde_json",
+]
+
+[[package]]
 name = "fancy-regex"
 version = "0.19.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1208,9 +1288,9 @@ checksum = "e590f038c1464a96894fd6d10127e90a8be4509f56ff7ecef851b15cee0b7caa"
 
 [[package]]
 name = "icu_provider"
-version = "2.3.0"
+version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92a7ed671a6aad807a8651a2e1782a6598fda9ce5185dd8158549e95a91c6428"
+checksum = "d27bbb9d3abbefac45d55f647c9de1d44aafcd1186eb91879afef17c396c3e73"
 dependencies = [
  "displaydoc",
  "icu_locale_core",
@@ -2506,9 +2586,9 @@ dependencies = [
 
 [[package]]
 name = "zerovec-derive"
-version = "0.11.5"
+version = "0.11.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9f212a141d820099d57ffafb9569be9617a6f27d3dc881fbee8fb56642f917a9"
+checksum = "34df6fc39dbd26ddc9c10e6a2984476e13acce22e64e4487636ef494369225da"
 dependencies = [
  "proc-macro2",
  "quote",

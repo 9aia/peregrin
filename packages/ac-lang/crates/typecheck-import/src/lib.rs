@@ -36,7 +36,7 @@ use std::path::Path;
 
 use serde_json::Value as JsonValue;
 
-use ac_resolver_core::ModuleResolver;
+use ac_module_resolver_core::ModuleResolver;
 use ac_typecheck_core::{is_compatible, SchemaInterpreter, TypeEnv, TypeError};
 
 /// Check type compatibility across imported modules.

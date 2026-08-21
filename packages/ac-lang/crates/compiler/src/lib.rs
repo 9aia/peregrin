@@ -22,6 +22,7 @@
 //! > **The engine knows nothing about how input is read or how output
 //! > is presented.** Callers handle I/O; the engine handles logic.
 
+mod expr_eval;
 mod resolver;
 
 pub mod parse;
@@ -32,6 +33,7 @@ pub mod typegen;
 pub mod typecheck;
 
 pub use ac_compiler_core::{Compilation, Config, Pass, Pipeline, Source};
+pub use expr_eval::ExprEval;
 pub use resolver::VmResolver;
 
 /// Default configuration for CLI usage:
@@ -40,24 +42,30 @@ pub use resolver::VmResolver;
 /// - `JsonSchemaBackend` for JSON Schema generation
 pub fn default_cli_config() -> Config {
     Config {
-        resolver: Box::new(ac_resolver_file::FileResolver::with_cache(
-            ac_resolver_core::MemoryModuleCache::new(),
+        dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
+        resolver: Box::new(ac_module_resolver_file::FileResolver::with_cache(
+            ac_module_resolver_memory::MemoryModuleCache::new(),
         )),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
         backend: Some(Box::new(
             ac_typegen_backend_json_schema::JsonSchemaBackend,
         )),
+        key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
+        import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }
 }
 
 /// Typecheck-only config — no backend needed.
 pub fn typecheck_only_config() -> Config {
     Config {
-        resolver: Box::new(ac_resolver_file::FileResolver::with_cache(
-            ac_resolver_core::MemoryModuleCache::new(),
+        dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
+        resolver: Box::new(ac_module_resolver_file::FileResolver::with_cache(
+            ac_module_resolver_memory::MemoryModuleCache::new(),
         )),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
         backend: None,
+        key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
+        import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }
 }
 

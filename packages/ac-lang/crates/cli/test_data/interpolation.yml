@@ -1,4 +1,4 @@
-fields:
+$:
   name:
     type: string
   version:
@@ -21,6 +21,8 @@ fields:
   config:
     type: object
   server:
+    type: object
+  functions:
     type: object
 functions:
   add:

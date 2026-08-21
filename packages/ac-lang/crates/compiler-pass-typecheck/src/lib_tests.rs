@@ -5,9 +5,12 @@ use crate::TypecheckPass;
 
 fn test_config() -> Config {
     Config {
-        resolver: Box::new(ac_resolver_virtual::VirtualResolver::new()),
+        dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
+        resolver: Box::new(ac_module_resolver_virtual::VirtualResolver::new()),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
         backend: None,
+        key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
+        import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }
 }
 
@@ -25,7 +28,7 @@ fn parse_extract_typecheck(yaml: &str) -> Compilation {
 #[test]
 fn typecheck_pass_valid_fields_no_errors() {
     let compilation = parse_extract_typecheck(r#"
-fields:
+$:
   host:
     type: string
   port:
@@ -50,7 +53,7 @@ fn typecheck_pass_without_extracted_returns_error() {
 #[test]
 fn typecheck_pass_expr_type_mismatch_reports_error() {
     let compilation = parse_extract_typecheck(r#"
-fields:
+$:
   port:
     type: number
     expr: "8080"
@@ -64,7 +67,7 @@ port: 8080
 #[test]
 fn typecheck_pass_expr_string_vs_number_mismatch() {
     let compilation = parse_extract_typecheck(r#"
-fields:
+$:
   host:
     type: number
     expr: "example.com"
@@ -81,7 +84,7 @@ host: 8080
 #[test]
 fn typecheck_pass_merge_non_object_reports_error() {
     let compilation = parse_extract_typecheck(r#"
-fields:
+$:
   _base:
     type: string
     merge: true
@@ -98,7 +101,7 @@ host: example.com
 #[test]
 fn typecheck_pass_merge_error_has_source_location() {
     let compilation = parse_extract_typecheck(r#"
-fields:
+$:
   _base:
     type: string
     merge: true
@@ -116,7 +119,7 @@ host: example.com
 #[test]
 fn typecheck_pass_mutable_violation_reports_error() {
     let compilation = parse_extract_typecheck(r#"
-fields:
+$:
   host:
     type: string
     mutable: false

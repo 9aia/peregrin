@@ -13,7 +13,7 @@
 mod value;
 mod frontend;
 
-pub use value::{HostValue, RuntimeValue};
+pub use value::{FunctionValue, HostValue, RuntimeValue};
 pub use frontend::Frontend;
 
 #[cfg(test)]

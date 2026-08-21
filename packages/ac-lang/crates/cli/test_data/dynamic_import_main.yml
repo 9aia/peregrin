@@ -1,4 +1,4 @@
-fields:
+$:
   common:
     type: object
     expr: "import(concat('./dynamic_import_', 'target.yml'))"

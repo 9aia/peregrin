@@ -19,7 +19,7 @@ fn build_ctx(extracted: &ac_fields::ExtractedFields) -> TypegenContext {
 #[test]
 fn end_to_end_simple_fields() {
     let doc = json!({
-        "fields": {
+        "$": {
             "host": { "type": "string" },
             "port": { "type": "number" }
         }
@@ -40,7 +40,7 @@ fn end_to_end_simple_fields() {
 #[test]
 fn end_to_end_with_ac_keys_stripped() {
     let doc = json!({
-        "fields": {
+        "$": {
             "host": { "type": "string", "expr": "compute()", "arg": true },
             "port": { "type": "number", "inheritable": true, "mutable": false }
         }
@@ -64,7 +64,7 @@ fn end_to_end_with_ac_keys_stripped() {
 #[test]
 fn end_to_end_merge_field_excluded() {
     let doc = json!({
-        "fields": {
+        "$": {
             "host": { "type": "string" },
             "port": { "type": "number" },
             "_base": { "type": "object", "merge": true, "expr": "import('./base.yml')" }
@@ -84,7 +84,7 @@ fn end_to_end_merge_field_excluded() {
 #[test]
 fn end_to_end_backend_trait() {
     let doc = json!({
-        "fields": {
+        "$": {
             "host": { "type": "string" }
         }
     });
@@ -105,7 +105,7 @@ fn end_to_end_backend_trait() {
 #[test]
 fn end_to_end_with_merged_fields() {
     let doc = json!({
-        "fields": {
+        "$": {
             "host": { "type": "number" }
         }
     });

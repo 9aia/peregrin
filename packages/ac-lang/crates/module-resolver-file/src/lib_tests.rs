@@ -9,7 +9,7 @@ fn resolve_yaml_file() {
     let dir = std::env::temp_dir().join("ac-module-resolver-file-test-yaml");
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("base.yml");
-    std::fs::write(&file, "fields:\n  name:\n    type: string\n").unwrap();
+    std::fs::write(&file, "$:\n  name:\n    type: string\n").unwrap();
 
     let resolver = FileResolver::new();
     let module = resolver.resolve("base.yml", Some(&dir)).unwrap();
@@ -25,7 +25,7 @@ fn resolve_json_file() {
     let dir = std::env::temp_dir().join("ac-module-resolver-file-test-json");
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("base.json");
-    std::fs::write(&file, r#"{"fields": {"name": {"type": "string"}}}"#).unwrap();
+    std::fs::write(&file, r#"{"$": {"name": {"type": "string"}}}"#).unwrap();
 
     let resolver = FileResolver::new();
     let module = resolver.resolve("base.json", Some(&dir)).unwrap();
@@ -47,7 +47,7 @@ fn resolve_with_cache_hits_on_second_call() {
     let dir = std::env::temp_dir().join("ac-module-resolver-file-test-cache");
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("base.yml");
-    std::fs::write(&file, "fields:\n  name:\n    type: string\n").unwrap();
+    std::fs::write(&file, "$:\n  name:\n    type: string\n").unwrap();
 
     let resolver = FileResolver::with_cache(MemoryModuleCache::new());
 
@@ -65,7 +65,7 @@ fn resolve_sets_base_path_to_parent() {
     let dir = std::env::temp_dir().join("ac-module-resolver-file-test-basepath");
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("base.yml");
-    std::fs::write(&file, "fields:\n  name:\n    type: string\n").unwrap();
+    std::fs::write(&file, "$:\n  name:\n    type: string\n").unwrap();
 
     let resolver = FileResolver::new();
     let module = resolver.resolve("base.yml", Some(&dir)).unwrap();
@@ -82,7 +82,7 @@ fn resolve_no_extension_defaults_to_yaml() {
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("base");
     let mut f = std::fs::File::create(&file).unwrap();
-    f.write_all(b"fields:\n  name:\n    type: string\n").unwrap();
+    f.write_all(b"$:\n  name:\n    type: string\n").unwrap();
 
     let resolver = FileResolver::new();
     let module = resolver.resolve("base", Some(&dir));

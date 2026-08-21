@@ -65,3 +65,60 @@ fn host_value_is_alias() {
     let v: HostValue = RuntimeValue::new("test");
     assert_eq!(v.as_str(), Some("test"));
 }
+
+#[test]
+fn function_value_roundtrip() {
+    let fn_val = FunctionValue {
+        params: vec![
+            ("x".to_string(), serde_json::json!({"type": "number"})),
+            ("y".to_string(), serde_json::json!({"type": "number"})),
+        ],
+        return_schema: Some(serde_json::json!({"type": "number"})),
+        body: "mul(x, y)".to_string(),
+    };
+    let json = fn_val.to_json();
+    let decoded = FunctionValue::from_json(&json).unwrap();
+    assert_eq!(decoded, fn_val);
+}
+
+#[test]
+fn function_value_without_return() {
+    let fn_val = FunctionValue {
+        params: vec![("x".to_string(), serde_json::json!({"type": "string"}))],
+        return_schema: None,
+        body: "x".to_string(),
+    };
+    let json = fn_val.to_json();
+    let decoded = FunctionValue::from_json(&json).unwrap();
+    assert_eq!(decoded.params.len(), 1);
+    assert_eq!(decoded.return_schema, None);
+    assert_eq!(decoded.body, "x");
+}
+
+#[test]
+fn function_value_from_non_function_json() {
+    assert!(FunctionValue::from_json(&serde_json::json!(42)).is_none());
+    assert!(FunctionValue::from_json(&serde_json::json!({"key": "value"})).is_none());
+    assert!(FunctionValue::from_json(&serde_json::json!({"body": 42})).is_none());
+}
+
+#[test]
+fn runtime_value_is_function() {
+    let fn_val = FunctionValue {
+        params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
+        return_schema: Some(serde_json::json!({"type": "number"})),
+        body: "mul(x, 2)".to_string(),
+    };
+    let rv = RuntimeValue::new_function(fn_val);
+    assert!(rv.is_function());
+    assert!(rv.as_function().is_some());
+
+    let plain = RuntimeValue::new(42);
+    assert!(!plain.is_function());
+    assert!(plain.as_function().is_none());
+
+    // An object without a `body` string is not a function
+    let obj = RuntimeValue::new(serde_json::json!({"key": "value"}));
+    assert!(!obj.is_function());
+    assert!(obj.as_function().is_none());
+}

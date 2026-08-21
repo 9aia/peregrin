@@ -4,9 +4,12 @@ use crate::ExtractPass;
 
 fn test_config() -> Config {
     Config {
-        resolver: Box::new(ac_resolver_virtual::VirtualResolver::new()),
+        dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
+        resolver: Box::new(ac_module_resolver_virtual::VirtualResolver::new()),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
         backend: None,
+        key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
+        import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }
 }
 
@@ -21,7 +24,7 @@ fn parse_and_extract(yaml: &str) -> Compilation {
 #[test]
 fn extract_pass_populates_extracted() {
     let compilation = parse_and_extract(r#"
-fields:
+$:
   name:
     type: string
   version:
@@ -42,7 +45,7 @@ fn extract_pass_no_fields_returns_error() {
     ParsePass.run(&mut compilation, &test_config()).unwrap();
     let result = ExtractPass.run(&mut compilation, &test_config());
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("no `fields:` section"));
+    assert!(result.unwrap_err().contains("no `$:` section"));
 }
 
 #[test]
@@ -57,7 +60,7 @@ fn extract_pass_without_parsed_returns_error() {
 #[test]
 fn extract_pass_takes_parsed_value() {
     let compilation = parse_and_extract(r#"
-fields:
+$:
   host:
     type: string
 

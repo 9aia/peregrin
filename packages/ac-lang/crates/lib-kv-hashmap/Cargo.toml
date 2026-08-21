@@ -1,0 +1,12 @@
+[package]
+name = "ac-lib-kv-hashmap"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-lib-kv.workspace = true
+
+[dev-dependencies]
+ac-runtime.workspace = true
+ac-runtime-core.workspace = true
+ac-vm.workspace = true

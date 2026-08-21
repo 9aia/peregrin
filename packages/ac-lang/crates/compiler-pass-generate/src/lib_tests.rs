@@ -6,11 +6,14 @@ use crate::GeneratePass;
 
 fn test_config() -> Config {
     Config {
-        resolver: Box::new(ac_resolver_virtual::VirtualResolver::new()),
+        dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
+        resolver: Box::new(ac_module_resolver_virtual::VirtualResolver::new()),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
         backend: Some(Box::new(
             ac_typegen_backend_json_schema::JsonSchemaBackend,
         )),
+        key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
+        import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }
 }
 
@@ -28,7 +31,7 @@ fn full_pipeline(yaml: &str) -> Compilation {
 #[test]
 fn generate_pass_populates_output() {
     let compilation = full_pipeline(r#"
-fields:
+$:
   host:
     type: string
   port:
@@ -58,9 +61,12 @@ fn generate_pass_without_backend_returns_error() {
     let source = Source::new("name: ac", "yaml");
     let mut compilation = Compilation::new(source);
     let config_no_backend = Config {
-        resolver: Box::new(ac_resolver_virtual::VirtualResolver::new()),
+        dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
+        resolver: Box::new(ac_module_resolver_virtual::VirtualResolver::new()),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
         backend: None,
+        key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
+        import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     };
     // Need to manually set typegen_ctx since we can't run ResolvePass without the right deps
     compilation.typegen_ctx = Some(ac_typegen_core::TypegenContext::from_schemas(&[]));
@@ -72,7 +78,7 @@ fn generate_pass_without_backend_returns_error() {
 #[test]
 fn generate_pass_takes_ctx() {
     let compilation = full_pipeline(r#"
-fields:
+$:
   host:
     type: string
 

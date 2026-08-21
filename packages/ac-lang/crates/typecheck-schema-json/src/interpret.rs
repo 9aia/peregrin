@@ -38,6 +38,29 @@ pub fn interpret_schema(schema: &JsonValue) -> Type {
             }
             Type::Object(props)
         }
+        "function" => {
+            let params = schema
+                .get("params")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|p| {
+                            let name = p.get("name")?.as_str()?.to_string();
+                            let param_schema = p.get("schema").unwrap_or(&JsonValue::Null);
+                            Some((name, interpret_schema(param_schema)))
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            let return_type = schema
+                .get("return")
+                .map(interpret_schema)
+                .unwrap_or(Type::Unknown);
+            Type::Function(FunctionType {
+                params,
+                return_type: Box::new(return_type),
+            })
+        }
         _ => Type::Unknown,
     }
 }
@@ -56,7 +79,41 @@ pub fn infer_json_type(value: &JsonValue) -> Type {
                 .unwrap_or(Type::Unknown);
             Type::Array(Box::new(item))
         }
-        JsonValue::Object(_) => Type::Unknown,
+        JsonValue::Object(obj) => {
+            // A function value is detected by having a `body` string field.
+            if obj.get("body").is_some_and(|v| v.is_string()) {
+                let params = obj
+                    .get("params")
+                    .map(|p| {
+                        if let Some(arr) = p.as_array() {
+                            arr.iter()
+                                .filter_map(|p| {
+                                    let name = p.get("name")?.as_str()?.to_string();
+                                    let schema = p.get("schema").unwrap_or(&JsonValue::Null);
+                                    Some((name, interpret_schema(schema)))
+                                })
+                                .collect::<Vec<_>>()
+                        } else if let Some(map) = p.as_object() {
+                            map.iter()
+                                .map(|(name, schema)| (name.clone(), interpret_schema(schema)))
+                                .collect::<Vec<_>>()
+                        } else {
+                            Vec::new()
+                        }
+                    })
+                    .unwrap_or_default();
+                let return_type = obj
+                    .get("return")
+                    .map(interpret_schema)
+                    .unwrap_or(Type::Unknown);
+                Type::Function(FunctionType {
+                    params,
+                    return_type: Box::new(return_type),
+                })
+            } else {
+                Type::Unknown
+            }
+        }
     }
 }
 

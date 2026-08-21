@@ -23,9 +23,11 @@
 //! | `ac-host` | Default host implementation — built-in functions (`add`, `mul`, `concat`, `len`). |
 //! | `ac-compiler` | Compilation pipeline — parse → extract → resolve → typecheck → generate. |
 //! | `ac-compiler-core` | Pipeline core — `Config`, `Pass`, `Pipeline`, `Compilation`, `Source`. |
-//! | `ac-resolver-core` | Module resolution trait — `ModuleResolver`, `CachingResolver`. |
-//! | `ac-resolver-file` | Filesystem `ModuleResolver` implementation. |
-//! | `ac-resolver-virtual` | In-memory `ModuleResolver` implementation. |
+//! | `ac-module-resolver-core` | Module resolution trait — `ModuleResolver`, `CachingResolver`. |
+//! | `ac-module-resolver-memory` | In-memory `ModuleCache` implementation. |
+//! | `ac-module-resolver-noop` | No-op `ModuleCache` implementation. |
+//! | `ac-module-resolver-file` | Filesystem `ModuleResolver` implementation. |
+//! | `ac-module-resolver-virtual` | In-memory `ModuleResolver` implementation. |
 //! | `ac-typecheck-core` | Typechecking primitives — `Type`, `TypeEnv`, `SchemaInterpreter`. |
 //! | `ac-typecheck-schema-json` | JSON Schema → `Type` interpreter. |
 //! | `ac-typegen-core` | Type generation core — `TypegenContext`, `TypegenBackend`. |
@@ -65,9 +67,11 @@ pub use ac_source as source;
 pub use ac_host as host;
 pub use ac_compiler as compiler;
 pub use ac_compiler_core as compiler_core;
-pub use ac_resolver_core as resolver_core;
-pub use ac_resolver_file as resolver_file;
-pub use ac_resolver_virtual as resolver_virtual;
+pub use ac_module_resolver_core as resolver_core;
+pub use ac_module_resolver_memory as resolver_memory;
+pub use ac_module_resolver_noop as resolver_noop;
+pub use ac_module_resolver_file as resolver_file;
+pub use ac_module_resolver_virtual as resolver_virtual;
 pub use ac_typecheck_core as typecheck_core;
 pub use ac_typecheck_schema_json as typecheck_schema_json;
 pub use ac_typegen_core as typegen_core;
@@ -91,9 +95,11 @@ pub mod prelude {
     pub use ac_host::DefaultHost;
     pub use ac_compiler::{Compilation, Config, Pass, Pipeline, Source};
     pub use ac_compiler::{default_cli_config, typecheck_only_config, typegen_pipeline, typecheck_pipeline, full_pipeline};
-    pub use ac_resolver_core::{ModuleResolver, ResolvedModule, ModuleCache, MemoryModuleCache, NoCache, CachingResolver, ChainResolver};
-    pub use ac_resolver_file::FileResolver;
-    pub use ac_resolver_virtual::VirtualResolver;
+    pub use ac_module_resolver_core::{ModuleResolver, ResolvedModule, ModuleCache, CachingResolver, ChainResolver};
+    pub use ac_module_resolver_memory::MemoryModuleCache;
+    pub use ac_module_resolver_noop::NoCache;
+    pub use ac_module_resolver_file::FileResolver;
+    pub use ac_module_resolver_virtual::VirtualResolver;
     pub use ac_typecheck_core::{Type, TypeEnv, TypeError, TypeResult, SchemaInterpreter};
     pub use ac_typecheck_schema_json::JsonSchemaInterpreter;
     pub use ac_typegen_core::{TypegenContext, TypegenBackend};

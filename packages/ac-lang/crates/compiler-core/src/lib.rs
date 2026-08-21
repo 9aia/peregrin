@@ -18,6 +18,7 @@ mod compilation;
 mod config;
 mod pipeline;
 
+pub use ac_dialect::{Dialect, DocumentVocabulary};
 pub use compilation::{Compilation, Source};
 pub use config::Config;
 pub use pipeline::{Pass, Pipeline};

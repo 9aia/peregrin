@@ -9,6 +9,12 @@ members = [
   "crates/dialect-canonical",
   "crates/ast",
   "crates/runtime",
+  "crates/runtime-core",
+  "crates/lib-utils",
+  "crates/lib-kv",
+  "crates/lib-kv-hashmap",
+  "crates/lib-platform",
+  "crates/lib-platform-std",
   "crates/vm",
   "crates/frontend-json",
   "crates/frontend-yaml",
@@ -16,16 +22,14 @@ members = [
   "crates/source",
   "crates/fields",
   "crates/typegen-core",
-  "crates/typegen-key-merge",
-  "crates/typegen-key-inherit",
-  "crates/typegen-key-mutable",
-  "crates/typegen-key-expr",
-  "crates/typegen-key-arg",
-  "crates/resolver-core",
-  "crates/resolver-file",
-  "crates/resolver-virtual",
-  "crates/resolver-http",
-  "crates/resolver-git",
+  "crates/typegen-key-set-special",
+  "crates/module-resolver-core",
+  "crates/module-resolver-memory",
+  "crates/module-resolver-noop",
+  "crates/module-resolver-file",
+  "crates/module-resolver-virtual",
+  "crates/module-resolver-http",
+  "crates/module-resolver-git",
   "crates/typegen-import",
   "crates/typegen-backend-json-schema",
   "crates/typecheck-core",
@@ -49,6 +53,7 @@ members = [
   "crates/compiler-tests",
   "crates/bench",
   "crates/cli",
+  "crates/experiment-host-sugar",
 ]
 resolver = "3"
 
@@ -61,6 +66,12 @@ ac-dialect = { path = "crates/dialect" }
 ac-dialect-canonical = { path = "crates/dialect-canonical" }
 ac-ast = { path = "crates/ast" }
 ac-runtime = { path = "crates/runtime" }
+ac-runtime-core = { path = "crates/runtime-core" }
+ac-lib-utils = { path = "crates/lib-utils" }
+ac-lib-kv = { path = "crates/lib-kv" }
+ac-lib-kv-hashmap = { path = "crates/lib-kv-hashmap" }
+ac-lib-platform = { path = "crates/lib-platform" }
+ac-lib-platform-std = { path = "crates/lib-platform-std" }
 ac-vm = { path = "crates/vm" }
 ac-frontend-json = { path = "crates/frontend-json" }
 ac-frontend-yaml = { path = "crates/frontend-yaml" }
@@ -79,16 +90,14 @@ ac-compiler-pass-generate = { path = "crates/compiler-pass-generate" }
 ac-compiler = { path = "crates/compiler" }
 ac-compiler-tests = { path = "crates/compiler-tests" }
 ac-typegen-core = { path = "crates/typegen-core" }
-ac-typegen-key-merge = { path = "crates/typegen-key-merge" }
-ac-typegen-key-inherit = { path = "crates/typegen-key-inherit" }
-ac-typegen-key-mutable = { path = "crates/typegen-key-mutable" }
-ac-typegen-key-expr = { path = "crates/typegen-key-expr" }
-ac-typegen-key-arg = { path = "crates/typegen-key-arg" }
-ac-resolver-core = { path = "crates/resolver-core" }
-ac-resolver-file = { path = "crates/resolver-file" }
-ac-resolver-virtual = { path = "crates/resolver-virtual" }
-ac-resolver-http = { path = "crates/resolver-http" }
-ac-resolver-git = { path = "crates/resolver-git" }
+ac-typegen-key-set-special = { path = "crates/typegen-key-set-special" }
+ac-module-resolver-core = { path = "crates/module-resolver-core" }
+ac-module-resolver-memory = { path = "crates/module-resolver-memory" }
+ac-module-resolver-noop = { path = "crates/module-resolver-noop" }
+ac-module-resolver-file = { path = "crates/module-resolver-file" }
+ac-module-resolver-virtual = { path = "crates/module-resolver-virtual" }
+ac-module-resolver-http = { path = "crates/module-resolver-http" }
+ac-module-resolver-git = { path = "crates/module-resolver-git" }
 ac-typegen-import = { path = "crates/typegen-import" }
 ac-typegen-backend-json-schema = { path = "crates/typegen-backend-json-schema" }
 ac-typecheck-core = { path = "crates/typecheck-core" }
@@ -111,6 +120,12 @@ ac-ast.workspace = true
 ac-dialect.workspace = true
 ac-dialect-canonical.workspace = true
 ac-runtime.workspace = true
+ac-runtime-core.workspace = true
+ac-lib-utils.workspace = true
+ac-lib-kv.workspace = true
+ac-lib-kv-hashmap.workspace = true
+ac-lib-platform.workspace = true
+ac-lib-platform-std.workspace = true
 ac-vm.workspace = true
 ac-frontend-json.workspace = true
 ac-frontend-yaml.workspace = true
@@ -120,9 +135,11 @@ ac-source.workspace = true
 ac-host.workspace = true
 ac-compiler.workspace = true
 ac-compiler-core.workspace = true
-ac-resolver-core.workspace = true
-ac-resolver-file.workspace = true
-ac-resolver-virtual.workspace = true
+ac-module-resolver-core.workspace = true
+ac-module-resolver-memory.workspace = true
+ac-module-resolver-noop.workspace = true
+ac-module-resolver-file.workspace = true
+ac-module-resolver-virtual.workspace = true
 ac-typecheck-core.workspace = true
 ac-typecheck-schema-json.workspace = true
 ac-typegen-core.workspace = true

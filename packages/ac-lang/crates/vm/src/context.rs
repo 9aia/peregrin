@@ -1,4 +1,5 @@
 use crate::Error;
+use crate::Eval;
 use ac_runtime::RuntimeValue;
 use indexmap::IndexMap;
 
@@ -11,8 +12,14 @@ use indexmap::IndexMap;
 ///
 /// Scopes are pushed and popped to model function call boundaries.
 /// The bottommost scope is the global scope and is never popped.
+///
+/// The context may also hold an [`Eval`] callback, which allows host
+/// functions to evaluate expression strings (e.g. function bodies).
+/// The callback is optional — when not set, [`Context::eval_expr`]
+/// returns an error.
 pub struct Context {
     scopes: Vec<IndexMap<String, RuntimeValue>>,
+    eval: Option<Box<dyn Eval>>,
 }
 
 impl Context {
@@ -20,7 +27,37 @@ impl Context {
     pub fn new() -> Self {
         Context {
             scopes: vec![IndexMap::new()],
+            eval: None,
         }
+    }
+
+    /// Sets the [`Eval`] callback for this context.
+    ///
+    /// When set, host functions can call [`Context::eval_expr`] to
+    /// evaluate expression strings with variable bindings. This enables
+    /// higher-order functions like `fp.map`, `fp.filter`, `fp.reduce`.
+    pub fn set_eval(&mut self, eval: Box<dyn Eval>) {
+        self.eval = Some(eval);
+    }
+
+    /// Returns `true` if an [`Eval`] callback is set.
+    pub fn has_eval(&self) -> bool {
+        self.eval.is_some()
+    }
+
+    /// Evaluates an expression string with the given variable bindings.
+    ///
+    /// Delegates to the [`Eval`] callback set via [`Context::set_eval`].
+    /// Returns [`Error::PrimitiveError`] if no callback is set.
+    pub fn eval_expr(
+        &self,
+        expr: &str,
+        vars: &[(String, RuntimeValue)],
+    ) -> Result<RuntimeValue, Error> {
+        self.eval
+            .as_ref()
+            .ok_or(Error::PrimitiveError("no eval callback set".to_string()))?
+            .eval_expr(expr, vars)
     }
 
     /// Pushes a new empty scope onto the scope stack.
