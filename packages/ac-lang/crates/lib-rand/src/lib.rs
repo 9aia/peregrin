@@ -27,6 +27,7 @@
 //!   `rand.string`, `rand.bytes`, `rand.uuid`, `rand.gauss`,
 //!   `rand.exponential`, `rand.poisson`, `rand.binomial`,
 //!   `rand.perlin_1d`, `rand.perlin_2d`, `rand.perlin_3d`,
+//!   `rand.simplex_2d`, `rand.simplex_3d`,
 //!   `rand.seeded_int`, `rand.seeded_float`, `rand.seeded_bool`,
 //!   `rand.seeded_pick`, `rand.seeded_choice`, `rand.seeded_sample`,
 //!   `rand.seeded_shuffle`, `rand.seeded_string`, `rand.seeded_gauss`

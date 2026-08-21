@@ -162,3 +162,190 @@ impl Function for Perlin3D {
         Ok(num(perlin_3d(x, y, z)))
     }
 }
+
+// ── Simplex noise ────────────────────────────────────────────────
+
+const F2: f64 = 0.3660254037844386; // 0.5 * (sqrt(3) - 1)
+const G2: f64 = 0.21132486540518713; // (sqrt(3) - 1) / 2
+const F3: f64 = 1.0 / 3.0;
+const G3: f64 = 1.0 / 6.0;
+
+const GRAD3: [(f64, f64, f64); 12] = [
+    (1.0, 1.0, 0.0), (-1.0, 1.0, 0.0), (1.0, -1.0, 0.0), (-1.0, -1.0, 0.0),
+    (1.0, 0.0, 1.0), (-1.0, 0.0, 1.0), (1.0, 0.0, -1.0), (-1.0, 0.0, -1.0),
+    (0.0, 1.0, 1.0), (0.0, -1.0, 1.0), (0.0, 1.0, -1.0), (0.0, -1.0, -1.0),
+];
+
+fn grad3(hash: u8, x: f64, y: f64, z: f64) -> f64 {
+    let g = GRAD3[(hash % 12) as usize];
+    g.0 * x + g.1 * y + g.2 * z
+}
+
+fn simplex_2d(x: f64, y: f64) -> f64 {
+    let s = (x + y) * F2;
+    let i = (x + s).floor() as i32;
+    let j = (y + s).floor() as i32;
+    let t = (i + j) as f64 * G2;
+    let x0 = x - (i as f64 - t);
+    let y0 = y - (j as f64 - t);
+
+    let (i1, j1) = if x0 > y0 { (1, 0) } else { (0, 1) };
+
+    let x1 = x0 - i1 as f64 + G2;
+    let y1 = y0 - j1 as f64 + G2;
+    let x2 = x0 - 1.0 + 2.0 * G2;
+    let y2 = y0 - 1.0 + 2.0 * G2;
+
+    let ii = i.rem_euclid(256);
+    let jj = j.rem_euclid(256);
+    let gi0 = PERM[(PERM[ii as usize] as usize + jj as usize) % 256];
+    let gi1 = PERM[(PERM[(ii + i1).rem_euclid(256) as usize] as usize + (jj + j1).rem_euclid(256) as usize) % 256];
+    let gi2 = PERM[(PERM[(ii + 1).rem_euclid(256) as usize] as usize + (jj + 1).rem_euclid(256) as usize) % 256];
+
+    let mut n0 = 0.0;
+    let mut n1 = 0.0;
+    let mut n2 = 0.0;
+
+    let t0 = 0.5 - x0 * x0 - y0 * y0;
+    if t0 >= 0.0 {
+        let t0_sq = t0 * t0;
+        n0 = t0_sq * t0_sq * grad3(gi0, x0, y0, 0.0);
+    }
+
+    let t1 = 0.5 - x1 * x1 - y1 * y1;
+    if t1 >= 0.0 {
+        let t1_sq = t1 * t1;
+        n1 = t1_sq * t1_sq * grad3(gi1, x1, y1, 0.0);
+    }
+
+    let t2 = 0.5 - x2 * x2 - y2 * y2;
+    if t2 >= 0.0 {
+        let t2_sq = t2 * t2;
+        n2 = t2_sq * t2_sq * grad3(gi2, x2, y2, 0.0);
+    }
+
+    70.0 * (n0 + n1 + n2)
+}
+
+fn simplex_3d(x: f64, y: f64, z: f64) -> f64 {
+    let s = (x + y + z) * F3;
+    let i = (x + s).floor() as i32;
+    let j = (y + s).floor() as i32;
+    let k = (z + s).floor() as i32;
+    let t = (i + j + k) as f64 * G3;
+    let x0 = x - (i as f64 - t);
+    let y0 = y - (j as f64 - t);
+    let z0 = z - (k as f64 - t);
+
+    let (i1, j1, k1, i2, j2, k2);
+    if x0 >= y0 {
+        if y0 >= z0 {
+            i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 1; k2 = 0;
+        } else if x0 >= z0 {
+            i1 = 1; j1 = 0; k1 = 0; i2 = 1; j2 = 0; k2 = 1;
+        } else {
+            i1 = 0; j1 = 0; k1 = 1; i2 = 1; j2 = 0; k2 = 1;
+        }
+    } else {
+        if y0 < z0 {
+            i1 = 0; j1 = 0; k1 = 1; i2 = 0; j2 = 1; k2 = 1;
+        } else if x0 < z0 {
+            i1 = 0; j1 = 1; k1 = 0; i2 = 0; j2 = 1; k2 = 1;
+        } else {
+            i1 = 0; j1 = 1; k1 = 0; i2 = 1; j2 = 1; k2 = 0;
+        }
+    }
+
+    let x1 = x0 - i1 as f64 + G3;
+    let y1 = y0 - j1 as f64 + G3;
+    let z1 = z0 - k1 as f64 + G3;
+    let x2 = x0 - i2 as f64 + 2.0 * G3;
+    let y2 = y0 - j2 as f64 + 2.0 * G3;
+    let z2 = z0 - k2 as f64 + 2.0 * G3;
+    let x3 = x0 - 1.0 + 3.0 * G3;
+    let y3 = y0 - 1.0 + 3.0 * G3;
+    let z3 = z0 - 1.0 + 3.0 * G3;
+
+    let ii = i.rem_euclid(256) as usize;
+    let jj = j.rem_euclid(256) as usize;
+    let kk = k.rem_euclid(256) as usize;
+
+    let gi0 = PERM[(PERM[ii] as usize + jj + kk) % 256];
+    let gi1 = PERM[(PERM[(ii + i1 as usize) % 256] as usize + (jj + j1 as usize) % 256 + (kk + k1 as usize) % 256) % 256];
+    let gi2 = PERM[(PERM[(ii + i2 as usize) % 256] as usize + (jj + j2 as usize) % 256 + (kk + k2 as usize) % 256) % 256];
+    let gi3 = PERM[(PERM[(ii + 1) % 256] as usize + (jj + 1) % 256 + (kk + 1) % 256) % 256];
+
+    let mut n0 = 0.0;
+    let mut n1 = 0.0;
+    let mut n2 = 0.0;
+    let mut n3 = 0.0;
+
+    let t0 = 0.6 - x0 * x0 - y0 * y0 - z0 * z0;
+    if t0 >= 0.0 {
+        let t0_sq = t0 * t0;
+        n0 = t0_sq * t0_sq * grad3(gi0, x0, y0, z0);
+    }
+
+    let t1 = 0.6 - x1 * x1 - y1 * y1 - z1 * z1;
+    if t1 >= 0.0 {
+        let t1_sq = t1 * t1;
+        n1 = t1_sq * t1_sq * grad3(gi1, x1, y1, z1);
+    }
+
+    let t2 = 0.6 - x2 * x2 - y2 * y2 - z2 * z2;
+    if t2 >= 0.0 {
+        let t2_sq = t2 * t2;
+        n2 = t2_sq * t2_sq * grad3(gi2, x2, y2, z2);
+    }
+
+    let t3 = 0.6 - x3 * x3 - y3 * y3 - z3 * z3;
+    if t3 >= 0.0 {
+        let t3_sq = t3 * t3;
+        n3 = t3_sq * t3_sq * grad3(gi3, x3, y3, z3);
+    }
+
+    32.0 * (n0 + n1 + n2 + n3)
+}
+
+/// `rand.simplex_2d(x: number, y: number) → number`
+///
+/// Returns 2D Simplex noise value at coordinates `(x, y)`. Output is
+/// approximately in the range `[-1, 1]`.
+///
+/// Uses a fixed permutation table for deterministic results across runs.
+/// Simplex noise has fewer directional artifacts than Perlin noise.
+///
+/// Example:
+/// - `rand.simplex_2d(1.0, 2.0)` → noise at (1, 2)
+#[derive(Clone, Copy)]
+pub struct Simplex2D;
+
+impl Function for Simplex2D {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let x = require_number(args, 0)?;
+        let y = require_number(args, 1)?;
+        Ok(num(simplex_2d(x, y)))
+    }
+}
+
+/// `rand.simplex_3d(x: number, y: number, z: number) → number`
+///
+/// Returns 3D Simplex noise value at coordinates `(x, y, z)`. Output is
+/// approximately in the range `[-1, 1]`.
+///
+/// Uses a fixed permutation table for deterministic results across runs.
+/// Simplex noise has fewer directional artifacts than Perlin noise.
+///
+/// Example:
+/// - `rand.simplex_3d(0.1, 0.2, 0.3)` → noise at (0.1, 0.2, 0.3)
+#[derive(Clone, Copy)]
+pub struct Simplex3D;
+
+impl Function for Simplex3D {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let x = require_number(args, 0)?;
+        let y = require_number(args, 1)?;
+        let z = require_number(args, 2)?;
+        Ok(num(simplex_3d(x, y, z)))
+    }
+}

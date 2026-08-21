@@ -3,7 +3,7 @@ use ac_vm::Function;
 
 use super::distribution::{Binomial, Exponential, Gauss, Poisson};
 use super::generation::{Bytes, String_, Uuid};
-use super::noise::{Perlin1D, Perlin2D, Perlin3D};
+use super::noise::{Perlin1D, Perlin2D, Perlin3D, Simplex2D, Simplex3D};
 use super::numbers::{Bool, Float, Int};
 use super::sampling::{Choice, Pick, Sample, Shuffle, WeightedPick};
 use super::seeded::{
@@ -21,6 +21,7 @@ use super::seeded::{
 /// `rand.uuid()`, `rand.gauss(mean, stddev)`, `rand.exponential(lambda)`,
 /// `rand.poisson(lambda)`, `rand.binomial(n, p)`,
 /// `rand.perlin_1d(x)`, `rand.perlin_2d(x, y)`, `rand.perlin_3d(x, y, z)`,
+/// `rand.simplex_2d(x, y)`, `rand.simplex_3d(x, y, z)`,
 /// `rand.seeded_int(seed, min, max)`, `rand.seeded_float(seed, min, max)`,
 /// `rand.seeded_bool(seed)`, `rand.seeded_pick(seed, array)`,
 /// `rand.seeded_choice(seed, array, count)`, `rand.seeded_sample(seed, array, count)`,
@@ -60,6 +61,8 @@ impl Module for RandModule {
             "perlin_1d" => Some(&Perlin1D),
             "perlin_2d" => Some(&Perlin2D),
             "perlin_3d" => Some(&Perlin3D),
+            "simplex_2d" => Some(&Simplex2D),
+            "simplex_3d" => Some(&Simplex3D),
             "seeded_int" => Some(&SeededInt),
             "seeded_float" => Some(&SeededFloat),
             "seeded_bool" => Some(&SeededBool),

@@ -33,6 +33,8 @@ fn all_functions_registered() {
         "perlin_1d",
         "perlin_2d",
         "perlin_3d",
+        "simplex_2d",
+        "simplex_3d",
         "seeded_int",
         "seeded_float",
         "seeded_bool",
@@ -153,6 +155,8 @@ fn vm_resolves_via_module_host() {
     assert!(host.function("rand.perlin_1d").is_some());
     assert!(host.function("rand.perlin_2d").is_some());
     assert!(host.function("rand.perlin_3d").is_some());
+    assert!(host.function("rand.simplex_2d").is_some());
+    assert!(host.function("rand.simplex_3d").is_some());
     assert!(host.function("rand.seeded_int").is_some());
     assert!(host.function("rand.seeded_float").is_some());
     assert!(host.function("rand.seeded_bool").is_some());
