@@ -3,7 +3,6 @@ use crate::resolved_module::ResolvedModule;
 
 use std::path::PathBuf;
 
-use ac_fields::FunctionSignature;
 use serde_json::json;
 
 #[test]
@@ -11,18 +10,12 @@ fn resolved_module_construction() {
     let module = ResolvedModule {
         schemas: vec![("base".to_string(), json!({"type": "object"}))],
         merge: vec!["base".to_string()],
-        functions: vec![("add".to_string(), FunctionSignature {
-            params: vec![],
-            return_schema: Some(json!("number")),
-            body: None,
-        })],
         data: json!({"version": 1}),
         base_path: Some(PathBuf::from("/schemas")),
     };
 
     assert_eq!(module.schemas.len(), 1);
     assert_eq!(module.merge, vec!["base".to_string()]);
-    assert_eq!(module.functions.len(), 1);
     assert_eq!(module.data, json!({"version": 1}));
     assert_eq!(module.base_path, Some(PathBuf::from("/schemas")));
 }
@@ -32,7 +25,6 @@ fn resolved_module_clone() {
     let module = ResolvedModule {
         schemas: vec![("base".to_string(), json!({"type": "object"}))],
         merge: vec![],
-        functions: vec![],
         data: json!(null),
         base_path: None,
     };

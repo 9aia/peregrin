@@ -1,6 +1,5 @@
 use std::path::PathBuf;
 
-use ac_fields::FunctionSignature;
 use serde_json::Value as JsonValue;
 
 /// A resolved module — the result of a `ModuleResolver::resolve` call.
@@ -13,8 +12,6 @@ pub struct ResolvedModule {
     pub schemas: Vec<(String, JsonValue)>,
     /// Field names marked with `merge: true`.
     pub merge: Vec<String>,
-    /// Function signatures declared in the module.
-    pub functions: Vec<(String, FunctionSignature)>,
     /// The document's data values (for data-driven import resolution).
     pub data: JsonValue,
     /// Base path for resolving nested imports from this module.

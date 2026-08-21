@@ -66,7 +66,6 @@ impl<C: ModuleCache> ModuleResolver for HttpResolver<C> {
         let module = ResolvedModule {
             schemas: extracted.schemas,
             merge: extracted.merge,
-            functions: extracted.functions,
             data: extracted.data.inner().clone(),
             base_path: None,
         };

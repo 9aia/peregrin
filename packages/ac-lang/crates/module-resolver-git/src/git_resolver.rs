@@ -144,7 +144,6 @@ impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
         let module = ResolvedModule {
             schemas: extracted.schemas,
             merge: extracted.merge,
-            functions: extracted.functions,
             data: extracted.data.inner().clone(),
             base_path: Some(base_path),
         };
