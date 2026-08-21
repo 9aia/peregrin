@@ -2,9 +2,9 @@
 
 **Status:** Approved
 
-The AC Language Specification ([LANG.md](./LANG.md)) fixes one canonical syntax. This document specifies the Dialect API — the interface that abstracts the language's syntax and vocabulary decisions behind a single contract, so implementations can be structured around one source of truth rather than hardcoding tokens across dozens of functions.
+The AC Language Specification ([LANG.md](./LANG.md)) fixes one canonical syntax. This document specifies the Dialect API — the interface that abstracts the language's syntax and vocabulary decisions behind a single contract.
 
-The canonical dialect is the only shipped dialect. Custom dialects are architecturally possible but not exposed officially to users. See [fixed-syntax.md](../../docs/explanations/fixed-syntax.md) for the rationale.
+The canonical dialect is the only shipped dialect. Custom dialects are architecturally possible but not exposed officially to users.
 
 ## 1. Overview
 
@@ -25,7 +25,7 @@ The dialect does **not** define:
 
 ## 2. The Dialect interface
 
-`Dialect` is a **facade** that groups four focused sub-traits. Consumers that only need one aspect can depend on the sub-trait directly; the facade provides a convenient "give me the whole language configuration" accessor for call sites that need multiple aspects. See [dialect-facade-split.md](./docs/explanations/dialect-facade-split.md) for the rationale.
+`Dialect` is a **facade** that groups four focused sub-traits. Consumers that only need one aspect can depend on the sub-trait directly; the facade provides a convenient "give me the whole language configuration" accessor for call sites that need multiple aspects.
 
 | Sub-trait             | Responsibility                                         | Facade accessor         |
 | --------------------- | ------------------------------------------------------ | ----------------------- |
@@ -36,7 +36,7 @@ The dialect does **not** define:
 
 In Rust, each sub-trait is a separate `trait` with `Send + Sync` supertraits, and `Dialect` is a trait with four accessor methods returning `&dyn` references. In other languages, the equivalent interface/protocol split should be used.
 
-The abstraction traits define **interfaces only** — they contain no default implementations with canonical values. Every method is required. In Rust, the canonical implementation lives in the `ac-dialect-canonical` crate (see §3). This ensures the abstraction has zero dependency on any specific syntax.
+The abstraction traits define **interfaces only** — they contain no default implementations with canonical values. Every method is required. In Rust, the canonical implementation lives in the `ac-dialect-canonical` crate (see §3).
 
 ### 2.1 Syntax tokens
 
@@ -58,7 +58,7 @@ All four sub-traits require `Send + Sync` in Rust. In other languages, the equiv
 
 ### 2.2 Expression parser
 
-`ExprParser` is a trait with parsing behavior, not static configuration. If a dialect can change argument separators, nesting rules, quote syntax, call delimiters, and literal syntax, then expression parsing cannot be reduced to token values — it requires algorithms. See [expr-parser-as-trait.md](./docs/explanations/expr-parser-as-trait.md) for the rationale.
+`ExprParser` is a trait with parsing behavior, not static configuration.
 
 | Operation              | Input                | Output                   | Description                                                                                              |
 | ---------------------- | -------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------- |
@@ -99,7 +99,7 @@ The dialect also provides two convenience aggregations:
 
 ### 2.5 Schema vocabulary
 
-The dialect exposes its schema vocabulary through the `schema_vocabulary()` accessor on the `Dialect` facade, returning a reference to the `SchemaVocabulary<V>` implementation. The schema vocabulary is an abstract interface that compiles raw schema documents into validators. `SchemaVocabulary` is conceptually orthogonal to the rest of the dialect — it answers "how are schemas expressed?" rather than "how is AC written?" See [schema-vocabulary-orthogonal.md](./docs/explanations/schema-vocabulary-orthogonal.md) for the rationale.
+The dialect exposes its schema vocabulary through the `schema_vocabulary()` accessor on the `Dialect` facade, returning a reference to the `SchemaVocabulary<V>` implementation. The schema vocabulary is an abstract interface that compiles raw schema documents into validators.
 
 At the dialect level, the value type `V` is fixed to the runtime's value type (in Rust, `RuntimeValue`). The `Schema<V>` and `SchemaVocabulary<V>` interfaces remain generic over `V` so the abstractions work with any value type. In other language implementations, `V` should be bound to the equivalent runtime value type.
 
@@ -135,7 +135,7 @@ Schema validation involves two abstract interfaces and an error type, all generi
 
 ## 3. Package structure
 
-The dialect abstraction and its canonical implementation are separate packages. This keeps the abstractions cacheable, testable and free of any dependency on a specific schema vocabulary or runtime. The abstraction traits define interfaces only — no default implementations with canonical values. Every method is required.
+The dialect abstraction and its canonical implementation are separate packages. The abstraction traits define interfaces only — no default implementations with canonical values. Every method is required.
 
 | Package             | Role                            | Contents                                                                                                                                                                                                         |
 | ------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -146,7 +146,7 @@ In Rust, the abstraction package is the `ac-dialect` crate and the canonical pac
 
 ### 3.1 Module organization
 
-The dialect abstraction package is internally split into modules that mirror the sub-traits. Each module owns one interface and its associated types, so consumers can depend on exactly the concern they need:
+The dialect abstraction package is internally split into modules that mirror the sub-traits. Each module owns one interface and its associated types:
 
 | Module                | Exports                                               | Responsibility                                               |
 | --------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
@@ -202,21 +202,17 @@ The concrete representation includes three layers: **surface syntax** (interpola
 
 ### 5.3 Portability
 
-Documents written with one dialect are not portable to another. `doc.name` and `doc/name` are different strings that produce the same AST only if the dialect is changed. This is why the language spec fixes one syntax — see [fixed-syntax.md](../../docs/explanations/fixed-syntax.md).
+Documents written with one dialect are not portable to another. `doc.name` and `doc/name` are different strings that produce the same AST only if the dialect is changed.
 
 ## 6. Relationship to the other specs
 
-| Concern                        | Defined by    | Document                                                                               |
-| ------------------------------ | ------------- | -------------------------------------------------------------------------------------- |
-| Expression syntax (canonical)  | Language spec | [LANG.md](./LANG.md) §4                                                                |
-| Schema vocabulary (canonical)  | Language spec | [LANG.md](./LANG.md) §6.1                                                              |
-| Special key names (canonical)  | Language spec | [LANG.md](./LANG.md) §6                                                                |
-| Dialect interface (abstract)   | This spec     | DIALECT.md                                                                             |
-| Runtime configuration          | Runtime spec  | [RUNTIME.md](./RUNTIME.md)                                                             |
-| Fixed-syntax rationale         | Explanation   | [fixed-syntax.md](../../docs/explanations/fixed-syntax.md)                             |
-| Facade split rationale         | Explanation   | [dialect-facade-split.md](./docs/explanations/dialect-facade-split.md)                 |
-| ExprParser as trait            | Explanation   | [expr-parser-as-trait.md](./docs/explanations/expr-parser-as-trait.md)                 |
-| SchemaVocabulary orthogonality | Explanation   | [schema-vocabulary-orthogonal.md](./docs/explanations/schema-vocabulary-orthogonal.md) |
+| Concern                       | Defined by    | Document                   |
+| ----------------------------- | ------------- | -------------------------- |
+| Expression syntax (canonical) | Language spec | [LANG.md](./LANG.md) §4    |
+| Schema vocabulary (canonical) | Language spec | [LANG.md](./LANG.md) §6.1  |
+| Special key names (canonical) | Language spec | [LANG.md](./LANG.md) §6    |
+| Dialect interface (abstract)  | This spec     | DIALECT.md                 |
+| Runtime configuration         | Runtime spec  | [RUNTIME.md](./RUNTIME.md) |
 
 The language spec defines **what the canonical syntax is**. This spec defines **how implementations abstract that syntax behind an interface**. The runtime spec defines **how the canonical dialect is wired into the compiler**.
 

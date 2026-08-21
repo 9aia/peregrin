@@ -41,6 +41,20 @@ fn parse_string_literal_single() {
 }
 
 #[test]
+fn parse_string_literal_backslash_is_literal() {
+    let d = AcDialect;
+    assert_eq!(d.parser().parse_string_literal("\"hello\\nworld\""), Some("hello\\nworld".to_string()));
+    assert_eq!(d.parser().parse_string_literal("\"\\t\\n\\r\""), Some("\\t\\n\\r".to_string()));
+}
+
+#[test]
+fn parse_string_literal_embedded_opposite_quote() {
+    let d = AcDialect;
+    assert_eq!(d.parser().parse_string_literal("\"it's\""), Some("it's".to_string()));
+    assert_eq!(d.parser().parse_string_literal("'say \"hi\"'"), Some("say \"hi\"".to_string()));
+}
+
+#[test]
 fn parse_number_literal() {
     let d = AcDialect;
     assert_eq!(d.parser().parse_number_literal("42"), Some(42.0));

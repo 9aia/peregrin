@@ -11,11 +11,7 @@ The language is designed to be portable: the specification is independent of any
 
 ### Design principles
 
-1. **Declarative.** A document describes _what_ values it contains, not _how_ to compute them. Computation is expressed through field declarations, not imperative code.
-2. **Schema-first.** Every field has a schema. Validation is not optional — it is part of the language semantics.
-3. **Functions are host-provided.** The language defines no built-in functions. All capabilities (`add`, `mul`, `concat`, `len`, `import`, etc.) come from the runtime host.
-4. **Composition over keywords.** The language has a small set of primitives. Complex patterns (imports, config spreading, conditional loading) emerge from composition, not from dedicated syntax.
-5. **Format-agnostic.** Documents can be written in YAML, JSON, TOML, or any format that maps to JSON-compatible values.
+See [design-principles.md](./explanations/design-principles.md).
 
 ## 2. Document structure
 
@@ -897,57 +893,7 @@ After processing: `greeting` → `"hello!"` (the field's data value `"hello"` is
 
 ## 13. Emergent patterns
 
-The AC language kernel is intentionally small — seven primitives:
-
-| Primitive     | What it does                               |
-| ------------- | ------------------------------------------ |
-| `fields:`     | Declare schema for data                    |
-| `functions:`  | Declare callable functions with `body:`    |
-| `expr:`       | Compute a field's value                    |
-| `arg:`        | Feed a field's data value into its `expr:` |
-| `merge: true` | Spread computed object into parent scope   |
-| `import()`    | Host function: load external document      |
-| `${...}`      | Interpolate paths and function calls       |
-
-The language's expressive power comes from **composition** of these primitives, not from adding keywords. Patterns that would require dedicated syntax in other languages emerge naturally from field declarations.
-
-### The `import` field
-
-The most striking example: the language describes its own module system using its own field syntax. Four primitives compose to produce an `import` field — no `import` keyword needed:
-
-```yaml
-fields:
-  import:
-    type: object
-    arg: { type: string }
-    expr: "import(arg)"
-    merge: true
-  host:
-    type: string
-  port:
-    type: number
-
-import: "./base.yml"
-```
-
-How it works:
-
-- **`arg: { type: string }`** — the field's data value (`"./base.yml"`) is the input, type-checked
-- **`expr: "import(arg)"`** — call `import()` on that path
-- **`type: object`** — the output must be an object (required by merge)
-- **`merge: true`** — spread the object into the parent scope, remove the `import` field
-
-The field name `import` is just a regular name — not a reserved keyword. The language bootstraps its own import system from four primitives.
-
-### Other emergent patterns
-
-- **`config` field** — `arg: { type: object }` + `expr: "arg"` + `merge: true`: spread a data object into scope without importing a file
-- **Conditional import** — `arg: { type: string }` + `expr: "import(concat(arg, env.ENV))"`: environment-driven loading
-- **Chained import** — compute a path with one field, import it with another: `expr: "import(computed_path)"`
-
-### The principle
-
-The kernel stays small. The library of patterns grows. Users can invent their own field conventions without touching the compiler. The language is its own metalanguage — it describes its own extensions using its own field declaration syntax.
+The language kernel is small — seven primitives compose to produce complex patterns. See [small-kernel.md](./explanations/small-kernel.md) for the design rationale and examples.
 
 ## 14. Future directions
 
