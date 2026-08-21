@@ -1,6 +1,6 @@
-mod schema_vocabulary;
+mod schema;
 mod validation_error;
-mod vocabulary;
+mod schema_vocabulary;
 
 #[cfg(test)]
 pub(crate) mod schema_stub;
@@ -8,6 +8,6 @@ pub(crate) mod schema_stub;
 #[cfg(test)]
 mod validation_error_tests;
 
-pub use schema_vocabulary::Schema;
+pub use schema::Schema;
 pub use validation_error::ValidationError;
-pub use vocabulary::SchemaVocabulary;
+pub use schema_vocabulary::SchemaVocabulary;

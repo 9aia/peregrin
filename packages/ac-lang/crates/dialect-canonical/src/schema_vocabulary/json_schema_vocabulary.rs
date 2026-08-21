@@ -1,0 +1,24 @@
+use ac_dialect::{Schema, SchemaVocabulary, ValidationError};
+use ac_runtime::RuntimeValue;
+
+use super::json_schema::JsonSchema;
+
+/// The canonical schema vocabulary: JSON Schema draft 2020-12.
+///
+/// Implements [`SchemaVocabulary<RuntimeValue>`] by compiling raw
+/// schema documents into [`JsonSchema`] validators via the
+/// [`jsonschema`] crate.
+pub struct JsonSchemaVocabulary;
+
+impl SchemaVocabulary<RuntimeValue> for JsonSchemaVocabulary {
+    fn id(&self) -> &'static str {
+        "json-schema-draft-2020-12"
+    }
+
+    fn compile(&self, raw: &serde_json::Value) -> Result<Box<dyn Schema<RuntimeValue>>, ValidationError> {
+        Ok(Box::new(JsonSchema::new(raw.clone())))
+    }
+}
+
+/// The canonical schema vocabulary as a static singleton.
+pub static JSON_SCHEMA_VOCABULARY: JsonSchemaVocabulary = JsonSchemaVocabulary;

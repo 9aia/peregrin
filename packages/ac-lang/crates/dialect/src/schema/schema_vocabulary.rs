@@ -1,24 +1,21 @@
+use super::schema::Schema;
 use super::validation_error::ValidationError;
 
-/// Validates values of type `V`.
+/// A schema vocabulary — compiles raw schema documents into validators.
 ///
-/// This trait is the abstract schema interface. It knows nothing
-/// about JSON Schema, `$ref`, `allOf`, `format`, or any other
-/// concrete schema language. Those concepts belong to
-/// implementations.
+/// This trait abstracts which schema language a dialect uses. The
+/// canonical implementation is JSON Schema draft 2020-12, provided by
+/// `ac-dialect-canonical` as `JsonSchemaVocabulary`.
 ///
 /// Generic over `V` so the abstraction works with any value type,
 /// not just `RuntimeValue`.
-pub trait Schema<V> {
-    /// Validates a value against this schema.
-    ///
-    /// Returns `Ok(())` if the value conforms, or a
-    /// [`ValidationError`] describing the first violation.
-    fn validate(&self, value: &V) -> Result<(), ValidationError>;
-}
+pub trait SchemaVocabulary<V>: Send + Sync {
+    /// The vocabulary identifier (e.g. `"json-schema-draft-2020-12"`).
+    fn id(&self) -> &'static str;
 
-impl<S: Schema<V> + ?Sized, V> Schema<V> for Box<S> {
-    fn validate(&self, value: &V) -> Result<(), ValidationError> {
-        (**self).validate(value)
-    }
+    /// Compile a raw schema document into a validator.
+    ///
+    /// Returns a boxed [`Schema<V>`] that can validate values, or a
+    /// [`ValidationError`] if the schema document itself is invalid.
+    fn compile(&self, raw: &serde_json::Value) -> Result<Box<dyn Schema<V>>, ValidationError>;
 }
