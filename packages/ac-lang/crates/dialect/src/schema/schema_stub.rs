@@ -1,23 +1,15 @@
 use ac_runtime::RuntimeValue;
 
-use crate::schema::{Schema, SchemaVocabulary, ValidationError};
+use crate::schema::Schema;
+use crate::schema::validation_error::ValidationError;
 
-/// A minimal schema vocabulary for testing.
-pub(crate) struct StubVocabulary;
+/// A minimal schema validator for testing.
+///
+/// Always succeeds (accepts any value).
+pub(crate) struct StubSchema;
 
-impl SchemaVocabulary<RuntimeValue> for StubVocabulary {
-    fn id(&self) -> &'static str {
-        "stub"
-    }
-
-    fn compile(
-        &self,
-        _raw: &serde_json::Value,
-    ) -> Result<Box<dyn Schema<RuntimeValue>>, ValidationError> {
-        Err(ValidationError {
-            message: "not implemented".to_string(),
-            path: String::new(),
-            location: None,
-        })
+impl Schema<RuntimeValue> for StubSchema {
+    fn validate(&self, _value: &RuntimeValue) -> Result<(), ValidationError> {
+        Ok(())
     }
 }

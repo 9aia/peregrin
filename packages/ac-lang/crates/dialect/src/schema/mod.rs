@@ -6,6 +6,15 @@ mod schema_vocabulary;
 pub(crate) mod schema_stub;
 
 #[cfg(test)]
+pub(crate) mod schema_vocabulary_stub;
+
+#[cfg(test)]
+mod schema_tests;
+
+#[cfg(test)]
+mod schema_vocabulary_tests;
+
+#[cfg(test)]
 mod validation_error_tests;
 
 pub use schema::Schema;

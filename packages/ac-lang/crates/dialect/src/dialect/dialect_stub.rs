@@ -8,7 +8,7 @@ use crate::expr_parser::ExprParser;
 use crate::schema::SchemaVocabulary;
 use crate::syntax::Syntax;
 
-use crate::schema::schema_stub::StubVocabulary;
+use crate::schema::schema_vocabulary_stub::StubVocabulary;
 
 /// A minimal dialect implementation for testing.
 pub(crate) struct StubDialect;
