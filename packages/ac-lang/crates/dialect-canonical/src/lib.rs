@@ -13,7 +13,7 @@
 //! - Null literal: `null`
 //! - Schema vocabulary: JSON Schema draft 2020-12
 //!
-//! This is the only shipped dialect. See [DIALECT.md](../../docs/DIALECT.md)
+//! This is the only shipped dialect. See [SPEC.md](../dialect/SPEC.md)
 //! for the full dialect specification.
 
 mod dialect;

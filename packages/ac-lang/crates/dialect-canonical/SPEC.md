@@ -43,6 +43,7 @@ The canonical dialect is implemented in the `ac-dialect-canonical` crate. It pro
 - `AC_DIALECT` — static singleton instance
 - `JsonSchema` — implements `Schema<V>` for JSON Schema validation
 - `JsonSchemaVocabulary` — implements `SchemaVocabulary<V>` for JSON Schema draft 2020-12
+- `JSON_SCHEMA_VOCABULARY` — static singleton instance of `JsonSchemaVocabulary`
 
 ---
 

@@ -140,7 +140,7 @@ The dialect abstraction and its canonical implementation are separate packages. 
 | Package             | Role                            | Contents                                                                                                                                                                                                         |
 | ------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Dialect abstraction | Defines the interfaces          | `Dialect` (facade), `Syntax`, `ExprParser`, `DocumentVocabulary`, `Schema<V>`, `SchemaVocabulary<V>`, `ValidationError`. No implementation, no default methods, no dependencies on a specific schema vocabulary. |
-| Canonical dialect   | Implements the canonical syntax | `AcDialect`, `AC_DIALECT` singleton, `JsonSchema`, `JsonSchemaVocabulary` (JSON Schema draft 2020-12). See [canonical SPEC.md](../dialect-canonical/SPEC.md).                                                    |
+| Canonical dialect   | Implements the canonical syntax | `AcDialect`, `AC_DIALECT` singleton, `JsonSchema`, `JsonSchemaVocabulary`, `JSON_SCHEMA_VOCABULARY` singleton (JSON Schema draft 2020-12). See [canonical SPEC.md](../dialect-canonical/SPEC.md).                |
 
 In Rust, the abstraction package is the `ac-dialect` crate and the canonical package is the `ac-dialect-canonical` crate. In other languages, the equivalent module/package split should be used — e.g. `@ac/dialect` and `@ac/dialect-canonical` in a JavaScript/TypeScript monorepo.
 
