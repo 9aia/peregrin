@@ -50,6 +50,8 @@ impl Module for StrModule {
             "kebab_case" => Some(&KebabCase),
             "split_at" => Some(&SplitAt),
             "trim_matches" => Some(&TrimMatches),
+            "is_empty" => Some(&IsEmpty),
+            "equals" => Some(&Equals),
             _ => None,
         }
     }
@@ -625,5 +627,16 @@ impl Function for TrimMatches {
         }
         let char_set: Vec<char> = chars.chars().collect();
         Ok(s(input.trim_matches(|c| char_set.contains(&c)).to_string()))
+    }
+}
+
+string_predicate_fn!(Equals, |input: &str, other: &str| input == other);
+
+#[derive(Clone, Copy)]
+pub struct IsEmpty;
+impl Function for IsEmpty {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        Ok(b(input.is_empty()))
     }
 }

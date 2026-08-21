@@ -19,7 +19,8 @@
 //!   `str.pad_left`, `str.pad_right`, `str.length`, `str.concat`,
 //!   `str.strip_prefix`, `str.strip_suffix`, `str.lines`, `str.rfind`,
 //!   `str.capitalize`, `str.title_case`, `str.snake_case`, `str.camel_case`,
-//!   `str.pascal_case`, `str.kebab_case`, `str.split_at`, `str.trim_matches`
+//!   `str.pascal_case`, `str.kebab_case`, `str.split_at`, `str.trim_matches`,
+//!   `str.is_empty`, `str.equals`
 //! - [`ArrayModule`] — `array.length`, `array.reverse`, `array.concat`,
 //!   `array.contains`, `array.index_of`, `array.slice`, `array.first`,
 //!   `array.last`, `array.sort`, `array.flatten`, `array.deep_flatten`,
@@ -27,17 +28,18 @@
 //!   `array.at`, `array.push`, `array.pop`, `array.shift`, `array.fill`,
 //!   `array.difference`, `array.intersection`, `array.union`
 //! - [`BoolModule`] — `bool.and`, `bool.or`, `bool.not`, `bool.xor`,
-//!   `bool.nand`, `bool.nor`, `bool.if`, `bool.eq`, `bool.from`
-//! - [`FpModule`] — `fp.identity`, `fp.default`, `fp.coalesce`, `fp.is_null`,
-//!   `fp.is_bool`, `fp.is_number`, `fp.is_string`, `fp.is_array`, `fp.is_object`,
-//!   `fp.type_of`, `fp.is_empty`, `fp.is_truthy`, `fp.range`, `fp.zip`, `fp.chunk`,
-//!   `fp.keys`, `fp.values`, `fp.entries`, `fp.pick`, `fp.omit`, `fp.merge`,
-//!   `fp.deep_merge`, `fp.map`, `fp.filter`, `fp.reduce`, `fp.flat_map`, `fp.find`,
-//!   `fp.some`, `fp.every`, `fp.group_by`, `fp.partition`, `fp.sort_by`,
-//!   `fp.sort_by_desc`, `fp.pipe`, `fp.flow`, `fp.compose`, `fp.fanout`,
-//!   `fp.choice`, `fp.apply`, `fp.tap`, `fp.compact`, `fp.pluck`, `fp.min_by`,
-//!   `fp.max_by`, `fp.count_by`, `fp.deep_get`
-//! - [`TypeModule`] — `type.to_string`, `type.to_number`, `type.to_bool`
+//!   `bool.nand`, `bool.nor`, `bool.implies`, `bool.eq`
+//! - [`FpModule`] — `fp.identity`, `fp.default`, `fp.coalesce`, `fp.range`,
+//!   `fp.zip`, `fp.chunk`, `fp.keys`, `fp.values`, `fp.entries`, `fp.pick`,
+//!   `fp.omit`, `fp.merge`, `fp.deep_merge`, `fp.map`, `fp.filter`, `fp.reduce`,
+//!   `fp.flat_map`, `fp.find`, `fp.some`, `fp.every`, `fp.group_by`,
+//!   `fp.partition`, `fp.sort_by`, `fp.sort_by_desc`, `fp.pipe`, `fp.flow`,
+//!   `fp.compose`, `fp.fanout`, `fp.choice`, `fp.apply`, `fp.tap`, `fp.compact`,
+//!   `fp.pluck`, `fp.min_by`, `fp.max_by`, `fp.count_by`, `fp.deep_get`
+//! - [`TypeModule`] — `type.to_string`, `type.to_number`, `type.to_bool`,
+//!   `type.is_null`, `type.is_bool`, `type.is_number`, `type.is_string`,
+//!   `type.is_array`, `type.is_object`, `type.type_of`, `type.is_empty`,
+//!   `type.is_truthy`
 //!
 //! ## Usage
 //!

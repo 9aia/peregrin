@@ -1933,3 +1933,99 @@ fn pascal_case_multibyte_uppercase() {
         Some("ÉlloWorld")
     );
 }
+
+// ── is_empty ────────────────────────────────────────────────────────
+
+#[test]
+fn is_empty_true() {
+    assert_eq!(
+        call(&StrModule, "is_empty", &[s("")]).as_bool(),
+        Some(true)
+    );
+}
+
+#[test]
+fn is_empty_false() {
+    assert_eq!(
+        call(&StrModule, "is_empty", &[s("hello")]).as_bool(),
+        Some(false)
+    );
+}
+
+#[test]
+fn is_empty_whitespace_is_not_empty() {
+    assert_eq!(
+        call(&StrModule, "is_empty", &[s(" ")]).as_bool(),
+        Some(false)
+    );
+}
+
+#[test]
+fn is_empty_no_args_errors() {
+    let result = call_err(&StrModule, "is_empty", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn is_empty_non_string_errors() {
+    let result = call_err(&StrModule, "is_empty", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── equals ──────────────────────────────────────────────────────────
+
+#[test]
+fn equals_true() {
+    assert_eq!(
+        call(&StrModule, "equals", &[s("hello"), s("hello")]).as_bool(),
+        Some(true)
+    );
+}
+
+#[test]
+fn equals_false() {
+    assert_eq!(
+        call(&StrModule, "equals", &[s("hello"), s("world")]).as_bool(),
+        Some(false)
+    );
+}
+
+#[test]
+fn equals_both_empty() {
+    assert_eq!(
+        call(&StrModule, "equals", &[s(""), s("")]).as_bool(),
+        Some(true)
+    );
+}
+
+#[test]
+fn equals_case_sensitive() {
+    assert_eq!(
+        call(&StrModule, "equals", &[s("Hello"), s("hello")]).as_bool(),
+        Some(false)
+    );
+}
+
+#[test]
+fn equals_no_args_errors() {
+    let result = call_err(&StrModule, "equals", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn equals_one_arg_errors() {
+    let result = call_err(&StrModule, "equals", &[s("hello")]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn equals_first_arg_non_string_errors() {
+    let result = call_err(&StrModule, "equals", &[n(42.0), s("hello")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn equals_second_arg_non_string_errors() {
+    let result = call_err(&StrModule, "equals", &[s("hello"), n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
