@@ -1,0 +1,16 @@
+[package]
+name = "ac-module-resolver-file"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-module-resolver-core.workspace = true
+ac-module-resolver-noop.workspace = true
+ac-fields.workspace = true
+ac-dialect.workspace = true
+ac-dialect-canonical.workspace = true
+ac-frontend.workspace = true
+serde_json = "1"
+
+[dev-dependencies]
+ac-module-resolver-memory.workspace = true
