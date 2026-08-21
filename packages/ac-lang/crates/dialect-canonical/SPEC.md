@@ -21,7 +21,7 @@ The canonical dialect implements the syntax defined in [LANG.md](../../docs/LANG
 
 ## 1. Call detection
 
-A string is a function call if it contains the call-open token (`(`) outside string literals. Otherwise, it is a path lookup. This is the single discriminator — no grammar ambiguity.
+A string is a function call if it contains the call-open token (`(`) outside string literals. Otherwise, it is a path lookup. This discriminator is defined in [LANG.md](../../docs/LANG.md) §4.3: "If the expression contains `(`, it's a function call. Otherwise, it's a path lookup."
 
 ## 2. Argument splitting
 
@@ -29,7 +29,7 @@ Arguments are split by `,` at depth 0 (outside nested calls and string literals)
 
 ## 3. String literal parsing
 
-Both double-quoted (`"..."`) and single-quoted (`'...'`) forms are accepted. The inner content is returned verbatim — no escape sequences are processed at the dialect level. Escape handling, if any, is a runtime concern.
+Both double-quoted (`"..."`) and single-quoted (`'...'`) forms are accepted. The inner content is returned verbatim — no escape sequences are recognized or processed. LANG.md does not define any escape syntax for string literals; a backslash inside a quoted string is a literal backslash, not an escape prefix.
 
 ## 4. Number literal parsing
 
