@@ -4,7 +4,7 @@ use ac_vm::{Context, Error, Eval};
 
 use serde_json::json;
 
-use super::array::ArrayModule;
+use super::module::ArrayModule;
 
 fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");

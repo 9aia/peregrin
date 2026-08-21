@@ -1,95 +1,11 @@
-use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 
-fn arr(items: &[serde_json::Value]) -> NonFunctionValue {
-    NonFunctionValue::new(serde_json::Value::Array(items.to_vec()))
-}
-
-fn b(value: bool) -> NonFunctionValue {
-    NonFunctionValue::new(value)
-}
-
-fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
-    args.first().ok_or(Error::ArgumentCount {
-        expected: 1,
-        got: 0,
-    })
-}
-
-fn require_array(arg: &NonFunctionValue) -> Result<&[serde_json::Value], Error> {
-    arg.as_array().ok_or(Error::TypeMismatch {
-        expected: "array",
-        got: "non-array",
-    })
-}
-
-fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error> {
-    arg.as_function().ok_or(Error::TypeMismatch {
-        expected: "function value",
-        got: "non-function",
-    })
-}
-
-fn require_function_and_array(
-    args: &[NonFunctionValue],
-) -> Result<(FunctionValue, &[serde_json::Value]), Error> {
-    if args.len() < 2 {
-        return Err(Error::ArgumentCount {
-            expected: 2,
-            got: args.len(),
-        });
-    }
-    let fn_val = require_function_value(&args[0])?;
-    let array = require_array(&args[1])?;
-    Ok((fn_val, array))
-}
-
-fn bind_param(
-    fn_val: &FunctionValue,
-    value: &serde_json::Value,
-) -> Vec<(String, NonFunctionValue)> {
-    fn_val
-        .params
-        .first()
-        .map(|(name, _)| vec![(name.clone(), NonFunctionValue::new(value.clone()))])
-        .unwrap_or_default()
-}
-
-fn is_truthy_value(value: &NonFunctionValue) -> bool {
-    if let Some(b) = value.as_bool() {
-        b
-    } else if let Some(n) = value.as_number() {
-        n != 0.0
-    } else if let Some(s) = value.as_str() {
-        !s.is_empty()
-    } else if value.is_null() {
-        false
-    } else if let Some(arr) = value.as_array() {
-        !arr.is_empty()
-    } else if let Some(obj) = value.as_object() {
-        !obj.is_empty()
-    } else {
-        true
-    }
-}
-
-fn key_to_string(value: &NonFunctionValue) -> String {
-    if let Some(s) = value.as_str() {
-        s.to_string()
-    } else if let Some(n) = value.as_number() {
-        if n == n.trunc() {
-            format!("{n:.0}")
-        } else {
-            n.to_string()
-        }
-    } else if let Some(b) = value.as_bool() {
-        b.to_string()
-    } else if value.is_null() {
-        "null".to_string()
-    } else {
-        serde_json::to_string(&value.clone().into_inner()).unwrap_or_else(|_| "unknown".to_string())
-    }
-}
+use super::helpers::{
+    arr, b, key_to_string, require_array, require_function_and_array, require_function_value,
+    require_one_arg,
+};
+use crate::shared::{apply_fn, filter_iter, find_first, fold_iter, is_truthy_fn, map_iter};
 
 // ── range ──────────────────────────────────────────────────────────
 
@@ -219,12 +135,7 @@ impl Function for Map {
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
-        let mut results = Vec::with_capacity(array.len());
-        for item in array {
-            let vars = bind_param(&fn_val, item);
-            let mapped = ctx.eval_expr(&fn_val.body, &vars)?;
-            results.push(mapped.into_inner());
-        }
+        let results = map_iter(ctx, &fn_val, array.iter())?;
         Ok(arr(&results))
     }
 }
@@ -240,15 +151,7 @@ impl Function for Filter {
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
-        let mut results = Vec::new();
-        for item in array {
-            let vars = bind_param(&fn_val, item);
-            let result = ctx.eval_expr(&fn_val.body, &vars)?;
-            let keep = is_truthy_value(&result);
-            if keep {
-                results.push(item.clone());
-            }
-        }
+        let results = filter_iter(ctx, &fn_val, array.iter())?;
         Ok(arr(&results))
     }
 }
@@ -271,26 +174,9 @@ impl Function for Reduce {
         }
         let fn_val = require_function_value(&args[0])?;
         let array = require_array(&args[1])?;
-        let mut acc = args[2].clone();
-
-        let param_names: Vec<String> = fn_val.params.iter().map(|(name, _)| name.clone()).collect();
-        let acc_name = param_names
-            .first()
-            .cloned()
-            .unwrap_or_else(|| "acc".to_string());
-        let item_name = param_names
-            .get(1)
-            .cloned()
-            .unwrap_or_else(|| "x".to_string());
-
-        for item in array {
-            let vars = vec![
-                (acc_name.clone(), acc.clone()),
-                (item_name.clone(), NonFunctionValue::new(item.clone())),
-            ];
-            acc = ctx.eval_expr(&fn_val.body, &vars)?;
-        }
-        Ok(acc)
+        let init = args[2].inner().clone();
+        let result = fold_iter(ctx, &fn_val, array.iter(), init)?;
+        Ok(NonFunctionValue::new(result))
     }
 }
 
@@ -305,14 +191,13 @@ impl Function for FlatMap {
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
+        let mapped = map_iter(ctx, &fn_val, array.iter())?;
         let mut results = Vec::new();
-        for item in array {
-            let vars = bind_param(&fn_val, item);
-            let mapped = ctx.eval_expr(&fn_val.body, &vars)?;
-            if let Some(sub) = mapped.as_array() {
+        for item in mapped {
+            if let Some(sub) = item.as_array() {
                 results.extend(sub.iter().cloned());
             } else {
-                results.push(mapped.into_inner());
+                results.push(item);
             }
         }
         Ok(arr(&results))
@@ -330,14 +215,11 @@ impl Function for Find {
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
-        for item in array {
-            let vars = bind_param(&fn_val, item);
-            let result = ctx.eval_expr(&fn_val.body, &vars)?;
-            if is_truthy_value(&result) {
-                return Ok(NonFunctionValue::new(item.clone()));
-            }
+        let result = find_first(ctx, &fn_val, array.iter())?;
+        match result {
+            Some(v) => Ok(NonFunctionValue::new(v)),
+            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
         }
-        Ok(NonFunctionValue::new(serde_json::Value::Null))
     }
 }
 
@@ -353,9 +235,7 @@ impl Function for SomeFn {
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         for item in array {
-            let vars = bind_param(&fn_val, item);
-            let result = ctx.eval_expr(&fn_val.body, &vars)?;
-            if is_truthy_value(&result) {
+            if is_truthy_fn(ctx, &fn_val, item)? {
                 return Ok(b(true));
             }
         }
@@ -373,9 +253,7 @@ impl Function for Every {
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         for item in array {
-            let vars = bind_param(&fn_val, item);
-            let result = ctx.eval_expr(&fn_val.body, &vars)?;
-            if !is_truthy_value(&result) {
+            if !is_truthy_fn(ctx, &fn_val, item)? {
                 return Ok(b(false));
             }
         }
@@ -397,8 +275,7 @@ impl Function for GroupBy {
         let mut groups: std::collections::BTreeMap<String, Vec<serde_json::Value>> =
             std::collections::BTreeMap::new();
         for item in array {
-            let vars = bind_param(&fn_val, item);
-            let key = ctx.eval_expr(&fn_val.body, &vars)?;
+            let key = apply_fn(ctx, &fn_val, item)?;
             let key_str = key_to_string(&key);
             groups.entry(key_str).or_default().push(item.clone());
         }
@@ -424,9 +301,7 @@ impl Function for Partition {
         let mut matching = Vec::new();
         let mut rest = Vec::new();
         for item in array {
-            let vars = bind_param(&fn_val, item);
-            let result = ctx.eval_expr(&fn_val.body, &vars)?;
-            if is_truthy_value(&result) {
+            if is_truthy_fn(ctx, &fn_val, item)? {
                 matching.push(item.clone());
             } else {
                 rest.push(item.clone());
@@ -441,6 +316,30 @@ impl Function for Partition {
 
 // ── sort_by / sort_by_desc ─────────────────────────────────────────
 
+fn sort_by_impl(
+    args: &[NonFunctionValue],
+    ctx: &mut Context,
+    descending: bool,
+) -> Result<NonFunctionValue, Error> {
+    let (fn_val, array) = require_function_and_array(args)?;
+    let mut keyed: Vec<(f64, serde_json::Value)> = Vec::with_capacity(array.len());
+    for item in array {
+        let key = apply_fn(ctx, &fn_val, item)?;
+        let num = key.as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        keyed.push((num, item.clone()));
+    }
+    if descending {
+        keyed.sort_by(|a, c| c.0.total_cmp(&a.0));
+    } else {
+        keyed.sort_by(|a, c| a.0.total_cmp(&c.0));
+    }
+    let sorted: Vec<serde_json::Value> = keyed.into_iter().map(|(_, v)| v).collect();
+    Ok(arr(&sorted))
+}
+
 #[derive(Clone, Copy)]
 pub struct SortBy;
 impl Function for SortBy {
@@ -449,20 +348,7 @@ impl Function for SortBy {
         args: &[NonFunctionValue],
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
-        let (fn_val, array) = require_function_and_array(args)?;
-        let mut keyed: Vec<(f64, serde_json::Value)> = Vec::with_capacity(array.len());
-        for item in array {
-            let vars = bind_param(&fn_val, item);
-            let key = ctx.eval_expr(&fn_val.body, &vars)?;
-            let num = key.as_number().ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })?;
-            keyed.push((num, item.clone()));
-        }
-        keyed.sort_by(|a, c| a.0.total_cmp(&c.0));
-        let sorted: Vec<serde_json::Value> = keyed.into_iter().map(|(_, v)| v).collect();
-        Ok(arr(&sorted))
+        sort_by_impl(args, ctx, false)
     }
 }
 
@@ -474,20 +360,7 @@ impl Function for SortByDesc {
         args: &[NonFunctionValue],
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
-        let (fn_val, array) = require_function_and_array(args)?;
-        let mut keyed: Vec<(f64, serde_json::Value)> = Vec::with_capacity(array.len());
-        for item in array {
-            let vars = bind_param(&fn_val, item);
-            let key = ctx.eval_expr(&fn_val.body, &vars)?;
-            let num = key.as_number().ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })?;
-            keyed.push((num, item.clone()));
-        }
-        keyed.sort_by(|a, c| c.0.total_cmp(&a.0));
-        let sorted: Vec<serde_json::Value> = keyed.into_iter().map(|(_, v)| v).collect();
-        Ok(arr(&sorted))
+        sort_by_impl(args, ctx, true)
     }
 }
 
@@ -545,6 +418,32 @@ impl Function for Pluck {
 
 // ── min_by / max_by ────────────────────────────────────────────────
 
+fn extremum_by_impl(
+    args: &[NonFunctionValue],
+    ctx: &mut Context,
+    pick_max: bool,
+) -> Result<NonFunctionValue, Error> {
+    let (fn_val, array) = require_function_and_array(args)?;
+    let mut best: Option<(f64, &serde_json::Value)> = None;
+    for item in array {
+        let key = apply_fn(ctx, &fn_val, item)?;
+        let num = key.as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        match &best {
+            None => best = Some((num, item)),
+            Some((bn, _)) if pick_max && num > *bn => best = Some((num, item)),
+            Some((bn, _)) if !pick_max && num < *bn => best = Some((num, item)),
+            _ => {}
+        }
+    }
+    match best {
+        Some((_, v)) => Ok(NonFunctionValue::new(v.clone())),
+        None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct MinBy;
 impl Function for MinBy {
@@ -553,25 +452,7 @@ impl Function for MinBy {
         args: &[NonFunctionValue],
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
-        let (fn_val, array) = require_function_and_array(args)?;
-        let mut best: Option<(f64, &serde_json::Value)> = None;
-        for item in array {
-            let vars = bind_param(&fn_val, item);
-            let key = ctx.eval_expr(&fn_val.body, &vars)?;
-            let num = key.as_number().ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })?;
-            match &best {
-                None => best = Some((num, item)),
-                Some((bn, _)) if num < *bn => best = Some((num, item)),
-                _ => {}
-            }
-        }
-        match best {
-            Some((_, v)) => Ok(NonFunctionValue::new(v.clone())),
-            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
-        }
+        extremum_by_impl(args, ctx, false)
     }
 }
 
@@ -583,25 +464,7 @@ impl Function for MaxBy {
         args: &[NonFunctionValue],
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
-        let (fn_val, array) = require_function_and_array(args)?;
-        let mut best: Option<(f64, &serde_json::Value)> = None;
-        for item in array {
-            let vars = bind_param(&fn_val, item);
-            let key = ctx.eval_expr(&fn_val.body, &vars)?;
-            let num = key.as_number().ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })?;
-            match &best {
-                None => best = Some((num, item)),
-                Some((bn, _)) if num > *bn => best = Some((num, item)),
-                _ => {}
-            }
-        }
-        match best {
-            Some((_, v)) => Ok(NonFunctionValue::new(v.clone())),
-            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
-        }
+        extremum_by_impl(args, ctx, true)
     }
 }
 
@@ -616,10 +479,10 @@ impl Function for CountBy {
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
-        let mut counts: std::collections::BTreeMap<String, f64> = std::collections::BTreeMap::new();
+        let mut counts: std::collections::BTreeMap<String, f64> =
+            std::collections::BTreeMap::new();
         for item in array {
-            let vars = bind_param(&fn_val, item);
-            let key = ctx.eval_expr(&fn_val.body, &vars)?;
+            let key = apply_fn(ctx, &fn_val, item)?;
             let key_str = key_to_string(&key);
             *counts.entry(key_str).or_insert(0.0) += 1.0;
         }

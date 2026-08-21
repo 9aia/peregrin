@@ -2,7 +2,7 @@ use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Eval};
 
-use super::array::ArrayModule;
+use super::module::ArrayModule;
 
 fn call(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = ArrayModule.function(name).expect("function exists");

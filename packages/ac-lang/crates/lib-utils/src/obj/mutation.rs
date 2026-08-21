@@ -2,9 +2,10 @@ use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_vm::{Context, Error, Function};
 
 use super::common::{
-    bind_param, obj_value, require_function_value, require_object, require_string,
+    obj_value, require_function_value, require_object, require_string,
     require_three_args, set_path_recursive, update_path_recursive,
 };
+use crate::shared::apply_fn;
 
 // ── set ───────────────────────────────────────────────────────────
 
@@ -40,8 +41,7 @@ impl Function for Update {
         let key = require_string(key_arg)?;
         let fn_val = require_function_value(fn_arg)?;
         let current = obj.get(&key).cloned().unwrap_or(serde_json::Value::Null);
-        let vars = bind_param(&fn_val, &current);
-        let new_value = ctx.eval_expr(&fn_val.body, &vars)?;
+        let new_value = apply_fn(ctx, &fn_val, &current)?;
         let mut result = obj.clone();
         result.insert(key, new_value.into_inner());
         Ok(obj_value(result))
