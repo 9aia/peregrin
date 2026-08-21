@@ -32,10 +32,6 @@ struct RuleCond {
 }
 
 impl RuleCond {
-    const fn none() -> Option<Self> {
-        None
-    }
-
     fn matches(&self, n: f64) -> bool {
         let int_n = n.abs() as u64;
         let operand = match self.modulo {

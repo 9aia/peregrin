@@ -2,8 +2,7 @@ use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 
 use super::common::{optional_locale, require_number, require_object, s};
-use crate::locale::Locale;
-use crate::plural::{plural_category, PluralCategory};
+use crate::plural::plural_category;
 
 /// `intl.pluralize(n: number, forms: object, locale?: string) → string`
 ///

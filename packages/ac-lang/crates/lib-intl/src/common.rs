@@ -14,17 +14,6 @@ pub(super) fn require_number(args: &[NonFunctionValue], idx: usize) -> Result<f6
     })
 }
 
-pub(super) fn require_string(args: &[NonFunctionValue], idx: usize) -> Result<&str, Error> {
-    let arg = args.get(idx).ok_or(Error::ArgumentCount {
-        expected: idx + 1,
-        got: args.len(),
-    })?;
-    arg.as_str().ok_or(Error::TypeMismatch {
-        expected: "string",
-        got: "non-string",
-    })
-}
-
 pub(super) fn require_array(args: &[NonFunctionValue], idx: usize) -> Result<&[serde_json::Value], Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
@@ -64,8 +53,4 @@ pub(super) fn optional_locale(args: &[NonFunctionValue], idx: usize) -> Result<L
 
 pub(super) fn s(value: impl Into<String>) -> NonFunctionValue {
     NonFunctionValue::new(value.into())
-}
-
-pub(super) fn n(value: f64) -> NonFunctionValue {
-    NonFunctionValue::new(serde_json::json!(value))
 }

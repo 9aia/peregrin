@@ -2,7 +2,6 @@ use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 
 use super::common::{optional_locale, require_number, s};
-use crate::locale::Locale;
 
 /// `intl.format_number(n: number, locale?: string) → string`
 ///
@@ -32,24 +31,18 @@ fn format_number_impl(n: f64, decimal_sep: &str, thousands_sep: &str) -> String 
     let negative = n < 0.0;
     let abs_n = n.abs();
 
-    let int_part = abs_n.floor() as i64;
-    let frac_part = abs_n - int_part as f64;
+    let raw = format!("{}", abs_n);
+    let (int_str, frac_str) = match raw.split_once('.') {
+        Some((i, f)) => (i, f),
+        None => (raw.as_str(), ""),
+    };
 
-    let int_str = int_part.to_string();
-    let grouped = group_digits(&int_str, thousands_sep);
+    let grouped = group_digits(int_str, thousands_sep);
 
-    let result = if frac_part > 0.0 {
-        let frac_str = format!("{:.10}", frac_part);
-        let frac_trimmed = frac_str
-            .trim_start_matches("0.")
-            .trim_end_matches('0');
-        if frac_trimmed.is_empty() {
-            grouped
-        } else {
-            format!("{}{}{}", grouped, decimal_sep, frac_trimmed)
-        }
-    } else {
+    let result = if frac_str.is_empty() {
         grouped
+    } else {
+        format!("{}{}{}", grouped, decimal_sep, frac_str)
     };
 
     if negative {

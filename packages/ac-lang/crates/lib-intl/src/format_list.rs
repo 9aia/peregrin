@@ -2,7 +2,6 @@ use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 
 use super::common::{optional_locale, require_array, s};
-use crate::locale::Locale;
 
 /// `intl.format_list(items: array, locale?: string, style?: string) → string`
 ///

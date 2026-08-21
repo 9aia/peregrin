@@ -56,7 +56,7 @@ fn pluralize_other() {
 fn pluralize_zero_with_zero_form() {
     let forms = obj(&[("zero", "no items"), ("one", "item"), ("other", "items")]);
     assert_eq!(
-        call(&IntlModule, "pluralize", &[n(0.0), forms]).as_str(),
+        call(&IntlModule, "pluralize", &[n(0.0), forms, s("ar")]).as_str(),
         Some("no items")
     );
 }
@@ -169,7 +169,7 @@ fn pluralize_arabic_many() {
 
 use ac_ast::Expr;
 use ac_runtime_core::ModuleHost;
-use ac_vm::{Host, Vm};
+use ac_vm::Vm;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule);

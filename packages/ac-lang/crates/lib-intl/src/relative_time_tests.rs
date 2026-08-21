@@ -176,7 +176,7 @@ fn rel_de_future_hours() {
 
 use ac_ast::Expr;
 use ac_runtime_core::ModuleHost;
-use ac_vm::{Host, Vm};
+use ac_vm::Vm;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule);
