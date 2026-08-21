@@ -7,6 +7,7 @@ use crate::schema_vocabulary::JSON_SCHEMA_VOCABULARY;
 ///
 /// Implements the syntax defined in the AC Language Specification.
 /// See the crate-level documentation for the full list of canonical values.
+#[derive(Clone, Copy)]
 pub struct AcDialect;
 
 impl Dialect for AcDialect {
