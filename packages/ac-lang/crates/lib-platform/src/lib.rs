@@ -32,7 +32,7 @@
 //!
 //! ```ignore
 //! use ac_runtime_core::ModuleHost;
-//! use ac_lib_utils::{MathModule, StringModule};
+//! use ac_lib_utils::{MathModule, StrModule};
 //! use ac_lib_platform::{
 //!     FsModule, EnvModule, PathModule, TimeModule,
 //!     HttpClientModule, CmdModule, TmpModule,
@@ -47,7 +47,7 @@
 //!
 //! let host = ModuleHost::new()
 //!     .with(MathModule)
-//!     .with(StringModule)
+//!     .with(StrModule)
 //!     .with(FsModule::new(StubFs::default()))
 //!     .with(EnvModule::new(StubEnv::default()))
 //!     .with(PathModule::new(StubPath::default()))

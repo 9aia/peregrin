@@ -11,12 +11,12 @@
 //!   `math.cos`, `math.tan`, `math.asin`, `math.acos`, `math.atan`, `math.atan2`,
 //!   `math.hypot`, `math.mod`, `math.cbrt`, `math.degrees`, `math.radians`,
 //!   `math.round_to`, `math.pi`, `math.e`
-//! - [`StringModule`] — `string.upper`, `string.lower`, `string.trim`,
-//!   `string.trim_start`, `string.trim_end`, `string.split`, `string.join`,
-//!   `string.replace`, `string.replace_first`, `string.contains`,
-//!   `string.starts_with`, `string.ends_with`, `string.slice`, `string.reverse`,
-//!   `string.repeat`, `string.find`, `string.count`, `string.char_at`,
-//!   `string.pad_left`, `string.pad_right`, `string.length`, `string.concat`
+//! - [`StrModule`] — `str.upper`, `str.lower`, `str.trim`,
+//!   `str.trim_start`, `str.trim_end`, `str.split`, `str.join`,
+//!   `str.replace`, `str.replace_first`, `str.contains`,
+//!   `str.starts_with`, `str.ends_with`, `str.slice`, `str.reverse`,
+//!   `str.repeat`, `str.find`, `str.count`, `str.char_at`,
+//!   `str.pad_left`, `str.pad_right`, `str.length`, `str.concat`
 //! - [`ArrayModule`] — `array.length`, `array.reverse`, `array.concat`,
 //!   `array.contains`, `array.index_of`, `array.slice`, `array.first`,
 //!   `array.last`, `array.sort`, `array.flatten`, `array.deep_flatten`,
@@ -34,19 +34,21 @@
 //!   `fp.sort_by_desc`, `fp.pipe`, `fp.flow`, `fp.compose`, `fp.fanout`,
 //!   `fp.choice`, `fp.apply`, `fp.tap`, `fp.compact`, `fp.pluck`, `fp.min_by`,
 //!   `fp.max_by`, `fp.count_by`, `fp.deep_get`
+//! - [`TypeModule`] — `type.to_string`, `type.to_number`, `type.to_bool`
 //!
 //! ## Usage
 //!
 //! ```ignore
 //! use ac_runtime_core::ModuleHost;
-//! use ac_lib_utils::{MathModule, StringModule, FpModule};
+//! use ac_lib_utils::{MathModule, StrModule, FpModule};
 //!
 //! let host = ModuleHost::new()
 //!     .with(MathModule)
-//!     .with(StringModule)
+//!     .with(StrModule)
 //!     .with(ArrayModule)
 //!     .with(BoolModule)
-//!     .with(FpModule);
+//!     .with(FpModule)
+//!     .with(TypeModule);
 //! ```
 //!
 //! This crate is interface-agnostic — usable from CLI, MCP, or any consumer
@@ -56,10 +58,12 @@ mod array;
 mod bool;
 mod fp;
 mod math;
-mod string;
+mod r#str;
+mod r#type;
 
 pub use array::ArrayModule;
 pub use bool::BoolModule;
 pub use fp::FpModule;
 pub use math::MathModule;
-pub use string::StringModule;
+pub use str::StrModule;
+pub use r#type::TypeModule;

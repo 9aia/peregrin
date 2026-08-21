@@ -2,16 +2,16 @@ use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
-/// The `string` module — string utility functions.
+/// The `str` module — string utility functions.
 ///
-/// Provides functions callable as `string.upper(s)`, `string.split(s, sep)`,
+/// Provides functions callable as `str.upper(s)`, `str.split(s, sep)`,
 /// etc. in AC expressions.
 #[derive(Clone, Copy)]
-pub struct StringModule;
+pub struct StrModule;
 
-impl Module for StringModule {
+impl Module for StrModule {
     fn name(&self) -> &str {
-        "string"
+        "str"
     }
 
     fn function(&self, name: &str) -> Option<&dyn Function> {
