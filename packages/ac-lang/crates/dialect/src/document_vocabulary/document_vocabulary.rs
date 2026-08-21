@@ -10,9 +10,6 @@ pub trait DocumentVocabulary: Send + Sync {
     /// The top-level key for field declarations.
     fn fields_key(&self) -> &str;
 
-    /// The top-level key for function declarations.
-    fn functions_key(&self) -> &str;
-
     /// The field-level key for computed field expressions.
     fn expr_key(&self) -> &str;
 
@@ -50,6 +47,6 @@ pub trait DocumentVocabulary: Send + Sync {
 
     /// Reserved top-level keys that cannot be declared as field names.
     fn top_level_reserved_keys(&self) -> Vec<&str> {
-        vec![self.fields_key(), self.functions_key()]
+        vec![self.fields_key()]
     }
 }

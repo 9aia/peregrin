@@ -7,10 +7,6 @@ impl DocumentVocabulary for StubDialect {
         "fields"
     }
 
-    fn functions_key(&self) -> &str {
-        "functions"
-    }
-
     fn expr_key(&self) -> &str {
         "expr"
     }

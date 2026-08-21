@@ -14,7 +14,7 @@ A **dialect** is a set of syntax tokens, key names, and parsing rules for AC doc
 - **Path separator** — how namespace paths are segmented (in canonical: `.`).
 - **Call syntax** — how function calls are delimited (in canonical: `fn(args)`).
 - **Literal parsing** — how string, number, boolean, and null literals are recognized (in canonical: `"..."`, `42`, `true`, `null`).
-- **Special key names** — the reserved keys used in AC documents (in canonical: `fields`, `functions`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body`).
+- **Special key names** — the reserved keys used in AC documents (in canonical: `fields`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body`).
 - **Schema vocabulary** — which schema language is used for field and function validation (in canonical: JSON Schema draft 2020-12).
 
 The dialect does **not** define:
@@ -82,7 +82,6 @@ The dialect defines the reserved key names used in AC documents. These keys have
 | Key               | Level          | Purpose                                    | Canonical value |
 | ----------------- | -------------- | ------------------------------------------ | --------------- |
 | `fields_key`      | Top-level      | Field declarations                         | `fields`        |
-| `functions_key`   | Top-level      | Function declarations                      | `functions`     |
 | `expr_key`        | Field-level    | Computed field expression                  | `expr`          |
 | `arg_key`         | Field-level    | Parameterized computed field argument type | `arg`           |
 | `merge_key`       | Field-level    | Merge field flag                           | `merge`         |
@@ -95,7 +94,7 @@ The dialect defines the reserved key names used in AC documents. These keys have
 The dialect also provides two convenience aggregations:
 
 - **`reserved_field_keys()`** — all field-level reserved keys (`expr`, `arg`, `merge`, `inheritable`, `mutable`), used for stripping during type generation.
-- **`top_level_reserved_keys()`** — top-level keys that cannot be declared as field names (`fields`, `functions`).
+- **`top_level_reserved_keys()`** — top-level keys that cannot be declared as field names (`fields`).
 
 ### 2.5 Schema vocabulary
 

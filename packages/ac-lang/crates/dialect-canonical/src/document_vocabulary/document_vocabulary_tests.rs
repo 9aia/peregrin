@@ -6,7 +6,6 @@ fn key_names() {
     let d = AcDialect;
     let v = d.document_vocabulary();
     assert_eq!(v.fields_key(), "fields");
-    assert_eq!(v.functions_key(), "functions");
     assert_eq!(v.expr_key(), "expr");
     assert_eq!(v.arg_key(), "arg");
     assert_eq!(v.merge_key(), "merge");
@@ -22,7 +21,6 @@ fn top_level_reserved_keys() {
     let d = AcDialect;
     let reserved = d.document_vocabulary().top_level_reserved_keys();
     assert!(reserved.contains(&"fields"));
-    assert!(reserved.contains(&"functions"));
 }
 
 #[test]
