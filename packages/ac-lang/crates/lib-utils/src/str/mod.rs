@@ -5,13 +5,15 @@ mod search;
 mod transform;
 
 pub use basic::{
-    Concat, Equals, IsEmpty, Length, Lower, Reverse, Trim, TrimEnd, TrimMatches, TrimStart, Upper,
+    Bytes, Concat, Equals, IsAlpha, IsAlphanumeric, IsEmpty, IsNumeric, Length, Lower, Reverse,
+    Trim, TrimEnd, TrimMatches, TrimStart, Upper,
 };
 pub use case::{CamelCase, Capitalize, KebabCase, PascalCase, SnakeCase, TitleCase};
-pub use search::{Contains, Count, EndsWith, Find, RFind, StartsWith};
+pub use search::{Contains, Count, EndsWith, Find, Levenshtein, RFind, Similarity, StartsWith};
 pub use transform::{
-    CharAt, Join, Lines, PadLeft, PadRight, Repeat, Replace, ReplaceFirst, Slice, Split, SplitAt,
-    StripPrefix, StripSuffix,
+    CharAt, EscapeHtml, EscapeUrl, Join, Lines, PadLeft, PadRight, Repeat, Replace, ReplaceFirst,
+    Slice, Slugify, Split, SplitAt, SplitWhitespace, StripPrefix, StripSuffix, Truncate,
+    UnescapeHtml, UnescapeUrl, WordWrap,
 };
 
 use ac_runtime_core::Module;
@@ -43,6 +45,10 @@ impl Module for StrModule {
             "concat" => Some(&Concat),
             "is_empty" => Some(&IsEmpty),
             "equals" => Some(&Equals),
+            "bytes" => Some(&Bytes),
+            "is_alpha" => Some(&IsAlpha),
+            "is_numeric" => Some(&IsNumeric),
+            "is_alphanumeric" => Some(&IsAlphanumeric),
             // search
             "contains" => Some(&Contains),
             "starts_with" => Some(&StartsWith),
@@ -50,6 +56,8 @@ impl Module for StrModule {
             "count" => Some(&Count),
             "find" => Some(&Find),
             "rfind" => Some(&RFind),
+            "levenshtein" => Some(&Levenshtein),
+            "similarity" => Some(&Similarity),
             // transform
             "split" => Some(&Split),
             "join" => Some(&Join),
@@ -64,6 +72,14 @@ impl Module for StrModule {
             "strip_suffix" => Some(&StripSuffix),
             "lines" => Some(&Lines),
             "split_at" => Some(&SplitAt),
+            "split_whitespace" => Some(&SplitWhitespace),
+            "truncate" => Some(&Truncate),
+            "slugify" => Some(&Slugify),
+            "escape_html" => Some(&EscapeHtml),
+            "unescape_html" => Some(&UnescapeHtml),
+            "escape_url" => Some(&EscapeUrl),
+            "unescape_url" => Some(&UnescapeUrl),
+            "word_wrap" => Some(&WordWrap),
             // case
             "capitalize" => Some(&Capitalize),
             "title_case" => Some(&TitleCase),

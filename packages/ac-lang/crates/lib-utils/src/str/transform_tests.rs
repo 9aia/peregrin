@@ -128,9 +128,10 @@ fn join_empty_array() {
 }
 
 #[test]
-fn join_with_non_string_elements() {
+fn join_with_non_string_elements_errors() {
     let json_arr = NonFunctionValue::new(serde_json::json!([1, 2, 3]));
-    assert_eq!(call("join", &[json_arr, s(",")]).as_str(), Some(""));
+    let result = call_err("join", &[json_arr, s(",")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
 // ── replace ─────────────────────────────────────────────────────────
@@ -321,9 +322,9 @@ fn char_at() {
 }
 
 #[test]
-fn char_at_out_of_bounds() {
-    let result = call("char_at", &[s("hi"), n(10.0)]);
-    assert!(result.as_str().is_none());
+fn char_at_out_of_bounds_errors() {
+    let result = call_err("char_at", &[s("hi"), n(10.0)]);
+    assert!(matches!(result, Err(Error::PrimitiveError(_))));
 }
 
 #[test]
@@ -351,9 +352,8 @@ fn char_at_second_arg_non_number_errors() {
 }
 
 #[test]
-fn char_at_out_of_bounds_returns_null() {
-    let result = call("char_at", &[s("hi"), n(10.0)]);
-    assert!(result.is_null());
+fn char_at_at_last_char() {
+    assert_eq!(call("char_at", &[s("hi"), n(1.0)]).as_str(), Some("i"));
 }
 
 #[test]
@@ -869,5 +869,414 @@ fn split_at_second_arg_non_number_errors() {
 #[test]
 fn split_at_negative_errors() {
     let result = call_err("split_at", &[s("hello"), n(-1.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── split_whitespace ────────────────────────────────────────────────
+
+#[test]
+fn split_whitespace_basic() {
+    let result = call("split_whitespace", &[s("  hello   world  ")]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_str(), Some("hello"));
+    assert_eq!(array[1].as_str(), Some("world"));
+}
+
+#[test]
+fn split_whitespace_tabs_and_newlines() {
+    let result = call("split_whitespace", &[s("a\tb\nc")]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[0].as_str(), Some("a"));
+    assert_eq!(array[1].as_str(), Some("b"));
+    assert_eq!(array[2].as_str(), Some("c"));
+}
+
+#[test]
+fn split_whitespace_empty_string() {
+    let result = call("split_whitespace", &[s("")]);
+    assert_eq!(result.as_array().unwrap().len(), 0);
+}
+
+#[test]
+fn split_whitespace_all_whitespace() {
+    let result = call("split_whitespace", &[s("   \t\n  ")]);
+    assert_eq!(result.as_array().unwrap().len(), 0);
+}
+
+#[test]
+fn split_whitespace_no_args_errors() {
+    let result = call_err("split_whitespace", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn split_whitespace_non_string_errors() {
+    let result = call_err("split_whitespace", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── truncate ────────────────────────────────────────────────────────
+
+#[test]
+fn truncate_with_ellipsis() {
+    assert_eq!(
+        call("truncate", &[s("hello world"), n(8.0)]).as_str(),
+        Some("hello...")
+    );
+}
+
+#[test]
+fn truncate_custom_suffix() {
+    assert_eq!(
+        call("truncate", &[s("hello world"), n(7.0), s("!")]).as_str(),
+        Some("hello !")
+    );
+}
+
+#[test]
+fn truncate_no_truncation_needed() {
+    assert_eq!(
+        call("truncate", &[s("hi"), n(10.0)]).as_str(),
+        Some("hi")
+    );
+}
+
+#[test]
+fn truncate_exact_length() {
+    assert_eq!(
+        call("truncate", &[s("hello"), n(5.0)]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn truncate_suffix_equal_to_max() {
+    assert_eq!(
+        call("truncate", &[s("hello world"), n(3.0), s("...")]).as_str(),
+        Some("...")
+    );
+}
+
+#[test]
+fn truncate_zero_max() {
+    assert_eq!(
+        call("truncate", &[s("hello"), n(0.0)]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn truncate_negative_errors() {
+    let result = call_err("truncate", &[s("hello"), n(-1.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn truncate_no_args_errors() {
+    let result = call_err("truncate", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn truncate_first_arg_non_string_errors() {
+    let result = call_err("truncate", &[n(42.0), n(5.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn truncate_second_arg_non_number_errors() {
+    let result = call_err("truncate", &[s("hello"), s("x")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn truncate_unicode() {
+    assert_eq!(
+        call("truncate", &[s("héllo wörld"), n(8.0)]).as_str(),
+        Some("héllo...")
+    );
+}
+
+// ── slugify ─────────────────────────────────────────────────────────
+
+#[test]
+fn slugify_basic() {
+    assert_eq!(call("slugify", &[s("Hello World")]).as_str(), Some("hello-world"));
+}
+
+#[test]
+fn slugify_special_chars() {
+    assert_eq!(call("slugify", &[s("Hello, World!")]).as_str(), Some("hello-world"));
+}
+
+#[test]
+fn slugify_multiple_spaces() {
+    assert_eq!(call("slugify", &[s("hello   world")]).as_str(), Some("hello-world"));
+}
+
+#[test]
+fn slugify_underscores() {
+    assert_eq!(call("slugify", &[s("hello_world")]).as_str(), Some("hello-world"));
+}
+
+#[test]
+fn slugify_leading_trailing_dashes() {
+    assert_eq!(call("slugify", &[s("---hello---")]).as_str(), Some("hello"));
+}
+
+#[test]
+fn slugify_empty_string() {
+    assert_eq!(call("slugify", &[s("")]).as_str(), Some(""));
+}
+
+#[test]
+fn slugify_only_special_chars() {
+    assert_eq!(call("slugify", &[s("!@#$%")]).as_str(), Some(""));
+}
+
+#[test]
+fn slugify_unicode() {
+    assert_eq!(call("slugify", &[s("café au lait")]).as_str(), Some("café-au-lait"));
+}
+
+#[test]
+fn slugify_no_args_errors() {
+    let result = call_err("slugify", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn slugify_non_string_errors() {
+    let result = call_err("slugify", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── escape_html ─────────────────────────────────────────────────────
+
+#[test]
+fn escape_html_basic() {
+    assert_eq!(
+        call("escape_html", &[s("<div>\"hello\" & 'world' / </div>")]).as_str(),
+        Some("&lt;div&gt;&quot;hello&quot; &amp; &#x27;world&#x27; &#x2F; &lt;&#x2F;div&gt;")
+    );
+}
+
+#[test]
+fn escape_html_no_special_chars() {
+    assert_eq!(
+        call("escape_html", &[s("hello world")]).as_str(),
+        Some("hello world")
+    );
+}
+
+#[test]
+fn escape_html_empty_string() {
+    assert_eq!(call("escape_html", &[s("")]).as_str(), Some(""));
+}
+
+#[test]
+fn escape_html_no_args_errors() {
+    let result = call_err("escape_html", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn escape_html_non_string_errors() {
+    let result = call_err("escape_html", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── unescape_html ───────────────────────────────────────────────────
+
+#[test]
+fn unescape_html_basic() {
+    assert_eq!(
+        call("unescape_html", &[s("&lt;div&gt;&quot;hello&quot; &amp; &#x27;world&#x27; &#x2F; &lt;/div&gt;")]).as_str(),
+        Some("<div>\"hello\" & 'world' / </div>")
+    );
+}
+
+#[test]
+fn unescape_html_numeric_entities() {
+    assert_eq!(
+        call("unescape_html", &[s("&#39;&#47;")]).as_str(),
+        Some("'/")
+    );
+}
+
+#[test]
+fn unescape_html_no_entities() {
+    assert_eq!(
+        call("unescape_html", &[s("hello world")]).as_str(),
+        Some("hello world")
+    );
+}
+
+#[test]
+fn unescape_html_empty_string() {
+    assert_eq!(call("unescape_html", &[s("")]).as_str(), Some(""));
+}
+
+#[test]
+fn unescape_html_no_args_errors() {
+    let result = call_err("unescape_html", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── escape_url ──────────────────────────────────────────────────────
+
+#[test]
+fn escape_url_basic() {
+    assert_eq!(
+        call("escape_url", &[s("hello world")]).as_str(),
+        Some("hello%20world")
+    );
+}
+
+#[test]
+fn escape_url_unreserved_kept() {
+    assert_eq!(
+        call("escape_url", &[s("a-b_c.d~e")]).as_str(),
+        Some("a-b_c.d~e")
+    );
+}
+
+#[test]
+fn escape_url_special_chars() {
+    assert_eq!(
+        call("escape_url", &[s("a&b=c")]).as_str(),
+        Some("a%26b%3Dc")
+    );
+}
+
+#[test]
+fn escape_url_empty_string() {
+    assert_eq!(call("escape_url", &[s("")]).as_str(), Some(""));
+}
+
+#[test]
+fn escape_url_no_args_errors() {
+    let result = call_err("escape_url", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn escape_url_non_string_errors() {
+    let result = call_err("escape_url", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── unescape_url ────────────────────────────────────────────────────
+
+#[test]
+fn unescape_url_basic() {
+    assert_eq!(
+        call("unescape_url", &[s("hello%20world")]).as_str(),
+        Some("hello world")
+    );
+}
+
+#[test]
+fn unescape_url_roundtrip() {
+    let encoded = call("escape_url", &[s("a&b=c/d?e")]);
+    let decoded = call("unescape_url", &[encoded]);
+    assert_eq!(decoded.as_str(), Some("a&b=c/d?e"));
+}
+
+#[test]
+fn unescape_url_no_encoding() {
+    assert_eq!(
+        call("unescape_url", &[s("hello")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn unescape_url_empty_string() {
+    assert_eq!(call("unescape_url", &[s("")]).as_str(), Some(""));
+}
+
+#[test]
+fn unescape_url_no_args_errors() {
+    let result = call_err("unescape_url", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── word_wrap ───────────────────────────────────────────────────────
+
+#[test]
+fn word_wrap_basic() {
+    assert_eq!(
+        call("word_wrap", &[s("hello world foo bar"), n(10.0)]).as_str(),
+        Some("hello\nworld foo\nbar")
+    );
+}
+
+#[test]
+fn word_wrap_short_width() {
+    assert_eq!(
+        call("word_wrap", &[s("a b c d"), n(3.0)]).as_str(),
+        Some("a b\nc d")
+    );
+}
+
+#[test]
+fn word_wrap_single_word() {
+    assert_eq!(
+        call("word_wrap", &[s("hello"), n(3.0)]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn word_wrap_multiline() {
+    assert_eq!(
+        call("word_wrap", &[s("a b\nc d"), n(3.0)]).as_str(),
+        Some("a b\nc d")
+    );
+}
+
+#[test]
+fn word_wrap_empty_string() {
+    assert_eq!(call("word_wrap", &[s(""), n(10.0)]).as_str(), Some(""));
+}
+
+#[test]
+fn word_wrap_empty_lines() {
+    assert_eq!(
+        call("word_wrap", &[s("a\n\nb"), n(10.0)]).as_str(),
+        Some("a\n\nb")
+    );
+}
+
+#[test]
+fn word_wrap_negative_width_errors() {
+    let result = call_err("word_wrap", &[s("hello"), n(-1.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn word_wrap_zero_width_errors() {
+    let result = call_err("word_wrap", &[s("hello"), n(0.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn word_wrap_no_args_errors() {
+    let result = call_err("word_wrap", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn word_wrap_first_arg_non_string_errors() {
+    let result = call_err("word_wrap", &[n(42.0), n(10.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn word_wrap_second_arg_non_number_errors() {
+    let result = call_err("word_wrap", &[s("hello"), s("x")]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }

@@ -17,7 +17,7 @@ string_unary_fn!(TitleCase, |input: &str| {
     let mut result = String::new();
     let mut new_word = true;
     for ch in input.chars() {
-        if ch == ' ' {
+        if ch.is_whitespace() {
             result.push(ch);
             new_word = true;
         } else if new_word {

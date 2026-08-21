@@ -39,7 +39,13 @@ impl Function for Join {
             expected: "array",
             got: "non-array",
         })?;
-        let parts: Vec<&str> = arr.iter().filter_map(|v| v.as_str()).collect();
+        let parts: Vec<&str> = arr
+            .iter()
+            .map(|v| v.as_str().ok_or(Error::TypeMismatch {
+                expected: "string",
+                got: "non-string",
+            }))
+            .collect::<Result<Vec<_>, _>>()?;
         Ok(s(parts.join(sep)))
     }
 }
@@ -146,10 +152,19 @@ impl Function for CharAt {
                 got: "negative number",
             });
         }
-        match input.chars().nth(index as usize) {
-            Some(ch) => Ok(s(ch.to_string())),
-            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
+        let char_count = input.chars().count();
+        if (index as usize) >= char_count {
+            return Err(Error::PrimitiveError(format!(
+                "index {index} out of bounds (char count: {char_count})"
+            )));
         }
+        Ok(s(
+            input
+                .chars()
+                .nth(index as usize)
+                .unwrap()
+                .to_string(),
+        ))
     }
 }
 
@@ -357,5 +372,273 @@ impl Function for SplitAt {
             serde_json::Value::String(right),
         ];
         Ok(NonFunctionValue::new(serde_json::Value::Array(parts)))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct SplitWhitespace;
+impl Function for SplitWhitespace {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        let parts: Vec<serde_json::Value> = input
+            .split_whitespace()
+            .map(|part| serde_json::Value::String(part.to_string()))
+            .collect();
+        Ok(NonFunctionValue::new(serde_json::Value::Array(parts)))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Truncate;
+impl Function for Truncate {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let input = require_string(&args[0])?;
+        let max_len = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        if max_len < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        let max_len = max_len as usize;
+        let suffix = if args.len() >= 3 {
+            require_string(&args[2])?
+        } else {
+            "..."
+        };
+        let char_count = input.chars().count();
+        if char_count <= max_len {
+            return Ok(s(input.to_string()));
+        }
+        let suffix_len = suffix.chars().count();
+        if max_len < suffix_len {
+            let truncated: String = input.chars().take(max_len).collect();
+            return Ok(s(truncated));
+        }
+        let take = max_len - suffix_len;
+        let truncated: String = input.chars().take(take).collect();
+        Ok(s(format!("{truncated}{suffix}")))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Slugify;
+impl Function for Slugify {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        let slug: String = input
+            .to_lowercase()
+            .chars()
+            .map(|c| {
+                if c.is_alphanumeric() {
+                    c
+                } else if c.is_whitespace() || c == '-' || c == '_' {
+                    '-'
+                } else {
+                    '\0'
+                }
+            })
+            .filter(|c| *c != '\0')
+            .collect::<String>()
+            .trim_matches('-')
+            .to_string();
+        let mut result = String::new();
+        let mut prev_dash = false;
+        for ch in slug.chars() {
+            if ch == '-' {
+                if !prev_dash {
+                    result.push(ch);
+                    prev_dash = true;
+                }
+            } else {
+                result.push(ch);
+                prev_dash = false;
+            }
+        }
+        Ok(s(result))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct EscapeHtml;
+impl Function for EscapeHtml {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        let escaped: String = input
+            .chars()
+            .map(|c| match c {
+                '&' => "&amp;".to_string(),
+                '<' => "&lt;".to_string(),
+                '>' => "&gt;".to_string(),
+                '"' => "&quot;".to_string(),
+                '\'' => "&#x27;".to_string(),
+                '/' => "&#x2F;".to_string(),
+                _ => c.to_string(),
+            })
+            .collect();
+        Ok(s(escaped))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct UnescapeHtml;
+impl Function for UnescapeHtml {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        let unescaped = input
+            .replace("&amp;", "&")
+            .replace("&lt;", "<")
+            .replace("&gt;", ">")
+            .replace("&quot;", "\"")
+            .replace("&#x27;", "'")
+            .replace("&#x2F;", "/")
+            .replace("&#39;", "'")
+            .replace("&#47;", "/");
+        Ok(s(unescaped))
+    }
+}
+
+fn is_url_unreserved(c: u8) -> bool {
+    c.is_ascii_alphanumeric() || c == b'-' || c == b'_' || c == b'.' || c == b'~'
+}
+
+#[derive(Clone, Copy)]
+pub struct EscapeUrl;
+impl Function for EscapeUrl {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        let escaped: String = input
+            .bytes()
+            .map(|b| {
+                if is_url_unreserved(b) {
+                    (b as char).to_string()
+                } else {
+                    format!("%{b:02X}")
+                }
+            })
+            .collect();
+        Ok(s(escaped))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct UnescapeUrl;
+impl Function for UnescapeUrl {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        let bytes = input.as_bytes();
+        let mut result = Vec::with_capacity(bytes.len());
+        let mut i = 0;
+        while i < bytes.len() {
+            if bytes[i] == b'%' && i + 2 < bytes.len() {
+                let hex = &input[i + 1..i + 3];
+                if let Ok(byte) = u8::from_str_radix(hex, 16) {
+                    result.push(byte);
+                    i += 3;
+                    continue;
+                }
+            }
+            result.push(bytes[i]);
+            i += 1;
+        }
+        let decoded = String::from_utf8(result).map_err(|_| Error::TypeMismatch {
+            expected: "valid UTF-8 after URL decoding",
+            got: "invalid UTF-8 sequence",
+        })?;
+        Ok(s(decoded))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct WordWrap;
+impl Function for WordWrap {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let input = require_string(&args[0])?;
+        let width = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        if width < 1.0 {
+            return Err(Error::TypeMismatch {
+                expected: "positive number",
+                got: "non-positive number",
+            });
+        }
+        let width = width as usize;
+        let mut result = String::new();
+        for line in input.lines() {
+            if line.is_empty() {
+                result.push('\n');
+                continue;
+            }
+            let mut current_len = 0usize;
+            for word in line.split_whitespace() {
+                let word_len = word.chars().count();
+                if current_len == 0 {
+                    result.push_str(word);
+                    current_len = word_len;
+                } else if current_len + 1 + word_len <= width {
+                    result.push(' ');
+                    result.push_str(word);
+                    current_len += 1 + word_len;
+                } else {
+                    result.push('\n');
+                    result.push_str(word);
+                    current_len = word_len;
+                }
+            }
+            result.push('\n');
+        }
+        if result.ends_with('\n') {
+            result.pop();
+        }
+        Ok(s(result))
     }
 }

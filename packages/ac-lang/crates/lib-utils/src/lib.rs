@@ -20,7 +20,11 @@
 //!   `str.strip_prefix`, `str.strip_suffix`, `str.lines`, `str.rfind`,
 //!   `str.capitalize`, `str.title_case`, `str.snake_case`, `str.camel_case`,
 //!   `str.pascal_case`, `str.kebab_case`, `str.split_at`, `str.trim_matches`,
-//!   `str.is_empty`, `str.equals`
+//!   `str.is_empty`, `str.equals`, `str.bytes`, `str.is_alpha`,
+//!   `str.is_numeric`, `str.is_alphanumeric`, `str.levenshtein`,
+//!   `str.similarity`, `str.split_whitespace`, `str.truncate`,
+//!   `str.slugify`, `str.escape_html`, `str.unescape_html`,
+//!   `str.escape_url`, `str.unescape_url`, `str.word_wrap`
 //! - [`ArrayModule`] — `array.length`, `array.reverse`, `array.concat`,
 //!   `array.contains`, `array.index_of`, `array.slice`, `array.first`,
 //!   `array.last`, `array.sort`, `array.flatten`, `array.deep_flatten`,

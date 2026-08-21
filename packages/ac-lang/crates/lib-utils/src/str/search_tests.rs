@@ -155,7 +155,7 @@ fn count() {
 
 #[test]
 fn count_empty_pattern() {
-    assert_eq!(call("count", &[s("hello"), s("")]).as_number(), Some(0.0));
+    assert_eq!(call("count", &[s("hello"), s("")]).as_number(), Some(6.0));
 }
 
 #[test]
@@ -177,8 +177,8 @@ fn count_second_arg_non_string_errors() {
 }
 
 #[test]
-fn count_empty_pattern_returns_zero() {
-    assert_eq!(call("count", &[s("hello"), s("")]).as_number(), Some(0.0));
+fn count_empty_pattern_returns_char_count() {
+    assert_eq!(call("count", &[s("hello"), s("")]).as_number(), Some(6.0));
 }
 
 #[test]
@@ -300,5 +300,131 @@ fn rfind_first_arg_non_string_errors() {
 #[test]
 fn rfind_second_arg_non_string_errors() {
     let result = call_err("rfind", &[s("hello"), n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── levenshtein ─────────────────────────────────────────────────────
+
+#[test]
+fn levenshtein_identical() {
+    assert_eq!(
+        call("levenshtein", &[s("hello"), s("hello")]).as_number(),
+        Some(0.0)
+    );
+}
+
+#[test]
+fn levenshtein_empty_to_nonempty() {
+    assert_eq!(
+        call("levenshtein", &[s(""), s("hello")]).as_number(),
+        Some(5.0)
+    );
+}
+
+#[test]
+fn levenshtein_nonempty_to_empty() {
+    assert_eq!(
+        call("levenshtein", &[s("hello"), s("")]).as_number(),
+        Some(5.0)
+    );
+}
+
+#[test]
+fn levenshtein_both_empty() {
+    assert_eq!(
+        call("levenshtein", &[s(""), s("")]).as_number(),
+        Some(0.0)
+    );
+}
+
+#[test]
+fn levenshtein_one_substitution() {
+    assert_eq!(
+        call("levenshtein", &[s("cat"), s("bat")]).as_number(),
+        Some(1.0)
+    );
+}
+
+#[test]
+fn levenshtein_insertion_and_deletion() {
+    assert_eq!(
+        call("levenshtein", &[s("kitten"), s("sitting")]).as_number(),
+        Some(3.0)
+    );
+}
+
+#[test]
+fn levenshtein_no_args_errors() {
+    let result = call_err("levenshtein", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn levenshtein_first_arg_non_string_errors() {
+    let result = call_err("levenshtein", &[n(42.0), s("hello")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn levenshtein_second_arg_non_string_errors() {
+    let result = call_err("levenshtein", &[s("hello"), n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── similarity ──────────────────────────────────────────────────────
+
+#[test]
+fn similarity_identical() {
+    assert_eq!(
+        call("similarity", &[s("hello"), s("hello")]).as_number(),
+        Some(1.0)
+    );
+}
+
+#[test]
+fn similarity_both_empty() {
+    assert_eq!(
+        call("similarity", &[s(""), s("")]).as_number(),
+        Some(1.0)
+    );
+}
+
+#[test]
+fn similarity_completely_different() {
+    assert_eq!(
+        call("similarity", &[s("abc"), s("xyz")]).as_number(),
+        Some(0.0)
+    );
+}
+
+#[test]
+fn similarity_partial() {
+    let result = call("similarity", &[s("cat"), s("bat")]).as_number();
+    assert!((result.unwrap() - (2.0 / 3.0)).abs() < 0.0001);
+}
+
+#[test]
+fn similarity_empty_to_nonempty() {
+    assert_eq!(
+        call("similarity", &[s(""), s("hello")]).as_number(),
+        Some(0.0)
+    );
+}
+
+#[test]
+fn similarity_no_args_errors() {
+    let result = call_err("similarity", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn similarity_first_arg_non_string_errors() {
+    let result = call_err("similarity", &[n(42.0), s("hello")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn similarity_second_arg_non_string_errors() {
+    let result = call_err("similarity", &[s("hello"), n(42.0)]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }

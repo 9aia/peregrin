@@ -108,6 +108,22 @@ fn title_case_multiple_spaces() {
 }
 
 #[test]
+fn title_case_tab_boundary() {
+    assert_eq!(
+        call("title_case", &[s("hello\tworld")]).as_str(),
+        Some("Hello\tWorld")
+    );
+}
+
+#[test]
+fn title_case_newline_boundary() {
+    assert_eq!(
+        call("title_case", &[s("hello\nworld")]).as_str(),
+        Some("Hello\nWorld")
+    );
+}
+
+#[test]
 fn title_case_no_args_errors() {
     let result = call_err("title_case", &[]);
     assert!(matches!(result, Err(Error::ArgumentCount { .. })));

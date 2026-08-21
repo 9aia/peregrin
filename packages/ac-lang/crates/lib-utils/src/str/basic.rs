@@ -82,3 +82,57 @@ impl Function for TrimMatches {
         Ok(s(input.trim_matches(|c| char_set.contains(&c)).to_string()))
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct Bytes;
+impl Function for Bytes {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        Ok(num(input.len() as f64))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct IsAlpha;
+impl Function for IsAlpha {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        Ok(b(!input.is_empty() && input.chars().all(|c| c.is_alphabetic())))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct IsNumeric;
+impl Function for IsNumeric {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        Ok(b(!input.is_empty() && input.chars().all(|c| c.is_numeric())))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct IsAlphanumeric;
+impl Function for IsAlphanumeric {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        Ok(b(
+            !input.is_empty() && input.chars().all(|c| c.is_alphanumeric()),
+        ))
+    }
+}

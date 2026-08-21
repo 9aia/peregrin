@@ -426,6 +426,137 @@ fn equals_second_arg_non_string_errors() {
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
+// ── bytes ───────────────────────────────────────────────────────────
+
+#[test]
+fn bytes_ascii() {
+    assert_eq!(call("bytes", &[s("hello")]).as_number(), Some(5.0));
+}
+
+#[test]
+fn bytes_empty() {
+    assert_eq!(call("bytes", &[s("")]).as_number(), Some(0.0));
+}
+
+#[test]
+fn bytes_unicode() {
+    assert_eq!(call("bytes", &[s("café")]).as_number(), Some(5.0));
+}
+
+#[test]
+fn bytes_no_args_errors() {
+    let result = call_err("bytes", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn bytes_non_string_errors() {
+    let result = call_err("bytes", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── is_alpha ────────────────────────────────────────────────────────
+
+#[test]
+fn is_alpha_true() {
+    assert_eq!(call("is_alpha", &[s("hello")]).as_bool(), Some(true));
+}
+
+#[test]
+fn is_alpha_false() {
+    assert_eq!(call("is_alpha", &[s("hello123")]).as_bool(), Some(false));
+}
+
+#[test]
+fn is_alpha_empty_false() {
+    assert_eq!(call("is_alpha", &[s("")]).as_bool(), Some(false));
+}
+
+#[test]
+fn is_alpha_unicode() {
+    assert_eq!(call("is_alpha", &[s("café")]).as_bool(), Some(true));
+}
+
+#[test]
+fn is_alpha_no_args_errors() {
+    let result = call_err("is_alpha", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn is_alpha_non_string_errors() {
+    let result = call_err("is_alpha", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── is_numeric ──────────────────────────────────────────────────────
+
+#[test]
+fn is_numeric_true() {
+    assert_eq!(call("is_numeric", &[s("123")]).as_bool(), Some(true));
+}
+
+#[test]
+fn is_numeric_false() {
+    assert_eq!(call("is_numeric", &[s("123abc")]).as_bool(), Some(false));
+}
+
+#[test]
+fn is_numeric_empty_false() {
+    assert_eq!(call("is_numeric", &[s("")]).as_bool(), Some(false));
+}
+
+#[test]
+fn is_numeric_unicode_digits() {
+    assert_eq!(call("is_numeric", &[s("১২৩")]).as_bool(), Some(true));
+}
+
+#[test]
+fn is_numeric_no_args_errors() {
+    let result = call_err("is_numeric", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn is_numeric_non_string_errors() {
+    let result = call_err("is_numeric", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── is_alphanumeric ─────────────────────────────────────────────────
+
+#[test]
+fn is_alphanumeric_true() {
+    assert_eq!(call("is_alphanumeric", &[s("hello123")]).as_bool(), Some(true));
+}
+
+#[test]
+fn is_alphanumeric_false() {
+    assert_eq!(call("is_alphanumeric", &[s("hello 123")]).as_bool(), Some(false));
+}
+
+#[test]
+fn is_alphanumeric_empty_false() {
+    assert_eq!(call("is_alphanumeric", &[s("")]).as_bool(), Some(false));
+}
+
+#[test]
+fn is_alphanumeric_unicode() {
+    assert_eq!(call("is_alphanumeric", &[s("café123")]).as_bool(), Some(true));
+}
+
+#[test]
+fn is_alphanumeric_no_args_errors() {
+    let result = call_err("is_alphanumeric", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn is_alphanumeric_non_string_errors() {
+    let result = call_err("is_alphanumeric", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
 // ── shared error tests ──────────────────────────────────────────────
 
 #[test]
