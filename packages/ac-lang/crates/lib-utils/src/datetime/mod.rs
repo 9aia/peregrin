@@ -9,9 +9,12 @@ mod validate;
 
 pub use arithmetic::{AddDays, AddHours, AddMinutes, AddMonths, AddSeconds, AddWeeks, AddYears};
 pub use compare::{Compare, IsAfter, IsBefore, IsBetween, IsEqual};
-pub use components::{Day, DayOfYear, Hour, IsLeapYear, IsWeekend, Minute, Month, Quarter, Second, WeekOfYear, Weekday, Year};
+pub use components::{
+    Day, DayOfYear, Hour, IsLeapYear, IsWeekend, Minute, Month, Quarter, Second, WeekOfYear,
+    Weekday, Year,
+};
 pub use convert::{FromUnix, Now, ToUnix, UtcNow};
-pub use duration::{DurationBetween, DurationSeconds, HumanizeDuration};
+pub use duration::{DurationBetween, DurationSeconds};
 pub use format_parse::{Format, Parse};
 pub use validate::IsValid;
 
@@ -73,7 +76,6 @@ impl Module for DateTimeModule {
             // duration
             "duration_between" => Some(&DurationBetween),
             "duration_seconds" => Some(&DurationSeconds),
-            "humanize_duration" => Some(&HumanizeDuration),
             // validate
             "is_valid" => Some(&IsValid),
             _ => None,

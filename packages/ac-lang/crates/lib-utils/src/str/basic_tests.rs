@@ -161,17 +161,26 @@ fn trim_end_empty_string() {
 
 #[test]
 fn trim_matches_basic() {
-    assert_eq!(call("trim_matches", &[s("xxhelloxx"), s("x")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("trim_matches", &[s("xxhelloxx"), s("x")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
 fn trim_matches_multiple_chars() {
-    assert_eq!(call("trim_matches", &[s("xyhelloxy"), s("xy")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("trim_matches", &[s("xyhelloxy"), s("xy")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
 fn trim_matches_no_match() {
-    assert_eq!(call("trim_matches", &[s("hello"), s("x")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("trim_matches", &[s("hello"), s("x")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
@@ -181,7 +190,10 @@ fn trim_matches_empty_string() {
 
 #[test]
 fn trim_matches_empty_chars() {
-    assert_eq!(call("trim_matches", &[s("hello"), s("")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("trim_matches", &[s("hello"), s("")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
@@ -279,12 +291,18 @@ fn length_unicode_edge() {
 
 #[test]
 fn concat_two() {
-    assert_eq!(call("concat", &[s("hello"), s(" world")]).as_str(), Some("hello world"));
+    assert_eq!(
+        call("concat", &[s("hello"), s(" world")]).as_str(),
+        Some("hello world")
+    );
 }
 
 #[test]
 fn concat_three() {
-    assert_eq!(call("concat", &[s("a"), s("b"), s("c")]).as_str(), Some("abc"));
+    assert_eq!(
+        call("concat", &[s("a"), s("b"), s("c")]).as_str(),
+        Some("abc")
+    );
 }
 
 #[test]
@@ -318,7 +336,10 @@ fn concat_empty_strings() {
 
 #[test]
 fn concat_three_strings() {
-    assert_eq!(call("concat", &[s("a"), s("b"), s("c")]).as_str(), Some("abc"));
+    assert_eq!(
+        call("concat", &[s("a"), s("b"), s("c")]).as_str(),
+        Some("abc")
+    );
 }
 
 // ── is_empty ────────────────────────────────────────────────────────
@@ -354,12 +375,18 @@ fn is_empty_non_string_errors() {
 
 #[test]
 fn equals_true() {
-    assert_eq!(call("equals", &[s("hello"), s("hello")]).as_bool(), Some(true));
+    assert_eq!(
+        call("equals", &[s("hello"), s("hello")]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn equals_false() {
-    assert_eq!(call("equals", &[s("hello"), s("world")]).as_bool(), Some(false));
+    assert_eq!(
+        call("equals", &[s("hello"), s("world")]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
@@ -369,7 +396,10 @@ fn equals_both_empty() {
 
 #[test]
 fn equals_case_sensitive() {
-    assert_eq!(call("equals", &[s("Hello"), s("hello")]).as_bool(), Some(false));
+    assert_eq!(
+        call("equals", &[s("Hello"), s("hello")]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]

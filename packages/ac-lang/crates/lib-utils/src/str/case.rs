@@ -39,9 +39,7 @@ fn split_words(input: &str) -> Vec<String> {
                 words.push(std::mem::take(&mut current));
             }
         } else if ch.is_uppercase() {
-            if !current.is_empty()
-                && current.chars().last().map_or(false, |c| c.is_lowercase())
-            {
+            if !current.is_empty() && current.chars().last().map_or(false, |c| c.is_lowercase()) {
                 words.push(std::mem::take(&mut current));
             }
             current.push(ch);

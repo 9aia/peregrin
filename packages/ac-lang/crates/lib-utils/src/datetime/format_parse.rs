@@ -6,7 +6,11 @@ use super::common::{parse_iso, parse_with_format, require_one_string, require_st
 #[derive(Clone, Copy)]
 pub struct Format;
 impl Function for Format {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
         let result = if args.len() >= 2 {
@@ -22,7 +26,11 @@ impl Function for Format {
 #[derive(Clone, Copy)]
 pub struct Parse;
 impl Function for Parse {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = if args.len() >= 2 {
             let fmt = require_string(&args[1])?;

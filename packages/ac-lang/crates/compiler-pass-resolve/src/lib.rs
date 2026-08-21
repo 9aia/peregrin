@@ -2,7 +2,7 @@
 //!
 //! Pipeline pass: resolve imports and build a `TypegenContext`.
 
-use ac_compiler_core::{Compilation, Config, Pass};
+use ac_compiler_core::{Compilation, Config, Pass, PassError};
 
 /// Resolve imports and build a `TypegenContext`.
 ///
@@ -17,11 +17,11 @@ impl Pass for ResolvePass {
         compilation.extracted.is_some()
     }
 
-    fn run(&self, compilation: &mut Compilation, config: &Config) -> Result<(), String> {
+    fn run(&self, compilation: &mut Compilation, config: &Config) -> Result<(), PassError> {
         let extracted = compilation
             .extracted
             .as_ref()
-            .ok_or("ResolvePass: no extracted fields — run ExtractPass first")?;
+            .ok_or_else(|| PassError::new("resolve", "no extracted fields — run ExtractPass first"))?;
 
         let vocab = config.dialect.document_vocabulary();
 

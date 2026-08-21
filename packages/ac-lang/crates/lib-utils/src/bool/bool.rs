@@ -23,9 +23,8 @@ impl Module for BoolModule {
             "xor" => Some(&Xor),
             "nand" => Some(&Nand),
             "nor" => Some(&Nor),
-            "if" => Some(&If),
+            "implies" => Some(&Implies),
             "eq" => Some(&Eq),
-            "from" => Some(&From),
             _ => None,
         }
     }
@@ -111,7 +110,7 @@ bool_binary_fn!(Or, |a: bool, b: bool| a || b);
 bool_binary_fn!(Xor, |a: bool, b: bool| a ^ b);
 bool_binary_fn!(Nand, |a: bool, b: bool| !(a && b));
 bool_binary_fn!(Nor, |a: bool, b: bool| !(a || b));
-bool_binary_fn!(If, |a: bool, b: bool| !a || b);
+bool_binary_fn!(Implies, |a: bool, b: bool| !a || b);
 bool_binary_fn!(Eq, |a: bool, b: bool| a == b);
 
 // ── lazy functions (short-circuit evaluation) ──────────────────────
@@ -125,7 +124,10 @@ impl LazyFunction for IfLazy {
         &self,
         args: &[Expr<NonFunctionValue>],
         ctx: &mut Context,
-        evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut Context) -> Result<NonFunctionValue, Error>,
+        evaluate: &mut dyn FnMut(
+            &Expr<NonFunctionValue>,
+            &mut Context,
+        ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -155,7 +157,10 @@ impl LazyFunction for AndLazy {
         &self,
         args: &[Expr<NonFunctionValue>],
         ctx: &mut Context,
-        evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut Context) -> Result<NonFunctionValue, Error>,
+        evaluate: &mut dyn FnMut(
+            &Expr<NonFunctionValue>,
+            &mut Context,
+        ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -189,7 +194,10 @@ impl LazyFunction for OrLazy {
         &self,
         args: &[Expr<NonFunctionValue>],
         ctx: &mut Context,
-        evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut Context) -> Result<NonFunctionValue, Error>,
+        evaluate: &mut dyn FnMut(
+            &Expr<NonFunctionValue>,
+            &mut Context,
+        ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -211,35 +219,5 @@ impl LazyFunction for OrLazy {
             got: "non-boolean",
         })?;
         Ok(NonFunctionValue::new(b))
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct From;
-impl Function for From {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
-        let arg = args.first().ok_or(Error::ArgumentCount {
-            expected: 1,
-            got: 0,
-        })?;
-        if let Some(b) = arg.as_bool() {
-            return Ok(NonFunctionValue::new(b));
-        }
-        if let Some(n) = arg.as_number() {
-            return Ok(NonFunctionValue::new(n != 0.0));
-        }
-        if let Some(s) = arg.as_str() {
-            return Ok(NonFunctionValue::new(!s.is_empty()));
-        }
-        if arg.is_null() {
-            return Ok(NonFunctionValue::new(false));
-        }
-        if let Some(arr) = arg.as_array() {
-            return Ok(NonFunctionValue::new(!arr.is_empty()));
-        }
-        if let Some(obj) = arg.as_object() {
-            return Ok(NonFunctionValue::new(!obj.is_empty()));
-        }
-        Ok(NonFunctionValue::new(true))
     }
 }

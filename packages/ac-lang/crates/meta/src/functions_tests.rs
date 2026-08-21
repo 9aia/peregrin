@@ -228,6 +228,112 @@ fn parse_dollar_wrapped() {
     assert_eq!(obj.get("name").unwrap().as_str(), Some("add"));
 }
 
+// ── parse handle expressions ────────────────────────────────
+
+#[test]
+fn parse_handle_single_handler() {
+    let v = call_meta(
+        "parse",
+        &[NonFunctionValue::new("handle(fetch(\"data\")) { \"fetch\"(url) as k: k(42) }")],
+    );
+    let obj = v.as_object().unwrap();
+    assert_eq!(obj.get("kind").unwrap().as_str(), Some("handle"));
+    let body = obj.get("body").unwrap().as_object().unwrap();
+    assert_eq!(body.get("kind").unwrap().as_str(), Some("call"));
+    assert_eq!(body.get("name").unwrap().as_str(), Some("fetch"));
+    let handlers = obj.get("handlers").unwrap().as_array().unwrap();
+    assert_eq!(handlers.len(), 1);
+    let h0 = handlers[0].as_object().unwrap();
+    assert_eq!(h0.get("op").unwrap().as_str(), Some("fetch"));
+    assert_eq!(h0.get("resume").unwrap().as_str(), Some("k"));
+}
+
+#[test]
+fn parse_handle_multiple_handlers() {
+    let v = call_meta(
+        "parse",
+        &[NonFunctionValue::new(
+            "handle(add(fetch(\"data\"), log(\"msg\"))) { \"fetch\"(url) as k: k(42), \"log\"(msg) as k: k(1) }",
+        )],
+    );
+    let obj = v.as_object().unwrap();
+    assert_eq!(obj.get("kind").unwrap().as_str(), Some("handle"));
+    let handlers = obj.get("handlers").unwrap().as_array().unwrap();
+    assert_eq!(handlers.len(), 2);
+}
+
+#[test]
+fn parse_handle_no_params() {
+    let v = call_meta(
+        "parse",
+        &[NonFunctionValue::new("handle(fetch()) { \"fetch\"() as k: \"cached\" }")],
+    );
+    let obj = v.as_object().unwrap();
+    assert_eq!(obj.get("kind").unwrap().as_str(), Some("handle"));
+    let handlers = obj.get("handlers").unwrap().as_array().unwrap();
+    let h0 = handlers[0].as_object().unwrap();
+    let params = h0.get("params").unwrap().as_array().unwrap();
+    assert!(params.is_empty());
+}
+
+#[test]
+fn parse_handle_dollar_wrapped() {
+    let v = call_meta(
+        "parse",
+        &[NonFunctionValue::new("${handle(fetch(\"d\")) { \"fetch\"(url) as k: k(42) }}")],
+    );
+    let obj = v.as_object().unwrap();
+    assert_eq!(obj.get("kind").unwrap().as_str(), Some("handle"));
+}
+
+#[test]
+fn parse_handle_handler_body_is_call() {
+    let v = call_meta(
+        "parse",
+        &[NonFunctionValue::new("handle(fetch(\"data\")) { \"fetch\"(url) as k: k(42) }")],
+    );
+    let obj = v.as_object().unwrap();
+    let handlers = obj.get("handlers").unwrap().as_array().unwrap();
+    let h0 = handlers[0].as_object().unwrap();
+    let body = h0.get("body").unwrap().as_object().unwrap();
+    assert_eq!(body.get("kind").unwrap().as_str(), Some("call"));
+    assert_eq!(body.get("name").unwrap().as_str(), Some("k"));
+}
+
+// ── ast_to_string handle ────────────────────────────────────
+
+#[test]
+fn ast_to_string_handle() {
+    let ast = serde_json::json!({
+        "kind": "handle",
+        "body": {
+            "kind": "call",
+            "name": "fetch",
+            "args": [
+                {"kind": "literal", "value": "data", "type": "string"}
+            ]
+        },
+        "handlers": [
+            {
+                "op": "fetch",
+                "params": ["url"],
+                "resume": "k",
+                "body": {
+                    "kind": "call",
+                    "name": "k",
+                    "args": [
+                        {"kind": "literal", "value": 42, "type": "number"}
+                    ]
+                }
+            }
+        ]
+    });
+    let v = call_meta("ast_to_string", &[NonFunctionValue::new(ast)]);
+    let s = v.as_str().unwrap();
+    assert!(s.starts_with("handle("));
+    assert!(s.contains("\"fetch\"(url) as k: k(42)"));
+}
+
 // ── ast_to_string ───────────────────────────────────────────
 
 #[test]

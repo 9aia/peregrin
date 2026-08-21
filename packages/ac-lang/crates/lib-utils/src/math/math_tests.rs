@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
@@ -241,18 +245,12 @@ fn e() {
 
 #[test]
 fn log2() {
-    assert_eq!(
-        call(&MathModule, "log2", &[n(8.0)]).as_number(),
-        Some(3.0)
-    );
+    assert_eq!(call(&MathModule, "log2", &[n(8.0)]).as_number(), Some(3.0));
 }
 
 #[test]
 fn cbrt() {
-    assert_eq!(
-        call(&MathModule, "cbrt", &[n(27.0)]).as_number(),
-        Some(3.0)
-    );
+    assert_eq!(call(&MathModule, "cbrt", &[n(27.0)]).as_number(), Some(3.0));
 }
 
 #[test]
@@ -396,7 +394,10 @@ fn sign_non_number_errors() {
 
 #[test]
 fn sign_negative_edge() {
-    assert_eq!(call(&MathModule, "sign", &[n(-5.0)]).as_number(), Some(-1.0));
+    assert_eq!(
+        call(&MathModule, "sign", &[n(-5.0)]).as_number(),
+        Some(-1.0)
+    );
 }
 
 #[test]
@@ -550,7 +551,10 @@ fn cbrt_non_number_errors() {
 
 #[test]
 fn cbrt_negative() {
-    assert_eq!(call(&MathModule, "cbrt", &[n(-27.0)]).as_number(), Some(-3.0));
+    assert_eq!(
+        call(&MathModule, "cbrt", &[n(-27.0)]).as_number(),
+        Some(-3.0)
+    );
 }
 
 #[test]
@@ -763,17 +767,26 @@ fn clamp_third_arg_non_number_errors() {
 
 #[test]
 fn clamp_edge_values() {
-    assert_eq!(call(&MathModule, "clamp", &[n(5.0), n(0.0), n(10.0)]).as_number(), Some(5.0));
+    assert_eq!(
+        call(&MathModule, "clamp", &[n(5.0), n(0.0), n(10.0)]).as_number(),
+        Some(5.0)
+    );
 }
 
 #[test]
 fn clamp_below_min_edge() {
-    assert_eq!(call(&MathModule, "clamp", &[n(-3.0), n(0.0), n(10.0)]).as_number(), Some(0.0));
+    assert_eq!(
+        call(&MathModule, "clamp", &[n(-3.0), n(0.0), n(10.0)]).as_number(),
+        Some(0.0)
+    );
 }
 
 #[test]
 fn clamp_above_max_edge() {
-    assert_eq!(call(&MathModule, "clamp", &[n(15.0), n(0.0), n(10.0)]).as_number(), Some(10.0));
+    assert_eq!(
+        call(&MathModule, "clamp", &[n(15.0), n(0.0), n(10.0)]).as_number(),
+        Some(10.0)
+    );
 }
 
 // RoundTo: 2-arg function
@@ -804,34 +817,52 @@ fn round_to_second_arg_non_number_errors() {
 
 #[test]
 fn round_to_zero_decimals_alt() {
-    assert_eq!(call(&MathModule, "round_to", &[n(1.567), n(0.0)]).as_number(), Some(2.0));
+    assert_eq!(
+        call(&MathModule, "round_to", &[n(1.567), n(0.0)]).as_number(),
+        Some(2.0)
+    );
 }
 
 #[test]
 fn round_to_two_decimals_alt() {
-    assert_eq!(call(&MathModule, "round_to", &[n(1.567), n(2.0)]).as_number(), Some(1.57));
+    assert_eq!(
+        call(&MathModule, "round_to", &[n(1.567), n(2.0)]).as_number(),
+        Some(1.57)
+    );
 }
 
 #[test]
 fn round_to_two_decimals_edge() {
-    assert_eq!(call(&MathModule, "round_to", &[n(3.14159), n(2.0)]).as_number(), Some(3.14));
+    assert_eq!(
+        call(&MathModule, "round_to", &[n(3.14159), n(2.0)]).as_number(),
+        Some(3.14)
+    );
 }
 
 #[test]
 fn round_to_zero_decimals_edge() {
-    assert_eq!(call(&MathModule, "round_to", &[n(3.7), n(0.0)]).as_number(), Some(4.0));
+    assert_eq!(
+        call(&MathModule, "round_to", &[n(3.7), n(0.0)]).as_number(),
+        Some(4.0)
+    );
 }
 
 // Pi and E constants
 
 #[test]
 fn pi_returns_constant() {
-    assert_eq!(call(&MathModule, "pi", &[]).as_number(), Some(std::f64::consts::PI));
+    assert_eq!(
+        call(&MathModule, "pi", &[]).as_number(),
+        Some(std::f64::consts::PI)
+    );
 }
 
 #[test]
 fn e_returns_constant() {
-    assert_eq!(call(&MathModule, "e", &[]).as_number(), Some(std::f64::consts::E));
+    assert_eq!(
+        call(&MathModule, "e", &[]).as_number(),
+        Some(std::f64::consts::E)
+    );
 }
 
 // Edge values
@@ -868,7 +899,10 @@ fn trunc_positive() {
 
 #[test]
 fn trunc_negative() {
-    assert_eq!(call(&MathModule, "trunc", &[n(-2.7)]).as_number(), Some(-2.0));
+    assert_eq!(
+        call(&MathModule, "trunc", &[n(-2.7)]).as_number(),
+        Some(-2.0)
+    );
 }
 
 #[test]
@@ -878,22 +912,34 @@ fn sqrt_zero() {
 
 #[test]
 fn pow_zero_exponent() {
-    assert_eq!(call(&MathModule, "pow", &[n(5.0), n(0.0)]).as_number(), Some(1.0));
+    assert_eq!(
+        call(&MathModule, "pow", &[n(5.0), n(0.0)]).as_number(),
+        Some(1.0)
+    );
 }
 
 #[test]
 fn mod_op_normal() {
-    assert_eq!(call(&MathModule, "mod", &[n(10.0), n(3.0)]).as_number(), Some(1.0));
+    assert_eq!(
+        call(&MathModule, "mod", &[n(10.0), n(3.0)]).as_number(),
+        Some(1.0)
+    );
 }
 
 #[test]
 fn degrees_zero() {
-    assert_eq!(call(&MathModule, "degrees", &[n(0.0)]).as_number(), Some(0.0));
+    assert_eq!(
+        call(&MathModule, "degrees", &[n(0.0)]).as_number(),
+        Some(0.0)
+    );
 }
 
 #[test]
 fn radians_zero() {
-    assert_eq!(call(&MathModule, "radians", &[n(0.0)]).as_number(), Some(0.0));
+    assert_eq!(
+        call(&MathModule, "radians", &[n(0.0)]).as_number(),
+        Some(0.0)
+    );
 }
 
 // ── is_nan / is_finite / is_infinite ───────────────────────────────
@@ -904,47 +950,74 @@ fn radians_zero() {
 
 #[test]
 fn is_nan_false() {
-    assert_eq!(call(&MathModule, "is_nan", &[n(1.0)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&MathModule, "is_nan", &[n(1.0)]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_nan_zero() {
-    assert_eq!(call(&MathModule, "is_nan", &[n(0.0)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&MathModule, "is_nan", &[n(0.0)]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_nan_large() {
-    assert_eq!(call(&MathModule, "is_nan", &[n(1e308)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&MathModule, "is_nan", &[n(1e308)]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_finite_normal() {
-    assert_eq!(call(&MathModule, "is_finite", &[n(1.0)]).as_bool(), Some(true));
+    assert_eq!(
+        call(&MathModule, "is_finite", &[n(1.0)]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn is_finite_zero() {
-    assert_eq!(call(&MathModule, "is_finite", &[n(0.0)]).as_bool(), Some(true));
+    assert_eq!(
+        call(&MathModule, "is_finite", &[n(0.0)]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn is_finite_large() {
-    assert_eq!(call(&MathModule, "is_finite", &[n(1e308)]).as_bool(), Some(true));
+    assert_eq!(
+        call(&MathModule, "is_finite", &[n(1e308)]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn is_finite_negative() {
-    assert_eq!(call(&MathModule, "is_finite", &[n(-1.0)]).as_bool(), Some(true));
+    assert_eq!(
+        call(&MathModule, "is_finite", &[n(-1.0)]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn is_infinite_false() {
-    assert_eq!(call(&MathModule, "is_infinite", &[n(1.0)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&MathModule, "is_infinite", &[n(1.0)]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_infinite_zero() {
-    assert_eq!(call(&MathModule, "is_infinite", &[n(0.0)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&MathModule, "is_infinite", &[n(0.0)]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
@@ -975,27 +1048,42 @@ fn is_infinite_no_args_errors() {
 
 #[test]
 fn is_integer_true() {
-    assert_eq!(call(&MathModule, "is_integer", &[n(5.0)]).as_bool(), Some(true));
+    assert_eq!(
+        call(&MathModule, "is_integer", &[n(5.0)]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn is_integer_zero() {
-    assert_eq!(call(&MathModule, "is_integer", &[n(0.0)]).as_bool(), Some(true));
+    assert_eq!(
+        call(&MathModule, "is_integer", &[n(0.0)]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn is_integer_negative() {
-    assert_eq!(call(&MathModule, "is_integer", &[n(-3.0)]).as_bool(), Some(true));
+    assert_eq!(
+        call(&MathModule, "is_integer", &[n(-3.0)]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn is_integer_false() {
-    assert_eq!(call(&MathModule, "is_integer", &[n(3.7)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&MathModule, "is_integer", &[n(3.7)]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_integer_large() {
-    assert_eq!(call(&MathModule, "is_integer", &[n(1e15)]).as_bool(), Some(true));
+    assert_eq!(
+        call(&MathModule, "is_integer", &[n(1e15)]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
@@ -1095,25 +1183,45 @@ fn lerp_non_number_errors() {
 
 #[test]
 fn map_range_basic() {
-    let result = call(&MathModule, "map_range", &[n(5.0), n(0.0), n(10.0), n(0.0), n(100.0)]).as_number();
+    let result = call(
+        &MathModule,
+        "map_range",
+        &[n(5.0), n(0.0), n(10.0), n(0.0), n(100.0)],
+    )
+    .as_number();
     assert_eq!(result, Some(50.0));
 }
 
 #[test]
 fn map_range_start() {
-    let result = call(&MathModule, "map_range", &[n(0.0), n(0.0), n(10.0), n(0.0), n(100.0)]).as_number();
+    let result = call(
+        &MathModule,
+        "map_range",
+        &[n(0.0), n(0.0), n(10.0), n(0.0), n(100.0)],
+    )
+    .as_number();
     assert_eq!(result, Some(0.0));
 }
 
 #[test]
 fn map_range_end() {
-    let result = call(&MathModule, "map_range", &[n(10.0), n(0.0), n(10.0), n(0.0), n(100.0)]).as_number();
+    let result = call(
+        &MathModule,
+        "map_range",
+        &[n(10.0), n(0.0), n(10.0), n(0.0), n(100.0)],
+    )
+    .as_number();
     assert_eq!(result, Some(100.0));
 }
 
 #[test]
 fn map_range_negative() {
-    let result = call(&MathModule, "map_range", &[n(0.0), n(-10.0), n(10.0), n(0.0), n(100.0)]).as_number();
+    let result = call(
+        &MathModule,
+        "map_range",
+        &[n(0.0), n(-10.0), n(10.0), n(0.0), n(100.0)],
+    )
+    .as_number();
     assert_eq!(result, Some(50.0));
 }
 
@@ -1131,7 +1239,11 @@ fn map_range_four_args_errors() {
 
 #[test]
 fn map_range_non_number_errors() {
-    let result = call_err(&MathModule, "map_range", &[s("x"), n(0.0), n(10.0), n(0.0), n(100.0)]);
+    let result = call_err(
+        &MathModule,
+        "map_range",
+        &[s("x"), n(0.0), n(10.0), n(0.0), n(100.0)],
+    );
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
@@ -1170,42 +1282,66 @@ fn fract_non_number_errors() {
 
 #[test]
 fn gcd_basic() {
-    assert_eq!(call(&MathModule, "gcd", &[n(12.0), n(8.0)]).as_number(), Some(4.0));
+    assert_eq!(
+        call(&MathModule, "gcd", &[n(12.0), n(8.0)]).as_number(),
+        Some(4.0)
+    );
 }
 
 #[test]
 fn gcd_with_one() {
-    assert_eq!(call(&MathModule, "gcd", &[n(7.0), n(1.0)]).as_number(), Some(1.0));
+    assert_eq!(
+        call(&MathModule, "gcd", &[n(7.0), n(1.0)]).as_number(),
+        Some(1.0)
+    );
 }
 
 #[test]
 fn gcd_same() {
-    assert_eq!(call(&MathModule, "gcd", &[n(5.0), n(5.0)]).as_number(), Some(5.0));
+    assert_eq!(
+        call(&MathModule, "gcd", &[n(5.0), n(5.0)]).as_number(),
+        Some(5.0)
+    );
 }
 
 #[test]
 fn gcd_zero() {
-    assert_eq!(call(&MathModule, "gcd", &[n(0.0), n(5.0)]).as_number(), Some(5.0));
+    assert_eq!(
+        call(&MathModule, "gcd", &[n(0.0), n(5.0)]).as_number(),
+        Some(5.0)
+    );
 }
 
 #[test]
 fn gcd_both_zero() {
-    assert_eq!(call(&MathModule, "gcd", &[n(0.0), n(0.0)]).as_number(), Some(0.0));
+    assert_eq!(
+        call(&MathModule, "gcd", &[n(0.0), n(0.0)]).as_number(),
+        Some(0.0)
+    );
 }
 
 #[test]
 fn lcm_basic() {
-    assert_eq!(call(&MathModule, "lcm", &[n(4.0), n(6.0)]).as_number(), Some(12.0));
+    assert_eq!(
+        call(&MathModule, "lcm", &[n(4.0), n(6.0)]).as_number(),
+        Some(12.0)
+    );
 }
 
 #[test]
 fn lcm_with_one() {
-    assert_eq!(call(&MathModule, "lcm", &[n(7.0), n(1.0)]).as_number(), Some(7.0));
+    assert_eq!(
+        call(&MathModule, "lcm", &[n(7.0), n(1.0)]).as_number(),
+        Some(7.0)
+    );
 }
 
 #[test]
 fn lcm_zero() {
-    assert_eq!(call(&MathModule, "lcm", &[n(0.0), n(5.0)]).as_number(), Some(0.0));
+    assert_eq!(
+        call(&MathModule, "lcm", &[n(0.0), n(5.0)]).as_number(),
+        Some(0.0)
+    );
 }
 
 #[test]
@@ -1366,22 +1502,34 @@ fn atanh_non_number_errors() {
 
 #[test]
 fn factorial_zero() {
-    assert_eq!(call(&MathModule, "factorial", &[n(0.0)]).as_number(), Some(1.0));
+    assert_eq!(
+        call(&MathModule, "factorial", &[n(0.0)]).as_number(),
+        Some(1.0)
+    );
 }
 
 #[test]
 fn factorial_one() {
-    assert_eq!(call(&MathModule, "factorial", &[n(1.0)]).as_number(), Some(1.0));
+    assert_eq!(
+        call(&MathModule, "factorial", &[n(1.0)]).as_number(),
+        Some(1.0)
+    );
 }
 
 #[test]
 fn factorial_five() {
-    assert_eq!(call(&MathModule, "factorial", &[n(5.0)]).as_number(), Some(120.0));
+    assert_eq!(
+        call(&MathModule, "factorial", &[n(5.0)]).as_number(),
+        Some(120.0)
+    );
 }
 
 #[test]
 fn factorial_ten() {
-    assert_eq!(call(&MathModule, "factorial", &[n(10.0)]).as_number(), Some(3628800.0));
+    assert_eq!(
+        call(&MathModule, "factorial", &[n(10.0)]).as_number(),
+        Some(3628800.0)
+    );
 }
 
 #[test]
@@ -1412,27 +1560,42 @@ fn factorial_non_integer_errors() {
 
 #[test]
 fn floor_div_positive() {
-    assert_eq!(call(&MathModule, "floor_div", &[n(7.0), n(3.0)]).as_number(), Some(2.0));
+    assert_eq!(
+        call(&MathModule, "floor_div", &[n(7.0), n(3.0)]).as_number(),
+        Some(2.0)
+    );
 }
 
 #[test]
 fn floor_div_exact() {
-    assert_eq!(call(&MathModule, "floor_div", &[n(6.0), n(3.0)]).as_number(), Some(2.0));
+    assert_eq!(
+        call(&MathModule, "floor_div", &[n(6.0), n(3.0)]).as_number(),
+        Some(2.0)
+    );
 }
 
 #[test]
 fn floor_div_negative_dividend() {
-    assert_eq!(call(&MathModule, "floor_div", &[n(-7.0), n(3.0)]).as_number(), Some(-3.0));
+    assert_eq!(
+        call(&MathModule, "floor_div", &[n(-7.0), n(3.0)]).as_number(),
+        Some(-3.0)
+    );
 }
 
 #[test]
 fn floor_div_negative_divisor() {
-    assert_eq!(call(&MathModule, "floor_div", &[n(7.0), n(-3.0)]).as_number(), Some(-3.0));
+    assert_eq!(
+        call(&MathModule, "floor_div", &[n(7.0), n(-3.0)]).as_number(),
+        Some(-3.0)
+    );
 }
 
 #[test]
 fn floor_div_both_negative() {
-    assert_eq!(call(&MathModule, "floor_div", &[n(-7.0), n(-3.0)]).as_number(), Some(2.0));
+    assert_eq!(
+        call(&MathModule, "floor_div", &[n(-7.0), n(-3.0)]).as_number(),
+        Some(2.0)
+    );
 }
 
 #[test]

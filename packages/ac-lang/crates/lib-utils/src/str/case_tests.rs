@@ -67,17 +67,26 @@ fn capitalize_non_string_errors() {
 
 #[test]
 fn title_case_basic() {
-    assert_eq!(call("title_case", &[s("hello world")]).as_str(), Some("Hello World"));
+    assert_eq!(
+        call("title_case", &[s("hello world")]).as_str(),
+        Some("Hello World")
+    );
 }
 
 #[test]
 fn title_case_already_title() {
-    assert_eq!(call("title_case", &[s("Hello World")]).as_str(), Some("Hello World"));
+    assert_eq!(
+        call("title_case", &[s("Hello World")]).as_str(),
+        Some("Hello World")
+    );
 }
 
 #[test]
 fn title_case_mixed_case() {
-    assert_eq!(call("title_case", &[s("hELLO wORLD")]).as_str(), Some("Hello World"));
+    assert_eq!(
+        call("title_case", &[s("hELLO wORLD")]).as_str(),
+        Some("Hello World")
+    );
 }
 
 #[test]
@@ -92,7 +101,10 @@ fn title_case_empty_string() {
 
 #[test]
 fn title_case_multiple_spaces() {
-    assert_eq!(call("title_case", &[s("hello  world")]).as_str(), Some("Hello  World"));
+    assert_eq!(
+        call("title_case", &[s("hello  world")]).as_str(),
+        Some("Hello  World")
+    );
 }
 
 #[test]
@@ -111,27 +123,42 @@ fn title_case_non_string_errors() {
 
 #[test]
 fn snake_case_from_camel() {
-    assert_eq!(call("snake_case", &[s("helloWorld")]).as_str(), Some("hello_world"));
+    assert_eq!(
+        call("snake_case", &[s("helloWorld")]).as_str(),
+        Some("hello_world")
+    );
 }
 
 #[test]
 fn snake_case_from_pascal() {
-    assert_eq!(call("snake_case", &[s("HelloWorld")]).as_str(), Some("hello_world"));
+    assert_eq!(
+        call("snake_case", &[s("HelloWorld")]).as_str(),
+        Some("hello_world")
+    );
 }
 
 #[test]
 fn snake_case_from_kebab() {
-    assert_eq!(call("snake_case", &[s("hello-world")]).as_str(), Some("hello_world"));
+    assert_eq!(
+        call("snake_case", &[s("hello-world")]).as_str(),
+        Some("hello_world")
+    );
 }
 
 #[test]
 fn snake_case_from_spaces() {
-    assert_eq!(call("snake_case", &[s("hello world")]).as_str(), Some("hello_world"));
+    assert_eq!(
+        call("snake_case", &[s("hello world")]).as_str(),
+        Some("hello_world")
+    );
 }
 
 #[test]
 fn snake_case_already_snake() {
-    assert_eq!(call("snake_case", &[s("hello_world")]).as_str(), Some("hello_world"));
+    assert_eq!(
+        call("snake_case", &[s("hello_world")]).as_str(),
+        Some("hello_world")
+    );
 }
 
 #[test]
@@ -146,7 +173,10 @@ fn snake_case_empty_string() {
 
 #[test]
 fn snake_case_consecutive_uppercase() {
-    assert_eq!(call("snake_case", &[s("parseHTMLString")]).as_str(), Some("parse_html_string"));
+    assert_eq!(
+        call("snake_case", &[s("parseHTMLString")]).as_str(),
+        Some("parse_html_string")
+    );
 }
 
 #[test]
@@ -164,29 +194,44 @@ fn snake_case_non_string_errors() {
 // regression: multi-byte uppercase
 #[test]
 fn snake_case_multibyte_uppercase() {
-    assert_eq!(call("snake_case", &[s("ÉlloWorld")]).as_str(), Some("éllo_world"));
+    assert_eq!(
+        call("snake_case", &[s("ÉlloWorld")]).as_str(),
+        Some("éllo_world")
+    );
 }
 
 // ── kebab_case ──────────────────────────────────────────────────────
 
 #[test]
 fn kebab_case_from_camel() {
-    assert_eq!(call("kebab_case", &[s("helloWorld")]).as_str(), Some("hello-world"));
+    assert_eq!(
+        call("kebab_case", &[s("helloWorld")]).as_str(),
+        Some("hello-world")
+    );
 }
 
 #[test]
 fn kebab_case_from_pascal() {
-    assert_eq!(call("kebab_case", &[s("HelloWorld")]).as_str(), Some("hello-world"));
+    assert_eq!(
+        call("kebab_case", &[s("HelloWorld")]).as_str(),
+        Some("hello-world")
+    );
 }
 
 #[test]
 fn kebab_case_from_snake() {
-    assert_eq!(call("kebab_case", &[s("hello_world")]).as_str(), Some("hello-world"));
+    assert_eq!(
+        call("kebab_case", &[s("hello_world")]).as_str(),
+        Some("hello-world")
+    );
 }
 
 #[test]
 fn kebab_case_from_spaces() {
-    assert_eq!(call("kebab_case", &[s("hello world")]).as_str(), Some("hello-world"));
+    assert_eq!(
+        call("kebab_case", &[s("hello world")]).as_str(),
+        Some("hello-world")
+    );
 }
 
 #[test]
@@ -214,29 +259,44 @@ fn kebab_case_non_string_errors() {
 // regression: multi-byte uppercase
 #[test]
 fn kebab_case_multibyte_uppercase() {
-    assert_eq!(call("kebab_case", &[s("ÉlloWorld")]).as_str(), Some("éllo-world"));
+    assert_eq!(
+        call("kebab_case", &[s("ÉlloWorld")]).as_str(),
+        Some("éllo-world")
+    );
 }
 
 // ── camel_case ──────────────────────────────────────────────────────
 
 #[test]
 fn camel_case_from_snake() {
-    assert_eq!(call("camel_case", &[s("hello_world")]).as_str(), Some("helloWorld"));
+    assert_eq!(
+        call("camel_case", &[s("hello_world")]).as_str(),
+        Some("helloWorld")
+    );
 }
 
 #[test]
 fn camel_case_from_pascal() {
-    assert_eq!(call("camel_case", &[s("HelloWorld")]).as_str(), Some("helloWorld"));
+    assert_eq!(
+        call("camel_case", &[s("HelloWorld")]).as_str(),
+        Some("helloWorld")
+    );
 }
 
 #[test]
 fn camel_case_from_kebab() {
-    assert_eq!(call("camel_case", &[s("hello-world")]).as_str(), Some("helloWorld"));
+    assert_eq!(
+        call("camel_case", &[s("hello-world")]).as_str(),
+        Some("helloWorld")
+    );
 }
 
 #[test]
 fn camel_case_from_spaces() {
-    assert_eq!(call("camel_case", &[s("hello world")]).as_str(), Some("helloWorld"));
+    assert_eq!(
+        call("camel_case", &[s("hello world")]).as_str(),
+        Some("helloWorld")
+    );
 }
 
 #[test]
@@ -264,29 +324,44 @@ fn camel_case_non_string_errors() {
 // regression: multi-byte uppercase
 #[test]
 fn camel_case_multibyte_uppercase() {
-    assert_eq!(call("camel_case", &[s("Éllo World")]).as_str(), Some("élloWorld"));
+    assert_eq!(
+        call("camel_case", &[s("Éllo World")]).as_str(),
+        Some("élloWorld")
+    );
 }
 
 // ── pascal_case ─────────────────────────────────────────────────────
 
 #[test]
 fn pascal_case_from_snake() {
-    assert_eq!(call("pascal_case", &[s("hello_world")]).as_str(), Some("HelloWorld"));
+    assert_eq!(
+        call("pascal_case", &[s("hello_world")]).as_str(),
+        Some("HelloWorld")
+    );
 }
 
 #[test]
 fn pascal_case_from_camel() {
-    assert_eq!(call("pascal_case", &[s("helloWorld")]).as_str(), Some("HelloWorld"));
+    assert_eq!(
+        call("pascal_case", &[s("helloWorld")]).as_str(),
+        Some("HelloWorld")
+    );
 }
 
 #[test]
 fn pascal_case_from_kebab() {
-    assert_eq!(call("pascal_case", &[s("hello-world")]).as_str(), Some("HelloWorld"));
+    assert_eq!(
+        call("pascal_case", &[s("hello-world")]).as_str(),
+        Some("HelloWorld")
+    );
 }
 
 #[test]
 fn pascal_case_from_spaces() {
-    assert_eq!(call("pascal_case", &[s("hello world")]).as_str(), Some("HelloWorld"));
+    assert_eq!(
+        call("pascal_case", &[s("hello world")]).as_str(),
+        Some("HelloWorld")
+    );
 }
 
 #[test]
@@ -314,5 +389,8 @@ fn pascal_case_non_string_errors() {
 // regression: multi-byte uppercase
 #[test]
 fn pascal_case_multibyte_uppercase() {
-    assert_eq!(call("pascal_case", &[s("Éllo World")]).as_str(), Some("ÉlloWorld"));
+    assert_eq!(
+        call("pascal_case", &[s("Éllo World")]).as_str(),
+        Some("ÉlloWorld")
+    );
 }

@@ -4,7 +4,7 @@
 
 mod runner;
 
-use ac_compiler_core::{Compilation, Config, Pass};
+use ac_compiler_core::{Compilation, Config, Pass, PassError};
 
 /// Typecheck all AC keys and cross-module imports.
 ///
@@ -16,7 +16,7 @@ impl Pass for TypecheckPass {
         compilation.extracted.is_some()
     }
 
-    fn run(&self, compilation: &mut Compilation, config: &Config) -> Result<(), String> {
+    fn run(&self, compilation: &mut Compilation, config: &Config) -> Result<(), PassError> {
         runner::run_typecheck(compilation, config)
     }
 }

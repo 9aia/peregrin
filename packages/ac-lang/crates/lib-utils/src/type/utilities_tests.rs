@@ -73,12 +73,18 @@ fn default_one_arg_errors() {
 
 #[test]
 fn coalesce_first_non_null() {
-    assert_eq!(call("coalesce", &[n(1.0), n(2.0), n(3.0)]).as_number(), Some(1.0));
+    assert_eq!(
+        call("coalesce", &[n(1.0), n(2.0), n(3.0)]).as_number(),
+        Some(1.0)
+    );
 }
 
 #[test]
 fn coalesce_skips_nulls() {
-    assert_eq!(call("coalesce", &[null(), null(), n(3.0)]).as_number(), Some(3.0));
+    assert_eq!(
+        call("coalesce", &[null(), null(), n(3.0)]).as_number(),
+        Some(3.0)
+    );
 }
 
 #[test]

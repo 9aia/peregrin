@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
@@ -230,14 +234,22 @@ fn day_of_year_feb29_leap() {
 
 #[test]
 fn week_of_year_jan1() {
-    let result = call(&DateTimeModule, "week_of_year", &[s("2021-01-01T00:00:00Z")]);
+    let result = call(
+        &DateTimeModule,
+        "week_of_year",
+        &[s("2021-01-01T00:00:00Z")],
+    );
     let w = result.as_number().unwrap();
     assert!(w == 1.0 || w == 53.0, "week 1 or 53, got {w}");
 }
 
 #[test]
 fn week_of_year_mid_year() {
-    let result = call(&DateTimeModule, "week_of_year", &[s("2021-06-15T00:00:00Z")]);
+    let result = call(
+        &DateTimeModule,
+        "week_of_year",
+        &[s("2021-06-15T00:00:00Z")],
+    );
     let w = result.as_number().unwrap();
     assert!(w >= 23.0 && w <= 25.0, "week 23-25, got {w}");
 }
@@ -297,7 +309,12 @@ fn quarter_boundary_apr() {
 #[test]
 fn is_leap_year_true() {
     assert_eq!(
-        call(&DateTimeModule, "is_leap_year", &[s("2020-01-01T00:00:00Z")]).as_bool(),
+        call(
+            &DateTimeModule,
+            "is_leap_year",
+            &[s("2020-01-01T00:00:00Z")]
+        )
+        .as_bool(),
         Some(true)
     );
 }
@@ -305,7 +322,12 @@ fn is_leap_year_true() {
 #[test]
 fn is_leap_year_false() {
     assert_eq!(
-        call(&DateTimeModule, "is_leap_year", &[s("2021-01-01T00:00:00Z")]).as_bool(),
+        call(
+            &DateTimeModule,
+            "is_leap_year",
+            &[s("2021-01-01T00:00:00Z")]
+        )
+        .as_bool(),
         Some(false)
     );
 }
@@ -313,7 +335,12 @@ fn is_leap_year_false() {
 #[test]
 fn is_leap_year_century() {
     assert_eq!(
-        call(&DateTimeModule, "is_leap_year", &[s("1900-01-01T00:00:00Z")]).as_bool(),
+        call(
+            &DateTimeModule,
+            "is_leap_year",
+            &[s("1900-01-01T00:00:00Z")]
+        )
+        .as_bool(),
         Some(false)
     );
 }
@@ -321,7 +348,12 @@ fn is_leap_year_century() {
 #[test]
 fn is_leap_year_century_2000() {
     assert_eq!(
-        call(&DateTimeModule, "is_leap_year", &[s("2000-01-01T00:00:00Z")]).as_bool(),
+        call(
+            &DateTimeModule,
+            "is_leap_year",
+            &[s("2000-01-01T00:00:00Z")]
+        )
+        .as_bool(),
         Some(true)
     );
 }
@@ -406,7 +438,10 @@ fn vm_year() {
 
 #[test]
 fn vm_is_leap_year() {
-    let expr = Expr::call("datetime.is_leap_year", vec![Expr::value(s("2020-01-01T00:00:00Z"))]);
+    let expr = Expr::call(
+        "datetime.is_leap_year",
+        vec![Expr::value(s("2020-01-01T00:00:00Z"))],
+    );
     let result = eval_expr(&expr);
     assert_eq!(result.as_bool(), Some(true));
 }

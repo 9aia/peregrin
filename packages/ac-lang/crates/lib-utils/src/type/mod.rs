@@ -1,7 +1,13 @@
-#[allow(clippy::module_inception)]
-mod r#type;
+mod coercion;
+mod module;
+mod predicates;
+mod utilities;
 
-pub use r#type::TypeModule;
+pub use module::TypeModule;
 
 #[cfg(test)]
-mod type_tests;
+mod coercion_tests;
+#[cfg(test)]
+mod predicates_tests;
+#[cfg(test)]
+mod utilities_tests;

@@ -2,7 +2,9 @@ use ac_runtime_core::Module;
 use ac_vm::Function;
 
 use crate::r#type::coercion::{ToBool, ToNumber, ToString};
-use crate::r#type::predicates::{IsArray, IsBool, IsEmpty, IsNull, IsNumber, IsObject, IsString, IsTruthy, TypeOf};
+use crate::r#type::predicates::{
+    IsArray, IsBool, IsEmpty, IsNull, IsNumber, IsObject, IsString, IsTruthy, TypeOf,
+};
 use crate::r#type::utilities::{Coalesce, Default, Identity};
 
 /// The `type` module — type coercion and predicate functions.

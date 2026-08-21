@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
@@ -157,7 +161,12 @@ fn add_days_negative() {
 #[test]
 fn add_days_cross_month() {
     assert_eq!(
-        call(&DateTimeModule, "add_days", &[s("2021-01-31T00:00:00Z"), n(1.0)]).as_str(),
+        call(
+            &DateTimeModule,
+            "add_days",
+            &[s("2021-01-31T00:00:00Z"), n(1.0)]
+        )
+        .as_str(),
         Some("2021-02-01T00:00:00Z")
     );
 }
@@ -165,7 +174,12 @@ fn add_days_cross_month() {
 #[test]
 fn add_days_cross_year() {
     assert_eq!(
-        call(&DateTimeModule, "add_days", &[s("2021-12-31T00:00:00Z"), n(1.0)]).as_str(),
+        call(
+            &DateTimeModule,
+            "add_days",
+            &[s("2021-12-31T00:00:00Z"), n(1.0)]
+        )
+        .as_str(),
         Some("2022-01-01T00:00:00Z")
     );
 }
@@ -209,7 +223,12 @@ fn add_months_negative() {
 #[test]
 fn add_months_cross_year() {
     assert_eq!(
-        call(&DateTimeModule, "add_months", &[s("2021-11-15T00:00:00Z"), n(3.0)]).as_str(),
+        call(
+            &DateTimeModule,
+            "add_months",
+            &[s("2021-11-15T00:00:00Z"), n(3.0)]
+        )
+        .as_str(),
         Some("2022-02-15T00:00:00Z")
     );
 }
@@ -218,7 +237,12 @@ fn add_months_cross_year() {
 fn add_months_clamp_day() {
     // Jan 31 + 1 month = Feb 28 (clamped, not Mar 3)
     assert_eq!(
-        call(&DateTimeModule, "add_months", &[s("2021-01-31T00:00:00Z"), n(1.0)]).as_str(),
+        call(
+            &DateTimeModule,
+            "add_months",
+            &[s("2021-01-31T00:00:00Z"), n(1.0)]
+        )
+        .as_str(),
         Some("2021-02-28T00:00:00Z")
     );
 }
@@ -226,7 +250,12 @@ fn add_months_clamp_day() {
 #[test]
 fn add_months_clamp_day_leap() {
     assert_eq!(
-        call(&DateTimeModule, "add_months", &[s("2020-01-31T00:00:00Z"), n(1.0)]).as_str(),
+        call(
+            &DateTimeModule,
+            "add_months",
+            &[s("2020-01-31T00:00:00Z"), n(1.0)]
+        )
+        .as_str(),
         Some("2020-02-29T00:00:00Z")
     );
 }
@@ -260,7 +289,12 @@ fn add_years_zero() {
 #[test]
 fn add_years_leap_day() {
     assert_eq!(
-        call(&DateTimeModule, "add_years", &[s("2020-02-29T00:00:00Z"), n(1.0)]).as_str(),
+        call(
+            &DateTimeModule,
+            "add_years",
+            &[s("2020-02-29T00:00:00Z"), n(1.0)]
+        )
+        .as_str(),
         Some("2021-02-28T00:00:00Z")
     );
 }
@@ -268,7 +302,12 @@ fn add_years_leap_day() {
 #[test]
 fn add_years_leap_day_to_leap() {
     assert_eq!(
-        call(&DateTimeModule, "add_years", &[s("2020-02-29T00:00:00Z"), n(4.0)]).as_str(),
+        call(
+            &DateTimeModule,
+            "add_years",
+            &[s("2020-02-29T00:00:00Z"), n(4.0)]
+        )
+        .as_str(),
         Some("2024-02-29T00:00:00Z")
     );
 }
@@ -318,14 +357,20 @@ fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
 
 #[test]
 fn vm_add_days() {
-    let expr = Expr::call("datetime.add_days", vec![Expr::value(s(BASE)), Expr::value(n(10.0))]);
+    let expr = Expr::call(
+        "datetime.add_days",
+        vec![Expr::value(s(BASE)), Expr::value(n(10.0))],
+    );
     let result = eval_expr(&expr);
     assert_eq!(result.as_str(), Some("2021-06-25T10:30:00Z"));
 }
 
 #[test]
 fn vm_add_months() {
-    let expr = Expr::call("datetime.add_months", vec![Expr::value(s(BASE)), Expr::value(n(3.0))]);
+    let expr = Expr::call(
+        "datetime.add_months",
+        vec![Expr::value(s(BASE)), Expr::value(n(3.0))],
+    );
     let result = eval_expr(&expr);
     assert_eq!(result.as_str(), Some("2021-09-15T10:30:00Z"));
 }

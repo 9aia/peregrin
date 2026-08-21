@@ -22,7 +22,7 @@ use std::collections::HashMap;
 
 use ac_dialect::Dialect;
 
-pub use parser::{ExprAst, parse_expr};
+pub use parser::{ExprAst, HandlerClauseAst, parse_expr};
 pub use table::{FunctionTable, RawFnSig};
 
 use ac_typecheck_core::{FunctionType, Type, TypeEnv, is_compatible};
@@ -105,6 +105,13 @@ pub fn infer_ast(
             }
 
             Type::Unknown
+        }
+
+        ExprAst::Handle { body, .. } => {
+            // The type of a handle expression is the type of its body.
+            // Handler clauses may intercept operations but the overall
+            // result type is determined by what the body produces.
+            infer_ast(body, env, functions, dialect)
         }
     }
 }

@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
@@ -176,7 +180,12 @@ fn from_unix_extra_args_ignored() {
 #[test]
 fn to_unix_extra_args_ignored() {
     assert_eq!(
-        call(&DateTimeModule, "to_unix", &[s("1970-01-01T00:00:00Z"), n(1.0)]).as_number(),
+        call(
+            &DateTimeModule,
+            "to_unix",
+            &[s("1970-01-01T00:00:00Z"), n(1.0)]
+        )
+        .as_number(),
         Some(0.0)
     );
 }
@@ -203,7 +212,10 @@ fn vm_from_unix() {
 
 #[test]
 fn vm_to_unix() {
-    let expr = Expr::call("datetime.to_unix", vec![Expr::value(s("1970-01-01T00:00:00Z"))]);
+    let expr = Expr::call(
+        "datetime.to_unix",
+        vec![Expr::value(s("1970-01-01T00:00:00Z"))],
+    );
     let result = eval_expr(&expr);
     assert_eq!(result.as_number(), Some(0.0));
 }

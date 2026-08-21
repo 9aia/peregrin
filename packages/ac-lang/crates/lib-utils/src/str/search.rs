@@ -10,7 +10,11 @@ string_predicate_fn!(EndsWith, |input: &str, pat: &str| input.ends_with(pat));
 #[derive(Clone, Copy)]
 pub struct Count;
 impl Function for Count {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         if pattern.is_empty() {
             return Ok(num(0.0));
@@ -22,7 +26,11 @@ impl Function for Count {
 #[derive(Clone, Copy)]
 pub struct Find;
 impl Function for Find {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         let idx = input
             .find(pattern)
@@ -36,7 +44,11 @@ impl Function for Find {
 #[derive(Clone, Copy)]
 pub struct RFind;
 impl Function for RFind {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         let idx = input
             .rfind(pattern)

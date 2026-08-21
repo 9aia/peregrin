@@ -9,7 +9,11 @@ macro_rules! component_fn {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
         impl Function for $struct_name {
-            fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+            fn call(
+                &self,
+                args: &[NonFunctionValue],
+                _ctx: &mut Context,
+            ) -> Result<NonFunctionValue, Error> {
                 let input = require_one_string(args)?;
                 let dt = parse_iso(input)?;
                 Ok(n($extract(&dt) as f64))
@@ -28,7 +32,11 @@ component_fn!(Second, |dt: &chrono::DateTime<chrono::Utc>| dt.second());
 #[derive(Clone, Copy)]
 pub struct Weekday;
 impl Function for Weekday {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
         // chrono: Sunday = 0, Monday = 1, ..., Saturday = 6
@@ -41,7 +49,11 @@ impl Function for Weekday {
 #[derive(Clone, Copy)]
 pub struct DayOfYear;
 impl Function for DayOfYear {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
         Ok(n(dt.ordinal() as f64))
@@ -51,7 +63,11 @@ impl Function for DayOfYear {
 #[derive(Clone, Copy)]
 pub struct WeekOfYear;
 impl Function for WeekOfYear {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
         Ok(n(dt.iso_week().week() as f64))
@@ -61,7 +77,11 @@ impl Function for WeekOfYear {
 #[derive(Clone, Copy)]
 pub struct Quarter;
 impl Function for Quarter {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
         let month = dt.month();
@@ -73,7 +93,11 @@ impl Function for Quarter {
 #[derive(Clone, Copy)]
 pub struct IsLeapYear;
 impl Function for IsLeapYear {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
         let year = dt.year();
@@ -85,7 +109,11 @@ impl Function for IsLeapYear {
 #[derive(Clone, Copy)]
 pub struct IsWeekend;
 impl Function for IsWeekend {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
         // Sunday = 0, Saturday = 6 in chrono's num_days_from_sunday

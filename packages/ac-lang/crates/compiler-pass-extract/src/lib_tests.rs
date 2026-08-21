@@ -10,6 +10,7 @@ fn test_config() -> Config {
         backend: None,
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
+        extensions: Default::default(),
     }
 }
 
@@ -47,7 +48,7 @@ fn extract_pass_no_fields_returns_error() {
     ParsePass.run(&mut compilation, &test_config()).unwrap();
     let result = ExtractPass.run(&mut compilation, &test_config());
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("no `$:` section"));
+    assert!(result.unwrap_err().to_string().contains("no `$:` section"));
 }
 
 #[test]
@@ -56,7 +57,7 @@ fn extract_pass_without_parsed_returns_error() {
     let mut compilation = Compilation::new(source);
     let result = ExtractPass.run(&mut compilation, &test_config());
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("no parsed value"));
+    assert!(result.unwrap_err().to_string().contains("no parsed value"));
 }
 
 #[test]

@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
@@ -165,7 +169,12 @@ fn is_between_true() {
 #[test]
 fn is_between_false_before() {
     assert_eq!(
-        call(&DateTimeModule, "is_between", &[s("2020-01-01T00:00:00Z"), s(EARLY), s(LATE)]).as_bool(),
+        call(
+            &DateTimeModule,
+            "is_between",
+            &[s("2020-01-01T00:00:00Z"), s(EARLY), s(LATE)]
+        )
+        .as_bool(),
         Some(false)
     );
 }
@@ -173,7 +182,12 @@ fn is_between_false_before() {
 #[test]
 fn is_between_false_after() {
     assert_eq!(
-        call(&DateTimeModule, "is_between", &[s("2022-01-01T00:00:00Z"), s(EARLY), s(LATE)]).as_bool(),
+        call(
+            &DateTimeModule,
+            "is_between",
+            &[s("2022-01-01T00:00:00Z"), s(EARLY), s(LATE)]
+        )
+        .as_bool(),
         Some(false)
     );
 }
@@ -181,7 +195,12 @@ fn is_between_false_after() {
 #[test]
 fn is_between_false_equal_start() {
     assert_eq!(
-        call(&DateTimeModule, "is_between", &[s(EARLY), s(EARLY), s(LATE)]).as_bool(),
+        call(
+            &DateTimeModule,
+            "is_between",
+            &[s(EARLY), s(EARLY), s(LATE)]
+        )
+        .as_bool(),
         Some(false)
     );
 }
@@ -231,14 +250,20 @@ fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
 
 #[test]
 fn vm_is_before() {
-    let expr = Expr::call("datetime.is_before", vec![Expr::value(s(EARLY)), Expr::value(s(LATE))]);
+    let expr = Expr::call(
+        "datetime.is_before",
+        vec![Expr::value(s(EARLY)), Expr::value(s(LATE))],
+    );
     let result = eval_expr(&expr);
     assert_eq!(result.as_bool(), Some(true));
 }
 
 #[test]
 fn vm_compare() {
-    let expr = Expr::call("datetime.compare", vec![Expr::value(s(EARLY)), Expr::value(s(LATE))]);
+    let expr = Expr::call(
+        "datetime.compare",
+        vec![Expr::value(s(EARLY)), Expr::value(s(LATE))],
+    );
     let result = eval_expr(&expr);
     assert_eq!(result.as_number(), Some(-1.0));
 }

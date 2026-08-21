@@ -1,3 +1,20 @@
+/// A parsed handler clause — the result of parsing a single
+/// `"op"(params) as k: body` clause from a handle expression.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ParsedHandlerClause {
+    /// The operation name to match (e.g. `"fetch"`).
+    pub op_name: String,
+
+    /// Parameter names bound to the operation's arguments.
+    pub params: Vec<String>,
+
+    /// The name bound to the captured continuation.
+    pub continuation_name: String,
+
+    /// The handler body expression string (unparsed).
+    pub body: String,
+}
+
 /// Expression parsing operations for AC expressions.
 ///
 /// These operations parse expression strings into their components —
@@ -31,4 +48,34 @@ pub trait ExprParser: Send + Sync {
 
     /// Check if `s` is the null literal.
     fn is_null_literal(&self, s: &str) -> bool;
+
+    /// Detect whether `s` starts with the `handle` keyword followed by `(`.
+    /// Returns the byte position of the `(` after `handle` if present.
+    ///
+    /// The keyword must be a standalone word — `handleIt(` does not match.
+    /// String literals are skipped.
+    fn find_handle_open(&self, s: &str) -> Option<usize> {
+        None
+    }
+
+    /// Find the position of the block-open token (`{` in canonical) in `s`.
+    /// Used to locate the handler clause block in a handle expression.
+    /// Returns the byte position of the first `{` outside of string literals.
+    fn find_block_open(&self, s: &str) -> Option<usize> {
+        None
+    }
+
+    /// Split handler clauses by the clause separator (`,` in canonical),
+    /// respecting nested parentheses, braces, and string literals.
+    fn split_handler_clauses(&self, s: &str) -> Vec<String> {
+        let _ = s;
+        Vec::new()
+    }
+
+    /// Parse a single handler clause string (e.g. `"fetch"(url) as k: k(42)`)
+    /// into a [`ParsedHandlerClause`].
+    fn parse_handler_clause(&self, s: &str) -> Option<ParsedHandlerClause> {
+        let _ = s;
+        None
+    }
 }

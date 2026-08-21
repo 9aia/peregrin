@@ -6,7 +6,11 @@ use super::common::{require_one_string, require_string, require_two_strings, s};
 #[derive(Clone, Copy)]
 pub struct Split;
 impl Function for Split {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (input, sep) = require_two_strings(args)?;
         let parts: Vec<serde_json::Value> = input
             .split(sep)
@@ -19,7 +23,11 @@ impl Function for Split {
 #[derive(Clone, Copy)]
 pub struct Join;
 impl Function for Join {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -39,7 +47,11 @@ impl Function for Join {
 #[derive(Clone, Copy)]
 pub struct Replace;
 impl Function for Replace {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -56,7 +68,11 @@ impl Function for Replace {
 #[derive(Clone, Copy)]
 pub struct ReplaceFirst;
 impl Function for ReplaceFirst {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -73,7 +89,11 @@ impl Function for ReplaceFirst {
 #[derive(Clone, Copy)]
 pub struct Repeat;
 impl Function for Repeat {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -104,7 +124,11 @@ impl Function for Repeat {
 #[derive(Clone, Copy)]
 pub struct CharAt;
 impl Function for CharAt {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -132,7 +156,11 @@ impl Function for CharAt {
 #[derive(Clone, Copy)]
 pub struct Slice;
 impl Function for Slice {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -168,11 +196,7 @@ fn pad_to_len(input: &str, target_len: usize, pad_char: &str, pad_left: bool) ->
     }
     let pad_total = target_len - char_count;
     let pad_chars: Vec<char> = pad_char.chars().collect();
-    let pad_repeated: String = pad_chars
-        .iter()
-        .cycle()
-        .take(pad_total)
-        .collect();
+    let pad_repeated: String = pad_chars.iter().cycle().take(pad_total).collect();
     if pad_left {
         format!("{pad_repeated}{input}")
     } else {
@@ -183,7 +207,11 @@ fn pad_to_len(input: &str, target_len: usize, pad_char: &str, pad_left: bool) ->
 #[derive(Clone, Copy)]
 pub struct PadLeft;
 impl Function for PadLeft {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -215,7 +243,11 @@ impl Function for PadLeft {
 #[derive(Clone, Copy)]
 pub struct PadRight;
 impl Function for PadRight {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -247,7 +279,11 @@ impl Function for PadRight {
 #[derive(Clone, Copy)]
 pub struct StripPrefix;
 impl Function for StripPrefix {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (input, prefix) = require_two_strings(args)?;
         Ok(s(input.strip_prefix(prefix).unwrap_or(input).to_string()))
     }
@@ -256,7 +292,11 @@ impl Function for StripPrefix {
 #[derive(Clone, Copy)]
 pub struct StripSuffix;
 impl Function for StripSuffix {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (input, suffix) = require_two_strings(args)?;
         Ok(s(input.strip_suffix(suffix).unwrap_or(input).to_string()))
     }
@@ -265,7 +305,11 @@ impl Function for StripSuffix {
 #[derive(Clone, Copy)]
 pub struct Lines;
 impl Function for Lines {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let lines: Vec<serde_json::Value> = if input.is_empty() {
             vec![serde_json::Value::String(String::new())]
@@ -282,7 +326,11 @@ impl Function for Lines {
 #[derive(Clone, Copy)]
 pub struct SplitAt;
 impl Function for SplitAt {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,

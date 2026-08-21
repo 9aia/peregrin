@@ -1,6 +1,6 @@
 mod expr_parser;
 
-pub use expr_parser::ExprParser;
+pub use expr_parser::{ExprParser, ParsedHandlerClause};
 
 pub mod expr_parser_stub;
 

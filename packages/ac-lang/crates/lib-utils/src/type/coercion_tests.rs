@@ -2,7 +2,7 @@ use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error};
 
-use super::r#type::TypeModule;
+use super::TypeModule;
 
 fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
@@ -68,10 +72,7 @@ fn to_string_from_string() {
 
 #[test]
 fn to_string_from_empty_string() {
-    assert_eq!(
-        call(&TypeModule, "to_string", &[s("")]).as_str(),
-        Some("")
-    );
+    assert_eq!(call(&TypeModule, "to_string", &[s("")]).as_str(), Some(""));
 }
 
 #[test]
@@ -116,10 +117,11 @@ fn to_string_from_null() {
 
 #[test]
 fn to_string_from_array() {
-    let result = call(&TypeModule, "to_string", &[arr(&[
-        serde_json::json!("a"),
-        serde_json::json!("b"),
-    ])]);
+    let result = call(
+        &TypeModule,
+        "to_string",
+        &[arr(&[serde_json::json!("a"), serde_json::json!("b")])],
+    );
     assert_eq!(result.as_str(), Some("[\"a\",\"b\"]"));
 }
 
@@ -131,7 +133,11 @@ fn to_string_from_empty_array() {
 
 #[test]
 fn to_string_from_object() {
-    let result = call(&TypeModule, "to_string", &[obj(&[("a", serde_json::json!(1))])]);
+    let result = call(
+        &TypeModule,
+        "to_string",
+        &[obj(&[("a", serde_json::json!(1))])],
+    );
     assert_eq!(result.as_str(), Some("{\"a\":1}"));
 }
 
@@ -248,11 +254,15 @@ fn to_number_from_null() {
 #[test]
 fn to_number_from_array_returns_length() {
     assert_eq!(
-        call(&TypeModule, "to_number", &[arr(&[
-            serde_json::json!(1),
-            serde_json::json!(2),
-            serde_json::json!(3),
-        ])])
+        call(
+            &TypeModule,
+            "to_number",
+            &[arr(&[
+                serde_json::json!(1),
+                serde_json::json!(2),
+                serde_json::json!(3),
+            ])]
+        )
         .as_number(),
         Some(3.0)
     );
@@ -269,10 +279,14 @@ fn to_number_from_empty_array() {
 #[test]
 fn to_number_from_object_returns_key_count() {
     assert_eq!(
-        call(&TypeModule, "to_number", &[obj(&[
-            ("a", serde_json::json!(1)),
-            ("b", serde_json::json!(2)),
-        ])])
+        call(
+            &TypeModule,
+            "to_number",
+            &[obj(&[
+                ("a", serde_json::json!(1)),
+                ("b", serde_json::json!(2)),
+            ])]
+        )
         .as_number(),
         Some(2.0)
     );
@@ -377,7 +391,12 @@ fn to_bool_from_array_empty() {
 #[test]
 fn to_bool_from_object_nonempty() {
     assert_eq!(
-        call(&TypeModule, "to_bool", &[obj(&[("a", serde_json::json!(1))])]).as_bool(),
+        call(
+            &TypeModule,
+            "to_bool",
+            &[obj(&[("a", serde_json::json!(1))])]
+        )
+        .as_bool(),
         Some(true)
     );
 }
@@ -412,38 +431,58 @@ fn to_string_from_very_small_float() {
 
 #[test]
 fn to_string_from_nan() {
-    let result = call(&TypeModule, "to_string", &[NonFunctionValue::new(serde_json::json!(f64::NAN))]);
+    let result = call(
+        &TypeModule,
+        "to_string",
+        &[NonFunctionValue::new(serde_json::json!(f64::NAN))],
+    );
     // serde_json serializes NaN as null, so this becomes "null"
     assert_eq!(result.as_str(), Some("null"));
 }
 
 #[test]
 fn to_string_from_infinity() {
-    let result = call(&TypeModule, "to_string", &[NonFunctionValue::new(serde_json::json!(f64::INFINITY))]);
+    let result = call(
+        &TypeModule,
+        "to_string",
+        &[NonFunctionValue::new(serde_json::json!(f64::INFINITY))],
+    );
     // serde_json serializes Infinity as null
     assert_eq!(result.as_str(), Some("null"));
 }
 
 #[test]
 fn to_string_from_nested_array() {
-    let result = call(&TypeModule, "to_string", &[arr(&[serde_json::json!([1, 2])])]);
+    let result = call(
+        &TypeModule,
+        "to_string",
+        &[arr(&[serde_json::json!([1, 2])])],
+    );
     assert_eq!(result.as_str(), Some("[[1,2]]"));
 }
 
 #[test]
 fn to_string_from_nested_object() {
-    let result = call(&TypeModule, "to_string", &[obj(&[("a", serde_json::json!({"b": 2}))])]);
+    let result = call(
+        &TypeModule,
+        "to_string",
+        &[obj(&[("a", serde_json::json!({"b": 2}))])],
+    );
     assert_eq!(result.as_str(), Some("{\"a\":{\"b\":2}}"));
 }
 
 #[test]
 fn to_string_from_array_with_mixed_types() {
-    let result = call(&TypeModule, "to_string", &[arr(&[
-        serde_json::json!(1),
-        serde_json::json!("two"),
-        serde_json::json!(true),
-        serde_json::json!(null),
-    ])]);
+    let result = call(
+        &TypeModule,
+        "to_string",
+        &[arr(&[
+            serde_json::json!(1),
+            serde_json::json!("two"),
+            serde_json::json!(true),
+            serde_json::json!(null),
+        ])],
+    );
     assert_eq!(result.as_str(), Some("[1,\"two\",true,null]"));
 }
 
@@ -498,10 +537,11 @@ fn to_number_from_string_float_with_exponent() {
 #[test]
 fn to_number_from_nested_array_returns_length() {
     assert_eq!(
-        call(&TypeModule, "to_number", &[arr(&[
-            serde_json::json!([1, 2]),
-            serde_json::json!("x"),
-        ])])
+        call(
+            &TypeModule,
+            "to_number",
+            &[arr(&[serde_json::json!([1, 2]), serde_json::json!("x"),])]
+        )
         .as_number(),
         Some(2.0)
     );
@@ -510,11 +550,15 @@ fn to_number_from_nested_array_returns_length() {
 #[test]
 fn to_number_from_nested_object_returns_key_count() {
     assert_eq!(
-        call(&TypeModule, "to_number", &[obj(&[
-            ("a", serde_json::json!({"inner": 1})),
-            ("b", serde_json::json!(2)),
-            ("c", serde_json::json!([1, 2, 3])),
-        ])])
+        call(
+            &TypeModule,
+            "to_number",
+            &[obj(&[
+                ("a", serde_json::json!({"inner": 1})),
+                ("b", serde_json::json!(2)),
+                ("c", serde_json::json!([1, 2, 3])),
+            ])]
+        )
         .as_number(),
         Some(3.0)
     );
@@ -522,14 +566,22 @@ fn to_number_from_nested_object_returns_key_count() {
 
 #[test]
 fn to_bool_from_nan() {
-    let result = call(&TypeModule, "to_bool", &[NonFunctionValue::new(serde_json::json!(f64::NAN))]);
+    let result = call(
+        &TypeModule,
+        "to_bool",
+        &[NonFunctionValue::new(serde_json::json!(f64::NAN))],
+    );
     // serde_json serializes NaN as null, so is_null() is true → false
     assert_eq!(result.as_bool(), Some(false));
 }
 
 #[test]
 fn to_bool_from_infinity() {
-    let result = call(&TypeModule, "to_bool", &[NonFunctionValue::new(serde_json::json!(f64::INFINITY))]);
+    let result = call(
+        &TypeModule,
+        "to_bool",
+        &[NonFunctionValue::new(serde_json::json!(f64::INFINITY))],
+    );
     // serde_json serializes Infinity as null → false
     assert_eq!(result.as_bool(), Some(false));
 }
@@ -545,7 +597,12 @@ fn to_bool_from_nested_array_nonempty() {
 #[test]
 fn to_bool_from_nested_object_nonempty() {
     assert_eq!(
-        call(&TypeModule, "to_bool", &[obj(&[("a", serde_json::json!({}))])]).as_bool(),
+        call(
+            &TypeModule,
+            "to_bool",
+            &[obj(&[("a", serde_json::json!({}))])]
+        )
+        .as_bool(),
         Some(true)
     );
 }

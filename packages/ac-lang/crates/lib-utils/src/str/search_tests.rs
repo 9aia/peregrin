@@ -28,12 +28,18 @@ fn n(v: f64) -> NonFunctionValue {
 
 #[test]
 fn contains_true() {
-    assert_eq!(call("contains", &[s("hello world"), s("world")]).as_bool(), Some(true));
+    assert_eq!(
+        call("contains", &[s("hello world"), s("world")]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn contains_false() {
-    assert_eq!(call("contains", &[s("hello world"), s("xyz")]).as_bool(), Some(false));
+    assert_eq!(
+        call("contains", &[s("hello world"), s("xyz")]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
@@ -69,12 +75,18 @@ fn contains_empty_pattern() {
 
 #[test]
 fn starts_with_true() {
-    assert_eq!(call("starts_with", &[s("hello"), s("he")]).as_bool(), Some(true));
+    assert_eq!(
+        call("starts_with", &[s("hello"), s("he")]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn starts_with_false() {
-    assert_eq!(call("starts_with", &[s("hello"), s("lo")]).as_bool(), Some(false));
+    assert_eq!(
+        call("starts_with", &[s("hello"), s("lo")]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
@@ -99,12 +111,18 @@ fn starts_with_second_arg_non_string_errors() {
 
 #[test]
 fn ends_with_true() {
-    assert_eq!(call("ends_with", &[s("hello"), s("lo")]).as_bool(), Some(true));
+    assert_eq!(
+        call("ends_with", &[s("hello"), s("lo")]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn ends_with_false() {
-    assert_eq!(call("ends_with", &[s("hello"), s("he")]).as_bool(), Some(false));
+    assert_eq!(
+        call("ends_with", &[s("hello"), s("he")]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
@@ -129,7 +147,10 @@ fn ends_with_second_arg_non_string_errors() {
 
 #[test]
 fn count() {
-    assert_eq!(call("count", &[s("foo foo foo"), s("foo")]).as_number(), Some(3.0));
+    assert_eq!(
+        call("count", &[s("foo foo foo"), s("foo")]).as_number(),
+        Some(3.0)
+    );
 }
 
 #[test]
@@ -169,12 +190,18 @@ fn count_no_match() {
 
 #[test]
 fn find_found() {
-    assert_eq!(call("find", &[s("hello world"), s("world")]).as_number(), Some(6.0));
+    assert_eq!(
+        call("find", &[s("hello world"), s("world")]).as_number(),
+        Some(6.0)
+    );
 }
 
 #[test]
 fn find_not_found() {
-    assert_eq!(call("find", &[s("hello"), s("xyz")]).as_number(), Some(-1.0));
+    assert_eq!(
+        call("find", &[s("hello"), s("xyz")]).as_number(),
+        Some(-1.0)
+    );
 }
 
 #[test]
@@ -207,7 +234,10 @@ fn find_empty_pattern() {
 
 #[test]
 fn find_unicode() {
-    assert_eq!(call("find", &[s("café world"), s("world")]).as_number(), Some(5.0));
+    assert_eq!(
+        call("find", &[s("café world"), s("world")]).as_number(),
+        Some(5.0)
+    );
 }
 
 #[test]
@@ -220,17 +250,26 @@ fn find_unicode_returns_char_offset() {
 
 #[test]
 fn rfind_found() {
-    assert_eq!(call("rfind", &[s("hello world hello"), s("hello")]).as_number(), Some(12.0));
+    assert_eq!(
+        call("rfind", &[s("hello world hello"), s("hello")]).as_number(),
+        Some(12.0)
+    );
 }
 
 #[test]
 fn rfind_single_match() {
-    assert_eq!(call("rfind", &[s("hello"), s("ell")]).as_number(), Some(1.0));
+    assert_eq!(
+        call("rfind", &[s("hello"), s("ell")]).as_number(),
+        Some(1.0)
+    );
 }
 
 #[test]
 fn rfind_not_found() {
-    assert_eq!(call("rfind", &[s("hello"), s("xyz")]).as_number(), Some(-1.0));
+    assert_eq!(
+        call("rfind", &[s("hello"), s("xyz")]).as_number(),
+        Some(-1.0)
+    );
 }
 
 #[test]
@@ -240,7 +279,10 @@ fn rfind_empty_pattern() {
 
 #[test]
 fn rfind_unicode() {
-    assert_eq!(call("rfind", &[s("café café"), s("café")]).as_number(), Some(5.0));
+    assert_eq!(
+        call("rfind", &[s("café café"), s("café")]).as_number(),
+        Some(5.0)
+    );
 }
 
 #[test]

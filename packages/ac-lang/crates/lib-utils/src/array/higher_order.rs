@@ -44,7 +44,10 @@ fn require_function_and_array(
     Ok((fn_val, array))
 }
 
-fn bind_param(fn_val: &FunctionValue, value: &serde_json::Value) -> Vec<(String, NonFunctionValue)> {
+fn bind_param(
+    fn_val: &FunctionValue,
+    value: &serde_json::Value,
+) -> Vec<(String, NonFunctionValue)> {
     fn_val
         .params
         .first()
@@ -93,7 +96,11 @@ fn key_to_string(value: &NonFunctionValue) -> String {
 #[derive(Clone, Copy)]
 pub struct Range;
 impl Function for Range {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -144,7 +151,11 @@ impl Function for Range {
 #[derive(Clone, Copy)]
 pub struct Zip;
 impl Function for Zip {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -166,7 +177,11 @@ impl Function for Zip {
 #[derive(Clone, Copy)]
 pub struct Chunk;
 impl Function for Chunk {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -198,7 +213,11 @@ impl Function for Chunk {
 #[derive(Clone, Copy)]
 pub struct Map;
 impl Function for Map {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut results = Vec::with_capacity(array.len());
         for item in array {
@@ -215,7 +234,11 @@ impl Function for Map {
 #[derive(Clone, Copy)]
 pub struct Filter;
 impl Function for Filter {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut results = Vec::new();
         for item in array {
@@ -235,7 +258,11 @@ impl Function for Filter {
 #[derive(Clone, Copy)]
 pub struct Reduce;
 impl Function for Reduce {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -272,7 +299,11 @@ impl Function for Reduce {
 #[derive(Clone, Copy)]
 pub struct FlatMap;
 impl Function for FlatMap {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut results = Vec::new();
         for item in array {
@@ -293,7 +324,11 @@ impl Function for FlatMap {
 #[derive(Clone, Copy)]
 pub struct Find;
 impl Function for Find {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         for item in array {
             let vars = bind_param(&fn_val, item);
@@ -311,7 +346,11 @@ impl Function for Find {
 #[derive(Clone, Copy)]
 pub struct SomeFn;
 impl Function for SomeFn {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         for item in array {
             let vars = bind_param(&fn_val, item);
@@ -327,7 +366,11 @@ impl Function for SomeFn {
 #[derive(Clone, Copy)]
 pub struct Every;
 impl Function for Every {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         for item in array {
             let vars = bind_param(&fn_val, item);
@@ -345,7 +388,11 @@ impl Function for Every {
 #[derive(Clone, Copy)]
 pub struct GroupBy;
 impl Function for GroupBy {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut groups: std::collections::BTreeMap<String, Vec<serde_json::Value>> =
             std::collections::BTreeMap::new();
@@ -368,7 +415,11 @@ impl Function for GroupBy {
 #[derive(Clone, Copy)]
 pub struct Partition;
 impl Function for Partition {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut matching = Vec::new();
         let mut rest = Vec::new();
@@ -393,7 +444,11 @@ impl Function for Partition {
 #[derive(Clone, Copy)]
 pub struct SortBy;
 impl Function for SortBy {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut keyed: Vec<(f64, serde_json::Value)> = Vec::with_capacity(array.len());
         for item in array {
@@ -414,7 +469,11 @@ impl Function for SortBy {
 #[derive(Clone, Copy)]
 pub struct SortByDesc;
 impl Function for SortByDesc {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut keyed: Vec<(f64, serde_json::Value)> = Vec::with_capacity(array.len());
         for item in array {
@@ -437,14 +496,15 @@ impl Function for SortByDesc {
 #[derive(Clone, Copy)]
 pub struct Compact;
 impl Function for Compact {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_arg(args)?;
         let array = require_array(input)?;
-        let result: Vec<serde_json::Value> = array
-            .iter()
-            .filter(|v| !v.is_null())
-            .cloned()
-            .collect();
+        let result: Vec<serde_json::Value> =
+            array.iter().filter(|v| !v.is_null()).cloned().collect();
         Ok(arr(&result))
     }
 }
@@ -454,7 +514,11 @@ impl Function for Compact {
 #[derive(Clone, Copy)]
 pub struct Pluck;
 impl Function for Pluck {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -484,7 +548,11 @@ impl Function for Pluck {
 #[derive(Clone, Copy)]
 pub struct MinBy;
 impl Function for MinBy {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut best: Option<(f64, &serde_json::Value)> = None;
         for item in array {
@@ -510,7 +578,11 @@ impl Function for MinBy {
 #[derive(Clone, Copy)]
 pub struct MaxBy;
 impl Function for MaxBy {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut best: Option<(f64, &serde_json::Value)> = None;
         for item in array {
@@ -538,10 +610,13 @@ impl Function for MaxBy {
 #[derive(Clone, Copy)]
 pub struct CountBy;
 impl Function for CountBy {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
-        let mut counts: std::collections::BTreeMap<String, f64> =
-            std::collections::BTreeMap::new();
+        let mut counts: std::collections::BTreeMap<String, f64> = std::collections::BTreeMap::new();
         for item in array {
             let vars = bind_param(&fn_val, item);
             let key = ctx.eval_expr(&fn_val.body, &vars)?;

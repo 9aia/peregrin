@@ -1,10 +1,10 @@
-use crate::{Compilation, Config, Pass, Pipeline, Source};
+use crate::{Compilation, Config, Pass, PassError, Pipeline, Source};
 
 /// A no-op pass that does nothing — for testing the pipeline mechanics.
 struct NoopPass;
 
 impl Pass for NoopPass {
-    fn run(&self, _compilation: &mut Compilation, _config: &Config) -> Result<(), String> {
+    fn run(&self, _compilation: &mut Compilation, _config: &Config) -> Result<(), PassError> {
         Ok(())
     }
 }
@@ -13,7 +13,7 @@ impl Pass for NoopPass {
 struct SetOutputPass;
 
 impl Pass for SetOutputPass {
-    fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), String> {
+    fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), PassError> {
         compilation.output = Some(serde_json::json!({"pass": "set"}));
         Ok(())
     }
@@ -23,8 +23,8 @@ impl Pass for SetOutputPass {
 struct FailingPass;
 
 impl Pass for FailingPass {
-    fn run(&self, _compilation: &mut Compilation, _config: &Config) -> Result<(), String> {
-        Err("intentional failure".to_string())
+    fn run(&self, _compilation: &mut Compilation, _config: &Config) -> Result<(), PassError> {
+        Err(PassError::new("failing", "intentional failure"))
     }
 }
 
@@ -36,6 +36,7 @@ fn test_config() -> Config {
         backend: None,
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
+        extensions: Default::default(),
     }
 }
 
@@ -47,6 +48,7 @@ fn test_config_with_backend() -> Config {
         backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
+        extensions: Default::default(),
     }
 }
 
@@ -93,7 +95,7 @@ fn pipeline_run_failing_pass_propagates_error() {
     let source = Source::new("name: ac", "yaml");
     let result = pipeline.run(source);
     match result {
-        Err(e) => assert_eq!(e, "intentional failure"),
+        Err(e) => assert!(e.to_string().contains("intentional failure")),
         Ok(_) => panic!("expected error"),
     }
 }
@@ -106,7 +108,7 @@ fn pipeline_run_failing_pass_stops_subsequent_passes() {
     let source = Source::new("name: ac", "yaml");
     let result = pipeline.run(source);
     match result {
-        Err(e) => assert_eq!(e, "intentional failure"),
+        Err(e) => assert!(e.to_string().contains("intentional failure")),
         Ok(_) => panic!("expected error"),
     }
 }

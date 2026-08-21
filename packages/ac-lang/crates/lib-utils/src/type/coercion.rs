@@ -1,29 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
-
-/// The `type` module — cross-type conversion functions.
-///
-/// Provides functions callable as `type.to_string(v)`, `type.to_number(v)`,
-/// `type.to_bool(v)` in AC expressions. Each accepts any value type and
-/// converts it to the target type.
-#[derive(Clone, Copy)]
-pub struct TypeModule;
-
-impl Module for TypeModule {
-    fn name(&self) -> &str {
-        "type"
-    }
-
-    fn function(&self, name: &str) -> Option<&dyn Function> {
-        match name {
-            "to_string" => Some(&ToString),
-            "to_number" => Some(&ToNumber),
-            "to_bool" => Some(&ToBool),
-            _ => None,
-        }
-    }
-}
 
 fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
@@ -39,7 +15,11 @@ fn number_to_string(n: f64) -> String {
 #[derive(Clone, Copy)]
 pub struct ToString;
 impl Function for ToString {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let result = if let Some(s) = arg.as_str() {
             s.to_string()
@@ -59,7 +39,11 @@ impl Function for ToString {
 #[derive(Clone, Copy)]
 pub struct ToNumber;
 impl Function for ToNumber {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let result = if let Some(n) = arg.as_number() {
             n
@@ -87,7 +71,11 @@ impl Function for ToNumber {
 #[derive(Clone, Copy)]
 pub struct ToBool;
 impl Function for ToBool {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let result = if let Some(b) = arg.as_bool() {
             b

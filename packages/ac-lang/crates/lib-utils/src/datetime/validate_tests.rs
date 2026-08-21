@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
@@ -98,14 +102,23 @@ fn is_valid_no_args_errors() {
 
 #[test]
 fn is_valid_non_string_errors() {
-    let result = call_err(&DateTimeModule, "is_valid", &[NonFunctionValue::new(serde_json::json!(42))]);
+    let result = call_err(
+        &DateTimeModule,
+        "is_valid",
+        &[NonFunctionValue::new(serde_json::json!(42))],
+    );
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
 #[test]
 fn is_valid_extra_args_ignored() {
     assert_eq!(
-        call(&DateTimeModule, "is_valid", &[s("2021-01-15T10:30:00Z"), s("extra")]).as_bool(),
+        call(
+            &DateTimeModule,
+            "is_valid",
+            &[s("2021-01-15T10:30:00Z"), s("extra")]
+        )
+        .as_bool(),
         Some(true)
     );
 }
@@ -125,7 +138,10 @@ fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
 
 #[test]
 fn vm_is_valid() {
-    let expr = Expr::call("datetime.is_valid", vec![Expr::value(s("2021-01-15T10:30:00Z"))]);
+    let expr = Expr::call(
+        "datetime.is_valid",
+        vec![Expr::value(s("2021-01-15T10:30:00Z"))],
+    );
     let result = eval_expr(&expr);
     assert_eq!(result.as_bool(), Some(true));
 }

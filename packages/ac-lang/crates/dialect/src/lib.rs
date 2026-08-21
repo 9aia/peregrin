@@ -25,6 +25,6 @@ mod syntax;
 
 pub use dialect::Dialect;
 pub use document_vocabulary::DocumentVocabulary;
-pub use expr_parser::ExprParser;
+pub use expr_parser::{ExprParser, ParsedHandlerClause};
 pub use schema_vocabulary::{Schema, SchemaVocabulary, ValidationError};
 pub use syntax::Syntax;

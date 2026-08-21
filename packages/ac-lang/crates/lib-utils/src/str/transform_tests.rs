@@ -173,7 +173,10 @@ fn replace_third_arg_non_string_errors() {
 
 #[test]
 fn replace_no_match() {
-    assert_eq!(call("replace", &[s("hello"), s("z"), s("x")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("replace", &[s("hello"), s("z"), s("x")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
@@ -185,12 +188,18 @@ fn replace_empty_string() {
 
 #[test]
 fn replace_first() {
-    assert_eq!(call("replace_first", &[s("foo bar foo"), s("foo"), s("baz")]).as_str(), Some("baz bar foo"));
+    assert_eq!(
+        call("replace_first", &[s("foo bar foo"), s("foo"), s("baz")]).as_str(),
+        Some("baz bar foo")
+    );
 }
 
 #[test]
 fn replace_first_no_match() {
-    assert_eq!(call("replace_first", &[s("hello"), s("xyz"), s("abc")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("replace_first", &[s("hello"), s("xyz"), s("abc")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
@@ -225,12 +234,18 @@ fn replace_first_third_arg_non_string_errors() {
 
 #[test]
 fn replace_first_no_match_edge() {
-    assert_eq!(call("replace_first", &[s("hello"), s("z"), s("x")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("replace_first", &[s("hello"), s("z"), s("x")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
 fn replace_first_only_first() {
-    assert_eq!(call("replace_first", &[s("hello"), s("l"), s("L")]).as_str(), Some("heLlo"));
+    assert_eq!(
+        call("replace_first", &[s("hello"), s("l"), s("L")]).as_str(),
+        Some("heLlo")
+    );
 }
 
 // ── repeat ──────────────────────────────────────────────────────────
@@ -398,7 +413,10 @@ fn slice_negative_start_errors() {
 
 #[test]
 fn slice_start_beyond_length() {
-    assert_eq!(call("slice", &[s("hi"), n(10.0), n(15.0)]).as_str(), Some(""));
+    assert_eq!(
+        call("slice", &[s("hi"), n(10.0), n(15.0)]).as_str(),
+        Some("")
+    );
 }
 
 #[test]
@@ -408,24 +426,36 @@ fn slice_empty_string() {
 
 #[test]
 fn slice_unicode_edge() {
-    assert_eq!(call("slice", &[s("café world"), n(0.0), n(4.0)]).as_str(), Some("café"));
+    assert_eq!(
+        call("slice", &[s("café world"), n(0.0), n(4.0)]).as_str(),
+        Some("café")
+    );
 }
 
 // ── pad_left ────────────────────────────────────────────────────────
 
 #[test]
 fn pad_left() {
-    assert_eq!(call("pad_left", &[s("hi"), n(5.0), s(" ")]).as_str(), Some("   hi"));
+    assert_eq!(
+        call("pad_left", &[s("hi"), n(5.0), s(" ")]).as_str(),
+        Some("   hi")
+    );
 }
 
 #[test]
 fn pad_left_multi_char() {
-    assert_eq!(call("pad_left", &[s("ab"), n(7.0), s("-+")]).as_str(), Some("-+-+-ab"));
+    assert_eq!(
+        call("pad_left", &[s("ab"), n(7.0), s("-+")]).as_str(),
+        Some("-+-+-ab")
+    );
 }
 
 #[test]
 fn pad_left_already_long_enough() {
-    assert_eq!(call("pad_left", &[s("hello"), n(3.0), s(" ")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("pad_left", &[s("hello"), n(3.0), s(" ")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
@@ -436,7 +466,10 @@ fn pad_left_negative_errors() {
 
 #[test]
 fn pad_left_unicode() {
-    assert_eq!(call("pad_left", &[s("café"), n(6.0), s(" ")]).as_str(), Some("  café"));
+    assert_eq!(
+        call("pad_left", &[s("café"), n(6.0), s(" ")]).as_str(),
+        Some("  café")
+    );
 }
 
 #[test]
@@ -471,17 +504,26 @@ fn pad_left_third_arg_non_string_errors() {
 
 #[test]
 fn pad_left_empty_pad_char() {
-    assert_eq!(call("pad_left", &[s("hi"), n(5.0), s("")]).as_str(), Some("hi"));
+    assert_eq!(
+        call("pad_left", &[s("hi"), n(5.0), s("")]).as_str(),
+        Some("hi")
+    );
 }
 
 #[test]
 fn pad_left_already_long_enough_extra() {
-    assert_eq!(call("pad_left", &[s("hello"), n(3.0), s(" ")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("pad_left", &[s("hello"), n(3.0), s(" ")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
 fn pad_left_multi_char_pad() {
-    assert_eq!(call("pad_left", &[s("hi"), n(6.0), s("ab")]).as_str(), Some("ababhi"));
+    assert_eq!(
+        call("pad_left", &[s("hi"), n(6.0), s("ab")]).as_str(),
+        Some("ababhi")
+    );
 }
 
 // regression: overflow guard
@@ -501,17 +543,26 @@ fn pad_left_excessive_target_errors() {
 
 #[test]
 fn pad_right() {
-    assert_eq!(call("pad_right", &[s("hi"), n(5.0), s(" ")]).as_str(), Some("hi   "));
+    assert_eq!(
+        call("pad_right", &[s("hi"), n(5.0), s(" ")]).as_str(),
+        Some("hi   ")
+    );
 }
 
 #[test]
 fn pad_right_multi_char() {
-    assert_eq!(call("pad_right", &[s("ab"), n(7.0), s("-+")]).as_str(), Some("ab-+-+-"));
+    assert_eq!(
+        call("pad_right", &[s("ab"), n(7.0), s("-+")]).as_str(),
+        Some("ab-+-+-")
+    );
 }
 
 #[test]
 fn pad_right_already_long_enough() {
-    assert_eq!(call("pad_right", &[s("hello"), n(3.0), s(" ")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("pad_right", &[s("hello"), n(3.0), s(" ")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
@@ -552,17 +603,26 @@ fn pad_right_third_arg_non_string_errors() {
 
 #[test]
 fn pad_right_empty_pad_char() {
-    assert_eq!(call("pad_right", &[s("hi"), n(5.0), s("")]).as_str(), Some("hi"));
+    assert_eq!(
+        call("pad_right", &[s("hi"), n(5.0), s("")]).as_str(),
+        Some("hi")
+    );
 }
 
 #[test]
 fn pad_right_already_long_enough_extra() {
-    assert_eq!(call("pad_right", &[s("hello"), n(3.0), s(" ")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("pad_right", &[s("hello"), n(3.0), s(" ")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
 fn pad_right_unicode() {
-    assert_eq!(call("pad_right", &[s("café"), n(6.0), s(" ")]).as_str(), Some("café  "));
+    assert_eq!(
+        call("pad_right", &[s("café"), n(6.0), s(" ")]).as_str(),
+        Some("café  ")
+    );
 }
 
 // regression: overflow guard
@@ -582,22 +642,34 @@ fn pad_right_excessive_target_errors() {
 
 #[test]
 fn strip_prefix_present() {
-    assert_eq!(call("strip_prefix", &[s("hello world"), s("hello ")]).as_str(), Some("world"));
+    assert_eq!(
+        call("strip_prefix", &[s("hello world"), s("hello ")]).as_str(),
+        Some("world")
+    );
 }
 
 #[test]
 fn strip_prefix_not_present() {
-    assert_eq!(call("strip_prefix", &[s("hello"), s("world")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("strip_prefix", &[s("hello"), s("world")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
 fn strip_prefix_exact_match() {
-    assert_eq!(call("strip_prefix", &[s("hello"), s("hello")]).as_str(), Some(""));
+    assert_eq!(
+        call("strip_prefix", &[s("hello"), s("hello")]).as_str(),
+        Some("")
+    );
 }
 
 #[test]
 fn strip_prefix_empty_prefix() {
-    assert_eq!(call("strip_prefix", &[s("hello"), s("")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("strip_prefix", &[s("hello"), s("")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
@@ -622,22 +694,34 @@ fn strip_prefix_second_arg_non_string_errors() {
 
 #[test]
 fn strip_suffix_present() {
-    assert_eq!(call("strip_suffix", &[s("hello world"), s(" world")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("strip_suffix", &[s("hello world"), s(" world")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
 fn strip_suffix_not_present() {
-    assert_eq!(call("strip_suffix", &[s("hello"), s("world")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("strip_suffix", &[s("hello"), s("world")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
 fn strip_suffix_exact_match() {
-    assert_eq!(call("strip_suffix", &[s("hello"), s("hello")]).as_str(), Some(""));
+    assert_eq!(
+        call("strip_suffix", &[s("hello"), s("hello")]).as_str(),
+        Some("")
+    );
 }
 
 #[test]
 fn strip_suffix_empty_suffix() {
-    assert_eq!(call("strip_suffix", &[s("hello"), s("")]).as_str(), Some("hello"));
+    assert_eq!(
+        call("strip_suffix", &[s("hello"), s("")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]

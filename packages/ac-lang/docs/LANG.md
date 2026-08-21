@@ -114,21 +114,99 @@ Which namespaces exist and what the default is called are **runtime host decisio
 
 A runtime host may provide any namespaces it chooses (e.g., secrets, metadata, user input). See [RUNTIME.md](./RUNTIME.md) for the reference runtime's namespace configuration.
 
+### 4.5 Handle expressions
+
+Handle expressions bring **algebraic effect handling** to AC as a user-facing language feature. A handle expression wraps a body computation with handler clauses that intercept operations — callable values that **signal** instead of returning. When an operation signals, the VM captures the current continuation and yields it to the matching handler. The handler can inspect the operation's arguments, resume the continuation with a value, or discard it entirely.
+
+This is the language's primary mechanism for **control flow as data**: rather than baking in `try/catch`, `async/await`, or `yield`, the language provides a single `handle` form that lets documents define their own interception semantics. A runtime host that provides operations (e.g., `fetch`, `read_file`, `sleep`) gets interception, retry, caching, and composition for free — the document author writes handlers in the same expression language as everything else.
+
+#### Syntax
+
+```
+handle(body) { "op_name"(params) as k: handler_body, ... }
+```
+
+| Component      | Description                                                         |
+| -------------- | ------------------------------------------------------------------- |
+| `body`         | Expression to evaluate under the handler clauses                    |
+| `"op_name"`    | String literal — the operation name to intercept                    |
+| `params`       | Comma-separated parameter names, bound to the operation's arguments |
+| `as k`         | Binds the captured continuation to `k` (any identifier)             |
+| `handler_body` | Expression evaluated when the clause matches                        |
+
+Multiple handler clauses are comma-separated. The `handle` keyword is a special form — it is not a function call and cannot be shadowed by a host function named `handle`.
+
+#### Examples
+
+Intercept an operation and return a constant:
+
+```
+handle(fetch("data")) { "fetch"(url) as k: "cached" }
+```
+
+Resume the continuation with a value:
+
+```
+handle(add(fetch("data"), 10)) { "fetch"(url) as k: k(42) }
+```
+
+Here `fetch` signals, the handler binds `url` to `"data"` and `k` to the continuation, then calls `k(42)` — resuming `add(42, 10)` → `52`.
+
+Multiple handlers:
+
+```
+handle(add(fetch("data"), log("msg"))) {
+  "fetch"(url) as k: k(42),
+  "log"(msg) as k: k(1)
+}
+```
+
+Nested handlers — outer takes precedence for matching operations:
+
+```
+handle(handle(fetch()) { "fetch"() as k: k("inner") }) { "fetch"() as k: k("outer") }
+```
+
+The inner handler matches first (handler search is innermost-first).
+
+#### Semantics
+
+1. The VM evaluates `body` under the handler clauses.
+2. When an operation signals, the VM searches handler clauses **innermost-first** for a matching `op_name`.
+3. If a clause matches:
+   - Operation arguments are bound to `params`.
+   - The captured continuation (the frame stack at the point of signaling) is bound to `continuation_name` (`k` in the syntax).
+   - The handler `body` is evaluated. The handler can:
+     - **Resume** the continuation by calling it as a function: `k(42)` resumes the paused computation with `42`.
+     - **Discard** the continuation by returning a value without calling `k`.
+     - **Re-raise** by performing another operation inside the handler body.
+4. If no clause matches, the operation propagates to the next enclosing handler, or to the caller as an unhandled operation error if there is no enclosing handler.
+
+#### Operations vs functions
+
+- A **function** completes: it returns a value or an error.
+- An **operation** signals: it yields its name and arguments to the enclosing handler. The VM captures the continuation and the handler decides what happens next.
+
+The VM checks `Host::operation` before `Host::function`. If a name resolves to an operation, the operation's `perform` method is called instead of a function's `call` method. An operation can also complete without signaling (return a value directly), e.g., for cached results — in that case, no handler is triggered.
+
+Which operations exist is a **runtime host decision**. The language defines the `handle` mechanism and the operation signaling protocol; the host provides the operations. See [RUNTIME.md](./RUNTIME.md) for the reference runtime's operation configuration.
+
 ## 5. Interpolation
 
 Interpolation recursively replaces `${...}` patterns in string values. Recursion covers objects, arrays, and nested strings.
 
 ### 5.1 Syntax
 
-| Syntax                 | Kind                          | Example                      |
-| ---------------------- | ----------------------------- | ---------------------------- |
-| `${ns.key}`            | Namespace path                | `${doc.name}`, `${env.HOME}` |
-| `${ns.key.sub}`        | Nested path                   | `${doc.author.email}`        |
-| `${key}`               | Shorthand path                | `${name}` → `doc.name`       |
-| `${fn()}`              | Function call (no args)       | `${now()}`                   |
-| `${fn(args)}`          | Function call                 | `${add(1, 2)}`               |
-| `${fn(ns.key, "lit")}` | Function call with mixed args | `${concat(doc.name, "!")}`   |
-| `${fn(fn(a, b), c)}`   | Nested function calls         | `${add(mul(2, 3), 4)}`       |
+| Syntax                    | Kind                          | Example                                              |
+| ------------------------- | ----------------------------- | ---------------------------------------------------- |
+| `${ns.key}`               | Namespace path                | `${doc.name}`, `${env.HOME}`                         |
+| `${ns.key.sub}`           | Nested path                   | `${doc.author.email}`                                |
+| `${key}`                  | Shorthand path                | `${name}` → `doc.name`                               |
+| `${fn()}`                 | Function call (no args)       | `${now()}`                                           |
+| `${fn(args)}`             | Function call                 | `${add(1, 2)}`                                       |
+| `${fn(ns.key, "lit")}`    | Function call with mixed args | `${concat(doc.name, "!")}`                           |
+| `${fn(fn(a, b), c)}`      | Nested function calls         | `${add(mul(2, 3), 4)}`                               |
+| `${handle(body) { ... }}` | Handle expression             | `${handle(fetch("d")) { "fetch"(url) as k: k(42) }}` |
 
 ### 5.2 Type preservation
 
@@ -580,11 +658,12 @@ Expression strings (same syntax as `${...}` and `expr:` fields) can be staticall
 
 **Expression AST:**
 
-| Variant   | Form               | Example                                    |
-| --------- | ------------------ | ------------------------------------------ |
-| `Literal` | Typed literal      | `"hello"`, `42`, `true`, `null`            |
-| `Path`    | Dotted path lookup | `doc.name`, `env.HOME`, `name` (shorthand) |
-| `Call`    | Function call      | `add(1, 2)`, `mul(x, 2)`                   |
+| Variant   | Form               | Example                                                                            |
+| --------- | ------------------ | ---------------------------------------------------------------------------------- |
+| `Literal` | Typed literal      | `"hello"`, `42`, `true`, `null`                                                    |
+| `Path`    | Dotted path lookup | `doc.name`, `env.HOME`, `name` (shorthand)                                         |
+| `Call`    | Function call      | `add(1, 2)`, `mul(x, 2)`                                                           |
+| `Handle`  | Handle expression  | `handle(body) { "op"(p) as k: handler_body }` — see [§4.5](#45-handle-expressions) |
 
 Inference walks the AST:
 
@@ -972,9 +1051,39 @@ greeting: hello
 
 After processing: `greeting` → `"hello!"` (the field's data value `"hello"` is passed as `${arg}`).
 
+### 12.11 Handle expressions
+
+Intercept an operation and resume with a value:
+
+```yaml
+$:
+  result:
+    type: number
+    expr: 'handle(add(fetch("data"), 10)) { "fetch"(url) as k: k(42) }'
+functions:
+  add:
+    params:
+      x: { type: number }
+      y: { type: number }
+    return: { type: number }
+```
+
+After processing: `result` → `52` (`fetch` signals, handler resumes with `42`, `add(42, 10)` completes).
+
+Multiple handlers with discard:
+
+```yaml
+$:
+  result:
+    type: string
+    expr: 'handle(fetch("data")) { "fetch"(url) as k: "cached", "log"(msg) as k: k(1) }'
+```
+
+After processing: `result` → `"cached"` (handler intercepts `fetch` and returns a constant without resuming the continuation).
+
 ## 13. Emergent patterns
 
-The language kernel is small — five primitives compose to produce complex patterns. See [small-kernel.md](./explanations/small-kernel.md) for the design rationale and examples.
+The language kernel is small — six primitives (literals, path lookups, function calls, handle expressions, field declarations, and interpolation) compose to produce complex patterns. See [small-kernel.md](./explanations/small-kernel.md) for the design rationale and examples.
 
 ## 14. Future directions
 

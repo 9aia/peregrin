@@ -3,7 +3,7 @@
 //! These tests exercise the full pipeline end-to-end using the built-in
 //! passes and preset configurations from `ac-compiler`.
 
-use ac_compiler::{Compilation, Config, Pass, Pipeline, Source};
+use ac_compiler::{Compilation, Config, Pass, PassError, Pipeline, Source};
 use ac_compiler_pass_extract::ExtractPass;
 use ac_compiler_pass_parse::ParsePass;
 
@@ -90,7 +90,7 @@ fn typegen_pipeline_invalid_format_returns_error() {
     let pipeline = ac_compiler::typegen_pipeline(default_config());
     let result = pipeline.run(source);
     match &result {
-        Err(e) => assert!(e.contains("unknown format")),
+        Err(e) => assert!(e.to_string().contains("unknown format")),
         Ok(_) => panic!("expected error"),
     }
 }
@@ -101,7 +101,7 @@ fn typegen_pipeline_no_fields_returns_error() {
     let pipeline = ac_compiler::typegen_pipeline(default_config());
     let result = pipeline.run(source);
     match &result {
-        Err(e) => assert!(e.contains("no `$:` section")),
+        Err(e) => assert!(e.to_string().contains("no `$:` section")),
         Ok(_) => panic!("expected error"),
     }
 }
@@ -198,7 +198,7 @@ fn custom_pipeline_with_custom_pass() {
 
     struct CountFieldsPass;
     impl Pass for CountFieldsPass {
-        fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), String> {
+        fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), PassError> {
             if let Some(extracted) = &compilation.extracted {
                 compilation.output = Some(JsonValue::Number(extracted.schemas.len().into()));
             }
@@ -236,7 +236,7 @@ fn pipeline_passes_run_in_declaration_order() {
 
     struct FirstPass;
     impl Pass for FirstPass {
-        fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), String> {
+        fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), PassError> {
             let n = ORDER.fetch_add(1, Ordering::SeqCst);
             compilation
                 .type_errors
@@ -251,7 +251,7 @@ fn pipeline_passes_run_in_declaration_order() {
 
     struct SecondPass;
     impl Pass for SecondPass {
-        fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), String> {
+        fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), PassError> {
             let n = ORDER.fetch_add(1, Ordering::SeqCst);
             compilation
                 .type_errors

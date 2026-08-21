@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use ac_typegen_backend_json_schema::{inject_schema_comment, write_schema_file};
 
-use crate::Source;
+use crate::{PassError, Source};
 
 /// Input parameters for a typegen run.
 pub struct TypegenInput<'a> {
@@ -22,18 +22,21 @@ pub enum TypegenResult {
     FileWritten(PathBuf),
 }
 
-pub fn run(args: &TypegenInput) -> Result<TypegenResult, String> {
+pub fn run(args: &TypegenInput) -> Result<TypegenResult, PassError> {
     let source = Source::new(args.input, args.format).with_path(args.input_path);
 
     let pipeline = crate::typegen_pipeline(crate::default_cli_config());
     let compilation = pipeline.run(source)?;
 
-    let output = compilation.output.ok_or("typegen: no output generated")?;
+    let output = compilation
+        .output
+        .ok_or_else(|| PassError::new("typegen", "no output generated"))?;
 
     match args.output_format {
         "json-schema" => {
             if args.stdout {
-                let json = serde_json::to_string_pretty(&output).map_err(|e| e.to_string())?;
+                let json = serde_json::to_string_pretty(&output)
+                    .map_err(|e| PassError::new("typegen", e.to_string()))?;
                 return Ok(TypegenResult::Stdout(json));
             }
 
@@ -45,18 +48,20 @@ pub fn run(args: &TypegenInput) -> Result<TypegenResult, String> {
             let schema_rel = format!("{filename}.json");
 
             let schema_path = args.output_dir.join(&schema_rel);
-            write_schema_file(&output, &schema_path)?;
+            write_schema_file(&output, &schema_path).map_err(|e| PassError::new("typegen", e.to_string()))?;
 
             let rel_for_hint = Path::new(".ac")
                 .join("generated")
                 .join("schemas")
                 .join(&schema_rel);
-            inject_schema_comment(args.input_path, &rel_for_hint.to_string_lossy())?;
+            inject_schema_comment(args.input_path, &rel_for_hint.to_string_lossy())
+                .map_err(|e| PassError::new("typegen", e.to_string()))?;
 
             Ok(TypegenResult::FileWritten(schema_path))
         }
-        other => Err(format!(
-            "unknown output format: {other}\n  available: json-schema"
+        other => Err(PassError::new(
+            "typegen",
+            format!("unknown output format: {other}\n  available: json-schema"),
         )),
     }
 }

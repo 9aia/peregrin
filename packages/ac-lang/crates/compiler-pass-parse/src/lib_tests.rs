@@ -9,6 +9,7 @@ fn test_config() -> Config {
         backend: None,
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
+        extensions: Default::default(),
     }
 }
 
@@ -41,7 +42,7 @@ fn parse_pass_invalid_format_returns_error() {
     let mut compilation = Compilation::new(source);
     let result = ParsePass.run(&mut compilation, &test_config());
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("unknown format"));
+    assert!(result.unwrap_err().to_string().contains("unknown format"));
 }
 
 #[test]

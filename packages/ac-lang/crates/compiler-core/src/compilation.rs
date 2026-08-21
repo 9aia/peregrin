@@ -4,7 +4,14 @@
 //! as each pass runs. Fields are `Option`-wrapped because not all
 //! passes produce all state — a typecheck-only run never populates
 //! `output`, for example.
+//!
+//! In addition to the named fields, passes can store arbitrary typed
+//! data via the [`Compilation::store`] / [`Compilation::get`] /
+//! [`Compilation::take`] API (backed by a `TypeId` map). This lets
+//! custom passes carry state without modifying this struct.
 
+use std::any::{Any, TypeId};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use ac_fields::ExtractedFields;
@@ -13,6 +20,8 @@ use ac_source::SourceMap;
 use ac_typecheck_core::TypeError;
 use ac_typegen_core::TypegenContext;
 use serde_json::Value as JsonValue;
+
+use crate::diagnostic::{Diagnostic, DiagnosticSink};
 
 /// Source input for a compilation.
 #[derive(Clone)]
@@ -69,6 +78,11 @@ pub struct Compilation {
     /// Source location map built by the frontend during parsing.
     /// Used to resolve error locations post-hoc.
     pub source_map: SourceMap,
+    /// Structured diagnostics emitted by passes.
+    pub diagnostics: DiagnosticSink,
+    /// Extensible typed storage — passes can store arbitrary `T: 'static`
+    /// without modifying this struct.
+    store: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
 impl Compilation {
@@ -81,6 +95,8 @@ impl Compilation {
             type_errors: Vec::new(),
             output: None,
             source_map: SourceMap::new(),
+            diagnostics: DiagnosticSink::new(),
+            store: HashMap::new(),
         }
     }
 
@@ -103,5 +119,48 @@ impl Compilation {
                 err.location = self.source_map.resolve_path(&err.path);
             }
         }
+    }
+
+    // -- TypeMap storage -------------------------------------------------
+
+    /// Store typed data. Passes can use this to carry state without
+    /// modifying `Compilation`.
+    pub fn store<T: 'static + Send + Sync>(&mut self, value: T) {
+        self.store.insert(TypeId::of::<T>(), Box::new(value));
+    }
+
+    /// Borrow typed data previously stored via [`Compilation::store`].
+    pub fn get<T: 'static>(&self) -> Option<&T> {
+        self.store
+            .get(&TypeId::of::<T>())
+            .and_then(|v| v.downcast_ref::<T>())
+    }
+
+    /// Take ownership of typed data previously stored via [`Compilation::store`].
+    /// Removes the value from the map.
+    pub fn take<T: 'static + Send + Sync>(&mut self) -> Option<T> {
+        self.store
+            .remove(&TypeId::of::<T>())
+            .and_then(|v| v.downcast::<T>().ok())
+            .map(|b| *b)
+    }
+
+    /// Take ownership of typed data previously stored via [`Compilation::store`].
+    /// Removes the value from the map. Alias for [`Compilation::take`].
+    #[deprecated(note = "use `take` instead — same semantics")]
+    pub fn remove<T: 'static + Send + Sync>(&mut self) -> Option<T> {
+        self.take()
+    }
+
+    // -- Diagnostics -----------------------------------------------------
+
+    /// Emit a structured diagnostic.
+    pub fn emit(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    /// Whether any error-severity diagnostics have been emitted.
+    pub fn has_errors(&self) -> bool {
+        self.diagnostics.has_errors()
     }
 }

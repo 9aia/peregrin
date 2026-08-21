@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
@@ -29,7 +33,12 @@ fn n(v: f64) -> NonFunctionValue {
 #[test]
 fn format_iso() {
     assert_eq!(
-        call(&DateTimeModule, "format", &[s("2021-01-15T10:30:00Z"), s("%Y-%m-%d")]).as_str(),
+        call(
+            &DateTimeModule,
+            "format",
+            &[s("2021-01-15T10:30:00Z"), s("%Y-%m-%d")]
+        )
+        .as_str(),
         Some("2021-01-15")
     );
 }
@@ -37,7 +46,12 @@ fn format_iso() {
 #[test]
 fn format_time() {
     assert_eq!(
-        call(&DateTimeModule, "format", &[s("2021-01-15T10:30:00Z"), s("%H:%M:%S")]).as_str(),
+        call(
+            &DateTimeModule,
+            "format",
+            &[s("2021-01-15T10:30:00Z"), s("%H:%M:%S")]
+        )
+        .as_str(),
         Some("10:30:00")
     );
 }
@@ -45,7 +59,12 @@ fn format_time() {
 #[test]
 fn format_full() {
     assert_eq!(
-        call(&DateTimeModule, "format", &[s("2021-01-15T10:30:00Z"), s("%Y-%m-%d %H:%M:%S")]).as_str(),
+        call(
+            &DateTimeModule,
+            "format",
+            &[s("2021-01-15T10:30:00Z"), s("%Y-%m-%d %H:%M:%S")]
+        )
+        .as_str(),
         Some("2021-01-15 10:30:00")
     );
 }
@@ -53,7 +72,12 @@ fn format_full() {
 #[test]
 fn format_month_name() {
     assert_eq!(
-        call(&DateTimeModule, "format", &[s("2021-03-15T10:30:00Z"), s("%B")]).as_str(),
+        call(
+            &DateTimeModule,
+            "format",
+            &[s("2021-03-15T10:30:00Z"), s("%B")]
+        )
+        .as_str(),
         Some("March")
     );
 }
@@ -61,7 +85,12 @@ fn format_month_name() {
 #[test]
 fn format_short_month() {
     assert_eq!(
-        call(&DateTimeModule, "format", &[s("2021-03-15T10:30:00Z"), s("%b")]).as_str(),
+        call(
+            &DateTimeModule,
+            "format",
+            &[s("2021-03-15T10:30:00Z"), s("%b")]
+        )
+        .as_str(),
         Some("Mar")
     );
 }
@@ -69,7 +98,12 @@ fn format_short_month() {
 #[test]
 fn format_weekday() {
     assert_eq!(
-        call(&DateTimeModule, "format", &[s("2021-01-15T10:30:00Z"), s("%A")]).as_str(),
+        call(
+            &DateTimeModule,
+            "format",
+            &[s("2021-01-15T10:30:00Z"), s("%A")]
+        )
+        .as_str(),
         Some("Friday")
     );
 }
@@ -107,7 +141,12 @@ fn format_invalid_date_errors() {
 #[test]
 fn format_extra_args_ignored() {
     assert_eq!(
-        call(&DateTimeModule, "format", &[s("2021-01-15T10:30:00Z"), s("%Y"), n(1.0)]).as_str(),
+        call(
+            &DateTimeModule,
+            "format",
+            &[s("2021-01-15T10:30:00Z"), s("%Y"), n(1.0)]
+        )
+        .as_str(),
         Some("2021")
     );
 }
@@ -122,7 +161,11 @@ fn parse_iso() {
 
 #[test]
 fn parse_custom_format() {
-    let result = call(&DateTimeModule, "parse", &[s("2021-01-15 10:30:00"), s("%Y-%m-%d %H:%M:%S")]);
+    let result = call(
+        &DateTimeModule,
+        "parse",
+        &[s("2021-01-15 10:30:00"), s("%Y-%m-%d %H:%M:%S")],
+    );
     assert_eq!(result.as_str(), Some("2021-01-15T10:30:00Z"));
 }
 
@@ -164,7 +207,11 @@ fn parse_format_mismatch_errors() {
 
 #[test]
 fn parse_extra_args_ignored() {
-    let result = call(&DateTimeModule, "parse", &[s("2021-01-15T10:30:00Z"), s("%Y-%m-%dT%H:%M:%SZ"), n(1.0)]);
+    let result = call(
+        &DateTimeModule,
+        "parse",
+        &[s("2021-01-15T10:30:00Z"), s("%Y-%m-%dT%H:%M:%SZ"), n(1.0)],
+    );
     assert_eq!(result.as_str(), Some("2021-01-15T10:30:00Z"));
 }
 
@@ -185,7 +232,10 @@ fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
 fn vm_format() {
     let expr = Expr::call(
         "datetime.format",
-        vec![Expr::value(s("2021-01-15T10:30:00Z")), Expr::value(s("%Y-%m-%d"))],
+        vec![
+            Expr::value(s("2021-01-15T10:30:00Z")),
+            Expr::value(s("%Y-%m-%d")),
+        ],
     );
     let result = eval_expr(&expr);
     assert_eq!(result.as_str(), Some("2021-01-15"));
@@ -193,7 +243,10 @@ fn vm_format() {
 
 #[test]
 fn vm_parse() {
-    let expr = Expr::call("datetime.parse", vec![Expr::value(s("2021-01-15T10:30:00Z"))]);
+    let expr = Expr::call(
+        "datetime.parse",
+        vec![Expr::value(s("2021-01-15T10:30:00Z"))],
+    );
     let result = eval_expr(&expr);
     assert_eq!(result.as_str(), Some("2021-01-15T10:30:00Z"));
 }

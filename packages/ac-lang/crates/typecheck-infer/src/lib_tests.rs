@@ -97,6 +97,91 @@ fn parse_dollar_wrapped() {
     );
 }
 
+// ── handle expressions ──────────────────────────────────────
+
+#[test]
+fn parse_handle_basic() {
+    let ast = parse_expr(
+        "handle(fetch(\"data\")) { \"fetch\"(url) as k: k(42) }",
+        &AC_DIALECT,
+    )
+    .unwrap();
+    match ast {
+        ExprAst::Handle { body, handlers } => {
+            assert_eq!(handlers.len(), 1);
+            assert_eq!(handlers[0].op_name, "fetch");
+            assert_eq!(handlers[0].params, vec!["url"]);
+            assert_eq!(handlers[0].continuation_name, "k");
+            match *body {
+                ExprAst::Call(ref name, _) => assert_eq!(name, "fetch"),
+                ref other => panic!("expected Call body, got {other:?}"),
+            }
+        }
+        other => panic!("expected Handle, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_handle_multiple_handlers() {
+    let ast = parse_expr(
+        "handle(add(fetch(\"d\"), log(\"m\"))) { \"fetch\"(url) as k: k(42), \"log\"(msg) as k: k(1) }",
+        &AC_DIALECT,
+    )
+    .unwrap();
+    match ast {
+        ExprAst::Handle { handlers, .. } => {
+            assert_eq!(handlers.len(), 2);
+            assert_eq!(handlers[0].op_name, "fetch");
+            assert_eq!(handlers[1].op_name, "log");
+        }
+        other => panic!("expected Handle, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_handle_no_params() {
+    let ast = parse_expr(
+        "handle(fetch()) { \"fetch\"() as k: \"cached\" }",
+        &AC_DIALECT,
+    )
+    .unwrap();
+    match ast {
+        ExprAst::Handle { handlers, .. } => {
+            assert_eq!(handlers.len(), 1);
+            assert!(handlers[0].params.is_empty());
+        }
+        other => panic!("expected Handle, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_handle_dollar_wrapped() {
+    let ast = parse_expr(
+        "${handle(fetch(\"d\")) { \"fetch\"(url) as k: k(42) }}",
+        &AC_DIALECT,
+    )
+    .unwrap();
+    assert!(matches!(ast, ExprAst::Handle { .. }));
+}
+
+#[test]
+fn parse_handle_handler_body_is_call() {
+    let ast = parse_expr(
+        "handle(fetch(\"data\")) { \"fetch\"(url) as k: k(42) }",
+        &AC_DIALECT,
+    )
+    .unwrap();
+    match ast {
+        ExprAst::Handle { handlers, .. } => {
+            match &*handlers[0].body {
+                ExprAst::Call(name, _) => assert_eq!(name, "k"),
+                other => panic!("expected Call handler body, got {other:?}"),
+            }
+        }
+        other => panic!("expected Handle, got {other:?}"),
+    }
+}
+
 #[test]
 fn infer_literal() {
     let env = TypeEnv::new();

@@ -2,7 +2,7 @@
 //!
 //! Pipeline pass: generate output from the resolved `TypegenContext`.
 
-use ac_compiler_core::{Compilation, Config, Pass};
+use ac_compiler_core::{Compilation, Config, Pass, PassError};
 
 /// Generate output from the resolved `TypegenContext`.
 ///
@@ -11,16 +11,16 @@ use ac_compiler_core::{Compilation, Config, Pass};
 pub struct GeneratePass;
 
 impl Pass for GeneratePass {
-    fn run(&self, compilation: &mut Compilation, config: &Config) -> Result<(), String> {
+    fn run(&self, compilation: &mut Compilation, config: &Config) -> Result<(), PassError> {
         let ctx = compilation
             .typegen_ctx
             .take()
-            .ok_or("GeneratePass: no typegen context — run ResolvePass first")?;
+            .ok_or_else(|| PassError::new("generate", "no typegen context — run ResolvePass first"))?;
 
         let backend = config
             .backend
             .as_ref()
-            .ok_or("GeneratePass: no backend configured")?;
+            .ok_or_else(|| PassError::new("generate", "no backend configured"))?;
 
         compilation.output = Some(backend.generate(&ctx));
         Ok(())

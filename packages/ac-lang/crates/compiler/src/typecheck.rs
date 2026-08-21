@@ -6,7 +6,7 @@ use std::path::Path;
 
 use ac_typecheck_core::TypeError;
 
-use crate::Source;
+use crate::{PassError, Source};
 
 /// Report from a typecheck run.
 pub struct TypecheckReport {
@@ -19,7 +19,7 @@ impl TypecheckReport {
     }
 }
 
-pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<TypecheckReport, String> {
+pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<TypecheckReport, PassError> {
     let mut source = Source::new(input, format);
     if let Some(base) = base_path {
         source = source.with_path(base);

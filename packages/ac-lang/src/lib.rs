@@ -108,7 +108,10 @@ pub mod prelude {
     pub use ac_source::{SourceLocation, SourceMap};
 
     #[cfg(feature = "compiler")]
-    pub use ac_compiler::{Compilation, Config, Pass, Pipeline, Source};
+    pub use ac_compiler::{
+        Compilation, Config, Diagnostic, DiagnosticSink, Folder, Pass, PassCategory, PassError,
+        PassGroup, PassMetadata, Pipeline, Severity, Source, Visitor,
+    };
     #[cfg(feature = "compiler")]
     pub use ac_compiler::{
         default_cli_config, full_pipeline, typecheck_only_config, typecheck_pipeline,

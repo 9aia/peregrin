@@ -1,11 +1,11 @@
-use ac_compiler_core::{Compilation, Config};
+use ac_compiler_core::{Compilation, Config, PassError};
 
 /// Run the typecheck logic, populating `compilation.type_errors`.
-pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(), String> {
+pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(), PassError> {
     let extracted = compilation
         .extracted
         .as_ref()
-        .ok_or("TypecheckPass: no extracted fields — run ExtractPass first")?;
+        .ok_or_else(|| PassError::new("typecheck", "no extracted fields — run ExtractPass first"))?;
 
     let interpreter = config.interpreter.as_ref();
     let data = extracted.data.inner().clone();

@@ -32,7 +32,10 @@ pub mod typecheck;
 pub mod typegen;
 pub mod validate;
 
-pub use ac_compiler_core::{Compilation, Config, Pass, Pipeline, Source};
+pub use ac_compiler_core::{
+    Compilation, Config, Diagnostic, DiagnosticSink, Folder, Pass, PassCategory, PassError,
+    PassGroup, PassMetadata, Pipeline, Severity, Source, Visitor,
+};
 pub use expr_eval::ExprEval;
 pub use resolver::VmResolver;
 
@@ -50,6 +53,7 @@ pub fn default_cli_config() -> Config {
         backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
+        extensions: Default::default(),
     }
 }
 
@@ -64,6 +68,7 @@ pub fn typecheck_only_config() -> Config {
         backend: None,
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
+        extensions: Default::default(),
     }
 }
 

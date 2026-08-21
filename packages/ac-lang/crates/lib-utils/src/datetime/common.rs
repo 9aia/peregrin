@@ -48,7 +48,9 @@ pub(super) fn require_string_and_number(args: &[NonFunctionValue]) -> Result<(&s
     Ok((s, n))
 }
 
-pub(super) fn require_three_strings(args: &[NonFunctionValue]) -> Result<(&str, &str, &str), Error> {
+pub(super) fn require_three_strings(
+    args: &[NonFunctionValue],
+) -> Result<(&str, &str, &str), Error> {
     if args.len() < 3 {
         return Err(Error::ArgumentCount {
             expected: 3,

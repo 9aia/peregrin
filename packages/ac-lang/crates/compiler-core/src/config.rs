@@ -8,6 +8,12 @@
 //!
 //! Default configurations (`default_cli`, `typecheck_only`) are provided
 //! by `ac-compiler`, which depends on the implementation crates.
+//!
+//! Custom passes can read their own config via [`Config::extension`]
+//! without modifying this struct.
+
+use std::any::{Any, TypeId};
+use std::collections::HashMap;
 
 use ac_dialect::Dialect;
 use ac_module_resolver_core::ModuleResolver;
@@ -23,4 +29,24 @@ pub struct Config {
     pub backend: Option<Box<dyn TypegenBackend<Output = JsonValue>>>,
     pub key_handler: Box<dyn KeyHandler>,
     pub import_resolver: Box<dyn ImportResolver>,
+    /// Extensible typed config — custom passes can read their config
+    /// via [`Config::extension`] without modifying this struct.
+    pub extensions: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
+}
+
+impl Config {
+    /// Borrow a typed extension previously added via [`Config::with_extension`].
+    pub fn extension<T: 'static>(&self) -> Option<&T> {
+        self.extensions
+            .get(&TypeId::of::<T>())
+            .and_then(|v| v.downcast_ref::<T>())
+    }
+
+    /// Add a typed extension. Enables custom passes to receive config
+    /// without modifying `Config`.
+    pub fn with_extension<T: 'static + Send + Sync>(mut self, ext: T) -> Self {
+        self.extensions.insert(TypeId::of::<T>(), Box::new(ext));
+        self
+    }
+
 }

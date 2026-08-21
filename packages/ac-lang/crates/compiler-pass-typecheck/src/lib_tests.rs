@@ -11,6 +11,7 @@ fn test_config() -> Config {
         backend: None,
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
+        extensions: Default::default(),
     }
 }
 
@@ -49,7 +50,7 @@ fn typecheck_pass_without_extracted_returns_error() {
     let config = test_config();
     let result = TypecheckPass.run(&mut compilation, &config);
     assert!(result.is_err());
-    assert!(result.unwrap_err().contains("no extracted fields"));
+    assert!(result.unwrap_err().to_string().contains("no extracted fields"));
 }
 
 #[test]

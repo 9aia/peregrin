@@ -236,6 +236,48 @@ fn parse_expr_to_json(s: &str, dialect: &dyn Dialect) -> Option<JsonValue> {
         s
     };
 
+    // Handle expression: handle(body) { clauses }
+    if let Some(paren_pos) = dialect.parser().find_handle_open(s) {
+        // Find the matching close paren for the body
+        let inner_start = paren_pos + 1;
+        let close_pos = find_matching_close(s, inner_start, '(', ')')?;
+        let body_str = &s[inner_start..close_pos];
+
+        // Find the block-open `{`
+        let after_body = s[close_pos + 1..].trim_start();
+        if !after_body.starts_with('{') {
+            return None;
+        }
+        let block_start = close_pos + 1 + (s[close_pos + 1..].len() - after_body.len());
+        if !s.ends_with('}') {
+            return None;
+        }
+        let block_inner = &s[block_start + 1..s.len() - 1];
+
+        let body_ast = parse_expr_to_json(body_str, dialect)?;
+        let handlers: Vec<JsonValue> = dialect
+            .parser()
+            .split_handler_clauses(block_inner)
+            .iter()
+            .filter_map(|clause| {
+                let parsed = dialect.parser().parse_handler_clause(clause)?;
+                let body_ast = parse_expr_to_json(&parsed.body, dialect)?;
+                Some(serde_json::json!({
+                    "op": parsed.op_name,
+                    "params": parsed.params,
+                    "resume": parsed.continuation_name,
+                    "body": body_ast
+                }))
+            })
+            .collect();
+
+        return Some(serde_json::json!({
+            "kind": "handle",
+            "body": body_ast,
+            "handlers": handlers
+        }));
+    }
+
     if let Some(paren_pos) = dialect.parser().find_call_open(s)
         && s.ends_with(dialect.syntax().call_close())
         && paren_pos < s.len() - 1
@@ -299,6 +341,32 @@ fn parse_expr_to_json(s: &str, dialect: &dyn Dialect) -> Option<JsonValue> {
     }))
 }
 
+/// Find the matching close delimiter for the open delimiter at `start`,
+/// respecting nested delimiters and string literals.
+fn find_matching_close(s: &str, start: usize, open: char, close: char) -> Option<usize> {
+    let mut depth = 1i32;
+    let mut in_string = false;
+    let mut quote_char = '\0';
+    for (i, ch) in s[start..].char_indices() {
+        if in_string {
+            if ch == quote_char {
+                in_string = false;
+            }
+        } else if ch == '"' || ch == '\'' {
+            in_string = true;
+            quote_char = ch;
+        } else if ch == open {
+            depth += 1;
+        } else if ch == close {
+            depth -= 1;
+            if depth == 0 {
+                return Some(start + i);
+            }
+        }
+    }
+    None
+}
+
 /// Serialize a JSON AST back to an expression string.
 fn ast_to_string_inner(ast: &JsonValue, dialect: &dyn Dialect) -> Option<String> {
     let obj = ast.as_object()?;
@@ -333,6 +401,33 @@ fn ast_to_string_inner(ast: &JsonValue, dialect: &dyn Dialect) -> Option<String>
             let open = dialect.syntax().call_open();
             let close = dialect.syntax().call_close();
             Some(format!("{name}{open}{}{close}", arg_strs.join(", ")))
+        }
+        "handle" => {
+            let body = obj.get("body")?;
+            let body_str = ast_to_string_inner(body, dialect)?;
+            let handlers = obj.get("handlers")?.as_array()?;
+            let handler_strs: Vec<String> = handlers
+                .iter()
+                .filter_map(|h| {
+                    let h_obj = h.as_object()?;
+                    let op = h_obj.get("op")?.as_str()?;
+                    let params = h_obj
+                        .get("params")
+                        .and_then(|p| p.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str())
+                                .collect::<Vec<_>>()
+                                .join(", ")
+                        })
+                        .unwrap_or_default();
+                    let resume = h_obj.get("resume")?.as_str()?;
+                    let body = h_obj.get("body")?;
+                    let body_str = ast_to_string_inner(body, dialect)?;
+                    Some(format!("\"{op}\"({params}) as {resume}: {body_str}"))
+                })
+                .collect();
+            Some(format!("handle({body_str}) {{ {} }}", handler_strs.join(", ")))
         }
         _ => None,
     }
