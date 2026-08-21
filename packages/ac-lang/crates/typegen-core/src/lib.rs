@@ -2,13 +2,22 @@
 //!
 //! Schema-system-agnostic type generation core.
 //!
-//! The core provides **generic primitives** for building type generation
-//! contexts from field schema fragments. It has zero knowledge of any
-//! AC-specific key (`expr`, `arg`, `merge`, `inheritable`, `mutable`).
+//! The core provides **generic primitives** and **plugin traits** for
+//! building type generation contexts from field schema fragments. It has
+//! zero knowledge of any AC-specific key (`expr`, `arg`, `merge`,
+//! `inheritable`, `mutable`).
 //!
-//! Each AC key has its own crate (`ac-typegen-key-merge`,
-//! `ac-typegen-key-inherit`, etc.) that uses these primitives for its
-//! specific behavior. The orchestrator composes them.
+//! ## Plugin traits
+//!
+//! - [`KeyHandler`] — filters and strips special keys from the context.
+//!   Implemented by `ac-typegen-key-set-special`.
+//! - [`ImportResolver`] — resolves `import()` expressions and merges
+//!   imported schemas. Implemented by `ac-typegen-import`.
+//! - [`TypegenBackend`] — generates format-specific output.
+//!   Implemented by `ac-typegen-backend-json-schema`.
+//!
+//! The orchestrator (compiler pass, CLI) composes these plugins via
+//! trait objects in `Config`.
 //!
 //! ## Architectural rule
 //!
@@ -17,20 +26,16 @@
 //! ## Dependency graph
 //!
 //! ```text
-//! ac-typegen-core — generic primitives, no AC key knowledge
-//! ├── ac-typegen-key-merge       — knows "merge" key
-//! ├── ac-typegen-key-inherit     — knows "inheritable" key
-//! ├── ac-typegen-key-mutable     — knows "mutable" key
-//! ├── ac-typegen-key-expr        — knows "expr" key
-//! ├── ac-typegen-key-arg         — knows "arg" key
-//! ├── ac-typegen-import          — depends on key-merge + key-expr + ac-resolver-core
-//! └── ac-typegen-backend-json-schema — JSON Schema backend
+//! ac-typegen-core — generic primitives + plugin traits, no AC key knowledge
+//! ├── ac-typegen-key-set-special   — KeyHandler impl (knows all special AC keys)
+//! ├── ac-typegen-import            — ImportResolver impl (depends on ac-module-resolver-core)
+//! └── ac-typegen-backend-json-schema — TypegenBackend impl (JSON Schema)
 //!
-//! ac-resolver-core — ModuleResolver trait (not typegen-specific)
-//! ├── ac-resolver-file    — FileResolver (filesystem I/O)
-//! ├── ac-resolver-virtual — VirtualResolver (in-memory)
-//! ├── ac-resolver-http    — HttpResolver (HTTP via ureq)
-//! └── ac-resolver-git     — GitResolver (Git via git2)
+//! ac-module-resolver-core — ModuleResolver trait (not typegen-specific)
+//! ├── ac-module-resolver-file    — FileResolver (filesystem I/O)
+//! ├── ac-module-resolver-virtual — VirtualResolver (in-memory)
+//! ├── ac-module-resolver-http    — HttpResolver (HTTP via ureq)
+//! └── ac-module-resolver-git     — GitResolver (Git via git2)
 //! ```
 
 use indexmap::IndexMap;
@@ -143,6 +148,10 @@ pub trait TypegenBackend: Send + Sync {
     /// `# yaml-language-server: $schema={path}`).
     fn ide_hint(&self, schema_rel_path: &str) -> String;
 }
+
+mod plugin;
+
+pub use plugin::{get_expr, ImportResolver, KeyHandler};
 
 #[cfg(test)]
 mod lib_tests;

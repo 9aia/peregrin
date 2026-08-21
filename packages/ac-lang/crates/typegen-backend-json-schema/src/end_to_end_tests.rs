@@ -1,28 +1,18 @@
 use serde_json::json;
 
+use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
 use ac_runtime::RuntimeValue;
 use ac_typegen_core::{TypegenBackend, TypegenContext};
-use ac_typegen_key_merge as merge;
-use ac_typegen_key_inherit as inherit;
-use ac_typegen_key_mutable as mutable;
-use ac_typegen_key_expr as expr;
-use ac_typegen_key_arg as arg;
 use crate::{JsonSchemaBackend, compose_schema};
 
-const AC_KEYS: &[&str] = &[
-    merge::KEY,
-    inherit::KEY,
-    mutable::KEY,
-    expr::KEY,
-    arg::KEY,
-];
-
 fn build_ctx(extracted: &ac_fields::ExtractedFields) -> TypegenContext {
+    let vocab = AC_DIALECT.document_vocabulary();
+    let ac_keys: Vec<&str> = vocab.reserved_field_keys();
     let mut ctx = TypegenContext::from_schemas(&extracted.schemas);
-    merge::filter_fields(&mut ctx, &extracted.merge);
-    ctx.strip_keys(AC_KEYS);
+    ctx.remove_fields(&extracted.merge);
+    ctx.strip_keys(&ac_keys);
     ctx
 }
 
