@@ -25,9 +25,9 @@ pub fn extract_fields(
     let mut schemas = Vec::new();
     let mut functions = Vec::new();
 
-    let fields_key = dialect.fields_key();
-    let functions_key = dialect.functions_key();
-    let reserved = dialect.top_level_reserved_keys();
+    let fields_key = dialect.document_vocabulary().fields_key();
+    let functions_key = dialect.document_vocabulary().functions_key();
+    let reserved = dialect.document_vocabulary().top_level_reserved_keys();
 
     // Borrow the value to extract schemas and functions, then move it into data.
     if let Some(obj) = value.as_object() {
@@ -65,11 +65,11 @@ pub fn extract_fields(
     let mut computed = Vec::new();
     let mut merge = Vec::new();
 
-    let inheritable_key = dialect.inheritable_key();
-    let mutable_key = dialect.mutable_key();
-    let expr_key = dialect.expr_key();
-    let arg_key = dialect.arg_key();
-    let merge_key = dialect.merge_key();
+    let inheritable_key = dialect.document_vocabulary().inheritable_key();
+    let mutable_key = dialect.document_vocabulary().mutable_key();
+    let expr_key = dialect.document_vocabulary().expr_key();
+    let arg_key = dialect.document_vocabulary().arg_key();
+    let merge_key = dialect.document_vocabulary().merge_key();
 
     for (name, raw) in &schemas {
         if raw.get(inheritable_key).and_then(|v| v.as_bool()) == Some(true) {
@@ -107,13 +107,13 @@ pub fn extract_fields(
 /// Key names (`params`, `return`, `body`) are read from the dialect.
 fn parse_function_signature(val: &JsonValue, dialect: &dyn Dialect) -> Result<FunctionSignature, String> {
     let mut params = Vec::new();
-    if let Some(p) = val.get(dialect.params_key()).and_then(|v| v.as_object()) {
+    if let Some(p) = val.get(dialect.document_vocabulary().params_key()).and_then(|v| v.as_object()) {
         for (name, schema) in p {
             params.push((name.clone(), schema.clone()));
         }
     }
-    let return_schema = val.get(dialect.return_key()).cloned();
-    let body = val.get(dialect.body_key()).and_then(|v| v.as_str()).map(|s| s.to_string());
+    let return_schema = val.get(dialect.document_vocabulary().return_key()).cloned();
+    let body = val.get(dialect.document_vocabulary().body_key()).and_then(|v| v.as_str()).map(|s| s.to_string());
     Ok(FunctionSignature { params, return_schema, body })
 }
 

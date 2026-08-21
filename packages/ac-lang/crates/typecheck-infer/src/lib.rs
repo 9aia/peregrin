@@ -81,7 +81,7 @@ pub fn infer_ast(ast: &ExprAst, env: &TypeEnv, functions: &FunctionTable, dialec
         ExprAst::Literal(ty) => ty.clone(),
 
         ExprAst::Path(path) => {
-            let parts: Vec<&str> = path.split(dialect.path_separator()).collect();
+            let parts: Vec<&str> = path.split(dialect.syntax().path_separator()).collect();
             if parts.is_empty() {
                 return Type::Unknown;
             }

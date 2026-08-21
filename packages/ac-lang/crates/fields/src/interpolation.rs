@@ -19,7 +19,7 @@ pub fn interpolate(
     resolver: &dyn FunctionResolver,
     dialect: &dyn Dialect,
 ) -> JsonValue {
-    let prefix = dialect.interpolation_prefix();
+    let prefix = dialect.syntax().interpolation_prefix();
     match value {
         JsonValue::String(s) if s.contains(prefix) => {
             resolve_interpolation(s, namespaces, resolver, dialect)
@@ -71,7 +71,7 @@ fn interpolate_with_scope(
     resolver: &dyn FunctionResolver,
     dialect: &dyn Dialect,
 ) -> JsonValue {
-    let prefix = dialect.interpolation_prefix();
+    let prefix = dialect.syntax().interpolation_prefix();
     match value {
         JsonValue::Object(obj) => {
             // Build current scope: parent scope + local inheritable overrides
@@ -140,8 +140,8 @@ fn resolve_interpolation(
     resolver: &dyn FunctionResolver,
     dialect: &dyn Dialect,
 ) -> JsonValue {
-    let prefix = dialect.interpolation_prefix();
-    let suffix = dialect.interpolation_suffix();
+    let prefix = dialect.syntax().interpolation_prefix();
+    let suffix = dialect.syntax().interpolation_suffix();
 
     // Single expression → return raw value
     if let Some(inner) = extract_single_expr(s, prefix, suffix)

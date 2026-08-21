@@ -21,14 +21,14 @@ pub fn parse_expr(s: &str, dialect: &dyn Dialect) -> Option<ExprAst> {
         return None;
     }
 
-    let prefix = dialect.interpolation_prefix();
-    let suffix = dialect.interpolation_suffix();
+    let prefix = dialect.syntax().interpolation_prefix();
+    let suffix = dialect.syntax().interpolation_suffix();
     if s.starts_with(prefix) && s.ends_with(suffix) && s.len() > prefix.len() + suffix.len() {
         return parse_expr(&s[prefix.len()..s.len() - suffix.len()], dialect);
     }
 
-    if let Some(paren_pos) = dialect.find_call_open(s)
-        && s.ends_with(dialect.call_close())
+    if let Some(paren_pos) = dialect.parser().find_call_open(s)
+        && s.ends_with(dialect.syntax().call_close())
         && paren_pos < s.len() - 1
         && !s[..paren_pos].trim().is_empty()
     {
@@ -49,19 +49,19 @@ pub fn parse_expr(s: &str, dialect: &dyn Dialect) -> Option<ExprAst> {
 fn parse_literal(s: &str, dialect: &dyn Dialect) -> Option<ExprAst> {
     let s = s.trim();
 
-    if dialect.parse_string_literal(s).is_some() {
+    if dialect.parser().parse_string_literal(s).is_some() {
         return Some(ExprAst::Literal(Type::String));
     }
 
-    if dialect.parse_number_literal(s).is_some() {
+    if dialect.parser().parse_number_literal(s).is_some() {
         return Some(ExprAst::Literal(Type::Number));
     }
 
-    if dialect.parse_bool_literal(s).is_some() {
+    if dialect.parser().parse_bool_literal(s).is_some() {
         return Some(ExprAst::Literal(Type::Boolean));
     }
 
-    if dialect.is_null_literal(s) {
+    if dialect.parser().is_null_literal(s) {
         return Some(ExprAst::Literal(Type::Null));
     }
 
@@ -76,7 +76,7 @@ fn parse_args(s: &str, dialect: &dyn Dialect) -> Option<Vec<ExprAst>> {
     }
 
     let mut result = Vec::new();
-    for arg in dialect.split_args(s) {
+    for arg in dialect.parser().split_args(s) {
         let arg = arg.trim();
         let parsed = parse_expr(arg, dialect)?;
         result.push(parsed);

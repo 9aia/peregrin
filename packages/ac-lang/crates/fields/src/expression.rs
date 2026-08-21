@@ -66,8 +66,8 @@ pub(crate) fn eval_expr_inner(
     }
 
     // Function call: name(args)
-    if let Some(paren_pos) = dialect.find_call_open(expr)
-        && expr.ends_with(dialect.call_close())
+    if let Some(paren_pos) = dialect.parser().find_call_open(expr)
+        && expr.ends_with(dialect.syntax().call_close())
         && paren_pos < expr.len() - 1
         && !expr[..paren_pos].trim().is_empty()
     {
@@ -77,7 +77,7 @@ pub(crate) fn eval_expr_inner(
         resolver.call(name.trim(), &args).ok()
     } else {
         // Path lookup: ns.key.subkey or shorthand key
-        resolve_path(expr, namespaces, dialect.path_separator())
+        resolve_path(expr, namespaces, dialect.syntax().path_separator())
     }
 }
 
@@ -94,7 +94,7 @@ fn parse_args(
     }
 
     let mut args = Vec::new();
-    for arg in dialect.split_args(args_str) {
+    for arg in dialect.parser().split_args(args_str) {
         let arg = arg.trim();
         let val = eval_arg(arg, namespaces, resolver, dialect)?;
         args.push(val);
@@ -113,38 +113,38 @@ fn eval_arg(arg: &str, namespaces: &Namespaces, resolver: &dyn FunctionResolver,
     let arg = arg.trim();
 
     // Nested interpolation (e.g. ${...} for canonical dialect)
-    let prefix = dialect.interpolation_prefix();
-    let suffix = dialect.interpolation_suffix();
+    let prefix = dialect.syntax().interpolation_prefix();
+    let suffix = dialect.syntax().interpolation_suffix();
     if arg.starts_with(prefix) && arg.ends_with(suffix) && arg.len() > prefix.len() + suffix.len() {
         let inner = &arg[prefix.len()..arg.len() - suffix.len()];
         return eval_expr_inner(inner, namespaces, resolver, dialect);
     }
 
     // String literal
-    if let Some(s) = dialect.parse_string_literal(arg) {
+    if let Some(s) = dialect.parser().parse_string_literal(arg) {
         return Some(JsonValue::String(s));
     }
 
     // Number literal
-    if let Some(n) = dialect.parse_number_literal(arg) {
+    if let Some(n) = dialect.parser().parse_number_literal(arg) {
         return serde_json::Number::from_f64(n).map(JsonValue::Number);
     }
 
     // Boolean literal
-    if let Some(b) = dialect.parse_bool_literal(arg) {
+    if let Some(b) = dialect.parser().parse_bool_literal(arg) {
         return Some(JsonValue::Bool(b));
     }
 
     // Null literal
-    if dialect.is_null_literal(arg) {
+    if dialect.parser().is_null_literal(arg) {
         return Some(JsonValue::Null);
     }
 
     // Nested function call
-    if dialect.find_call_open(arg).is_some() {
+    if dialect.parser().find_call_open(arg).is_some() {
         return eval_expr_inner(arg, namespaces, resolver, dialect);
     }
 
     // Path lookup (namespace or shorthand)
-    resolve_path(arg, namespaces, dialect.path_separator())
+    resolve_path(arg, namespaces, dialect.syntax().path_separator())
 }
