@@ -1,4 +1,4 @@
-use super::schema::Schema;
+use super::schema_vocabulary::Schema;
 use super::validation_error::ValidationError;
 
 /// A schema vocabulary — compiles raw schema documents into validators.

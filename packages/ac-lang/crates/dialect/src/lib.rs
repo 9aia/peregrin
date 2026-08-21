@@ -16,10 +16,13 @@
 //! changing the spec. The canonical implementation lives in `ac-dialect-canonical`.
 
 mod dialect;
+mod expr_parser;
 mod schema;
-
-#[cfg(test)]
-mod dialect_tests;
+mod syntax;
+mod document_vocabulary;
 
 pub use dialect::Dialect;
+pub use expr_parser::ExprParser;
 pub use schema::{Schema, SchemaVocabulary, ValidationError};
+pub use syntax::Syntax;
+pub use document_vocabulary::DocumentVocabulary;

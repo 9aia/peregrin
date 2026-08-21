@@ -2,9 +2,9 @@
 
 **Status:** Draft
 
-The AC Language Specification ([LANG.md](./LANG.md)) fixes one canonical syntax. This document specifies the Dialect API — the interface that abstracts the three syntax decisions behind a single contract, so implementations can be structured around one source of truth rather than hardcoding tokens across dozens of functions.
+The AC Language Specification ([LANG.md](./LANG.md)) fixes one canonical syntax. This document specifies the Dialect API — the interface that abstracts the language's syntax and vocabulary decisions behind a single contract, so implementations can be structured around one source of truth rather than hardcoding tokens across dozens of functions.
 
-The canonical dialect is the only shipped dialect. Custom dialects are architecturally possible but not exposed officially to users. See [fixed-syntax.md](./explanations/fixed-syntax.md) for the rationale.
+The canonical dialect is the only shipped dialect. Custom dialects are architecturally possible but not exposed officially to users. See [fixed-syntax.md](../../docs/explanations/fixed-syntax.md) for the rationale.
 
 ## 1. Overview
 
@@ -25,7 +25,18 @@ The dialect does **not** define:
 
 ## 2. The Dialect interface
 
-A dialect provides the following operations. All operations are methods on the dialect interface — in Rust, the `Dialect` trait; in other languages, an interface, protocol, or abstract class.
+`Dialect` is a **facade** that groups four focused sub-traits. Consumers that only need one aspect can depend on the sub-trait directly; the facade provides a convenient "give me the whole language configuration" accessor for call sites that need multiple aspects. See [dialect-facade-split.md](./docs/explanations/dialect-facade-split.md) for the rationale.
+
+| Sub-trait             | Responsibility                                         | Facade accessor         |
+| --------------------- | ------------------------------------------------------ | ----------------------- |
+| `Syntax`              | Interpolation markers, path separator, call delimiters | `syntax()`              |
+| `ExprParser`          | Call detection, argument splitting, literal parsing    | `parser()`              |
+| `DocumentVocabulary`  | Reserved key names (`fields`, `expr`, etc.)            | `document_vocabulary()` |
+| `SchemaVocabulary<V>` | Schema language for field and function validation      | `schema_vocabulary()`   |
+
+In Rust, each sub-trait is a separate `trait` with `Send + Sync` supertraits, and `Dialect` is a trait with four accessor methods returning `&dyn` references. In other languages, the equivalent interface/protocol split should be used.
+
+The abstraction traits define **interfaces only** — they contain no default implementations with canonical values. Every method is required. In Rust, the canonical implementation lives in the `ac-dialect-canonical` crate (see §3). This ensures the abstraction has zero dependency on any specific syntax.
 
 ### 2.1 Syntax tokens
 
@@ -43,9 +54,11 @@ These tokens are the minimal syntax surface. Every parser, interpolator, and typ
 
 ### 2.1.1 Concurrency
 
-Dialect implementations must be safe for concurrent access. In Rust, this is expressed via the `Send + Sync` supertraits on `Dialect` and `SchemaVocabulary`. In other languages, the equivalent concurrency safety guarantee should be applied — e.g. thread-safe interfaces in Java, `Send` protocols in Swift, or immutable/frozen objects in JavaScript.
+All four sub-traits require `Send + Sync` in Rust. In other languages, the equivalent concurrency safety guarantee should be applied — e.g. thread-safe interfaces in Java, `Send` protocols in Swift, or immutable/frozen objects in JavaScript.
 
-### 2.2 Parsing operations
+### 2.2 Expression parser
+
+`ExprParser` is a trait with parsing behavior, not static configuration. If a dialect can change argument separators, nesting rules, quote syntax, call delimiters, and literal syntax, then expression parsing cannot be reduced to token values — it requires algorithms. See [expr-parser-as-trait.md](./docs/explanations/expr-parser-as-trait.md) for the rationale.
 
 | Operation              | Input                | Output                   | Description                                                                                              |
 | ---------------------- | -------------------- | ------------------------ | -------------------------------------------------------------------------------------------------------- |
@@ -62,7 +75,7 @@ All literal parsing is dialect-configurable. A dialect that uses `yes`/`no` for 
 
 The argument separator (`,` in canonical) is not a separate token on the interface. `split_args` encapsulates the splitting logic, including nesting awareness. A custom dialect could use a different separator (e.g. `;`) by implementing `split_args` accordingly, without exposing a separate `argument_separator` token.
 
-### 2.4 Special key names
+### 2.4 Document vocabulary
 
 The dialect defines the reserved key names used in AC documents. These keys have special meaning during field extraction, type checking, and type generation:
 
@@ -86,7 +99,7 @@ The dialect also provides two convenience aggregations:
 
 ### 2.5 Schema vocabulary
 
-The dialect exposes its schema vocabulary through a `schema_vocabulary()` accessor on the `Dialect` interface, returning a reference to the vocabulary. The schema vocabulary is an abstract interface that compiles raw schema documents into validators:
+The dialect exposes its schema vocabulary through the `schema_vocabulary()` accessor on the `Dialect` facade, returning a reference to the `SchemaVocabulary<V>` implementation. The schema vocabulary is an abstract interface that compiles raw schema documents into validators. `SchemaVocabulary` is conceptually orthogonal to the rest of the dialect — it answers "how are schemas expressed?" rather than "how is AC written?" See [schema-vocabulary-orthogonal.md](./docs/explanations/schema-vocabulary-orthogonal.md) for the rationale.
 
 At the dialect level, the value type `V` is fixed to the runtime's value type (in Rust, `RuntimeValue`). The `Schema<V>` and `SchemaVocabulary<V>` interfaces remain generic over `V` so the abstractions work with any value type. In other language implementations, `V` should be bound to the equivalent runtime value type.
 
@@ -122,47 +135,34 @@ Schema validation involves two abstract interfaces and an error type, all generi
 
 ## 3. Package structure
 
-The dialect abstraction and its canonical implementation are separate packages. This keeps the abstractions cacheable, testable and free of any dependency on a specific schema vocabulary or runtime.
+The dialect abstraction and its canonical implementation are separate packages. This keeps the abstractions cacheable, testable and free of any dependency on a specific schema vocabulary or runtime. The abstraction traits define interfaces only — no default implementations with canonical values. Every method is required.
 
-| Package             | Role                            | Contents                                                                                                                                                                                           |
-| ------------------- | ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Dialect abstraction | Defines the interfaces          | `Dialect`, `Schema<V>`, `SchemaVocabulary<V>`, `ValidationError`. No implementation, no dependencies on a specific schema vocabulary.                                                              |
-| Canonical dialect   | Implements the canonical syntax | `AcDialect` (implements `Dialect`), `AC_DIALECT` static singleton, `JsonSchema` (implements `Schema<V>`), `JsonSchemaVocabulary` (implements `SchemaVocabulary<V>`) for JSON Schema draft 2020-12. |
+| Package             | Role                            | Contents                                                                                                                                                                                                         |
+| ------------------- | ------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Dialect abstraction | Defines the interfaces          | `Dialect` (facade), `Syntax`, `ExprParser`, `DocumentVocabulary`, `Schema<V>`, `SchemaVocabulary<V>`, `ValidationError`. No implementation, no default methods, no dependencies on a specific schema vocabulary. |
+| Canonical dialect   | Implements the canonical syntax | `AcDialect`, `AC_DIALECT` singleton, `JsonSchema`, `JsonSchemaVocabulary` (JSON Schema draft 2020-12). See [canonical SPEC.md](../dialect-canonical/SPEC.md).                                                    |
 
 In Rust, the abstraction package is the `ac-dialect` crate and the canonical package is the `ac-dialect-canonical` crate. In other languages, the equivalent module/package split should be used — e.g. `@ac/dialect` and `@ac/dialect-canonical` in a JavaScript/TypeScript monorepo.
 
+### 3.1 Module organization
+
+The dialect abstraction package is internally split into modules that mirror the sub-traits. Each module owns one interface and its associated types, so consumers can depend on exactly the concern they need:
+
+| Module                | Exports                                               | Responsibility                                               |
+| --------------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
+| `syntax`              | `Syntax`                                              | Interpolation markers, path separator, call delimiters       |
+| `expr_parser`         | `ExprParser`                                          | Call detection, argument splitting, literal parsing          |
+| `document_vocabulary` | `DocumentVocabulary`                                  | Reserved key names and convenience aggregations              |
+| `schema`              | `Schema<V>`, `SchemaVocabulary<V>`, `ValidationError` | Schema compilation, validation, and error reporting          |
+| `dialect`             | `Dialect`                                             | Facade that aggregates the four sub-traits into one accessor |
+
+The `dialect` module depends on the other four; the other four are independent of each other. This means a consumer that only needs syntax tokens can depend on the `syntax` module alone, without pulling in the parser, vocabulary, or schema modules.
+
+In Rust, each module is a directory with a `mod.rs` re-exporting the public API. In other languages, the equivalent module/file split should be used — e.g. one file per interface in JavaScript/TypeScript, or one namespace per interface in C#.
+
 ## 4. Canonical dialect
 
-The canonical dialect implements the syntax defined in [LANG.md](./LANG.md):
-
-| Token              | Value                                                                                               | Used in                                                 |
-| ------------------ | --------------------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Interpolation      | `${...}`                                                                                            | String interpolation, `expr:` fields, `body:` functions |
-| Path separator     | `.`                                                                                                 | `ns.key`, `ns.key.sub`, shorthand `key`                 |
-| Call syntax        | `fn(args)`                                                                                          | `add(1, 2)`, `mul(x, 2)`, `concat(doc.name, "!")`       |
-| String literals    | `"..."` or `'...'`                                                                                  | `"hello"`, `'hello'`                                    |
-| Number literals    | `42`, `1.5`, `-3`                                                                                   | IEEE 754 doubles                                        |
-| Boolean literals   | `true`, `false`                                                                                     | Dialect-configurable (`parse_bool_literal`)             |
-| Null literal       | `null`                                                                                              | Dialect-configurable (`is_null_literal`)                |
-| Argument separator | `,`                                                                                                 | `add(1, 2, 3)`                                          |
-| Schema vocabulary  | JSON Schema 2020-12                                                                                 | Field and function validation                           |
-| Special keys       | `fields`, `functions`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body` | Document structure                                      |
-
-### 4.1 Call detection
-
-A string is a function call if it contains the call-open token outside string literals. Otherwise, it is a path lookup. This is the single discriminator — no grammar ambiguity.
-
-### 4.2 Argument splitting
-
-Arguments are split by `,` at depth 0 (outside nested calls and string literals). Nested calls increase depth; the call-close token decreases it. String literals are transparent to depth tracking.
-
-### 4.3 String literal parsing
-
-Both double-quoted (`"..."`) and single-quoted (`'...'`) forms are accepted. The inner content is returned verbatim — no escape sequences are processed at the dialect level. Escape handling, if any, is a runtime concern.
-
-### 4.4 Number literal parsing
-
-Numbers are parsed as IEEE 754 doubles. Integers (`42`) and floats (`1.5`) are the same type (see [LANG.md](./LANG.md) §3). Negative numbers (`-3`) are recognized.
+The canonical dialect implements the syntax defined in [LANG.md](./LANG.md). Its concrete token values, parsing rules, and schema vocabulary are specified in the [Canonical Dialect Specification](../dialect-canonical/SPEC.md).
 
 ## 5. Custom dialects
 
@@ -177,13 +177,15 @@ A custom dialect implements the same interface with different token values and p
 
 ### 5.1 What a custom dialect must preserve
 
-A custom dialect changes **surface syntax** only. It must not change:
+A custom dialect changes the **concrete representation** of AC documents — the tokens, key names, and schema language that appear on the surface. It must not change the **expression semantics** underneath:
 
-- **Semantics** — interpolation, path lookup, and function calls work identically. Only the tokens differ.
+- **Expression semantics** — interpolation, path lookup, and function calls work identically. Only the tokens differ.
 - **Value types** — JSON-compatible values, IEEE 754 doubles, boolean/null values.
 - **Namespace concept** — named scopes for path lookups. The path separator changes, but the mechanism does not.
 - **Default namespace shorthand** — bare `key` resolves to `doc.key` (in canonical) regardless of separator.
 - **Expression AST** — `Literal`, `Path`, and `Call` node types. The parser produces the same AST; only the token recognition differs.
+
+The concrete representation includes three layers: **surface syntax** (interpolation markers, path separator, call delimiters, literal syntax), **document vocabulary** (reserved key names like `fields` and `expr`), and **schema vocabulary** (which schema language is used for validation). Changing key names or swapping the schema language are not merely punctuation changes — they alter how documents are written and how values are validated. But they do not alter the expression semantics that the language spec defines.
 
 ### 5.2 What a custom dialect may change
 
@@ -200,18 +202,21 @@ A custom dialect changes **surface syntax** only. It must not change:
 
 ### 5.3 Portability
 
-Documents written with one dialect are not portable to another. `doc.name` and `doc/name` are different strings that produce the same AST only if the dialect is changed. This is why the language spec fixes one syntax — see [fixed-syntax.md](./explanations/fixed-syntax.md).
+Documents written with one dialect are not portable to another. `doc.name` and `doc/name` are different strings that produce the same AST only if the dialect is changed. This is why the language spec fixes one syntax — see [fixed-syntax.md](../../docs/explanations/fixed-syntax.md).
 
 ## 6. Relationship to the other specs
 
-| Concern                       | Defined by    | Document                                          |
-| ----------------------------- | ------------- | ------------------------------------------------- |
-| Expression syntax (canonical) | Language spec | [LANG.md](./LANG.md) §4                           |
-| Schema vocabulary (canonical) | Language spec | [LANG.md](./LANG.md) §6.1                         |
-| Special key names (canonical) | Language spec | [LANG.md](./LANG.md) §6                           |
-| Dialect interface (abstract)  | This spec     | DIALECT.md                                        |
-| Runtime configuration         | Runtime spec  | [RUNTIME.md](./RUNTIME.md)                        |
-| Fixed-syntax rationale        | Explanation   | [fixed-syntax.md](./explanations/fixed-syntax.md) |
+| Concern                        | Defined by    | Document                                                                               |
+| ------------------------------ | ------------- | -------------------------------------------------------------------------------------- |
+| Expression syntax (canonical)  | Language spec | [LANG.md](./LANG.md) §4                                                                |
+| Schema vocabulary (canonical)  | Language spec | [LANG.md](./LANG.md) §6.1                                                              |
+| Special key names (canonical)  | Language spec | [LANG.md](./LANG.md) §6                                                                |
+| Dialect interface (abstract)   | This spec     | DIALECT.md                                                                             |
+| Runtime configuration          | Runtime spec  | [RUNTIME.md](./RUNTIME.md)                                                             |
+| Fixed-syntax rationale         | Explanation   | [fixed-syntax.md](../../docs/explanations/fixed-syntax.md)                             |
+| Facade split rationale         | Explanation   | [dialect-facade-split.md](./docs/explanations/dialect-facade-split.md)                 |
+| ExprParser as trait            | Explanation   | [expr-parser-as-trait.md](./docs/explanations/expr-parser-as-trait.md)                 |
+| SchemaVocabulary orthogonality | Explanation   | [schema-vocabulary-orthogonal.md](./docs/explanations/schema-vocabulary-orthogonal.md) |
 
 The language spec defines **what the canonical syntax is**. This spec defines **how implementations abstract that syntax behind an interface**. The runtime spec defines **how the canonical dialect is wired into the compiler**.
 
