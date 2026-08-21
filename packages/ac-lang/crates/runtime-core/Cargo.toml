@@ -1,0 +1,11 @@
+[package]
+name = "ac-runtime-core"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-vm.workspace = true
+ac-runtime.workspace = true
+
+[dev-dependencies]
+ac-ast.workspace = true
