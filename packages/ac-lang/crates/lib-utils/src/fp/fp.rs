@@ -54,6 +54,14 @@ impl Module for FpModule {
             "sort_by" => Some(&SortBy),
             "apply" => Some(&Apply),
             "tap" => Some(&Tap),
+            "compact" => Some(&Compact),
+            "pluck" => Some(&Pluck),
+            "min_by" => Some(&MinBy),
+            "max_by" => Some(&MaxBy),
+            "count_by" => Some(&CountBy),
+            "sort_by_desc" => Some(&SortByDesc),
+            "deep_get" => Some(&DeepGet),
+            "deep_merge" => Some(&DeepMerge),
             _ => None,
         }
     }
@@ -614,7 +622,23 @@ fn substitute_param(body: &str, param: &str, replacement: &str) -> String {
     let mut result = String::new();
     let bytes = body.as_bytes();
     let mut i = 0;
+    let mut in_string = false;
     while i < body.len() {
+        let ch = bytes[i];
+        if in_string {
+            result.push(ch as char);
+            if ch == b'"' {
+                in_string = false;
+            }
+            i += 1;
+            continue;
+        }
+        if ch == b'"' {
+            in_string = true;
+            result.push(ch as char);
+            i += 1;
+            continue;
+        }
         if body[i..].starts_with(param) {
             let before_ok = i == 0 || !is_ident_char(bytes[i - 1]);
             let after = i + param.len();
@@ -625,7 +649,7 @@ fn substitute_param(body: &str, param: &str, replacement: &str) -> String {
                 continue;
             }
         }
-        result.push(bytes[i] as char);
+        result.push(ch as char);
         i += 1;
     }
     result
@@ -982,5 +1006,266 @@ impl Function for Tap {
         let vars = bind_param(&fn_val, &inner);
         let _ = ctx.eval_expr(&fn_val.body, &vars)?;
         Ok(value.clone())
+    }
+}
+
+// ── compact ────────────────────────────────────────────────────────
+//
+// compact(array) — remove all null values from array.
+
+#[derive(Clone, Copy)]
+pub struct Compact;
+impl Function for Compact {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let input = require_one_arg(args)?;
+        let array = require_array(input)?;
+        let result: Vec<serde_json::Value> = array
+            .iter()
+            .filter(|v| !v.is_null())
+            .cloned()
+            .collect();
+        Ok(arr(&result))
+    }
+}
+
+// ── pluck ──────────────────────────────────────────────────────────
+//
+// pluck(array, key) — extract a property from each object in array.
+
+#[derive(Clone, Copy)]
+pub struct Pluck;
+impl Function for Pluck {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let array = require_array(&args[0])?;
+        let key = args[1].as_str().ok_or(Error::TypeMismatch {
+            expected: "string",
+            got: "non-string",
+        })?;
+        let result: Vec<serde_json::Value> = array
+            .iter()
+            .map(|item| {
+                item.as_object()
+                    .and_then(|obj| obj.get(key))
+                    .cloned()
+                    .unwrap_or(serde_json::Value::Null)
+            })
+            .collect();
+        Ok(arr(&result))
+    }
+}
+
+// ── min_by / max_by ────────────────────────────────────────────────
+//
+// min_by(fn, array) — element with minimum numeric key from fn.
+// max_by(fn, array) — element with maximum numeric key from fn.
+
+fn require_function_and_array_for_sort(
+    args: &[NonFunctionValue],
+) -> Result<(FunctionValue, &[serde_json::Value]), Error> {
+    if args.len() < 2 {
+        return Err(Error::ArgumentCount {
+            expected: 2,
+            got: args.len(),
+        });
+    }
+    let fn_val = require_function_value(&args[0])?;
+    let array = require_array(&args[1])?;
+    Ok((fn_val, array))
+}
+
+#[derive(Clone, Copy)]
+pub struct MinBy;
+impl Function for MinBy {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array_for_sort(args)?;
+        let mut best: Option<(f64, &serde_json::Value)> = None;
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let key = ctx.eval_expr(&fn_val.body, &vars)?;
+            let num = key.as_number().ok_or(Error::TypeMismatch {
+                expected: "number",
+                got: "non-number",
+            })?;
+            match &best {
+                None => best = Some((num, item)),
+                Some((bn, _)) if num < *bn => best = Some((num, item)),
+                _ => {}
+            }
+        }
+        match best {
+            Some((_, v)) => Ok(NonFunctionValue::new(v.clone())),
+            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct MaxBy;
+impl Function for MaxBy {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array_for_sort(args)?;
+        let mut best: Option<(f64, &serde_json::Value)> = None;
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let key = ctx.eval_expr(&fn_val.body, &vars)?;
+            let num = key.as_number().ok_or(Error::TypeMismatch {
+                expected: "number",
+                got: "non-number",
+            })?;
+            match &best {
+                None => best = Some((num, item)),
+                Some((bn, _)) if num > *bn => best = Some((num, item)),
+                _ => {}
+            }
+        }
+        match best {
+            Some((_, v)) => Ok(NonFunctionValue::new(v.clone())),
+            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
+        }
+    }
+}
+
+// ── count_by ───────────────────────────────────────────────────────
+//
+// count_by(fn, array) — count elements grouped by key function,
+//   returns object mapping string keys to counts.
+
+#[derive(Clone, Copy)]
+pub struct CountBy;
+impl Function for CountBy {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array_for_sort(args)?;
+        let mut counts: std::collections::BTreeMap<String, f64> =
+            std::collections::BTreeMap::new();
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let key = ctx.eval_expr(&fn_val.body, &vars)?;
+            let key_str = key_to_string(&key);
+            *counts.entry(key_str).or_insert(0.0) += 1.0;
+        }
+        let mut result = serde_json::Map::new();
+        for (k, v) in counts {
+            result.insert(k, serde_json::json!(v));
+        }
+        Ok(NonFunctionValue::new(serde_json::Value::Object(result)))
+    }
+}
+
+// ── sort_by_desc ───────────────────────────────────────────────────
+//
+// sort_by_desc(fn, array) — sort by numeric key extracted by fn (descending).
+
+#[derive(Clone, Copy)]
+pub struct SortByDesc;
+impl Function for SortByDesc {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array_for_sort(args)?;
+        let mut keyed: Vec<(f64, serde_json::Value)> = Vec::with_capacity(array.len());
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let key = ctx.eval_expr(&fn_val.body, &vars)?;
+            let num = key.as_number().ok_or(Error::TypeMismatch {
+                expected: "number",
+                got: "non-number",
+            })?;
+            keyed.push((num, item.clone()));
+        }
+        keyed.sort_by(|a, c| c.0.total_cmp(&a.0));
+        let sorted: Vec<serde_json::Value> = keyed.into_iter().map(|(_, v)| v).collect();
+        Ok(arr(&sorted))
+    }
+}
+
+// ── deep_get ───────────────────────────────────────────────────────
+//
+// deep_get(value, path) — navigate nested objects/arrays by dot-separated
+//   path string. Returns null if any segment doesn't exist.
+//   Supports array indices: "a.b.0.c"
+
+#[derive(Clone, Copy)]
+pub struct DeepGet;
+impl Function for DeepGet {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let path = args[1].as_str().ok_or(Error::TypeMismatch {
+            expected: "string",
+            got: "non-string",
+        })?;
+        let mut current = args[0].inner().clone();
+        for segment in path.split('.') {
+            if segment.is_empty() {
+                continue;
+            }
+            current = match &current {
+                serde_json::Value::Object(obj) => {
+                    obj.get(segment).cloned().unwrap_or(serde_json::Value::Null)
+                }
+                serde_json::Value::Array(arr) => {
+                    if let Ok(idx) = segment.parse::<usize>() {
+                        arr.get(idx).cloned().unwrap_or(serde_json::Value::Null)
+                    } else {
+                        serde_json::Value::Null
+                    }
+                }
+                _ => serde_json::Value::Null,
+            };
+            if current.is_null() {
+                break;
+            }
+        }
+        Ok(NonFunctionValue::new(current))
+    }
+}
+
+// ── deep_merge ─────────────────────────────────────────────────────
+//
+// deep_merge(a, b) — recursively merge two objects. Nested objects are
+//   merged recursively; non-object values from b override a.
+
+fn deep_merge_values(a: &serde_json::Value, b: &serde_json::Value) -> serde_json::Value {
+    match (a, b) {
+        (serde_json::Value::Object(a_obj), serde_json::Value::Object(b_obj)) => {
+            let mut result = a_obj.clone();
+            for (k, v) in b_obj {
+                if let Some(existing) = result.get(k) {
+                    result.insert(k.clone(), deep_merge_values(existing, v));
+                } else {
+                    result.insert(k.clone(), v.clone());
+                }
+            }
+            serde_json::Value::Object(result)
+        }
+        (_, b) => b.clone(),
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct DeepMerge;
+impl Function for DeepMerge {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let a = require_object(&args[0])?;
+        let b = require_object(&args[1])?;
+        let merged = deep_merge_values(
+            &serde_json::Value::Object(a.clone()),
+            &serde_json::Value::Object(b.clone()),
+        );
+        Ok(NonFunctionValue::new(merged))
     }
 }

@@ -276,6 +276,132 @@ fn pad_right_already_long_enough() {
 }
 
 #[test]
+fn length_ascii() {
+    assert_eq!(
+        call(&StringModule, "length", &[s("hello")]).as_number(),
+        Some(5.0)
+    );
+}
+
+#[test]
+fn length_empty() {
+    assert_eq!(
+        call(&StringModule, "length", &[s("")]).as_number(),
+        Some(0.0)
+    );
+}
+
+#[test]
+fn length_unicode() {
+    assert_eq!(
+        call(&StringModule, "length", &[s("héllo")]).as_number(),
+        Some(5.0)
+    );
+}
+
+#[test]
+fn concat_two() {
+    assert_eq!(
+        call(&StringModule, "concat", &[s("hello"), s(" world")]).as_str(),
+        Some("hello world")
+    );
+}
+
+#[test]
+fn concat_three() {
+    assert_eq!(
+        call(&StringModule, "concat", &[s("a"), s("b"), s("c")]).as_str(),
+        Some("abc")
+    );
+}
+
+#[test]
+fn concat_one_arg_errors() {
+    let func = StringModule.function("concat").unwrap();
+    let mut ctx = Context::new();
+    let result = func.call(&[s("a")], &mut ctx);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn replace_first() {
+    assert_eq!(
+        call(
+            &StringModule,
+            "replace_first",
+            &[s("foo bar foo"), s("foo"), s("baz")]
+        )
+        .as_str(),
+        Some("baz bar foo")
+    );
+}
+
+#[test]
+fn replace_first_no_match() {
+    assert_eq!(
+        call(
+            &StringModule,
+            "replace_first",
+            &[s("hello"), s("xyz"), s("abc")]
+        )
+        .as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn slice_unicode() {
+    let result = call(&StringModule, "slice", &[s("héllo"), n(1.0), n(4.0)]);
+    assert_eq!(result.as_str(), Some("éll"));
+}
+
+#[test]
+fn find_unicode_returns_char_offset() {
+    let result = call(&StringModule, "find", &[s("héllo"), s("lo")]);
+    assert_eq!(result.as_number(), Some(3.0));
+}
+
+#[test]
+fn char_at_negative_errors() {
+    let func = StringModule.function("char_at").unwrap();
+    let mut ctx = Context::new();
+    let result = func.call(&[s("hello"), n(-1.0)], &mut ctx);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn slice_negative_errors() {
+    let func = StringModule.function("slice").unwrap();
+    let mut ctx = Context::new();
+    let result = func.call(&[s("hello"), n(-1.0), n(3.0)], &mut ctx);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn repeat_negative_errors() {
+    let func = StringModule.function("repeat").unwrap();
+    let mut ctx = Context::new();
+    let result = func.call(&[s("ab"), n(-1.0)], &mut ctx);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn pad_left_negative_errors() {
+    let func = StringModule.function("pad_left").unwrap();
+    let mut ctx = Context::new();
+    let result = func.call(&[s("hi"), n(-1.0), s(" ")], &mut ctx);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn pad_left_unicode() {
+    assert_eq!(
+        call(&StringModule, "pad_left", &[s("café"), n(6.0), s(" ")]).as_str(),
+        Some("  café")
+    );
+}
+
+#[test]
 fn unknown_function_returns_none() {
     assert!(StringModule.function("nope").is_none());
 }

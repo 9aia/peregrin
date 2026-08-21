@@ -380,6 +380,153 @@ fn max_empty() {
 }
 
 #[test]
+fn at_valid_index() {
+    let result = call(
+        &ArrayModule,
+        "at",
+        &[arr(&[json!(10), json!(20), json!(30)]), n(1.0)],
+    );
+    assert_eq!(result.as_number(), Some(20.0));
+}
+
+#[test]
+fn at_out_of_bounds_returns_null() {
+    let result = call(
+        &ArrayModule,
+        "at",
+        &[arr(&[json!(1)]), n(5.0)],
+    );
+    assert!(result.is_null());
+}
+
+#[test]
+fn at_negative_errors() {
+    let func = ArrayModule.function("at").unwrap();
+    let mut ctx = Context::new();
+    let result = func.call(&[arr(&[json!(1)]), n(-1.0)], &mut ctx);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn push_single() {
+    let result = call(
+        &ArrayModule,
+        "push",
+        &[arr(&[json!(1), json!(2)]), n(3.0)],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[2].as_f64(), Some(3.0));
+}
+
+#[test]
+fn push_multiple() {
+    let result = call(
+        &ArrayModule,
+        "push",
+        &[arr(&[json!(1)]), n(2.0), n(3.0), s("a")],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 4);
+    assert_eq!(array[3], json!("a"));
+}
+
+#[test]
+fn fill_three() {
+    let result = call(&ArrayModule, "fill", &[n(3.0), n(0.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[0].as_f64(), Some(0.0));
+    assert_eq!(array[2].as_f64(), Some(0.0));
+}
+
+#[test]
+fn fill_zero() {
+    let result = call(&ArrayModule, "fill", &[n(0.0), s("x")]);
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+#[test]
+fn fill_negative_errors() {
+    let func = ArrayModule.function("fill").unwrap();
+    let mut ctx = Context::new();
+    let result = func.call(&[n(-1.0), n(0.0)], &mut ctx);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn difference_basic() {
+    let result = call(
+        &ArrayModule,
+        "difference",
+        &[arr(&[json!(1), json!(2), json!(3)]), arr(&[json!(2)])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0], json!(1));
+    assert_eq!(array[1], json!(3));
+}
+
+#[test]
+fn intersection_basic() {
+    let result = call(
+        &ArrayModule,
+        "intersection",
+        &[arr(&[json!(1), json!(2), json!(3)]), arr(&[json!(2), json!(3), json!(4)])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0], json!(2));
+    assert_eq!(array[1], json!(3));
+}
+
+#[test]
+fn union_basic() {
+    let result = call(
+        &ArrayModule,
+        "union",
+        &[arr(&[json!(1), json!(2)]), arr(&[json!(2), json!(3)])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[0], json!(1));
+    assert_eq!(array[1], json!(2));
+    assert_eq!(array[2], json!(3));
+}
+
+#[test]
+fn deep_flatten_nested() {
+    let result = call(
+        &ArrayModule,
+        "deep_flatten",
+        &[arr(&[json!(1), json!([2, json!([3, 4])]), json!(5)])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 5);
+    assert_eq!(array[0], json!(1));
+    assert_eq!(array[4], json!(5));
+}
+
+#[test]
+fn deep_flatten_no_nested() {
+    let result = call(
+        &ArrayModule,
+        "deep_flatten",
+        &[arr(&[json!(1), json!(2), json!(3)])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+}
+
+#[test]
+fn slice_negative_errors() {
+    let func = ArrayModule.function("slice").unwrap();
+    let mut ctx = Context::new();
+    let result = func.call(&[arr(&[json!(1)]), n(-1.0), n(1.0)], &mut ctx);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
 fn unknown_function_returns_none() {
     assert!(ArrayModule.function("nope").is_none());
 }

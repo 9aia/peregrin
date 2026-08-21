@@ -226,6 +226,36 @@ fn e() {
 }
 
 #[test]
+fn log2() {
+    assert_eq!(
+        call(&MathModule, "log2", &[n(8.0)]).as_number(),
+        Some(3.0)
+    );
+}
+
+#[test]
+fn cbrt() {
+    assert_eq!(
+        call(&MathModule, "cbrt", &[n(27.0)]).as_number(),
+        Some(3.0)
+    );
+}
+
+#[test]
+fn degrees() {
+    let result = call(&MathModule, "degrees", &[n(std::f64::consts::PI)]).as_number();
+    assert!(result.is_some());
+    assert!((result.unwrap() - 180.0).abs() < 1e-10);
+}
+
+#[test]
+fn radians() {
+    let result = call(&MathModule, "radians", &[n(180.0)]).as_number();
+    assert!(result.is_some());
+    assert!((result.unwrap() - std::f64::consts::PI).abs() < 1e-10);
+}
+
+#[test]
 fn unknown_function_returns_none() {
     assert!(MathModule.function("nope").is_none());
 }

@@ -31,6 +31,13 @@ impl Module for ArrayModule {
             "avg" => Some(&Avg),
             "min" => Some(&Min),
             "max" => Some(&Max),
+            "at" => Some(&At),
+            "push" => Some(&Push),
+            "fill" => Some(&Fill),
+            "difference" => Some(&Difference),
+            "intersection" => Some(&Intersection),
+            "union" => Some(&Union),
+            "deep_flatten" => Some(&DeepFlatten),
             _ => None,
         }
     }
@@ -215,11 +222,19 @@ impl Function for Slice {
         let start = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
             got: "non-number",
-        })? as usize;
+        })?;
         let end = args[2].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
             got: "non-number",
-        })? as usize;
+        })?;
+        if start < 0.0 || end < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        let start = start as usize;
+        let end = end as usize;
         let end = end.min(array.len());
         let start = start.min(end);
         Ok(arr(&array[start..end]))
@@ -259,5 +274,140 @@ impl Function for Unique {
             }
         }
         Ok(arr(&seen))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct At;
+impl Function for At {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let array = require_array(&args[0])?;
+        let index = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        if index < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        match array.get(index as usize) {
+            Some(v) => Ok(NonFunctionValue::new(v.clone())),
+            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Push;
+impl Function for Push {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let array = require_array(&args[0])?;
+        let mut result = array.to_vec();
+        for arg in &args[1..] {
+            result.push(arg.inner().clone());
+        }
+        Ok(arr(&result))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Fill;
+impl Function for Fill {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let count = args[0].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        if count < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        let value = args[1].inner().clone();
+        let result: Vec<serde_json::Value> = (0..count as usize).map(|_| value.clone()).collect();
+        Ok(arr(&result))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Difference;
+impl Function for Difference {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (a, b) = require_two_arrays(args)?;
+        let result: Vec<serde_json::Value> = a
+            .iter()
+            .filter(|item| !b.contains(item))
+            .cloned()
+            .collect();
+        Ok(arr(&result))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Intersection;
+impl Function for Intersection {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (a, b) = require_two_arrays(args)?;
+        let result: Vec<serde_json::Value> = a
+            .iter()
+            .filter(|item| b.contains(item))
+            .cloned()
+            .collect();
+        Ok(arr(&result))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Union;
+impl Function for Union {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (a, b) = require_two_arrays(args)?;
+        let mut result: Vec<serde_json::Value> = a.to_vec();
+        for item in b {
+            if !result.contains(item) {
+                result.push(item.clone());
+            }
+        }
+        Ok(arr(&result))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct DeepFlatten;
+impl Function for DeepFlatten {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let input = require_one_array(args)?;
+        fn deep_flat(items: &[serde_json::Value], out: &mut Vec<serde_json::Value>) {
+            for item in items {
+                match item {
+                    serde_json::Value::Array(nested) => deep_flat(nested, out),
+                    other => out.push(other.clone()),
+                }
+            }
+        }
+        let mut flat = Vec::new();
+        deep_flat(input, &mut flat);
+        Ok(arr(&flat))
     }
 }

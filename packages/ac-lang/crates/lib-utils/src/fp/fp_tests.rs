@@ -1625,3 +1625,307 @@ fn argument_count_on_default_missing_args() {
         })
     );
 }
+
+// ── compact ───────────────────────────────────────────────────────
+
+#[test]
+fn compact_removes_nulls() {
+    let result = call(
+        &FpModule,
+        "compact",
+        &[arr(&[
+            serde_json::json!(1),
+            serde_json::Value::Null,
+            serde_json::json!(3),
+            serde_json::Value::Null,
+        ])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_f64(), Some(1.0));
+    assert_eq!(array[1].as_f64(), Some(3.0));
+}
+
+#[test]
+fn compact_empty_array() {
+    let result = call(&FpModule, "compact", &[arr(&[])]);
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+#[test]
+fn compact_no_nulls() {
+    let result = call(
+        &FpModule,
+        "compact",
+        &[arr(&[serde_json::json!(1), serde_json::json!(2)])],
+    );
+    assert_eq!(result.as_array().unwrap().len(), 2);
+}
+
+#[test]
+fn compact_on_non_array_errors() {
+    let result = call_err(&FpModule, "compact", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── pluck ─────────────────────────────────────────────────────────
+
+#[test]
+fn pluck_extracts_property() {
+    let result = call(
+        &FpModule,
+        "pluck",
+        &[
+            arr(&[
+                serde_json::json!({"name": "a", "age": 1}),
+                serde_json::json!({"name": "b", "age": 2}),
+            ]),
+            s("name"),
+        ],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_str(), Some("a"));
+    assert_eq!(array[1].as_str(), Some("b"));
+}
+
+#[test]
+fn pluck_missing_key_returns_null() {
+    let result = call(
+        &FpModule,
+        "pluck",
+        &[
+            arr(&[serde_json::json!({"a": 1})]),
+            s("b"),
+        ],
+    );
+    assert!(result.as_array().unwrap()[0].is_null());
+}
+
+#[test]
+fn pluck_on_non_array_errors() {
+    let result = call_err(&FpModule, "pluck", &[n(42.0), s("a")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── min_by / max_by ───────────────────────────────────────────────
+
+#[test]
+fn min_by_returns_element_with_min_key() {
+    let result = call_with_eval(
+        &FpModule,
+        "min_by",
+        &[
+            fn_value("x", &["x"]),
+            arr(&[serde_json::json!(3), serde_json::json!(1), serde_json::json!(2)]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(1.0));
+}
+
+#[test]
+fn min_by_empty_returns_null() {
+    let result = call_with_eval(
+        &FpModule,
+        "min_by",
+        &[fn_value("x", &["x"]), arr(&[])],
+    );
+    assert!(result.is_null());
+}
+
+#[test]
+fn max_by_returns_element_with_max_key() {
+    let result = call_with_eval(
+        &FpModule,
+        "max_by",
+        &[
+            fn_value("x", &["x"]),
+            arr(&[serde_json::json!(3), serde_json::json!(1), serde_json::json!(2)]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(3.0));
+}
+
+#[test]
+fn max_by_empty_returns_null() {
+    let result = call_with_eval(
+        &FpModule,
+        "max_by",
+        &[fn_value("x", &["x"]), arr(&[])],
+    );
+    assert!(result.is_null());
+}
+
+// ── count_by ──────────────────────────────────────────────────────
+
+#[test]
+fn count_by_groups_and_counts() {
+    let result = call_with_eval(
+        &FpModule,
+        "count_by",
+        &[
+            fn_value("x", &["x"]),
+            arr(&[
+                serde_json::json!(1),
+                serde_json::json!(2),
+                serde_json::json!(1),
+                serde_json::json!(3),
+                serde_json::json!(1),
+            ]),
+        ],
+    );
+    let obj = result.as_object().unwrap();
+    assert_eq!(obj.len(), 3);
+    assert_eq!(obj.get("1").unwrap().as_f64(), Some(3.0));
+    assert_eq!(obj.get("2").unwrap().as_f64(), Some(1.0));
+    assert_eq!(obj.get("3").unwrap().as_f64(), Some(1.0));
+}
+
+#[test]
+fn count_by_empty_array() {
+    let result = call_with_eval(
+        &FpModule,
+        "count_by",
+        &[fn_value("x", &["x"]), arr(&[])],
+    );
+    assert!(result.as_object().unwrap().is_empty());
+}
+
+// ── sort_by_desc ──────────────────────────────────────────────────
+
+#[test]
+fn sort_by_desc_sorts_descending() {
+    let result = call_with_eval(
+        &FpModule,
+        "sort_by_desc",
+        &[
+            fn_value("x", &["x"]),
+            arr(&[serde_json::json!(1), serde_json::json!(3), serde_json::json!(2)]),
+        ],
+    );
+    let arr = result.as_array().unwrap();
+    assert_eq!(arr[0].as_f64(), Some(3.0));
+    assert_eq!(arr[1].as_f64(), Some(2.0));
+    assert_eq!(arr[2].as_f64(), Some(1.0));
+}
+
+#[test]
+fn sort_by_desc_with_key_function() {
+    let result = call_with_eval(
+        &FpModule,
+        "sort_by_desc",
+        &[
+            fn_value("mul(x, -1)", &["x"]),
+            arr(&[serde_json::json!(1), serde_json::json!(3), serde_json::json!(2)]),
+        ],
+    );
+    let arr = result.as_array().unwrap();
+    assert_eq!(arr[0].as_f64(), Some(1.0));
+    assert_eq!(arr[1].as_f64(), Some(2.0));
+    assert_eq!(arr[2].as_f64(), Some(3.0));
+}
+
+#[test]
+fn sort_by_desc_empty_array() {
+    let result = call_with_eval(
+        &FpModule,
+        "sort_by_desc",
+        &[fn_value("x", &["x"]), arr(&[])],
+    );
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+// ── deep_get ──────────────────────────────────────────────────────
+
+#[test]
+fn deep_get_nested_object() {
+    let value = obj(&[
+        ("a", serde_json::json!({"b": serde_json::json!({"c": 42})})),
+    ]);
+    let result = call(&FpModule, "deep_get", &[value, s("a.b.c")]);
+    assert_eq!(result.as_number(), Some(42.0));
+}
+
+#[test]
+fn deep_get_array_index() {
+    let value = obj(&[
+        ("arr", serde_json::json!([10, 20, 30])),
+    ]);
+    let result = call(&FpModule, "deep_get", &[value, s("arr.1")]);
+    assert_eq!(result.as_number(), Some(20.0));
+}
+
+#[test]
+fn deep_get_missing_path_returns_null() {
+    let value = obj(&[("a", serde_json::json!(1))]);
+    let result = call(&FpModule, "deep_get", &[value, s("a.b.c")]);
+    assert!(result.is_null());
+}
+
+#[test]
+fn deep_get_single_key() {
+    let value = obj(&[("a", serde_json::json!(1))]);
+    let result = call(&FpModule, "deep_get", &[value, s("a")]);
+    assert_eq!(result.as_number(), Some(1.0));
+}
+
+#[test]
+fn deep_get_on_non_object_returns_null() {
+    let result = call(&FpModule, "deep_get", &[n(42.0), s("a")]);
+    assert!(result.is_null());
+}
+
+// ── deep_merge ────────────────────────────────────────────────────
+
+#[test]
+fn deep_merge_nested_objects() {
+    let a = obj(&[(
+        "config",
+        serde_json::json!({"a": 1, "b": 2}),
+    )]);
+    let b = obj(&[(
+        "config",
+        serde_json::json!({"b": 3, "c": 4}),
+    )]);
+    let result = call(&FpModule, "deep_merge", &[a, b]);
+    let merged = result.as_object().unwrap();
+    let config = merged.get("config").unwrap().as_object().unwrap();
+    assert_eq!(config.len(), 3);
+    assert_eq!(config.get("a").unwrap().as_f64(), Some(1.0));
+    assert_eq!(config.get("b").unwrap().as_f64(), Some(3.0));
+    assert_eq!(config.get("c").unwrap().as_f64(), Some(4.0));
+}
+
+#[test]
+fn deep_merge_shallow_like_merge() {
+    let a = obj(&[("a", serde_json::json!(1)), ("b", serde_json::json!(2))]);
+    let b = obj(&[("b", serde_json::json!(3)), ("c", serde_json::json!(4))]);
+    let result = call(&FpModule, "deep_merge", &[a, b]);
+    let merged = result.as_object().unwrap();
+    assert_eq!(merged.len(), 3);
+    assert_eq!(merged.get("a").unwrap().as_f64(), Some(1.0));
+    assert_eq!(merged.get("b").unwrap().as_f64(), Some(3.0));
+    assert_eq!(merged.get("c").unwrap().as_f64(), Some(4.0));
+}
+
+#[test]
+fn deep_merge_on_non_object_errors() {
+    let result = call_err(&FpModule, "deep_merge", &[n(1.0), obj(&[])]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── substitute_param string literal fix ───────────────────────────
+
+#[test]
+fn flow_preserves_param_inside_string_literals() {
+    let result = call(
+        &FpModule,
+        "flow",
+        &[
+            fn_value("concat(\"x\", x)", &["x"]),
+            fn_value("concat(\"y\", x)", &["x"]),
+        ],
+    );
+    let fv = result.as_function().unwrap();
+    assert_eq!(fv.body, "concat(\"y\", (concat(\"x\", x)))");
+}

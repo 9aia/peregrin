@@ -41,6 +41,10 @@ impl Module for MathModule {
             "mod" => Some(&Mod),
             "pi" => Some(&Pi),
             "e" => Some(&E),
+            "log2" => Some(&Log2),
+            "cbrt" => Some(&Cbrt),
+            "degrees" => Some(&Degrees),
+            "radians" => Some(&Radians),
             _ => None,
         }
     }
@@ -106,6 +110,10 @@ unary_fn!(Tan, |x: f64| x.tan());
 unary_fn!(Asin, |x: f64| x.asin());
 unary_fn!(Acos, |x: f64| x.acos());
 unary_fn!(Atan, |x: f64| x.atan());
+unary_fn!(Log2, |x: f64| x.log2());
+unary_fn!(Cbrt, |x: f64| x.cbrt());
+unary_fn!(Degrees, |x: f64| x.to_degrees());
+unary_fn!(Radians, |x: f64| x.to_radians());
 
 #[derive(Clone, Copy)]
 pub struct Min;

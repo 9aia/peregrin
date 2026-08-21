@@ -35,6 +35,9 @@ impl Module for StringModule {
             "char_at" => Some(&CharAt),
             "pad_left" => Some(&PadLeft),
             "pad_right" => Some(&PadRight),
+            "length" => Some(&Length),
+            "concat" => Some(&Concat),
+            "replace_first" => Some(&ReplaceFirst),
             _ => None,
         }
     }
@@ -105,6 +108,15 @@ string_unary_fn!(Reverse, |input: &str| input
     .chars()
     .rev()
     .collect::<String>());
+
+#[derive(Clone, Copy)]
+pub struct Length;
+impl Function for Length {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        Ok(num(input.chars().count() as f64))
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct Split;
@@ -194,7 +206,11 @@ pub struct Find;
 impl Function for Find {
     fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
-        let idx = input.find(pattern).map(|i| i as f64).unwrap_or(-1.0);
+        let idx = input
+            .find(pattern)
+            .map(|byte_pos| input[..byte_pos].chars().count())
+            .map(|i| i as f64)
+            .unwrap_or(-1.0);
         Ok(num(idx))
     }
 }
@@ -213,8 +229,14 @@ impl Function for Repeat {
         let count = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
             got: "non-number",
-        })? as usize;
-        Ok(s(input.repeat(count)))
+        })?;
+        if count < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        Ok(s(input.repeat(count as usize)))
     }
 }
 
@@ -232,8 +254,14 @@ impl Function for CharAt {
         let index = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
             got: "non-number",
-        })? as usize;
-        match input.chars().nth(index) {
+        })?;
+        if index < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        match input.chars().nth(index as usize) {
             Some(ch) => Ok(s(ch.to_string())),
             None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
         }
@@ -254,28 +282,76 @@ impl Function for Slice {
         let start = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
             got: "non-number",
-        })? as usize;
+        })?;
         let end = args[2].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
             got: "non-number",
-        })? as usize;
-        let end = end.min(input.len());
-        let start = start.min(end);
-        Ok(s(input[start..end].to_string()))
+        })?;
+        if start < 0.0 || end < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        let chars: Vec<char> = input.chars().collect();
+        let end = (end as usize).min(chars.len());
+        let start = (start as usize).min(end);
+        Ok(s(chars[start..end].iter().collect::<String>()))
     }
 }
 
 fn pad_to_len(input: &str, target_len: usize, pad_char: &str, pad_left: bool) -> String {
-    if input.len() >= target_len || pad_char.is_empty() {
+    let char_count = input.chars().count();
+    if char_count >= target_len || pad_char.is_empty() {
         return input.to_string();
     }
-    let pad_total = target_len - input.len();
-    let pad_repeated = pad_char.repeat(pad_total / pad_char.len() + 1);
-    let pad = &pad_repeated[..pad_total];
+    let pad_total = target_len - char_count;
+    let pad_chars: Vec<char> = pad_char.chars().collect();
+    let pad_repeated: String = pad_chars
+        .iter()
+        .cycle()
+        .take(pad_total)
+        .collect();
     if pad_left {
-        format!("{pad}{input}")
+        format!("{pad_repeated}{input}")
     } else {
-        format!("{input}{pad}")
+        format!("{input}{pad_repeated}")
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Concat;
+impl Function for Concat {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let mut result = String::new();
+        for arg in args {
+            let s = require_string(arg)?;
+            result.push_str(s);
+        }
+        Ok(s(result))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct ReplaceFirst;
+impl Function for ReplaceFirst {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 3 {
+            return Err(Error::ArgumentCount {
+                expected: 3,
+                got: args.len(),
+            });
+        }
+        let input = require_string(&args[0])?;
+        let from = require_string(&args[1])?;
+        let to = require_string(&args[2])?;
+        Ok(s(input.replacen(from, to, 1)))
     }
 }
 
@@ -293,9 +369,15 @@ impl Function for PadLeft {
         let target_len = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
             got: "non-number",
-        })? as usize;
+        })?;
+        if target_len < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
         let pad_char = require_string(&args[2])?;
-        Ok(s(pad_to_len(input, target_len, pad_char, true)))
+        Ok(s(pad_to_len(input, target_len as usize, pad_char, true)))
     }
 }
 
@@ -313,8 +395,14 @@ impl Function for PadRight {
         let target_len = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
             got: "non-number",
-        })? as usize;
+        })?;
+        if target_len < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
         let pad_char = require_string(&args[2])?;
-        Ok(s(pad_to_len(input, target_len, pad_char, false)))
+        Ok(s(pad_to_len(input, target_len as usize, pad_char, false)))
     }
 }
