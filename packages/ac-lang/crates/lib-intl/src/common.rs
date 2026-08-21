@@ -15,7 +15,6 @@ pub(super) fn require_number(args: &[NonFunctionValue], idx: usize) -> Result<f6
 }
 
 /// Require a string argument at `idx`.
-#[allow(dead_code)]
 pub(super) fn require_string(args: &[NonFunctionValue], idx: usize) -> Result<&str, Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
@@ -40,7 +39,6 @@ pub(super) fn require_array(args: &[NonFunctionValue], idx: usize) -> Result<&[s
 }
 
 /// Require an object argument at `idx`.
-#[allow(dead_code)]
 pub(super) fn require_object(args: &[NonFunctionValue], idx: usize) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,

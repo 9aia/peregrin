@@ -3,9 +3,8 @@
 //! Internationalization library for the AC runtime, backed by ICU4X.
 //!
 //! Provides locale-aware functions for formatting numbers, selecting
-//! plural categories, and formatting lists. Phase 2 will add
-//! relative time, date formatting, duration formatting, collation,
-//! display names, and segmentation.
+//! plural categories, formatting lists, relative time, dates, durations,
+//! comparing strings, display names, and text segmentation.
 //!
 //! ## Architecture
 //!
@@ -22,10 +21,12 @@
 //! which bundles CLDR data at compile time. This gives full CLDR
 //! coverage (600+ locales) with no runtime data loading.
 //!
-//! ## Functions (Phase 1)
+//! ## Functions
 //!
 //! - [`IntlModule`] — `intl.format_number`, `intl.select_plural`,
-//!   `intl.format_list`
+//!   `intl.format_list`, `intl.format_relative_time`, `intl.format_date`,
+//!   `intl.format_duration`, `intl.compare_strings`, `intl.display_name`,
+//!   `intl.segment`
 //!
 //! ## Usage
 //!
@@ -39,21 +40,40 @@
 //!
 //! Expressions can then call `intl.format_number(1234567.89, "pt-BR")`,
 //! `intl.select_plural(0, "ar")`, `intl.format_list(["a", "b", "c"], "en")`,
+//! `intl.format_relative_time(5, "second")`, `intl.format_date("2024-05-08")`,
 //! etc.
 
 mod common;
+mod compare_strings;
+mod display_name;
 mod error;
+mod format_date;
+mod format_duration;
 mod format_list;
 mod format_number;
+mod format_relative_time;
 pub mod module;
+mod segment;
 mod select_plural;
 
 pub use error::IntlError;
 pub use module::IntlModule;
 
 #[cfg(test)]
+mod compare_strings_tests;
+#[cfg(test)]
+mod display_name_tests;
+#[cfg(test)]
+mod format_date_tests;
+#[cfg(test)]
+mod format_duration_tests;
+#[cfg(test)]
 mod format_list_tests;
 #[cfg(test)]
 mod format_number_tests;
+#[cfg(test)]
+mod format_relative_time_tests;
+#[cfg(test)]
+mod segment_tests;
 #[cfg(test)]
 mod select_plural_tests;

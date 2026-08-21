@@ -1,0 +1,114 @@
+use ac_runtime::NonFunctionValue;
+use ac_runtime_core::Module;
+use ac_vm::{Context, Error};
+
+use super::module::IntlModule;
+
+fn call(args: &[NonFunctionValue]) -> NonFunctionValue {
+    let func = IntlModule.function("segment").expect("function exists");
+    let mut ctx = Context::new();
+    func.call(args, &mut ctx).expect("call succeeds")
+}
+
+fn call_err(args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+    let func = IntlModule.function("segment").expect("function exists");
+    let mut ctx = Context::new();
+    func.call(args, &mut ctx)
+}
+
+fn s(v: &str) -> NonFunctionValue {
+    NonFunctionValue::new(v.to_string())
+}
+
+fn get_segments(result: &NonFunctionValue) -> Vec<String> {
+    let arr = result.as_array().expect("array result");
+    arr.iter().map(|v| v.as_str().expect("string element").to_string()).collect()
+}
+
+#[test]
+fn segment_word_hello_world() {
+    let result = call(&[s("Hello World"), s("word")]);
+    let segments = get_segments(&result);
+    assert!(segments.contains(&"Hello".to_string()));
+    assert!(segments.contains(&"World".to_string()));
+}
+
+#[test]
+fn segment_grapheme_hello() {
+    let result = call(&[s("Hello"), s("grapheme")]);
+    let segments = get_segments(&result);
+    assert_eq!(segments.len(), 5);
+    assert_eq!(segments[0], "H");
+    assert_eq!(segments[4], "o");
+}
+
+#[test]
+fn segment_sentence() {
+    let result = call(&[s("Hello. World."), s("sentence")]);
+    let segments = get_segments(&result);
+    assert!(segments.len() >= 2);
+}
+
+#[test]
+fn segment_word_empty() {
+    let result = call(&[s(""), s("word")]);
+    let segments = get_segments(&result);
+    assert!(segments.is_empty());
+}
+
+#[test]
+fn segment_grapheme_empty() {
+    let result = call(&[s(""), s("grapheme")]);
+    let segments = get_segments(&result);
+    assert!(segments.is_empty());
+}
+
+#[test]
+fn segment_no_args_errors() {
+    assert!(call_err(&[]).is_err());
+}
+
+#[test]
+fn segment_missing_granularity_errors() {
+    assert!(call_err(&[s("Hello")]).is_err());
+}
+
+#[test]
+fn segment_invalid_granularity_errors() {
+    assert!(call_err(&[s("Hello"), s("paragraph")]).is_err());
+}
+
+#[test]
+fn segment_word_multiple_spaces() {
+    let result = call(&[s("a b c"), s("word")]);
+    let segments = get_segments(&result);
+    assert!(segments.contains(&"a".to_string()));
+    assert!(segments.contains(&"b".to_string()));
+    assert!(segments.contains(&"c".to_string()));
+}
+
+#[test]
+fn segment_grapheme_unicode() {
+    let result = call(&[s("café"), s("grapheme")]);
+    let segments = get_segments(&result);
+    assert_eq!(segments.len(), 4);
+    assert_eq!(segments[3], "é");
+}
+
+use ac_ast::Expr;
+use ac_runtime_core::ModuleHost;
+use ac_vm::Vm;
+
+fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
+    let host = ModuleHost::new().with(IntlModule);
+    let vm = Vm::new(host);
+    let mut ctx = Context::new();
+    vm.eval(expr, &mut ctx).expect("eval succeeds")
+}
+
+#[test]
+fn vm_segment() {
+    let expr = Expr::call("intl.segment", vec![Expr::value(s("Hello World")), Expr::value(s("word"))]);
+    let result = eval_expr(&expr);
+    assert!(result.as_array().is_some());
+}

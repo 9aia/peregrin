@@ -407,6 +407,7 @@ dependencies = [
  "ac-runtime",
  "ac-runtime-core",
  "ac-vm",
+ "fixed_decimal",
  "icu",
  "serde_json",
  "writeable",
@@ -1654,12 +1655,16 @@ version = "2.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "785f595c61ef57169a467eeed7b4b6936a66f6cacbb116a96ee86da983251bf4"
 dependencies = [
+ "displaydoc",
+ "either",
  "icu_collections",
  "icu_locale_core",
  "icu_locale_data",
  "icu_locale_fallback",
+ "icu_pattern",
  "icu_provider",
  "tinystr",
+ "writeable",
  "zerovec",
 ]
 

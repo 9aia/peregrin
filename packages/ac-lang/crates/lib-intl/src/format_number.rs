@@ -45,7 +45,7 @@ fn format_standard(n: f64, locale: &icu::locale::Locale) -> Result<String, Error
 
 /// Convert an f64 into an ICU4X `Decimal`.
 fn decimal_from_f64(n: f64) -> Decimal {
-    if n == 0.0 {
+    if n == 0.0 || n.is_nan() || n.is_infinite() {
         return Decimal::from(0_i64);
     }
     let s = format!("{}", n);
