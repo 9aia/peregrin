@@ -343,6 +343,7 @@ dependencies = [
  "ac-frontend-toml",
  "ac-frontend-yaml",
  "ac-host",
+ "ac-lib-crypto",
  "ac-lib-intl",
  "ac-lib-kv",
  "ac-lib-kv-hashmap",
@@ -364,6 +365,22 @@ dependencies = [
  "ac-typegen-core",
  "ac-vm",
  "serde_json",
+]
+
+[[package]]
+name = "ac-lib-crypto"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-host",
+ "ac-runtime",
+ "ac-runtime-core",
+ "ac-vm",
+ "base64",
+ "hex",
+ "md-5",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]
@@ -1632,6 +1649,16 @@ name = "log"
 version = "0.4.33"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0ceec5bc11778974d1bcb055b18002eba7f4b3518b6a0081b3af5f21666da9ad"
+
+[[package]]
+name = "md-5"
+version = "0.10.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d89e7ee0cfbedfc4da3340218492196241d89eefb6dab27de5df917a6d2e78cf"
+dependencies = [
+ "cfg-if",
+ "digest",
+]
 
 [[package]]
 name = "memchr"
