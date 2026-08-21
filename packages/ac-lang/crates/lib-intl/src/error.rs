@@ -5,18 +5,18 @@ use ac_vm::Error as VmError;
 #[derive(Debug, Clone)]
 pub enum IntlError {
     InvalidLocale { input: String },
-    UnsupportedLocale { locale: String },
     InvalidNumber { input: String },
     InvalidArgument { message: String },
+    Formatting { message: String },
 }
 
 impl fmt::Display for IntlError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidLocale { input } => write!(f, "invalid locale: {input}"),
-            Self::UnsupportedLocale { locale } => write!(f, "unsupported locale: {locale}"),
             Self::InvalidNumber { input } => write!(f, "invalid number: {input}"),
             Self::InvalidArgument { message } => write!(f, "invalid argument: {message}"),
+            Self::Formatting { message } => write!(f, "formatting error: {message}"),
         }
     }
 }

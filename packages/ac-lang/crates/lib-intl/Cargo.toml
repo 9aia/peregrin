@@ -8,6 +8,8 @@ ac-runtime-core.workspace = true
 ac-vm.workspace = true
 ac-runtime.workspace = true
 serde_json = "1"
+icu = "2"
+writeable = "0.6"
 
 [dev-dependencies]
 ac-ast.workspace = true

@@ -1,8 +1,8 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::Error;
+use icu::locale::Locale;
 
-use crate::locale::Locale;
-
+/// Require a number argument at `idx`.
 pub(super) fn require_number(args: &[NonFunctionValue], idx: usize) -> Result<f64, Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
@@ -14,6 +14,20 @@ pub(super) fn require_number(args: &[NonFunctionValue], idx: usize) -> Result<f6
     })
 }
 
+/// Require a string argument at `idx`.
+#[allow(dead_code)]
+pub(super) fn require_string(args: &[NonFunctionValue], idx: usize) -> Result<&str, Error> {
+    let arg = args.get(idx).ok_or(Error::ArgumentCount {
+        expected: idx + 1,
+        got: args.len(),
+    })?;
+    arg.as_str().ok_or(Error::TypeMismatch {
+        expected: "string",
+        got: "non-string",
+    })
+}
+
+/// Require an array argument at `idx`.
 pub(super) fn require_array(args: &[NonFunctionValue], idx: usize) -> Result<&[serde_json::Value], Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
@@ -25,6 +39,8 @@ pub(super) fn require_array(args: &[NonFunctionValue], idx: usize) -> Result<&[s
     })
 }
 
+/// Require an object argument at `idx`.
+#[allow(dead_code)]
 pub(super) fn require_object(args: &[NonFunctionValue], idx: usize) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
@@ -37,7 +53,7 @@ pub(super) fn require_object(args: &[NonFunctionValue], idx: usize) -> Result<&s
 }
 
 /// Extract an optional locale argument at the given index.
-/// Defaults to `Locale::en()` if not present.
+/// Defaults to `en` if not present.
 pub(super) fn optional_locale(args: &[NonFunctionValue], idx: usize) -> Result<Locale, Error> {
     match args.get(idx) {
         Some(arg) => {
@@ -45,10 +61,46 @@ pub(super) fn optional_locale(args: &[NonFunctionValue], idx: usize) -> Result<L
                 expected: "string",
                 got: "non-string",
             })?;
-            Locale::parse(s).map_err(Into::into)
+            Locale::try_from_str(s).map_err(|_| {
+                Error::PrimitiveError(format!("invalid locale: {s}"))
+            })
         }
-        None => Ok(Locale::en()),
+        None => Ok(Locale::try_from_str("en").unwrap())
     }
+}
+
+/// Extract an optional options object at the given index.
+pub(super) fn optional_object<'a>(
+    args: &'a [NonFunctionValue],
+    idx: usize,
+) -> Result<Option<&'a serde_json::Map<String, serde_json::Value>>, Error> {
+    match args.get(idx) {
+        Some(arg) => {
+            let obj = arg.as_object().ok_or(Error::TypeMismatch {
+                expected: "object",
+                got: "non-object",
+            })?;
+            Ok(Some(obj))
+        }
+        None => Ok(None),
+    }
+}
+
+/// Get a string field from an options object.
+pub(super) fn opt_str<'a>(
+    obj: Option<&'a serde_json::Map<String, serde_json::Value>>,
+    key: &str,
+) -> Option<&'a str> {
+    obj.and_then(|o| o.get(key)).and_then(|v| v.as_str())
+}
+
+/// Get a number field from an options object.
+#[allow(dead_code)]
+pub(super) fn opt_num(
+    obj: Option<&serde_json::Map<String, serde_json::Value>>,
+    key: &str,
+) -> Option<f64> {
+    obj.and_then(|o| o.get(key)).and_then(|v| v.as_f64())
 }
 
 pub(super) fn s(value: impl Into<String>) -> NonFunctionValue {
