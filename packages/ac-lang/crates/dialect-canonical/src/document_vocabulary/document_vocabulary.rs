@@ -4,7 +4,7 @@ use crate::AcDialect;
 
 impl DocumentVocabulary for AcDialect {
     fn fields_key(&self) -> &str {
-        "fields"
+        "$"
     }
 
     fn expr_key(&self) -> &str {

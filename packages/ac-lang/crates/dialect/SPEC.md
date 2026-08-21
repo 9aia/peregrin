@@ -14,7 +14,7 @@ A **dialect** is a set of syntax tokens, key names, and parsing rules for AC doc
 - **Path separator** — how namespace paths are segmented (in canonical: `.`).
 - **Call syntax** — how function calls are delimited (in canonical: `fn(args)`).
 - **Literal parsing** — how string, number, boolean, and null literals are recognized (in canonical: `"..."`, `42`, `true`, `null`).
-- **Special key names** — the reserved keys used in AC documents (in canonical: `fields`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body`).
+- **Special key names** — the reserved keys used in AC documents (in canonical: `$`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body`).
 - **Schema vocabulary** — which schema language is used for field and function validation (in canonical: JSON Schema draft 2020-12).
 
 The dialect does **not** define:
@@ -31,7 +31,7 @@ The dialect does **not** define:
 | --------------------- | ------------------------------------------------------ | ----------------------- |
 | `Syntax`              | Interpolation markers, path separator, call delimiters | `syntax()`              |
 | `ExprParser`          | Call detection, argument splitting, literal parsing    | `parser()`              |
-| `DocumentVocabulary`  | Reserved key names (`fields`, `expr`, etc.)            | `document_vocabulary()` |
+| `DocumentVocabulary`  | Reserved key names (`$`, `expr`, etc.)                 | `document_vocabulary()` |
 | `SchemaVocabulary<V>` | Schema language for field and function validation      | `schema_vocabulary()`   |
 
 In Rust, each sub-trait is a separate `trait` with `Send + Sync` supertraits, and `Dialect` is a trait with four accessor methods returning `&dyn` references. In other languages, the equivalent interface/protocol split should be used.
@@ -81,7 +81,7 @@ The dialect defines the reserved key names used in AC documents. These keys have
 
 | Key               | Level          | Purpose                                    | Canonical value |
 | ----------------- | -------------- | ------------------------------------------ | --------------- |
-| `fields_key`      | Top-level      | Field declarations                         | `fields`        |
+| `fields_key`      | Top-level      | Field declarations                         | `$`             |
 | `expr_key`        | Field-level    | Computed field expression                  | `expr`          |
 | `arg_key`         | Field-level    | Parameterized computed field argument type | `arg`           |
 | `merge_key`       | Field-level    | Merge field flag                           | `merge`         |
@@ -94,7 +94,7 @@ The dialect defines the reserved key names used in AC documents. These keys have
 The dialect also provides two convenience aggregations:
 
 - **`reserved_field_keys()`** — all field-level reserved keys (`expr`, `arg`, `merge`, `inheritable`, `mutable`), used for stripping during type generation.
-- **`top_level_reserved_keys()`** — top-level keys that cannot be declared as field names (`fields`).
+- **`top_level_reserved_keys()`** — top-level keys that cannot be declared as field names (`$`).
 
 ### 2.5 Schema vocabulary
 
@@ -184,7 +184,7 @@ A custom dialect changes the **concrete representation** of AC documents — the
 - **Default namespace shorthand** — bare `key` resolves to `doc.key` (in canonical) regardless of separator.
 - **Expression AST** — `Literal`, `Path`, and `Call` node types. The parser produces the same AST; only the token recognition differs.
 
-The concrete representation includes three layers: **surface syntax** (interpolation markers, path separator, call delimiters, literal syntax), **document vocabulary** (reserved key names like `fields` and `expr`), and **schema vocabulary** (which schema language is used for validation). Changing key names or swapping the schema language are not merely punctuation changes — they alter how documents are written and how values are validated. But they do not alter the expression semantics that the language spec defines.
+The concrete representation includes three layers: **surface syntax** (interpolation markers, path separator, call delimiters, literal syntax), **document vocabulary** (reserved key names like `$` and `expr`), and **schema vocabulary** (which schema language is used for validation). Changing key names or swapping the schema language are not merely punctuation changes — they alter how documents are written and how values are validated. But they do not alter the expression semantics that the language spec defines.
 
 ### 5.2 What a custom dialect may change
 
@@ -196,7 +196,7 @@ The concrete representation includes three layers: **surface syntax** (interpola
 - Number literal format (within `parse_number_literal`)
 - Boolean literal keywords (within `parse_bool_literal`)
 - Null literal keyword (within `is_null_literal`)
-- Special key names (e.g. `fields` → `properties`, `expr` → `compute`)
+- Special key names (e.g. `$` → `properties`, `expr` → `compute`)
 - Schema vocabulary (e.g. a non-JSON-Schema validator)
 
 ### 5.3 Portability
@@ -219,7 +219,7 @@ The language spec defines **what the canonical syntax is**. This spec defines **
 
 ## 7. Implementation principle
 
-Every function that parses or evaluates expressions should accept a dialect instance rather than hardcoding syntax tokens. Every function that extracts fields should read key names from the dialect. Every function that validates schemas should use the dialect's schema vocabulary. The canonical dialect instance is passed at call sites. No function should hardcode `"${"`, `'.'`, `'('`, `"fields"`, `"expr"`, or a specific schema implementation.
+Every function that parses or evaluates expressions should accept a dialect instance rather than hardcoding syntax tokens. Every function that extracts fields should read key names from the dialect. Every function that validates schemas should use the dialect's schema vocabulary. The canonical dialect instance is passed at call sites. No function should hardcode `"${"`, `'.'`, `'('`, `"$"`, `"expr"`, or a specific schema implementation.
 
 ---
 

@@ -6,18 +6,18 @@ This document specifies the canonical dialect — the default and only shipped i
 
 The canonical dialect implements the syntax defined in [LANG.md](../../docs/LANG.md):
 
-| Token              | Value                                                                                  | Used in                                                 |
-| ------------------ | -------------------------------------------------------------------------------------- | ------------------------------------------------------- |
-| Interpolation      | `${...}`                                                                               | String interpolation, `expr:` fields, `body:` functions |
-| Path separator     | `.`                                                                                    | `ns.key`, `ns.key.sub`, shorthand `key`                 |
-| Call syntax        | `fn(args)`                                                                             | `add(1, 2)`, `mul(x, 2)`, `concat(doc.name, "!")`       |
-| String literals    | `"..."` or `'...'`                                                                     | `"hello"`, `'hello'`                                    |
-| Number literals    | `42`, `1.5`, `-3`                                                                      | IEEE 754 doubles                                        |
-| Boolean literals   | `true`, `false`                                                                        | Dialect-configurable (`parse_bool_literal`)             |
-| Null literal       | `null`                                                                                 | Dialect-configurable (`is_null_literal`)                |
-| Argument separator | `,`                                                                                    | `add(1, 2, 3)`                                          |
-| Schema vocabulary  | JSON Schema 2020-12                                                                    | Field and function validation                           |
-| Special keys       | `fields`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body` | Document structure                                      |
+| Token              | Value                                                                             | Used in                                                 |
+| ------------------ | --------------------------------------------------------------------------------- | ------------------------------------------------------- |
+| Interpolation      | `${...}`                                                                          | String interpolation, `expr:` fields, `body:` functions |
+| Path separator     | `.`                                                                               | `ns.key`, `ns.key.sub`, shorthand `key`                 |
+| Call syntax        | `fn(args)`                                                                        | `add(1, 2)`, `mul(x, 2)`, `concat(doc.name, "!")`       |
+| String literals    | `"..."` or `'...'`                                                                | `"hello"`, `'hello'`                                    |
+| Number literals    | `42`, `1.5`, `-3`                                                                 | IEEE 754 doubles                                        |
+| Boolean literals   | `true`, `false`                                                                   | Dialect-configurable (`parse_bool_literal`)             |
+| Null literal       | `null`                                                                            | Dialect-configurable (`is_null_literal`)                |
+| Argument separator | `,`                                                                               | `add(1, 2, 3)`                                          |
+| Schema vocabulary  | JSON Schema 2020-12                                                               | Field and function validation                           |
+| Special keys       | `$`, `expr`, `arg`, `merge`, `inheritable`, `mutable`, `params`, `return`, `body` | Document structure                                      |
 
 ## 1. Call detection
 

@@ -8,7 +8,7 @@
 | --------------------- | ------------------------------------------------------ | ------------------------------------ |
 | `Syntax`              | Interpolation markers, path separator, call delimiters | Static configuration (token values)  |
 | `ExprParser`          | Call detection, argument splitting, literal parsing    | Behavior (parsing algorithms)        |
-| `DocumentVocabulary`  | Reserved key names (`fields`, `expr`, etc.)            | Static configuration (string values) |
+| `DocumentVocabulary`  | Reserved key names (`$`, `expr`, etc.)                 | Static configuration (string values) |
 | `SchemaVocabulary<V>` | Schema language for validation                         | Behavior (compile + validate)        |
 
 ## Why not a single trait

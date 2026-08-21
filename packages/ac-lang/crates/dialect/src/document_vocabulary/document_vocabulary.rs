@@ -2,7 +2,7 @@
 ///
 /// These keys have special meaning during field extraction, type checking,
 /// and type generation. A custom dialect may use different key names
-/// (e.g. `fields` → `properties`, `expr` → `compute`).
+/// (e.g. `$` → `properties`, `expr` → `compute`).
 ///
 /// This trait defines the interface only. Canonical key values are
 /// implemented in the `ac-dialect-canonical` crate.

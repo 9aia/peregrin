@@ -4,7 +4,7 @@ use crate::dialect::dialect_stub::StubDialect;
 
 impl DocumentVocabulary for StubDialect {
     fn fields_key(&self) -> &str {
-        "fields"
+        "$"
     }
 
     fn expr_key(&self) -> &str {
