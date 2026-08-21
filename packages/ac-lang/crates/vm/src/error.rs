@@ -28,13 +28,13 @@ pub enum Error {
     /// The VM yielded control to the caller.
     ///
     /// A host function signalled a yield. The caller can inspect the
-    /// yielded [`RuntimeValue`] and decide whether to resume evaluation
+    /// yielded [`NonFunctionValue`] and decide whether to resume evaluation
     /// by calling `eval_async` again.
     ///
     /// In the async VM, implicit yields also occur at `.await` points
     /// when a host future is not yet ready — these are handled by the
     /// executor and do not produce this variant.
-    Yield(ac_runtime::RuntimeValue),
+    Yield(ac_runtime::NonFunctionValue),
 
     /// A typed operation was performed and signaled.
     ///
@@ -49,7 +49,7 @@ pub enum Error {
         /// The operation name (e.g. `"fetch"`).
         name: String,
         /// The evaluated arguments passed to the operation.
-        args: Vec<ac_runtime::RuntimeValue>,
+        args: Vec<ac_runtime::NonFunctionValue>,
     },
 }
 

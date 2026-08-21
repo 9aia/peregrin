@@ -51,13 +51,13 @@ fn error_clone_eq() {
 
 #[test]
 fn error_display_yield() {
-    let err = Error::Yield(ac_runtime::RuntimeValue::new(42));
+    let err = Error::Yield(ac_runtime::NonFunctionValue::new(42));
     assert!(err.to_string().contains("yielded"));
 }
 
 #[test]
 fn error_yield_clone_eq() {
-    let err = Error::Yield(ac_runtime::RuntimeValue::new("hello"));
+    let err = Error::Yield(ac_runtime::NonFunctionValue::new("hello"));
     let cloned = err.clone();
     assert_eq!(err, cloned);
 }
@@ -66,7 +66,7 @@ fn error_yield_clone_eq() {
 fn error_display_operation() {
     let err = Error::Operation {
         name: "fetch".to_string(),
-        args: vec![ac_runtime::RuntimeValue::new("url")],
+        args: vec![ac_runtime::NonFunctionValue::new("url")],
     };
     let s = err.to_string();
     assert!(s.contains("fetch"));
@@ -77,7 +77,7 @@ fn error_display_operation() {
 fn error_operation_clone_eq() {
     let err = Error::Operation {
         name: "fetch".to_string(),
-        args: vec![ac_runtime::RuntimeValue::new(42)],
+        args: vec![ac_runtime::NonFunctionValue::new(42)],
     };
     let cloned = err.clone();
     assert_eq!(err, cloned);
@@ -108,7 +108,7 @@ fn error_all_variants_are_cloneable() {
             expected: 1,
             got: 2,
         },
-        Error::Yield(ac_runtime::RuntimeValue::new(0)),
+        Error::Yield(ac_runtime::NonFunctionValue::new(0)),
         Error::Operation {
             name: "op".to_string(),
             args: vec![],

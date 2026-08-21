@@ -1,30 +1,30 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::Context;
 
 use super::http_client::{HttpClientModule, HttpResponse};
 use super::http_client_stub::StubHttpClient;
 
-fn call(module: &dyn Module, name: &str, args: &[RuntimeValue]) -> RuntimeValue {
+fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn s(v: &str) -> RuntimeValue {
-    RuntimeValue::new(v.to_string())
+fn s(v: &str) -> NonFunctionValue {
+    NonFunctionValue::new(v.to_string())
 }
 
-fn o(pairs: &[(&str, &str)]) -> RuntimeValue {
+fn o(pairs: &[(&str, &str)]) -> NonFunctionValue {
     let mut map = serde_json::Map::new();
     for (k, v) in pairs {
         map.insert(k.to_string(), serde_json::Value::String(v.to_string()));
     }
-    RuntimeValue::new(serde_json::Value::Object(map))
+    NonFunctionValue::new(serde_json::Value::Object(map))
 }
 
-fn null() -> RuntimeValue {
-    RuntimeValue::new(serde_json::Value::Null)
+fn null() -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::Value::Null)
 }
 
 #[test]

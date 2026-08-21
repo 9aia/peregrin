@@ -25,7 +25,7 @@
 //!
 //! ```ignore
 //! // Machine A: start evaluation
-//! let mut vm = Vm::new(server_host);
+//! let vm = Vm::new(server_host);
 //! let result = vm.eval_resumable(&expr, &mut ctx, None);
 //! match result {
 //!     EvalResult::Yield(cont) => {
@@ -39,19 +39,19 @@
 //!
 //! // Machine B: resume evaluation
 //! let cont = Continuation::from_json(&received_json)?;
-//! let mut vm = Vm::new(client_host);
+//! let vm = Vm::new(client_host);
 //! let result = vm.eval_resumable(&expr, &mut ctx, Some(cont));
 //! ```
 
 use ac_ast::{Expr, HandlerClause};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 use crate::Context;
 use crate::Error;
 use crate::Host;
 
-type RuntimeExpr = Expr<RuntimeValue>;
-type RuntimeHandlerClause = HandlerClause<RuntimeValue>;
+type RuntimeExpr = Expr<NonFunctionValue>;
+type RuntimeHandlerClause = HandlerClause<NonFunctionValue>;
 
 /// A single frame in the evaluation stack.
 ///
@@ -62,7 +62,7 @@ pub struct Frame {
     /// The function name being called.
     pub name: String,
     /// Arguments that have already been evaluated.
-    pub evaluated: Vec<RuntimeValue>,
+    pub evaluated: Vec<NonFunctionValue>,
     /// Arguments that still need evaluation (remaining, in order).
     pub pending: Vec<RuntimeExpr>,
     /// Handler clauses active for this frame (from enclosing Handle exprs).
@@ -74,7 +74,7 @@ pub struct Frame {
 ///
 /// Contains the frame stack at the point where evaluation was
 /// paused. All data is JSON-compatible (function names are strings,
-/// values are `serde_json::Value`, expressions are `Expr<RuntimeValue>`).
+/// values are `serde_json::Value`, expressions are `Expr<NonFunctionValue>`).
 #[derive(Debug, Clone, PartialEq)]
 pub struct Continuation {
     /// The frame stack, bottom to top.
@@ -158,7 +158,7 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error> {
             let val = obj.get("value").ok_or_else(|| {
                 Error::PrimitiveError("value expression missing 'value' field".to_string())
             })?;
-            Ok(Expr::Value(RuntimeValue::new(val.clone())))
+            Ok(Expr::Value(NonFunctionValue::new(val.clone())))
         }
         Some("call") => {
             let name = obj
@@ -269,7 +269,7 @@ fn frame_from_json(value: &serde_json::Value) -> Result<Frame, Error> {
         .and_then(|v| v.as_array())
         .ok_or_else(|| Error::PrimitiveError("frame missing 'evaluated' array".to_string()))?
         .iter()
-        .map(|v| RuntimeValue::new(v.clone()))
+        .map(|v| NonFunctionValue::new(v.clone()))
         .collect();
 
     let pending = obj
@@ -301,13 +301,13 @@ fn frame_from_json(value: &serde_json::Value) -> Result<Frame, Error> {
 #[derive(Debug, Clone, PartialEq)]
 pub enum EvalResult {
     /// Evaluation completed successfully.
-    Done(RuntimeValue),
+    Done(NonFunctionValue),
     /// Evaluation paused — a host function yielded.
     ///
     /// The [`Continuation`] captures the state needed to resume.
-    /// The [`RuntimeValue`] is the value yielded by the host function.
+    /// The [`NonFunctionValue`] is the value yielded by the host function.
     Yielded {
-        value: RuntimeValue,
+        value: NonFunctionValue,
         continuation: Continuation,
     },
     /// Evaluation failed with an error.
@@ -348,7 +348,7 @@ impl<H: Host> crate::Vm<H> {
     /// on resume — its result is expected to be provided by the
     /// new host (e.g. via a cache). See the `ac-host-cache` crate.
     pub fn eval_resumable(
-        &mut self,
+        &self,
         expr: &RuntimeExpr,
         ctx: &mut Context,
         resume: Option<Continuation>,
@@ -367,7 +367,7 @@ impl<H: Host> crate::Vm<H> {
         }
     }
 
-    fn resume(&mut self, cont: Continuation, ctx: &mut Context) -> EvalResult {
+    fn resume(&self, cont: Continuation, ctx: &mut Context) -> EvalResult {
         let mut frames = cont.frames;
 
         // The bottom frame (index 0) is the innermost call — the
@@ -421,7 +421,7 @@ impl<H: Host> crate::Vm<H> {
                     // Build continuation from remaining frames (the
                     // parent frames waiting for the result). The
                     // signaling frame (bottom) is NOT included.
-                    let cont_value = RuntimeValue::new(serde_json::json!({
+                    let cont_value = NonFunctionValue::new(serde_json::json!({
                         "type": "continuation",
                         "frames": frames.iter().map(|f| {
                             serde_json::json!({
@@ -465,7 +465,7 @@ impl<H: Host> crate::Vm<H> {
                 } else {
                     // No matching handler — propagate.
                     frames.insert(0, bottom);
-                    let op_value = RuntimeValue::new(serde_json::json!({
+                    let op_value = NonFunctionValue::new(serde_json::json!({
                         "type": "operation",
                         "name": name,
                         "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>(),
@@ -481,9 +481,9 @@ impl<H: Host> crate::Vm<H> {
     }
 
     fn unwind(
-        &mut self,
+        &self,
         mut frames: Vec<Frame>,
-        value: RuntimeValue,
+        value: NonFunctionValue,
         ctx: &mut Context,
     ) -> EvalResult {
         if frames.is_empty() {
@@ -518,7 +518,7 @@ impl<H: Host> crate::Vm<H> {
     }
 
     fn eval_frame(
-        &mut self,
+        &self,
         frame: &mut Frame,
         ctx: &mut Context,
         stack: &mut Vec<Frame>,
@@ -553,7 +553,7 @@ impl<H: Host> crate::Vm<H> {
                 .evaluated
                 .first()
                 .cloned()
-                .unwrap_or(RuntimeValue::new(serde_json::Value::Null));
+                .unwrap_or(NonFunctionValue::new(serde_json::Value::Null));
 
             // Deserialize the captured frames.
             let frames_json = var.get("frames").and_then(|v| v.as_array());
@@ -621,7 +621,7 @@ impl<H: Host> crate::Vm<H> {
                     // itself is NOT included — its operation has been
                     // handled, and the handler provides the result.
                     let cont_frames = std::mem::take(stack);
-                    let cont_value = RuntimeValue::new(serde_json::json!({
+                    let cont_value = NonFunctionValue::new(serde_json::json!({
                         "type": "continuation",
                         "frames": cont_frames.iter().map(|f| {
                             serde_json::json!({
@@ -652,7 +652,7 @@ impl<H: Host> crate::Vm<H> {
                     // No matching handler — propagate the operation
                     // as a structured yield to the caller.
                     stack.push(frame.clone());
-                    let op_value = RuntimeValue::new(serde_json::json!({
+                    let op_value = NonFunctionValue::new(serde_json::json!({
                         "type": "operation",
                         "name": name,
                         "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>(),
@@ -668,7 +668,7 @@ impl<H: Host> crate::Vm<H> {
     }
 
     fn eval_step(
-        &mut self,
+        &self,
         expr: &RuntimeExpr,
         ctx: &mut Context,
         stack: &mut Vec<Frame>,
@@ -677,7 +677,7 @@ impl<H: Host> crate::Vm<H> {
     }
 
     fn eval_step_with_handlers(
-        &mut self,
+        &self,
         expr: &RuntimeExpr,
         ctx: &mut Context,
         stack: &mut Vec<Frame>,
@@ -687,13 +687,71 @@ impl<H: Host> crate::Vm<H> {
             Expr::Value(value) => StepResult::Done(value.clone()),
 
             Expr::Call { name, args } => {
-                let mut frame = Frame {
-                    name: name.clone(),
-                    evaluated: Vec::with_capacity(args.len()),
-                    pending: args.clone(),
-                    handlers: inherited_handlers.to_vec(),
-                };
-                self.eval_frame(&mut frame, ctx, stack)
+                // Check lazy functions first — they receive unevaluated
+                // args and decide which to evaluate (short-circuit).
+                if let Some(lazy) = self.host().lazy_function(name) {
+                    let handlers = inherited_handlers.to_vec();
+                    let mut evaluate = |sub: &RuntimeExpr, c: &mut Context| {
+                        match self.eval_step_with_handlers(sub, c, stack, &handlers) {
+                            StepResult::Done(v) => Ok(v),
+                            StepResult::Yield { value, .. } => {
+                                Err(Error::Yield(value))
+                            }
+                            StepResult::Error(err) => Err(err),
+                        }
+                    };
+                    match lazy.call(args, ctx, &mut evaluate) {
+                        Ok(v) => StepResult::Done(v),
+                        Err(Error::Yield(value)) => {
+                            StepResult::Yield {
+                                value,
+                                frames: std::mem::take(stack),
+                            }
+                        }
+                        Err(Error::Operation { name, args }) => {
+                            // Check handler clauses for a match.
+                            let matching_clause = inherited_handlers
+                                .iter()
+                                .rev()
+                                .find(|h| h.op_name == name);
+                            if let Some(clause) = matching_clause {
+                                self.handle_operation(
+                                    name,
+                                    args,
+                                    clause,
+                                    inherited_handlers,
+                                    ctx,
+                                    stack,
+                                )
+                            } else {
+                                stack.push(Frame {
+                                    name: name.clone(),
+                                    evaluated: args.clone(),
+                                    pending: vec![],
+                                    handlers: inherited_handlers.to_vec(),
+                                });
+                                let op_value = NonFunctionValue::new(serde_json::json!({
+                                    "type": "operation",
+                                    "name": name,
+                                    "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>(),
+                                }));
+                                StepResult::Yield {
+                                    value: op_value,
+                                    frames: std::mem::take(stack),
+                                }
+                            }
+                        }
+                        Err(err) => StepResult::Error(err),
+                    }
+                } else {
+                    let mut frame = Frame {
+                        name: name.clone(),
+                        evaluated: Vec::with_capacity(args.len()),
+                        pending: args.clone(),
+                        handlers: inherited_handlers.to_vec(),
+                    };
+                    self.eval_frame(&mut frame, ctx, stack)
+                }
             }
 
             Expr::Handle { body, handlers } => {
@@ -712,7 +770,7 @@ impl<H: Host> crate::Vm<H> {
     /// evaluation of body. When an operation signals, `eval_frame`
     /// checks the frame's handlers for a matching clause.
     fn eval_handle(
-        &mut self,
+        &self,
         body: &RuntimeExpr,
         handlers: &[RuntimeHandlerClause],
         ctx: &mut Context,
@@ -722,13 +780,68 @@ impl<H: Host> crate::Vm<H> {
             Expr::Value(value) => StepResult::Done(value.clone()),
 
             Expr::Call { name, args } => {
-                let mut frame = Frame {
-                    name: name.clone(),
-                    evaluated: Vec::with_capacity(args.len()),
-                    pending: args.clone(),
-                    handlers: handlers.to_vec(),
-                };
-                self.eval_frame(&mut frame, ctx, stack)
+                // Check lazy functions first — they receive unevaluated
+                // args and decide which to evaluate (short-circuit).
+                if let Some(lazy) = self.host().lazy_function(name) {
+                    let handlers_vec = handlers.to_vec();
+                    let mut evaluate = |sub: &RuntimeExpr, c: &mut Context| {
+                        match self.eval_step_with_handlers(sub, c, stack, &handlers_vec) {
+                            StepResult::Done(v) => Ok(v),
+                            StepResult::Yield { value, .. } => {
+                                Err(Error::Yield(value))
+                            }
+                            StepResult::Error(err) => Err(err),
+                        }
+                    };
+                    match lazy.call(args, ctx, &mut evaluate) {
+                        Ok(v) => StepResult::Done(v),
+                        Err(Error::Yield(value)) => {
+                            StepResult::Yield {
+                                value,
+                                frames: std::mem::take(stack),
+                            }
+                        }
+                        Err(Error::Operation { name, args }) => {
+                            let matching_clause =
+                                handlers.iter().rev().find(|h| h.op_name == name);
+                            if let Some(clause) = matching_clause {
+                                self.handle_operation(
+                                    name,
+                                    args,
+                                    clause,
+                                    handlers,
+                                    ctx,
+                                    stack,
+                                )
+                            } else {
+                                stack.push(Frame {
+                                    name: name.clone(),
+                                    evaluated: args.clone(),
+                                    pending: vec![],
+                                    handlers: handlers.to_vec(),
+                                });
+                                let op_value = NonFunctionValue::new(serde_json::json!({
+                                    "type": "operation",
+                                    "name": name,
+                                    "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>(),
+                                }));
+                                StepResult::Yield {
+                                    value: op_value,
+                                    frames: std::mem::take(stack),
+                                }
+                            }
+                        }
+                        Err(err) => StepResult::Error(err),
+                    }
+                } else {
+                    let mut frame = Frame {
+                        name: name.clone(),
+                        evaluated: Vec::with_capacity(args.len()),
+                        pending: args.clone(),
+                        handlers: handlers.to_vec(),
+                    };
+                    self.eval_frame(&mut frame, ctx, stack)
+                }
             }
 
             Expr::Handle {
@@ -746,9 +859,9 @@ impl<H: Host> crate::Vm<H> {
     fn dispatch_call(
         &self,
         name: &str,
-        args: &[RuntimeValue],
+        args: &[NonFunctionValue],
         ctx: &mut Context,
-    ) -> Result<RuntimeValue, Error> {
+    ) -> Result<NonFunctionValue, Error> {
         // Check operations first — operations signal (yield) rather
         // than complete. If an operation is found and it signals
         // (returns Err(Error::Operation { ... })), the caller
@@ -763,16 +876,63 @@ impl<H: Host> crate::Vm<H> {
 
         Err(Error::UnknownFunction(name.to_string()))
     }
+
+    /// Handle an operation signal by matching it against handler clauses
+    /// and evaluating the handler body.
+    ///
+    /// Shared logic between the lazy-function path and `eval_frame`.
+    fn handle_operation(
+        &self,
+        _name: String,
+        args: Vec<NonFunctionValue>,
+        clause: &RuntimeHandlerClause,
+        all_handlers: &[RuntimeHandlerClause],
+        ctx: &mut Context,
+        stack: &mut Vec<Frame>,
+    ) -> StepResult {
+        ctx.push_scope();
+
+        for (i, param) in clause.params.iter().enumerate() {
+            if let Some(arg) = args.get(i) {
+                ctx.define(param.clone(), arg.clone());
+            }
+        }
+
+        let cont_frames = std::mem::take(stack);
+        let cont_value = NonFunctionValue::new(serde_json::json!({
+            "type": "continuation",
+            "frames": cont_frames.iter().map(|f| {
+                serde_json::json!({
+                    "name": f.name,
+                    "evaluated": f.evaluated.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>(),
+                    "pending": f.pending.iter().map(expr_to_json).collect::<Vec<_>>(),
+                    "handlers": f.handlers.iter().map(handler_clause_to_json).collect::<Vec<_>>(),
+                })
+            }).collect::<Vec<_>>(),
+        }));
+        ctx.define(&clause.continuation_name, cont_value);
+
+        let remaining_handlers: Vec<RuntimeHandlerClause> = all_handlers
+            .iter()
+            .filter(|h| h.op_name != clause.op_name)
+            .cloned()
+            .collect();
+        let result =
+            self.eval_step_with_handlers(&clause.body, ctx, stack, &remaining_handlers);
+
+        ctx.pop_scope();
+        result
+    }
 }
 
 /// Internal result of a single evaluation step.
 enum StepResult {
     /// Evaluation completed with a value.
-    Done(RuntimeValue),
+    Done(NonFunctionValue),
     /// A host function yielded. The `frames` vector is the frame
     /// stack at the point of yield (bottom to top).
     Yield {
-        value: RuntimeValue,
+        value: NonFunctionValue,
         frames: Vec<Frame>,
     },
     /// An error occurred.

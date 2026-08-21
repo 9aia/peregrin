@@ -1,6 +1,6 @@
 //! Basic usage: parse YAML, evaluate expressions, output YAML.
 //!
-//! Demonstrates the full pipeline: YAML frontend → RuntimeValue →
+//! Demonstrates the full pipeline: YAML frontend → NonFunctionValue →
 //! VM evaluation → YAML output.
 //!
 //! Run: `cargo run --example basic`
@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 
 use ac_ast::Expr;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function, Host, Vm};
 
 // ── functions ───────────────────────────────────────────────────
@@ -16,7 +16,7 @@ use ac_vm::{Context, Error, Function, Host, Vm};
 struct Add;
 
 impl Function for Add {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let a = args
             .first()
             .and_then(|v| v.as_number())
@@ -31,14 +31,14 @@ impl Function for Add {
                 expected: 2,
                 got: args.len(),
             })?;
-        Ok(RuntimeValue::new(serde_json::json!(a + b)))
+        Ok(NonFunctionValue::new(serde_json::json!(a + b)))
     }
 }
 
 struct Concat;
 
 impl Function for Concat {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let mut result = String::new();
         for arg in args {
             match arg.inner() {
@@ -51,7 +51,7 @@ impl Function for Concat {
                 }
             }
         }
-        Ok(RuntimeValue::new(result))
+        Ok(NonFunctionValue::new(result))
     }
 }
 
@@ -75,7 +75,7 @@ impl Host for DemoHost {
 // ── main ────────────────────────────────────────────────────────
 
 fn main() {
-    let mut vm = Vm::new(DemoHost {
+    let vm = Vm::new(DemoHost {
         add: Add,
         concat: Concat,
     });
@@ -93,8 +93,8 @@ fn main() {
     let expr = Expr::call(
         "add",
         vec![
-            Expr::value(RuntimeValue::new(1.0)),
-            Expr::value(RuntimeValue::new(2.0)),
+            Expr::value(NonFunctionValue::new(1.0)),
+            Expr::value(NonFunctionValue::new(2.0)),
         ],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -107,8 +107,8 @@ fn main() {
     let expr = Expr::call(
         "concat",
         vec![
-            Expr::value(RuntimeValue::new("hello, ")),
-            Expr::value(RuntimeValue::new("world")),
+            Expr::value(NonFunctionValue::new("hello, ")),
+            Expr::value(NonFunctionValue::new("world")),
         ],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();

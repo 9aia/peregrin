@@ -1,4 +1,4 @@
-use ac_vm::Function;
+use ac_vm::{Function, LazyFunction};
 
 /// A named group of functions.
 ///
@@ -34,4 +34,12 @@ pub trait Module: Send + Sync {
     ///
     /// Returns `None` if the name is not recognized in this module.
     fn function(&self, name: &str) -> Option<&dyn Function>;
+
+    /// Resolve a function name to a lazy callable.
+    ///
+    /// Returns `None` by default. Override to provide functions that
+    /// need lazy (short-circuit) argument evaluation.
+    fn lazy_function(&self, _name: &str) -> Option<&dyn LazyFunction> {
+        None
+    }
 }

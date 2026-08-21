@@ -2,9 +2,9 @@ use crate::Context;
 use crate::Error;
 use crate::Host;
 use ac_ast::Expr;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
-type RuntimeExpr = Expr<RuntimeValue>;
+type RuntimeExpr = Expr<NonFunctionValue>;
 
 /// The language virtual machine.
 ///
@@ -50,8 +50,15 @@ impl<H: Host> Vm<H> {
     ///
     /// This is the core evaluation loop. It recursively evaluates
     /// sub-expressions, dispatches calls to host functions, and
-    /// returns the resulting [`RuntimeValue`].
-    pub fn eval(&mut self, expr: &RuntimeExpr, ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    /// returns the resulting [`NonFunctionValue`].
+    ///
+    /// For `Call` expressions, the VM checks [`Host::lazy_function`]
+    /// first. If the name resolves to a lazy function, the VM passes
+    /// the unevaluated argument expressions and an evaluate closure.
+    /// The function decides which arguments to evaluate (short-circuit).
+    /// Otherwise, the VM eagerly evaluates all arguments and dispatches
+    /// to [`Host::function`] or [`Host::operation`].
+    pub fn eval(&self, expr: &RuntimeExpr, ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
 
@@ -71,10 +78,10 @@ impl<H: Host> Vm<H> {
                             .get("name")
                             .and_then(|v| v.as_str())
                             .unwrap_or("unknown");
-                        let args: Vec<RuntimeValue> = value
+                        let args: Vec<NonFunctionValue> = value
                             .get("args")
                             .and_then(|v| v.as_array())
-                            .map(|arr| arr.iter().map(|v| RuntimeValue::new(v.clone())).collect())
+                            .map(|arr| arr.iter().map(|v| NonFunctionValue::new(v.clone())).collect())
                             .unwrap_or_default();
                         Err(Error::Operation {
                             name: name.to_string(),
@@ -86,10 +93,17 @@ impl<H: Host> Vm<H> {
             }
 
             Expr::Call { name, args } => {
+                // Check lazy functions first — they receive unevaluated
+                // args and decide which to evaluate (short-circuit).
+                if let Some(lazy) = self.host.lazy_function(name) {
+                    let mut evaluate = |sub: &RuntimeExpr, c: &mut Context| self.eval(sub, c);
+                    return lazy.call(args, ctx, &mut evaluate);
+                }
+
                 let evaluated_args = args
                     .iter()
                     .map(|arg| self.eval(arg, ctx))
-                    .collect::<Result<Vec<RuntimeValue>, Error>>()?;
+                    .collect::<Result<Vec<NonFunctionValue>, Error>>()?;
 
                 if let Some(operation) = self.host.operation(name) {
                     return operation.perform(&evaluated_args, ctx);
@@ -122,11 +136,14 @@ impl<H: Host> Vm<H> {
     /// To explicitly yield a value to the caller, a host function
     /// returns `Err(Error::Yield(value))`. The caller receives
     /// `Err(Error::Yield(value))` and can inspect the yielded value.
+    ///
+    /// Like [`eval`](Vm::eval), this checks [`Host::lazy_function`]
+    /// first for short-circuit evaluation.
     pub async fn eval_async(
-        &mut self,
+        &self,
         expr: &RuntimeExpr,
         ctx: &mut Context,
-    ) -> Result<RuntimeValue, Error> {
+    ) -> Result<NonFunctionValue, Error> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
 
@@ -141,10 +158,10 @@ impl<H: Host> Vm<H> {
                             .get("name")
                             .and_then(|v| v.as_str())
                             .unwrap_or("unknown");
-                        let args: Vec<RuntimeValue> = value
+                        let args: Vec<NonFunctionValue> = value
                             .get("args")
                             .and_then(|v| v.as_array())
-                            .map(|arr| arr.iter().map(|v| RuntimeValue::new(v.clone())).collect())
+                            .map(|arr| arr.iter().map(|v| NonFunctionValue::new(v.clone())).collect())
                             .unwrap_or_default();
                         Err(Error::Operation {
                             name: name.to_string(),
@@ -156,6 +173,13 @@ impl<H: Host> Vm<H> {
             }
 
             Expr::Call { name, args } => {
+                // Check lazy functions first — they receive unevaluated
+                // args and decide which to evaluate (short-circuit).
+                if let Some(lazy) = self.host.lazy_function(name) {
+                    let mut eval_sync = |sub: &RuntimeExpr, c: &mut Context| self.eval(sub, c);
+                    return lazy.call(args, ctx, &mut eval_sync);
+                }
+
                 let mut evaluated_args = Vec::with_capacity(args.len());
                 for arg in args {
                     let value = Box::pin(self.eval_async(arg, ctx)).await?;

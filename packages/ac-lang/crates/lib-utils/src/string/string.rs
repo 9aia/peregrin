@@ -1,4 +1,4 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -40,14 +40,14 @@ impl Module for StringModule {
     }
 }
 
-fn require_string(arg: &RuntimeValue) -> Result<&str, Error> {
+fn require_string(arg: &NonFunctionValue) -> Result<&str, Error> {
     arg.as_str().ok_or(Error::TypeMismatch {
         expected: "string",
         got: "non-string",
     })
 }
 
-fn require_one_string(args: &[RuntimeValue]) -> Result<&str, Error> {
+fn require_one_string(args: &[NonFunctionValue]) -> Result<&str, Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
         got: 0,
@@ -55,7 +55,7 @@ fn require_one_string(args: &[RuntimeValue]) -> Result<&str, Error> {
     require_string(arg)
 }
 
-fn require_two_strings(args: &[RuntimeValue]) -> Result<(&str, &str), Error> {
+fn require_two_strings(args: &[NonFunctionValue]) -> Result<(&str, &str), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
@@ -67,16 +67,16 @@ fn require_two_strings(args: &[RuntimeValue]) -> Result<(&str, &str), Error> {
     Ok((a, b))
 }
 
-fn s(value: impl Into<String>) -> RuntimeValue {
-    RuntimeValue::new(value.into())
+fn s(value: impl Into<String>) -> NonFunctionValue {
+    NonFunctionValue::new(value.into())
 }
 
-fn b(value: bool) -> RuntimeValue {
-    RuntimeValue::new(value)
+fn b(value: bool) -> NonFunctionValue {
+    NonFunctionValue::new(value)
 }
 
-fn num(value: f64) -> RuntimeValue {
-    RuntimeValue::new(serde_json::json!(value))
+fn num(value: f64) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::json!(value))
 }
 
 macro_rules! string_unary_fn {
@@ -86,9 +86,9 @@ macro_rules! string_unary_fn {
         impl Function for $struct_name {
             fn call(
                 &self,
-                args: &[RuntimeValue],
+                args: &[NonFunctionValue],
                 _ctx: &mut Context,
-            ) -> Result<RuntimeValue, Error> {
+            ) -> Result<NonFunctionValue, Error> {
                 let input = require_one_string(args)?;
                 Ok(s($body(input)))
             }
@@ -109,20 +109,20 @@ string_unary_fn!(Reverse, |input: &str| input
 #[derive(Clone, Copy)]
 pub struct Split;
 impl Function for Split {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (input, sep) = require_two_strings(args)?;
         let parts: Vec<serde_json::Value> = input
             .split(sep)
             .map(|part| serde_json::Value::String(part.to_string()))
             .collect();
-        Ok(RuntimeValue::new(serde_json::Value::Array(parts)))
+        Ok(NonFunctionValue::new(serde_json::Value::Array(parts)))
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct Join;
 impl Function for Join {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -142,7 +142,7 @@ impl Function for Join {
 #[derive(Clone, Copy)]
 pub struct Replace;
 impl Function for Replace {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -163,9 +163,9 @@ macro_rules! string_predicate_fn {
         impl Function for $struct_name {
             fn call(
                 &self,
-                args: &[RuntimeValue],
+                args: &[NonFunctionValue],
                 _ctx: &mut Context,
-            ) -> Result<RuntimeValue, Error> {
+            ) -> Result<NonFunctionValue, Error> {
                 let (input, pattern) = require_two_strings(args)?;
                 Ok(b($body(input, pattern)))
             }
@@ -180,7 +180,7 @@ string_predicate_fn!(EndsWith, |input: &str, pat: &str| input.ends_with(pat));
 #[derive(Clone, Copy)]
 pub struct Count;
 impl Function for Count {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         if pattern.is_empty() {
             return Ok(num(0.0));
@@ -192,7 +192,7 @@ impl Function for Count {
 #[derive(Clone, Copy)]
 pub struct Find;
 impl Function for Find {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         let idx = input.find(pattern).map(|i| i as f64).unwrap_or(-1.0);
         Ok(num(idx))
@@ -202,7 +202,7 @@ impl Function for Find {
 #[derive(Clone, Copy)]
 pub struct Repeat;
 impl Function for Repeat {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -221,7 +221,7 @@ impl Function for Repeat {
 #[derive(Clone, Copy)]
 pub struct CharAt;
 impl Function for CharAt {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -235,7 +235,7 @@ impl Function for CharAt {
         })? as usize;
         match input.chars().nth(index) {
             Some(ch) => Ok(s(ch.to_string())),
-            None => Ok(RuntimeValue::new(serde_json::Value::Null)),
+            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
         }
     }
 }
@@ -243,7 +243,7 @@ impl Function for CharAt {
 #[derive(Clone, Copy)]
 pub struct Slice;
 impl Function for Slice {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -282,7 +282,7 @@ fn pad_to_len(input: &str, target_len: usize, pad_char: &str, pad_left: bool) ->
 #[derive(Clone, Copy)]
 pub struct PadLeft;
 impl Function for PadLeft {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -302,7 +302,7 @@ impl Function for PadLeft {
 #[derive(Clone, Copy)]
 pub struct PadRight;
 impl Function for PadRight {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,

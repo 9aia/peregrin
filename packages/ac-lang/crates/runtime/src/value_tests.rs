@@ -2,43 +2,43 @@ use super::*;
 
 #[test]
 fn new_from_string() {
-    let v = RuntimeValue::new("hello");
+    let v = NonFunctionValue::new("hello");
     assert_eq!(v.as_str(), Some("hello"));
 }
 
 #[test]
 fn new_from_json() {
-    let v = RuntimeValue::new(serde_json::json!({"name": "ac"}));
+    let v = NonFunctionValue::new(serde_json::json!({"name": "ac"}));
     assert_eq!(v.get("name").unwrap().as_str(), Some("ac"));
 }
 
 #[test]
 fn predicates() {
-    let null = RuntimeValue::new(serde_json::Value::Null);
+    let null = NonFunctionValue::new(serde_json::Value::Null);
     assert!(null.is_null());
 
-    let boolean = RuntimeValue::new(true);
+    let boolean = NonFunctionValue::new(true);
     assert!(boolean.is_bool());
     assert_eq!(boolean.as_bool(), Some(true));
 
-    let number = RuntimeValue::new(42);
+    let number = NonFunctionValue::new(42);
     assert!(number.is_number());
     assert_eq!(number.as_number(), Some(42.0));
 
-    let string = RuntimeValue::new("hello");
+    let string = NonFunctionValue::new("hello");
     assert!(string.is_string());
 
-    let array = RuntimeValue::new(serde_json::json!([1, 2, 3]));
+    let array = NonFunctionValue::new(serde_json::json!([1, 2, 3]));
     assert!(array.is_array());
     assert_eq!(array.as_array().unwrap().len(), 3);
 
-    let object = RuntimeValue::new(serde_json::json!({"key": "value"}));
+    let object = NonFunctionValue::new(serde_json::json!({"key": "value"}));
     assert!(object.is_object());
 }
 
 #[test]
 fn inner_and_into_inner() {
-    let v = RuntimeValue::new(serde_json::json!({"a": 1}));
+    let v = NonFunctionValue::new(serde_json::json!({"a": 1}));
     assert_eq!(v.inner().get("a").unwrap().as_i64(), Some(1));
 
     let inner = v.into_inner();
@@ -47,7 +47,7 @@ fn inner_and_into_inner() {
 
 #[test]
 fn inner_mut() {
-    let mut v = RuntimeValue::new(serde_json::json!({"a": 1}));
+    let mut v = NonFunctionValue::new(serde_json::json!({"a": 1}));
     if let Some(obj) = v.inner_mut().as_object_mut() {
         obj.insert("b".to_string(), serde_json::json!(2));
     }
@@ -56,13 +56,13 @@ fn inner_mut() {
 
 #[test]
 fn default_is_null() {
-    let v = RuntimeValue::default();
+    let v = NonFunctionValue::default();
     assert!(v.is_null());
 }
 
 #[test]
 fn host_value_is_alias() {
-    let v: HostValue = RuntimeValue::new("test");
+    let v: HostValue = NonFunctionValue::new("test");
     assert_eq!(v.as_str(), Some("test"));
 }
 
@@ -109,16 +109,16 @@ fn runtime_value_is_function() {
         return_schema: Some(serde_json::json!({"type": "number"})),
         body: "mul(x, 2)".to_string(),
     };
-    let rv = RuntimeValue::new_function(fn_val);
+    let rv = NonFunctionValue::new_function(fn_val);
     assert!(rv.is_function());
     assert!(rv.as_function().is_some());
 
-    let plain = RuntimeValue::new(42);
+    let plain = NonFunctionValue::new(42);
     assert!(!plain.is_function());
     assert!(plain.as_function().is_none());
 
     // An object without a `body` string is not a function
-    let obj = RuntimeValue::new(serde_json::json!({"key": "value"}));
+    let obj = NonFunctionValue::new(serde_json::json!({"key": "value"}));
     assert!(!obj.is_function());
     assert!(obj.as_function().is_none());
 }
@@ -206,32 +206,32 @@ fn function_value_roundtrip_no_params_no_return() {
     assert_eq!(decoded, fn_val);
 }
 
-// ── RuntimeValue edge cases ───────────────────────────────────────
+// ── NonFunctionValue edge cases ───────────────────────────────────────
 
 #[test]
 fn runtime_value_new_from_bool() {
-    let v = RuntimeValue::new(false);
+    let v = NonFunctionValue::new(false);
     assert!(v.is_bool());
     assert_eq!(v.as_bool(), Some(false));
 }
 
 #[test]
 fn runtime_value_new_from_float() {
-    let v = RuntimeValue::new(3.14);
+    let v = NonFunctionValue::new(3.14);
     assert!(v.is_number());
     assert_eq!(v.as_number(), Some(3.14));
 }
 
 #[test]
 fn runtime_value_new_from_array() {
-    let v = RuntimeValue::new(vec!["a", "b", "c"]);
+    let v = NonFunctionValue::new(vec!["a", "b", "c"]);
     assert!(v.is_array());
     assert_eq!(v.as_array().unwrap().len(), 3);
 }
 
 #[test]
 fn runtime_value_new_from_nested_object() {
-    let v = RuntimeValue::new(serde_json::json!({
+    let v = NonFunctionValue::new(serde_json::json!({
         "outer": {"inner": "value"},
         "list": [1, 2, 3],
     }));
@@ -245,7 +245,7 @@ fn runtime_value_new_from_nested_object() {
 
 #[test]
 fn runtime_value_as_object_mut() {
-    let mut v = RuntimeValue::new(serde_json::json!({"a": 1}));
+    let mut v = NonFunctionValue::new(serde_json::json!({"a": 1}));
     {
         let obj = v.as_object_mut().unwrap();
         obj.insert("b".to_string(), serde_json::json!(2));
@@ -260,7 +260,7 @@ fn runtime_value_new_function_and_check() {
         return_schema: None,
         body: "mul(x, 2)".to_string(),
     };
-    let rv = RuntimeValue::new_function(fn_val.clone());
+    let rv = NonFunctionValue::new_function(fn_val.clone());
     assert!(rv.is_function());
     let decoded = rv.as_function().unwrap();
     assert_eq!(decoded, fn_val);
@@ -268,14 +268,14 @@ fn runtime_value_new_function_and_check() {
 
 #[test]
 fn runtime_value_clone_eq() {
-    let v1 = RuntimeValue::new(serde_json::json!({"a": 1, "b": [2, 3]}));
+    let v1 = NonFunctionValue::new(serde_json::json!({"a": 1, "b": [2, 3]}));
     let v2 = v1.clone();
     assert_eq!(v1, v2);
 }
 
 #[test]
 fn runtime_value_default_eq_null() {
-    let v1 = RuntimeValue::default();
-    let v2 = RuntimeValue::new(serde_json::Value::Null);
+    let v1 = NonFunctionValue::default();
+    let v2 = NonFunctionValue::new(serde_json::Value::Null);
     assert_eq!(v1, v2);
 }

@@ -1,7 +1,7 @@
 //! Functions and scoping: nested calls, variable scopes, and
 //! host-provided functions.
 //!
-//! Demonstrates the full pipeline: YAML frontend → RuntimeValue →
+//! Demonstrates the full pipeline: YAML frontend → NonFunctionValue →
 //! VM evaluation → YAML output.
 //!
 //! Run: `cargo run --example functions`
@@ -9,7 +9,7 @@
 use std::path::PathBuf;
 
 use ac_ast::Expr;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function, Host, Vm};
 
 // ── functions ───────────────────────────────────────────────────
@@ -17,7 +17,7 @@ use ac_vm::{Context, Error, Function, Host, Vm};
 struct Mul;
 
 impl Function for Mul {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let a = args
             .first()
             .and_then(|v| v.as_number())
@@ -32,14 +32,14 @@ impl Function for Mul {
                 expected: 2,
                 got: args.len(),
             })?;
-        Ok(RuntimeValue::new(serde_json::json!(a * b)))
+        Ok(NonFunctionValue::new(serde_json::json!(a * b)))
     }
 }
 
 struct Add;
 
 impl Function for Add {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let a = args
             .first()
             .and_then(|v| v.as_number())
@@ -54,7 +54,7 @@ impl Function for Add {
                 expected: 2,
                 got: args.len(),
             })?;
-        Ok(RuntimeValue::new(serde_json::json!(a + b)))
+        Ok(NonFunctionValue::new(serde_json::json!(a + b)))
     }
 }
 
@@ -78,7 +78,7 @@ impl Host for MathHost {
 // ── main ────────────────────────────────────────────────────────
 
 fn main() {
-    let mut vm = Vm::new(MathHost { add: Add, mul: Mul });
+    let vm = Vm::new(MathHost { add: Add, mul: Mul });
     let mut ctx = Context::new();
 
     // Parse YAML input from examples/functions/input.yml
@@ -96,15 +96,15 @@ fn main() {
             Expr::call(
                 "add",
                 vec![
-                    Expr::value(RuntimeValue::new(1.0)),
-                    Expr::value(RuntimeValue::new(2.0)),
+                    Expr::value(NonFunctionValue::new(1.0)),
+                    Expr::value(NonFunctionValue::new(2.0)),
                 ],
             ),
             Expr::call(
                 "add",
                 vec![
-                    Expr::value(RuntimeValue::new(3.0)),
-                    Expr::value(RuntimeValue::new(4.0)),
+                    Expr::value(NonFunctionValue::new(3.0)),
+                    Expr::value(NonFunctionValue::new(4.0)),
                 ],
             ),
         ],
@@ -116,9 +116,9 @@ fn main() {
     );
 
     // Variable scoping — context still manages named values
-    ctx.define("base", RuntimeValue::new(serde_json::json!(10.0)));
+    ctx.define("base", NonFunctionValue::new(serde_json::json!(10.0)));
     ctx.push_scope();
-    ctx.define("base", RuntimeValue::new(serde_json::json!(20.0)));
+    ctx.define("base", NonFunctionValue::new(serde_json::json!(20.0)));
 
     let result = ctx.get("base").unwrap();
     println!(
@@ -138,7 +138,7 @@ fn main() {
     obj.insert("name".to_string(), serde_json::json!("ac-lang"));
     obj.insert("version".to_string(), serde_json::json!(1.0));
     obj.insert("computed".to_string(), serde_json::json!(42.0));
-    let obj = RuntimeValue::new(serde_json::Value::Object(obj));
+    let obj = NonFunctionValue::new(serde_json::Value::Object(obj));
     println!("\nobject as YAML:");
     println!("{}", ac_frontend_yaml::to_string(&obj).unwrap());
 

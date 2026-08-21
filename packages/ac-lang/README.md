@@ -1,22 +1,36 @@
 # ac-lang
 
-A small language runtime where **schemas define types** and **frontends parse formats**. The core is agnostic of both.
+A small, embeddable language runtime where **schemas define types**, **frontends parse formats**, and **the host provides all functions**. The core is agnostic of all three.
+
+The language kernel is deliberately small — literals, path lookups, function calls. General-purpose computation is emergent: a host that provides `if`, `map`, `filter`, `reduce`, `match` can reach arbitrary expressiveness without the language baking in control flow. The scope boundary is in what the _language_ defines, not in what a _host_ can provide.
+
+## Properties
+
+- **Embeddable.** Zero-dependency AST. VM generic over a `Host` trait. The Lua/Rhai embedding model, not the Python/Unison model.
+- **Sandboxing-compatible.** The host controls all functions, namespaces, and side effects. No built-in I/O, no standard library, no implicit access. Sandboxing is a host policy, not a language feature.
+- **Closure-free.** Function values are plain JSON objects with `params` and a `body` string — they capture no environment. All bindings are explicit parameters. This makes functions serializable, cacheable, and content-addressable.
+- **Serializable.** All values are JSON-serializable (`NonFunctionValue = serde_json::Value`). Function values serialize like any other object. Documents, definitions, and evaluation results can be persisted, transmitted, and restored without loss.
+- **Content-addressable (optional).** Definitions can be identified by SHA-256 hash of their canonical JSON for deduplication, reproducible builds, and cross-machine sharing. Content addressing is a storage layer — documents evaluate correctly without it.
+- **Format-agnostic.** Documents can be written in YAML, JSON, TOML, or any format that maps to JSON-compatible values.
+- **Schema-agnostic.** The `Schema<V>` trait is abstract. JSON Schema by default; any schema language can implement it.
+
+See [design-principles.md](./docs/explanations/design-principles.md) for the full list.
 
 ## Core idea
 
 The kernel does not define its own type system or format. There is no Rust enum re-implementing JSON's types, no hardcoded YAML parser. Instead:
 
-- **`RuntimeValue`** — a transparent newtype around `serde_json::Value`. Deliberately boring.
+- **`NonFunctionValue`** — a transparent newtype around `serde_json::Value`. Deliberately boring.
 - **`Schema<V>`** — abstract validation trait. Any schema language can implement it.
-- **Frontends** — parse any external format (JSON, YAML, TOML) into `RuntimeValue`.
-- **VM** — evaluates expressions that produce `RuntimeValue`s. Knows nothing about types or formats.
+- **Frontends** — parse any external format (JSON, YAML, TOML) into `NonFunctionValue`.
+- **VM** — evaluates expressions that produce `NonFunctionValue`s. Knows nothing about types or formats.
 
 ```
 Any frontend (JSON/YAML/TOML/...)
       │
       │ parses into
       ▼
-RuntimeValue
+NonFunctionValue
       │
       │ validated by
       ▼
@@ -33,28 +47,28 @@ The VM genuinely doesn't know what a String, Number, Boolean, Object, Array, Dat
 ```
 crates/
 ├── core/           # Expr<V>, Field<V> — generic, zero dependencies
-├── runtime/        # RuntimeValue(serde_json::Value) + Frontend trait — the concrete value type
+├── runtime/        # NonFunctionValue(serde_json::Value) + Frontend trait — the concrete value type
 ├── vm/             # Vm, Host, Function, Context
 ├── schema/         # Schema<V> trait + ValidationError — zero dependencies
-├── schema-json/    # JsonSchema — JSON Schema implementation of Schema<RuntimeValue>
+├── schema-json/    # JsonSchema — JSON Schema implementation of Schema<NonFunctionValue>
 ├── fields/         # Field extraction, interpolation, undeclared-field detection
-├── frontend-json/  # JSON parse/serialize → RuntimeValue (implements Frontend)
-├── frontend-yaml/  # YAML parse/serialize → RuntimeValue (implements Frontend)
-├── frontend-toml/  # TOML parse/serialize → RuntimeValue (implements Frontend)
+├── frontend-json/  # JSON parse/serialize → NonFunctionValue (implements Frontend)
+├── frontend-yaml/  # YAML parse/serialize → NonFunctionValue (implements Frontend)
+├── frontend-toml/  # TOML parse/serialize → NonFunctionValue (implements Frontend)
 └── cli/            # `ac` CLI — parse, evaluate, validate (clap)
 ```
 
 **`ac-ast`** — the language model. `Expr<V>` (value or call) and `Field<V>` (name + value). Generic over the value type, zero dependencies. No knowledge of formats or schemas.
 
-**`ac-runtime`** — the concrete value representation. `RuntimeValue` wraps `serde_json::Value` (private inner field, accessed via `inner()`/`inner_mut()`/`into_inner()`). Also defines the `Frontend` trait — the abstract interface for format parsers. This is the only crate that couples to `serde_json` for values. Core stays clean.
+**`ac-runtime`** — the concrete value representation. `NonFunctionValue` wraps `serde_json::Value` (private inner field, accessed via `inner()`/`inner_mut()`/`into_inner()`). Also defines the `Frontend` trait — the abstract interface for format parsers. This is the only crate that couples to `serde_json` for values. Core stays clean.
 
 **`ac-vm`** — the execution engine. `Vm<H>` walks expression trees. `Host` resolves function names. `Function` is the trait host-provided callables implement. `Context` manages variable scopes. The VM does not depend on any schema or frontend crate.
 
 **`ac-schema`** — abstract `Schema<V>` trait and `ValidationError`. Zero dependencies. Knows nothing about JSON Schema, `$ref`, `allOf`, `format`, or any concrete schema language. Any schema system can implement this trait.
 
-**`ac-schema-json`** — JSON Schema implementation. `JsonSchema` implements `Schema<RuntimeValue>` with a built-in minimal validator (`type` and `required` keywords). Can be replaced with a full JSON Schema validator — or a different schema language entirely — behind the same trait.
+**`ac-schema-json`** — JSON Schema implementation. `JsonSchema` implements `Schema<NonFunctionValue>` with a built-in minimal validator (`type` and `required` keywords). Can be replaced with a full JSON Schema validator — or a different schema language entirely — behind the same trait.
 
-**`ac-frontend-*`** — format frontends. Each implements the `Frontend` trait from `ac-runtime` and parses an external format into `RuntimeValue` / serializes back. JSON is trivial (already `serde_json::Value`). YAML and TOML convert through `serde_json::Value`. New frontends (XML, INI, etc.) can be added by implementing the `Frontend` trait — the core and VM are unaffected.
+**`ac-frontend-*`** — format frontends. Each implements the `Frontend` trait from `ac-runtime` and parses an external format into `NonFunctionValue` / serializes back. JSON is trivial (already `serde_json::Value`). YAML and TOML convert through `serde_json::Value`. New frontends (XML, INI, etc.) can be added by implementing the `Frontend` trait — the core and VM are unaffected.
 
 **`ac-fields`** — field extraction, interpolation, computed fields, and undeclared-field detection for self-describing documents. Provides `extract_fields()`, `interpolate()`, `compute_fields()`, `undeclared_fields()`, and namespace builders. Schema-agnostic — callers choose their own `Schema<V>` implementation.
 
@@ -80,14 +94,14 @@ Core and schema have zero dependencies. Frontends and schema implementations are
 
 ```rust
 use ac_core::Expr;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function, Host, Vm};
 
 struct Now;
 
 impl Function for Now {
-    fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        Ok(RuntimeValue::new(serde_json::json!("2026-08-20T06:00:00Z")))
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        Ok(NonFunctionValue::new(serde_json::json!("2026-08-20T06:00:00Z")))
     }
 }
 
@@ -102,12 +116,12 @@ impl Host for MyHost {
     }
 }
 
-let mut vm = Vm::new(MyHost { now: Now });
+let vm = Vm::new(MyHost { now: Now });
 let mut ctx = Context::new();
 
 let expr = Expr::call("now", vec![]);
 let result = vm.eval(&expr, &mut ctx).unwrap();
-// result is RuntimeValue("2026-08-20T06:00:00Z")
+// result is NonFunctionValue("2026-08-20T06:00:00Z")
 ```
 
 ### CLI
@@ -366,7 +380,7 @@ name: alice
 version: 1
 ```
 
-Both parse into the same `RuntimeValue`. Both validate the same way. The core, VM, and schema system don't know which frontend produced the value.
+Both parse into the same `NonFunctionValue`. Both validate the same way. The core, VM, and schema system don't know which frontend produced the value.
 
 ### Schema-agnostic
 
@@ -380,4 +394,4 @@ pub trait Schema<V> {
 
 Swapping JSON Schema for another validator (Cue, custom rules, etc.) doesn't touch the core, VM, or frontends.
 
-ac-lang is a configuration language, not a scripting language. All values are JSON-serializable — `RuntimeValue = serde_json::Value` and schemas define types.
+All values are JSON-serializable — `NonFunctionValue = serde_json::Value` and schemas define types. The language is general-purpose, but its generality is emergent: the kernel provides evaluation, the host provides control flow and all other capabilities.

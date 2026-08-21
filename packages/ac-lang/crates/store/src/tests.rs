@@ -2,7 +2,7 @@ use ac_runtime::FunctionValue;
 use serde_json::json;
 
 use ac_ast::{Expr, HandlerClause};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 use crate::canonical::canonicalize_json;
 use crate::eval_cache::{EvalCache, EvalKey};
@@ -217,7 +217,7 @@ fn handler_clause_hash_is_deterministic() {
         op_name: "fetch".to_string(),
         params: vec!["url".to_string()],
         continuation_name: "k".to_string(),
-        body: Expr::call("k", vec![Expr::value(RuntimeValue::new("cached"))]),
+        body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("cached"))]),
     };
     let h1 = hash_handler_clause(&clause);
     let h2 = hash_handler_clause(&clause);
@@ -230,13 +230,13 @@ fn handler_clause_hash_differs_for_different_ops() {
         op_name: "fetch".to_string(),
         params: vec![],
         continuation_name: "k".to_string(),
-        body: Expr::value(RuntimeValue::new(42)),
+        body: Expr::value(NonFunctionValue::new(42)),
     };
     let c2 = HandlerClause {
         op_name: "read_file".to_string(),
         params: vec![],
         continuation_name: "k".to_string(),
-        body: Expr::value(RuntimeValue::new(42)),
+        body: Expr::value(NonFunctionValue::new(42)),
     };
     assert_ne!(hash_handler_clause(&c1), hash_handler_clause(&c2));
 }
@@ -247,13 +247,13 @@ fn handler_clause_hash_differs_for_different_bodies() {
         op_name: "fetch".to_string(),
         params: vec![],
         continuation_name: "k".to_string(),
-        body: Expr::value(RuntimeValue::new(42)),
+        body: Expr::value(NonFunctionValue::new(42)),
     };
     let c2 = HandlerClause {
         op_name: "fetch".to_string(),
         params: vec![],
         continuation_name: "k".to_string(),
-        body: Expr::value(RuntimeValue::new(99)),
+        body: Expr::value(NonFunctionValue::new(99)),
     };
     assert_ne!(hash_handler_clause(&c1), hash_handler_clause(&c2));
 }
@@ -262,7 +262,7 @@ fn handler_clause_hash_differs_for_different_bodies() {
 
 #[test]
 fn expr_hash_value_is_deterministic() {
-    let expr = Expr::value(RuntimeValue::new(42));
+    let expr = Expr::value(NonFunctionValue::new(42));
     let h1 = hash_expr(&expr);
     let h2 = hash_expr(&expr);
     assert_eq!(h1, h2);
@@ -273,8 +273,8 @@ fn expr_hash_call_is_deterministic() {
     let expr = Expr::call(
         "add",
         vec![
-            Expr::value(RuntimeValue::new(1)),
-            Expr::value(RuntimeValue::new(2)),
+            Expr::value(NonFunctionValue::new(1)),
+            Expr::value(NonFunctionValue::new(2)),
         ],
     );
     let h1 = hash_expr(&expr);
@@ -285,12 +285,12 @@ fn expr_hash_call_is_deterministic() {
 #[test]
 fn expr_hash_handle_is_deterministic() {
     let expr = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("result")),
+            body: Expr::value(NonFunctionValue::new("result")),
         }],
     );
     let h1 = hash_expr(&expr);
@@ -300,8 +300,8 @@ fn expr_hash_handle_is_deterministic() {
 
 #[test]
 fn expr_hash_differs_for_different_values() {
-    let e1 = Expr::value(RuntimeValue::new(42));
-    let e2 = Expr::value(RuntimeValue::new(99));
+    let e1 = Expr::value(NonFunctionValue::new(42));
+    let e2 = Expr::value(NonFunctionValue::new(99));
     assert_ne!(hash_expr(&e1), hash_expr(&e2));
 }
 
@@ -311,8 +311,8 @@ fn expr_hash_differs_for_different_values() {
 fn eval_cache_insert_and_get() {
     let mut cache = EvalCache::new();
     let hash = DefinitionHash::from_hex("a".repeat(64));
-    let args = vec![RuntimeValue::new(1), RuntimeValue::new(2)];
-    cache.insert(&hash, &args, RuntimeValue::new(3));
+    let args = vec![NonFunctionValue::new(1), NonFunctionValue::new(2)];
+    cache.insert(&hash, &args, NonFunctionValue::new(3));
 
     let result = cache.get(&hash, &args);
     assert_eq!(result.unwrap().as_number(), Some(3.0));
@@ -322,9 +322,9 @@ fn eval_cache_insert_and_get() {
 fn eval_cache_miss_for_different_args() {
     let mut cache = EvalCache::new();
     let hash = DefinitionHash::from_hex("a".repeat(64));
-    cache.insert(&hash, &[RuntimeValue::new(1)], RuntimeValue::new(42));
+    cache.insert(&hash, &[NonFunctionValue::new(1)], NonFunctionValue::new(42));
 
-    assert!(cache.get(&hash, &[RuntimeValue::new(2)]).is_none());
+    assert!(cache.get(&hash, &[NonFunctionValue::new(2)]).is_none());
 }
 
 #[test]
@@ -332,9 +332,9 @@ fn eval_cache_miss_for_different_hash() {
     let mut cache = EvalCache::new();
     let h1 = DefinitionHash::from_hex("a".repeat(64));
     let h2 = DefinitionHash::from_hex("b".repeat(64));
-    cache.insert(&h1, &[RuntimeValue::new(1)], RuntimeValue::new(42));
+    cache.insert(&h1, &[NonFunctionValue::new(1)], NonFunctionValue::new(42));
 
-    assert!(cache.get(&h2, &[RuntimeValue::new(1)]).is_none());
+    assert!(cache.get(&h2, &[NonFunctionValue::new(1)]).is_none());
 }
 
 #[test]
@@ -342,21 +342,21 @@ fn eval_cache_serialization_roundtrip() {
     let mut cache = EvalCache::new();
     let h1 = DefinitionHash::from_hex("a".repeat(64));
     let h2 = DefinitionHash::from_hex("b".repeat(64));
-    cache.insert(&h1, &[RuntimeValue::new(1)], RuntimeValue::new(42));
-    cache.insert(&h2, &[RuntimeValue::new("x")], RuntimeValue::new("result"));
+    cache.insert(&h1, &[NonFunctionValue::new(1)], NonFunctionValue::new(42));
+    cache.insert(&h2, &[NonFunctionValue::new("x")], NonFunctionValue::new("result"));
 
     let json = cache.to_json();
     let restored = EvalCache::from_json(&json);
     assert_eq!(restored.len(), 2);
 
-    let result = restored.get(&h1, &[RuntimeValue::new(1)]);
+    let result = restored.get(&h1, &[NonFunctionValue::new(1)]);
     assert_eq!(result.unwrap().as_number(), Some(42.0));
 }
 
 #[test]
 fn eval_cache_key_deterministic() {
     let hash = DefinitionHash::from_hex("a".repeat(64));
-    let args = vec![RuntimeValue::new(1), RuntimeValue::new("hello")];
+    let args = vec![NonFunctionValue::new(1), NonFunctionValue::new("hello")];
     let k1 = EvalKey::new(&hash, &args);
     let k2 = EvalKey::new(&hash, &args);
     assert_eq!(k1, k2);
@@ -532,7 +532,7 @@ fn hash_differs_with_and_without_return_schema() {
 fn eval_cache_with_empty_args() {
     let mut cache = EvalCache::new();
     let hash = DefinitionHash::from_hex("a".repeat(64));
-    cache.insert(&hash, &[], RuntimeValue::new(42));
+    cache.insert(&hash, &[], NonFunctionValue::new(42));
     let result = cache.get(&hash, &[]);
     assert_eq!(result.unwrap().as_number(), Some(42.0));
 }
@@ -541,9 +541,9 @@ fn eval_cache_with_empty_args() {
 fn eval_cache_overwrite_same_key() {
     let mut cache = EvalCache::new();
     let hash = DefinitionHash::from_hex("a".repeat(64));
-    let args = vec![RuntimeValue::new(1)];
-    cache.insert(&hash, &args, RuntimeValue::new(42));
-    cache.insert(&hash, &args, RuntimeValue::new(99));
+    let args = vec![NonFunctionValue::new(1)];
+    cache.insert(&hash, &args, NonFunctionValue::new(42));
+    cache.insert(&hash, &args, NonFunctionValue::new(99));
     assert_eq!(cache.get(&hash, &args).unwrap().as_number(), Some(99.0));
     assert_eq!(cache.len(), 1);
 }
@@ -551,8 +551,8 @@ fn eval_cache_overwrite_same_key() {
 #[test]
 fn eval_cache_key_differs_for_different_arg_order() {
     let hash = DefinitionHash::from_hex("a".repeat(64));
-    let k1 = EvalKey::new(&hash, &[RuntimeValue::new(1), RuntimeValue::new(2)]);
-    let k2 = EvalKey::new(&hash, &[RuntimeValue::new(2), RuntimeValue::new(1)]);
+    let k1 = EvalKey::new(&hash, &[NonFunctionValue::new(1), NonFunctionValue::new(2)]);
+    let k2 = EvalKey::new(&hash, &[NonFunctionValue::new(2), NonFunctionValue::new(1)]);
     assert_ne!(k1, k2);
 }
 
@@ -562,13 +562,13 @@ fn handler_clause_hash_differs_for_different_params() {
         op_name: "fetch".to_string(),
         params: vec!["url".to_string()],
         continuation_name: "k".to_string(),
-        body: Expr::value(RuntimeValue::new(42)),
+        body: Expr::value(NonFunctionValue::new(42)),
     };
     let c2 = HandlerClause {
         op_name: "fetch".to_string(),
         params: vec!["path".to_string()],
         continuation_name: "k".to_string(),
-        body: Expr::value(RuntimeValue::new(42)),
+        body: Expr::value(NonFunctionValue::new(42)),
     };
     assert_ne!(hash_handler_clause(&c1), hash_handler_clause(&c2));
 }
@@ -579,32 +579,32 @@ fn handler_clause_hash_differs_for_different_continuation_name() {
         op_name: "fetch".to_string(),
         params: vec![],
         continuation_name: "k".to_string(),
-        body: Expr::value(RuntimeValue::new(42)),
+        body: Expr::value(NonFunctionValue::new(42)),
     };
     let c2 = HandlerClause {
         op_name: "fetch".to_string(),
         params: vec![],
         continuation_name: "resume".to_string(),
-        body: Expr::value(RuntimeValue::new(42)),
+        body: Expr::value(NonFunctionValue::new(42)),
     };
     assert_ne!(hash_handler_clause(&c1), hash_handler_clause(&c2));
 }
 
 #[test]
 fn expr_hash_differs_for_different_call_names() {
-    let e1 = Expr::call("add", vec![Expr::value(RuntimeValue::new(1))]);
-    let e2 = Expr::call("mul", vec![Expr::value(RuntimeValue::new(1))]);
+    let e1 = Expr::call("add", vec![Expr::value(NonFunctionValue::new(1))]);
+    let e2 = Expr::call("mul", vec![Expr::value(NonFunctionValue::new(1))]);
     assert_ne!(hash_expr(&e1), hash_expr(&e2));
 }
 
 #[test]
 fn expr_hash_differs_for_different_arg_count() {
-    let e1 = Expr::call("add", vec![Expr::value(RuntimeValue::new(1))]);
+    let e1 = Expr::call("add", vec![Expr::value(NonFunctionValue::new(1))]);
     let e2 = Expr::call(
         "add",
         vec![
-            Expr::value(RuntimeValue::new(1)),
-            Expr::value(RuntimeValue::new(2)),
+            Expr::value(NonFunctionValue::new(1)),
+            Expr::value(NonFunctionValue::new(2)),
         ],
     );
     assert_ne!(hash_expr(&e1), hash_expr(&e2));
@@ -613,21 +613,21 @@ fn expr_hash_differs_for_different_arg_count() {
 #[test]
 fn expr_hash_handle_differs_for_different_handlers() {
     let e1 = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("a")),
+            body: Expr::value(NonFunctionValue::new("a")),
         }],
     );
     let e2 = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("b")),
+            body: Expr::value(NonFunctionValue::new("b")),
         }],
     );
     assert_ne!(hash_expr(&e1), hash_expr(&e2));

@@ -7,24 +7,24 @@
 //! Run: `cargo run --example multi-handler`
 
 use ac_ast::{Expr, HandlerClause};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function, Host, Operation, OperationSig, Vm};
 
 // ── functions ─────────────────────────────────────────────────────
 
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-        Ok(RuntimeValue::new(sum))
+        Ok(NonFunctionValue::new(sum))
     }
 }
 
 struct Mul;
 impl Function for Mul {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let product: f64 = args.iter().filter_map(|v| v.as_number()).product();
-        Ok(RuntimeValue::new(product))
+        Ok(NonFunctionValue::new(product))
     }
 }
 
@@ -39,7 +39,7 @@ impl Operation for FetchOp {
             return_schema: None,
         }
     }
-    fn perform(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
             args: vec![],
@@ -56,7 +56,7 @@ impl Operation for LogOp {
             return_schema: None,
         }
     }
-    fn perform(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "log".to_string(),
             args: vec![],
@@ -73,7 +73,7 @@ impl Operation for ReadFileOp {
             return_schema: None,
         }
     }
-    fn perform(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "read_file".to_string(),
             args: vec![],
@@ -124,7 +124,7 @@ impl Default for DemoHost {
 // ── main ──────────────────────────────────────────────────────────
 
 fn main() {
-    let mut vm = Vm::new(DemoHost::default());
+    let vm = Vm::new(DemoHost::default());
     let mut ctx = Context::new();
 
     // Example 1: Multiple handler clauses for different operations
@@ -140,7 +140,7 @@ fn main() {
                 Expr::call("fetch", vec![]),
                 Expr::call(
                     "mul",
-                    vec![Expr::call("log", vec![]), Expr::value(RuntimeValue::new(2))],
+                    vec![Expr::call("log", vec![]), Expr::value(NonFunctionValue::new(2))],
                 ),
             ],
         ),
@@ -149,13 +149,13 @@ fn main() {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(RuntimeValue::new(42.0))]),
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
             },
             HandlerClause {
                 op_name: "log".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(RuntimeValue::new(1.0))]),
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(1.0))]),
             },
         ],
     );
@@ -176,14 +176,14 @@ fn main() {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(RuntimeValue::new("inner-handled")),
+                body: Expr::value(NonFunctionValue::new("inner-handled")),
             }],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("outer-handled")),
+            body: Expr::value(NonFunctionValue::new("outer-handled")),
         }],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -203,14 +203,14 @@ fn main() {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(RuntimeValue::new("inner-fetch")),
+                body: Expr::value(NonFunctionValue::new("inner-fetch")),
             }],
         ),
         vec![HandlerClause {
             op_name: "read_file".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("outer-readfile")),
+            body: Expr::value(NonFunctionValue::new("outer-readfile")),
         }],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -240,19 +240,19 @@ fn main() {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(RuntimeValue::new(10.0))]),
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(10.0))]),
             },
             HandlerClause {
                 op_name: "log".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(RuntimeValue::new(1.0))]),
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(1.0))]),
             },
             HandlerClause {
                 op_name: "read_file".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(RuntimeValue::new(100.0))]),
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(100.0))]),
             },
         ],
     );

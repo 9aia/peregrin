@@ -1,6 +1,6 @@
 use ac_ast::Expr;
 use ac_host_cache::{CacheHost, CallCache};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, EvalResult, Function, Vm};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -8,9 +8,9 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-        Ok(RuntimeValue::new(sum))
+        Ok(NonFunctionValue::new(sum))
     }
 }
 
@@ -18,18 +18,18 @@ struct CountingFetch {
     calls: AtomicUsize,
 }
 impl Function for CountingFetch {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let n = self.calls.fetch_add(1, Ordering::SeqCst);
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("?");
-        Ok(RuntimeValue::new(format!("result_{input}_{n}")))
+        Ok(NonFunctionValue::new(format!("result_{input}_{n}")))
     }
 }
 
 struct YieldingFetch;
 impl Function for YieldingFetch {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("?");
-        Err(Error::Yield(RuntimeValue::new(format!("yield:{input}"))))
+        Err(Error::Yield(NonFunctionValue::new(format!("yield:{input}"))))
     }
 }
 
@@ -40,18 +40,18 @@ fn cache_insert_and_get() {
     let mut cache = CallCache::new();
     cache.insert(
         "add",
-        &[RuntimeValue::new(1), RuntimeValue::new(2)],
-        RuntimeValue::new(3),
+        &[NonFunctionValue::new(1), NonFunctionValue::new(2)],
+        NonFunctionValue::new(3),
     );
     assert_eq!(cache.len(), 1);
-    let result = cache.get("add", &[RuntimeValue::new(1), RuntimeValue::new(2)]);
+    let result = cache.get("add", &[NonFunctionValue::new(1), NonFunctionValue::new(2)]);
     assert_eq!(result.unwrap().as_number(), Some(3.0));
 }
 
 #[test]
 fn cache_miss_returns_none() {
     let cache = CallCache::new();
-    assert!(cache.get("add", &[RuntimeValue::new(1)]).is_none());
+    assert!(cache.get("add", &[NonFunctionValue::new(1)]).is_none());
 }
 
 #[test]
@@ -59,13 +59,13 @@ fn cache_serialization_roundtrip() {
     let mut cache = CallCache::new();
     cache.insert(
         "add",
-        &[RuntimeValue::new(1), RuntimeValue::new(2)],
-        RuntimeValue::new(3),
+        &[NonFunctionValue::new(1), NonFunctionValue::new(2)],
+        NonFunctionValue::new(3),
     );
     cache.insert(
         "fetch",
-        &[RuntimeValue::new("hello")],
-        RuntimeValue::new("result_hello_0"),
+        &[NonFunctionValue::new("hello")],
+        NonFunctionValue::new("result_hello_0"),
     );
 
     let json = cache.to_json();
@@ -74,14 +74,14 @@ fn cache_serialization_roundtrip() {
     assert_eq!(restored.len(), 2);
     assert_eq!(
         restored
-            .get("add", &[RuntimeValue::new(1), RuntimeValue::new(2)])
+            .get("add", &[NonFunctionValue::new(1), NonFunctionValue::new(2)])
             .unwrap()
             .as_number(),
         Some(3.0),
     );
     assert_eq!(
         restored
-            .get("fetch", &[RuntimeValue::new("hello")])
+            .get("fetch", &[NonFunctionValue::new("hello")])
             .unwrap()
             .as_str(),
         Some("result_hello_0"),
@@ -107,11 +107,11 @@ fn cache_host_caches_successful_calls() {
     host.register("fetch", Box::new(fetch));
     host.register("add", Box::new(Add));
 
-    let mut vm = Vm::new(host);
+    let vm = Vm::new(host);
     let mut ctx = Context::new();
 
     // First call: cache miss, dispatches to function
-    let expr = Expr::call("fetch", vec![Expr::value(RuntimeValue::new("a"))]);
+    let expr = Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("a"))]);
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_str(), Some("result_a_0"));
 
@@ -130,10 +130,10 @@ fn cache_host_does_not_cache_yields() {
     host.register("fetch", Box::new(YieldingFetch));
     host.register("add", Box::new(Add));
 
-    let mut vm = Vm::new(host);
+    let vm = Vm::new(host);
     let mut ctx = Context::new();
 
-    let expr = Expr::call("fetch", vec![Expr::value(RuntimeValue::new("a"))]);
+    let expr = Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("a"))]);
     let result = vm.eval(&expr, &mut ctx);
     assert!(matches!(result, Err(Error::Yield(_))));
 
@@ -150,8 +150,8 @@ fn end_to_end_server_to_client_migration() {
     let expr = Expr::call(
         "add",
         vec![
-            Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-            Expr::value(RuntimeValue::new(10)),
+            Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+            Expr::value(NonFunctionValue::new(10)),
         ],
     );
 
@@ -185,8 +185,8 @@ fn end_to_end_server_to_client_migration() {
     // the client knowing the result of the yielded call)
     client_host.cache_mut().insert(
         "fetch",
-        &[RuntimeValue::new("data")],
-        RuntimeValue::new(42.0),
+        &[NonFunctionValue::new("data")],
+        NonFunctionValue::new(42.0),
     );
 
     client_host.register("add", Box::new(Add));

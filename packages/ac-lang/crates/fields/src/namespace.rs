@@ -1,8 +1,8 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
 /// Builds the default namespace from the document's data fields.
-pub fn build_doc_namespace(data: &RuntimeValue) -> JsonValue {
+pub fn build_doc_namespace(data: &NonFunctionValue) -> JsonValue {
     data.inner().clone()
 }
 

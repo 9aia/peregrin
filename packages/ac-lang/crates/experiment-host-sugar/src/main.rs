@@ -10,7 +10,7 @@ use ac_fields::{DEFAULT_NAMESPACE, build_doc_namespace, eval_expression};
 use ac_host::DefaultHost;
 use ac_module_resolver_file::FileResolver;
 use ac_module_resolver_memory::MemoryModuleCache;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 fn main() {
     let yaml = r#"
@@ -35,7 +35,7 @@ n: 5
     println!("{yaml}");
 
     // `functions` is just a regular field. `double` has a `body` → it's a function.
-    let doc = RuntimeValue::new(serde_json::json!({
+    let doc = NonFunctionValue::new(serde_json::json!({
         "n": 5,
         "functions": {
             "double": { "params": { "x": { "type": "number" } }, "body": "mul(x, 2)" }

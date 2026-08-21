@@ -74,8 +74,8 @@ fn main() {
     // ── Eval cache ───────────────────────────────────────────────
     println!("\n[EvalCache] Caching evaluation results:");
     let mut eval_cache = EvalCache::new();
-    let args = vec![ac_runtime::RuntimeValue::new(21)];
-    eval_cache.insert(&double_hash, &args, ac_runtime::RuntimeValue::new(42.0));
+    let args = vec![ac_runtime::NonFunctionValue::new(21)];
+    eval_cache.insert(&double_hash, &args, ac_runtime::NonFunctionValue::new(42.0));
 
     let cached = eval_cache.get(&double_hash, &args).unwrap();
     println!("  double(21) → {} (cached)", cached.as_number().unwrap());

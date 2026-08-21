@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -50,7 +50,7 @@ impl Module for EnvModule {
     }
 }
 
-fn require_one_string(args: &[RuntimeValue]) -> Result<&str, Error> {
+fn require_one_string(args: &[NonFunctionValue]) -> Result<&str, Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
         got: 0,
@@ -66,12 +66,12 @@ struct GetFn {
 }
 
 impl Function for GetFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         let value = self.env.get(key)?;
         Ok(match value {
-            Some(v) => RuntimeValue::new(v),
-            None => RuntimeValue::default(),
+            Some(v) => NonFunctionValue::new(v),
+            None => NonFunctionValue::default(),
         })
     }
 }
@@ -81,9 +81,9 @@ struct HasFn {
 }
 
 impl Function for HasFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
-        self.env.has(key).map(RuntimeValue::new).map_err(Into::into)
+        self.env.has(key).map(NonFunctionValue::new).map_err(Into::into)
     }
 }
 
@@ -92,9 +92,9 @@ struct KeysFn {
 }
 
 impl Function for KeysFn {
-    fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let keys = self.env.keys()?;
         let arr: Vec<serde_json::Value> = keys.into_iter().map(serde_json::Value::String).collect();
-        Ok(RuntimeValue::new(serde_json::Value::Array(arr)))
+        Ok(NonFunctionValue::new(serde_json::Value::Array(arr)))
     }
 }

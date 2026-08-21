@@ -26,7 +26,7 @@
 
 use crate::Context;
 use crate::Error;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 /// The signature of an operation — its name and parameter types.
 ///
@@ -65,7 +65,7 @@ pub struct OperationSig {
 ///         }
 ///     }
 ///
-///     fn perform(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+///     fn perform(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
 ///         // Signal: yield to the caller with operation name + args
 ///         Err(Error::Operation {
 ///             name: "fetch".to_string(),
@@ -82,5 +82,5 @@ pub trait Operation {
     ///
     /// Return `Err(Error::Operation { name, args })` to signal.
     /// Return `Ok(value)` to complete without signaling (e.g. cached).
-    fn perform(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error>;
+    fn perform(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error>;
 }

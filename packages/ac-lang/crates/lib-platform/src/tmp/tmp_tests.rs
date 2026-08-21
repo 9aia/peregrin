@@ -1,11 +1,11 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::Context;
 
 use super::tmp::TmpModule;
 use super::tmp_stub::StubTmp;
 
-fn call(module: &dyn Module, name: &str, args: &[RuntimeValue]) -> RuntimeValue {
+fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx).expect("call succeeds")

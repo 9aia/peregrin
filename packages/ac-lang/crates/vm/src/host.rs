@@ -4,7 +4,8 @@ use std::pin::Pin;
 use crate::Context;
 use crate::Error;
 use crate::Operation;
-use ac_runtime::RuntimeValue;
+use ac_ast::Expr;
+use ac_runtime::NonFunctionValue;
 
 /// Provides functions to the VM.
 ///
@@ -61,13 +62,26 @@ pub trait Host {
     fn operation(&self, _name: &str) -> Option<&dyn Operation> {
         None
     }
+
+    /// Resolve a function name to a [`LazyFunction`] that receives
+    /// unevaluated arguments.
+    ///
+    /// Returns `None` by default. Override to provide functions that
+    /// need lazy (short-circuit) argument evaluation — e.g. `if`,
+    /// `and`, `or`. The VM checks this before [`Host::function`] and
+    /// [`Host::operation`]. If a name resolves to a lazy function,
+    /// the VM passes the raw expression tree instead of pre-evaluated
+    /// values, and the function decides which arguments to evaluate.
+    fn lazy_function(&self, _name: &str) -> Option<&dyn LazyFunction> {
+        None
+    }
 }
 
 /// A callable function provided by the host.
 ///
 /// Functions implement the execution semantics for built-in
 /// operations. The VM evaluates arguments and passes the resulting
-/// [`RuntimeValue`]s to the function's [`call`](Function::call) method.
+/// [`NonFunctionValue`]s to the function's [`call`](Function::call) method.
 ///
 /// Functions receive a mutable reference to the [`Context`],
 /// allowing them to read or modify variables in the current scope.
@@ -88,7 +102,7 @@ pub trait Function {
     /// # Returns
     ///
     /// The result value, or an [`Error`] if execution failed.
-    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error>;
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error>;
 }
 
 /// An async callable function provided by the host.
@@ -110,12 +124,12 @@ pub trait Function {
 /// impl AsyncFunction for Fetch {
 ///     fn call<'a>(
 ///         &'a self,
-///         args: &'a [RuntimeValue],
+///         args: &'a [NonFunctionValue],
 ///         _ctx: &'a mut Context,
-///     ) -> Pin<Box<dyn Future<Output = Result<RuntimeValue, Error>> + 'a>> {
+///     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
 ///         Box::pin(async {
 ///             // async work here
-///             Ok(RuntimeValue::new("result"))
+///             Ok(NonFunctionValue::new("result"))
 ///         })
 ///     }
 /// }
@@ -138,7 +152,71 @@ pub trait AsyncFunction {
     /// an [`Error`]. The lifetime is tied to `self`, `args`, and `ctx`.
     fn call<'a>(
         &'a self,
-        args: &'a [RuntimeValue],
+        args: &'a [NonFunctionValue],
         ctx: &'a mut Context,
-    ) -> Pin<Box<dyn Future<Output = Result<RuntimeValue, Error>> + 'a>>;
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>>;
+}
+
+/// A lazy function that receives unevaluated arguments.
+///
+/// Unlike [`Function`], which receives pre-evaluated argument values,
+/// `LazyFunction` receives the raw expression tree. The function
+/// decides which arguments to evaluate and in what order by calling
+/// the `evaluate` closure.
+///
+/// This enables short-circuit evaluation:
+/// - `if(cond, then, else)` only evaluates the chosen branch.
+/// - `and(a, b)` stops at the first `false`.
+/// - `or(a, b)` stops at the first `true`.
+///
+/// The VM checks [`Host::lazy_function`] before [`Host::function`]
+/// and [`Host::operation`]. If a name resolves to a lazy function,
+/// the VM calls it with unevaluated args. Otherwise, the VM eagerly
+/// evaluates args and dispatches to [`Host::function`].
+///
+/// # Implementing
+///
+/// A lazy function can also implement [`Function`] for direct callers
+/// that pass pre-evaluated values. The `Function` impl evaluates all
+/// args eagerly; the `LazyFunction` impl short-circuits.
+///
+/// ```ignore
+/// struct If;
+///
+/// impl LazyFunction for If {
+///     fn call(
+///         &self,
+///         args: &[Expr<NonFunctionValue>],
+///         ctx: &mut Context,
+///         evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut Context) -> Result<NonFunctionValue, Error>,
+///     ) -> Result<NonFunctionValue, Error> {
+///         let cond = evaluate(&args[0], ctx)?.as_bool().unwrap_or(false);
+///         if cond {
+///             evaluate(&args[1], ctx)
+///         } else {
+///             evaluate(&args[2], ctx)
+///         }
+///     }
+/// }
+/// ```
+pub trait LazyFunction {
+    /// Call this function with unevaluated arguments.
+    ///
+    /// # Arguments
+    ///
+    /// - `args` — the unevaluated argument expressions, in order.
+    /// - `ctx` — the execution context, for variable access.
+    /// - `evaluate` — a closure that evaluates a sub-expression in the
+    ///   given context. Call this to evaluate specific arguments on
+    ///   demand.
+    ///
+    /// # Returns
+    ///
+    /// The result value, or an [`Error`] if execution failed.
+    fn call(
+        &self,
+        args: &[Expr<NonFunctionValue>],
+        ctx: &mut Context,
+        evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut Context) -> Result<NonFunctionValue, Error>,
+    ) -> Result<NonFunctionValue, Error>;
 }

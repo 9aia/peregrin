@@ -100,7 +100,7 @@ The dialect also provides two convenience aggregations:
 
 The dialect exposes its schema vocabulary through the `schema_vocabulary()` accessor on the `Dialect` facade, returning a reference to the `SchemaVocabulary<V>` implementation. The schema vocabulary is an abstract interface that compiles raw schema documents into validators.
 
-At the dialect level, the value type `V` is fixed to the runtime's value type (in Rust, `RuntimeValue`). The `Schema<V>` and `SchemaVocabulary<V>` interfaces remain generic over `V` so the abstractions work with any value type. In other language implementations, `V` should be bound to the equivalent runtime value type.
+At the dialect level, the value type `V` is fixed to the runtime's value type (in Rust, `NonFunctionValue`). The `Schema<V>` and `SchemaVocabulary<V>` interfaces remain generic over `V` so the abstractions work with any value type. In other language implementations, `V` should be bound to the equivalent runtime value type.
 
 | Operation           | Input               | Output                | Description                                                  |
 | ------------------- | ------------------- | --------------------- | ------------------------------------------------------------ |

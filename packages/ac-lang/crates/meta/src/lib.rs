@@ -19,7 +19,7 @@
 //! use ac_meta::MetaHost;
 //! use ac_vm::{Vm, Context};
 //!
-//! let mut vm = Vm::new(MetaHost::default());
+//! let vm = Vm::new(MetaHost::default());
 //! let mut ctx = Context::new();
 //! // eval("add(1, 2)") → 3
 //! ```

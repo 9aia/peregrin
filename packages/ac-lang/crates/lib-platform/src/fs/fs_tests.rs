@@ -1,24 +1,24 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::Context;
 
 use super::fs::FsModule;
 use super::fs_stub::StubFs;
 
-fn call(module: &dyn Module, name: &str, args: &[RuntimeValue]) -> RuntimeValue {
+fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[RuntimeValue]) -> ac_vm::Error {
+fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> ac_vm::Error {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx).unwrap_err()
 }
 
-fn s(v: &str) -> RuntimeValue {
-    RuntimeValue::new(v.to_string())
+fn s(v: &str) -> NonFunctionValue {
+    NonFunctionValue::new(v.to_string())
 }
 
 #[test]

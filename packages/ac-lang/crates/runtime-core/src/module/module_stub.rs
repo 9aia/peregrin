@@ -1,6 +1,6 @@
 //! Shared test stub for the module interface.
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 
 use crate::module::Module;
@@ -27,7 +27,7 @@ impl Module for StubModule {
 struct Echo;
 
 impl Function for Echo {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Ok(args.first().cloned().unwrap_or_default())
     }
 }

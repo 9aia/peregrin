@@ -7,16 +7,16 @@
 //! Run: `cargo run --example resumable`
 
 use ac_ast::Expr;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, EvalResult, Function, Host, Operation, OperationSig, Vm};
 
 // ── functions ─────────────────────────────────────────────────────
 
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-        Ok(RuntimeValue::new(sum))
+        Ok(NonFunctionValue::new(sum))
     }
 }
 
@@ -31,7 +31,7 @@ impl Operation for FetchOp {
             return_schema: Some(serde_json::json!({"type": "string"})),
         }
     }
-    fn perform(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
             args: args.to_vec(),
@@ -49,8 +49,8 @@ impl Operation for CachingFetch {
             return_schema: None,
         }
     }
-    fn perform(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        Ok(RuntimeValue::new(42.0))
+    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        Ok(NonFunctionValue::new(42.0))
     }
 }
 
@@ -117,8 +117,8 @@ fn main() {
     let expr = Expr::call(
         "add",
         vec![
-            Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-            Expr::value(RuntimeValue::new(10)),
+            Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+            Expr::value(NonFunctionValue::new(10)),
         ],
     );
 
@@ -126,7 +126,7 @@ fn main() {
     println!("Expression: add(fetch(\"data\"), 10)");
 
     // ── Server: start evaluation ────────────────────────────────
-    let mut server_vm = Vm::new(ServerHost::default());
+    let server_vm = Vm::new(ServerHost::default());
     let mut ctx = Context::new();
     let result = server_vm.eval_resumable(&expr, &mut ctx, None);
 
@@ -154,7 +154,7 @@ fn main() {
 
     // ── Client: resume evaluation ───────────────────────────────
     let restored = ac_vm::Continuation::from_json(&cont_json).unwrap();
-    let mut client_vm = Vm::new(ClientHost::default());
+    let client_vm = Vm::new(ClientHost::default());
     let result = client_vm.eval_resumable(&expr, &mut ctx, Some(restored));
 
     match result {

@@ -1,11 +1,11 @@
 use ac_dialect::{Schema, ValidationError};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
-/// A JSON Schema document that can validate `RuntimeValue`s.
+/// A JSON Schema document that can validate `NonFunctionValue`s.
 ///
 /// Stores the raw schema as a `serde_json::Value` and implements
-/// [`Schema<RuntimeValue>`] using the [`jsonschema`] crate for full
+/// [`Schema<NonFunctionValue>`] using the [`jsonschema`] crate for full
 /// JSON Schema draft 2020-12 validation.
 #[derive(Debug, Clone)]
 pub struct JsonSchema {
@@ -41,8 +41,8 @@ impl JsonSchema {
     }
 }
 
-impl Schema<RuntimeValue> for JsonSchema {
-    fn validate(&self, value: &RuntimeValue) -> Result<(), ValidationError> {
+impl Schema<NonFunctionValue> for JsonSchema {
+    fn validate(&self, value: &NonFunctionValue) -> Result<(), ValidationError> {
         let validator = jsonschema::draft202012::new(&self.raw).map_err(|e| ValidationError {
             message: format!("invalid JSON schema: {e}"),
             path: String::new(),

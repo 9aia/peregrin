@@ -13,7 +13,7 @@ use ac_ast::Expr;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, APPLY_FUNCTION, FunctionResolver, Namespaces};
 use ac_host::DefaultHost;
-use ac_runtime::{FunctionValue, RuntimeValue};
+use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_vm::{Context, Error, Eval, Vm};
 
 const MAX_DEPTH: usize = 64;
@@ -74,11 +74,11 @@ impl ExprEval {
             return self.call_apply(&apply_args);
         }
 
-        let mut vm = Vm::new(self.host.clone());
+        let vm = Vm::new(self.host.clone());
         let mut ctx = Context::new();
-        let expr_args: Vec<Expr<RuntimeValue>> = args
+        let expr_args: Vec<Expr<NonFunctionValue>> = args
             .iter()
-            .map(|v| Expr::value(RuntimeValue::new(v.clone())))
+            .map(|v| Expr::value(NonFunctionValue::new(v.clone())))
             .collect();
         let expr = Expr::call(name, expr_args);
         let result = vm.eval(&expr, &mut ctx).map_err(|e| e.to_string())?;
@@ -123,8 +123,8 @@ impl Eval for ExprEval {
     fn eval_expr(
         &self,
         expr: &str,
-        vars: &[(String, RuntimeValue)],
-    ) -> Result<RuntimeValue, Error> {
+        vars: &[(String, NonFunctionValue)],
+    ) -> Result<NonFunctionValue, Error> {
         let params: Vec<(String, serde_json::Value)> = vars
             .iter()
             .map(|(k, v)| (k.clone(), v.clone().into_inner()))
@@ -135,6 +135,6 @@ impl Eval for ExprEval {
                 Error::PrimitiveError(format!("failed to evaluate expression: {expr}"))
             })?;
 
-        Ok(RuntimeValue::new(result))
+        Ok(NonFunctionValue::new(result))
     }
 }

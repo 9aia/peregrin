@@ -1,7 +1,7 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 use crate::Error;
 
@@ -25,8 +25,8 @@ use crate::Error;
 ///     fn eval_expr(
 ///         &self,
 ///         expr: &str,
-///         vars: &[(String, RuntimeValue)],
-///     ) -> Result<RuntimeValue, Error> {
+///         vars: &[(String, NonFunctionValue)],
+///     ) -> Result<NonFunctionValue, Error> {
 ///         // Parse expr, bind vars, evaluate, return result
 ///     }
 /// }
@@ -41,9 +41,9 @@ pub trait Eval {
     ///
     /// # Returns
     ///
-    /// The evaluated [`RuntimeValue`], or an [`Error`] if evaluation failed.
-    fn eval_expr(&self, expr: &str, vars: &[(String, RuntimeValue)])
-    -> Result<RuntimeValue, Error>;
+    /// The evaluated [`NonFunctionValue`], or an [`Error`] if evaluation failed.
+    fn eval_expr(&self, expr: &str, vars: &[(String, NonFunctionValue)])
+    -> Result<NonFunctionValue, Error>;
 }
 
 /// An async callback that evaluates an expression string with variable bindings.
@@ -59,10 +59,10 @@ pub trait AsyncEval {
     /// Evaluate an expression string with the given variable bindings.
     ///
     /// Returns a boxed future that resolves to the evaluated
-    /// [`RuntimeValue`] or an [`Error`].
+    /// [`NonFunctionValue`] or an [`Error`].
     fn eval_expr_async<'a>(
         &'a self,
         expr: &'a str,
-        vars: &'a [(String, RuntimeValue)],
-    ) -> Pin<Box<dyn Future<Output = Result<RuntimeValue, Error>> + 'a>>;
+        vars: &'a [(String, NonFunctionValue)],
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>>;
 }

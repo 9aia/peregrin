@@ -15,7 +15,7 @@ use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, APPLY_FUNCTION, FunctionResolver};
 use ac_host::DefaultHost;
 use ac_module_resolver_core::{IMPORT_FUNCTION, ModuleResolver};
-use ac_runtime::{FunctionValue, RuntimeValue};
+use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_vm::{Context, Vm};
 
 use crate::expr_eval::ExprEval;
@@ -80,13 +80,13 @@ impl<'a> VmResolver<'a> {
             return self.call_apply(&apply_args);
         }
 
-        let mut vm = Vm::new(self.host.clone());
+        let vm = Vm::new(self.host.clone());
         let mut ctx = Context::new();
         let eval = ExprEval::new(self.host.clone(), self.namespaces.clone());
         ctx.set_eval(Box::new(eval));
-        let expr_args: Vec<Expr<RuntimeValue>> = args
+        let expr_args: Vec<Expr<NonFunctionValue>> = args
             .iter()
-            .map(|v| Expr::value(RuntimeValue::new(v.clone())))
+            .map(|v| Expr::value(NonFunctionValue::new(v.clone())))
             .collect();
         let expr = Expr::call(name, expr_args);
         let result = vm.eval(&expr, &mut ctx).map_err(|e| e.to_string())?;
@@ -131,7 +131,7 @@ impl<'a> VmResolver<'a> {
                 .schema_vocabulary()
                 .compile(ret_raw)
                 .map_err(|e| format!("invalid return schema: {e}"))?;
-            ac_fields::validate_return(&RuntimeValue::new(result.clone()), ret_schema.as_ref())?;
+            ac_fields::validate_return(&NonFunctionValue::new(result.clone()), ret_schema.as_ref())?;
         }
 
         Ok(result)

@@ -11,7 +11,7 @@ use ac_fields::{
     interpolate, merge_fields,
 };
 use ac_frontend_yaml;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
 struct AddResolver;
@@ -66,7 +66,7 @@ version: 3
         &AddResolver,
         &AC_DIALECT,
     );
-    let mut data = RuntimeValue::new(interpolated);
+    let mut data = NonFunctionValue::new(interpolated);
 
     let compute_errors = compute_fields(
         data.inner_mut(),
@@ -84,7 +84,7 @@ version: 3
     for (name, raw) in &extracted.schemas {
         let schema = JsonSchema::new(raw.clone());
         let field_value = data.get(name).unwrap_or(&JsonValue::Null);
-        let field_rv = RuntimeValue::new(field_value.clone());
+        let field_rv = NonFunctionValue::new(field_value.clone());
         assert!(
             schema.validate(&field_rv).is_ok(),
             "field {name} should validate"

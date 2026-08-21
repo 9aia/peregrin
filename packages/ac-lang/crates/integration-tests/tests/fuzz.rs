@@ -7,7 +7,7 @@
 //! - Continuation roundtrips: any valid continuation survives serialization.
 
 use ac_ast::{Expr, HandlerClause};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_store::DefinitionHash;
 use ac_store::canonicalize_json;
 use ac_vm::{Continuation, Frame};
@@ -90,16 +90,16 @@ fn random_json(rng: &mut Rng, depth: usize) -> JsonValue {
 }
 
 /// Generate a random expression (depth-limited).
-fn random_expr(rng: &mut Rng, depth: usize) -> Expr<RuntimeValue> {
+fn random_expr(rng: &mut Rng, depth: usize) -> Expr<NonFunctionValue> {
     if depth == 0 {
-        return Expr::Value(RuntimeValue::new(match rng.next_usize(3) {
+        return Expr::Value(NonFunctionValue::new(match rng.next_usize(3) {
             0 => serde_json::json!(rng.next_f64()),
             1 => serde_json::json!(rng.next_string()),
             _ => serde_json::json!(rng.next_bool()),
         }));
     }
     match rng.next_usize(3) {
-        0 => Expr::Value(RuntimeValue::new(match rng.next_usize(3) {
+        0 => Expr::Value(NonFunctionValue::new(match rng.next_usize(3) {
             0 => serde_json::json!(rng.next_f64()),
             1 => serde_json::json!(rng.next_string()),
             _ => serde_json::json!(rng.next_bool()),
@@ -151,7 +151,7 @@ fn random_frame(rng: &mut Rng) -> Frame {
             _ => rng.next_string(),
         },
         evaluated: (0..n_evaluated)
-            .map(|_| RuntimeValue::new(random_json(rng, 2)))
+            .map(|_| NonFunctionValue::new(random_json(rng, 2)))
             .collect(),
         pending: (0..n_pending).map(|_| random_expr(rng, 2)).collect(),
         handlers: vec![],
@@ -254,14 +254,14 @@ fn fuzz_empty_continuation_roundtrip() {
     assert!(restored.is_empty());
 }
 
-// ── property: RuntimeValue clone/eq ───────────────────────────────
+// ── property: NonFunctionValue clone/eq ───────────────────────────────
 
 #[test]
 fn fuzz_runtime_value_clone_eq() {
     let mut rng = Rng::new(333);
     for _ in 0..500 {
         let value = random_json(&mut rng, 4);
-        let rv1 = RuntimeValue::new(value);
+        let rv1 = NonFunctionValue::new(value);
         let rv2 = rv1.clone();
         assert_eq!(rv1, rv2, "clone must produce equal value");
     }

@@ -1,6 +1,6 @@
 use super::*;
 use ac_dialect::Schema;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 // ── combinatorial keywords ─────────────────────────────────────
 
@@ -14,12 +14,12 @@ fn validate_all_of() {
     }));
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({"name": "Luis"})))
+            .validate(&NonFunctionValue::new(serde_json::json!({"name": "Luis"})))
             .is_ok()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({"age": 30})))
+            .validate(&NonFunctionValue::new(serde_json::json!({"age": 30})))
             .is_err()
     );
 }
@@ -32,9 +32,9 @@ fn validate_any_of() {
             {"type": "number"}
         ]
     }));
-    assert!(schema.validate(&RuntimeValue::new("hello")).is_ok());
-    assert!(schema.validate(&RuntimeValue::new(42)).is_ok());
-    assert!(schema.validate(&RuntimeValue::new(true)).is_err());
+    assert!(schema.validate(&NonFunctionValue::new("hello")).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new(42)).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new(true)).is_err());
 }
 
 #[test]
@@ -45,9 +45,9 @@ fn validate_one_of() {
             {"type": "number"}
         ]
     }));
-    assert!(schema.validate(&RuntimeValue::new("hello")).is_ok());
-    assert!(schema.validate(&RuntimeValue::new(42)).is_ok());
-    assert!(schema.validate(&RuntimeValue::new(true)).is_err());
+    assert!(schema.validate(&NonFunctionValue::new("hello")).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new(42)).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new(true)).is_err());
 }
 
 #[test]
@@ -55,8 +55,8 @@ fn validate_not() {
     let schema = JsonSchema::new(serde_json::json!({
         "not": {"type": "string"}
     }));
-    assert!(schema.validate(&RuntimeValue::new(42)).is_ok());
-    assert!(schema.validate(&RuntimeValue::new("hello")).is_err());
+    assert!(schema.validate(&NonFunctionValue::new(42)).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new("hello")).is_err());
 }
 
 // ── conditional keywords ───────────────────────────────────────
@@ -68,10 +68,10 @@ fn validate_if_then_else() {
         "then": {"minLength": 3},
         "else": {"type": "number"}
     }));
-    assert!(schema.validate(&RuntimeValue::new("abc")).is_ok());
-    assert!(schema.validate(&RuntimeValue::new("ab")).is_err());
-    assert!(schema.validate(&RuntimeValue::new(42)).is_ok());
-    assert!(schema.validate(&RuntimeValue::new(true)).is_err());
+    assert!(schema.validate(&NonFunctionValue::new("abc")).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new("ab")).is_err());
+    assert!(schema.validate(&NonFunctionValue::new(42)).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new(true)).is_err());
 }
 
 // ── $ref ───────────────────────────────────────────────────────
@@ -84,9 +84,9 @@ fn validate_ref() {
         },
         "$ref": "#/$defs/positiveInt"
     }));
-    assert!(schema.validate(&RuntimeValue::new(5)).is_ok());
-    assert!(schema.validate(&RuntimeValue::new(0)).is_err());
-    assert!(schema.validate(&RuntimeValue::new("hello")).is_err());
+    assert!(schema.validate(&NonFunctionValue::new(5)).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new(0)).is_err());
+    assert!(schema.validate(&NonFunctionValue::new("hello")).is_err());
 }
 
 // ── boolean schemas ────────────────────────────────────────────
@@ -94,12 +94,12 @@ fn validate_ref() {
 #[test]
 fn validate_boolean_true() {
     let schema = JsonSchema::new(serde_json::json!(true));
-    assert!(schema.validate(&RuntimeValue::new("anything")).is_ok());
-    assert!(schema.validate(&RuntimeValue::new(42)).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new("anything")).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new(42)).is_ok());
 }
 
 #[test]
 fn validate_boolean_false() {
     let schema = JsonSchema::new(serde_json::json!(false));
-    assert!(schema.validate(&RuntimeValue::new("anything")).is_err());
+    assert!(schema.validate(&NonFunctionValue::new("anything")).is_err());
 }

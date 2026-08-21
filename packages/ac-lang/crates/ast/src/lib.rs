@@ -4,7 +4,7 @@
 //!
 //! This crate describes things. It contains the representation of
 //! expressions and fields. It is generic over the value type `V` —
-//! the concrete value representation (`RuntimeValue`) lives in
+//! the concrete value representation (`NonFunctionValue`) lives in
 //! `ac-runtime`, not here. This keeps the kernel dependency-free.
 //!
 //! ## Architectural rule

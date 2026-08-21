@@ -1,4 +1,4 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 use crate::schema_vocabulary::Schema;
 use crate::schema_vocabulary::validation_error::ValidationError;
@@ -8,8 +8,8 @@ use crate::schema_vocabulary::validation_error::ValidationError;
 /// Always succeeds (accepts any value).
 pub struct StubSchema;
 
-impl Schema<RuntimeValue> for StubSchema {
-    fn validate(&self, _value: &RuntimeValue) -> Result<(), ValidationError> {
+impl Schema<NonFunctionValue> for StubSchema {
+    fn validate(&self, _value: &NonFunctionValue) -> Result<(), ValidationError> {
         Ok(())
     }
 }

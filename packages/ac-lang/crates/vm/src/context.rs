@@ -1,7 +1,7 @@
 use crate::AsyncEval;
 use crate::Error;
 use crate::Eval;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use indexmap::IndexMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -21,7 +21,7 @@ use std::pin::Pin;
 /// The callback is optional — when not set, [`Context::eval_expr`]
 /// returns an error.
 pub struct Context {
-    scopes: Vec<IndexMap<String, RuntimeValue>>,
+    scopes: Vec<IndexMap<String, NonFunctionValue>>,
     eval: Option<Box<dyn Eval>>,
     async_eval: Option<Box<dyn AsyncEval>>,
 }
@@ -57,8 +57,8 @@ impl Context {
     pub fn eval_expr(
         &self,
         expr: &str,
-        vars: &[(String, RuntimeValue)],
-    ) -> Result<RuntimeValue, Error> {
+        vars: &[(String, NonFunctionValue)],
+    ) -> Result<NonFunctionValue, Error> {
         self.eval
             .as_ref()
             .ok_or(Error::PrimitiveError("no eval callback set".to_string()))?
@@ -83,12 +83,12 @@ impl Context {
     ///
     /// Delegates to the [`AsyncEval`] callback set via
     /// [`Context::set_async_eval`]. Returns a future that resolves to
-    /// the evaluated [`RuntimeValue`] or an [`Error`].
+    /// the evaluated [`NonFunctionValue`] or an [`Error`].
     pub fn eval_expr_async<'a>(
         &'a self,
         expr: &'a str,
-        vars: &'a [(String, RuntimeValue)],
-    ) -> Pin<Box<dyn Future<Output = Result<RuntimeValue, Error>> + 'a>> {
+        vars: &'a [(String, NonFunctionValue)],
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         match self.async_eval.as_ref() {
             Some(eval) => eval.eval_expr_async(expr, vars),
             None => Box::pin(std::future::ready(Err(Error::PrimitiveError(
@@ -106,7 +106,7 @@ impl Context {
     ///
     /// Returns the popped scope's entries, or `None` if only the
     /// global scope remains (the global scope cannot be popped).
-    pub fn pop_scope(&mut self) -> Option<IndexMap<String, RuntimeValue>> {
+    pub fn pop_scope(&mut self) -> Option<IndexMap<String, NonFunctionValue>> {
         if self.scopes.len() > 1 {
             self.scopes.pop()
         } else {
@@ -125,7 +125,7 @@ impl Context {
     ///
     /// If a variable with the same name exists in the current
     /// scope, it is overwritten.
-    pub fn define(&mut self, name: impl Into<String>, value: RuntimeValue) {
+    pub fn define(&mut self, name: impl Into<String>, value: NonFunctionValue) {
         self.scopes.last_mut().unwrap().insert(name.into(), value);
     }
 
@@ -134,7 +134,7 @@ impl Context {
     ///
     /// Returns a clone of the value if found, or
     /// [`Error::UnknownVariable`] if not.
-    pub fn get(&self, name: &str) -> Result<RuntimeValue, Error> {
+    pub fn get(&self, name: &str) -> Result<NonFunctionValue, Error> {
         for scope in self.scopes.iter().rev() {
             if let Some(value) = scope.get(name) {
                 return Ok(value.clone());
@@ -148,7 +148,7 @@ impl Context {
     ///
     /// Returns a `Vec` of `(name, value)` pairs suitable for passing
     /// to [`eval_expr`](Self::eval_expr).
-    pub fn collect_vars(&self) -> Vec<(String, RuntimeValue)> {
+    pub fn collect_vars(&self) -> Vec<(String, NonFunctionValue)> {
         let mut result = IndexMap::new();
         for scope in &self.scopes {
             for (name, value) in scope {

@@ -1,4 +1,4 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use std::collections::HashMap;
 
 /// A cache key for a host function call.
@@ -16,7 +16,7 @@ pub struct CallKey {
 
 impl CallKey {
     /// Creates a cache key from a function name and evaluated arguments.
-    pub fn new(function: &str, args: &[RuntimeValue]) -> Self {
+    pub fn new(function: &str, args: &[NonFunctionValue]) -> Self {
         let args_json = serde_json::to_string(
             &args
                 .iter()
@@ -32,7 +32,7 @@ impl CallKey {
 }
 
 /// Creates a cache key for a function call.
-pub fn call_key(function: &str, args: &[RuntimeValue]) -> CallKey {
+pub fn call_key(function: &str, args: &[NonFunctionValue]) -> CallKey {
     CallKey::new(function, args)
 }
 
@@ -54,7 +54,7 @@ pub fn call_key(function: &str, args: &[RuntimeValue]) -> CallKey {
 /// JSON results.
 #[derive(Debug, Clone, Default)]
 pub struct CallCache {
-    entries: HashMap<CallKey, RuntimeValue>,
+    entries: HashMap<CallKey, NonFunctionValue>,
 }
 
 impl CallCache {
@@ -66,23 +66,23 @@ impl CallCache {
     }
 
     /// Creates a cache from a pre-populated map.
-    pub fn from_map(entries: HashMap<CallKey, RuntimeValue>) -> Self {
+    pub fn from_map(entries: HashMap<CallKey, NonFunctionValue>) -> Self {
         CallCache { entries }
     }
 
     /// Looks up a cached result by function name and arguments.
-    pub fn get(&self, function: &str, args: &[RuntimeValue]) -> Option<&RuntimeValue> {
+    pub fn get(&self, function: &str, args: &[NonFunctionValue]) -> Option<&NonFunctionValue> {
         let key = CallKey::new(function, args);
         self.entries.get(&key)
     }
 
     /// Looks up a cached result by a pre-computed [`CallKey`].
-    pub fn get_by_key(&self, key: &CallKey) -> Option<&RuntimeValue> {
+    pub fn get_by_key(&self, key: &CallKey) -> Option<&NonFunctionValue> {
         self.entries.get(key)
     }
 
     /// Records a call result in the cache.
-    pub fn insert(&mut self, function: &str, args: &[RuntimeValue], result: RuntimeValue) {
+    pub fn insert(&mut self, function: &str, args: &[NonFunctionValue], result: NonFunctionValue) {
         let key = CallKey::new(function, args);
         self.entries.insert(key, result);
     }
@@ -121,7 +121,7 @@ impl CallCache {
                         function: function.to_string(),
                         args_json: args_json.to_string(),
                     };
-                    entries.insert(key, RuntimeValue::new(result.clone()));
+                    entries.insert(key, NonFunctionValue::new(result.clone()));
                 }
             }
         }

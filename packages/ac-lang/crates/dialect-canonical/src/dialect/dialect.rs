@@ -1,5 +1,5 @@
 use ac_dialect::{Dialect, DocumentVocabulary, ExprParser, SchemaVocabulary, Syntax};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 use crate::schema_vocabulary::JSON_SCHEMA_VOCABULARY;
 
@@ -23,7 +23,7 @@ impl Dialect for AcDialect {
         self
     }
 
-    fn schema_vocabulary(&self) -> &dyn SchemaVocabulary<RuntimeValue> {
+    fn schema_vocabulary(&self) -> &dyn SchemaVocabulary<NonFunctionValue> {
         &JSON_SCHEMA_VOCABULARY
     }
 }

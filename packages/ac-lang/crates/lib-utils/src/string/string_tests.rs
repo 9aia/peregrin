@@ -1,29 +1,29 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error};
 
 use super::string::StringModule;
 
-fn call(module: &dyn Module, name: &str, args: &[RuntimeValue]) -> RuntimeValue {
+fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn s(v: &str) -> RuntimeValue {
-    RuntimeValue::new(v.to_string())
+fn s(v: &str) -> NonFunctionValue {
+    NonFunctionValue::new(v.to_string())
 }
 
-fn n(v: f64) -> RuntimeValue {
-    RuntimeValue::new(serde_json::json!(v))
+fn n(v: f64) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::json!(v))
 }
 
-fn arr(items: &[&str]) -> RuntimeValue {
+fn arr(items: &[&str]) -> NonFunctionValue {
     let values: Vec<serde_json::Value> = items
         .iter()
         .map(|item| serde_json::Value::String(item.to_string()))
         .collect();
-    RuntimeValue::new(serde_json::Value::Array(values))
+    NonFunctionValue::new(serde_json::Value::Array(values))
 }
 
 #[test]

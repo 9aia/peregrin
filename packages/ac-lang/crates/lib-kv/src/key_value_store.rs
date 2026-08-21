@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -72,7 +72,7 @@ impl Module for KeyValueStoreModule {
     }
 }
 
-fn require_one_string(args: &[RuntimeValue]) -> Result<&str, Error> {
+fn require_one_string(args: &[NonFunctionValue]) -> Result<&str, Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
         got: 0,
@@ -83,7 +83,7 @@ fn require_one_string(args: &[RuntimeValue]) -> Result<&str, Error> {
     })
 }
 
-fn require_two_strings(args: &[RuntimeValue]) -> Result<(&str, &str), Error> {
+fn require_two_strings(args: &[NonFunctionValue]) -> Result<(&str, &str), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
@@ -106,12 +106,12 @@ struct GetFn {
 }
 
 impl Function for GetFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         let value = self.store.get(key)?;
         Ok(match value {
-            Some(v) => RuntimeValue::new(v),
-            None => RuntimeValue::default(),
+            Some(v) => NonFunctionValue::new(v),
+            None => NonFunctionValue::default(),
         })
     }
 }
@@ -121,10 +121,10 @@ struct SetFn {
 }
 
 impl Function for SetFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (key, value) = require_two_strings(args)?;
         self.store.set(key, value)?;
-        Ok(RuntimeValue::default())
+        Ok(NonFunctionValue::default())
     }
 }
 
@@ -133,10 +133,10 @@ struct RemoveFn {
 }
 
 impl Function for RemoveFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         self.store.remove(key)?;
-        Ok(RuntimeValue::default())
+        Ok(NonFunctionValue::default())
     }
 }
 
@@ -145,9 +145,9 @@ struct ClearFn {
 }
 
 impl Function for ClearFn {
-    fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         self.store.clear()?;
-        Ok(RuntimeValue::default())
+        Ok(NonFunctionValue::default())
     }
 }
 
@@ -156,11 +156,11 @@ struct HasFn {
 }
 
 impl Function for HasFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         self.store
             .has(key)
-            .map(RuntimeValue::new)
+            .map(NonFunctionValue::new)
             .map_err(Into::into)
     }
 }
@@ -170,10 +170,10 @@ struct SizeFn {
 }
 
 impl Function for SizeFn {
-    fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         self.store
             .size()
-            .map(|n| RuntimeValue::new(serde_json::json!(n)))
+            .map(|n| NonFunctionValue::new(serde_json::json!(n)))
             .map_err(Into::into)
     }
 }

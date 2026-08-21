@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use ac_dialect::Schema;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_dialect_canonical::JsonSchema;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 fn main() {
     let yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/fields/input.yml");
@@ -60,7 +60,7 @@ fn main() {
         &ac_fields::NoFunctions,
         &ac_dialect_canonical::AC_DIALECT,
     );
-    let data = RuntimeValue::new(interpolated);
+    let data = NonFunctionValue::new(interpolated);
 
     println!("interpolated values:");
     for (name, _) in &schemas {
@@ -73,7 +73,7 @@ fn main() {
     let mut errors = 0;
     for (name, schema) in &schemas {
         let field_value = data.get(name).unwrap_or(&serde_json::Value::Null);
-        let field_rv = RuntimeValue::new(field_value.clone());
+        let field_rv = NonFunctionValue::new(field_value.clone());
         match schema.validate(&field_rv) {
             Ok(()) => println!("  {name}: ok"),
             Err(e) => {

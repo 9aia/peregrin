@@ -1,13 +1,13 @@
 use ac_dialect::Schema;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 /// Validates function call arguments against declared param schemas.
 ///
 /// Returns `Ok(())` if all args validate, or an error message.
 /// The caller provides a `Schema<V>` implementation for each param.
 pub fn validate_args(
-    args: &[RuntimeValue],
-    param_schemas: &[Box<dyn Schema<RuntimeValue>>],
+    args: &[NonFunctionValue],
+    param_schemas: &[Box<dyn Schema<NonFunctionValue>>],
 ) -> Result<(), String> {
     if args.len() != param_schemas.len() {
         return Err(format!(
@@ -26,8 +26,8 @@ pub fn validate_args(
 ///
 /// Returns `Ok(())` if the value validates, or an error message.
 pub fn validate_return(
-    value: &RuntimeValue,
-    return_schema: &dyn Schema<RuntimeValue>,
+    value: &NonFunctionValue,
+    return_schema: &dyn Schema<NonFunctionValue>,
 ) -> Result<(), String> {
     return_schema
         .validate(value)

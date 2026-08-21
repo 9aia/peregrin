@@ -1,4 +1,4 @@
-use ac_vm::{Function, Host};
+use ac_vm::{Function, Host, LazyFunction};
 
 use crate::module::Module;
 
@@ -69,6 +69,17 @@ impl Host for ModuleHost {
                 .and_then(|m| m.function(func_name))
         } else {
             self.modules.iter().find_map(|m| m.function(name))
+        }
+    }
+
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+        if let Some((module_name, func_name)) = name.split_once('.') {
+            self.modules
+                .iter()
+                .find(|m| m.name() == module_name)
+                .and_then(|m| m.lazy_function(func_name))
+        } else {
+            self.modules.iter().find_map(|m| m.lazy_function(name))
         }
     }
 }

@@ -8,7 +8,7 @@ use ac_dialect_canonical::AC_DIALECT;
 use ac_fields;
 use ac_frontend::frontend_for;
 use ac_host::DefaultHost;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 use crate::resolver::VmResolver;
 
@@ -78,7 +78,7 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
         &resolver,
         &AC_DIALECT,
     );
-    let mut data = RuntimeValue::new(interpolated);
+    let mut data = NonFunctionValue::new(interpolated);
 
     let mut errors = Vec::new();
 
@@ -95,7 +95,7 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
     errors.extend(merge_errors);
 
     let vocab = AC_DIALECT.schema_vocabulary();
-    let schemas: Vec<(String, Box<dyn Schema<RuntimeValue>>)> = field_schemas
+    let schemas: Vec<(String, Box<dyn Schema<NonFunctionValue>>)> = field_schemas
         .iter()
         .filter(|(name, _)| !merge.iter().any(|m| m == name))
         .map(|(name, raw)| {
@@ -124,7 +124,7 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
         field_types.push((name.clone(), type_name));
 
         let field_value = data.get(name).unwrap_or(&serde_json::Value::Null);
-        let field_rv = RuntimeValue::new(field_value.clone());
+        let field_rv = NonFunctionValue::new(field_value.clone());
         match schema.validate(&field_rv) {
             Ok(()) => ok.push(name.clone()),
             Err(e) => errors.push(format!("{name}: INVALID — {e}")),

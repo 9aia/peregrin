@@ -23,13 +23,13 @@
 //! ```ignore
 //! use ac_host_cache::{CacheHost, CallCache};
 //! use ac_vm::{Vm, Context, EvalResult, Continuation};
-//! use ac_runtime::RuntimeValue;
+//! use ac_runtime::NonFunctionValue;
 //!
 //! // Server: register functions, evaluate, hit a yield
 //! let mut host = CacheHost::new();
 //! host.register("add", Box::new(AddFunction));
 //! host.register("fetch", Box::new(FetchFunction)); // yields
-//! let mut vm = Vm::new(host);
+//! let vm = Vm::new(host);
 //! let result = vm.eval_resumable(&expr, &mut ctx, None);
 //! match result {
 //!     EvalResult::Yielded { value, continuation } => {
@@ -45,7 +45,7 @@
 //! let mut host = CacheHost::with_cache(cache);
 //! host.register("add", Box::new(AddFunction));
 //! host.register("fetch", Box::new(ClientFetchFunction));
-//! let mut vm = Vm::new(host);
+//! let vm = Vm::new(host);
 //! let cont = Continuation::from_json(&received_cont_json).unwrap();
 //! let result = vm.eval_resumable(&expr, &mut ctx, Some(cont));
 //! ```

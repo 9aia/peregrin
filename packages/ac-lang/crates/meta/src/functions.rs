@@ -1,6 +1,6 @@
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 use serde_json::Value as JsonValue;
 
@@ -14,7 +14,7 @@ use serde_json::Value as JsonValue;
 pub struct TypeOf;
 
 impl Function for TypeOf {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let v = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
             got: 0,
@@ -33,7 +33,7 @@ impl Function for TypeOf {
                 }
             }
         };
-        Ok(RuntimeValue::new(type_name))
+        Ok(NonFunctionValue::new(type_name))
     }
 }
 
@@ -42,7 +42,7 @@ impl Function for TypeOf {
 pub struct Keys;
 
 impl Function for Keys {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let v = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
             got: 0,
@@ -52,7 +52,7 @@ impl Function for Keys {
             got: "non-object",
         })?;
         let keys: Vec<JsonValue> = obj.keys().map(|k| JsonValue::String(k.clone())).collect();
-        Ok(RuntimeValue::new(keys))
+        Ok(NonFunctionValue::new(keys))
     }
 }
 
@@ -62,12 +62,12 @@ impl Function for Keys {
 pub struct IsFunction;
 
 impl Function for IsFunction {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let v = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
             got: 0,
         })?;
-        Ok(RuntimeValue::new(v.is_function()))
+        Ok(NonFunctionValue::new(v.is_function()))
     }
 }
 
@@ -83,7 +83,7 @@ impl Function for IsFunction {
 pub struct Eval;
 
 impl Function for Eval {
-    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let expr_str = args
             .first()
             .and_then(|v| v.as_str())
@@ -109,7 +109,7 @@ impl Function for Eval {
 pub struct Parse;
 
 impl Function for Parse {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let expr_str = args
             .first()
             .and_then(|v| v.as_str())
@@ -120,7 +120,7 @@ impl Function for Parse {
         let ast = parse_expr_to_json(expr_str, &AC_DIALECT).ok_or(Error::PrimitiveError(
             format!("parse(): failed to parse expression: {expr_str}"),
         ))?;
-        Ok(RuntimeValue::new(ast))
+        Ok(NonFunctionValue::new(ast))
     }
 }
 
@@ -130,7 +130,7 @@ impl Function for Parse {
 pub struct AstToString;
 
 impl Function for AstToString {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
             got: 0,
@@ -138,7 +138,7 @@ impl Function for AstToString {
         let s = ast_to_string_inner(ast.inner(), &AC_DIALECT).ok_or(Error::PrimitiveError(
             "ast_to_string(): invalid AST structure".to_string(),
         ))?;
-        Ok(RuntimeValue::new(s))
+        Ok(NonFunctionValue::new(s))
     }
 }
 
@@ -148,7 +148,7 @@ impl Function for AstToString {
 pub struct AstName;
 
 impl Function for AstName {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
             got: 0,
@@ -159,7 +159,7 @@ impl Function for AstName {
         })?;
         let kind = obj.get("kind").and_then(|k| k.as_str());
         if kind != Some("call") {
-            return Ok(RuntimeValue::new(JsonValue::Null));
+            return Ok(NonFunctionValue::new(JsonValue::Null));
         }
         let name = obj
             .get("name")
@@ -167,7 +167,7 @@ impl Function for AstName {
             .ok_or(Error::PrimitiveError(
                 "ast_name(): call node missing 'name' field".to_string(),
             ))?;
-        Ok(RuntimeValue::new(name))
+        Ok(NonFunctionValue::new(name))
     }
 }
 
@@ -177,7 +177,7 @@ impl Function for AstName {
 pub struct AstArgs;
 
 impl Function for AstArgs {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
             got: 0,
@@ -188,7 +188,7 @@ impl Function for AstArgs {
         })?;
         let kind = obj.get("kind").and_then(|k| k.as_str());
         if kind != Some("call") {
-            return Ok(RuntimeValue::new(Vec::<JsonValue>::new()));
+            return Ok(NonFunctionValue::new(Vec::<JsonValue>::new()));
         }
         let args_arr = obj
             .get("args")
@@ -196,7 +196,7 @@ impl Function for AstArgs {
             .ok_or(Error::PrimitiveError(
                 "ast_args(): call node missing 'args' field".to_string(),
             ))?;
-        Ok(RuntimeValue::new(args_arr.clone()))
+        Ok(NonFunctionValue::new(args_arr.clone()))
     }
 }
 
@@ -206,7 +206,7 @@ impl Function for AstArgs {
 pub struct AstIsCall;
 
 impl Function for AstIsCall {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
             got: 0,
@@ -214,7 +214,7 @@ impl Function for AstIsCall {
         let is_call = ast
             .as_object()
             .is_some_and(|obj| obj.get("kind").is_some_and(|k| k.as_str() == Some("call")));
-        Ok(RuntimeValue::new(is_call))
+        Ok(NonFunctionValue::new(is_call))
     }
 }
 

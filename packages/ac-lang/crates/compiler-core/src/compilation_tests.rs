@@ -55,7 +55,7 @@ fn compilation_new_starts_empty() {
 fn compilation_parsed_helper_returns_ref() {
     let source = Source::new("name: ac", "yaml");
     let mut compilation = Compilation::new(source);
-    compilation.parsed = Some(ac_runtime::RuntimeValue::new(serde_json::json!({"a": 1})));
+    compilation.parsed = Some(ac_runtime::NonFunctionValue::new(serde_json::json!({"a": 1})));
 
     let parsed = compilation.parsed().expect("parsed should be set");
     assert_eq!(parsed.get("a").unwrap().as_i64(), Some(1));

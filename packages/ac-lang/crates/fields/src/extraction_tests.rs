@@ -1,11 +1,11 @@
 use super::*;
 use crate::types::ArgSpec;
 use ac_dialect_canonical::AC_DIALECT;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 #[test]
 fn extract_fields_basic() {
-    let value = RuntimeValue::new(serde_json::json!({
+    let value = NonFunctionValue::new(serde_json::json!({
         "$": {
             "name": { "type": "string" },
             "version": { "type": "number" }
@@ -23,7 +23,7 @@ fn extract_fields_basic() {
 #[test]
 fn extract_fields_with_functions_as_data() {
     // `functions:` is no longer a reserved key — it stays in data as regular fields.
-    let value = RuntimeValue::new(serde_json::json!({
+    let value = NonFunctionValue::new(serde_json::json!({
         "$": {
             "name": { "type": "string" },
             "functions": { "type": "object" }
@@ -51,7 +51,7 @@ fn extract_fields_with_functions_as_data() {
 
 #[test]
 fn extract_fields_reserved_name() {
-    let value = RuntimeValue::new(serde_json::json!({
+    let value = NonFunctionValue::new(serde_json::json!({
         "$": {
             "$": { "type": "string" }
         }
@@ -61,7 +61,7 @@ fn extract_fields_reserved_name() {
 
 #[test]
 fn extract_fields_no_fields_section() {
-    let value = RuntimeValue::new(serde_json::json!({"name": "ac"}));
+    let value = NonFunctionValue::new(serde_json::json!({"name": "ac"}));
     let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert!(extracted.schemas.is_empty());
     assert_eq!(extracted.data.get("name").unwrap().as_str(), Some("ac"));
@@ -69,7 +69,7 @@ fn extract_fields_no_fields_section() {
 
 #[test]
 fn undeclared_fields_detection() {
-    let data = RuntimeValue::new(serde_json::json!({
+    let data = NonFunctionValue::new(serde_json::json!({
         "name": "ac",
         "version": 1,
         "extra": true
@@ -80,7 +80,7 @@ fn undeclared_fields_detection() {
 
 #[test]
 fn extract_fields_inheritable() {
-    let value = RuntimeValue::new(serde_json::json!({
+    let value = NonFunctionValue::new(serde_json::json!({
         "$": {
             "name": { "type": "string" },
             "permission_mode": { "type": "string", "inheritable": true },
@@ -104,7 +104,7 @@ fn extract_fields_inheritable() {
 fn extract_fields_with_function_body_in_data() {
     // Functions with `body` stay in data as regular values.
     // They are callable via `apply` at runtime.
-    let value = RuntimeValue::new(serde_json::json!({
+    let value = NonFunctionValue::new(serde_json::json!({
         "$": {
             "name": { "type": "string" }
         },
@@ -126,7 +126,7 @@ fn extract_fields_with_function_body_in_data() {
 
 #[test]
 fn extract_fields_with_computed() {
-    let value = RuntimeValue::new(serde_json::json!({
+    let value = NonFunctionValue::new(serde_json::json!({
         "$": {
             "version": { "type": "number" },
             "doubled": { "type": "number", "expr": "mul(version, 2)" }
@@ -142,7 +142,7 @@ fn extract_fields_with_computed() {
 
 #[test]
 fn extract_fields_no_computed() {
-    let value = RuntimeValue::new(serde_json::json!({
+    let value = NonFunctionValue::new(serde_json::json!({
         "$": { "name": { "type": "string" } },
         "name": "ac"
     }));
@@ -152,7 +152,7 @@ fn extract_fields_no_computed() {
 
 #[test]
 fn extract_fields_with_merge() {
-    let value = RuntimeValue::new(serde_json::json!({
+    let value = NonFunctionValue::new(serde_json::json!({
         "$": {
             "_base": { "type": "object", "merge": true, "expr": "import('./base.yml')" },
             "host": { "type": "string" }
@@ -165,7 +165,7 @@ fn extract_fields_with_merge() {
 
 #[test]
 fn extract_fields_with_arg_untyped() {
-    let value = RuntimeValue::new(serde_json::json!({
+    let value = NonFunctionValue::new(serde_json::json!({
         "$": {
             "greeting": { "type": "string", "expr": "concat(arg, \"!\")", "arg": true }
         },
@@ -179,7 +179,7 @@ fn extract_fields_with_arg_untyped() {
 
 #[test]
 fn extract_fields_with_arg_typed() {
-    let value = RuntimeValue::new(serde_json::json!({
+    let value = NonFunctionValue::new(serde_json::json!({
         "$": {
             "doubled": {
                 "type": "number",

@@ -11,7 +11,7 @@
 //! | Crate | Role |
 //! |---|---|
 //! | `ac-ast` | Language representation — expressions, fields (generic over value type). |
-//! | `ac-runtime` | Concrete value type — `RuntimeValue` + `Frontend` trait. |
+//! | `ac-runtime` | Concrete value type — `NonFunctionValue` + `Frontend` trait. |
 //! | `ac-vm` | Execution engine — VM, host, functions, context. |
 //! | `ac-frontend-json` | JSON frontend — implements `Frontend`. |
 //! | `ac-frontend-yaml` | YAML frontend — implements `Frontend`. |
@@ -50,7 +50,7 @@
 //! ```
 //!
 //! `ac-ast` has no dependencies — it is generic over the value
-//! type. `ac-runtime` provides the concrete `RuntimeValue` wrapping
+//! type. `ac-runtime` provides the concrete `NonFunctionValue` wrapping
 //! `serde_json::Value`. The compiler, typecheck, typegen, and resolver
 //! crates build on top of the core layers to provide the full pipeline.
 
@@ -102,7 +102,7 @@ pub mod prelude {
     pub use ac_module_resolver_memory::MemoryModuleCache;
     pub use ac_module_resolver_noop::NoCache;
     pub use ac_module_resolver_virtual::VirtualResolver;
-    pub use ac_runtime::{Frontend, HostValue, RuntimeValue};
+    pub use ac_runtime::{Frontend, HostValue, NonFunctionValue};
     pub use ac_source::{SourceLocation, SourceMap};
     pub use ac_typecheck_core::{SchemaInterpreter, Type, TypeEnv, TypeError, TypeResult};
     pub use ac_typecheck_schema_json::JsonSchemaInterpreter;

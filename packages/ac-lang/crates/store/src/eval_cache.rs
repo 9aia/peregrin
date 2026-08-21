@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 use crate::hash::DefinitionHash;
 
@@ -19,7 +19,7 @@ pub struct EvalKey {
 
 impl EvalKey {
     /// Creates a cache key from a definition hash and evaluated arguments.
-    pub fn new(hash: &DefinitionHash, args: &[RuntimeValue]) -> Self {
+    pub fn new(hash: &DefinitionHash, args: &[NonFunctionValue]) -> Self {
         let args_json = serde_json::to_string(
             &args
                 .iter()
@@ -48,7 +48,7 @@ impl EvalKey {
 /// runs and sharing across machines.
 #[derive(Debug, Clone, Default)]
 pub struct EvalCache {
-    entries: HashMap<EvalKey, RuntimeValue>,
+    entries: HashMap<EvalKey, NonFunctionValue>,
 }
 
 impl EvalCache {
@@ -60,24 +60,24 @@ impl EvalCache {
     }
 
     /// Looks up a cached result by definition hash and arguments.
-    pub fn get(&self, hash: &DefinitionHash, args: &[RuntimeValue]) -> Option<&RuntimeValue> {
+    pub fn get(&self, hash: &DefinitionHash, args: &[NonFunctionValue]) -> Option<&NonFunctionValue> {
         let key = EvalKey::new(hash, args);
         self.entries.get(&key)
     }
 
     /// Looks up a cached result by a pre-computed [`EvalKey`].
-    pub fn get_by_key(&self, key: &EvalKey) -> Option<&RuntimeValue> {
+    pub fn get_by_key(&self, key: &EvalKey) -> Option<&NonFunctionValue> {
         self.entries.get(key)
     }
 
     /// Records an evaluation result in the cache.
-    pub fn insert(&mut self, hash: &DefinitionHash, args: &[RuntimeValue], result: RuntimeValue) {
+    pub fn insert(&mut self, hash: &DefinitionHash, args: &[NonFunctionValue], result: NonFunctionValue) {
         let key = EvalKey::new(hash, args);
         self.entries.insert(key, result);
     }
 
     /// Records an evaluation result with a pre-computed key.
-    pub fn insert_with_key(&mut self, key: EvalKey, result: RuntimeValue) {
+    pub fn insert_with_key(&mut self, key: EvalKey, result: NonFunctionValue) {
         self.entries.insert(key, result);
     }
 
@@ -114,7 +114,7 @@ impl EvalCache {
                         hash: DefinitionHash::from_hex(hash_str.to_string()),
                         args_json: args_json.to_string(),
                     };
-                    entries.insert(key, RuntimeValue::new(result.clone()));
+                    entries.insert(key, NonFunctionValue::new(result.clone()));
                 }
             }
         }

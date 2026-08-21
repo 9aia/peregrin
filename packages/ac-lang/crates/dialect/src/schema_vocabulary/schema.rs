@@ -8,7 +8,7 @@ use super::validation_error::ValidationError;
 /// implementations.
 ///
 /// Generic over `V` so the abstraction works with any value type,
-/// not just `RuntimeValue`.
+/// not just `NonFunctionValue`.
 pub trait Schema<V> {
     /// Validates a value against this schema.
     ///

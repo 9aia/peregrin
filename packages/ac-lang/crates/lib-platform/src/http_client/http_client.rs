@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -216,7 +216,7 @@ impl Module for HttpClientModule {
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
-fn require_string_at(args: &[RuntimeValue], idx: usize) -> Result<&str, Error> {
+fn require_string_at(args: &[NonFunctionValue], idx: usize) -> Result<&str, Error> {
     args.get(idx)
         .ok_or(Error::ArgumentCount {
             expected: idx + 1,
@@ -229,7 +229,7 @@ fn require_string_at(args: &[RuntimeValue], idx: usize) -> Result<&str, Error> {
         })
 }
 
-fn extract_headers(args: &[RuntimeValue], idx: usize) -> Result<HashMap<String, String>, Error> {
+fn extract_headers(args: &[NonFunctionValue], idx: usize) -> Result<HashMap<String, String>, Error> {
     match args.get(idx) {
         None => Ok(HashMap::new()),
         Some(v) if v.is_null() => Ok(HashMap::new()),
@@ -251,14 +251,14 @@ fn extract_headers(args: &[RuntimeValue], idx: usize) -> Result<HashMap<String, 
     }
 }
 
-fn response_to_value(resp: HttpResponse) -> RuntimeValue {
+fn response_to_value(resp: HttpResponse) -> NonFunctionValue {
     let ok = resp.ok();
     let headers: serde_json::Map<String, serde_json::Value> = resp
         .headers
         .into_iter()
         .map(|(k, v)| (k, serde_json::Value::String(v)))
         .collect();
-    RuntimeValue::new(serde_json::json!({
+    NonFunctionValue::new(serde_json::json!({
         "status": resp.status,
         "status_text": resp.status_text,
         "ok": ok,
@@ -279,9 +279,9 @@ macro_rules! bodyless_fn {
         impl Function for $name {
             fn call(
                 &self,
-                args: &[RuntimeValue],
+                args: &[NonFunctionValue],
                 _ctx: &mut Context,
-            ) -> Result<RuntimeValue, Error> {
+            ) -> Result<NonFunctionValue, Error> {
                 let url = require_string_at(args, 0)?;
                 let headers = extract_headers(args, 1)?;
                 let req = HttpRequest {
@@ -309,9 +309,9 @@ macro_rules! body_fn {
         impl Function for $name {
             fn call(
                 &self,
-                args: &[RuntimeValue],
+                args: &[NonFunctionValue],
                 _ctx: &mut Context,
-            ) -> Result<RuntimeValue, Error> {
+            ) -> Result<NonFunctionValue, Error> {
                 let url = require_string_at(args, 0)?;
                 let body = require_string_at(args, 1)?;
                 let headers = extract_headers(args, 2)?;
@@ -344,7 +344,7 @@ struct RequestFn {
 }
 
 impl Function for RequestFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let method_str = require_string_at(args, 0)?;
         let method = HttpMethod::parse(method_str)
             .ok_or_else(|| Error::PrimitiveError(format!("unknown HTTP method: {method_str}")))?;

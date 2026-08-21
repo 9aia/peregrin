@@ -1,12 +1,12 @@
 use ac_ast::{Expr, HandlerClause};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
 use crate::canonical::canonical_string;
 use crate::hash::DefinitionHash;
 
-type RuntimeExpr = Expr<RuntimeValue>;
-type RuntimeHandlerClause = HandlerClause<RuntimeValue>;
+type RuntimeExpr = Expr<NonFunctionValue>;
+type RuntimeHandlerClause = HandlerClause<NonFunctionValue>;
 
 /// Convert a handler clause to canonical JSON for hashing.
 ///

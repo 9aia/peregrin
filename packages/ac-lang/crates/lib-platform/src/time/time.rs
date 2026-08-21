@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -53,10 +53,10 @@ struct NowFn {
 }
 
 impl Function for NowFn {
-    fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         self.time
             .now_millis()
-            .map(|ms| RuntimeValue::new(serde_json::json!(ms)))
+            .map(|ms| NonFunctionValue::new(serde_json::json!(ms)))
             .map_err(Into::into)
     }
 }
@@ -66,10 +66,10 @@ struct EpochFn {
 }
 
 impl Function for EpochFn {
-    fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         self.time
             .now_seconds()
-            .map(|s| RuntimeValue::new(serde_json::json!(s)))
+            .map(|s| NonFunctionValue::new(serde_json::json!(s)))
             .map_err(Into::into)
     }
 }

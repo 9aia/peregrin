@@ -1,6 +1,6 @@
 use super::*;
 use ac_dialect::Schema;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 // ── object keywords ────────────────────────────────────────────
 
@@ -12,14 +12,14 @@ fn validate_required_fields() {
     }));
     assert!(
         schema
-            .validate(&RuntimeValue::new(
+            .validate(&NonFunctionValue::new(
                 serde_json::json!({"name": "Luis", "age": 30})
             ))
             .is_ok()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({"name": "Luis"})))
+            .validate(&NonFunctionValue::new(serde_json::json!({"name": "Luis"})))
             .is_err()
     );
 }
@@ -35,21 +35,21 @@ fn validate_properties() {
     }));
     assert!(
         schema
-            .validate(&RuntimeValue::new(
+            .validate(&NonFunctionValue::new(
                 serde_json::json!({"name": "Luis", "age": 30})
             ))
             .is_ok()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(
+            .validate(&NonFunctionValue::new(
                 serde_json::json!({"name": "Luis", "age": -1})
             ))
             .is_err()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(
+            .validate(&NonFunctionValue::new(
                 serde_json::json!({"name": 42, "age": 30})
             ))
             .is_err()
@@ -66,12 +66,12 @@ fn validate_pattern_properties() {
     }));
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({"x-custom": "hello"})))
+            .validate(&NonFunctionValue::new(serde_json::json!({"x-custom": "hello"})))
             .is_ok()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({"x-custom": 42})))
+            .validate(&NonFunctionValue::new(serde_json::json!({"x-custom": 42})))
             .is_err()
     );
 }
@@ -85,12 +85,12 @@ fn validate_additional_properties_false() {
     }));
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({"name": "Luis"})))
+            .validate(&NonFunctionValue::new(serde_json::json!({"name": "Luis"})))
             .is_ok()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(
+            .validate(&NonFunctionValue::new(
                 serde_json::json!({"name": "Luis", "extra": 1})
             ))
             .is_err()
@@ -106,14 +106,14 @@ fn validate_additional_properties_schema() {
     }));
     assert!(
         schema
-            .validate(&RuntimeValue::new(
+            .validate(&NonFunctionValue::new(
                 serde_json::json!({"name": "Luis", "extra": 1})
             ))
             .is_ok()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(
+            .validate(&NonFunctionValue::new(
                 serde_json::json!({"name": "Luis", "extra": "bad"})
             ))
             .is_err()
@@ -129,17 +129,17 @@ fn validate_min_max_properties() {
     }));
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({"a": 1})))
+            .validate(&NonFunctionValue::new(serde_json::json!({"a": 1})))
             .is_ok()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({})))
+            .validate(&NonFunctionValue::new(serde_json::json!({})))
             .is_err()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(
+            .validate(&NonFunctionValue::new(
                 serde_json::json!({"a": 1, "b": 2, "c": 3})
             ))
             .is_err()

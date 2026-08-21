@@ -1,12 +1,12 @@
 use super::*;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use std::future::Future;
 use std::pin::Pin;
 
 #[test]
 fn context_define_and_get() {
     let mut ctx = Context::new();
-    ctx.define("x", RuntimeValue::new(42));
+    ctx.define("x", NonFunctionValue::new(42));
     let val = ctx.get("x").unwrap();
     assert_eq!(val.as_number(), Some(42.0));
 }
@@ -20,9 +20,9 @@ fn context_unknown_variable() {
 #[test]
 fn context_scope_push_pop() {
     let mut ctx = Context::new();
-    ctx.define("x", RuntimeValue::new(1));
+    ctx.define("x", NonFunctionValue::new(1));
     ctx.push_scope();
-    ctx.define("x", RuntimeValue::new(2));
+    ctx.define("x", NonFunctionValue::new(2));
     assert_eq!(ctx.get("x").unwrap().as_number(), Some(2.0));
     ctx.pop_scope();
     assert_eq!(ctx.get("x").unwrap().as_number(), Some(1.0));
@@ -70,20 +70,20 @@ fn context_eval_expr_with_callback() {
         fn eval_expr(
             &self,
             _expr: &str,
-            vars: &[(String, RuntimeValue)],
-        ) -> Result<RuntimeValue, crate::Error> {
+            vars: &[(String, NonFunctionValue)],
+        ) -> Result<NonFunctionValue, crate::Error> {
             let val = vars
                 .first()
                 .map(|(_, v)| v.as_number().unwrap_or(0.0))
                 .unwrap_or(0.0);
-            Ok(RuntimeValue::new(val * 2.0))
+            Ok(NonFunctionValue::new(val * 2.0))
         }
     }
 
     let mut ctx = Context::new();
     ctx.set_eval(Box::new(DoubleEval));
     assert!(ctx.has_eval());
-    let result = ctx.eval_expr("x", &[(String::from("x"), RuntimeValue::new(21))]);
+    let result = ctx.eval_expr("x", &[(String::from("x"), NonFunctionValue::new(21))]);
     assert_eq!(result.unwrap().as_number(), Some(42.0));
 }
 
@@ -114,14 +114,14 @@ fn context_eval_expr_async_with_callback() {
         fn eval_expr_async<'a>(
             &'a self,
             _expr: &'a str,
-            vars: &'a [(String, RuntimeValue)],
-        ) -> Pin<Box<dyn Future<Output = Result<RuntimeValue, crate::Error>> + 'a>> {
+            vars: &'a [(String, NonFunctionValue)],
+        ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, crate::Error>> + 'a>> {
             Box::pin(async {
                 let val = vars
                     .first()
                     .map(|(_, v)| v.as_number().unwrap_or(0.0))
                     .unwrap_or(0.0);
-                Ok(RuntimeValue::new(val * 2.0))
+                Ok(NonFunctionValue::new(val * 2.0))
             })
         }
     }
@@ -130,7 +130,7 @@ fn context_eval_expr_async_with_callback() {
     ctx.set_async_eval(Box::new(DoubleAsyncEval));
     assert!(ctx.has_async_eval());
 
-    let vars = [(String::from("x"), RuntimeValue::new(21))];
+    let vars = [(String::from("x"), NonFunctionValue::new(21))];
     let fut = ctx.eval_expr_async("x", &vars);
     let mut pinned = std::pin::pin!(fut);
     let waker = noop_waker();
@@ -147,14 +147,14 @@ fn context_eval_expr_async_with_callback() {
 #[test]
 fn context_collect_vars() {
     let mut ctx = Context::new();
-    ctx.define("x", RuntimeValue::new(1));
-    ctx.define("y", RuntimeValue::new(2));
+    ctx.define("x", NonFunctionValue::new(1));
+    ctx.define("y", NonFunctionValue::new(2));
     ctx.push_scope();
-    ctx.define("x", RuntimeValue::new(10));
-    ctx.define("z", RuntimeValue::new(3));
+    ctx.define("x", NonFunctionValue::new(10));
+    ctx.define("z", NonFunctionValue::new(3));
 
     let vars = ctx.collect_vars();
-    let map: std::collections::HashMap<String, RuntimeValue> = vars.into_iter().collect();
+    let map: std::collections::HashMap<String, NonFunctionValue> = vars.into_iter().collect();
     assert_eq!(map.get("x").unwrap().as_number(), Some(10.0));
     assert_eq!(map.get("y").unwrap().as_number(), Some(2.0));
     assert_eq!(map.get("z").unwrap().as_number(), Some(3.0));

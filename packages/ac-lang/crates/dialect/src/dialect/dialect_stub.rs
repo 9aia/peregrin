@@ -1,6 +1,6 @@
 //! Shared test stub for the dialect facade.
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 use crate::dialect::Dialect;
 use crate::document_vocabulary::DocumentVocabulary;
@@ -26,7 +26,7 @@ impl Dialect for StubDialect {
         self
     }
 
-    fn schema_vocabulary(&self) -> &dyn SchemaVocabulary<RuntimeValue> {
+    fn schema_vocabulary(&self) -> &dyn SchemaVocabulary<NonFunctionValue> {
         &StubVocabulary
     }
 }

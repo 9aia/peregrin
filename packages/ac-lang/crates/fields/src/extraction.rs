@@ -1,5 +1,5 @@
 use ac_dialect::Dialect;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 use crate::types::{ArgSpec, ComputedField, ExtractedFields};
 
@@ -15,7 +15,7 @@ use crate::types::{ArgSpec, ComputedField, ExtractedFields};
 ///
 /// Returns an error if a declared field name is reserved.
 pub fn extract_fields(
-    value: RuntimeValue,
+    value: NonFunctionValue,
     dialect: &dyn Dialect,
 ) -> Result<ExtractedFields, String> {
     let mut schemas = Vec::new();
@@ -97,7 +97,7 @@ pub fn extract_fields(
 
 /// Returns the names of fields present in `data` but not declared in
 /// `declared_names`.
-pub fn undeclared_fields<'a>(data: &'a RuntimeValue, declared: &[&str]) -> Vec<&'a str> {
+pub fn undeclared_fields<'a>(data: &'a NonFunctionValue, declared: &[&str]) -> Vec<&'a str> {
     let declared_set: std::collections::HashSet<&str> = declared.iter().copied().collect();
     data.as_object()
         .map(|obj| {

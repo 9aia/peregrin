@@ -8,7 +8,7 @@ use super::validation_error::ValidationError;
 /// `ac-dialect-canonical` as `JsonSchemaVocabulary`.
 ///
 /// Generic over `V` so the abstraction works with any value type,
-/// not just `RuntimeValue`.
+/// not just `NonFunctionValue`.
 pub trait SchemaVocabulary<V>: Send + Sync {
     /// The vocabulary identifier (e.g. `"json-schema-draft-2020-12"`).
     fn id(&self) -> &'static str;

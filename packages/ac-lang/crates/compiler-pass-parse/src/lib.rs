@@ -1,10 +1,10 @@
 //! # ac-compiler-pass-parse
 //!
-//! Pipeline pass: parse source text into a `RuntimeValue`.
+//! Pipeline pass: parse source text into a `NonFunctionValue`.
 
 use ac_compiler_core::{Compilation, Config, Pass};
 
-/// Parse the source text into a `RuntimeValue`.
+/// Parse the source text into a `NonFunctionValue`.
 pub struct ParsePass;
 
 impl Pass for ParsePass {

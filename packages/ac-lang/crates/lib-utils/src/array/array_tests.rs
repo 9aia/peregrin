@@ -1,4 +1,4 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error};
 
@@ -6,26 +6,26 @@ use serde_json::json;
 
 use super::array::ArrayModule;
 
-fn call(module: &dyn Module, name: &str, args: &[RuntimeValue]) -> RuntimeValue {
+fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn arr(items: &[serde_json::Value]) -> RuntimeValue {
-    RuntimeValue::new(serde_json::Value::Array(items.to_vec()))
+fn arr(items: &[serde_json::Value]) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::Value::Array(items.to_vec()))
 }
 
-fn n(v: f64) -> RuntimeValue {
-    RuntimeValue::new(serde_json::json!(v))
+fn n(v: f64) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::json!(v))
 }
 
-fn ni(v: i64) -> RuntimeValue {
-    RuntimeValue::new(serde_json::json!(v))
+fn ni(v: i64) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::json!(v))
 }
 
-fn s(v: &str) -> RuntimeValue {
-    RuntimeValue::new(v.to_string())
+fn s(v: &str) -> NonFunctionValue {
+    NonFunctionValue::new(v.to_string())
 }
 
 #[test]

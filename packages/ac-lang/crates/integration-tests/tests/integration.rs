@@ -5,7 +5,7 @@
 //! storage, and continuation serialization.
 
 use ac_ast::{Expr, HandlerClause};
-use ac_runtime::{FunctionValue, RuntimeValue};
+use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_store::{DefinitionHash, DefinitionStore, EvalCache, NameRegistry};
 use ac_vm::{
     Context, Continuation, Error, EvalResult, Function, Host, Operation, OperationSig, Vm,
@@ -16,31 +16,31 @@ use ac_vm::{
 #[derive(Clone)]
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-        Ok(RuntimeValue::new(sum))
+        Ok(NonFunctionValue::new(sum))
     }
 }
 
 #[derive(Clone)]
 struct Mul;
 impl Function for Mul {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let product: f64 = args.iter().filter_map(|v| v.as_number()).product();
-        Ok(RuntimeValue::new(product))
+        Ok(NonFunctionValue::new(product))
     }
 }
 
 #[derive(Clone)]
 struct Concat;
 impl Function for Concat {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let s: String = args
             .iter()
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
             .collect::<Vec<_>>()
             .join("");
-        Ok(RuntimeValue::new(s))
+        Ok(NonFunctionValue::new(s))
     }
 }
 
@@ -54,7 +54,7 @@ impl Operation for FetchOp {
             return_schema: Some(serde_json::json!({"type": "string"})),
         }
     }
-    fn perform(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
             args: args.to_vec(),
@@ -72,7 +72,7 @@ impl Operation for LogOp {
             return_schema: None,
         }
     }
-    fn perform(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "log".to_string(),
             args: vec![],
@@ -129,19 +129,19 @@ fn full_pipeline_handler_intercepts_fetch_and_resumes() {
         Expr::call(
             "add",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-                Expr::value(RuntimeValue::new(10)),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+                Expr::value(NonFunctionValue::new(10)),
             ],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new(42.0))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
         }],
     );
 
-    let mut vm = Vm::new(FullHost::default());
+    let vm = Vm::new(FullHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(52.0));
@@ -157,12 +157,12 @@ fn full_pipeline_multi_op_handler() {
         Expr::call(
             "add",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
                 Expr::call(
                     "mul",
                     vec![
-                        Expr::call("log", vec![Expr::value(RuntimeValue::new("msg"))]),
-                        Expr::value(RuntimeValue::new(2)),
+                        Expr::call("log", vec![Expr::value(NonFunctionValue::new("msg"))]),
+                        Expr::value(NonFunctionValue::new(2)),
                     ],
                 ),
             ],
@@ -172,18 +172,18 @@ fn full_pipeline_multi_op_handler() {
                 op_name: "fetch".to_string(),
                 params: vec!["url".to_string()],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(RuntimeValue::new(42.0))]),
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
             },
             HandlerClause {
                 op_name: "log".to_string(),
                 params: vec!["msg".to_string()],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(RuntimeValue::new(1.0))]),
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(1.0))]),
             },
         ],
     );
 
-    let mut vm = Vm::new(FullHost::default());
+    let vm = Vm::new(FullHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(44.0));
@@ -193,16 +193,16 @@ fn full_pipeline_multi_op_handler() {
 fn full_pipeline_handler_returns_constant_without_resume() {
     // handle(fetch("data")) — handler returns "cached" without resuming
     let expr = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("cached-result")),
+            body: Expr::value(NonFunctionValue::new("cached-result")),
         }],
     );
 
-    let mut vm = Vm::new(FullHost::default());
+    let vm = Vm::new(FullHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_str(), Some("cached-result"));
@@ -218,26 +218,26 @@ fn full_pipeline_nested_handlers_different_ops() {
             Expr::call(
                 "add",
                 vec![
-                    Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-                    Expr::call("log", vec![Expr::value(RuntimeValue::new("msg"))]),
+                    Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+                    Expr::call("log", vec![Expr::value(NonFunctionValue::new("msg"))]),
                 ],
             ),
             vec![HandlerClause {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(RuntimeValue::new(10.0))]),
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(10.0))]),
             }],
         ),
         vec![HandlerClause {
             op_name: "log".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new(5.0))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(5.0))]),
         }],
     );
 
-    let mut vm = Vm::new(FullHost::default());
+    let vm = Vm::new(FullHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     // fetch handled by inner → 10, log handled by outer → 5
@@ -254,13 +254,13 @@ fn continuation_serialize_deserialize_resume() {
     let expr = Expr::call(
         "add",
         vec![
-            Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-            Expr::value(RuntimeValue::new(10)),
+            Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+            Expr::value(NonFunctionValue::new(10)),
         ],
     );
 
     // Start eval — fetch signals
-    let mut vm = Vm::new(FullHost::default());
+    let vm = Vm::new(FullHost::default());
     let mut ctx = Context::new();
     let result = vm.eval_resumable(&expr, &mut ctx, None);
     let (_yielded, cont) = match result {
@@ -289,10 +289,10 @@ fn continuation_serialize_deserialize_resume() {
         }
         fn perform(
             &self,
-            _args: &[RuntimeValue],
+            _args: &[NonFunctionValue],
             _ctx: &mut Context,
-        ) -> Result<RuntimeValue, Error> {
-            Ok(RuntimeValue::new(42.0))
+        ) -> Result<NonFunctionValue, Error> {
+            Ok(NonFunctionValue::new(42.0))
         }
     }
 
@@ -367,10 +367,10 @@ fn eval_cache_integration() {
     // and verify the cached result is retrievable.
     let mut cache = EvalCache::new();
     let hash = DefinitionHash::from_hex("a".repeat(64));
-    let args = vec![RuntimeValue::new(21), RuntimeValue::new(2)];
+    let args = vec![NonFunctionValue::new(21), NonFunctionValue::new(2)];
 
     // Simulate evaluating "double(21)" = 42
-    cache.insert(&hash, &args, RuntimeValue::new(42.0));
+    cache.insert(&hash, &args, NonFunctionValue::new(42.0));
 
     // Verify cache hit
     let result = cache.get(&hash, &args).unwrap();
@@ -395,19 +395,19 @@ fn handler_with_resumable_eval_and_continuation_roundtrip() {
         Expr::call(
             "add",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-                Expr::value(RuntimeValue::new(10)),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+                Expr::value(NonFunctionValue::new(10)),
             ],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new(42.0))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
         }],
     );
 
-    let mut vm = Vm::new(FullHost::default());
+    let vm = Vm::new(FullHost::default());
     let mut ctx = Context::new();
 
     // This should complete in one step (handler intercepts inline)
@@ -428,19 +428,19 @@ fn string_pipeline_with_handler() {
         Expr::call(
             "concat",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("name"))]),
-                Expr::value(RuntimeValue::new("!")),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("name"))]),
+                Expr::value(NonFunctionValue::new("!")),
             ],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new("World"))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("World"))]),
         }],
     );
 
-    let mut vm = Vm::new(FullHost::default());
+    let vm = Vm::new(FullHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_str(), Some("World!"));

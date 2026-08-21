@@ -1,4 +1,4 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -36,14 +36,14 @@ impl Module for ArrayModule {
     }
 }
 
-fn require_array(arg: &RuntimeValue) -> Result<&[serde_json::Value], Error> {
+fn require_array(arg: &NonFunctionValue) -> Result<&[serde_json::Value], Error> {
     arg.as_array().ok_or(Error::TypeMismatch {
         expected: "array",
         got: "non-array",
     })
 }
 
-fn require_one_array(args: &[RuntimeValue]) -> Result<&[serde_json::Value], Error> {
+fn require_one_array(args: &[NonFunctionValue]) -> Result<&[serde_json::Value], Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
         got: 0,
@@ -52,7 +52,7 @@ fn require_one_array(args: &[RuntimeValue]) -> Result<&[serde_json::Value], Erro
 }
 
 fn require_two_arrays(
-    args: &[RuntimeValue],
+    args: &[NonFunctionValue],
 ) -> Result<(&[serde_json::Value], &[serde_json::Value]), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
@@ -65,16 +65,16 @@ fn require_two_arrays(
     Ok((a, b))
 }
 
-fn arr(items: &[serde_json::Value]) -> RuntimeValue {
-    RuntimeValue::new(serde_json::Value::Array(items.to_vec()))
+fn arr(items: &[serde_json::Value]) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::Value::Array(items.to_vec()))
 }
 
-fn num(value: f64) -> RuntimeValue {
-    RuntimeValue::new(serde_json::json!(value))
+fn num(value: f64) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::json!(value))
 }
 
-fn b(value: bool) -> RuntimeValue {
-    RuntimeValue::new(value)
+fn b(value: bool) -> NonFunctionValue {
+    NonFunctionValue::new(value)
 }
 
 macro_rules! array_unary_fn {
@@ -84,9 +84,9 @@ macro_rules! array_unary_fn {
         impl Function for $struct_name {
             fn call(
                 &self,
-                args: &[RuntimeValue],
+                args: &[NonFunctionValue],
                 _ctx: &mut Context,
-            ) -> Result<RuntimeValue, Error> {
+            ) -> Result<NonFunctionValue, Error> {
                 let input = require_one_array(args)?;
                 Ok($body(input))
             }
@@ -104,14 +104,14 @@ array_unary_fn!(Reverse, |input: &[serde_json::Value]| {
 });
 array_unary_fn!(First, |input: &[serde_json::Value]| {
     match input.first() {
-        Some(v) => RuntimeValue::new(v.clone()),
-        None => RuntimeValue::new(serde_json::Value::Null),
+        Some(v) => NonFunctionValue::new(v.clone()),
+        None => NonFunctionValue::new(serde_json::Value::Null),
     }
 });
 array_unary_fn!(Last, |input: &[serde_json::Value]| {
     match input.last() {
-        Some(v) => RuntimeValue::new(v.clone()),
-        None => RuntimeValue::new(serde_json::Value::Null),
+        Some(v) => NonFunctionValue::new(v.clone()),
+        None => NonFunctionValue::new(serde_json::Value::Null),
     }
 });
 array_unary_fn!(Flatten, |input: &[serde_json::Value]| {
@@ -140,21 +140,21 @@ array_unary_fn!(Min, |input: &[serde_json::Value]| {
     let numbers: Vec<f64> = input.iter().filter_map(|v| v.as_f64()).collect();
     match numbers.iter().copied().min_by(|a, c| a.total_cmp(c)) {
         Some(m) => num(m),
-        None => RuntimeValue::new(serde_json::Value::Null),
+        None => NonFunctionValue::new(serde_json::Value::Null),
     }
 });
 array_unary_fn!(Max, |input: &[serde_json::Value]| {
     let numbers: Vec<f64> = input.iter().filter_map(|v| v.as_f64()).collect();
     match numbers.iter().copied().max_by(|a, c| a.total_cmp(c)) {
         Some(m) => num(m),
-        None => RuntimeValue::new(serde_json::Value::Null),
+        None => NonFunctionValue::new(serde_json::Value::Null),
     }
 });
 
 #[derive(Clone, Copy)]
 pub struct Concat;
 impl Function for Concat {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_arrays(args)?;
         let combined: Vec<serde_json::Value> = a.iter().chain(b.iter()).cloned().collect();
         Ok(arr(&combined))
@@ -164,7 +164,7 @@ impl Function for Concat {
 #[derive(Clone, Copy)]
 pub struct Contains;
 impl Function for Contains {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -182,7 +182,7 @@ impl Function for Contains {
 #[derive(Clone, Copy)]
 pub struct IndexOf;
 impl Function for IndexOf {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -204,7 +204,7 @@ impl Function for IndexOf {
 #[derive(Clone, Copy)]
 pub struct Slice;
 impl Function for Slice {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -229,7 +229,7 @@ impl Function for Slice {
 #[derive(Clone, Copy)]
 pub struct Sort;
 impl Function for Sort {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let input = require_one_array(args)?;
         let mut sorted: Vec<serde_json::Value> = input.to_vec();
         sorted.sort_by(|a, c| match (a.as_f64(), c.as_f64()) {
@@ -250,7 +250,7 @@ impl Function for Sort {
 #[derive(Clone, Copy)]
 pub struct Unique;
 impl Function for Unique {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let input = require_one_array(args)?;
         let mut seen: Vec<serde_json::Value> = Vec::new();
         for item in input {

@@ -26,8 +26,9 @@
 //!   `fp.is_bool`, `fp.is_number`, `fp.is_string`, `fp.is_array`, `fp.is_object`,
 //!   `fp.type_of`, `fp.is_empty`, `fp.is_truthy`, `fp.range`, `fp.zip`, `fp.chunk`,
 //!   `fp.keys`, `fp.values`, `fp.entries`, `fp.pick`, `fp.omit`, `fp.merge`,
-//!   `fp.map`, `fp.filter`, `fp.reduce`, `fp.pipe`, `fp.flow`, `fp.compose`,
-//!   `fp.fanout`, `fp.choice`
+//!   `fp.map`, `fp.filter`, `fp.reduce`, `fp.flat_map`, `fp.find`, `fp.some`,
+//!   `fp.every`, `fp.group_by`, `fp.partition`, `fp.sort_by`, `fp.pipe`, `fp.flow`,
+//!   `fp.compose`, `fp.fanout`, `fp.choice`, `fp.apply`, `fp.tap`
 //!
 //! ## Usage
 //!

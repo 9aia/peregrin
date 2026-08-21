@@ -79,7 +79,7 @@ This lets a consumer depend on only the typechecking pieces they need. A tool th
 
 ### 6. Runtime vs. VM vs. runtime-core
 
-- **`runtime`** — `RuntimeValue`, the JSON-compatible value type. No execution logic.
+- **`runtime`** — `NonFunctionValue`, the JSON-compatible value type. No execution logic.
 - **`vm`** — the evaluator: `Context`, `Function` trait, `Error` type. Depends on `runtime` and `ast`.
 - **`runtime-core`** — `Module` trait and `ModuleHost` (the registry). Depends on `vm` but not on any library crate.
 

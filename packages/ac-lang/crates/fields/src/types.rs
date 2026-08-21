@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
 /// The conventional name of the default namespace used for shorthand
@@ -89,7 +89,7 @@ pub struct ExtractedFields {
     /// `(name, raw_schema_value)` pairs for each declared field.
     pub schemas: Vec<(String, JsonValue)>,
     /// The document data with `$:` removed.
-    pub data: RuntimeValue,
+    pub data: NonFunctionValue,
     /// Field names declared with `inheritable: true`.
     /// These propagate into nested objects during scoped interpolation.
     pub inheritable: Vec<String>,

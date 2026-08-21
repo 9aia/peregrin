@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -58,7 +58,7 @@ impl Module for PathModule {
     }
 }
 
-fn collect_string_args(args: &[RuntimeValue]) -> Result<Vec<&str>, Error> {
+fn collect_string_args(args: &[NonFunctionValue]) -> Result<Vec<&str>, Error> {
     if args.is_empty() {
         return Err(Error::ArgumentCount {
             expected: 1,
@@ -75,7 +75,7 @@ fn collect_string_args(args: &[RuntimeValue]) -> Result<Vec<&str>, Error> {
         .collect()
 }
 
-fn require_one_string(args: &[RuntimeValue]) -> Result<&str, Error> {
+fn require_one_string(args: &[NonFunctionValue]) -> Result<&str, Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
         got: 0,
@@ -91,11 +91,11 @@ struct JoinFn {
 }
 
 impl Function for JoinFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let parts = collect_string_args(args)?;
         self.path
             .join(&parts)
-            .map(RuntimeValue::new)
+            .map(NonFunctionValue::new)
             .map_err(Into::into)
     }
 }
@@ -105,11 +105,11 @@ struct ResolveFn {
 }
 
 impl Function for ResolveFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let parts = collect_string_args(args)?;
         self.path
             .resolve(&parts)
-            .map(RuntimeValue::new)
+            .map(NonFunctionValue::new)
             .map_err(Into::into)
     }
 }
@@ -119,11 +119,11 @@ struct BasenameFn {
 }
 
 impl Function for BasenameFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let path = require_one_string(args)?;
         self.path
             .basename(path)
-            .map(RuntimeValue::new)
+            .map(NonFunctionValue::new)
             .map_err(Into::into)
     }
 }
@@ -133,11 +133,11 @@ struct DirnameFn {
 }
 
 impl Function for DirnameFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let path = require_one_string(args)?;
         self.path
             .dirname(path)
-            .map(RuntimeValue::new)
+            .map(NonFunctionValue::new)
             .map_err(Into::into)
     }
 }
@@ -147,11 +147,11 @@ struct ExtnameFn {
 }
 
 impl Function for ExtnameFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let path = require_one_string(args)?;
         self.path
             .extname(path)
-            .map(RuntimeValue::new)
+            .map(NonFunctionValue::new)
             .map_err(Into::into)
     }
 }

@@ -51,8 +51,8 @@ In Rust, the canonical dialect is implemented in the `ac-dialect-canonical` crat
 
 - `AcDialect` — implements `Syntax`, `ExprParser`, `DocumentVocabulary`, and `Dialect`
 - `AC_DIALECT` — static singleton instance of `AcDialect`
-- `JsonSchema` — implements `Schema<RuntimeValue>` for JSON Schema validation
-- `JsonSchemaVocabulary` — implements `SchemaVocabulary<RuntimeValue>` for JSON Schema draft 2020-12
+- `JsonSchema` — implements `Schema<NonFunctionValue>` for JSON Schema validation
+- `JsonSchemaVocabulary` — implements `SchemaVocabulary<NonFunctionValue>` for JSON Schema draft 2020-12
 - `JSON_SCHEMA_VOCABULARY` — static singleton instance of `JsonSchemaVocabulary`
 
 In other languages, the equivalent module/package split should be used — e.g. `@ac/dialect-canonical` in a JavaScript/TypeScript monorepo.

@@ -4,7 +4,7 @@ use crate::error::Error;
 use crate::host::{Function, Host};
 use crate::operation::{Operation, OperationSig};
 use ac_ast::{Expr, HandlerClause};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 // ── test operations and functions ────────────────────────────────
 
@@ -20,7 +20,7 @@ impl Operation for FetchOp {
         }
     }
 
-    fn perform(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
             args: args.to_vec(),
@@ -32,9 +32,9 @@ impl Operation for FetchOp {
 struct Add;
 
 impl Function for Add {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-        Ok(RuntimeValue::new(sum))
+        Ok(NonFunctionValue::new(sum))
     }
 }
 
@@ -42,13 +42,13 @@ impl Function for Add {
 struct Concat;
 
 impl Function for Concat {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let s: String = args
             .iter()
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
             .collect::<Vec<_>>()
             .join("");
-        Ok(RuntimeValue::new(s))
+        Ok(NonFunctionValue::new(s))
     }
 }
 
@@ -92,12 +92,12 @@ impl Host for OpHost {
 fn handler_intercepts_operation() {
     // handle(fetch("data")) with handler that returns a constant
     let expr = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("intercepted")),
+            body: Expr::value(NonFunctionValue::new("intercepted")),
         }],
     );
 
@@ -121,13 +121,13 @@ fn handler_binds_operation_args() {
     let expr = Expr::handle(
         Expr::call(
             "fetch",
-            vec![Expr::value(RuntimeValue::new("http://example.com"))],
+            vec![Expr::value(NonFunctionValue::new("http://example.com"))],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("handler-result")),
+            body: Expr::value(NonFunctionValue::new("handler-result")),
         }],
     );
 
@@ -146,8 +146,8 @@ fn handler_resume_continuation() {
         Expr::call(
             "add",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-                Expr::value(RuntimeValue::new(10)),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+                Expr::value(NonFunctionValue::new(10)),
             ],
         ),
         vec![HandlerClause {
@@ -155,7 +155,7 @@ fn handler_resume_continuation() {
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
             // Resume the continuation with value 42
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new(42.0))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
         }],
     );
 
@@ -170,12 +170,12 @@ fn handler_no_match_propagates() {
     // handle(fetch("data")) with handler for "read_file" (not "fetch")
     // fetch should propagate as Error::Operation
     let expr = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![HandlerClause {
             op_name: "read_file".to_string(),
             params: vec!["path".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("unused")),
+            body: Expr::value(NonFunctionValue::new("unused")),
         }],
     );
 
@@ -190,12 +190,12 @@ fn handler_body_is_pure_value() {
     // handle(42) — body is a pure value, no operations
     // handler is never triggered
     let expr = Expr::handle(
-        Expr::value(RuntimeValue::new(42)),
+        Expr::value(NonFunctionValue::new(42)),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("never-called")),
+            body: Expr::value(NonFunctionValue::new("never-called")),
         }],
     );
 
@@ -210,12 +210,12 @@ fn handler_body_is_pure_value() {
 #[test]
 fn resumable_handler_intercepts_operation() {
     let expr = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("handled")),
+            body: Expr::value(NonFunctionValue::new("handled")),
         }],
     );
 
@@ -239,15 +239,15 @@ fn resumable_handler_resume_continuation() {
         Expr::call(
             "add",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-                Expr::value(RuntimeValue::new(10)),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+                Expr::value(NonFunctionValue::new(10)),
             ],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new(42.0))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
         }],
     );
 
@@ -266,12 +266,12 @@ fn resumable_handler_resume_continuation() {
 #[test]
 fn resumable_handler_no_match_yields() {
     let expr = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![HandlerClause {
             op_name: "read_file".to_string(),
             params: vec!["path".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("unused")),
+            body: Expr::value(NonFunctionValue::new("unused")),
         }],
     );
 
@@ -296,12 +296,12 @@ fn resumable_handler_no_match_yields() {
 #[test]
 fn handle_expr_serialization_roundtrip() {
     let expr = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new("result"))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("result"))]),
         }],
     );
 
@@ -327,19 +327,19 @@ fn handle_expr_serialization_roundtrip() {
 fn handler_multiple_clauses_last_match_wins() {
     // Two clauses for "fetch" — last one wins (handler search uses .rev())
     let expr = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![
             HandlerClause {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(RuntimeValue::new("first")),
+                body: Expr::value(NonFunctionValue::new("first")),
             },
             HandlerClause {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(RuntimeValue::new("second")),
+                body: Expr::value(NonFunctionValue::new("second")),
             },
         ],
     );
@@ -354,19 +354,19 @@ fn handler_multiple_clauses_last_match_wins() {
 fn handler_multiple_clauses_different_ops() {
     // Two clauses for different ops — only matching one fires
     let expr = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![
             HandlerClause {
                 op_name: "read_file".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(RuntimeValue::new("file-handled")),
+                body: Expr::value(NonFunctionValue::new("file-handled")),
             },
             HandlerClause {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(RuntimeValue::new("fetch-handled")),
+                body: Expr::value(NonFunctionValue::new("fetch-handled")),
             },
         ],
     );
@@ -387,8 +387,8 @@ fn handler_does_not_resume_continuation() {
         Expr::call(
             "add",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-                Expr::value(RuntimeValue::new(10)),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+                Expr::value(NonFunctionValue::new(10)),
             ],
         ),
         vec![HandlerClause {
@@ -396,7 +396,7 @@ fn handler_does_not_resume_continuation() {
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
             // Don't call k — just return a constant
-            body: Expr::value(RuntimeValue::new(999.0)),
+            body: Expr::value(NonFunctionValue::new(999.0)),
         }],
     );
 
@@ -423,10 +423,10 @@ fn handler_operation_completes_without_signaling() {
         }
         fn perform(
             &self,
-            _args: &[RuntimeValue],
+            _args: &[NonFunctionValue],
             _ctx: &mut Context,
-        ) -> Result<RuntimeValue, Error> {
-            Ok(RuntimeValue::new("cached-value"))
+        ) -> Result<NonFunctionValue, Error> {
+            Ok(NonFunctionValue::new("cached-value"))
         }
     }
 
@@ -458,12 +458,12 @@ fn handler_operation_completes_without_signaling() {
     }
 
     let expr = Expr::handle(
-        Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+        Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("should-not-fire")),
+            body: Expr::value(NonFunctionValue::new("should-not-fire")),
         }],
     );
 
@@ -483,8 +483,8 @@ fn handler_resume_with_transformed_value() {
         Expr::call(
             "add",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-                Expr::value(RuntimeValue::new(1)),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+                Expr::value(NonFunctionValue::new(1)),
             ],
         ),
         vec![HandlerClause {
@@ -496,8 +496,8 @@ fn handler_resume_with_transformed_value() {
                 vec![Expr::call(
                     "add",
                     vec![
-                        Expr::value(RuntimeValue::new(40.0)),
-                        Expr::value(RuntimeValue::new(2.0)),
+                        Expr::value(NonFunctionValue::new(40.0)),
+                        Expr::value(NonFunctionValue::new(2.0)),
                     ],
                 )],
             ),
@@ -517,19 +517,19 @@ fn nested_handlers_outer_takes_precedence() {
     // are prepended (first in vector), so outer (last) is found first
     let expr = Expr::handle(
         Expr::handle(
-            Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+            Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
             vec![HandlerClause {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(RuntimeValue::new("inner")),
+                body: Expr::value(NonFunctionValue::new("inner")),
             }],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("outer")),
+            body: Expr::value(NonFunctionValue::new("outer")),
         }],
     );
 
@@ -545,19 +545,19 @@ fn nested_handlers_outer_catches_unhandled_op() {
     // fetch is not handled by inner → propagates to outer
     let expr = Expr::handle(
         Expr::handle(
-            Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
+            Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
             vec![HandlerClause {
                 op_name: "read_file".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(RuntimeValue::new("file-handled")),
+                body: Expr::value(NonFunctionValue::new("file-handled")),
             }],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("fetch-handled")),
+            body: Expr::value(NonFunctionValue::new("fetch-handled")),
         }],
     );
 
@@ -576,15 +576,15 @@ fn handler_in_resumable_eval_with_continuation_serialization() {
         Expr::call(
             "add",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-                Expr::value(RuntimeValue::new(10)),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+                Expr::value(NonFunctionValue::new(10)),
             ],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new(42.0))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
         }],
     );
 

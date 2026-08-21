@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function, Host};
 
 use crate::cache::{CallCache, CallKey};
@@ -18,7 +18,7 @@ struct CachedFunction {
 }
 
 impl Function for CachedFunction {
-    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let key = CallKey::new(&self.name, args);
         if let Some(cached) = self.cache.lock().unwrap().get_by_key(&key) {
             return Ok(cached.clone());

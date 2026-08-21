@@ -1,4 +1,4 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -46,14 +46,14 @@ impl Module for MathModule {
     }
 }
 
-fn require_number(arg: &RuntimeValue) -> Result<f64, Error> {
+fn require_number(arg: &NonFunctionValue) -> Result<f64, Error> {
     arg.as_number().ok_or(Error::TypeMismatch {
         expected: "number",
         got: "non-number",
     })
 }
 
-fn require_two_numbers(args: &[RuntimeValue]) -> Result<(f64, f64), Error> {
+fn require_two_numbers(args: &[NonFunctionValue]) -> Result<(f64, f64), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
@@ -65,8 +65,8 @@ fn require_two_numbers(args: &[RuntimeValue]) -> Result<(f64, f64), Error> {
     Ok((a, b))
 }
 
-fn num(value: f64) -> RuntimeValue {
-    RuntimeValue::new(serde_json::json!(value))
+fn num(value: f64) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::json!(value))
 }
 
 macro_rules! unary_fn {
@@ -76,9 +76,9 @@ macro_rules! unary_fn {
         impl Function for $struct_name {
             fn call(
                 &self,
-                args: &[RuntimeValue],
+                args: &[NonFunctionValue],
                 _ctx: &mut Context,
-            ) -> Result<RuntimeValue, Error> {
+            ) -> Result<NonFunctionValue, Error> {
                 let arg = args.first().ok_or(Error::ArgumentCount {
                     expected: 1,
                     got: 0,
@@ -110,7 +110,7 @@ unary_fn!(Atan, |x: f64| x.atan());
 #[derive(Clone, Copy)]
 pub struct Min;
 impl Function for Min {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         Ok(num(a.min(b)))
     }
@@ -119,7 +119,7 @@ impl Function for Min {
 #[derive(Clone, Copy)]
 pub struct Max;
 impl Function for Max {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         Ok(num(a.max(b)))
     }
@@ -128,7 +128,7 @@ impl Function for Max {
 #[derive(Clone, Copy)]
 pub struct Pow;
 impl Function for Pow {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (base, exp) = require_two_numbers(args)?;
         Ok(num(base.powf(exp)))
     }
@@ -137,7 +137,7 @@ impl Function for Pow {
 #[derive(Clone, Copy)]
 pub struct Clamp;
 impl Function for Clamp {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -154,7 +154,7 @@ impl Function for Clamp {
 #[derive(Clone, Copy)]
 pub struct Atan2;
 impl Function for Atan2 {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (y, x) = require_two_numbers(args)?;
         Ok(num(y.atan2(x)))
     }
@@ -163,7 +163,7 @@ impl Function for Atan2 {
 #[derive(Clone, Copy)]
 pub struct Hypot;
 impl Function for Hypot {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         Ok(num(a.hypot(b)))
     }
@@ -172,7 +172,7 @@ impl Function for Hypot {
 #[derive(Clone, Copy)]
 pub struct Mod;
 impl Function for Mod {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         Ok(num(a.rem_euclid(b)))
     }
@@ -181,7 +181,7 @@ impl Function for Mod {
 #[derive(Clone, Copy)]
 pub struct Pi;
 impl Function for Pi {
-    fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Ok(num(std::f64::consts::PI))
     }
 }
@@ -189,7 +189,7 @@ impl Function for Pi {
 #[derive(Clone, Copy)]
 pub struct E;
 impl Function for E {
-    fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Ok(num(std::f64::consts::E))
     }
 }

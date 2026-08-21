@@ -1,6 +1,6 @@
 use super::*;
 use ac_dialect::Schema;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 // ── nested / complex schemas ───────────────────────────────────
 
@@ -26,21 +26,21 @@ fn validate_nested_object() {
     }));
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({
+            .validate(&NonFunctionValue::new(serde_json::json!({
                 "user": {"name": "Luis", "tags": ["dev", "rust"]}
             })))
             .is_ok()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({
+            .validate(&NonFunctionValue::new(serde_json::json!({
                 "user": {"tags": ["dev"]}
             })))
             .is_err()
     );
     assert!(
         schema
-            .validate(&RuntimeValue::new(serde_json::json!({})))
+            .validate(&NonFunctionValue::new(serde_json::json!({})))
             .is_err()
     );
 }
@@ -53,7 +53,7 @@ fn validate_error_has_path() {
             "age": {"type": "integer", "minimum": 0}
         }
     }));
-    let result = schema.validate(&RuntimeValue::new(serde_json::json!({"age": -1})));
+    let result = schema.validate(&NonFunctionValue::new(serde_json::json!({"age": -1})));
     assert!(result.is_err());
     let err = result.unwrap_err();
     assert!(
@@ -71,7 +71,7 @@ fn validate_error_has_location_field() {
             "age": {"type": "integer", "minimum": 0}
         }
     }));
-    let result = schema.validate(&RuntimeValue::new(serde_json::json!({"age": -1})));
+    let result = schema.validate(&NonFunctionValue::new(serde_json::json!({"age": -1})));
     let err = result.unwrap_err();
     assert!(
         err.location.is_none(),
@@ -88,7 +88,7 @@ fn validate_error_display_with_location() {
             "age": {"type": "integer", "minimum": 0}
         }
     }));
-    let result = schema.validate(&RuntimeValue::new(serde_json::json!({"age": -1})));
+    let result = schema.validate(&NonFunctionValue::new(serde_json::json!({"age": -1})));
     let mut err = result.unwrap_err();
     err.location = Some(SourceLocation::new(3, 5));
     let displayed = err.to_string();

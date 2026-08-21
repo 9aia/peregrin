@@ -3,25 +3,25 @@ use crate::continuation::{Continuation, EvalResult, Frame};
 use crate::error::Error;
 use crate::host::{Function, Host};
 use ac_ast::Expr;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 // ── test hosts ───────────────────────────────────────────────────
 
 #[derive(Clone)]
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-        Ok(RuntimeValue::new(sum))
+        Ok(NonFunctionValue::new(sum))
     }
 }
 
 #[derive(Clone)]
 struct Mul;
 impl Function for Mul {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let product: f64 = args.iter().filter_map(|v| v.as_number()).product();
-        Ok(RuntimeValue::new(product))
+        Ok(NonFunctionValue::new(product))
     }
 }
 
@@ -29,9 +29,9 @@ impl Function for Mul {
 #[derive(Clone)]
 struct YieldingFetch;
 impl Function for YieldingFetch {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("unknown");
-        Err(Error::Yield(RuntimeValue::new(format!("yield:{input}"))))
+        Err(Error::Yield(NonFunctionValue::new(format!("yield:{input}"))))
     }
 }
 
@@ -39,15 +39,15 @@ impl Function for YieldingFetch {
 /// and yields for uncached arguments.
 #[derive(Clone)]
 struct CachingFetch {
-    cache: std::collections::HashMap<String, RuntimeValue>,
+    cache: std::collections::HashMap<String, NonFunctionValue>,
 }
 impl Function for CachingFetch {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let key = args.first().and_then(|v| v.as_str()).unwrap_or("unknown");
         if let Some(cached) = self.cache.get(key) {
             Ok(cached.clone())
         } else {
-            Err(Error::Yield(RuntimeValue::new(format!("yield:{key}"))))
+            Err(Error::Yield(NonFunctionValue::new(format!("yield:{key}"))))
         }
     }
 }
@@ -101,7 +101,7 @@ impl Host for ClientHost {
 }
 
 impl ClientHost {
-    fn new(cache: Vec<(&str, RuntimeValue)>) -> Self {
+    fn new(cache: Vec<(&str, NonFunctionValue)>) -> Self {
         let cache = cache.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
         ClientHost {
             add: Add,
@@ -117,7 +117,7 @@ impl ClientHost {
 fn resumable_eval_value() {
     let mut vm = crate::Vm::new(ServerHost::default());
     let mut ctx = Context::new();
-    let expr = Expr::value(RuntimeValue::new(42));
+    let expr = Expr::value(NonFunctionValue::new(42));
     let result = vm.eval_resumable(&expr, &mut ctx, None);
     assert!(matches!(result, EvalResult::Done(ref v) if v.as_number() == Some(42.0)));
 }
@@ -129,8 +129,8 @@ fn resumable_eval_simple_call() {
     let expr = Expr::call(
         "add",
         vec![
-            Expr::value(RuntimeValue::new(1)),
-            Expr::value(RuntimeValue::new(2)),
+            Expr::value(NonFunctionValue::new(1)),
+            Expr::value(NonFunctionValue::new(2)),
         ],
     );
     let result = vm.eval_resumable(&expr, &mut ctx, None);
@@ -147,11 +147,11 @@ fn resumable_eval_nested_calls() {
             Expr::call(
                 "add",
                 vec![
-                    Expr::value(RuntimeValue::new(1)),
-                    Expr::value(RuntimeValue::new(2)),
+                    Expr::value(NonFunctionValue::new(1)),
+                    Expr::value(NonFunctionValue::new(2)),
                 ],
             ),
-            Expr::value(RuntimeValue::new(3)),
+            Expr::value(NonFunctionValue::new(3)),
         ],
     );
     let result = vm.eval_resumable(&expr, &mut ctx, None);
@@ -165,7 +165,7 @@ fn resumable_eval_nested_calls() {
 fn resumable_eval_yields_on_fetch() {
     let mut vm = crate::Vm::new(ServerHost::default());
     let mut ctx = Context::new();
-    let expr = Expr::call("fetch", vec![Expr::value(RuntimeValue::new("hello"))]);
+    let expr = Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("hello"))]);
     let result = vm.eval_resumable(&expr, &mut ctx, None);
     match result {
         EvalResult::Yielded {
@@ -184,8 +184,8 @@ fn resumable_eval_resume_with_different_host() {
     let expr = Expr::call(
         "add",
         vec![
-            Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-            Expr::value(RuntimeValue::new(10)),
+            Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+            Expr::value(NonFunctionValue::new(10)),
         ],
     );
 
@@ -209,7 +209,7 @@ fn resumable_eval_resume_with_different_host() {
     assert_eq!(restored, continuation);
 
     // Client: resume with a different host that has the cached result
-    let mut client_vm = crate::Vm::new(ClientHost::new(vec![("data", RuntimeValue::new(5.0))]));
+    let mut client_vm = crate::Vm::new(ClientHost::new(vec![("data", NonFunctionValue::new(5.0))]));
     let result = client_vm.eval_resumable(&expr, &mut ctx, Some(restored));
 
     // fetch returns 5, add(5, 10) = 15
@@ -226,12 +226,12 @@ fn resumable_eval_resume_after_nested_yield() {
     let expr = Expr::call(
         "mul",
         vec![
-            Expr::call("fetch", vec![Expr::value(RuntimeValue::new("a"))]),
+            Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("a"))]),
             Expr::call(
                 "add",
                 vec![
-                    Expr::call("fetch", vec![Expr::value(RuntimeValue::new("b"))]),
-                    Expr::value(RuntimeValue::new(10)),
+                    Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("b"))]),
+                    Expr::value(NonFunctionValue::new(10)),
                 ],
             ),
         ],
@@ -251,7 +251,7 @@ fn resumable_eval_resume_after_nested_yield() {
     assert_eq!(yielded_a.as_str(), Some("yield:a"));
 
     // Client with cache for "a"=3: resume, then fetch("b") yields
-    let mut client_vm = crate::Vm::new(ClientHost::new(vec![("a", RuntimeValue::new(3.0))]));
+    let mut client_vm = crate::Vm::new(ClientHost::new(vec![("a", NonFunctionValue::new(3.0))]));
     let result = client_vm.eval_resumable(&expr, &mut ctx, Some(cont_a));
     let (yielded_b, cont_b) = match result {
         EvalResult::Yielded {
@@ -264,7 +264,7 @@ fn resumable_eval_resume_after_nested_yield() {
 
     // Client2 with cache for "b"=20: resume, should complete
     // mul(3, add(20, 10)) = mul(3, 30) = 90
-    let mut client2_vm = crate::Vm::new(ClientHost::new(vec![("b", RuntimeValue::new(20.0))]));
+    let mut client2_vm = crate::Vm::new(ClientHost::new(vec![("b", NonFunctionValue::new(20.0))]));
     let result = client2_vm.eval_resumable(&expr, &mut ctx, Some(cont_b));
     match result {
         EvalResult::Done(value) => assert_eq!(value.as_number(), Some(90.0)),
@@ -279,10 +279,10 @@ fn continuation_serialization_roundtrip() {
     let cont = Continuation {
         frames: vec![Frame {
             name: "add".to_string(),
-            evaluated: vec![RuntimeValue::new(1), RuntimeValue::new(2)],
+            evaluated: vec![NonFunctionValue::new(1), NonFunctionValue::new(2)],
             pending: vec![Expr::call(
                 "fetch",
-                vec![Expr::value(RuntimeValue::new("x"))],
+                vec![Expr::value(NonFunctionValue::new("x"))],
             )],
             handlers: vec![],
         }],
@@ -326,7 +326,7 @@ fn resumable_eval_unknown_function() {
 fn resumable_eval_resume_empty_continuation_errors() {
     let mut vm = crate::Vm::new(ServerHost::default());
     let mut ctx = Context::new();
-    let expr = Expr::value(RuntimeValue::new(1));
+    let expr = Expr::value(NonFunctionValue::new(1));
     let result = vm.eval_resumable(&expr, &mut ctx, Some(Continuation::empty()));
     assert!(matches!(result, EvalResult::Error(_)));
 }

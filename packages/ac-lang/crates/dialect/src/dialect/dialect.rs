@@ -1,4 +1,4 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 use crate::document_vocabulary::DocumentVocabulary;
 use crate::expr_parser::ExprParser;
@@ -35,5 +35,5 @@ pub trait Dialect: Send + Sync {
     /// The schema vocabulary used for field and function validation.
     ///
     /// The canonical dialect returns a JSON Schema draft 2020-12 vocabulary.
-    fn schema_vocabulary(&self) -> &dyn SchemaVocabulary<RuntimeValue>;
+    fn schema_vocabulary(&self) -> &dyn SchemaVocabulary<NonFunctionValue>;
 }

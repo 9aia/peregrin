@@ -8,28 +8,28 @@
 //! Run: `cargo run --example handlers`
 
 use ac_ast::{Expr, HandlerClause};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function, Host, Operation, OperationSig, Vm};
 
 // ── functions ─────────────────────────────────────────────────────
 
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-        Ok(RuntimeValue::new(sum))
+        Ok(NonFunctionValue::new(sum))
     }
 }
 
 struct Concat;
 impl Function for Concat {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let s: String = args
             .iter()
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
             .collect::<Vec<_>>()
             .join("");
-        Ok(RuntimeValue::new(s))
+        Ok(NonFunctionValue::new(s))
     }
 }
 
@@ -45,7 +45,7 @@ impl Operation for FetchOp {
             return_schema: Some(serde_json::json!({"type": "string"})),
         }
     }
-    fn perform(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
             args: args.to_vec(),
@@ -90,7 +90,7 @@ impl Default for DemoHost {
 // ── main ──────────────────────────────────────────────────────────
 
 fn main() {
-    let mut vm = Vm::new(DemoHost::default());
+    let vm = Vm::new(DemoHost::default());
     let mut ctx = Context::new();
 
     // Example 1: Handler intercepts fetch and returns a constant
@@ -98,7 +98,7 @@ fn main() {
     let expr = Expr::handle(
         Expr::call(
             "fetch",
-            vec![Expr::value(RuntimeValue::new(
+            vec![Expr::value(NonFunctionValue::new(
                 "https://api.example.com/data",
             ))],
         ),
@@ -106,7 +106,7 @@ fn main() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("intercepted-data")),
+            body: Expr::value(NonFunctionValue::new("intercepted-data")),
         }],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -121,15 +121,15 @@ fn main() {
         Expr::call(
             "add",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-                Expr::value(RuntimeValue::new(10)),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+                Expr::value(NonFunctionValue::new(10)),
             ],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new(42.0))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
         }],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -144,15 +144,15 @@ fn main() {
         Expr::call(
             "concat",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("name"))]),
-                Expr::value(RuntimeValue::new("!")),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("name"))]),
+                Expr::value(NonFunctionValue::new("!")),
             ],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new("World"))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("World"))]),
         }],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -167,15 +167,15 @@ fn main() {
         Expr::call(
             "add",
             vec![
-                Expr::call("fetch", vec![Expr::value(RuntimeValue::new("data"))]),
-                Expr::value(RuntimeValue::new(100)),
+                Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
+                Expr::value(NonFunctionValue::new(100)),
             ],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new(999.0)),
+            body: Expr::value(NonFunctionValue::new(999.0)),
         }],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();

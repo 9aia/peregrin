@@ -99,19 +99,19 @@ impl FunctionValue {
 /// A transparent newtype around `serde_json::Value`. Deliberately
 /// boring — the kernel does not define its own type system.
 ///
-/// `HostValue` is a type alias for `RuntimeValue`, used at the
+/// `HostValue` is a type alias for `NonFunctionValue`, used at the
 /// VM/host boundary.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct RuntimeValue(JsonValue);
+pub struct NonFunctionValue(JsonValue);
 
 /// Alias used at the VM/host boundary.
-pub type HostValue = RuntimeValue;
+pub type HostValue = NonFunctionValue;
 
-impl RuntimeValue {
+impl NonFunctionValue {
     /// Creates a new runtime value from anything convertible to
     /// `serde_json::Value`.
     pub fn new(value: impl Into<JsonValue>) -> Self {
-        RuntimeValue(value.into())
+        NonFunctionValue(value.into())
     }
 
     /// Returns a reference to the underlying `serde_json::Value`.
@@ -195,7 +195,7 @@ impl RuntimeValue {
 
     /// Creates a runtime value from a [`FunctionValue`].
     pub fn new_function(function: FunctionValue) -> Self {
-        RuntimeValue(function.to_json())
+        NonFunctionValue(function.to_json())
     }
 
     // ── object helpers ──────────────────────────────────────────

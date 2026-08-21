@@ -4,7 +4,7 @@ use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
 use ac_module_resolver_virtual::VirtualResolver;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_typegen_core::TypegenContext;
 
 use crate::apply_imports;
@@ -41,7 +41,7 @@ fn apply_imports_static() {
             "name": { "type": "string" }
         }
     });
-    let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
+    let extracted = extract_fields(NonFunctionValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
     apply_imports(
@@ -85,7 +85,7 @@ fn apply_imports_data_driven() {
         },
         "import": "base.yml"
     });
-    let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
+    let extracted = extract_fields(NonFunctionValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
     apply_imports(
@@ -127,7 +127,7 @@ fn apply_imports_parent_wins() {
             "host": { "type": "number" }
         }
     });
-    let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
+    let extracted = extract_fields(NonFunctionValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
     apply_imports(
@@ -159,7 +159,7 @@ fn apply_imports_no_imports_is_noop() {
             "port": { "type": "number" }
         }
     });
-    let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
+    let extracted = extract_fields(NonFunctionValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
     apply_imports(

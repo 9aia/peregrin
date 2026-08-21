@@ -5,13 +5,27 @@
 
 ## 1. Overview
 
-AC is a configuration and expression language for self-describing documents. A document can declare its own structure (`$:`), compute values (`expr:`), interpolate (`${...}`), and load external documents — all validated by a schema system. Functions emerge from data: an object with a `body` field stored in any field is callable via the `apply` host primitive.
+AC is a small, embeddable language for self-describing documents. A document can declare its own structure (`$:`), compute values (`expr:`), interpolate (`${...}`), and load external documents — all validated by a schema system. Functions emerge from data: an object with a `body` field stored in any field is callable via the `apply` host primitive.
+
+The language kernel is deliberately small — literals, path lookups, function calls. General-purpose computation is emergent: a host that provides `if`, `map`, `filter`, `reduce`, `match` can reach arbitrary expressiveness without the language baking in control flow. The scope boundary is in what the _language_ defines, not in what a _host_ can provide.
 
 The language is designed to be portable: the specification is independent of any particular runtime or host language. See [RUNTIME.md](./RUNTIME.md) for the reference runtime implementation and [DIALECT.md](./DIALECT.md) for the dialect interface that abstracts the canonical syntax in implementations.
 
-### Design principles
+### 1.1 Design principles
 
 See [design-principles.md](./explanations/design-principles.md).
+
+### 1.2 Properties
+
+The language design yields several emergent properties:
+
+- **Embeddable.** The AST has zero dependencies. The VM is generic over a `Host` trait — the host provides all functions, the VM evaluates expressions and returns values. This is the Lua/Rhai embedding model, not the Python/Unison model. No runtime owns the codebase, no toolchain must be shipped, no garbage collector is imposed on the host.
+- **Sandboxing-compatible.** The host controls all functions, namespaces, and side effects. The language defines no built-in I/O, no standard library, no implicit access to the filesystem, network, or environment. Sandboxing is a host policy decision — a host that provides only pure functions is automatically sandboxed.
+- **Closure-free.** Function values are plain JSON objects with `params` and a `body` string. They capture no environment — all bindings are explicit parameters. This makes functions serializable, cacheable, and content-addressable. A function value can be stored in a file, sent over a network, or hashed, and it will evaluate identically anywhere.
+- **Serializable.** All values are JSON-serializable. `NonFunctionValue` wraps `serde_json::Value`. Function values serialize like any other object. Documents, definitions, and evaluation results can be persisted, transmitted, and restored without loss.
+- **Content-addressable (optional).** Definitions can be identified by SHA-256 hash of their canonical JSON for deduplication, reproducible builds, and cross-machine sharing. Content addressing is a storage layer, not a language-level constraint — documents evaluate correctly without ever touching a `DefinitionStore`.
+- **Format-agnostic.** Documents can be written in YAML, JSON, TOML, or any format that maps to JSON-compatible values.
+- **Schema-agnostic.** The `Schema<V>` trait is abstract. JSON Schema by default; any schema language can implement it.
 
 ## 2. Document structure
 
@@ -968,3 +982,5 @@ The language kernel is small — five primitives compose to produce complex patt
 - **Integer subtyping** — `integer` as a subtype of `number` in the type system.
 - **AOT optimization** — pre-evaluate static `import()` paths at compile time instead of runtime.
 - **Source location tracking for runtime errors** — extend source map usage to interpolation and computation errors, not just type errors.
+- **Sandboxing primitives** — resource limits (evaluation depth, memory budget, time budget) enforceable by the host without language changes.
+- **Content-addressed module resolution** — `import(hash:...)` as an alternative to path-based imports, enabling reproducible builds without pinned paths.

@@ -1,17 +1,17 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error};
 
 use super::math::MathModule;
 
-fn call(module: &dyn Module, name: &str, args: &[RuntimeValue]) -> RuntimeValue {
+fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn n(v: f64) -> RuntimeValue {
-    RuntimeValue::new(serde_json::json!(v))
+fn n(v: f64) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::json!(v))
 }
 
 #[test]
@@ -234,7 +234,7 @@ fn unknown_function_returns_none() {
 fn type_mismatch_on_non_number() {
     let func = MathModule.function("abs").unwrap();
     let mut ctx = Context::new();
-    let result = func.call(&[RuntimeValue::new("not a number")], &mut ctx);
+    let result = func.call(&[NonFunctionValue::new("not a number")], &mut ctx);
     assert_eq!(
         result,
         Err(Error::TypeMismatch {

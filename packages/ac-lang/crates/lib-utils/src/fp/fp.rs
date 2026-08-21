@@ -1,4 +1,4 @@
-use ac_runtime::{FunctionValue, RuntimeValue};
+use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -45,19 +45,28 @@ impl Module for FpModule {
             "compose" => Some(&Compose),
             "fanout" => Some(&Fanout),
             "choice" => Some(&Choice),
+            "flat_map" => Some(&FlatMap),
+            "find" => Some(&Find),
+            "some" => Some(&Any),
+            "every" => Some(&Every),
+            "group_by" => Some(&GroupBy),
+            "partition" => Some(&Partition),
+            "sort_by" => Some(&SortBy),
+            "apply" => Some(&Apply),
+            "tap" => Some(&Tap),
             _ => None,
         }
     }
 }
 
-fn require_one_arg(args: &[RuntimeValue]) -> Result<&RuntimeValue, Error> {
+fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
         expected: 1,
         got: 0,
     })
 }
 
-fn require_two_args(args: &[RuntimeValue]) -> Result<(&RuntimeValue, &RuntimeValue), Error> {
+fn require_two_args(args: &[NonFunctionValue]) -> Result<(&NonFunctionValue, &NonFunctionValue), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
@@ -67,19 +76,19 @@ fn require_two_args(args: &[RuntimeValue]) -> Result<(&RuntimeValue, &RuntimeVal
     Ok((&args[0], &args[1]))
 }
 
-fn b(value: bool) -> RuntimeValue {
-    RuntimeValue::new(value)
+fn b(value: bool) -> NonFunctionValue {
+    NonFunctionValue::new(value)
 }
 
-fn s(value: &str) -> RuntimeValue {
-    RuntimeValue::new(value.to_string())
+fn s(value: &str) -> NonFunctionValue {
+    NonFunctionValue::new(value.to_string())
 }
 
-fn arr(items: &[serde_json::Value]) -> RuntimeValue {
-    RuntimeValue::new(serde_json::Value::Array(items.to_vec()))
+fn arr(items: &[serde_json::Value]) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::Value::Array(items.to_vec()))
 }
 
-fn require_array(arg: &RuntimeValue) -> Result<&[serde_json::Value], Error> {
+fn require_array(arg: &NonFunctionValue) -> Result<&[serde_json::Value], Error> {
     arg.as_array().ok_or(Error::TypeMismatch {
         expected: "array",
         got: "non-array",
@@ -87,7 +96,7 @@ fn require_array(arg: &RuntimeValue) -> Result<&[serde_json::Value], Error> {
 }
 
 fn require_object(
-    arg: &RuntimeValue,
+    arg: &NonFunctionValue,
 ) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
     arg.as_object().ok_or(Error::TypeMismatch {
         expected: "object",
@@ -100,7 +109,7 @@ fn require_object(
 #[derive(Clone, Copy)]
 pub struct Identity;
 impl Function for Identity {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         Ok(arg.clone())
     }
@@ -111,7 +120,7 @@ impl Function for Identity {
 #[derive(Clone, Copy)]
 pub struct Default;
 impl Function for Default {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (value, fallback) = require_two_args(args)?;
         if value.is_null() {
             Ok(fallback.clone())
@@ -126,13 +135,13 @@ impl Function for Default {
 #[derive(Clone, Copy)]
 pub struct Coalesce;
 impl Function for Coalesce {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         for arg in args {
             if !arg.is_null() {
                 return Ok(arg.clone());
             }
         }
-        Ok(RuntimeValue::new(serde_json::Value::Null))
+        Ok(NonFunctionValue::new(serde_json::Value::Null))
     }
 }
 
@@ -145,9 +154,9 @@ macro_rules! type_predicate {
         impl Function for $struct_name {
             fn call(
                 &self,
-                args: &[RuntimeValue],
+                args: &[NonFunctionValue],
                 _ctx: &mut Context,
-            ) -> Result<RuntimeValue, Error> {
+            ) -> Result<NonFunctionValue, Error> {
                 let arg = require_one_arg(args)?;
                 Ok(b($predicate(arg)))
             }
@@ -155,19 +164,19 @@ macro_rules! type_predicate {
     };
 }
 
-type_predicate!(IsNull, |arg: &RuntimeValue| arg.is_null());
-type_predicate!(IsBool, |arg: &RuntimeValue| arg.is_bool());
-type_predicate!(IsNumber, |arg: &RuntimeValue| arg.is_number());
-type_predicate!(IsString, |arg: &RuntimeValue| arg.is_string());
-type_predicate!(IsArray, |arg: &RuntimeValue| arg.is_array());
-type_predicate!(IsObject, |arg: &RuntimeValue| arg.is_object());
+type_predicate!(IsNull, |arg: &NonFunctionValue| arg.is_null());
+type_predicate!(IsBool, |arg: &NonFunctionValue| arg.is_bool());
+type_predicate!(IsNumber, |arg: &NonFunctionValue| arg.is_number());
+type_predicate!(IsString, |arg: &NonFunctionValue| arg.is_string());
+type_predicate!(IsArray, |arg: &NonFunctionValue| arg.is_array());
+type_predicate!(IsObject, |arg: &NonFunctionValue| arg.is_object());
 
 // ── type_of ────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy)]
 pub struct TypeOf;
 impl Function for TypeOf {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let type_name = if arg.is_null() {
             "null"
@@ -193,7 +202,7 @@ impl Function for TypeOf {
 #[derive(Clone, Copy)]
 pub struct IsEmpty;
 impl Function for IsEmpty {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let empty = if arg.is_null() {
             true
@@ -215,7 +224,7 @@ impl Function for IsEmpty {
 #[derive(Clone, Copy)]
 pub struct IsTruthy;
 impl Function for IsTruthy {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let truthy = if let Some(b_val) = arg.as_bool() {
             b_val
@@ -241,7 +250,7 @@ impl Function for IsTruthy {
 #[derive(Clone, Copy)]
 pub struct Range;
 impl Function for Range {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -292,7 +301,7 @@ impl Function for Range {
 #[derive(Clone, Copy)]
 pub struct Zip;
 impl Function for Zip {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -314,7 +323,7 @@ impl Function for Zip {
 #[derive(Clone, Copy)]
 pub struct Chunk;
 impl Function for Chunk {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -346,7 +355,7 @@ impl Function for Chunk {
 #[derive(Clone, Copy)]
 pub struct Keys;
 impl Function for Keys {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
         let keys: Vec<serde_json::Value> = obj
@@ -360,7 +369,7 @@ impl Function for Keys {
 #[derive(Clone, Copy)]
 pub struct Values;
 impl Function for Values {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
         let values: Vec<serde_json::Value> = obj.values().cloned().collect();
@@ -371,7 +380,7 @@ impl Function for Values {
 #[derive(Clone, Copy)]
 pub struct Entries;
 impl Function for Entries {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
         let entries: Vec<serde_json::Value> = obj
@@ -387,7 +396,7 @@ impl Function for Entries {
 #[derive(Clone, Copy)]
 pub struct Pick;
 impl Function for Pick {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -404,14 +413,14 @@ impl Function for Pick {
                 result.insert(key.to_string(), v.clone());
             }
         }
-        Ok(RuntimeValue::new(serde_json::Value::Object(result)))
+        Ok(NonFunctionValue::new(serde_json::Value::Object(result)))
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct Omit;
 impl Function for Omit {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -428,7 +437,7 @@ impl Function for Omit {
                 result.insert(k.clone(), v.clone());
             }
         }
-        Ok(RuntimeValue::new(serde_json::Value::Object(result)))
+        Ok(NonFunctionValue::new(serde_json::Value::Object(result)))
     }
 }
 
@@ -437,7 +446,7 @@ impl Function for Omit {
 #[derive(Clone, Copy)]
 pub struct Merge;
 impl Function for Merge {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -450,7 +459,7 @@ impl Function for Merge {
         for (k, v) in b {
             result.insert(k.clone(), v.clone());
         }
-        Ok(RuntimeValue::new(serde_json::Value::Object(result)))
+        Ok(NonFunctionValue::new(serde_json::Value::Object(result)))
     }
 }
 
@@ -463,7 +472,7 @@ impl Function for Merge {
 // Requires an Eval callback on the Context. Returns PrimitiveError if
 // no callback is set.
 
-fn require_function_value(arg: &RuntimeValue) -> Result<FunctionValue, Error> {
+fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error> {
     arg.as_function().ok_or(Error::TypeMismatch {
         expected: "function value",
         got: "non-function",
@@ -471,7 +480,7 @@ fn require_function_value(arg: &RuntimeValue) -> Result<FunctionValue, Error> {
 }
 
 fn require_function_and_array(
-    args: &[RuntimeValue],
+    args: &[NonFunctionValue],
 ) -> Result<(FunctionValue, &[serde_json::Value]), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
@@ -484,18 +493,18 @@ fn require_function_and_array(
     Ok((fn_val, array))
 }
 
-fn bind_param(fn_val: &FunctionValue, value: &serde_json::Value) -> Vec<(String, RuntimeValue)> {
+fn bind_param(fn_val: &FunctionValue, value: &serde_json::Value) -> Vec<(String, NonFunctionValue)> {
     fn_val
         .params
         .first()
-        .map(|(name, _)| vec![(name.clone(), RuntimeValue::new(value.clone()))])
+        .map(|(name, _)| vec![(name.clone(), NonFunctionValue::new(value.clone()))])
         .unwrap_or_default()
 }
 
 #[derive(Clone, Copy)]
 pub struct Map;
 impl Function for Map {
-    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut results = Vec::with_capacity(array.len());
         for item in array {
@@ -510,7 +519,7 @@ impl Function for Map {
 #[derive(Clone, Copy)]
 pub struct Filter;
 impl Function for Filter {
-    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut results = Vec::new();
         for item in array {
@@ -525,7 +534,7 @@ impl Function for Filter {
     }
 }
 
-fn is_truthy_value(value: &RuntimeValue) -> bool {
+fn is_truthy_value(value: &NonFunctionValue) -> bool {
     if let Some(b) = value.as_bool() {
         b
     } else if let Some(n) = value.as_number() {
@@ -546,7 +555,7 @@ fn is_truthy_value(value: &RuntimeValue) -> bool {
 #[derive(Clone, Copy)]
 pub struct Reduce;
 impl Function for Reduce {
-    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -570,7 +579,7 @@ impl Function for Reduce {
         for item in array {
             let vars = vec![
                 (acc_name.clone(), acc.clone()),
-                (item_name.clone(), RuntimeValue::new(item.clone())),
+                (item_name.clone(), NonFunctionValue::new(item.clone())),
             ];
             acc = ctx.eval_expr(&fn_val.body, &vars)?;
         }
@@ -590,7 +599,7 @@ impl Function for Reduce {
 // compose(f, g, h) — deferred: returns a FunctionValue whose body inlines
 //   the chain right-to-left: f(g(h(x))). Same as flow but reversed order.
 
-fn require_functions(args: &[RuntimeValue]) -> Result<Vec<FunctionValue>, Error> {
+fn require_functions(args: &[NonFunctionValue]) -> Result<Vec<FunctionValue>, Error> {
     if args.is_empty() {
         return Err(Error::ArgumentCount {
             expected: 1,
@@ -660,7 +669,7 @@ fn inline_chain(fns: &[FunctionValue]) -> Result<FunctionValue, Error> {
 #[derive(Clone, Copy)]
 pub struct Pipe;
 impl Function for Pipe {
-    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -680,21 +689,21 @@ impl Function for Pipe {
 #[derive(Clone, Copy)]
 pub struct Flow;
 impl Function for Flow {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let fns = require_functions(args)?;
         let composed = inline_chain(&fns)?;
-        Ok(RuntimeValue::new_function(composed))
+        Ok(NonFunctionValue::new_function(composed))
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct Compose;
 impl Function for Compose {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let fns = require_functions(args)?;
         let reversed: Vec<FunctionValue> = fns.into_iter().rev().collect();
         let composed = inline_chain(&reversed)?;
-        Ok(RuntimeValue::new_function(composed))
+        Ok(NonFunctionValue::new_function(composed))
     }
 }
 
@@ -711,7 +720,7 @@ impl Function for Compose {
 #[derive(Clone, Copy)]
 pub struct Fanout;
 impl Function for Fanout {
-    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -734,7 +743,7 @@ impl Function for Fanout {
 #[derive(Clone, Copy)]
 pub struct Choice;
 impl Function for Choice {
-    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         if args.len() < 4 {
             return Err(Error::ArgumentCount {
                 expected: 4,
@@ -752,5 +761,226 @@ impl Function for Choice {
         let branch = if is_truthy_value(&cond) { &on_true } else { &on_false };
         let vars = bind_param(branch, &inner);
         Ok(ctx.eval_expr(&branch.body, &vars)?)
+    }
+}
+
+// ── flat_map / find / some / every ─────────────────────────────────
+//
+// flat_map(fn, array) — map each element through fn, flatten results.
+// find(fn, array) — first element where predicate is truthy, or null.
+// some(fn, array) — true if any element matches predicate.
+// every(fn, array) — true if all elements match predicate.
+
+#[derive(Clone, Copy)]
+pub struct FlatMap;
+impl Function for FlatMap {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array(args)?;
+        let mut results = Vec::new();
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let mapped = ctx.eval_expr(&fn_val.body, &vars)?;
+            if let Some(sub) = mapped.as_array() {
+                results.extend(sub.iter().cloned());
+            } else {
+                results.push(mapped.into_inner());
+            }
+        }
+        Ok(arr(&results))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Find;
+impl Function for Find {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array(args)?;
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let result = ctx.eval_expr(&fn_val.body, &vars)?;
+            if is_truthy_value(&result) {
+                return Ok(NonFunctionValue::new(item.clone()));
+            }
+        }
+        Ok(NonFunctionValue::new(serde_json::Value::Null))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Any;
+impl Function for Any {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array(args)?;
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let result = ctx.eval_expr(&fn_val.body, &vars)?;
+            if is_truthy_value(&result) {
+                return Ok(b(true));
+            }
+        }
+        Ok(b(false))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Every;
+impl Function for Every {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array(args)?;
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let result = ctx.eval_expr(&fn_val.body, &vars)?;
+            if !is_truthy_value(&result) {
+                return Ok(b(false));
+            }
+        }
+        Ok(b(true))
+    }
+}
+
+// ── group_by / partition / sort_by ─────────────────────────────────
+//
+// group_by(fn, array) — group elements by key function, returns object
+//   mapping string keys to arrays of elements.
+// partition(fn, array) — returns [matching, non-matching].
+// sort_by(fn, array) — sort by numeric key extracted by fn (ascending).
+
+#[derive(Clone, Copy)]
+pub struct GroupBy;
+impl Function for GroupBy {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array(args)?;
+        let mut groups: std::collections::BTreeMap<String, Vec<serde_json::Value>> =
+            std::collections::BTreeMap::new();
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let key = ctx.eval_expr(&fn_val.body, &vars)?;
+            let key_str = key_to_string(&key);
+            groups.entry(key_str).or_default().push(item.clone());
+        }
+        let mut result = serde_json::Map::new();
+        for (k, v) in groups {
+            result.insert(k, serde_json::Value::Array(v));
+        }
+        Ok(NonFunctionValue::new(serde_json::Value::Object(result)))
+    }
+}
+
+fn key_to_string(value: &NonFunctionValue) -> String {
+    if let Some(s) = value.as_str() {
+        s.to_string()
+    } else if let Some(n) = value.as_number() {
+        if n == n.trunc() {
+            format!("{n:.0}")
+        } else {
+            n.to_string()
+        }
+    } else if let Some(b) = value.as_bool() {
+        b.to_string()
+    } else if value.is_null() {
+        "null".to_string()
+    } else {
+        serde_json::to_string(&value.clone().into_inner()).unwrap_or_else(|_| "unknown".to_string())
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Partition;
+impl Function for Partition {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array(args)?;
+        let mut matching = Vec::new();
+        let mut rest = Vec::new();
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let result = ctx.eval_expr(&fn_val.body, &vars)?;
+            if is_truthy_value(&result) {
+                matching.push(item.clone());
+            } else {
+                rest.push(item.clone());
+            }
+        }
+        Ok(arr(&[
+            serde_json::Value::Array(matching),
+            serde_json::Value::Array(rest),
+        ]))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct SortBy;
+impl Function for SortBy {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array(args)?;
+        let mut keyed: Vec<(f64, serde_json::Value)> = Vec::with_capacity(array.len());
+        for item in array {
+            let vars = bind_param(&fn_val, item);
+            let key = ctx.eval_expr(&fn_val.body, &vars)?;
+            let num = key.as_number().ok_or(Error::TypeMismatch {
+                expected: "number",
+                got: "non-number",
+            })?;
+            keyed.push((num, item.clone()));
+        }
+        keyed.sort_by(|a, c| a.0.total_cmp(&c.0));
+        let sorted: Vec<serde_json::Value> = keyed.into_iter().map(|(_, v)| v).collect();
+        Ok(arr(&sorted))
+    }
+}
+
+// ── apply / tap ────────────────────────────────────────────────────
+//
+// apply(fn, args_array) — call a function value with multiple arguments
+//   bound to all its params. Requires ctx.eval_expr.
+// tap(fn, value) — call fn(value), return value unchanged.
+
+fn bind_all_params(
+    fn_val: &FunctionValue,
+    args: &[serde_json::Value],
+) -> Vec<(String, NonFunctionValue)> {
+    fn_val
+        .params
+        .iter()
+        .enumerate()
+        .map(|(i, (name, _))| {
+            let val = args.get(i).cloned().unwrap_or(serde_json::Value::Null);
+            (name.clone(), NonFunctionValue::new(val))
+        })
+        .collect()
+}
+
+#[derive(Clone, Copy)]
+pub struct Apply;
+impl Function for Apply {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let fn_val = require_function_value(&args[0])?;
+        let call_args = require_array(&args[1])?;
+        let vars = bind_all_params(&fn_val, call_args);
+        Ok(ctx.eval_expr(&fn_val.body, &vars)?)
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Tap;
+impl Function for Tap {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let fn_val = require_function_value(&args[0])?;
+        let value = &args[1];
+        let inner = value.clone().into_inner();
+        let vars = bind_param(&fn_val, &inner);
+        let _ = ctx.eval_expr(&fn_val.body, &vars)?;
+        Ok(value.clone())
     }
 }

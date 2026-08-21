@@ -8,7 +8,7 @@
 use std::path::PathBuf;
 
 use ac_fields::ExtractedFields;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_source::SourceMap;
 use ac_typecheck_core::TypeError;
 use ac_typegen_core::TypegenContext;
@@ -61,7 +61,7 @@ impl Source {
 /// Custom passes can read any populated field and write new ones.
 pub struct Compilation {
     pub source: Source,
-    pub parsed: Option<RuntimeValue>,
+    pub parsed: Option<NonFunctionValue>,
     pub extracted: Option<ExtractedFields>,
     pub typegen_ctx: Option<TypegenContext>,
     pub type_errors: Vec<TypeError>,
@@ -85,7 +85,7 @@ impl Compilation {
     }
 
     /// Convenience: borrow the parsed value, if present.
-    pub fn parsed(&self) -> Option<&RuntimeValue> {
+    pub fn parsed(&self) -> Option<&NonFunctionValue> {
         self.parsed.as_ref()
     }
 

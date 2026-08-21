@@ -4,7 +4,7 @@ use crate::{JsonSchemaBackend, compose_schema};
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_typegen_core::{TypegenBackend, TypegenContext};
 
 fn build_ctx(extracted: &ac_fields::ExtractedFields) -> TypegenContext {
@@ -24,7 +24,7 @@ fn end_to_end_simple_fields() {
             "port": { "type": "number" }
         }
     });
-    let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
+    let extracted = extract_fields(NonFunctionValue::new(doc), &AC_DIALECT).unwrap();
     let ctx = build_ctx(&extracted);
 
     let backend = JsonSchemaBackend;
@@ -45,7 +45,7 @@ fn end_to_end_with_ac_keys_stripped() {
             "port": { "type": "number", "inheritable": true, "mutable": false }
         }
     });
-    let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
+    let extracted = extract_fields(NonFunctionValue::new(doc), &AC_DIALECT).unwrap();
     let ctx = build_ctx(&extracted);
 
     let schema = compose_schema(&ctx.fields);
@@ -70,7 +70,7 @@ fn end_to_end_merge_field_excluded() {
             "_base": { "type": "object", "merge": true, "expr": "import('./base.yml')" }
         }
     });
-    let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
+    let extracted = extract_fields(NonFunctionValue::new(doc), &AC_DIALECT).unwrap();
     let ctx = build_ctx(&extracted);
 
     let schema = compose_schema(&ctx.fields);
@@ -88,7 +88,7 @@ fn end_to_end_backend_trait() {
             "host": { "type": "string" }
         }
     });
-    let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
+    let extracted = extract_fields(NonFunctionValue::new(doc), &AC_DIALECT).unwrap();
     let ctx = build_ctx(&extracted);
 
     let backend = JsonSchemaBackend;
@@ -109,7 +109,7 @@ fn end_to_end_with_merged_fields() {
             "host": { "type": "number" }
         }
     });
-    let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
+    let extracted = extract_fields(NonFunctionValue::new(doc), &AC_DIALECT).unwrap();
     let mut ctx = build_ctx(&extracted);
 
     let imported = vec![

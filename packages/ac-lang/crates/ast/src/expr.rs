@@ -8,7 +8,7 @@
 /// - [`Expr::Handle`] — a handler expression that intercepts operations.
 ///
 /// `Expr` is generic over the value type `V`, keeping `ac-ast`
-/// dependency-free. The concrete value type (`RuntimeValue`) is
+/// dependency-free. The concrete value type (`NonFunctionValue`) is
 /// chosen by the consumer — typically the VM.
 ///
 /// The expression tree is the sole description of computation.

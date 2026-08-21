@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -54,8 +54,8 @@ impl Module for CmdModule {
     }
 }
 
-fn output_to_value(output: CmdOutput) -> RuntimeValue {
-    RuntimeValue::new(serde_json::json!({
+fn output_to_value(output: CmdOutput) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::json!({
         "exit_code": output.exit_code,
         "stdout": output.stdout,
         "stderr": output.stderr,
@@ -67,7 +67,7 @@ struct RunFn {
 }
 
 impl Function for RunFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let program = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
             got: 0,

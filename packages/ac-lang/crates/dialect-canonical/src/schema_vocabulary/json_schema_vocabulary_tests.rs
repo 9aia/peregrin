@@ -1,6 +1,6 @@
 use super::*;
 use ac_dialect::{Schema, SchemaVocabulary};
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 
 // ── id ─────────────────────────────────────────────────────────
 
@@ -16,8 +16,8 @@ fn compile_provides_validating_schema() {
     let schema = JSON_SCHEMA_VOCABULARY
         .compile(&serde_json::json!({"type": "string"}))
         .unwrap();
-    assert!(schema.validate(&RuntimeValue::new("hello")).is_ok());
-    assert!(schema.validate(&RuntimeValue::new(42)).is_err());
+    assert!(schema.validate(&NonFunctionValue::new("hello")).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new(42)).is_err());
 }
 
 #[test]
@@ -25,7 +25,7 @@ fn compile_boolean_true_schema() {
     let schema = JSON_SCHEMA_VOCABULARY
         .compile(&serde_json::json!(true))
         .unwrap();
-    assert!(schema.validate(&RuntimeValue::new("anything")).is_ok());
+    assert!(schema.validate(&NonFunctionValue::new("anything")).is_ok());
 }
 
 #[test]
@@ -33,5 +33,5 @@ fn compile_boolean_false_schema() {
     let schema = JSON_SCHEMA_VOCABULARY
         .compile(&serde_json::json!(false))
         .unwrap();
-    assert!(schema.validate(&RuntimeValue::new("anything")).is_err());
+    assert!(schema.validate(&NonFunctionValue::new("anything")).is_err());
 }

@@ -3,7 +3,7 @@ use crate::context::Context;
 use crate::error::Error;
 use crate::host::{AsyncFunction, Function, Host};
 use ac_ast::Expr;
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context as TaskContext, Poll, RawWaker, RawWakerVTable, Waker};
@@ -30,9 +30,9 @@ fn block_on<F: Future>(future: F) -> F::Output {
 #[derive(Clone)]
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-        Ok(RuntimeValue::new(sum))
+        Ok(NonFunctionValue::new(sum))
     }
 }
 
@@ -58,22 +58,22 @@ impl Default for DefaultHost {
 
 #[test]
 fn vm_eval_value() {
-    let mut vm = Vm::new(DefaultHost::default());
+    let vm = Vm::new(DefaultHost::default());
     let mut ctx = Context::new();
-    let expr = Expr::value(RuntimeValue::new(42));
+    let expr = Expr::value(NonFunctionValue::new(42));
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(42.0));
 }
 
 #[test]
 fn vm_eval_call() {
-    let mut vm = Vm::new(DefaultHost::default());
+    let vm = Vm::new(DefaultHost::default());
     let mut ctx = Context::new();
     let expr = Expr::call(
         "add",
         vec![
-            Expr::value(RuntimeValue::new(1)),
-            Expr::value(RuntimeValue::new(2)),
+            Expr::value(NonFunctionValue::new(1)),
+            Expr::value(NonFunctionValue::new(2)),
         ],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -82,7 +82,7 @@ fn vm_eval_call() {
 
 #[test]
 fn vm_eval_unknown_function() {
-    let mut vm = Vm::new(DefaultHost::default());
+    let vm = Vm::new(DefaultHost::default());
     let mut ctx = Context::new();
     let expr = Expr::call("nonexistent", vec![]);
     let result = vm.eval(&expr, &mut ctx);
@@ -103,12 +103,12 @@ struct AsyncFetch;
 impl AsyncFunction for AsyncFetch {
     fn call<'a>(
         &'a self,
-        args: &'a [RuntimeValue],
+        args: &'a [NonFunctionValue],
         _ctx: &'a mut Context,
-    ) -> Pin<Box<dyn Future<Output = Result<RuntimeValue, Error>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async {
             let input = args.first().and_then(|v| v.as_str()).unwrap_or("");
-            Ok(RuntimeValue::new(format!("fetched:{input}")))
+            Ok(NonFunctionValue::new(format!("fetched:{input}")))
         })
     }
 }
@@ -118,12 +118,12 @@ struct AsyncAdd;
 impl AsyncFunction for AsyncAdd {
     fn call<'a>(
         &'a self,
-        args: &'a [RuntimeValue],
+        args: &'a [NonFunctionValue],
         _ctx: &'a mut Context,
-    ) -> Pin<Box<dyn Future<Output = Result<RuntimeValue, Error>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async {
             let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-            Ok(RuntimeValue::new(sum))
+            Ok(NonFunctionValue::new(sum))
         })
     }
 }
@@ -133,11 +133,11 @@ struct YieldOnce;
 impl AsyncFunction for YieldOnce {
     fn call<'a>(
         &'a self,
-        args: &'a [RuntimeValue],
+        args: &'a [NonFunctionValue],
         _ctx: &'a mut Context,
-    ) -> Pin<Box<dyn Future<Output = Result<RuntimeValue, Error>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async {
-            let val = args.first().cloned().unwrap_or(RuntimeValue::new(0));
+            let val = args.first().cloned().unwrap_or(NonFunctionValue::new(0));
             Err(Error::Yield(val))
         })
     }
@@ -182,22 +182,22 @@ impl Default for MixedHost {
 
 #[test]
 fn vm_eval_async_value() {
-    let mut vm = Vm::new(MixedHost::default());
+    let vm = Vm::new(MixedHost::default());
     let mut ctx = Context::new();
-    let expr = Expr::value(RuntimeValue::new(42));
+    let expr = Expr::value(NonFunctionValue::new(42));
     let result = block_on(vm.eval_async(&expr, &mut ctx)).unwrap();
     assert_eq!(result.as_number(), Some(42.0));
 }
 
 #[test]
 fn vm_eval_async_call_sync_function() {
-    let mut vm = Vm::new(MixedHost::default());
+    let vm = Vm::new(MixedHost::default());
     let mut ctx = Context::new();
     let expr = Expr::call(
         "add",
         vec![
-            Expr::value(RuntimeValue::new(1)),
-            Expr::value(RuntimeValue::new(2)),
+            Expr::value(NonFunctionValue::new(1)),
+            Expr::value(NonFunctionValue::new(2)),
         ],
     );
     let result = block_on(vm.eval_async(&expr, &mut ctx)).unwrap();
@@ -206,13 +206,13 @@ fn vm_eval_async_call_sync_function() {
 
 #[test]
 fn vm_eval_async_call_async_function() {
-    let mut vm = Vm::new(MixedHost::default());
+    let vm = Vm::new(MixedHost::default());
     let mut ctx = Context::new();
     let expr = Expr::call(
         "async_add",
         vec![
-            Expr::value(RuntimeValue::new(10)),
-            Expr::value(RuntimeValue::new(20)),
+            Expr::value(NonFunctionValue::new(10)),
+            Expr::value(NonFunctionValue::new(20)),
         ],
     );
     let result = block_on(vm.eval_async(&expr, &mut ctx)).unwrap();
@@ -221,7 +221,7 @@ fn vm_eval_async_call_async_function() {
 
 #[test]
 fn vm_eval_async_nested_sync_in_async() {
-    let mut vm = Vm::new(MixedHost::default());
+    let vm = Vm::new(MixedHost::default());
     let mut ctx = Context::new();
     let expr = Expr::call(
         "async_add",
@@ -229,11 +229,11 @@ fn vm_eval_async_nested_sync_in_async() {
             Expr::call(
                 "add",
                 vec![
-                    Expr::value(RuntimeValue::new(1)),
-                    Expr::value(RuntimeValue::new(2)),
+                    Expr::value(NonFunctionValue::new(1)),
+                    Expr::value(NonFunctionValue::new(2)),
                 ],
             ),
-            Expr::value(RuntimeValue::new(20)),
+            Expr::value(NonFunctionValue::new(20)),
         ],
     );
     let result = block_on(vm.eval_async(&expr, &mut ctx)).unwrap();
@@ -242,18 +242,18 @@ fn vm_eval_async_nested_sync_in_async() {
 
 #[test]
 fn vm_eval_async_fetch() {
-    let mut vm = Vm::new(MixedHost::default());
+    let vm = Vm::new(MixedHost::default());
     let mut ctx = Context::new();
-    let expr = Expr::call("fetch", vec![Expr::value(RuntimeValue::new("hello"))]);
+    let expr = Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("hello"))]);
     let result = block_on(vm.eval_async(&expr, &mut ctx)).unwrap();
     assert_eq!(result.as_str(), Some("fetched:hello"));
 }
 
 #[test]
 fn vm_eval_async_yield() {
-    let mut vm = Vm::new(MixedHost::default());
+    let vm = Vm::new(MixedHost::default());
     let mut ctx = Context::new();
-    let expr = Expr::call("yield_once", vec![Expr::value(RuntimeValue::new(99))]);
+    let expr = Expr::call("yield_once", vec![Expr::value(NonFunctionValue::new(99))]);
     let result = block_on(vm.eval_async(&expr, &mut ctx));
     match result {
         Err(Error::Yield(val)) => assert_eq!(val.as_number(), Some(99.0)),
@@ -263,7 +263,7 @@ fn vm_eval_async_yield() {
 
 #[test]
 fn vm_eval_async_unknown_function() {
-    let mut vm = Vm::new(MixedHost::default());
+    let vm = Vm::new(MixedHost::default());
     let mut ctx = Context::new();
     let expr = Expr::call("nonexistent", vec![]);
     let result = block_on(vm.eval_async(&expr, &mut ctx));
@@ -284,15 +284,15 @@ fn vm_eval_deeply_nested_calls() {
                     Expr::call(
                         "add",
                         vec![
-                            Expr::value(RuntimeValue::new(1)),
-                            Expr::value(RuntimeValue::new(2)),
+                            Expr::value(NonFunctionValue::new(1)),
+                            Expr::value(NonFunctionValue::new(2)),
                         ],
                     ),
                     Expr::call(
                         "add",
                         vec![
-                            Expr::value(RuntimeValue::new(3)),
-                            Expr::value(RuntimeValue::new(4)),
+                            Expr::value(NonFunctionValue::new(3)),
+                            Expr::value(NonFunctionValue::new(4)),
                         ],
                     ),
                 ],
@@ -300,13 +300,13 @@ fn vm_eval_deeply_nested_calls() {
             Expr::call(
                 "add",
                 vec![
-                    Expr::value(RuntimeValue::new(5)),
-                    Expr::value(RuntimeValue::new(6)),
+                    Expr::value(NonFunctionValue::new(5)),
+                    Expr::value(NonFunctionValue::new(6)),
                 ],
             ),
         ],
     );
-    let mut vm = Vm::new(DefaultHost::default());
+    let vm = Vm::new(DefaultHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(21.0));
@@ -316,8 +316,8 @@ fn vm_eval_deeply_nested_calls() {
 fn vm_eval_call_with_no_args() {
     struct GetAnswer;
     impl Function for GetAnswer {
-        fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-            Ok(RuntimeValue::new(42))
+        fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+            Ok(NonFunctionValue::new(42))
         }
     }
     struct AnswerHost {
@@ -337,7 +337,7 @@ fn vm_eval_call_with_no_args() {
         }
     }
 
-    let mut vm = Vm::new(AnswerHost::default());
+    let vm = Vm::new(AnswerHost::default());
     let mut ctx = Context::new();
     let expr = Expr::call("answer", vec![]);
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -346,25 +346,25 @@ fn vm_eval_call_with_no_args() {
 
 #[test]
 fn vm_eval_value_types() {
-    let mut vm = Vm::new(DefaultHost::default());
+    let vm = Vm::new(DefaultHost::default());
     let mut ctx = Context::new();
 
     // String
     let result = vm
-        .eval(&Expr::value(RuntimeValue::new("hello")), &mut ctx)
+        .eval(&Expr::value(NonFunctionValue::new("hello")), &mut ctx)
         .unwrap();
     assert_eq!(result.as_str(), Some("hello"));
 
     // Boolean
     let result = vm
-        .eval(&Expr::value(RuntimeValue::new(true)), &mut ctx)
+        .eval(&Expr::value(NonFunctionValue::new(true)), &mut ctx)
         .unwrap();
     assert_eq!(result.as_bool(), Some(true));
 
     // Null
     let result = vm
         .eval(
-            &Expr::value(RuntimeValue::new(serde_json::Value::Null)),
+            &Expr::value(NonFunctionValue::new(serde_json::Value::Null)),
             &mut ctx,
         )
         .unwrap();
@@ -372,14 +372,14 @@ fn vm_eval_value_types() {
 
     // Array
     let result = vm
-        .eval(&Expr::value(RuntimeValue::new(vec![1, 2, 3])), &mut ctx)
+        .eval(&Expr::value(NonFunctionValue::new(vec![1, 2, 3])), &mut ctx)
         .unwrap();
     assert_eq!(result.as_array().unwrap().len(), 3);
 
     // Object
     let result = vm
         .eval(
-            &Expr::value(RuntimeValue::new(serde_json::json!({"key": "val"}))),
+            &Expr::value(NonFunctionValue::new(serde_json::json!({"key": "val"}))),
             &mut ctx,
         )
         .unwrap();
@@ -398,7 +398,7 @@ impl crate::Operation for PingOp {
             return_schema: None,
         }
     }
-    fn perform(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "ping".to_string(),
             args: vec![],
@@ -443,10 +443,10 @@ fn vm_eval_handle_intercepts_via_eval() {
             op_name: "ping".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("pong")),
+            body: Expr::value(NonFunctionValue::new("pong")),
         }],
     );
-    let mut vm = Vm::new(PingHost::default());
+    let vm = Vm::new(PingHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_str(), Some("pong"));
@@ -461,17 +461,17 @@ fn vm_eval_handle_resume_via_eval() {
             "add",
             vec![
                 Expr::call("ping", vec![]),
-                Expr::value(RuntimeValue::new(10)),
+                Expr::value(NonFunctionValue::new(10)),
             ],
         ),
         vec![HandlerClause {
             op_name: "ping".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(RuntimeValue::new(42.0))]),
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
         }],
     );
-    let mut vm = Vm::new(PingHost::default());
+    let vm = Vm::new(PingHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(52.0));
@@ -486,10 +486,10 @@ fn vm_eval_handle_no_match_propagates_as_operation_error() {
             op_name: "other".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("unused")),
+            body: Expr::value(NonFunctionValue::new("unused")),
         }],
     );
-    let mut vm = Vm::new(PingHost::default());
+    let vm = Vm::new(PingHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx);
     assert!(matches!(result, Err(Error::Operation { ref name, .. }) if name == "ping"));
@@ -499,15 +499,15 @@ fn vm_eval_handle_no_match_propagates_as_operation_error() {
 fn vm_eval_handle_pure_body_returns_body_value() {
     use ac_ast::HandlerClause;
     let expr = Expr::handle(
-        Expr::value(RuntimeValue::new(99)),
+        Expr::value(NonFunctionValue::new(99)),
         vec![HandlerClause {
             op_name: "ping".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("never")),
+            body: Expr::value(NonFunctionValue::new("never")),
         }],
     );
-    let mut vm = Vm::new(PingHost::default());
+    let vm = Vm::new(PingHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(99.0));
@@ -524,10 +524,10 @@ fn vm_eval_async_handle_intercepts() {
             op_name: "ping".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(RuntimeValue::new("async-pong")),
+            body: Expr::value(NonFunctionValue::new("async-pong")),
         }],
     );
-    let mut vm = Vm::new(PingHost::default());
+    let vm = Vm::new(PingHost::default());
     let mut ctx = Context::new();
     let result = block_on(vm.eval_async(&expr, &mut ctx)).unwrap();
     assert_eq!(result.as_str(), Some("async-pong"));

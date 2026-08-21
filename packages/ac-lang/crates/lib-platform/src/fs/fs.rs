@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
@@ -59,7 +59,7 @@ impl Module for FsModule {
     }
 }
 
-fn require_string_arg(args: &[RuntimeValue], expected: usize) -> Result<Vec<&str>, Error> {
+fn require_string_arg(args: &[NonFunctionValue], expected: usize) -> Result<Vec<&str>, Error> {
     if args.len() < expected {
         return Err(Error::ArgumentCount {
             expected,
@@ -82,11 +82,11 @@ struct ReadFileFn {
 }
 
 impl Function for ReadFileFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         self.fs
             .read_file(path)
-            .map(RuntimeValue::new)
+            .map(NonFunctionValue::new)
             .map_err(Into::into)
     }
 }
@@ -96,14 +96,14 @@ struct WriteFileFn {
 }
 
 impl Function for WriteFileFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 2)?[0];
         let content = args[1].as_str().ok_or(Error::TypeMismatch {
             expected: "string",
             got: "non-string",
         })?;
         self.fs.write_file(path, content)?;
-        Ok(RuntimeValue::default())
+        Ok(NonFunctionValue::default())
     }
 }
 
@@ -112,11 +112,11 @@ struct ExistsFn {
 }
 
 impl Function for ExistsFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         self.fs
             .exists(path)
-            .map(RuntimeValue::new)
+            .map(NonFunctionValue::new)
             .map_err(Into::into)
     }
 }
@@ -126,10 +126,10 @@ struct RemoveFn {
 }
 
 impl Function for RemoveFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         self.fs.remove(path)?;
-        Ok(RuntimeValue::default())
+        Ok(NonFunctionValue::default())
     }
 }
 
@@ -138,11 +138,11 @@ struct ListDirFn {
 }
 
 impl Function for ListDirFn {
-    fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         let entries = self.fs.list_dir(path)?;
         let arr: Vec<serde_json::Value> =
             entries.into_iter().map(serde_json::Value::String).collect();
-        Ok(RuntimeValue::new(serde_json::Value::Array(arr)))
+        Ok(NonFunctionValue::new(serde_json::Value::Array(arr)))
     }
 }

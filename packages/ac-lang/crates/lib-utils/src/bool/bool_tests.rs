@@ -1,33 +1,33 @@
-use ac_runtime::RuntimeValue;
+use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
 use ac_vm::{Context, Error};
 
 use super::bool::BoolModule;
 
-fn call(module: &dyn Module, name: &str, args: &[RuntimeValue]) -> RuntimeValue {
+fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn b(v: bool) -> RuntimeValue {
-    RuntimeValue::new(v)
+fn b(v: bool) -> NonFunctionValue {
+    NonFunctionValue::new(v)
 }
 
-fn n(v: f64) -> RuntimeValue {
-    RuntimeValue::new(serde_json::json!(v))
+fn n(v: f64) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::json!(v))
 }
 
-fn s(v: &str) -> RuntimeValue {
-    RuntimeValue::new(v.to_string())
+fn s(v: &str) -> NonFunctionValue {
+    NonFunctionValue::new(v.to_string())
 }
 
-fn null() -> RuntimeValue {
-    RuntimeValue::new(serde_json::Value::Null)
+fn null() -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::Value::Null)
 }
 
-fn arr(items: &[serde_json::Value]) -> RuntimeValue {
-    RuntimeValue::new(serde_json::Value::Array(items.to_vec()))
+fn arr(items: &[serde_json::Value]) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::Value::Array(items.to_vec()))
 }
 
 #[test]
@@ -277,4 +277,100 @@ fn argument_count_on_missing_args() {
             got: 0,
         })
     );
+}
+
+// ── lazy evaluation tests ─────────────────────────────────────────
+
+use ac_ast::Expr;
+use ac_runtime_core::ModuleHost;
+use ac_vm::{Host, LazyFunction, Vm};
+
+fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
+    let host = ModuleHost::new().with(BoolModule);
+    let vm = Vm::new(host);
+    let mut ctx = Context::new();
+    vm.eval(expr, &mut ctx).expect("eval succeeds")
+}
+
+#[test]
+fn lazy_if_true_evaluates_only_then_branch() {
+    let expr = Expr::call(
+        "bool.if",
+        vec![
+            Expr::value(b(true)),
+            Expr::value(n(1.0)),
+            Expr::call("nonexistent", vec![]),
+        ],
+    );
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_number(), Some(1.0));
+}
+
+#[test]
+fn lazy_if_false_evaluates_only_else_branch() {
+    let expr = Expr::call(
+        "bool.if",
+        vec![
+            Expr::value(b(false)),
+            Expr::call("nonexistent", vec![]),
+            Expr::value(n(2.0)),
+        ],
+    );
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_number(), Some(2.0));
+}
+
+#[test]
+fn lazy_and_short_circuits_on_false() {
+    let expr = Expr::call(
+        "bool.and",
+        vec![
+            Expr::value(b(false)),
+            Expr::call("nonexistent", vec![]),
+        ],
+    );
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_bool(), Some(false));
+}
+
+#[test]
+fn lazy_or_short_circuits_on_true() {
+    let expr = Expr::call(
+        "bool.or",
+        vec![
+            Expr::value(b(true)),
+            Expr::call("nonexistent", vec![]),
+        ],
+    );
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_bool(), Some(true));
+}
+
+#[test]
+fn lazy_and_evaluates_both_when_first_is_true() {
+    let expr = Expr::call(
+        "bool.and",
+        vec![Expr::value(b(true)), Expr::value(b(true))],
+    );
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_bool(), Some(true));
+}
+
+#[test]
+fn lazy_or_evaluates_both_when_first_is_false() {
+    let expr = Expr::call(
+        "bool.or",
+        vec![Expr::value(b(false)), Expr::value(b(true))],
+    );
+    let result = eval_expr(&expr);
+    assert_eq!(result.as_bool(), Some(true));
+}
+
+#[test]
+fn lazy_function_resolves_via_module_host() {
+    let host = ModuleHost::new().with(BoolModule);
+    assert!(host.lazy_function("bool.if").is_some());
+    assert!(host.lazy_function("bool.and").is_some());
+    assert!(host.lazy_function("bool.or").is_some());
+    assert!(host.lazy_function("bool.not").is_none());
 }
