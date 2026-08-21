@@ -25,6 +25,7 @@
 //! - [`RandModule`] — `rand.int`, `rand.float`, `rand.bool`,
 //!   `rand.pick`, `rand.choice`, `rand.sample`, `rand.shuffle`, `rand.weighted_pick`,
 //!   `rand.string`, `rand.bytes`, `rand.uuid`, `rand.gauss`,
+//!   `rand.exponential`, `rand.poisson`, `rand.binomial`,
 //!   `rand.perlin_1d`, `rand.perlin_2d`, `rand.perlin_3d`,
 //!   `rand.seeded_int`, `rand.seeded_float`, `rand.seeded_bool`,
 //!   `rand.seeded_pick`, `rand.seeded_choice`, `rand.seeded_sample`,

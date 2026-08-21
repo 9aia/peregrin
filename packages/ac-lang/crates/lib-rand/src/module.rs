@@ -1,7 +1,7 @@
 use ac_runtime_core::Module;
 use ac_vm::Function;
 
-use super::distribution::Gauss;
+use super::distribution::{Binomial, Exponential, Gauss, Poisson};
 use super::generation::{Bytes, String_, Uuid};
 use super::noise::{Perlin1D, Perlin2D, Perlin3D};
 use super::numbers::{Bool, Float, Int};
@@ -18,7 +18,8 @@ use super::seeded::{
 /// `rand.bool()`, `rand.pick(array)`, `rand.choice(array, count)`, `rand.sample(array, count)`,
 /// `rand.shuffle(array)`, `rand.weighted_pick(items, weights)`,
 /// `rand.string(length, charset?)`, `rand.bytes(length)`,
-/// `rand.uuid()`, `rand.gauss(mean, stddev)`,
+/// `rand.uuid()`, `rand.gauss(mean, stddev)`, `rand.exponential(lambda)`,
+/// `rand.poisson(lambda)`, `rand.binomial(n, p)`,
 /// `rand.perlin_1d(x)`, `rand.perlin_2d(x, y)`, `rand.perlin_3d(x, y, z)`,
 /// `rand.seeded_int(seed, min, max)`, `rand.seeded_float(seed, min, max)`,
 /// `rand.seeded_bool(seed)`, `rand.seeded_pick(seed, array)`,
@@ -53,6 +54,9 @@ impl Module for RandModule {
             "bytes" => Some(&Bytes),
             "uuid" => Some(&Uuid),
             "gauss" => Some(&Gauss),
+            "exponential" => Some(&Exponential),
+            "poisson" => Some(&Poisson),
+            "binomial" => Some(&Binomial),
             "perlin_1d" => Some(&Perlin1D),
             "perlin_2d" => Some(&Perlin2D),
             "perlin_3d" => Some(&Perlin3D),

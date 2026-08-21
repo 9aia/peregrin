@@ -27,6 +27,9 @@ fn all_functions_registered() {
         "bytes",
         "uuid",
         "gauss",
+        "exponential",
+        "poisson",
+        "binomial",
         "perlin_1d",
         "perlin_2d",
         "perlin_3d",
@@ -144,6 +147,9 @@ fn vm_resolves_via_module_host() {
     assert!(host.function("rand.bytes").is_some());
     assert!(host.function("rand.uuid").is_some());
     assert!(host.function("rand.gauss").is_some());
+    assert!(host.function("rand.exponential").is_some());
+    assert!(host.function("rand.poisson").is_some());
+    assert!(host.function("rand.binomial").is_some());
     assert!(host.function("rand.perlin_1d").is_some());
     assert!(host.function("rand.perlin_2d").is_some());
     assert!(host.function("rand.perlin_3d").is_some());
