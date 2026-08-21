@@ -1,6 +1,9 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::Error;
+use fixed_decimal::{Decimal, FloatPrecision};
 use icu::locale::Locale;
+
+use super::error::IntlError;
 
 /// Require a number argument at `idx`.
 pub(super) fn require_number(args: &[NonFunctionValue], idx: usize) -> Result<f64, Error> {
@@ -60,7 +63,7 @@ pub(super) fn optional_locale(args: &[NonFunctionValue], idx: usize) -> Result<L
                 got: "non-string",
             })?;
             Locale::try_from_str(s).map_err(|_| {
-                Error::PrimitiveError(format!("invalid locale: {s}"))
+                IntlError::InvalidLocale { input: s.to_string() }.into_vm_error()
             })
         }
         None => Ok(Locale::try_from_str("en").unwrap())
@@ -93,7 +96,6 @@ pub(super) fn opt_str<'a>(
 }
 
 /// Get a number field from an options object.
-#[allow(dead_code)]
 pub(super) fn opt_num(
     obj: Option<&serde_json::Map<String, serde_json::Value>>,
     key: &str,
@@ -101,6 +103,42 @@ pub(super) fn opt_num(
     obj.and_then(|o| o.get(key)).and_then(|v| v.as_f64())
 }
 
+/// Get an integer field from an options object.
+pub(super) fn opt_int(
+    obj: Option<&serde_json::Map<String, serde_json::Value>>,
+    key: &str,
+) -> Option<i64> {
+    obj.and_then(|o| o.get(key)).and_then(|v| v.as_i64())
+}
+
+/// Get a boolean field from an options object.
+pub(super) fn opt_bool(
+    obj: Option<&serde_json::Map<String, serde_json::Value>>,
+    key: &str,
+) -> Option<bool> {
+    obj.and_then(|o| o.get(key)).and_then(|v| v.as_bool())
+}
+
 pub(super) fn s(value: impl Into<String>) -> NonFunctionValue {
     NonFunctionValue::new(value.into())
+}
+
+/// Convert an f64 into an ICU4X `Decimal` using `FloatPrecision::RoundTrip`
+/// for exact round-trip representation (avoids `0.1 + 0.2` → `"0.30000000000000004"`).
+pub(super) fn decimal_from_f64(n: f64) -> Decimal {
+    if n == 0.0 || n.is_nan() || n.is_infinite() {
+        return Decimal::from(0_i64);
+    }
+    Decimal::try_from_f64(n, FloatPrecision::RoundTrip)
+        .unwrap_or(Decimal::from(0_i64))
+}
+
+/// Convert an f64 into a `fixed_decimal::Decimal` (the unsigned variant)
+/// using `FloatPrecision::RoundTrip`.
+pub(super) fn fixed_decimal_from_f64(n: f64) -> fixed_decimal::UnsignedDecimal {
+    if n == 0.0 || n.is_nan() || n.is_infinite() {
+        return fixed_decimal::UnsignedDecimal::from(0u32);
+    }
+    fixed_decimal::UnsignedDecimal::try_from_f64(n.abs(), FloatPrecision::RoundTrip)
+        .unwrap_or(fixed_decimal::UnsignedDecimal::from(0u32))
 }

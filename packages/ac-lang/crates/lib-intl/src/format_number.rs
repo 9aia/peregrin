@@ -1,13 +1,16 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
-use icu::decimal::input::Decimal;
-use icu::decimal::DecimalFormatter;
+use fixed_decimal::SignDisplay;
+use icu::decimal::input::{Decimal, FloatPrecision, SignDisplay as InputSignDisplay};
+use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
+use icu::decimal::options::{DecimalFormatterOptions, GroupingStrategy};
 use icu::experimental::dimension::currency::CurrencyType;
 use icu::experimental::dimension::currency::formatter::CurrencyFormatter;
 use icu::experimental::dimension::percent::formatter::PercentFormatter;
 use writeable::Writeable;
 
-use super::common::{opt_str, optional_locale, optional_object, require_number, s};
+use super::common::{decimal_from_f64, opt_bool, opt_int, opt_num, opt_str, optional_locale, optional_object, require_number, s};
+use super::error::IntlError;
 
 /// `intl.format_number(n: number, locale?: string, opts?: object) → string`
 ///
@@ -18,6 +21,13 @@ use super::common::{opt_str, optional_locale, optional_object, require_number, s
 /// - `style`: `"decimal"` (default), `"percent"`, or `"currency"`
 /// - `currency`: 3-letter ISO 4217 code (required when `style: "currency"`)
 /// - `currencyDisplay`: `"symbol"` (default) or `"code"`
+/// - `notation`: `"standard"` (default) or `"compact"`
+/// - `minimumFractionDigits`: minimum fraction digits to display
+/// - `maximumFractionDigits`: maximum fraction digits to display
+/// - `minimumSignificantDigits`: minimum significant digits
+/// - `maximumSignificantDigits`: maximum significant digits
+/// - `useGrouping`: `true` (default) or `false`
+/// - `signDisplay`: `"auto"` (default), `"always"`, `"never"`, `"exceptZero"`, `"negative"`
 ///
 /// Examples:
 /// - `intl.format_number(1234567.89)` → `"1,234,567.89"`
@@ -25,6 +35,7 @@ use super::common::{opt_str, optional_locale, optional_object, require_number, s
 /// - `intl.format_number(0.5, "en", {style: "percent"})` → `"50%"`
 /// - `intl.format_number(1234.56, "en", {style: "currency", currency: "USD"})` → `"$1,234.56"`
 /// - `intl.format_number(1000007, "bn")` → `"১০,০০,০০৭"`
+/// - `intl.format_number(1000000, "en", {notation: "compact"})` → `"1M"`
 #[derive(Clone, Copy)]
 pub struct FormatNumber;
 
@@ -35,60 +46,138 @@ impl Function for FormatNumber {
         let opts = optional_object(args, 2)?;
 
         let style = opt_str(opts, "style").unwrap_or("decimal");
+        let notation = opt_str(opts, "notation").unwrap_or("standard");
 
         let formatted = match style {
-            "percent" => format_percent(n, &locale)?,
+            "percent" => format_percent(n, &locale, opts)?,
             "currency" => {
                 let currency = opt_str(opts, "currency")
-                    .ok_or_else(|| Error::PrimitiveError("currency option required for currency style".into()))?;
+                    .ok_or_else(|| IntlError::InvalidArgument {
+                        message: "currency option required for currency style".into(),
+                    }.into_vm_error())?;
                 let display = opt_str(opts, "currencyDisplay").unwrap_or("symbol");
-                format_currency(n, &locale, currency, display)?
+                format_currency(n, &locale, currency, display, opts)?
             }
-            _ => format_standard(n, &locale)?,
+            _ => {
+                if notation == "compact" {
+                    format_compact(n, &locale, opts)?
+                } else {
+                    format_standard(n, &locale, opts)?
+                }
+            }
         };
 
         Ok(s(formatted))
     }
 }
 
-fn format_standard(n: f64, locale: &icu::locale::Locale) -> Result<String, Error> {
-    let formatter = DecimalFormatter::try_new(locale.into(), Default::default())
-        .map_err(|e| Error::PrimitiveError(format!("formatting error: {e}")))?;
+fn apply_sign_display(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
+    if let Some(sign_display) = opt_str(opts, "signDisplay") {
+        let sd = match sign_display {
+            "always" => SignDisplay::Always,
+            "never" => SignDisplay::Never,
+            "exceptZero" => SignDisplay::ExceptZero,
+            "negative" => SignDisplay::Negative,
+            _ => return,
+        };
+        decimal.apply_sign_display(sd);
+    }
+}
 
-    let decimal = decimal_from_f64(n);
+fn apply_fraction_digits(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
+    if let Some(min) = opt_int(opts, "minimumFractionDigits") {
+        if min > 0 {
+            decimal.pad(-i16::try_from(min).unwrap_or(0));
+        }
+    }
+    if let Some(max) = opt_int(opts, "maximumFractionDigits") {
+        let max = i16::try_from(max).unwrap_or(0);
+        if max >= 0 {
+            decimal.round(-max);
+            // Re-pad if min was set
+            if let Some(min) = opt_int(opts, "minimumFractionDigits") {
+                if min > 0 {
+                    decimal.pad(-i16::try_from(min).unwrap_or(0));
+                }
+            }
+        }
+    }
+}
+
+fn apply_significant_digits(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
+    if let Some(min_sig) = opt_int(opts, "minimumSignificantDigits") {
+        let min_sig = u16::try_from(min_sig).unwrap_or(0);
+        if min_sig > 0 {
+            decimal.pad_start(min_sig);
+        }
+    }
+    if let Some(max_sig) = opt_int(opts, "maximumSignificantDigits") {
+        let max_sig = u16::try_from(max_sig).unwrap_or(0);
+        if max_sig > 0 {
+            decimal.trim_start_to(max_sig);
+        }
+    }
+}
+
+fn apply_all_options(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
+    apply_fraction_digits(decimal, opts);
+    apply_significant_digits(decimal, opts);
+    apply_sign_display(decimal, opts);
+}
+
+fn build_formatter_options(opts: Option<&serde_json::Map<String, serde_json::Value>>) -> DecimalFormatterOptions {
+    let mut options = DecimalFormatterOptions::default();
+    if let Some(false) = opt_bool(opts, "useGrouping") {
+        options.grouping_strategy = Some(GroupingStrategy::Never);
+    }
+    options
+}
+
+fn format_standard(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>) -> Result<String, Error> {
+    let formatter = DecimalFormatter::try_new(locale.into(), build_formatter_options(opts))
+        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+
+    let mut decimal = decimal_from_f64(n);
+    apply_all_options(&mut decimal, opts);
     let formatted = formatter.format(&decimal);
     Ok(formatted.write_to_string().into_owned())
 }
 
-fn format_percent(n: f64, locale: &icu::locale::Locale) -> Result<String, Error> {
+fn format_compact(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>) -> Result<String, Error> {
+    let formatter = CompactDecimalFormatter::try_new_short(locale.into(), Default::default())
+        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+
+    let mut decimal = decimal_from_f64(n);
+    apply_sign_display(&mut decimal, opts);
+    let formatted = formatter.format(&decimal);
+    Ok(formatted.write_to_string().into_owned())
+}
+
+fn format_percent(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>) -> Result<String, Error> {
     let formatter = PercentFormatter::try_new(locale.into(), Default::default())
-        .map_err(|e| Error::PrimitiveError(format!("formatting error: {e}")))?;
+        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
-    let decimal = decimal_from_f64(n * 100.0);
+    let mut decimal = decimal_from_f64(n);
+    decimal.multiply_pow10(2);
+    apply_fraction_digits(&mut decimal, opts);
+    apply_sign_display(&mut decimal, opts);
     let formatted = formatter.format(&decimal);
     Ok(formatted.write_to_string().into_owned())
 }
 
-fn format_currency(n: f64, locale: &icu::locale::Locale, currency: &str, display: &str) -> Result<String, Error> {
+fn format_currency(n: f64, locale: &icu::locale::Locale, currency: &str, display: &str, opts: Option<&serde_json::Map<String, serde_json::Value>>) -> Result<String, Error> {
     let currency_code = CurrencyType::try_from_str(currency)
-        .map_err(|_| Error::PrimitiveError(format!("invalid currency code: {currency}")))?;
+        .map_err(|_| IntlError::InvalidCurrency { code: currency.to_string() }.into_vm_error())?;
 
     let formatter = match display {
         "code" => CurrencyFormatter::try_new_code(locale.into(), currency_code, Default::default()),
         _ => CurrencyFormatter::try_new_symbol(locale.into(), currency_code, Default::default()),
     }
-    .map_err(|e| Error::PrimitiveError(format!("formatting error: {e}")))?;
+    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
-    let decimal = decimal_from_f64(n);
+    let mut decimal = decimal_from_f64(n);
+    apply_fraction_digits(&mut decimal, opts);
+    apply_sign_display(&mut decimal, opts);
     let formatted = formatter.format_fixed_decimal(&decimal);
     Ok(formatted.write_to_string().into_owned())
-}
-
-/// Convert an f64 into an ICU4X `Decimal`.
-fn decimal_from_f64(n: f64) -> Decimal {
-    if n == 0.0 || n.is_nan() || n.is_infinite() {
-        return Decimal::from(0_i64);
-    }
-    let s = format!("{}", n);
-    Decimal::try_from_str(&s).unwrap_or(Decimal::from(0_i64))
 }

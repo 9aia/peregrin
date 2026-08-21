@@ -7,7 +7,8 @@ use icu::experimental::duration::{
 };
 use writeable::Writeable;
 
-use super::common::{opt_str, optional_locale, optional_object, require_object, s};
+use super::common::{opt_bool, opt_str, optional_locale, optional_object, require_object, s};
+use super::error::IntlError;
 
 /// `intl.format_duration(duration: object, locale?: string, opts?: object) → string`
 ///
@@ -55,10 +56,10 @@ impl Function for FormatDuration {
         options.base = base;
 
         let validated = ValidatedDurationFormatterOptions::validate(options)
-            .map_err(|e| Error::PrimitiveError(format!("invalid options: {e}")))?;
+            .map_err(|e| IntlError::Formatting { message: format!("invalid options: {e}") }.into_vm_error())?;
 
         let formatter = DurationFormatter::try_new(locale.into(), validated)
-            .map_err(|e| Error::PrimitiveError(format!("formatting error: {e}")))?;
+            .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
         let formatted = formatter.format(&duration);
         Ok(s(formatted.write_to_string().into_owned()))
@@ -70,8 +71,14 @@ fn build_duration(obj: &serde_json::Map<String, serde_json::Value>) -> Duration 
         obj.get(key).and_then(|v| v.as_u64()).unwrap_or(0)
     };
 
+    let sign = if opt_bool(Some(obj), "negative").unwrap_or(false) {
+        DurationSign::Negative
+    } else {
+        DurationSign::Positive
+    };
+
     Duration {
-        sign: DurationSign::Positive,
+        sign,
         years: get("years"),
         months: get("months"),
         weeks: get("weeks"),

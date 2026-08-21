@@ -1,10 +1,10 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
-use fixed_decimal::Decimal;
 use icu::experimental::relativetime::{RelativeTimeFormatter, RelativeTimeFormatterOptions};
 use writeable::Writeable;
 
-use super::common::{opt_str, optional_locale, optional_object, require_number, require_string, s};
+use super::common::{decimal_from_f64, opt_str, optional_locale, optional_object, require_number, require_string, s};
+use super::error::IntlError;
 
 /// `intl.format_relative_time(value: number, unit: string, locale?: string, opts?: object) → string`
 ///
@@ -42,8 +42,8 @@ impl Function for FormatRelativeTime {
         }
 
         let formatter = create_formatter(&locale, unit, style, options)?;
-        let decimal = decimal_from_f64(value);
-        let formatted = formatter.format(decimal);
+        let decimal = super::common::decimal_from_f64(value);
+        let formatted = formatter.format(&decimal);
         Ok(s(formatted.write_to_string().into_owned()))
     }
 }
@@ -79,15 +79,7 @@ fn create_formatter(
         ("year", "long") => RelativeTimeFormatter::try_new_long_year(locale.into(), options),
         ("year", "short") => RelativeTimeFormatter::try_new_short_year(locale.into(), options),
         ("year", "narrow") => RelativeTimeFormatter::try_new_narrow_year(locale.into(), options),
-        _ => return Err(Error::PrimitiveError(format!("invalid unit: {unit}"))),
+        _ => return Err(IntlError::InvalidUnit { unit: unit.to_string() }.into_vm_error()),
     };
-    result.map_err(|e| Error::PrimitiveError(format!("formatting error: {e}")))
-}
-
-fn decimal_from_f64(n: f64) -> Decimal {
-    if n == 0.0 || n.is_nan() || n.is_infinite() {
-        return Decimal::from(0_i64);
-    }
-    let s = format!("{}", n);
-    Decimal::try_from_str(&s).unwrap_or(Decimal::from(0_i64))
+    result.map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())
 }

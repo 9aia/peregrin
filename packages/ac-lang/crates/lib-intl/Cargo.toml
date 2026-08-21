@@ -12,7 +12,7 @@ icu = { version = "2", features = ["unstable"] }
 icu_provider_blob = { version = "2", features = ["alloc"] }
 icu_provider = "2"
 writeable = "0.6"
-fixed_decimal = "0.7"
+fixed_decimal = { version = "0.7", features = ["ryu"] }
 
 [dev-dependencies]
 ac-ast.workspace = true
