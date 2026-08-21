@@ -1857,3 +1857,79 @@ fn trim_matches_second_arg_non_string_errors() {
     let result = call_err(&StrModule, "trim_matches", &[s("hello"), n(42.0)]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
+
+// ── regression tests for bug fixes ──────────────────────────────────
+
+#[test]
+fn repeat_infinity_errors() {
+    let result = call_err(&StrModule, "repeat", &[s("ab"), n(f64::INFINITY)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn repeat_excessive_count_errors() {
+    let result = call_err(&StrModule, "repeat", &[s("ab"), n(1_000_001.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn repeat_max_allowed() {
+    let result = call(&StrModule, "repeat", &[s(""), n(1_000_000.0)]);
+    assert_eq!(result.as_str(), Some(""));
+}
+
+#[test]
+fn pad_left_infinity_errors() {
+    let result = call_err(&StrModule, "pad_left", &[s("hi"), n(f64::INFINITY), s(" ")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn pad_left_excessive_target_errors() {
+    let result = call_err(&StrModule, "pad_left", &[s("hi"), n(1_000_001.0), s(" ")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn pad_right_infinity_errors() {
+    let result = call_err(&StrModule, "pad_right", &[s("hi"), n(f64::INFINITY), s(" ")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn pad_right_excessive_target_errors() {
+    let result = call_err(&StrModule, "pad_right", &[s("hi"), n(1_000_001.0), s(" ")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn snake_case_multibyte_uppercase() {
+    assert_eq!(
+        call(&StrModule, "snake_case", &[s("ÉlloWorld")]).as_str(),
+        Some("éllo_world")
+    );
+}
+
+#[test]
+fn kebab_case_multibyte_uppercase() {
+    assert_eq!(
+        call(&StrModule, "kebab_case", &[s("ÉlloWorld")]).as_str(),
+        Some("éllo-world")
+    );
+}
+
+#[test]
+fn camel_case_multibyte_uppercase() {
+    assert_eq!(
+        call(&StrModule, "camel_case", &[s("Éllo World")]).as_str(),
+        Some("élloWorld")
+    );
+}
+
+#[test]
+fn pascal_case_multibyte_uppercase() {
+    assert_eq!(
+        call(&StrModule, "pascal_case", &[s("Éllo World")]).as_str(),
+        Some("ÉlloWorld")
+    );
+}

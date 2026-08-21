@@ -248,6 +248,12 @@ impl Function for Repeat {
                 got: "negative number",
             });
         }
+        if !count.is_finite() || count > 1_000_000.0 {
+            return Err(Error::TypeMismatch {
+                expected: "finite number <= 1_000_000",
+                got: "non-finite or excessively large number",
+            });
+        }
         Ok(s(input.repeat(count as usize)))
     }
 }
@@ -388,6 +394,12 @@ impl Function for PadLeft {
                 got: "negative number",
             });
         }
+        if !target_len.is_finite() || target_len > 1_000_000.0 {
+            return Err(Error::TypeMismatch {
+                expected: "finite number <= 1_000_000",
+                got: "non-finite or excessively large number",
+            });
+        }
         let pad_char = require_string(&args[2])?;
         Ok(s(pad_to_len(input, target_len as usize, pad_char, true)))
     }
@@ -412,6 +424,12 @@ impl Function for PadRight {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
                 got: "negative number",
+            });
+        }
+        if !target_len.is_finite() || target_len > 1_000_000.0 {
+            return Err(Error::TypeMismatch {
+                expected: "finite number <= 1_000_000",
+                got: "non-finite or excessively large number",
             });
         }
         let pad_char = require_string(&args[2])?;
@@ -516,7 +534,7 @@ fn split_words(input: &str) -> Vec<String> {
         } else {
             if !current.is_empty()
                 && current.chars().last().map_or(false, |c| c.is_uppercase())
-                && current.len() > 1
+                && current.chars().count() > 1
             {
                 let last = current.pop().unwrap();
                 words.push(std::mem::take(&mut current));
