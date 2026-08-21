@@ -84,6 +84,27 @@ fn int_non_integer_errors() {
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
+#[test]
+fn int_single_arg() {
+    for _ in 0..100 {
+        let result = call(&RandModule, "int", &[n(6.0)]);
+        let val = extract_num(&result) as i64;
+        assert!((0..=6).contains(&val), "got {val}, expected 0..=6");
+    }
+}
+
+#[test]
+fn int_single_arg_zero() {
+    let result = call(&RandModule, "int", &[n(0.0)]);
+    assert_eq!(extract_num(&result) as i64, 0);
+}
+
+#[test]
+fn int_three_args_errors() {
+    let result = call_err(&RandModule, "int", &[n(1.0), n(2.0), n(3.0)]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
 // ── rand.float ───────────────────────────────────────────────────
 
 #[test]
@@ -105,9 +126,24 @@ fn float_with_range() {
 }
 
 #[test]
-fn float_one_arg_errors() {
-    let result = call_err(&RandModule, "float", &[n(1.0)]);
-    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+fn float_single_arg() {
+    for _ in 0..100 {
+        let result = call(&RandModule, "float", &[n(10.0)]);
+        let val = extract_num(&result);
+        assert!(val >= 0.0 && val < 10.0, "got {val}, expected [0, 10)");
+    }
+}
+
+#[test]
+fn float_single_arg_zero_errors() {
+    let result = call_err(&RandModule, "float", &[n(0.0)]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn float_single_arg_negative_errors() {
+    let result = call_err(&RandModule, "float", &[n(-5.0)]);
+    assert!(result.is_err());
 }
 
 #[test]
@@ -318,6 +354,14 @@ fn weighted_pick_empty_items_errors() {
     assert!(result.is_err());
 }
 
+#[test]
+fn weighted_pick_non_numeric_weight_errors() {
+    let items = arr(&[serde_json::json!("a"), serde_json::json!("b")]);
+    let weights = arr(&[serde_json::json!(1), serde_json::json!("not a number")]);
+    let result = call_err(&RandModule, "weighted_pick", &[items, weights]);
+    assert!(result.is_err());
+}
+
 // ── rand.string ──────────────────────────────────────────────────
 
 #[test]
@@ -351,6 +395,68 @@ fn string_alphanumeric_only() {
 fn string_negative_length_errors() {
     let result = call_err(&RandModule, "string", &[n(-1.0)]);
     assert!(result.is_err());
+}
+
+#[test]
+fn string_hex_charset() {
+    let result = call(&RandModule, "string", &[n(100.0), NonFunctionValue::new("hex")]);
+    let s = extract_str(&result);
+    assert_eq!(s.len(), 100);
+    for c in s.chars() {
+        assert!(c.is_ascii_digit() || ('a'..='f').contains(&c), "non-hex character: {c}");
+    }
+}
+
+#[test]
+fn string_numeric_charset() {
+    let result = call(&RandModule, "string", &[n(50.0), NonFunctionValue::new("numeric")]);
+    let s = extract_str(&result);
+    assert_eq!(s.len(), 50);
+    for c in s.chars() {
+        assert!(c.is_ascii_digit(), "non-numeric character: {c}");
+    }
+}
+
+#[test]
+fn string_alpha_charset() {
+    let result = call(&RandModule, "string", &[n(50.0), NonFunctionValue::new("alpha")]);
+    let s = extract_str(&result);
+    assert_eq!(s.len(), 50);
+    for c in s.chars() {
+        assert!(c.is_ascii_alphabetic(), "non-alpha character: {c}");
+    }
+}
+
+#[test]
+fn string_lower_charset() {
+    let result = call(&RandModule, "string", &[n(50.0), NonFunctionValue::new("lower")]);
+    let s = extract_str(&result);
+    assert_eq!(s.len(), 50);
+    for c in s.chars() {
+        assert!(c.is_ascii_lowercase(), "non-lower character: {c}");
+    }
+}
+
+#[test]
+fn string_upper_charset() {
+    let result = call(&RandModule, "string", &[n(50.0), NonFunctionValue::new("upper")]);
+    let s = extract_str(&result);
+    assert_eq!(s.len(), 50);
+    for c in s.chars() {
+        assert!(c.is_ascii_uppercase(), "non-upper character: {c}");
+    }
+}
+
+#[test]
+fn string_invalid_charset_errors() {
+    let result = call_err(&RandModule, "string", &[n(10.0), NonFunctionValue::new("binary")]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn string_non_string_charset_errors() {
+    let result = call_err(&RandModule, "string", &[n(10.0), n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
 // ── rand.bytes ───────────────────────────────────────────────────
@@ -445,6 +551,151 @@ fn uuid_hex_only() {
     }
 }
 
+// ── rand.gauss ───────────────────────────────────────────────────
+
+#[test]
+fn gauss_returns_finite() {
+    for _ in 0..100 {
+        let result = call(&RandModule, "gauss", &[n(0.0), n(1.0)]);
+        let val = extract_num(&result);
+        assert!(val.is_finite(), "expected finite number, got {val}");
+    }
+}
+
+#[test]
+fn gauss_mean_shift() {
+    let mean = 100.0;
+    let stddev = 1.0;
+    let mut sum = 0.0;
+    let count = 1000;
+    for _ in 0..count {
+        let result = call(&RandModule, "gauss", &[n(mean), n(stddev)]);
+        sum += extract_num(&result);
+    }
+    let sample_mean = sum / count as f64;
+    assert!((sample_mean - mean).abs() < 10.0, "sample mean {sample_mean} too far from {mean}");
+}
+
+#[test]
+fn gauss_zero_stddev_returns_mean() {
+    let result = call(&RandModule, "gauss", &[n(42.0), n(0.0)]);
+    assert_eq!(extract_num(&result), 42.0);
+}
+
+#[test]
+fn gauss_negative_stddev_errors() {
+    let result = call_err(&RandModule, "gauss", &[n(0.0), n(-1.0)]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn gauss_no_args_errors() {
+    let result = call_err(&RandModule, "gauss", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── rand.perlin_noise ────────────────────────────────────────────
+
+#[test]
+fn perlin_1d_returns_finite() {
+    let result = call(&RandModule, "perlin_noise", &[n(0.5)]);
+    let val = extract_num(&result);
+    assert!(val.is_finite());
+}
+
+#[test]
+fn perlin_1d_deterministic() {
+    let a = call(&RandModule, "perlin_noise", &[n(1.5)]);
+    let b = call(&RandModule, "perlin_noise", &[n(1.5)]);
+    assert_eq!(extract_num(&a), extract_num(&b));
+}
+
+#[test]
+fn perlin_1d_in_range() {
+    for i in 0..100 {
+        let x = i as f64 * 0.1;
+        let result = call(&RandModule, "perlin_noise", &[n(x)]);
+        let val = extract_num(&result);
+        assert!(val >= -1.5 && val <= 1.5, "1D noise {val} out of expected range at x={x}");
+    }
+}
+
+#[test]
+fn perlin_2d_returns_finite() {
+    let result = call(&RandModule, "perlin_noise", &[n(1.0), n(2.0)]);
+    let val = extract_num(&result);
+    assert!(val.is_finite());
+}
+
+#[test]
+fn perlin_2d_deterministic() {
+    let a = call(&RandModule, "perlin_noise", &[n(0.5), n(0.5)]);
+    let b = call(&RandModule, "perlin_noise", &[n(0.5), n(0.5)]);
+    assert_eq!(extract_num(&a), extract_num(&b));
+}
+
+#[test]
+fn perlin_2d_in_range() {
+    for i in 0..50 {
+        for j in 0..50 {
+            let x = i as f64 * 0.1;
+            let y = j as f64 * 0.1;
+            let result = call(&RandModule, "perlin_noise", &[n(x), n(y)]);
+            let val = extract_num(&result);
+            assert!(val >= -1.5 && val <= 1.5, "2D noise {val} out of range at ({x},{y})");
+        }
+    }
+}
+
+#[test]
+fn perlin_3d_returns_finite() {
+    let result = call(&RandModule, "perlin_noise", &[n(0.1), n(0.2), n(0.3)]);
+    let val = extract_num(&result);
+    assert!(val.is_finite());
+}
+
+#[test]
+fn perlin_3d_deterministic() {
+    let a = call(&RandModule, "perlin_noise", &[n(0.1), n(0.2), n(0.3)]);
+    let b = call(&RandModule, "perlin_noise", &[n(0.1), n(0.2), n(0.3)]);
+    assert_eq!(extract_num(&a), extract_num(&b));
+}
+
+#[test]
+fn perlin_3d_in_range() {
+    for i in 0..20 {
+        for j in 0..20 {
+            for k in 0..20 {
+                let x = i as f64 * 0.1;
+                let y = j as f64 * 0.1;
+                let z = k as f64 * 0.1;
+                let result = call(&RandModule, "perlin_noise", &[n(x), n(y), n(z)]);
+                let val = extract_num(&result);
+                assert!(val >= -1.5 && val <= 1.5, "3D noise {val} out of range at ({x},{y},{z})");
+            }
+        }
+    }
+}
+
+#[test]
+fn perlin_integer_coords_zero() {
+    let result = call(&RandModule, "perlin_noise", &[n(0.0), n(0.0)]);
+    let val = extract_num(&result);
+    assert!(val.abs() < 1e-10, "noise at integer coords should be ~0, got {val}");
+}
+
+#[test]
+fn perlin_no_args_errors() {
+    let result = call_err(&RandModule, "perlin_noise", &[]);
+    assert!(result.is_err());
+}
+
+#[test]
+fn perlin_four_args_errors() {
+    let result = call_err(&RandModule, "perlin_noise", &[n(1.0), n(2.0), n(3.0), n(4.0)]);
+    assert!(result.is_err());
+}
+
 // ── module structure ─────────────────────────────────────────────
 
 #[test]
@@ -465,6 +716,8 @@ fn all_functions_registered() {
         "string",
         "bytes",
         "uuid",
+        "gauss",
+        "perlin_noise",
     ];
     for name in &names {
         assert!(
@@ -521,4 +774,28 @@ fn vm_resolves_via_module_host() {
     assert!(host.function("rand.string").is_some());
     assert!(host.function("rand.bytes").is_some());
     assert!(host.function("rand.uuid").is_some());
+    assert!(host.function("rand.gauss").is_some());
+    assert!(host.function("rand.perlin_noise").is_some());
+}
+
+#[test]
+fn vm_gauss() {
+    let expr = Expr::call("rand.gauss", vec![Expr::value(n(0.0)), Expr::value(n(1.0))]);
+    let result = eval_expr(&expr);
+    assert!(extract_num(&result).is_finite());
+}
+
+#[test]
+fn vm_perlin_noise() {
+    let expr = Expr::call("rand.perlin_noise", vec![Expr::value(n(0.5)), Expr::value(n(0.5))]);
+    let result = eval_expr(&expr);
+    assert!(extract_num(&result).is_finite());
+}
+
+#[test]
+fn vm_int_single_arg() {
+    let expr = Expr::call("rand.int", vec![Expr::value(n(10.0))]);
+    let result = eval_expr(&expr);
+    let val = extract_num(&result) as i64;
+    assert!((0..=10).contains(&val));
 }

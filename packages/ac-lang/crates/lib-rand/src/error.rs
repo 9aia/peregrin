@@ -9,8 +9,11 @@ pub enum RandError {
     InvalidSampleCount { requested: usize, available: usize },
     WeightsLengthMismatch { items: usize, weights: usize },
     NonPositiveWeights,
+    NonNumericWeight { index: usize },
     InvalidStringLength { length: i64 },
     InvalidByteLength { length: i64 },
+    InvalidCharset { name: String },
+    InvalidNoiseDimensions,
 }
 
 impl fmt::Display for RandError {
@@ -35,11 +38,20 @@ impl fmt::Display for RandError {
             Self::NonPositiveWeights => {
                 write!(f, "weights must contain at least one positive value")
             }
+            Self::NonNumericWeight { index } => {
+                write!(f, "weight at index {index} is not a number")
+            }
             Self::InvalidStringLength { length } => {
                 write!(f, "string length must be non-negative, got {length}")
             }
             Self::InvalidByteLength { length } => {
                 write!(f, "byte length must be non-negative, got {length}")
+            }
+            Self::InvalidCharset { name } => {
+                write!(f, "unknown charset '{name}' — valid options: alphanumeric, alpha, numeric, hex, lower, upper")
+            }
+            Self::InvalidNoiseDimensions => {
+                write!(f, "perlin_noise requires 1, 2, or 3 coordinate arguments")
             }
         }
     }

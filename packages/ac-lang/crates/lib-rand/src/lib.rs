@@ -23,7 +23,8 @@
 //!
 //! - [`RandModule`] — `rand.int`, `rand.float`, `rand.bool`,
 //!   `rand.pick`, `rand.sample`, `rand.shuffle`, `rand.weighted_pick`,
-//!   `rand.string`, `rand.bytes`, `rand.uuid`
+//!   `rand.string`, `rand.bytes`, `rand.uuid`, `rand.gauss`,
+//!   `rand.perlin_noise`
 //!
 //! ## Usage
 //!
