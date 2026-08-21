@@ -17,12 +17,12 @@
 
 mod dialect;
 mod expr_parser;
-mod schema;
+mod schema_vocabulary;
 mod syntax;
 mod document_vocabulary;
 
 pub use dialect::Dialect;
 pub use expr_parser::ExprParser;
-pub use schema::{Schema, SchemaVocabulary, ValidationError};
+pub use schema_vocabulary::{Schema, SchemaVocabulary, ValidationError};
 pub use syntax::Syntax;
 pub use document_vocabulary::DocumentVocabulary;

@@ -1,7 +1,7 @@
 use ac_runtime::RuntimeValue;
 
-use crate::schema::Schema;
-use crate::schema::validation_error::ValidationError;
+use crate::schema_vocabulary::Schema;
+use crate::schema_vocabulary::validation_error::ValidationError;
 
 /// A minimal schema validator for testing.
 ///

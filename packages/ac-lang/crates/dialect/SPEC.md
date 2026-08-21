@@ -153,10 +153,10 @@ The dialect abstraction package is internally split into modules that mirror the
 | `syntax`              | `Syntax`                                              | Interpolation markers, path separator, call delimiters       |
 | `expr_parser`         | `ExprParser`                                          | Call detection, argument splitting, literal parsing          |
 | `document_vocabulary` | `DocumentVocabulary`                                  | Reserved key names and convenience aggregations              |
-| `schema`              | `Schema<V>`, `SchemaVocabulary<V>`, `ValidationError` | Schema compilation, validation, and error reporting          |
+| `schema_vocabulary`   | `Schema<V>`, `SchemaVocabulary<V>`, `ValidationError` | Schema compilation, validation, and error reporting          |
 | `dialect`             | `Dialect`                                             | Facade that aggregates the four sub-traits into one accessor |
 
-The `dialect` module depends on the other four; the other four are independent of each other. This means a consumer that only needs syntax tokens can depend on the `syntax` module alone, without pulling in the parser, vocabulary, or schema modules.
+The `dialect` module depends on the other four; the other four are independent of each other. This means a consumer that only needs syntax tokens can depend on the `syntax` module alone, without pulling in the parser, vocabulary, or schema_vocabulary modules.
 
 In Rust, each module is a directory with a `mod.rs` re-exporting the public API. In other languages, the equivalent module/file split should be used — e.g. one file per interface in JavaScript/TypeScript, or one namespace per interface in C#.
 

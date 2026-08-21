@@ -1,7 +1,7 @@
 use ac_runtime::RuntimeValue;
 
 use crate::expr_parser::ExprParser;
-use crate::schema::SchemaVocabulary;
+use crate::schema_vocabulary::SchemaVocabulary;
 use crate::syntax::Syntax;
 use crate::document_vocabulary::DocumentVocabulary;
 
