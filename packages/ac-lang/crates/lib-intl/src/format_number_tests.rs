@@ -36,43 +36,43 @@ fn obj(pairs: &[(&str, &str)]) -> NonFunctionValue {
 
 #[test]
 fn format_number_integer() {
-    let result = call(&IntlModule, "format_number", &[n(42.0)]);
+    let result = call(&IntlModule::new(), "format_number", &[n(42.0)]);
     assert_eq!(result.as_str(), Some("42"));
 }
 
 #[test]
 fn format_number_thousands() {
-    let result = call(&IntlModule, "format_number", &[n(1234567.0)]);
+    let result = call(&IntlModule::new(), "format_number", &[n(1234567.0)]);
     assert_eq!(result.as_str(), Some("1,234,567"));
 }
 
 #[test]
 fn format_number_decimal() {
-    let result = call(&IntlModule, "format_number", &[n(1234567.89)]);
+    let result = call(&IntlModule::new(), "format_number", &[n(1234567.89)]);
     assert_eq!(result.as_str(), Some("1,234,567.89"));
 }
 
 #[test]
 fn format_number_zero() {
-    let result = call(&IntlModule, "format_number", &[n(0.0)]);
+    let result = call(&IntlModule::new(), "format_number", &[n(0.0)]);
     assert_eq!(result.as_str(), Some("0"));
 }
 
 #[test]
 fn format_number_negative() {
-    let result = call(&IntlModule, "format_number", &[n(-1234.0)]);
+    let result = call(&IntlModule::new(), "format_number", &[n(-1234.0)]);
     assert_eq!(result.as_str(), Some("-1,234"));
 }
 
 #[test]
 fn format_number_no_args_errors() {
-    let result = call_err(&IntlModule, "format_number", &[]);
+    let result = call_err(&IntlModule::new(), "format_number", &[]);
     assert!(matches!(result, Err(Error::ArgumentCount { .. })));
 }
 
 #[test]
 fn format_number_non_number_errors() {
-    let result = call_err(&IntlModule, "format_number", &[s("x")]);
+    let result = call_err(&IntlModule::new(), "format_number", &[s("x")]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
@@ -80,7 +80,7 @@ fn format_number_non_number_errors() {
 
 #[test]
 fn format_number_pt_uses_dot_separator() {
-    let result = call(&IntlModule, "format_number", &[n(1234567.89), s("pt-BR")]);
+    let result = call(&IntlModule::new(), "format_number", &[n(1234567.89), s("pt-BR")]);
     assert_eq!(result.as_str(), Some("1.234.567,89"));
 }
 
@@ -88,7 +88,7 @@ fn format_number_pt_uses_dot_separator() {
 
 #[test]
 fn format_number_de_uses_dot_separator() {
-    let result = call(&IntlModule, "format_number", &[n(1234567.89), s("de")]);
+    let result = call(&IntlModule::new(), "format_number", &[n(1234567.89), s("de")]);
     assert_eq!(result.as_str(), Some("1.234.567,89"));
 }
 
@@ -96,7 +96,7 @@ fn format_number_de_uses_dot_separator() {
 
 #[test]
 fn format_number_fr_uses_narrow_nbsp_separator() {
-    let result = call(&IntlModule, "format_number", &[n(1234567.89), s("fr")]);
+    let result = call(&IntlModule::new(), "format_number", &[n(1234567.89), s("fr")]);
     assert_eq!(result.as_str(), Some("1\u{202f}234\u{202f}567,89"));
 }
 
@@ -104,7 +104,7 @@ fn format_number_fr_uses_narrow_nbsp_separator() {
 
 #[test]
 fn format_number_bangla_digits() {
-    let result = call(&IntlModule, "format_number", &[n(1000007.0), s("bn")]);
+    let result = call(&IntlModule::new(), "format_number", &[n(1000007.0), s("bn")]);
     assert_eq!(result.as_str(), Some("১০,০০,০০৭"));
 }
 
@@ -112,7 +112,7 @@ fn format_number_bangla_digits() {
 
 #[test]
 fn format_number_compact() {
-    let result = call(&IntlModule, "format_number", &[n(1000000.0), s("en"), obj(&[("notation", "compact")])]);
+    let result = call(&IntlModule::new(), "format_number", &[n(1000000.0), s("en"), obj(&[("notation", "compact")])]);
     let formatted = result.as_str().expect("string result");
     assert!(!formatted.is_empty());
 }
@@ -121,25 +121,25 @@ fn format_number_compact() {
 
 #[test]
 fn format_number_percent_half() {
-    let result = call(&IntlModule, "format_number", &[n(0.5), s("en"), obj(&[("style", "percent")])]);
+    let result = call(&IntlModule::new(), "format_number", &[n(0.5), s("en"), obj(&[("style", "percent")])]);
     assert_eq!(result.as_str(), Some("50%"));
 }
 
 #[test]
 fn format_number_percent_whole() {
-    let result = call(&IntlModule, "format_number", &[n(1.0), s("en"), obj(&[("style", "percent")])]);
+    let result = call(&IntlModule::new(), "format_number", &[n(1.0), s("en"), obj(&[("style", "percent")])]);
     assert_eq!(result.as_str(), Some("100%"));
 }
 
 #[test]
 fn format_number_percent_decimal() {
-    let result = call(&IntlModule, "format_number", &[n(0.1234), s("en"), obj(&[("style", "percent")])]);
+    let result = call(&IntlModule::new(), "format_number", &[n(0.1234), s("en"), obj(&[("style", "percent")])]);
     assert_eq!(result.as_str(), Some("12.34%"));
 }
 
 #[test]
 fn format_number_percent_german() {
-    let result = call(&IntlModule, "format_number", &[n(0.5), s("de"), obj(&[("style", "percent")])]);
+    let result = call(&IntlModule::new(), "format_number", &[n(0.5), s("de"), obj(&[("style", "percent")])]);
     assert_eq!(result.as_str(), Some("50\u{a0}%"));
 }
 
@@ -147,37 +147,37 @@ fn format_number_percent_german() {
 
 #[test]
 fn format_number_currency_usd_symbol() {
-    let result = call(&IntlModule, "format_number", &[n(1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD")])]);
+    let result = call(&IntlModule::new(), "format_number", &[n(1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD")])]);
     assert_eq!(result.as_str(), Some("$1,234.56"));
 }
 
 #[test]
 fn format_number_currency_usd_code() {
-    let result = call(&IntlModule, "format_number", &[n(1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD"), ("currencyDisplay", "code")])]);
+    let result = call(&IntlModule::new(), "format_number", &[n(1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD"), ("currencyDisplay", "code")])]);
     assert_eq!(result.as_str(), Some("USD\u{a0}1,234.56"));
 }
 
 #[test]
 fn format_number_currency_eur_german() {
-    let result = call(&IntlModule, "format_number", &[n(999.99), s("de"), obj(&[("style", "currency"), ("currency", "EUR")])]);
+    let result = call(&IntlModule::new(), "format_number", &[n(999.99), s("de"), obj(&[("style", "currency"), ("currency", "EUR")])]);
     assert_eq!(result.as_str(), Some("999,99\u{a0}€"));
 }
 
 #[test]
 fn format_number_currency_jpy() {
-    let result = call(&IntlModule, "format_number", &[n(5000.0), s("ja"), obj(&[("style", "currency"), ("currency", "JPY")])]);
+    let result = call(&IntlModule::new(), "format_number", &[n(5000.0), s("ja"), obj(&[("style", "currency"), ("currency", "JPY")])]);
     assert_eq!(result.as_str(), Some("￥5,000"));
 }
 
 #[test]
 fn format_number_currency_missing_code_errors() {
-    let result = call_err(&IntlModule, "format_number", &[n(100.0), s("en"), obj(&[("style", "currency")])]);
+    let result = call_err(&IntlModule::new(), "format_number", &[n(100.0), s("en"), obj(&[("style", "currency")])]);
     assert!(result.is_err());
 }
 
 #[test]
 fn format_number_currency_invalid_code_errors() {
-    let result = call_err(&IntlModule, "format_number", &[n(100.0), s("en"), obj(&[("style", "currency"), ("currency", "dollar")])]);
+    let result = call_err(&IntlModule::new(), "format_number", &[n(100.0), s("en"), obj(&[("style", "currency"), ("currency", "dollar")])]);
     assert!(result.is_err());
 }
 
@@ -188,7 +188,7 @@ use ac_runtime_core::ModuleHost;
 use ac_vm::{Host, Vm};
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
-    let host = ModuleHost::new().with(IntlModule);
+    let host = ModuleHost::new().with(IntlModule::new());
     let vm = Vm::new(host);
     let mut ctx = Context::new();
     vm.eval(expr, &mut ctx).expect("eval succeeds")
@@ -203,6 +203,6 @@ fn vm_format_number() {
 
 #[test]
 fn vm_resolves_via_module_host() {
-    let host = ModuleHost::new().with(IntlModule);
+    let host = ModuleHost::new().with(IntlModule::new());
     assert!(host.function("intl.format_number").is_some());
 }

@@ -11,7 +11,7 @@
 //! ```text
 //! ac-runtime-core          ac-lib-intl
 //! ─────────────            ────────────
-//! Module trait             IntlModule (Copy)
+//! Module trait             IntlModule
 //! ModuleHost               ICU4X compiled_data (600+ locales)
 //!                          IntlError → VmError
 //!                          *Function structs
@@ -20,6 +20,9 @@
 //! All locale data is provided by ICU4X's `compiled_data` feature,
 //! which bundles CLDR data at compile time. This gives full CLDR
 //! coverage (600+ locales) with no runtime data loading.
+//!
+//! For smaller binaries, use [`IntlModule::with_blob_provider`] to
+//! load a subset of CLDR data at runtime from a `.postcard` blob.
 //!
 //! ## Functions
 //!
@@ -53,11 +56,13 @@ mod format_list;
 mod format_number;
 mod format_relative_time;
 pub mod module;
+pub mod provider;
 mod segment;
 mod select_plural;
 
 pub use error::IntlError;
 pub use module::IntlModule;
+pub use provider::IntlProvider;
 
 #[cfg(test)]
 mod compare_strings_tests;
@@ -73,6 +78,8 @@ mod format_list_tests;
 mod format_number_tests;
 #[cfg(test)]
 mod format_relative_time_tests;
+#[cfg(test)]
+mod provider_tests;
 #[cfg(test)]
 mod segment_tests;
 #[cfg(test)]

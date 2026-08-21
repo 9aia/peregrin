@@ -37,7 +37,7 @@ fn obj(pairs: &[(&str, &str)]) -> NonFunctionValue {
 #[test]
 fn select_plural_en_one() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(1.0)]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(1.0)]).as_str(),
         Some("one")
     );
 }
@@ -45,7 +45,7 @@ fn select_plural_en_one() {
 #[test]
 fn select_plural_en_other() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(5.0)]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(5.0)]).as_str(),
         Some("other")
     );
 }
@@ -53,7 +53,7 @@ fn select_plural_en_other() {
 #[test]
 fn select_plural_en_zero() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(0.0)]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(0.0)]).as_str(),
         Some("other")
     );
 }
@@ -63,7 +63,7 @@ fn select_plural_en_zero() {
 #[test]
 fn select_plural_en_ordinal_one() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(1.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(1.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
         Some("one")
     );
 }
@@ -71,7 +71,7 @@ fn select_plural_en_ordinal_one() {
 #[test]
 fn select_plural_en_ordinal_two() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(2.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(2.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
         Some("two")
     );
 }
@@ -79,7 +79,7 @@ fn select_plural_en_ordinal_two() {
 #[test]
 fn select_plural_en_ordinal_few() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(3.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(3.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
         Some("few")
     );
 }
@@ -87,7 +87,7 @@ fn select_plural_en_ordinal_few() {
 #[test]
 fn select_plural_en_ordinal_other() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(11.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(11.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
         Some("other")
     );
 }
@@ -97,7 +97,7 @@ fn select_plural_en_ordinal_other() {
 #[test]
 fn select_plural_ar_zero() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(0.0), s("ar")]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(0.0), s("ar")]).as_str(),
         Some("zero")
     );
 }
@@ -105,7 +105,7 @@ fn select_plural_ar_zero() {
 #[test]
 fn select_plural_ar_one() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(1.0), s("ar")]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(1.0), s("ar")]).as_str(),
         Some("one")
     );
 }
@@ -113,7 +113,7 @@ fn select_plural_ar_one() {
 #[test]
 fn select_plural_ar_two() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(2.0), s("ar")]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(2.0), s("ar")]).as_str(),
         Some("two")
     );
 }
@@ -121,7 +121,7 @@ fn select_plural_ar_two() {
 #[test]
 fn select_plural_ar_few() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(3.0), s("ar")]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(3.0), s("ar")]).as_str(),
         Some("few")
     );
 }
@@ -129,7 +129,7 @@ fn select_plural_ar_few() {
 #[test]
 fn select_plural_ar_many() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(11.0), s("ar")]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(11.0), s("ar")]).as_str(),
         Some("many")
     );
 }
@@ -137,7 +137,7 @@ fn select_plural_ar_many() {
 #[test]
 fn select_plural_ar_other() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(100.0), s("ar")]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(100.0), s("ar")]).as_str(),
         Some("other")
     );
 }
@@ -147,7 +147,7 @@ fn select_plural_ar_other() {
 #[test]
 fn select_plural_ja_one() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(1.0), s("ja")]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(1.0), s("ja")]).as_str(),
         Some("other")
     );
 }
@@ -157,7 +157,7 @@ fn select_plural_ja_one() {
 #[test]
 fn select_plural_ru_few() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(2.0), s("ru")]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(2.0), s("ru")]).as_str(),
         Some("few")
     );
 }
@@ -165,7 +165,7 @@ fn select_plural_ru_few() {
 #[test]
 fn select_plural_ru_many() {
     assert_eq!(
-        call(&IntlModule, "select_plural", &[n(5.0), s("ru")]).as_str(),
+        call(&IntlModule::new(), "select_plural", &[n(5.0), s("ru")]).as_str(),
         Some("many")
     );
 }
@@ -174,13 +174,13 @@ fn select_plural_ru_many() {
 
 #[test]
 fn select_plural_no_args_errors() {
-    let result = call_err(&IntlModule, "select_plural", &[]);
+    let result = call_err(&IntlModule::new(), "select_plural", &[]);
     assert!(matches!(result, Err(Error::ArgumentCount { .. })));
 }
 
 #[test]
 fn select_plural_non_number_errors() {
-    let result = call_err(&IntlModule, "select_plural", &[s("x")]);
+    let result = call_err(&IntlModule::new(), "select_plural", &[s("x")]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
@@ -191,7 +191,7 @@ use ac_runtime_core::ModuleHost;
 use ac_vm::Vm;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
-    let host = ModuleHost::new().with(IntlModule);
+    let host = ModuleHost::new().with(IntlModule::new());
     let vm = Vm::new(host);
     let mut ctx = Context::new();
     vm.eval(expr, &mut ctx).expect("eval succeeds")

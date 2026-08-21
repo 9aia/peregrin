@@ -5,13 +5,15 @@ use ac_vm::{Context, Error};
 use super::module::IntlModule;
 
 fn call(args: &[NonFunctionValue]) -> NonFunctionValue {
-    let func = IntlModule.function("display_name").expect("function exists");
+    let module = IntlModule::new();
+    let func = module.function("display_name").expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_err(args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
-    let func = IntlModule.function("display_name").expect("function exists");
+    let module = IntlModule::new();
+    let func = module.function("display_name").expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
 }
@@ -80,7 +82,7 @@ use ac_runtime_core::ModuleHost;
 use ac_vm::Vm;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
-    let host = ModuleHost::new().with(IntlModule);
+    let host = ModuleHost::new().with(IntlModule::new());
     let vm = Vm::new(host);
     let mut ctx = Context::new();
     vm.eval(expr, &mut ctx).expect("eval succeeds")

@@ -37,31 +37,31 @@ fn obj(pairs: &[(&str, &str)]) -> NonFunctionValue {
 
 #[test]
 fn format_list_empty() {
-    let result = call(&IntlModule, "format_list", &[arr(&[])]);
+    let result = call(&IntlModule::new(), "format_list", &[arr(&[])]);
     assert_eq!(result.as_str(), Some(""));
 }
 
 #[test]
 fn format_list_single() {
-    let result = call(&IntlModule, "format_list", &[arr(&["a"])]);
+    let result = call(&IntlModule::new(), "format_list", &[arr(&["a"])]);
     assert_eq!(result.as_str(), Some("a"));
 }
 
 #[test]
 fn format_list_pair() {
-    let result = call(&IntlModule, "format_list", &[arr(&["a", "b"])]);
+    let result = call(&IntlModule::new(), "format_list", &[arr(&["a", "b"])]);
     assert_eq!(result.as_str(), Some("a and b"));
 }
 
 #[test]
 fn format_list_three() {
-    let result = call(&IntlModule, "format_list", &[arr(&["a", "b", "c"])]);
+    let result = call(&IntlModule::new(), "format_list", &[arr(&["a", "b", "c"])]);
     assert_eq!(result.as_str(), Some("a, b, and c"));
 }
 
 #[test]
 fn format_list_no_args_errors() {
-    let result = call_err(&IntlModule, "format_list", &[]);
+    let result = call_err(&IntlModule::new(), "format_list", &[]);
     assert!(matches!(result, Err(Error::ArgumentCount { .. })));
 }
 
@@ -69,7 +69,7 @@ fn format_list_no_args_errors() {
 
 #[test]
 fn format_list_es_pair() {
-    let result = call(&IntlModule, "format_list", &[arr(&["España", "Suiza"]), s("es")]);
+    let result = call(&IntlModule::new(), "format_list", &[arr(&["España", "Suiza"]), s("es")]);
     assert_eq!(result.as_str(), Some("España y Suiza"));
 }
 
@@ -77,7 +77,7 @@ fn format_list_es_pair() {
 
 #[test]
 fn format_list_disjunction() {
-    let result = call(&IntlModule, "format_list", &[arr(&["a", "b", "c"]), s("en"), obj(&[("type", "disjunction")])]);
+    let result = call(&IntlModule::new(), "format_list", &[arr(&["a", "b", "c"]), s("en"), obj(&[("type", "disjunction")])]);
     assert_eq!(result.as_str(), Some("a, b, or c"));
 }
 
@@ -85,7 +85,7 @@ fn format_list_disjunction() {
 
 #[test]
 fn format_list_short_style() {
-    let result = call(&IntlModule, "format_list", &[arr(&["a", "b"]), s("en"), obj(&[("style", "short")])]);
+    let result = call(&IntlModule::new(), "format_list", &[arr(&["a", "b"]), s("en"), obj(&[("style", "short")])]);
     let formatted = result.as_str().expect("string result");
     assert!(formatted.contains("a") && formatted.contains("b"));
 }
@@ -97,7 +97,7 @@ use ac_runtime_core::ModuleHost;
 use ac_vm::Vm;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
-    let host = ModuleHost::new().with(IntlModule);
+    let host = ModuleHost::new().with(IntlModule::new());
     let vm = Vm::new(host);
     let mut ctx = Context::new();
     vm.eval(expr, &mut ctx).expect("eval succeeds")
