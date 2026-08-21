@@ -1,6 +1,6 @@
 # AC Dialect Specification
 
-**Status:** Draft
+**Status:** Approved
 
 The AC Language Specification ([LANG.md](./LANG.md)) fixes one canonical syntax. This document specifies the Dialect API — the interface that abstracts the language's syntax and vocabulary decisions behind a single contract, so implementations can be structured around one source of truth rather than hardcoding tokens across dozens of functions.
 
