@@ -4,7 +4,7 @@ use crate::schema_vocabulary::{Schema, SchemaVocabulary};
 use crate::schema_vocabulary::schema_stub::StubSchema;
 
 /// A minimal schema vocabulary for testing.
-pub(crate) struct StubVocabulary;
+pub struct StubVocabulary;
 
 impl SchemaVocabulary<RuntimeValue> for StubVocabulary {
     fn id(&self) -> &'static str {

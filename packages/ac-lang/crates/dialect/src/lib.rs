@@ -17,7 +17,7 @@
 
 #![allow(clippy::module_inception)]
 
-mod dialect;
+pub mod dialect;
 mod expr_parser;
 mod schema_vocabulary;
 mod syntax;
