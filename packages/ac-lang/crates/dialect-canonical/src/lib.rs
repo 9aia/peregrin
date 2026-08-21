@@ -16,6 +16,8 @@
 //! This is the only shipped dialect. See [SPEC.md](../dialect/SPEC.md)
 //! for the full dialect specification.
 
+#![allow(clippy::module_inception)]
+
 mod dialect;
 mod expr_parser;
 mod schema_vocabulary;

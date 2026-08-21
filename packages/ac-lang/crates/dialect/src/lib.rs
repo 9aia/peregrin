@@ -15,6 +15,8 @@
 //! The `Dialect` trait lets the Rust implementation be parameterized without
 //! changing the spec. The canonical implementation lives in `ac-dialect-canonical`.
 
+#![allow(clippy::module_inception)]
+
 mod dialect;
 mod expr_parser;
 mod schema_vocabulary;
