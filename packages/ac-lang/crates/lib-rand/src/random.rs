@@ -87,6 +87,9 @@ impl Function for Float {
                 if min > max {
                     return Err(RandError::InvalidRange { min, max }.into());
                 }
+                if min == max {
+                    return Ok(num(min));
+                }
                 let result = rand::rng().random_range(min..max);
                 Ok(num(result))
             }
@@ -490,10 +493,10 @@ fn perlin_2d(x: f64, y: f64) -> f64 {
     let xf = x - x.floor();
     let yf = y - y.floor();
 
-    let aa = grad(PERM[(perm_index(xi) + perm_index(yi)) % 256] as u8, xf, yf, 0.0);
-    let ba = grad(PERM[(perm_index(xi + 1) + perm_index(yi)) % 256] as u8, xf - 1.0, yf, 0.0);
-    let ab = grad(PERM[(perm_index(xi) + perm_index(yi + 1)) % 256] as u8, xf, yf - 1.0, 0.0);
-    let bb = grad(PERM[(perm_index(xi + 1) + perm_index(yi + 1)) % 256] as u8, xf - 1.0, yf - 1.0, 0.0);
+    let aa = grad(PERM[(perm_index(xi) + perm_index(yi)) % 256], xf, yf, 0.0);
+    let ba = grad(PERM[(perm_index(xi + 1) + perm_index(yi)) % 256], xf - 1.0, yf, 0.0);
+    let ab = grad(PERM[(perm_index(xi) + perm_index(yi + 1)) % 256], xf, yf - 1.0, 0.0);
+    let bb = grad(PERM[(perm_index(xi + 1) + perm_index(yi + 1)) % 256], xf - 1.0, yf - 1.0, 0.0);
 
     let u = fade(xf);
     let v = fade(yf);
@@ -510,14 +513,14 @@ fn perlin_3d(x: f64, y: f64, z: f64) -> f64 {
 
     let p = |i: i32| perm_index(i);
 
-    let aaa = grad(PERM[(p(xi) + p(yi) + p(zi)) % 256] as u8, xf, yf, zf);
-    let baa = grad(PERM[(p(xi + 1) + p(yi) + p(zi)) % 256] as u8, xf - 1.0, yf, zf);
-    let aba = grad(PERM[(p(xi) + p(yi + 1) + p(zi)) % 256] as u8, xf, yf - 1.0, zf);
-    let bba = grad(PERM[(p(xi + 1) + p(yi + 1) + p(zi)) % 256] as u8, xf - 1.0, yf - 1.0, zf);
-    let aab = grad(PERM[(p(xi) + p(yi) + p(zi + 1)) % 256] as u8, xf, yf, zf - 1.0);
-    let bab = grad(PERM[(p(xi + 1) + p(yi) + p(zi + 1)) % 256] as u8, xf - 1.0, yf, zf - 1.0);
-    let abb = grad(PERM[(p(xi) + p(yi + 1) + p(zi + 1)) % 256] as u8, xf, yf - 1.0, zf - 1.0);
-    let bbb = grad(PERM[(p(xi + 1) + p(yi + 1) + p(zi + 1)) % 256] as u8, xf - 1.0, yf - 1.0, zf - 1.0);
+    let aaa = grad(PERM[(p(xi) + p(yi) + p(zi)) % 256], xf, yf, zf);
+    let baa = grad(PERM[(p(xi + 1) + p(yi) + p(zi)) % 256], xf - 1.0, yf, zf);
+    let aba = grad(PERM[(p(xi) + p(yi + 1) + p(zi)) % 256], xf, yf - 1.0, zf);
+    let bba = grad(PERM[(p(xi + 1) + p(yi + 1) + p(zi)) % 256], xf - 1.0, yf - 1.0, zf);
+    let aab = grad(PERM[(p(xi) + p(yi) + p(zi + 1)) % 256], xf, yf, zf - 1.0);
+    let bab = grad(PERM[(p(xi + 1) + p(yi) + p(zi + 1)) % 256], xf - 1.0, yf, zf - 1.0);
+    let abb = grad(PERM[(p(xi) + p(yi + 1) + p(zi + 1)) % 256], xf, yf - 1.0, zf - 1.0);
+    let bbb = grad(PERM[(p(xi + 1) + p(yi + 1) + p(zi + 1)) % 256], xf - 1.0, yf - 1.0, zf - 1.0);
 
     let u = fade(xf);
     let v = fade(yf);
@@ -531,47 +534,65 @@ fn perlin_3d(x: f64, y: f64, z: f64) -> f64 {
     lerp(y1, y2, w)
 }
 
-/// `rand.perlin_noise(x: number, y?: number, z?: number) → number`
+/// `rand.perlin_1d(x: number) → number`
 ///
-/// Returns Perlin noise value at the given coordinates. Output is
+/// Returns 1D Perlin noise value at coordinate `x`. Output is
 /// approximately in the range `[-1, 1]`.
-///
-/// - 1 argument: 1D noise
-/// - 2 arguments: 2D noise
-/// - 3 arguments: 3D noise
 ///
 /// Uses a fixed permutation table (Ken Perlin's original) for
 /// deterministic results across runs.
 ///
-/// Examples:
-/// - `rand.perlin_noise(0.5)` → 1D noise at x=0.5
-/// - `rand.perlin_noise(1.0, 2.0)` → 2D noise at (1, 2)
-/// - `rand.perlin_noise(0.1, 0.2, 0.3)` → 3D noise
+/// Example:
+/// - `rand.perlin_1d(0.5)` → noise at x=0.5
 #[derive(Clone, Copy)]
-pub struct PerlinNoise;
+pub struct Perlin1D;
 
-impl Function for PerlinNoise {
+impl Function for Perlin1D {
     fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
-        match args.len() {
-            1 => {
-                let x = require_number(args, 0)?;
-                Ok(num(perlin_1d(x)))
-            }
-            2 => {
-                let x = require_number(args, 0)?;
-                let y = require_number(args, 1)?;
-                Ok(num(perlin_2d(x, y)))
-            }
-            3 => {
-                let x = require_number(args, 0)?;
-                let y = require_number(args, 1)?;
-                let z = require_number(args, 2)?;
-                Ok(num(perlin_3d(x, y, z)))
-            }
-            n => {
-                let _ = n;
-                Err(RandError::InvalidNoiseDimensions.into())
-            }
-        }
+        let x = require_number(args, 0)?;
+        Ok(num(perlin_1d(x)))
+    }
+}
+
+/// `rand.perlin_2d(x: number, y: number) → number`
+///
+/// Returns 2D Perlin noise value at coordinates `(x, y)`. Output is
+/// approximately in the range `[-1, 1]`.
+///
+/// Uses a fixed permutation table (Ken Perlin's original) for
+/// deterministic results across runs.
+///
+/// Example:
+/// - `rand.perlin_2d(1.0, 2.0)` → noise at (1, 2)
+#[derive(Clone, Copy)]
+pub struct Perlin2D;
+
+impl Function for Perlin2D {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let x = require_number(args, 0)?;
+        let y = require_number(args, 1)?;
+        Ok(num(perlin_2d(x, y)))
+    }
+}
+
+/// `rand.perlin_3d(x: number, y: number, z: number) → number`
+///
+/// Returns 3D Perlin noise value at coordinates `(x, y, z)`. Output is
+/// approximately in the range `[-1, 1]`.
+///
+/// Uses a fixed permutation table (Ken Perlin's original) for
+/// deterministic results across runs.
+///
+/// Example:
+/// - `rand.perlin_3d(0.1, 0.2, 0.3)` → noise at (0.1, 0.2, 0.3)
+#[derive(Clone, Copy)]
+pub struct Perlin3D;
+
+impl Function for Perlin3D {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let x = require_number(args, 0)?;
+        let y = require_number(args, 1)?;
+        let z = require_number(args, 2)?;
+        Ok(num(perlin_3d(x, y, z)))
     }
 }

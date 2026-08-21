@@ -1,7 +1,7 @@
 use ac_runtime_core::Module;
 use ac_vm::Function;
 
-use super::random::{Bool, Bytes, Float, Gauss, Int, PerlinNoise, Pick, Sample, Shuffle, String_, Uuid, WeightedPick};
+use super::random::{Bool, Bytes, Float, Gauss, Int, Perlin1D, Perlin2D, Perlin3D, Pick, Sample, Shuffle, String_, Uuid, WeightedPick};
 
 /// The `rand` module — random number generation and sampling.
 ///
@@ -11,11 +11,11 @@ use super::random::{Bool, Bytes, Float, Gauss, Int, PerlinNoise, Pick, Sample, S
 /// `rand.shuffle(array)`, `rand.weighted_pick(items, weights)`,
 /// `rand.string(length, charset?)`, `rand.bytes(length)`,
 /// `rand.uuid()`, `rand.gauss(mean, stddev)`,
-/// `rand.perlin_noise(x, y?, z?)` in AC expressions.
+/// `rand.perlin_1d(x)`, `rand.perlin_2d(x, y)`, `rand.perlin_3d(x, y, z)` in AC expressions.
 ///
 /// All functions use the system RNG via the `rand` crate.
 /// Each call is independent — there is no shared state between calls.
-/// `perlin_noise` is deterministic (fixed permutation table).
+/// Perlin noise functions are deterministic (fixed permutation table).
 #[derive(Clone, Copy)]
 pub struct RandModule;
 
@@ -37,7 +37,9 @@ impl Module for RandModule {
             "bytes" => Some(&Bytes),
             "uuid" => Some(&Uuid),
             "gauss" => Some(&Gauss),
-            "perlin_noise" => Some(&PerlinNoise),
+            "perlin_1d" => Some(&Perlin1D),
+            "perlin_2d" => Some(&Perlin2D),
+            "perlin_3d" => Some(&Perlin3D),
             _ => None,
         }
     }

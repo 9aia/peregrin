@@ -24,7 +24,7 @@
 //! - [`RandModule`] — `rand.int`, `rand.float`, `rand.bool`,
 //!   `rand.pick`, `rand.sample`, `rand.shuffle`, `rand.weighted_pick`,
 //!   `rand.string`, `rand.bytes`, `rand.uuid`, `rand.gauss`,
-//!   `rand.perlin_noise`
+//!   `rand.perlin_1d`, `rand.perlin_2d`, `rand.perlin_3d`
 //!
 //! ## Usage
 //!
@@ -39,7 +39,8 @@
 //! Expressions can then call `rand.int(1, 6)`, `rand.float()`,
 //! `rand.bool()`, `rand.pick(["a", "b", "c"])`, `rand.sample([1,2,3], 2)`,
 //! `rand.shuffle([1,2,3])`, `rand.weighted_pick(["a","b"], [1,3])`,
-//! `rand.string(16)`, `rand.bytes(8)`, `rand.uuid()`, etc.
+//! `rand.string(16)`, `rand.bytes(8)`, `rand.uuid()`, `rand.gauss(0, 1)`,
+//! `rand.perlin_1d(0.5)`, `rand.perlin_2d(1, 2)`, `rand.perlin_3d(0.1, 0.2, 0.3)`, etc.
 
 mod common;
 mod error;

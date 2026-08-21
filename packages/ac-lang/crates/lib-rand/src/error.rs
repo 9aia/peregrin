@@ -13,7 +13,6 @@ pub enum RandError {
     InvalidStringLength { length: i64 },
     InvalidByteLength { length: i64 },
     InvalidCharset { name: String },
-    InvalidNoiseDimensions,
 }
 
 impl fmt::Display for RandError {
@@ -49,9 +48,6 @@ impl fmt::Display for RandError {
             }
             Self::InvalidCharset { name } => {
                 write!(f, "unknown charset '{name}' — valid options: alphanumeric, alpha, numeric, hex, lower, upper")
-            }
-            Self::InvalidNoiseDimensions => {
-                write!(f, "perlin_noise requires 1, 2, or 3 coordinate arguments")
             }
         }
     }
