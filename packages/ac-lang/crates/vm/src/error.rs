@@ -27,6 +27,17 @@ pub enum Error {
         expected: usize,
         got: usize,
     },
+
+    /// The VM yielded control to the caller.
+    ///
+    /// A host function signalled a yield. The caller can inspect the
+    /// yielded [`RuntimeValue`] and decide whether to resume evaluation
+    /// by calling `eval_async` again.
+    ///
+    /// In the async VM, implicit yields also occur at `.await` points
+    /// when a host future is not yet ready — these are handled by the
+    /// executor and do not produce this variant.
+    Yield(ac_runtime::RuntimeValue),
 }
 
 impl std::fmt::Display for Error {
@@ -46,6 +57,9 @@ impl std::fmt::Display for Error {
             }
             Error::ArgumentCount { expected, got } => {
                 write!(f, "argument count mismatch: expected {expected}, got {got}")
+            }
+            Error::Yield(value) => {
+                write!(f, "yielded: {value:?}")
             }
         }
     }

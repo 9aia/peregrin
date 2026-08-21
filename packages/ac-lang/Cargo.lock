@@ -294,6 +294,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-host-cache"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-runtime",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
 name = "ac-lang"
 version = "0.1.0"
 dependencies = [
@@ -375,6 +385,19 @@ dependencies = [
  "ac-host",
  "ac-runtime",
  "ac-runtime-core",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-meta"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-dialect",
+ "ac-dialect-canonical",
+ "ac-host",
+ "ac-runtime",
  "ac-vm",
  "serde_json",
 ]
@@ -623,6 +646,7 @@ dependencies = [
  "ac-ast",
  "ac-runtime",
  "indexmap",
+ "serde_json",
 ]
 
 [[package]]

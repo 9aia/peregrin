@@ -1,3 +1,6 @@
+use std::future::Future;
+use std::pin::Pin;
+
 use ac_runtime::RuntimeValue;
 
 use crate::Error;
@@ -44,4 +47,25 @@ pub trait Eval {
         expr: &str,
         vars: &[(String, RuntimeValue)],
     ) -> Result<RuntimeValue, Error>;
+}
+
+/// An async callback that evaluates an expression string with variable bindings.
+///
+/// Like [`Eval`], but returns a `Future`. This allows async host
+/// functions (e.g. `fp.map` with an async predicate) to evaluate
+/// expression strings that may themselves contain async calls.
+///
+/// The async VM ([`Vm::eval_async`](crate::Vm::eval_async)) uses this
+/// when set on a [`Context`](crate::Context) via
+/// [`Context::set_async_eval`](crate::Context::set_async_eval).
+pub trait AsyncEval {
+    /// Evaluate an expression string with the given variable bindings.
+    ///
+    /// Returns a boxed future that resolves to the evaluated
+    /// [`RuntimeValue`] or an [`Error`].
+    fn eval_expr_async<'a>(
+        &'a self,
+        expr: &'a str,
+        vars: &'a [(String, RuntimeValue)],
+    ) -> Pin<Box<dyn Future<Output = Result<RuntimeValue, Error>> + 'a>>;
 }

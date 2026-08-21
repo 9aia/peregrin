@@ -70,4 +70,49 @@ impl<H: Host> Vm<H> {
             }
         }
     }
+
+    /// Evaluates an expression asynchronously.
+    ///
+    /// Like [`eval`](Vm::eval), but supports async host functions.
+    /// The VM checks [`Host::function`] first (sync), then falls back
+    /// to [`Host::async_function`] (async). This means a host can
+    /// provide both sync and async functions, and the VM will use
+    /// whichever is available.
+    ///
+    /// # Yielding
+    ///
+    /// Async host functions can yield control to the executor by
+    /// awaiting a pending future. The entire evaluation suspends
+    /// until the future is ready.
+    ///
+    /// To explicitly yield a value to the caller, a host function
+    /// returns `Err(Error::Yield(value))`. The caller receives
+    /// `Err(Error::Yield(value))` and can inspect the yielded value.
+    pub async fn eval_async(
+        &mut self,
+        expr: &RuntimeExpr,
+        ctx: &mut Context,
+    ) -> Result<RuntimeValue, Error> {
+        match expr {
+            Expr::Value(value) => Ok(value.clone()),
+
+            Expr::Call { name, args } => {
+                let mut evaluated_args = Vec::with_capacity(args.len());
+                for arg in args {
+                    let value = Box::pin(self.eval_async(arg, ctx)).await?;
+                    evaluated_args.push(value);
+                }
+
+                if let Some(function) = self.host.function(name) {
+                    return function.call(&evaluated_args, ctx);
+                }
+
+                if let Some(async_function) = self.host.async_function(name) {
+                    return async_function.call(&evaluated_args, ctx).await;
+                }
+
+                Err(Error::UnknownFunction(name.clone()))
+            }
+        }
+    }
 }

@@ -1,7 +1,10 @@
 use crate::Error;
 use crate::Eval;
+use crate::AsyncEval;
 use ac_runtime::RuntimeValue;
 use indexmap::IndexMap;
+use std::future::Future;
+use std::pin::Pin;
 
 /// The execution context for a VM evaluation.
 ///
@@ -20,6 +23,7 @@ use indexmap::IndexMap;
 pub struct Context {
     scopes: Vec<IndexMap<String, RuntimeValue>>,
     eval: Option<Box<dyn Eval>>,
+    async_eval: Option<Box<dyn AsyncEval>>,
 }
 
 impl Context {
@@ -28,6 +32,7 @@ impl Context {
         Context {
             scopes: vec![IndexMap::new()],
             eval: None,
+            async_eval: None,
         }
     }
 
@@ -58,6 +63,38 @@ impl Context {
             .as_ref()
             .ok_or(Error::PrimitiveError("no eval callback set".to_string()))?
             .eval_expr(expr, vars)
+    }
+
+    /// Sets the [`AsyncEval`] callback for this context.
+    ///
+    /// When set, async host functions can call [`Context::eval_expr_async`]
+    /// to evaluate expression strings with variable bindings asynchronously.
+    pub fn set_async_eval(&mut self, eval: Box<dyn AsyncEval>) {
+        self.async_eval = Some(eval);
+    }
+
+    /// Returns `true` if an [`AsyncEval`] callback is set.
+    pub fn has_async_eval(&self) -> bool {
+        self.async_eval.is_some()
+    }
+
+    /// Evaluates an expression string asynchronously with the given
+    /// variable bindings.
+    ///
+    /// Delegates to the [`AsyncEval`] callback set via
+    /// [`Context::set_async_eval`]. Returns a future that resolves to
+    /// the evaluated [`RuntimeValue`] or an [`Error`].
+    pub fn eval_expr_async<'a>(
+        &'a self,
+        expr: &'a str,
+        vars: &'a [(String, RuntimeValue)],
+    ) -> Pin<Box<dyn Future<Output = Result<RuntimeValue, Error>> + 'a>> {
+        match self.async_eval.as_ref() {
+            Some(eval) => eval.eval_expr_async(expr, vars),
+            None => Box::pin(std::future::ready(Err(Error::PrimitiveError(
+                "no async eval callback set".to_string(),
+            )))),
+        }
     }
 
     /// Pushes a new empty scope onto the scope stack.
@@ -104,6 +141,21 @@ impl Context {
             }
         }
         Err(Error::UnknownVariable(name.to_string()))
+    }
+
+    /// Collects all variables from all scopes, with innermost scope
+    /// taking precedence on name conflicts.
+    ///
+    /// Returns a `Vec` of `(name, value)` pairs suitable for passing
+    /// to [`eval_expr`](Self::eval_expr).
+    pub fn collect_vars(&self) -> Vec<(String, RuntimeValue)> {
+        let mut result = IndexMap::new();
+        for scope in &self.scopes {
+            for (name, value) in scope {
+                result.insert(name.clone(), value.clone());
+            }
+        }
+        result.into_iter().collect()
     }
 }
 

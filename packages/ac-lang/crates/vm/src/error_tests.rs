@@ -36,3 +36,16 @@ fn error_clone_eq() {
     let cloned = err.clone();
     assert_eq!(err, cloned);
 }
+
+#[test]
+fn error_display_yield() {
+    let err = Error::Yield(ac_runtime::RuntimeValue::new(42));
+    assert!(err.to_string().contains("yielded"));
+}
+
+#[test]
+fn error_yield_clone_eq() {
+    let err = Error::Yield(ac_runtime::RuntimeValue::new("hello"));
+    let cloned = err.clone();
+    assert_eq!(err, cloned);
+}

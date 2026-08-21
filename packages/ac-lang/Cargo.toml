@@ -43,6 +43,7 @@ members = [
   "crates/typecheck-schema-json",
   "crates/frontend",
   "crates/host",
+  "crates/host-cache",
   "crates/compiler-core",
   "crates/compiler-pass-parse",
   "crates/compiler-pass-extract",
@@ -54,6 +55,7 @@ members = [
   "crates/bench",
   "crates/cli",
   "crates/experiment-host-sugar",
+  "crates/meta",
 ]
 resolver = "3"
 
@@ -81,6 +83,7 @@ ac-fields = { path = "crates/fields" }
 ac-cli = { path = "crates/cli" }
 ac-frontend = { path = "crates/frontend" }
 ac-host = { path = "crates/host" }
+ac-host-cache = { path = "crates/host-cache" }
 ac-compiler-core = { path = "crates/compiler-core" }
 ac-compiler-pass-parse = { path = "crates/compiler-pass-parse" }
 ac-compiler-pass-extract = { path = "crates/compiler-pass-extract" }

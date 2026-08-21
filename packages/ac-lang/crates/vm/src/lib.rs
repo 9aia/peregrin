@@ -16,19 +16,24 @@
 //! or `env()` means — those are host primitives.
 
 mod context;
+mod continuation;
 mod error;
 mod eval;
 mod host;
 mod vm;
 
 pub use context::Context;
+pub use continuation::{Continuation, EvalResult, Frame};
 pub use error::Error;
-pub use eval::Eval;
-pub use host::{Function, Host};
+pub use eval::{AsyncEval, Eval};
+pub use host::{AsyncFunction, Function, Host};
 pub use vm::Vm;
 
 #[cfg(test)]
 mod context_tests;
+
+#[cfg(test)]
+mod continuation_tests;
 
 #[cfg(test)]
 mod error_tests;
