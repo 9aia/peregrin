@@ -1115,3 +1115,745 @@ fn trim_start_empty_string() {
 fn trim_end_empty_string() {
     assert_eq!(call(&StrModule, "trim_end", &[s("")]).as_str(), Some(""));
 }
+
+// ── strip_prefix ────────────────────────────────────────────────────
+
+#[test]
+fn strip_prefix_present() {
+    assert_eq!(
+        call(&StrModule, "strip_prefix", &[s("hello world"), s("hello ")]).as_str(),
+        Some("world")
+    );
+}
+
+#[test]
+fn strip_prefix_not_present() {
+    assert_eq!(
+        call(&StrModule, "strip_prefix", &[s("hello"), s("world")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn strip_prefix_exact_match() {
+    assert_eq!(
+        call(&StrModule, "strip_prefix", &[s("hello"), s("hello")]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn strip_prefix_empty_prefix() {
+    assert_eq!(
+        call(&StrModule, "strip_prefix", &[s("hello"), s("")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn strip_prefix_no_args_errors() {
+    let result = call_err(&StrModule, "strip_prefix", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn strip_prefix_first_arg_non_string_errors() {
+    let result = call_err(&StrModule, "strip_prefix", &[n(42.0), s("he")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn strip_prefix_second_arg_non_string_errors() {
+    let result = call_err(&StrModule, "strip_prefix", &[s("hello"), n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── strip_suffix ────────────────────────────────────────────────────
+
+#[test]
+fn strip_suffix_present() {
+    assert_eq!(
+        call(&StrModule, "strip_suffix", &[s("hello world"), s(" world")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn strip_suffix_not_present() {
+    assert_eq!(
+        call(&StrModule, "strip_suffix", &[s("hello"), s("world")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn strip_suffix_exact_match() {
+    assert_eq!(
+        call(&StrModule, "strip_suffix", &[s("hello"), s("hello")]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn strip_suffix_empty_suffix() {
+    assert_eq!(
+        call(&StrModule, "strip_suffix", &[s("hello"), s("")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn strip_suffix_no_args_errors() {
+    let result = call_err(&StrModule, "strip_suffix", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn strip_suffix_first_arg_non_string_errors() {
+    let result = call_err(&StrModule, "strip_suffix", &[n(42.0), s("lo")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn strip_suffix_second_arg_non_string_errors() {
+    let result = call_err(&StrModule, "strip_suffix", &[s("hello"), n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── lines ───────────────────────────────────────────────────────────
+
+#[test]
+fn lines_basic() {
+    let result = call(&StrModule, "lines", &[s("a\nb\nc")]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[0].as_str(), Some("a"));
+    assert_eq!(array[1].as_str(), Some("b"));
+    assert_eq!(array[2].as_str(), Some("c"));
+}
+
+#[test]
+fn lines_crlf() {
+    let result = call(&StrModule, "lines", &[s("a\r\nb\r\nc")]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[0].as_str(), Some("a"));
+    assert_eq!(array[1].as_str(), Some("b"));
+    assert_eq!(array[2].as_str(), Some("c"));
+}
+
+#[test]
+fn lines_single_line() {
+    let result = call(&StrModule, "lines", &[s("hello")]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 1);
+    assert_eq!(array[0].as_str(), Some("hello"));
+}
+
+#[test]
+fn lines_empty_string() {
+    let result = call(&StrModule, "lines", &[s("")]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 1);
+    assert_eq!(array[0].as_str(), Some(""));
+}
+
+#[test]
+fn lines_trailing_newline() {
+    let result = call(&StrModule, "lines", &[s("a\nb\n")]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_str(), Some("a"));
+    assert_eq!(array[1].as_str(), Some("b"));
+}
+
+#[test]
+fn lines_no_args_errors() {
+    let result = call_err(&StrModule, "lines", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn lines_non_string_errors() {
+    let result = call_err(&StrModule, "lines", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── rfind ───────────────────────────────────────────────────────────
+
+#[test]
+fn rfind_found() {
+    assert_eq!(
+        call(&StrModule, "rfind", &[s("hello world hello"), s("hello")]).as_number(),
+        Some(12.0)
+    );
+}
+
+#[test]
+fn rfind_single_match() {
+    assert_eq!(
+        call(&StrModule, "rfind", &[s("hello"), s("ell")]).as_number(),
+        Some(1.0)
+    );
+}
+
+#[test]
+fn rfind_not_found() {
+    assert_eq!(
+        call(&StrModule, "rfind", &[s("hello"), s("xyz")]).as_number(),
+        Some(-1.0)
+    );
+}
+
+#[test]
+fn rfind_empty_pattern() {
+    assert_eq!(
+        call(&StrModule, "rfind", &[s("hello"), s("")]).as_number(),
+        Some(5.0)
+    );
+}
+
+#[test]
+fn rfind_unicode() {
+    assert_eq!(
+        call(&StrModule, "rfind", &[s("café café"), s("café")]).as_number(),
+        Some(5.0)
+    );
+}
+
+#[test]
+fn rfind_no_args_errors() {
+    let result = call_err(&StrModule, "rfind", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn rfind_first_arg_non_string_errors() {
+    let result = call_err(&StrModule, "rfind", &[n(42.0), s("l")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn rfind_second_arg_non_string_errors() {
+    let result = call_err(&StrModule, "rfind", &[s("hello"), n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── capitalize ──────────────────────────────────────────────────────
+
+#[test]
+fn capitalize_basic() {
+    assert_eq!(
+        call(&StrModule, "capitalize", &[s("hello")]).as_str(),
+        Some("Hello")
+    );
+}
+
+#[test]
+fn capitalize_already_capitalized() {
+    assert_eq!(
+        call(&StrModule, "capitalize", &[s("Hello")]).as_str(),
+        Some("Hello")
+    );
+}
+
+#[test]
+fn capitalize_uppercase_rest() {
+    assert_eq!(
+        call(&StrModule, "capitalize", &[s("hELLO")]).as_str(),
+        Some("Hello")
+    );
+}
+
+#[test]
+fn capitalize_empty_string() {
+    assert_eq!(
+        call(&StrModule, "capitalize", &[s("")]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn capitalize_unicode() {
+    assert_eq!(
+        call(&StrModule, "capitalize", &[s("café")]).as_str(),
+        Some("Café")
+    );
+}
+
+#[test]
+fn capitalize_no_args_errors() {
+    let result = call_err(&StrModule, "capitalize", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn capitalize_non_string_errors() {
+    let result = call_err(&StrModule, "capitalize", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── title_case ──────────────────────────────────────────────────────
+
+#[test]
+fn title_case_basic() {
+    assert_eq!(
+        call(&StrModule, "title_case", &[s("hello world")]).as_str(),
+        Some("Hello World")
+    );
+}
+
+#[test]
+fn title_case_already_title() {
+    assert_eq!(
+        call(&StrModule, "title_case", &[s("Hello World")]).as_str(),
+        Some("Hello World")
+    );
+}
+
+#[test]
+fn title_case_mixed_case() {
+    assert_eq!(
+        call(&StrModule, "title_case", &[s("hELLO wORLD")]).as_str(),
+        Some("Hello World")
+    );
+}
+
+#[test]
+fn title_case_single_word() {
+    assert_eq!(
+        call(&StrModule, "title_case", &[s("hello")]).as_str(),
+        Some("Hello")
+    );
+}
+
+#[test]
+fn title_case_empty_string() {
+    assert_eq!(
+        call(&StrModule, "title_case", &[s("")]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn title_case_multiple_spaces() {
+    assert_eq!(
+        call(&StrModule, "title_case", &[s("hello  world")]).as_str(),
+        Some("Hello  World")
+    );
+}
+
+#[test]
+fn title_case_no_args_errors() {
+    let result = call_err(&StrModule, "title_case", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn title_case_non_string_errors() {
+    let result = call_err(&StrModule, "title_case", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── snake_case ──────────────────────────────────────────────────────
+
+#[test]
+fn snake_case_from_camel() {
+    assert_eq!(
+        call(&StrModule, "snake_case", &[s("helloWorld")]).as_str(),
+        Some("hello_world")
+    );
+}
+
+#[test]
+fn snake_case_from_pascal() {
+    assert_eq!(
+        call(&StrModule, "snake_case", &[s("HelloWorld")]).as_str(),
+        Some("hello_world")
+    );
+}
+
+#[test]
+fn snake_case_from_kebab() {
+    assert_eq!(
+        call(&StrModule, "snake_case", &[s("hello-world")]).as_str(),
+        Some("hello_world")
+    );
+}
+
+#[test]
+fn snake_case_from_spaces() {
+    assert_eq!(
+        call(&StrModule, "snake_case", &[s("hello world")]).as_str(),
+        Some("hello_world")
+    );
+}
+
+#[test]
+fn snake_case_already_snake() {
+    assert_eq!(
+        call(&StrModule, "snake_case", &[s("hello_world")]).as_str(),
+        Some("hello_world")
+    );
+}
+
+#[test]
+fn snake_case_single_word() {
+    assert_eq!(
+        call(&StrModule, "snake_case", &[s("hello")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn snake_case_empty_string() {
+    assert_eq!(
+        call(&StrModule, "snake_case", &[s("")]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn snake_case_consecutive_uppercase() {
+    assert_eq!(
+        call(&StrModule, "snake_case", &[s("parseHTMLString")]).as_str(),
+        Some("parse_html_string")
+    );
+}
+
+#[test]
+fn snake_case_no_args_errors() {
+    let result = call_err(&StrModule, "snake_case", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn snake_case_non_string_errors() {
+    let result = call_err(&StrModule, "snake_case", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── camel_case ──────────────────────────────────────────────────────
+
+#[test]
+fn camel_case_from_snake() {
+    assert_eq!(
+        call(&StrModule, "camel_case", &[s("hello_world")]).as_str(),
+        Some("helloWorld")
+    );
+}
+
+#[test]
+fn camel_case_from_pascal() {
+    assert_eq!(
+        call(&StrModule, "camel_case", &[s("HelloWorld")]).as_str(),
+        Some("helloWorld")
+    );
+}
+
+#[test]
+fn camel_case_from_kebab() {
+    assert_eq!(
+        call(&StrModule, "camel_case", &[s("hello-world")]).as_str(),
+        Some("helloWorld")
+    );
+}
+
+#[test]
+fn camel_case_from_spaces() {
+    assert_eq!(
+        call(&StrModule, "camel_case", &[s("hello world")]).as_str(),
+        Some("helloWorld")
+    );
+}
+
+#[test]
+fn camel_case_single_word() {
+    assert_eq!(
+        call(&StrModule, "camel_case", &[s("hello")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn camel_case_empty_string() {
+    assert_eq!(
+        call(&StrModule, "camel_case", &[s("")]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn camel_case_no_args_errors() {
+    let result = call_err(&StrModule, "camel_case", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn camel_case_non_string_errors() {
+    let result = call_err(&StrModule, "camel_case", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── pascal_case ─────────────────────────────────────────────────────
+
+#[test]
+fn pascal_case_from_snake() {
+    assert_eq!(
+        call(&StrModule, "pascal_case", &[s("hello_world")]).as_str(),
+        Some("HelloWorld")
+    );
+}
+
+#[test]
+fn pascal_case_from_camel() {
+    assert_eq!(
+        call(&StrModule, "pascal_case", &[s("helloWorld")]).as_str(),
+        Some("HelloWorld")
+    );
+}
+
+#[test]
+fn pascal_case_from_kebab() {
+    assert_eq!(
+        call(&StrModule, "pascal_case", &[s("hello-world")]).as_str(),
+        Some("HelloWorld")
+    );
+}
+
+#[test]
+fn pascal_case_from_spaces() {
+    assert_eq!(
+        call(&StrModule, "pascal_case", &[s("hello world")]).as_str(),
+        Some("HelloWorld")
+    );
+}
+
+#[test]
+fn pascal_case_single_word() {
+    assert_eq!(
+        call(&StrModule, "pascal_case", &[s("hello")]).as_str(),
+        Some("Hello")
+    );
+}
+
+#[test]
+fn pascal_case_empty_string() {
+    assert_eq!(
+        call(&StrModule, "pascal_case", &[s("")]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn pascal_case_no_args_errors() {
+    let result = call_err(&StrModule, "pascal_case", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn pascal_case_non_string_errors() {
+    let result = call_err(&StrModule, "pascal_case", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── kebab_case ──────────────────────────────────────────────────────
+
+#[test]
+fn kebab_case_from_camel() {
+    assert_eq!(
+        call(&StrModule, "kebab_case", &[s("helloWorld")]).as_str(),
+        Some("hello-world")
+    );
+}
+
+#[test]
+fn kebab_case_from_pascal() {
+    assert_eq!(
+        call(&StrModule, "kebab_case", &[s("HelloWorld")]).as_str(),
+        Some("hello-world")
+    );
+}
+
+#[test]
+fn kebab_case_from_snake() {
+    assert_eq!(
+        call(&StrModule, "kebab_case", &[s("hello_world")]).as_str(),
+        Some("hello-world")
+    );
+}
+
+#[test]
+fn kebab_case_from_spaces() {
+    assert_eq!(
+        call(&StrModule, "kebab_case", &[s("hello world")]).as_str(),
+        Some("hello-world")
+    );
+}
+
+#[test]
+fn kebab_case_single_word() {
+    assert_eq!(
+        call(&StrModule, "kebab_case", &[s("hello")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn kebab_case_empty_string() {
+    assert_eq!(
+        call(&StrModule, "kebab_case", &[s("")]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn kebab_case_no_args_errors() {
+    let result = call_err(&StrModule, "kebab_case", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn kebab_case_non_string_errors() {
+    let result = call_err(&StrModule, "kebab_case", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── split_at ────────────────────────────────────────────────────────
+
+#[test]
+fn split_at_basic() {
+    let result = call(&StrModule, "split_at", &[s("hello"), n(2.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_str(), Some("he"));
+    assert_eq!(array[1].as_str(), Some("llo"));
+}
+
+#[test]
+fn split_at_zero() {
+    let result = call(&StrModule, "split_at", &[s("hello"), n(0.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_str(), Some(""));
+    assert_eq!(array[1].as_str(), Some("hello"));
+}
+
+#[test]
+fn split_at_end() {
+    let result = call(&StrModule, "split_at", &[s("hello"), n(5.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_str(), Some("hello"));
+    assert_eq!(array[1].as_str(), Some(""));
+}
+
+#[test]
+fn split_at_beyond_length_clamps() {
+    let result = call(&StrModule, "split_at", &[s("hi"), n(10.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_str(), Some("hi"));
+    assert_eq!(array[1].as_str(), Some(""));
+}
+
+#[test]
+fn split_at_unicode() {
+    let result = call(&StrModule, "split_at", &[s("café"), n(2.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_str(), Some("ca"));
+    assert_eq!(array[1].as_str(), Some("fé"));
+}
+
+#[test]
+fn split_at_no_args_errors() {
+    let result = call_err(&StrModule, "split_at", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn split_at_first_arg_non_string_errors() {
+    let result = call_err(&StrModule, "split_at", &[n(42.0), n(2.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn split_at_second_arg_non_number_errors() {
+    let result = call_err(&StrModule, "split_at", &[s("hello"), s("x")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn split_at_negative_errors() {
+    let result = call_err(&StrModule, "split_at", &[s("hello"), n(-1.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── trim_matches ────────────────────────────────────────────────────
+
+#[test]
+fn trim_matches_basic() {
+    assert_eq!(
+        call(&StrModule, "trim_matches", &[s("xxhelloxx"), s("x")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn trim_matches_multiple_chars() {
+    assert_eq!(
+        call(&StrModule, "trim_matches", &[s("xyhelloxy"), s("xy")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn trim_matches_no_match() {
+    assert_eq!(
+        call(&StrModule, "trim_matches", &[s("hello"), s("x")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn trim_matches_empty_string() {
+    assert_eq!(
+        call(&StrModule, "trim_matches", &[s(""), s("x")]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn trim_matches_empty_chars() {
+    assert_eq!(
+        call(&StrModule, "trim_matches", &[s("hello"), s("")]).as_str(),
+        Some("hello")
+    );
+}
+
+#[test]
+fn trim_matches_only_match_chars() {
+    assert_eq!(
+        call(&StrModule, "trim_matches", &[s("xxx"), s("x")]).as_str(),
+        Some("")
+    );
+}
+
+#[test]
+fn trim_matches_no_args_errors() {
+    let result = call_err(&StrModule, "trim_matches", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+#[test]
+fn trim_matches_first_arg_non_string_errors() {
+    let result = call_err(&StrModule, "trim_matches", &[n(42.0), s("x")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn trim_matches_second_arg_non_string_errors() {
+    let result = call_err(&StrModule, "trim_matches", &[s("hello"), n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}

@@ -38,6 +38,18 @@ impl Module for StrModule {
             "length" => Some(&Length),
             "concat" => Some(&Concat),
             "replace_first" => Some(&ReplaceFirst),
+            "strip_prefix" => Some(&StripPrefix),
+            "strip_suffix" => Some(&StripSuffix),
+            "lines" => Some(&Lines),
+            "rfind" => Some(&RFind),
+            "capitalize" => Some(&Capitalize),
+            "title_case" => Some(&TitleCase),
+            "snake_case" => Some(&SnakeCase),
+            "camel_case" => Some(&CamelCase),
+            "pascal_case" => Some(&PascalCase),
+            "kebab_case" => Some(&KebabCase),
+            "split_at" => Some(&SplitAt),
+            "trim_matches" => Some(&TrimMatches),
             _ => None,
         }
     }
@@ -404,5 +416,196 @@ impl Function for PadRight {
         }
         let pad_char = require_string(&args[2])?;
         Ok(s(pad_to_len(input, target_len as usize, pad_char, false)))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct StripPrefix;
+impl Function for StripPrefix {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (input, prefix) = require_two_strings(args)?;
+        Ok(s(input.strip_prefix(prefix).unwrap_or(input).to_string()))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct StripSuffix;
+impl Function for StripSuffix {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (input, suffix) = require_two_strings(args)?;
+        Ok(s(input.strip_suffix(suffix).unwrap_or(input).to_string()))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Lines;
+impl Function for Lines {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let input = require_one_string(args)?;
+        let lines: Vec<serde_json::Value> = if input.is_empty() {
+            vec![serde_json::Value::String(String::new())]
+        } else {
+            input
+                .lines()
+                .map(|line| serde_json::Value::String(line.to_string()))
+                .collect()
+        };
+        Ok(NonFunctionValue::new(serde_json::Value::Array(lines)))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct RFind;
+impl Function for RFind {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (input, pattern) = require_two_strings(args)?;
+        let idx = input
+            .rfind(pattern)
+            .map(|byte_pos| input[..byte_pos].chars().count())
+            .map(|i| i as f64)
+            .unwrap_or(-1.0);
+        Ok(num(idx))
+    }
+}
+
+string_unary_fn!(Capitalize, |input: &str| {
+    let mut chars = input.chars();
+    match chars.next() {
+        None => String::new(),
+        Some(first) => {
+            let mut result = String::new();
+            result.extend(first.to_uppercase());
+            result.extend(chars.flat_map(|c| c.to_lowercase()));
+            result
+        }
+    }
+});
+
+string_unary_fn!(TitleCase, |input: &str| {
+    let mut result = String::new();
+    let mut new_word = true;
+    for ch in input.chars() {
+        if ch == ' ' {
+            result.push(ch);
+            new_word = true;
+        } else if new_word {
+            result.extend(ch.to_uppercase());
+            new_word = false;
+        } else {
+            result.extend(ch.to_lowercase());
+        }
+    }
+    result
+});
+
+fn split_words(input: &str) -> Vec<String> {
+    let mut words = Vec::new();
+    let mut current = String::new();
+    for ch in input.chars() {
+        if ch == '-' || ch == '_' || ch == ' ' {
+            if !current.is_empty() {
+                words.push(std::mem::take(&mut current));
+            }
+        } else if ch.is_uppercase() {
+            if !current.is_empty()
+                && current.chars().last().map_or(false, |c| c.is_lowercase())
+            {
+                words.push(std::mem::take(&mut current));
+            }
+            current.push(ch);
+        } else {
+            if !current.is_empty()
+                && current.chars().last().map_or(false, |c| c.is_uppercase())
+                && current.len() > 1
+            {
+                let last = current.pop().unwrap();
+                words.push(std::mem::take(&mut current));
+                current.push(last);
+            }
+            current.push(ch);
+        }
+    }
+    if !current.is_empty() {
+        words.push(current);
+    }
+    words.into_iter().map(|w| w.to_lowercase()).collect()
+}
+
+string_unary_fn!(SnakeCase, |input: &str| split_words(input).join("_"));
+string_unary_fn!(KebabCase, |input: &str| split_words(input).join("-"));
+
+string_unary_fn!(CamelCase, |input: &str| {
+    let words = split_words(input);
+    let mut result = String::new();
+    for (i, word) in words.iter().enumerate() {
+        if i == 0 {
+            result.push_str(word);
+        } else {
+            let mut chars = word.chars();
+            if let Some(first) = chars.next() {
+                result.extend(first.to_uppercase());
+                result.extend(chars);
+            }
+        }
+    }
+    result
+});
+
+string_unary_fn!(PascalCase, |input: &str| {
+    let words = split_words(input);
+    let mut result = String::new();
+    for word in &words {
+        let mut chars = word.chars();
+        if let Some(first) = chars.next() {
+            result.extend(first.to_uppercase());
+            result.extend(chars);
+        }
+    }
+    result
+});
+
+#[derive(Clone, Copy)]
+pub struct SplitAt;
+impl Function for SplitAt {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let input = require_string(&args[0])?;
+        let index = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        if index < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        let chars: Vec<char> = input.chars().collect();
+        let mid = (index as usize).min(chars.len());
+        let left: String = chars[..mid].iter().collect();
+        let right: String = chars[mid..].iter().collect();
+        let parts = vec![
+            serde_json::Value::String(left),
+            serde_json::Value::String(right),
+        ];
+        Ok(NonFunctionValue::new(serde_json::Value::Array(parts)))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct TrimMatches;
+impl Function for TrimMatches {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let (input, chars) = require_two_strings(args)?;
+        if chars.is_empty() {
+            return Ok(s(input.to_string()));
+        }
+        let char_set: Vec<char> = chars.chars().collect();
+        Ok(s(input.trim_matches(|c| char_set.contains(&c)).to_string()))
     }
 }

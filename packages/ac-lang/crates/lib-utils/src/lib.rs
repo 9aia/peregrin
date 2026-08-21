@@ -16,7 +16,10 @@
 //!   `str.replace`, `str.replace_first`, `str.contains`,
 //!   `str.starts_with`, `str.ends_with`, `str.slice`, `str.reverse`,
 //!   `str.repeat`, `str.find`, `str.count`, `str.char_at`,
-//!   `str.pad_left`, `str.pad_right`, `str.length`, `str.concat`
+//!   `str.pad_left`, `str.pad_right`, `str.length`, `str.concat`,
+//!   `str.strip_prefix`, `str.strip_suffix`, `str.lines`, `str.rfind`,
+//!   `str.capitalize`, `str.title_case`, `str.snake_case`, `str.camel_case`,
+//!   `str.pascal_case`, `str.kebab_case`, `str.split_at`, `str.trim_matches`
 //! - [`ArrayModule`] — `array.length`, `array.reverse`, `array.concat`,
 //!   `array.contains`, `array.index_of`, `array.slice`, `array.first`,
 //!   `array.last`, `array.sort`, `array.flatten`, `array.deep_flatten`,
@@ -65,5 +68,5 @@ pub use array::ArrayModule;
 pub use bool::BoolModule;
 pub use fp::FpModule;
 pub use math::MathModule;
-pub use str::StrModule;
+pub use r#str::StrModule;
 pub use r#type::TypeModule;
