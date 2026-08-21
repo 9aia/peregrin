@@ -235,6 +235,79 @@ fn compare_extra_args_ignored() {
     );
 }
 
+// ── is_between_inclusive ─────────────────────────────────────────
+
+#[test]
+fn is_between_inclusive_true() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "is_between_inclusive",
+            &[s("2021-06-15T10:00:00Z"), s("2021-06-01T00:00:00Z"), s("2021-06-30T00:00:00Z")]
+        )
+        .as_bool(),
+        Some(true)
+    );
+}
+
+#[test]
+fn is_between_inclusive_equal_start() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "is_between_inclusive",
+            &[s("2021-06-01T00:00:00Z"), s("2021-06-01T00:00:00Z"), s("2021-06-30T00:00:00Z")]
+        )
+        .as_bool(),
+        Some(true)
+    );
+}
+
+#[test]
+fn is_between_inclusive_equal_end() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "is_between_inclusive",
+            &[s("2021-06-30T00:00:00Z"), s("2021-06-01T00:00:00Z"), s("2021-06-30T00:00:00Z")]
+        )
+        .as_bool(),
+        Some(true)
+    );
+}
+
+#[test]
+fn is_between_inclusive_false_before() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "is_between_inclusive",
+            &[s("2021-05-15T00:00:00Z"), s("2021-06-01T00:00:00Z"), s("2021-06-30T00:00:00Z")]
+        )
+        .as_bool(),
+        Some(false)
+    );
+}
+
+#[test]
+fn is_between_inclusive_false_after() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "is_between_inclusive",
+            &[s("2021-07-15T00:00:00Z"), s("2021-06-01T00:00:00Z"), s("2021-06-30T00:00:00Z")]
+        )
+        .as_bool(),
+        Some(false)
+    );
+}
+
+#[test]
+fn is_between_inclusive_no_args_errors() {
+    let result = call_err(&DateTimeModule, "is_between_inclusive", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast::Expr;
@@ -276,4 +349,5 @@ fn vm_resolves_via_module_host() {
     assert!(host.function("datetime.is_after").is_some());
     assert!(host.function("datetime.is_equal").is_some());
     assert!(host.function("datetime.is_between").is_some());
+    assert!(host.function("datetime.is_between_inclusive").is_some());
 }

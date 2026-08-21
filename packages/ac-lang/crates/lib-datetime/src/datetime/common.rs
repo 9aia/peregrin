@@ -1,6 +1,9 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::Error;
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset, TimeZone, Utc};
+use std::str::FromStr;
+
+use crate::DatetimeError;
 
 pub(super) fn require_string(arg: &NonFunctionValue) -> Result<&str, Error> {
     arg.as_str().ok_or(Error::TypeMismatch {
@@ -70,17 +73,63 @@ pub(super) fn parse_iso(s: &str) -> Result<DateTime<Utc>, Error> {
             chrono::NaiveDate::parse_from_str(s, "%Y-%m-%d")
                 .map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc())
         })
-        .map_err(|_| Error::PrimitiveError(format!("invalid datetime: {s}")))
+        .map_err(|_| DatetimeError::InvalidDatetime { input: s.to_string() }.into_vm_error())
 }
 
-pub(super) fn parse_with_format(s: &str, fmt: &str) -> Result<DateTime<Utc>, Error> {
-    chrono::NaiveDateTime::parse_from_str(s, fmt)
-        .map(|ndt| ndt.and_utc())
+pub(super) fn parse_with_format_and_offset(
+    s: &str,
+    fmt: &str,
+    offset: Option<&str>,
+) -> Result<DateTime<Utc>, Error> {
+    let parsed = chrono::NaiveDateTime::parse_from_str(s, fmt)
+        .map(Some)
         .or_else(|_| {
             chrono::NaiveDate::parse_from_str(s, fmt)
-                .map(|d| d.and_hms_opt(0, 0, 0).unwrap().and_utc())
+                .map(|d| d.and_hms_opt(0, 0, 0))
         })
-        .map_err(|_| Error::PrimitiveError(format!("parse failed: {s} with format {fmt}")))
+        .map_err(|_| DatetimeError::ParseFailed {
+            input: s.to_string(),
+            format: fmt.to_string(),
+        }.into_vm_error())?;
+
+    let ndt = parsed.ok_or(DatetimeError::ParseFailed {
+        input: s.to_string(),
+        format: fmt.to_string(),
+    }.into_vm_error())?;
+
+    match offset {
+        Some(off_str) => {
+            let off = parse_offset(off_str)?;
+            Ok(off.from_local_datetime(&ndt)
+                .single()
+                .ok_or(DatetimeError::ParseFailed {
+                    input: s.to_string(),
+                    format: fmt.to_string(),
+                }.into_vm_error())?
+                .with_timezone(&Utc))
+        }
+        None => Ok(ndt.and_utc()),
+    }
+}
+
+pub(super) fn parse_offset(offset_str: &str) -> Result<FixedOffset, Error> {
+    if offset_str.eq_ignore_ascii_case("Z") || offset_str == "+00:00" || offset_str == "-00:00" {
+        return Ok(FixedOffset::east_opt(0).unwrap());
+    }
+    FixedOffset::from_str(offset_str)
+        .map_err(|_| DatetimeError::InvalidTimezoneOffset { offset: offset_str.to_string() }.into_vm_error())
+}
+
+pub(super) fn format_iso(dt: &DateTime<Utc>) -> String {
+    let nanos = dt.timestamp_subsec_nanos();
+    if nanos > 0 {
+        let base = dt.format("%Y-%m-%dT%H:%M:%S").to_string();
+        let frac = format!(".{:09}", nanos);
+        let frac = frac.trim_end_matches('0');
+        format!("{}{}Z", base, frac)
+    } else {
+        dt.format("%Y-%m-%dT%H:%M:%SZ").to_string()
+    }
 }
 
 pub(super) fn s(value: impl Into<String>) -> NonFunctionValue {

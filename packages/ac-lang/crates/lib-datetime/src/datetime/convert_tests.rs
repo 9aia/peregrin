@@ -129,44 +129,6 @@ fn to_unix_invalid_string_errors() {
     assert!(result.is_err());
 }
 
-// ── now ──────────────────────────────────────────────────────────
-
-#[test]
-fn now_returns_number() {
-    let result = call(&DateTimeModule, "now", &[]);
-    assert!(result.as_number().is_some());
-    let ts = result.as_number().unwrap();
-    // Should be a reasonable timestamp (after 2020, before 2100)
-    assert!(ts > 1577836800.0);
-    assert!(ts < 4102444800.0);
-}
-
-#[test]
-fn now_no_args_required() {
-    let result = call_err(&DateTimeModule, "now", &[n(1.0)]);
-    // now takes zero args — extra args are ignored per convention
-    assert!(result.is_ok());
-}
-
-// ── utc_now ──────────────────────────────────────────────────────
-
-#[test]
-fn utc_now_returns_iso_string() {
-    let result = call(&DateTimeModule, "utc_now", &[]);
-    let s = result.as_str().expect("string result");
-    assert!(s.ends_with('Z'));
-    assert!(s.len() >= 20);
-}
-
-#[test]
-fn utc_now_roundtrip_to_unix() {
-    let iso = call(&DateTimeModule, "utc_now", &[]);
-    let ts = call(&DateTimeModule, "to_unix", &[iso]);
-    assert!(ts.as_number().is_some());
-    let ts_val = ts.as_number().unwrap();
-    assert!(ts_val > 1577836800.0);
-}
-
 // ── extra args ignored ───────────────────────────────────────────
 
 #[test]
@@ -221,17 +183,8 @@ fn vm_to_unix() {
 }
 
 #[test]
-fn vm_now() {
-    let expr = Expr::call("datetime.now", vec![]);
-    let result = eval_expr(&expr);
-    assert!(result.as_number().is_some());
-}
-
-#[test]
 fn vm_resolves_via_module_host() {
     let host = ModuleHost::new().with(DateTimeModule);
-    assert!(host.function("datetime.now").is_some());
-    assert!(host.function("datetime.utc_now").is_some());
     assert!(host.function("datetime.from_unix").is_some());
     assert!(host.function("datetime.to_unix").is_some());
     assert!(host.function("datetime.nonexistent").is_none());

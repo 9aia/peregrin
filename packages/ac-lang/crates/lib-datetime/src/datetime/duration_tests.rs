@@ -194,6 +194,121 @@ fn duration_seconds_no_args_errors() {
     assert!(matches!(result, Err(Error::ArgumentCount { .. })));
 }
 
+// ── duration_minutes ─────────────────────────────────────────────
+
+#[test]
+fn duration_minutes_basic() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "duration_minutes",
+            &[s("2021-01-01T00:00:00Z"), s("2021-01-01T01:30:00Z")]
+        )
+        .as_number(),
+        Some(90.0)
+    );
+}
+
+#[test]
+fn duration_minutes_negative() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "duration_minutes",
+            &[s("2021-01-01T01:30:00Z"), s("2021-01-01T00:00:00Z")]
+        )
+        .as_number(),
+        Some(-90.0)
+    );
+}
+
+#[test]
+fn duration_minutes_zero() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "duration_minutes",
+            &[s("2021-01-01T00:00:00Z"), s("2021-01-01T00:00:00Z")]
+        )
+        .as_number(),
+        Some(0.0)
+    );
+}
+
+#[test]
+fn duration_minutes_no_args_errors() {
+    let result = call_err(&DateTimeModule, "duration_minutes", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── duration_hours ───────────────────────────────────────────────
+
+#[test]
+fn duration_hours_basic() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "duration_hours",
+            &[s("2021-01-01T00:00:00Z"), s("2021-01-01T05:30:00Z")]
+        )
+        .as_number(),
+        Some(5.5)
+    );
+}
+
+#[test]
+fn duration_hours_negative() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "duration_hours",
+            &[s("2021-01-01T05:30:00Z"), s("2021-01-01T00:00:00Z")]
+        )
+        .as_number(),
+        Some(-5.5)
+    );
+}
+
+#[test]
+fn duration_hours_no_args_errors() {
+    let result = call_err(&DateTimeModule, "duration_hours", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── duration_days ────────────────────────────────────────────────
+
+#[test]
+fn duration_days_basic() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "duration_days",
+            &[s("2021-01-01T00:00:00Z"), s("2021-01-04T12:00:00Z")]
+        )
+        .as_number(),
+        Some(3.5)
+    );
+}
+
+#[test]
+fn duration_days_negative() {
+    assert_eq!(
+        call(
+            &DateTimeModule,
+            "duration_days",
+            &[s("2021-01-04T12:00:00Z"), s("2021-01-01T00:00:00Z")]
+        )
+        .as_number(),
+        Some(-3.5)
+    );
+}
+
+#[test]
+fn duration_days_no_args_errors() {
+    let result = call_err(&DateTimeModule, "duration_days", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
 // ── extra args ignored ───────────────────────────────────────────
 
 #[test]
@@ -237,4 +352,7 @@ fn vm_resolves_via_module_host() {
     let host = ModuleHost::new().with(DateTimeModule);
     assert!(host.function("datetime.duration_between").is_some());
     assert!(host.function("datetime.duration_seconds").is_some());
+    assert!(host.function("datetime.duration_minutes").is_some());
+    assert!(host.function("datetime.duration_hours").is_some());
+    assert!(host.function("datetime.duration_days").is_some());
 }

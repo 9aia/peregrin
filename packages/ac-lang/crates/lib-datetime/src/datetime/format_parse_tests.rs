@@ -210,9 +210,29 @@ fn parse_extra_args_ignored() {
     let result = call(
         &DateTimeModule,
         "parse",
-        &[s("2021-01-15T10:30:00Z"), s("%Y-%m-%dT%H:%M:%SZ"), n(1.0)],
+        &[s("2021-01-15T10:30:00Z"), s("%Y-%m-%dT%H:%M:%SZ"), s("Z")],
     );
     assert_eq!(result.as_str(), Some("2021-01-15T10:30:00Z"));
+}
+
+#[test]
+fn parse_with_timezone_offset() {
+    let result = call(
+        &DateTimeModule,
+        "parse",
+        &[s("2021-01-15T10:30:00"), s("%Y-%m-%dT%H:%M:%S"), s("+05:30")],
+    );
+    assert_eq!(result.as_str(), Some("2021-01-15T05:00:00Z"));
+}
+
+#[test]
+fn parse_with_timezone_negative_offset() {
+    let result = call(
+        &DateTimeModule,
+        "parse",
+        &[s("2021-01-15T10:30:00"), s("%Y-%m-%dT%H:%M:%S"), s("-03:00")],
+    );
+    assert_eq!(result.as_str(), Some("2021-01-15T13:30:00Z"));
 }
 
 // ── VM integration ───────────────────────────────────────────────

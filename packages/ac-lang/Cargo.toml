@@ -11,6 +11,7 @@ members = [
   "crates/runtime",
   "crates/runtime-core",
   "crates/lib-utils",
+  "crates/lib-datetime",
   "crates/lib-intl",
   "crates/lib-crypto",
   "crates/lib-rand",
@@ -76,6 +77,7 @@ ac-ast = { path = "crates/ast" }
 ac-runtime = { path = "crates/runtime" }
 ac-runtime-core = { path = "crates/runtime-core" }
 ac-lib-utils = { path = "crates/lib-utils" }
+ac-lib-datetime = { path = "crates/lib-datetime" }
 ac-lib-intl = { path = "crates/lib-intl" }
 ac-lib-crypto = { path = "crates/lib-crypto" }
 ac-lib-rand = { path = "crates/lib-rand" }
@@ -154,6 +156,7 @@ default = [
   "resolver-file",
   "resolver-virtual",
   "lib-utils",
+  "lib-datetime",
   "lib-intl",
   "lib-crypto",
   "lib-rand",
@@ -194,6 +197,7 @@ resolver-noop = ["dep:ac-module-resolver-noop", "resolver-core"]
 resolver-file = ["dep:ac-module-resolver-file", "resolver-core"]
 resolver-virtual = ["dep:ac-module-resolver-virtual", "resolver-core"]
 lib-utils = ["dep:ac-lib-utils", "vm", "dep:ac-runtime-core"]
+lib-datetime = ["dep:ac-lib-datetime", "vm", "dep:ac-runtime-core"]
 lib-intl = ["dep:ac-lib-intl", "vm", "dep:ac-runtime-core"]
 lib-crypto = ["dep:ac-lib-crypto", "vm", "dep:ac-runtime-core"]
 lib-rand = ["dep:ac-lib-rand", "vm", "dep:ac-runtime-core"]
@@ -230,6 +234,7 @@ ac-typecheck-schema-json = { workspace = true, optional = true }
 ac-typegen-core = { workspace = true, optional = true }
 ac-typegen-backend-json-schema = { workspace = true, optional = true }
 ac-lib-utils = { workspace = true, optional = true }
+ac-lib-datetime = { workspace = true, optional = true }
 ac-lib-intl = { workspace = true, optional = true }
 ac-lib-crypto = { workspace = true, optional = true }
 ac-lib-rand = { workspace = true, optional = true }

@@ -54,18 +54,6 @@
 //!   `type.is_null`, `type.is_bool`, `type.is_number`, `type.is_string`,
 //!   `type.is_array`, `type.is_object`, `type.type_of`, `type.is_empty`,
 //!   `type.is_truthy`, `type.identity`, `type.default`, `type.coalesce`
-//! - [`DateTimeModule`] — `datetime.now`, `datetime.utc_now`,
-//!   `datetime.from_unix`, `datetime.to_unix`, `datetime.format`,
-//!   `datetime.parse`, `datetime.year`, `datetime.month`, `datetime.day`,
-//!   `datetime.hour`, `datetime.minute`, `datetime.second`,
-//!   `datetime.weekday`, `datetime.day_of_year`, `datetime.week_of_year`,
-//!   `datetime.quarter`, `datetime.is_leap_year`, `datetime.is_weekend`,
-//!   `datetime.add_seconds`, `datetime.add_minutes`, `datetime.add_hours`,
-//!   `datetime.add_days`, `datetime.add_weeks`, `datetime.add_months`,
-//!   `datetime.add_years`, `datetime.compare`, `datetime.is_before`,
-//!   `datetime.is_after`, `datetime.is_equal`, `datetime.is_between`,
-//!   `datetime.duration_between`, `datetime.duration_seconds`,
-//!   `datetime.is_valid`
 //!
 //! ## Usage
 //!
@@ -82,8 +70,7 @@
 //!     .with(ObjModule)
 //!     .with(FnModule)
 //!     .with(TypeModule)
-//!     .with(SetModule)
-//!     .with(DateTimeModule);
+//!     .with(SetModule);
 //! ```
 //!
 //! This crate is interface-agnostic — usable from CLI, MCP, or any consumer
@@ -91,7 +78,6 @@
 
 mod array;
 mod bool;
-mod datetime;
 mod r#fn;
 mod math;
 mod obj;

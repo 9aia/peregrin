@@ -84,3 +84,19 @@ impl Function for IsBetween {
         Ok(b(dt_target > dt_start && dt_target < dt_end))
     }
 }
+
+#[derive(Clone, Copy)]
+pub struct IsBetweenInclusive;
+impl Function for IsBetweenInclusive {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let (target, start, end) = require_three_strings(args)?;
+        let dt_target = parse_iso(target)?;
+        let dt_start = parse_iso(start)?;
+        let dt_end = parse_iso(end)?;
+        Ok(b(dt_target >= dt_start && dt_target <= dt_end))
+    }
+}

@@ -344,6 +344,7 @@ dependencies = [
  "ac-frontend-yaml",
  "ac-host",
  "ac-lib-crypto",
+ "ac-lib-datetime",
  "ac-lib-intl",
  "ac-lib-kv",
  "ac-lib-kv-hashmap",
@@ -382,6 +383,19 @@ dependencies = [
  "md-5",
  "serde_json",
  "sha2",
+]
+
+[[package]]
+name = "ac-lib-datetime"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-host",
+ "ac-runtime",
+ "ac-runtime-core",
+ "ac-vm",
+ "chrono",
+ "serde_json",
 ]
 
 [[package]]
@@ -457,7 +471,6 @@ dependencies = [
  "ac-runtime",
  "ac-runtime-core",
  "ac-vm",
- "chrono",
  "serde_json",
 ]
 
