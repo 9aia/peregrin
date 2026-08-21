@@ -65,7 +65,7 @@
 //!   `datetime.add_years`, `datetime.compare`, `datetime.is_before`,
 //!   `datetime.is_after`, `datetime.is_equal`, `datetime.is_between`,
 //!   `datetime.duration_between`, `datetime.duration_seconds`,
-//!   `datetime.humanize_duration`, `datetime.is_valid`
+//!   `datetime.is_valid`
 //!
 //! ## Usage
 //!
