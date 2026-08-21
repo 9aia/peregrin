@@ -10,7 +10,7 @@
 //!   `math.clamp`, `math.log`, `math.log10`, `math.log2`, `math.exp`, `math.sin`,
 //!   `math.cos`, `math.tan`, `math.asin`, `math.acos`, `math.atan`, `math.atan2`,
 //!   `math.hypot`, `math.mod`, `math.cbrt`, `math.degrees`, `math.radians`,
-//!   `math.pi`, `math.e`
+//!   `math.round_to`, `math.pi`, `math.e`
 //! - [`StringModule`] — `string.upper`, `string.lower`, `string.trim`,
 //!   `string.trim_start`, `string.trim_end`, `string.split`, `string.join`,
 //!   `string.replace`, `string.replace_first`, `string.contains`,
@@ -21,8 +21,8 @@
 //!   `array.contains`, `array.index_of`, `array.slice`, `array.first`,
 //!   `array.last`, `array.sort`, `array.flatten`, `array.deep_flatten`,
 //!   `array.unique`, `array.sum`, `array.avg`, `array.min`, `array.max`,
-//!   `array.at`, `array.push`, `array.fill`, `array.difference`,
-//!   `array.intersection`, `array.union`
+//!   `array.at`, `array.push`, `array.pop`, `array.shift`, `array.fill`,
+//!   `array.difference`, `array.intersection`, `array.union`
 //! - [`BoolModule`] — `bool.and`, `bool.or`, `bool.not`, `bool.xor`,
 //!   `bool.nand`, `bool.nor`, `bool.if`, `bool.eq`, `bool.from`
 //! - [`FpModule`] — `fp.identity`, `fp.default`, `fp.coalesce`, `fp.is_null`,

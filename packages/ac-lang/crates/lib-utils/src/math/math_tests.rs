@@ -256,6 +256,34 @@ fn radians() {
 }
 
 #[test]
+fn round_to_two_decimals() {
+    let result = call(&MathModule, "round_to", &[n(3.14159), n(2.0)]).as_number();
+    assert!(result.is_some());
+    assert!((result.unwrap() - 3.14).abs() < 1e-10);
+}
+
+#[test]
+fn round_to_zero_decimals() {
+    let result = call(&MathModule, "round_to", &[n(3.7), n(0.0)]).as_number();
+    assert_eq!(result, Some(4.0));
+}
+
+#[test]
+fn round_to_three_decimals() {
+    let result = call(&MathModule, "round_to", &[n(2.71828), n(3.0)]).as_number();
+    assert!(result.is_some());
+    assert!((result.unwrap() - 2.718).abs() < 1e-10);
+}
+
+#[test]
+fn round_to_negative_errors() {
+    let func = MathModule.function("round_to").unwrap();
+    let mut ctx = Context::new();
+    let result = func.call(&[n(1.5), n(-1.0)], &mut ctx);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
 fn unknown_function_returns_none() {
     assert!(MathModule.function("nope").is_none());
 }

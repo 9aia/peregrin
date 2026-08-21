@@ -45,6 +45,7 @@ impl Module for MathModule {
             "cbrt" => Some(&Cbrt),
             "degrees" => Some(&Degrees),
             "radians" => Some(&Radians),
+            "round_to" => Some(&RoundTo),
             _ => None,
         }
     }
@@ -114,6 +115,29 @@ unary_fn!(Log2, |x: f64| x.log2());
 unary_fn!(Cbrt, |x: f64| x.cbrt());
 unary_fn!(Degrees, |x: f64| x.to_degrees());
 unary_fn!(Radians, |x: f64| x.to_radians());
+
+#[derive(Clone, Copy)]
+pub struct RoundTo;
+impl Function for RoundTo {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let value = require_number(&args[0])?;
+        let decimals = require_number(&args[1])?;
+        if decimals < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        let multiplier = 10f64.powi(decimals as i32);
+        Ok(num((value * multiplier).round() / multiplier))
+    }
+}
 
 #[derive(Clone, Copy)]
 pub struct Min;

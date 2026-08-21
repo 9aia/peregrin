@@ -38,6 +38,8 @@ impl Module for ArrayModule {
             "intersection" => Some(&Intersection),
             "union" => Some(&Union),
             "deep_flatten" => Some(&DeepFlatten),
+            "pop" => Some(&Pop),
+            "shift" => Some(&Shift),
             _ => None,
         }
     }
@@ -409,5 +411,29 @@ impl Function for DeepFlatten {
         let mut flat = Vec::new();
         deep_flat(input, &mut flat);
         Ok(arr(&flat))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Pop;
+impl Function for Pop {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let array = require_one_array(args)?;
+        if array.is_empty() {
+            return Ok(arr(&[]));
+        }
+        Ok(arr(&array[..array.len() - 1]))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Shift;
+impl Function for Shift {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        let array = require_one_array(args)?;
+        if array.is_empty() {
+            return Ok(arr(&[]));
+        }
+        Ok(arr(&array[1..]))
     }
 }

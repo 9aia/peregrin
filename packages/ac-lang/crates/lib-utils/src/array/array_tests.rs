@@ -527,6 +527,56 @@ fn slice_negative_errors() {
 }
 
 #[test]
+fn pop_removes_last() {
+    let result = call(
+        &ArrayModule,
+        "pop",
+        &[arr(&[json!(1), json!(2), json!(3)])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_f64(), Some(1.0));
+    assert_eq!(array[1].as_f64(), Some(2.0));
+}
+
+#[test]
+fn pop_empty_returns_empty() {
+    let result = call(&ArrayModule, "pop", &[arr(&[])]);
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+#[test]
+fn pop_single_element() {
+    let result = call(&ArrayModule, "pop", &[arr(&[json!(42)])]);
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+#[test]
+fn shift_removes_first() {
+    let result = call(
+        &ArrayModule,
+        "shift",
+        &[arr(&[json!(1), json!(2), json!(3)])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0].as_f64(), Some(2.0));
+    assert_eq!(array[1].as_f64(), Some(3.0));
+}
+
+#[test]
+fn shift_empty_returns_empty() {
+    let result = call(&ArrayModule, "shift", &[arr(&[])]);
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+#[test]
+fn shift_single_element() {
+    let result = call(&ArrayModule, "shift", &[arr(&[json!(42)])]);
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+#[test]
 fn unknown_function_returns_none() {
     assert!(ArrayModule.function("nope").is_none());
 }
