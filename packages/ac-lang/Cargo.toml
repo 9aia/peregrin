@@ -13,6 +13,7 @@ members = [
   "crates/lib-utils",
   "crates/lib-intl",
   "crates/lib-crypto",
+  "crates/lib-rand",
   "crates/lib-kv",
   "crates/lib-kv-hashmap",
   "crates/lib-platform",
@@ -77,6 +78,7 @@ ac-runtime-core = { path = "crates/runtime-core" }
 ac-lib-utils = { path = "crates/lib-utils" }
 ac-lib-intl = { path = "crates/lib-intl" }
 ac-lib-crypto = { path = "crates/lib-crypto" }
+ac-lib-rand = { path = "crates/lib-rand" }
 ac-lib-kv = { path = "crates/lib-kv" }
 ac-lib-kv-hashmap = { path = "crates/lib-kv-hashmap" }
 ac-lib-platform = { path = "crates/lib-platform" }
@@ -123,6 +125,7 @@ ac-meta = { path = "crates/meta" }
 ac-store = { path = "crates/store" }
 ac-codebase = { path = "crates/codebase" }
 ac-integration-tests = { path = "crates/integration-tests" }
+rand = "0.9"
 hex = "0.4"
 md-5 = "0.10"
 base64 = "0.22"
@@ -153,6 +156,7 @@ default = [
   "lib-utils",
   "lib-intl",
   "lib-crypto",
+  "lib-rand",
   "lib-kv",
   "lib-kv-hashmap",
   "lib-platform",
@@ -192,6 +196,7 @@ resolver-virtual = ["dep:ac-module-resolver-virtual", "resolver-core"]
 lib-utils = ["dep:ac-lib-utils", "vm", "dep:ac-runtime-core"]
 lib-intl = ["dep:ac-lib-intl", "vm", "dep:ac-runtime-core"]
 lib-crypto = ["dep:ac-lib-crypto", "vm", "dep:ac-runtime-core"]
+lib-rand = ["dep:ac-lib-rand", "vm", "dep:ac-runtime-core"]
 lib-kv = ["dep:ac-lib-kv", "vm", "dep:ac-runtime-core"]
 lib-kv-hashmap = ["dep:ac-lib-kv-hashmap", "lib-kv"]
 lib-platform = ["dep:ac-lib-platform", "vm", "dep:ac-runtime-core"]
@@ -227,6 +232,7 @@ ac-typegen-backend-json-schema = { workspace = true, optional = true }
 ac-lib-utils = { workspace = true, optional = true }
 ac-lib-intl = { workspace = true, optional = true }
 ac-lib-crypto = { workspace = true, optional = true }
+ac-lib-rand = { workspace = true, optional = true }
 ac-lib-kv = { workspace = true, optional = true }
 ac-lib-kv-hashmap = { workspace = true, optional = true }
 ac-lib-platform = { workspace = true, optional = true }
