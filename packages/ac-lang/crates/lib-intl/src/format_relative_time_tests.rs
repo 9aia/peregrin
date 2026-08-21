@@ -35,57 +35,49 @@ fn obj(pairs: &[(&str, &str)]) -> NonFunctionValue {
 #[test]
 fn relative_time_future_seconds() {
     let result = call(&[n(5.0), s("second")]);
-    let s = result.as_str().expect("string result");
-    assert!(s.contains("5") && s.contains("second"));
+    assert_eq!(result.as_str(), Some("in 5 seconds"));
 }
 
 #[test]
 fn relative_time_past_seconds() {
     let result = call(&[n(-10.0), s("second")]);
-    let s = result.as_str().expect("string result");
-    assert!(s.contains("10") && s.contains("second"));
+    assert_eq!(result.as_str(), Some("10 seconds ago"));
 }
 
 #[test]
 fn relative_time_days() {
     let result = call(&[n(3.0), s("day")]);
-    let s = result.as_str().expect("string result");
-    assert!(s.contains("3") && s.contains("day"));
+    assert_eq!(result.as_str(), Some("in 3 days"));
 }
 
 #[test]
 fn relative_time_years() {
     let result = call(&[n(5.0), s("year")]);
-    let s = result.as_str().expect("string result");
-    assert!(s.contains("5") && s.contains("year"));
+    assert_eq!(result.as_str(), Some("in 5 years"));
 }
 
 #[test]
 fn relative_time_german() {
     let result = call(&[n(5.0), s("second"), s("de")]);
-    let s = result.as_str().expect("string result");
-    assert!(s.contains("5") && s.contains("Sekunde"));
+    assert_eq!(result.as_str(), Some("in 5 Sekunden"));
 }
 
 #[test]
 fn relative_time_short_style() {
     let result = call(&[n(5.0), s("second"), s("en"), obj(&[("style", "short")])]);
-    let s = result.as_str().expect("string result");
-    assert!(s.contains("5") && s.contains("sec"));
+    assert_eq!(result.as_str(), Some("in 5 sec."));
 }
 
 #[test]
 fn relative_time_narrow_style() {
     let result = call(&[n(5.0), s("second"), s("en"), obj(&[("style", "narrow")])]);
-    let s = result.as_str().expect("string result");
-    assert!(s.contains("5"));
+    assert_eq!(result.as_str(), Some("in 5s"));
 }
 
 #[test]
 fn relative_time_numeric_auto() {
     let result = call(&[n(0.0), s("day"), s("en"), obj(&[("numeric", "auto")])]);
-    let s = result.as_str().expect("string result");
-    assert!(!s.is_empty());
+    assert_eq!(result.as_str(), Some("today"));
 }
 
 #[test]

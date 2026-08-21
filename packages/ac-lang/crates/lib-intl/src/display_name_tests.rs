@@ -37,29 +37,25 @@ fn display_name_language_german() {
 #[test]
 fn display_name_language_in_portuguese() {
     let result = call(&[s("de"), s("language"), s("pt")]);
-    let s = result.as_str().expect("string result");
-    assert!(!s.is_empty() && s != "de");
+    assert_eq!(result.as_str(), Some("alemão"));
 }
 
 #[test]
 fn display_name_region_us() {
     let result = call(&[s("US"), s("region")]);
-    let s = result.as_str().expect("string result");
-    assert!(s.contains("United States") || s.contains("US"));
+    assert_eq!(result.as_str(), Some("United States"));
 }
 
 #[test]
 fn display_name_region_de() {
     let result = call(&[s("DE"), s("region")]);
-    let s = result.as_str().expect("string result");
-    assert!(s.contains("Germany") || s.contains("Deutschland") || s.contains("DE"));
+    assert_eq!(result.as_str(), Some("Germany"));
 }
 
 #[test]
 fn display_name_script_latn() {
     let result = call(&[s("Latn"), s("script")]);
-    let s = result.as_str().expect("string result");
-    assert!(s.contains("Latin") || s.contains("Latn"));
+    assert_eq!(result.as_str(), Some("Latin"));
 }
 
 #[test]

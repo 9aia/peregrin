@@ -50,15 +50,13 @@ fn format_list_single() {
 #[test]
 fn format_list_pair() {
     let result = call(&IntlModule, "format_list", &[arr(&["a", "b"])]);
-    let formatted = result.as_str().expect("string result");
-    assert!(formatted.contains("a") && formatted.contains("b"));
+    assert_eq!(result.as_str(), Some("a and b"));
 }
 
 #[test]
 fn format_list_three() {
     let result = call(&IntlModule, "format_list", &[arr(&["a", "b", "c"])]);
-    let formatted = result.as_str().expect("string result");
-    assert!(formatted.contains("a") && formatted.contains("b") && formatted.contains("c"));
+    assert_eq!(result.as_str(), Some("a, b, and c"));
 }
 
 #[test]
@@ -72,8 +70,7 @@ fn format_list_no_args_errors() {
 #[test]
 fn format_list_es_pair() {
     let result = call(&IntlModule, "format_list", &[arr(&["España", "Suiza"]), s("es")]);
-    let formatted = result.as_str().expect("string result");
-    assert!(formatted.contains("España") && formatted.contains("Suiza"));
+    assert_eq!(result.as_str(), Some("España y Suiza"));
 }
 
 // ── Disjunction ──────────────────────────────────────────────────
@@ -81,8 +78,7 @@ fn format_list_es_pair() {
 #[test]
 fn format_list_disjunction() {
     let result = call(&IntlModule, "format_list", &[arr(&["a", "b", "c"]), s("en"), obj(&[("type", "disjunction")])]);
-    let formatted = result.as_str().expect("string result");
-    assert!(formatted.contains("a") && formatted.contains("b") && formatted.contains("c"));
+    assert_eq!(result.as_str(), Some("a, b, or c"));
 }
 
 // ── Short style ──────────────────────────────────────────────────
