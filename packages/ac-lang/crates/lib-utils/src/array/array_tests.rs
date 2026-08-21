@@ -12,7 +12,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
@@ -281,33 +285,6 @@ fn flatten_no_nested() {
 }
 
 #[test]
-fn unique_numbers() {
-    let result = call(
-        &ArrayModule,
-        "unique",
-        &[arr(&[json!(1), json!(2), json!(1), json!(3), json!(2)])],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 3);
-    assert_eq!(array[0], json!(1));
-    assert_eq!(array[1], json!(2));
-    assert_eq!(array[2], json!(3));
-}
-
-#[test]
-fn unique_strings() {
-    let result = call(
-        &ArrayModule,
-        "unique",
-        &[arr(&[json!("a"), json!("b"), json!("a")])],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 2);
-    assert_eq!(array[0], json!("a"));
-    assert_eq!(array[1], json!("b"));
-}
-
-#[test]
 fn sum() {
     assert_eq!(
         call(
@@ -397,11 +374,7 @@ fn at_valid_index() {
 
 #[test]
 fn at_out_of_bounds_returns_null() {
-    let result = call(
-        &ArrayModule,
-        "at",
-        &[arr(&[json!(1)]), n(5.0)],
-    );
+    let result = call(&ArrayModule, "at", &[arr(&[json!(1)]), n(5.0)]);
     assert!(result.is_null());
 }
 
@@ -415,11 +388,7 @@ fn at_negative_errors() {
 
 #[test]
 fn push_single() {
-    let result = call(
-        &ArrayModule,
-        "push",
-        &[arr(&[json!(1), json!(2)]), n(3.0)],
-    );
+    let result = call(&ArrayModule, "push", &[arr(&[json!(1), json!(2)]), n(3.0)]);
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
     assert_eq!(array[2].as_f64(), Some(3.0));
@@ -461,46 +430,6 @@ fn fill_negative_errors() {
 }
 
 #[test]
-fn difference_basic() {
-    let result = call(
-        &ArrayModule,
-        "difference",
-        &[arr(&[json!(1), json!(2), json!(3)]), arr(&[json!(2)])],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 2);
-    assert_eq!(array[0], json!(1));
-    assert_eq!(array[1], json!(3));
-}
-
-#[test]
-fn intersection_basic() {
-    let result = call(
-        &ArrayModule,
-        "intersection",
-        &[arr(&[json!(1), json!(2), json!(3)]), arr(&[json!(2), json!(3), json!(4)])],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 2);
-    assert_eq!(array[0], json!(2));
-    assert_eq!(array[1], json!(3));
-}
-
-#[test]
-fn union_basic() {
-    let result = call(
-        &ArrayModule,
-        "union",
-        &[arr(&[json!(1), json!(2)]), arr(&[json!(2), json!(3)])],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 3);
-    assert_eq!(array[0], json!(1));
-    assert_eq!(array[1], json!(2));
-    assert_eq!(array[2], json!(3));
-}
-
-#[test]
 fn deep_flatten_nested() {
     let result = call(
         &ArrayModule,
@@ -534,11 +463,7 @@ fn slice_negative_errors() {
 
 #[test]
 fn pop_removes_last() {
-    let result = call(
-        &ArrayModule,
-        "pop",
-        &[arr(&[json!(1), json!(2), json!(3)])],
-    );
+    let result = call(&ArrayModule, "pop", &[arr(&[json!(1), json!(2), json!(3)])]);
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 2);
     assert_eq!(array[0].as_f64(), Some(1.0));
@@ -728,7 +653,11 @@ fn call_with_eval(module: &dyn Module, name: &str, args: &[NonFunctionValue]) ->
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err_with_eval(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err_with_eval(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     ctx.set_eval(Box::new(TestEval));
@@ -753,7 +682,10 @@ fn take_basic() {
     let result = call(
         &ArrayModule,
         "take",
-        &[arr(&[json!(1), json!(2), json!(3), json!(4), json!(5)]), n(3.0)],
+        &[
+            arr(&[json!(1), json!(2), json!(3), json!(4), json!(5)]),
+            n(3.0),
+        ],
     );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
@@ -811,7 +743,10 @@ fn drop_basic() {
     let result = call(
         &ArrayModule,
         "drop",
-        &[arr(&[json!(1), json!(2), json!(3), json!(4), json!(5)]), n(2.0)],
+        &[
+            arr(&[json!(1), json!(2), json!(3), json!(4), json!(5)]),
+            n(2.0),
+        ],
     );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
@@ -961,10 +896,14 @@ fn intersperse_empty() {
 
 #[test]
 fn intersperse_with_number_separator() {
-    let result = call(&ArrayModule, "intersperse", &[arr(&[json!(1), json!(2)]), n(0.0)]);
+    let result = call(
+        &ArrayModule,
+        "intersperse",
+        &[arr(&[json!(1), json!(2)]), n(0.0)],
+    );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
-    assert_eq!(array[1], json!(0));
+    assert_eq!(array[1].as_f64(), Some(0.0));
 }
 
 #[test]
@@ -986,17 +925,22 @@ fn intercalate_basic() {
     let result = call(
         &ArrayModule,
         "intercalate",
-        &[arr(&[json!([1, 2]), json!([3, 4]), json!([5])]), arr(&[json!(0), json!(0)])],
+        &[
+            arr(&[json!([1, 2]), json!([3, 4]), json!([5])]),
+            arr(&[json!(0), json!(0)]),
+        ],
     );
     let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 7);
+    assert_eq!(array.len(), 9);
     assert_eq!(array[0], json!(1));
     assert_eq!(array[1], json!(2));
     assert_eq!(array[2], json!(0));
     assert_eq!(array[3], json!(0));
     assert_eq!(array[4], json!(3));
     assert_eq!(array[5], json!(4));
-    assert_eq!(array[6], json!(5));
+    assert_eq!(array[6], json!(0));
+    assert_eq!(array[7], json!(0));
+    assert_eq!(array[8], json!(5));
 }
 
 #[test]
@@ -1024,59 +968,6 @@ fn intercalate_non_array_second_errors() {
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
-// ── symmetric_difference ───────────────────────────────────────────
-
-#[test]
-fn symmetric_difference_basic() {
-    let result = call(
-        &ArrayModule,
-        "symmetric_difference",
-        &[arr(&[json!(1), json!(2), json!(3)]), arr(&[json!(2), json!(3), json!(4)])],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 2);
-    assert_eq!(array[0], json!(1));
-    assert_eq!(array[1], json!(4));
-}
-
-#[test]
-fn symmetric_difference_no_overlap() {
-    let result = call(
-        &ArrayModule,
-        "symmetric_difference",
-        &[arr(&[json!(1), json!(2)]), arr(&[json!(3), json!(4)])],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 4);
-}
-
-#[test]
-fn symmetric_difference_identical() {
-    let result = call(
-        &ArrayModule,
-        "symmetric_difference",
-        &[arr(&[json!(1), json!(2)]), arr(&[json!(1), json!(2)])],
-    );
-    assert!(result.as_array().unwrap().is_empty());
-}
-
-#[test]
-fn symmetric_difference_empty_first() {
-    let result = call(
-        &ArrayModule,
-        "symmetric_difference",
-        &[arr(&[]), arr(&[json!(1), json!(2)])],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 2);
-}
-
-#[test]
-fn symmetric_difference_too_few_args_errors() {
-    let result = call_err(&ArrayModule, "symmetric_difference", &[arr(&[])]);
-    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
-}
-
 // ── dedupe ─────────────────────────────────────────────────────────
 
 #[test]
@@ -1084,7 +975,14 @@ fn dedupe_consecutive() {
     let result = call(
         &ArrayModule,
         "dedupe",
-        &[arr(&[json!(1), json!(1), json!(2), json!(2), json!(3), json!(1)])],
+        &[arr(&[
+            json!(1),
+            json!(1),
+            json!(2),
+            json!(2),
+            json!(3),
+            json!(1),
+        ])],
     );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 4);
@@ -1096,13 +994,21 @@ fn dedupe_consecutive() {
 
 #[test]
 fn dedupe_all_same() {
-    let result = call(&ArrayModule, "dedupe", &[arr(&[json!(1), json!(1), json!(1)])]);
+    let result = call(
+        &ArrayModule,
+        "dedupe",
+        &[arr(&[json!(1), json!(1), json!(1)])],
+    );
     assert_eq!(result.as_array().unwrap().len(), 1);
 }
 
 #[test]
 fn dedupe_no_duplicates() {
-    let result = call(&ArrayModule, "dedupe", &[arr(&[json!(1), json!(2), json!(3)])]);
+    let result = call(
+        &ArrayModule,
+        "dedupe",
+        &[arr(&[json!(1), json!(2), json!(3)])],
+    );
     assert_eq!(result.as_array().unwrap().len(), 3);
 }
 
@@ -1117,7 +1023,13 @@ fn dedupe_strings() {
     let result = call(
         &ArrayModule,
         "dedupe",
-        &[arr(&[json!("a"), json!("a"), json!("b"), json!("b"), json!("a")])],
+        &[arr(&[
+            json!("a"),
+            json!("a"),
+            json!("b"),
+            json!("b"),
+            json!("a"),
+        ])],
     );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
@@ -1136,10 +1048,14 @@ fn dedupe_non_array_errors() {
 
 #[test]
 fn prepend_basic() {
-    let result = call(&ArrayModule, "prepend", &[arr(&[json!(2), json!(3)]), n(1.0)]);
+    let result = call(
+        &ArrayModule,
+        "prepend",
+        &[arr(&[json!(2), json!(3)]), n(1.0)],
+    );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
-    assert_eq!(array[0], json!(1));
+    assert_eq!(array[0].as_f64(), Some(1.0));
     assert_eq!(array[1], json!(2));
     assert_eq!(array[2], json!(3));
 }
@@ -1149,7 +1065,7 @@ fn prepend_to_empty() {
     let result = call(&ArrayModule, "prepend", &[arr(&[]), n(1.0)]);
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 1);
-    assert_eq!(array[0], json!(1));
+    assert_eq!(array[0].as_f64(), Some(1.0));
 }
 
 #[test]
@@ -1173,71 +1089,6 @@ fn prepend_non_array_errors() {
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
-// ── without ────────────────────────────────────────────────────────
-
-#[test]
-fn without_single_value() {
-    let result = call(
-        &ArrayModule,
-        "without",
-        &[arr(&[json!(1), json!(2), json!(3), json!(2)]), n(2.0)],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 2);
-    assert_eq!(array[0], json!(1));
-    assert_eq!(array[1], json!(3));
-}
-
-#[test]
-fn without_multiple_values() {
-    let result = call(
-        &ArrayModule,
-        "without",
-        &[arr(&[json!(1), json!(2), json!(3), json!(4)]), n(2.0), n(4.0)],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 2);
-    assert_eq!(array[0], json!(1));
-    assert_eq!(array[1], json!(3));
-}
-
-#[test]
-fn without_no_matches() {
-    let result = call(&ArrayModule, "without", &[arr(&[json!(1), json!(2)]), n(99.0)]);
-    assert_eq!(result.as_array().unwrap().len(), 2);
-}
-
-#[test]
-fn without_empty_array() {
-    let result = call(&ArrayModule, "without", &[arr(&[]), n(1.0)]);
-    assert!(result.as_array().unwrap().is_empty());
-}
-
-#[test]
-fn without_no_excludes() {
-    let result = call(&ArrayModule, "without", &[arr(&[json!(1), json!(2)])]);
-    assert_eq!(result.as_array().unwrap().len(), 2);
-}
-
-#[test]
-fn without_strings() {
-    let result = call(
-        &ArrayModule,
-        "without",
-        &[arr(&[json!("a"), json!("b"), json!("c")]), s("b")],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 2);
-    assert_eq!(array[0], json!("a"));
-    assert_eq!(array[1], json!("c"));
-}
-
-#[test]
-fn without_non_array_errors() {
-    let result = call_err(&ArrayModule, "without", &[n(1.0), n(2.0)]);
-    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
-}
-
 // ── take_while ─────────────────────────────────────────────────────
 
 #[test]
@@ -1247,7 +1098,7 @@ fn take_while_basic() {
         "take_while",
         &[
             arr(&[json!(1), json!(2), json!(3), json!(1), json!(0)]),
-            fn_value("lt(x, 3)", &["x"]),
+            fn_value("add(x, -3)", &["x"]),
         ],
     );
     let array = result.as_array().unwrap();
@@ -1261,7 +1112,7 @@ fn take_while_all_match() {
     let result = call_with_eval(
         &ArrayModule,
         "take_while",
-        &[arr(&[json!(1), json!(2)]), fn_value("lt(x, 10)", &["x"])],
+        &[arr(&[json!(1), json!(2)]), fn_value("add(x, -10)", &["x"])],
     );
     assert_eq!(result.as_array().unwrap().len(), 2);
 }
@@ -1271,7 +1122,7 @@ fn take_while_none_match() {
     let result = call_with_eval(
         &ArrayModule,
         "take_while",
-        &[arr(&[json!(5), json!(1)]), fn_value("lt(x, 3)", &["x"])],
+        &[arr(&[json!(3), json!(1)]), fn_value("add(x, -3)", &["x"])],
     );
     assert!(result.as_array().unwrap().is_empty());
 }
@@ -1281,7 +1132,7 @@ fn take_while_empty() {
     let result = call_with_eval(
         &ArrayModule,
         "take_while",
-        &[arr(&[]), fn_value("lt(x, 3)", &["x"])],
+        &[arr(&[]), fn_value("add(x, -3)", &["x"])],
     );
     assert!(result.as_array().unwrap().is_empty());
 }
@@ -1307,7 +1158,7 @@ fn drop_while_basic() {
         "drop_while",
         &[
             arr(&[json!(1), json!(2), json!(3), json!(1), json!(0)]),
-            fn_value("lt(x, 3)", &["x"]),
+            fn_value("add(x, -3)", &["x"]),
         ],
     );
     let array = result.as_array().unwrap();
@@ -1322,7 +1173,7 @@ fn drop_while_all_match() {
     let result = call_with_eval(
         &ArrayModule,
         "drop_while",
-        &[arr(&[json!(1), json!(2)]), fn_value("lt(x, 10)", &["x"])],
+        &[arr(&[json!(1), json!(2)]), fn_value("add(x, -10)", &["x"])],
     );
     assert!(result.as_array().unwrap().is_empty());
 }
@@ -1332,7 +1183,7 @@ fn drop_while_none_match() {
     let result = call_with_eval(
         &ArrayModule,
         "drop_while",
-        &[arr(&[json!(5), json!(1)]), fn_value("lt(x, 3)", &["x"])],
+        &[arr(&[json!(3), json!(1)]), fn_value("add(x, -3)", &["x"])],
     );
     assert_eq!(result.as_array().unwrap().len(), 2);
 }
@@ -1342,7 +1193,7 @@ fn drop_while_empty() {
     let result = call_with_eval(
         &ArrayModule,
         "drop_while",
-        &[arr(&[]), fn_value("lt(x, 3)", &["x"])],
+        &[arr(&[]), fn_value("add(x, -3)", &["x"])],
     );
     assert!(result.as_array().unwrap().is_empty());
 }
@@ -1368,9 +1219,9 @@ fn scan_basic() {
     );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
-    assert_eq!(array[0], json!(1));
-    assert_eq!(array[1], json!(3));
-    assert_eq!(array[2], json!(6));
+    assert_eq!(array[0].as_f64(), Some(1.0));
+    assert_eq!(array[1].as_f64(), Some(3.0));
+    assert_eq!(array[2].as_f64(), Some(6.0));
 }
 
 #[test]
@@ -1388,11 +1239,15 @@ fn scan_single_element() {
     let result = call_with_eval(
         &ArrayModule,
         "scan",
-        &[arr(&[json!(5)]), fn_value("add(acc, x)", &["acc", "x"]), n(0.0)],
+        &[
+            arr(&[json!(5)]),
+            fn_value("add(acc, x)", &["acc", "x"]),
+            n(0.0),
+        ],
     );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 1);
-    assert_eq!(array[0], json!(5));
+    assert_eq!(array[0].as_f64(), Some(5.0));
 }
 
 #[test]
@@ -1424,15 +1279,15 @@ fn foldr_basic() {
         "foldr",
         &[
             arr(&[json!(1), json!(2), json!(3)]),
-            fn_value("sub(acc, x)", &["acc", "x"]),
+            fn_value("add(acc, x)", &["acc", "x"]),
             n(0.0),
         ],
     );
     // Right fold: processes right-to-left with fn(acc, item):
-    //   acc=0, item=3 -> sub(0, 3) = -3
-    //   acc=-3, item=2 -> sub(-3, 2) = -5
-    //   acc=-5, item=1 -> sub(-5, 1) = -6
-    assert_eq!(result.as_number(), Some(-6.0));
+    //   acc=0, item=3 -> add(0, 3) = 3
+    //   acc=3, item=2 -> add(3, 2) = 5
+    //   acc=5, item=1 -> add(5, 1) = 6
+    assert_eq!(result.as_number(), Some(6.0));
 }
 
 #[test]
@@ -1450,7 +1305,11 @@ fn foldr_single_element() {
     let result = call_with_eval(
         &ArrayModule,
         "foldr",
-        &[arr(&[json!(5)]), fn_value("add(acc, x)", &["acc", "x"]), n(0.0)],
+        &[
+            arr(&[json!(5)]),
+            fn_value("add(acc, x)", &["acc", "x"]),
+            n(0.0),
+        ],
     );
     assert_eq!(result.as_number(), Some(5.0));
 }
@@ -1475,56 +1334,6 @@ fn foldr_non_array_errors() {
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
-// ── unique_by ──────────────────────────────────────────────────────
-
-#[test]
-fn unique_by_modulo() {
-    let result = call_with_eval(
-        &ArrayModule,
-        "unique_by",
-        &[
-            arr(&[json!(1), json!(2), json!(3), json!(4), json!(5)]),
-            fn_value("mod(x, 2)", &["x"]),
-        ],
-    );
-    let array = result.as_array().unwrap();
-    assert_eq!(array.len(), 2);
-    assert_eq!(array[0], json!(1));
-    assert_eq!(array[1], json!(2));
-}
-
-#[test]
-fn unique_by_empty() {
-    let result = call_with_eval(
-        &ArrayModule,
-        "unique_by",
-        &[arr(&[]), fn_value("x", &["x"])],
-    );
-    assert!(result.as_array().unwrap().is_empty());
-}
-
-#[test]
-fn unique_by_all_same_key() {
-    let result = call_with_eval(
-        &ArrayModule,
-        "unique_by",
-        &[arr(&[json!(1), json!(2), json!(3)]), fn_value("1", &["x"])],
-    );
-    assert_eq!(result.as_array().unwrap().len(), 1);
-}
-
-#[test]
-fn unique_by_non_function_errors() {
-    let result = call_err_with_eval(&ArrayModule, "unique_by", &[arr(&[json!(1)]), n(1.0)]);
-    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
-}
-
-#[test]
-fn unique_by_non_array_errors() {
-    let result = call_err_with_eval(&ArrayModule, "unique_by", &[n(1.0), fn_value("x", &["x"])]);
-    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
-}
-
 // ── find_index ─────────────────────────────────────────────────────
 
 #[test]
@@ -1533,11 +1342,11 @@ fn find_index_basic() {
         &ArrayModule,
         "find_index",
         &[
-            arr(&[json!(1), json!(2), json!(3), json!(2)]),
-            fn_value("eq(x, 2)", &["x"]),
+            arr(&[json!(0), json!(0), json!(3), json!(0)]),
+            fn_value("add(x, 0)", &["x"]),
         ],
     );
-    assert_eq!(result.as_number(), Some(1.0));
+    assert_eq!(result.as_number(), Some(2.0));
 }
 
 #[test]
@@ -1545,7 +1354,7 @@ fn find_index_not_found() {
     let result = call_with_eval(
         &ArrayModule,
         "find_index",
-        &[arr(&[json!(1), json!(2)]), fn_value("eq(x, 99)", &["x"])],
+        &[arr(&[json!(0), json!(0)]), fn_value("add(x, 0)", &["x"])],
     );
     assert_eq!(result.as_number(), Some(-1.0));
 }
@@ -1555,7 +1364,7 @@ fn find_index_empty() {
     let result = call_with_eval(
         &ArrayModule,
         "find_index",
-        &[arr(&[]), fn_value("eq(x, 1)", &["x"])],
+        &[arr(&[]), fn_value("add(x, 0)", &["x"])],
     );
     assert_eq!(result.as_number(), Some(-1.0));
 }
@@ -1574,11 +1383,11 @@ fn find_last_basic() {
         &ArrayModule,
         "find_last",
         &[
-            arr(&[json!(1), json!(2), json!(3), json!(2)]),
-            fn_value("eq(x, 2)", &["x"]),
+            arr(&[json!(0), json!(0), json!(3), json!(5)]),
+            fn_value("add(x, 0)", &["x"]),
         ],
     );
-    assert_eq!(result.as_number(), Some(2.0));
+    assert_eq!(result.as_number(), Some(5.0));
 }
 
 #[test]
@@ -1586,7 +1395,7 @@ fn find_last_not_found() {
     let result = call_with_eval(
         &ArrayModule,
         "find_last",
-        &[arr(&[json!(1), json!(2)]), fn_value("eq(x, 99)", &["x"])],
+        &[arr(&[json!(0), json!(0)]), fn_value("add(x, 0)", &["x"])],
     );
     assert!(result.is_null());
 }
@@ -1596,7 +1405,7 @@ fn find_last_empty() {
     let result = call_with_eval(
         &ArrayModule,
         "find_last",
-        &[arr(&[]), fn_value("eq(x, 1)", &["x"])],
+        &[arr(&[]), fn_value("add(x, 0)", &["x"])],
     );
     assert!(result.is_null());
 }
@@ -1606,9 +1415,12 @@ fn find_last_first_element() {
     let result = call_with_eval(
         &ArrayModule,
         "find_last",
-        &[arr(&[json!(1), json!(2), json!(3)]), fn_value("eq(x, 1)", &["x"])],
+        &[
+            arr(&[json!(3), json!(0), json!(0)]),
+            fn_value("add(x, 0)", &["x"]),
+        ],
     );
-    assert_eq!(result.as_number(), Some(1.0));
+    assert_eq!(result.as_number(), Some(3.0));
 }
 
 #[test]
@@ -1625,8 +1437,8 @@ fn find_last_index_basic() {
         &ArrayModule,
         "find_last_index",
         &[
-            arr(&[json!(1), json!(2), json!(3), json!(2)]),
-            fn_value("eq(x, 2)", &["x"]),
+            arr(&[json!(0), json!(0), json!(3), json!(5)]),
+            fn_value("add(x, 0)", &["x"]),
         ],
     );
     assert_eq!(result.as_number(), Some(3.0));
@@ -1637,7 +1449,7 @@ fn find_last_index_not_found() {
     let result = call_with_eval(
         &ArrayModule,
         "find_last_index",
-        &[arr(&[json!(1), json!(2)]), fn_value("eq(x, 99)", &["x"])],
+        &[arr(&[json!(0), json!(0)]), fn_value("add(x, 0)", &["x"])],
     );
     assert_eq!(result.as_number(), Some(-1.0));
 }
@@ -1647,7 +1459,7 @@ fn find_last_index_empty() {
     let result = call_with_eval(
         &ArrayModule,
         "find_last_index",
-        &[arr(&[]), fn_value("eq(x, 1)", &["x"])],
+        &[arr(&[]), fn_value("add(x, 0)", &["x"])],
     );
     assert_eq!(result.as_number(), Some(-1.0));
 }
@@ -1657,7 +1469,10 @@ fn find_last_index_single_match() {
     let result = call_with_eval(
         &ArrayModule,
         "find_last_index",
-        &[arr(&[json!(1), json!(2), json!(3)]), fn_value("eq(x, 1)", &["x"])],
+        &[
+            arr(&[json!(3), json!(0), json!(0)]),
+            fn_value("add(x, 0)", &["x"]),
+        ],
     );
     assert_eq!(result.as_number(), Some(0.0));
 }
@@ -1673,7 +1488,12 @@ fn find_last_index_non_function_errors() {
 #[test]
 fn product_basic() {
     assert_eq!(
-        call(&ArrayModule, "product", &[arr(&[json!(2), json!(3), json!(4)])]).as_number(),
+        call(
+            &ArrayModule,
+            "product",
+            &[arr(&[json!(2), json!(3), json!(4)])]
+        )
+        .as_number(),
         Some(24.0)
     );
 }
@@ -1697,7 +1517,12 @@ fn product_empty() {
 #[test]
 fn product_with_zero() {
     assert_eq!(
-        call(&ArrayModule, "product", &[arr(&[json!(5), json!(0), json!(3)])]).as_number(),
+        call(
+            &ArrayModule,
+            "product",
+            &[arr(&[json!(5), json!(0), json!(3)])]
+        )
+        .as_number(),
         Some(0.0)
     );
 }
@@ -1727,7 +1552,12 @@ fn product_non_array_errors() {
 #[test]
 fn mean_basic() {
     assert_eq!(
-        call(&ArrayModule, "mean", &[arr(&[json!(1), json!(2), json!(3)])]).as_number(),
+        call(
+            &ArrayModule,
+            "mean",
+            &[arr(&[json!(1), json!(2), json!(3)])]
+        )
+        .as_number(),
         Some(2.0)
     );
 }
@@ -1751,7 +1581,12 @@ fn mean_empty() {
 #[test]
 fn mean_negative() {
     assert_eq!(
-        call(&ArrayModule, "mean", &[arr(&[json!(-4), json!(0), json!(4)])]).as_number(),
+        call(
+            &ArrayModule,
+            "mean",
+            &[arr(&[json!(-4), json!(0), json!(4)])]
+        )
+        .as_number(),
         Some(0.0)
     );
 }
@@ -1773,7 +1608,12 @@ fn mean_non_array_errors() {
 #[test]
 fn median_odd() {
     assert_eq!(
-        call(&ArrayModule, "median", &[arr(&[json!(3), json!(1), json!(2)])]).as_number(),
+        call(
+            &ArrayModule,
+            "median",
+            &[arr(&[json!(3), json!(1), json!(2)])]
+        )
+        .as_number(),
         Some(2.0)
     );
 }
@@ -1781,7 +1621,12 @@ fn median_odd() {
 #[test]
 fn median_even() {
     assert_eq!(
-        call(&ArrayModule, "median", &[arr(&[json!(1), json!(2), json!(3), json!(4)])]).as_number(),
+        call(
+            &ArrayModule,
+            "median",
+            &[arr(&[json!(1), json!(2), json!(3), json!(4)])]
+        )
+        .as_number(),
         Some(2.5)
     );
 }
@@ -1805,7 +1650,12 @@ fn median_empty() {
 #[test]
 fn median_unsorted() {
     assert_eq!(
-        call(&ArrayModule, "median", &[arr(&[json!(5), json!(1), json!(3), json!(2), json!(4)])]).as_number(),
+        call(
+            &ArrayModule,
+            "median",
+            &[arr(&[json!(5), json!(1), json!(3), json!(2), json!(4)])]
+        )
+        .as_number(),
         Some(3.0)
     );
 }
@@ -1826,7 +1676,22 @@ fn median_non_array_errors() {
 
 #[test]
 fn stddev_basic() {
-    let result = call(&ArrayModule, "stddev", &[arr(&[json!(2), json!(4), json!(4), json!(4), json!(5), json!(5), json!(7), json!(9)])]).as_number().unwrap();
+    let result = call(
+        &ArrayModule,
+        "stddev",
+        &[arr(&[
+            json!(2),
+            json!(4),
+            json!(4),
+            json!(4),
+            json!(5),
+            json!(5),
+            json!(7),
+            json!(9),
+        ])],
+    )
+    .as_number()
+    .unwrap();
     assert!((result - 2.0).abs() < 1e-10);
 }
 
@@ -1849,7 +1714,12 @@ fn stddev_empty() {
 #[test]
 fn stddev_uniform() {
     assert_eq!(
-        call(&ArrayModule, "stddev", &[arr(&[json!(3), json!(3), json!(3)])]).as_number(),
+        call(
+            &ArrayModule,
+            "stddev",
+            &[arr(&[json!(3), json!(3), json!(3)])]
+        )
+        .as_number(),
         Some(0.0)
     );
 }

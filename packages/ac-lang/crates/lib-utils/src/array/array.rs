@@ -3,8 +3,8 @@ use ac_runtime_core::Module;
 use ac_vm::{Context, Error, Function};
 
 use super::higher_order::{
-    Chunk, Compact, CountBy, Filter, Find, FlatMap, GroupBy, Map, MaxBy, MinBy,
-    Partition, Pluck, Range, Reduce, SomeFn, Every, SortBy, SortByDesc, Zip,
+    Chunk, Compact, CountBy, Every, Filter, Find, FlatMap, GroupBy, Map, MaxBy, MinBy, Partition,
+    Pluck, Range, Reduce, SomeFn, SortBy, SortByDesc, Zip,
 };
 
 /// The `array` module — array utility functions.
@@ -31,7 +31,6 @@ impl Module for ArrayModule {
             "last" => Some(&Last),
             "sort" => Some(&Sort),
             "flatten" => Some(&Flatten),
-            "unique" => Some(&Unique),
             "sum" => Some(&Sum),
             "avg" => Some(&Avg),
             "min" => Some(&Min),
@@ -39,9 +38,6 @@ impl Module for ArrayModule {
             "at" => Some(&At),
             "push" => Some(&Push),
             "fill" => Some(&Fill),
-            "difference" => Some(&Difference),
-            "intersection" => Some(&Intersection),
-            "union" => Some(&Union),
             "deep_flatten" => Some(&DeepFlatten),
             "pop" => Some(&Pop),
             "shift" => Some(&Shift),
@@ -51,15 +47,12 @@ impl Module for ArrayModule {
             "unzip" => Some(&Unzip),
             "intersperse" => Some(&Intersperse),
             "intercalate" => Some(&Intercalate),
-            "symmetric_difference" => Some(&SymmetricDifference),
             "dedupe" => Some(&Dedupe),
             "prepend" => Some(&Prepend),
-            "without" => Some(&Without),
             "take_while" => Some(&TakeWhile),
             "drop_while" => Some(&DropWhile),
             "scan" => Some(&Scan),
             "foldr" => Some(&Foldr),
-            "unique_by" => Some(&UniqueBy),
             "find_index" => Some(&FindIndex),
             "find_last" => Some(&FindLast),
             "find_last_index" => Some(&FindLastIndex),
@@ -140,7 +133,10 @@ fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error
     })
 }
 
-fn bind_param(fn_val: &FunctionValue, value: &serde_json::Value) -> Vec<(String, NonFunctionValue)> {
+fn bind_param(
+    fn_val: &FunctionValue,
+    value: &serde_json::Value,
+) -> Vec<(String, NonFunctionValue)> {
     fn_val
         .params
         .first()
@@ -257,7 +253,11 @@ array_unary_fn!(Max, |input: &[serde_json::Value]| {
 #[derive(Clone, Copy)]
 pub struct Concat;
 impl Function for Concat {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_arrays(args)?;
         let combined: Vec<serde_json::Value> = a.iter().chain(b.iter()).cloned().collect();
         Ok(arr(&combined))
@@ -267,7 +267,11 @@ impl Function for Concat {
 #[derive(Clone, Copy)]
 pub struct Contains;
 impl Function for Contains {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -285,7 +289,11 @@ impl Function for Contains {
 #[derive(Clone, Copy)]
 pub struct IndexOf;
 impl Function for IndexOf {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -307,7 +315,11 @@ impl Function for IndexOf {
 #[derive(Clone, Copy)]
 pub struct Slice;
 impl Function for Slice {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -340,7 +352,11 @@ impl Function for Slice {
 #[derive(Clone, Copy)]
 pub struct Sort;
 impl Function for Sort {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_array(args)?;
         let mut sorted: Vec<serde_json::Value> = input.to_vec();
         sorted.sort_by(|a, c| match (a.as_f64(), c.as_f64()) {
@@ -359,24 +375,13 @@ impl Function for Sort {
 }
 
 #[derive(Clone, Copy)]
-pub struct Unique;
-impl Function for Unique {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
-        let input = require_one_array(args)?;
-        let mut seen: Vec<serde_json::Value> = Vec::new();
-        for item in input {
-            if !seen.contains(item) {
-                seen.push(item.clone());
-            }
-        }
-        Ok(arr(&seen))
-    }
-}
-
-#[derive(Clone, Copy)]
 pub struct At;
 impl Function for At {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -404,7 +409,11 @@ impl Function for At {
 #[derive(Clone, Copy)]
 pub struct Push;
 impl Function for Push {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -423,7 +432,11 @@ impl Function for Push {
 #[derive(Clone, Copy)]
 pub struct Fill;
 impl Function for Fill {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -447,52 +460,13 @@ impl Function for Fill {
 }
 
 #[derive(Clone, Copy)]
-pub struct Difference;
-impl Function for Difference {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
-        let (a, b) = require_two_arrays(args)?;
-        let result: Vec<serde_json::Value> = a
-            .iter()
-            .filter(|item| !b.contains(item))
-            .cloned()
-            .collect();
-        Ok(arr(&result))
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct Intersection;
-impl Function for Intersection {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
-        let (a, b) = require_two_arrays(args)?;
-        let result: Vec<serde_json::Value> = a
-            .iter()
-            .filter(|item| b.contains(item))
-            .cloned()
-            .collect();
-        Ok(arr(&result))
-    }
-}
-
-#[derive(Clone, Copy)]
-pub struct Union;
-impl Function for Union {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
-        let (a, b) = require_two_arrays(args)?;
-        let mut result: Vec<serde_json::Value> = a.to_vec();
-        for item in b {
-            if !result.contains(item) {
-                result.push(item.clone());
-            }
-        }
-        Ok(arr(&result))
-    }
-}
-
-#[derive(Clone, Copy)]
 pub struct DeepFlatten;
 impl Function for DeepFlatten {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = require_one_array(args)?;
         fn deep_flat(items: &[serde_json::Value], out: &mut Vec<serde_json::Value>) {
             for item in items {
@@ -511,7 +485,11 @@ impl Function for DeepFlatten {
 #[derive(Clone, Copy)]
 pub struct Pop;
 impl Function for Pop {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let array = require_one_array(args)?;
         if array.is_empty() {
             return Ok(arr(&[]));
@@ -523,7 +501,11 @@ impl Function for Pop {
 #[derive(Clone, Copy)]
 pub struct Shift;
 impl Function for Shift {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         let array = require_one_array(args)?;
         if array.is_empty() {
             return Ok(arr(&[]));
@@ -537,7 +519,11 @@ impl Function for Shift {
 #[derive(Clone, Copy)]
 pub struct Take;
 impl Function for Take {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -563,7 +549,11 @@ impl Function for Take {
 #[derive(Clone, Copy)]
 pub struct Drop;
 impl Function for Drop {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -619,7 +609,11 @@ array_unary_fn!(Unzip, |input: &[serde_json::Value]| {
 #[derive(Clone, Copy)]
 pub struct Intersperse;
 impl Function for Intersperse {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -642,7 +636,11 @@ impl Function for Intersperse {
 #[derive(Clone, Copy)]
 pub struct Intercalate;
 impl Function for Intercalate {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -666,26 +664,7 @@ impl Function for Intercalate {
     }
 }
 
-// ── symmetric_difference / dedupe / prepend / without ──────────────
-
-#[derive(Clone, Copy)]
-pub struct SymmetricDifference;
-impl Function for SymmetricDifference {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
-        let (a, b) = require_two_arrays(args)?;
-        let mut result: Vec<serde_json::Value> = a
-            .iter()
-            .filter(|item| !b.contains(item))
-            .cloned()
-            .collect();
-        for item in b {
-            if !a.contains(item) && !result.contains(item) {
-                result.push(item.clone());
-            }
-        }
-        Ok(arr(&result))
-    }
-}
+// ── dedupe / prepend ─────────────────────────────────────────────
 
 array_unary_fn!(Dedupe, |input: &[serde_json::Value]| {
     let mut result = Vec::new();
@@ -700,7 +679,11 @@ array_unary_fn!(Dedupe, |input: &[serde_json::Value]| {
 #[derive(Clone, Copy)]
 pub struct Prepend;
 impl Function for Prepend {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -715,33 +698,16 @@ impl Function for Prepend {
     }
 }
 
-#[derive(Clone, Copy)]
-pub struct Without;
-impl Function for Without {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
-        if args.is_empty() {
-            return Err(Error::ArgumentCount {
-                expected: 1,
-                got: 0,
-            });
-        }
-        let array = require_array(&args[0])?;
-        let excludes: Vec<&serde_json::Value> = args[1..].iter().map(|v| v.inner()).collect();
-        let result: Vec<serde_json::Value> = array
-            .iter()
-            .filter(|item| !excludes.contains(item))
-            .cloned()
-            .collect();
-        Ok(arr(&result))
-    }
-}
-
 // ── take_while / drop_while ────────────────────────────────────────
 
 #[derive(Clone, Copy)]
 pub struct TakeWhile;
 impl Function for TakeWhile {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -767,7 +733,11 @@ impl Function for TakeWhile {
 #[derive(Clone, Copy)]
 pub struct DropWhile;
 impl Function for DropWhile {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -795,7 +765,11 @@ impl Function for DropWhile {
 #[derive(Clone, Copy)]
 pub struct Scan;
 impl Function for Scan {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -819,7 +793,11 @@ impl Function for Scan {
 #[derive(Clone, Copy)]
 pub struct Foldr;
 impl Function for Foldr {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
@@ -837,41 +815,16 @@ impl Function for Foldr {
     }
 }
 
-// ── unique_by ──────────────────────────────────────────────────────
-
-#[derive(Clone, Copy)]
-pub struct UniqueBy;
-impl Function for UniqueBy {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
-        if args.len() < 2 {
-            return Err(Error::ArgumentCount {
-                expected: 2,
-                got: args.len(),
-            });
-        }
-        let array = require_array(&args[0])?;
-        let fn_val = require_function_value(&args[1])?;
-        let mut seen: Vec<serde_json::Value> = Vec::new();
-        let mut result = Vec::new();
-        for item in array {
-            let vars = bind_param(&fn_val, item);
-            let key = ctx.eval_expr(&fn_val.body, &vars)?;
-            let key_inner = key.into_inner();
-            if !seen.contains(&key_inner) {
-                seen.push(key_inner);
-                result.push(item.clone());
-            }
-        }
-        Ok(arr(&result))
-    }
-}
-
 // ── find_index / find_last / find_last_index ───────────────────────
 
 #[derive(Clone, Copy)]
 pub struct FindIndex;
 impl Function for FindIndex {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -894,7 +847,11 @@ impl Function for FindIndex {
 #[derive(Clone, Copy)]
 pub struct FindLast;
 impl Function for FindLast {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
@@ -917,7 +874,11 @@ impl Function for FindLast {
 #[derive(Clone, Copy)]
 pub struct FindLastIndex;
 impl Function for FindLastIndex {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,

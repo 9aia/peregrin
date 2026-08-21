@@ -24,24 +24,30 @@
 //! - [`ArrayModule`] — `array.length`, `array.reverse`, `array.concat`,
 //!   `array.contains`, `array.index_of`, `array.slice`, `array.first`,
 //!   `array.last`, `array.sort`, `array.flatten`, `array.deep_flatten`,
-//!   `array.unique`, `array.sum`, `array.avg`, `array.min`, `array.max`,
+//!   `array.sum`, `array.avg`, `array.min`, `array.max`,
 //!   `array.at`, `array.push`, `array.pop`, `array.shift`, `array.fill`,
-//!   `array.difference`, `array.intersection`, `array.union`,
 //!   `array.take`, `array.drop`, `array.take_while`, `array.drop_while`,
 //!   `array.enumerate`, `array.unzip`, `array.scan`, `array.foldr`,
-//!   `array.intersperse`, `array.intercalate`, `array.unique_by`,
-//!   `array.symmetric_difference`, `array.find_index`, `array.find_last`,
-//!   `array.find_last_index`, `array.dedupe`, `array.prepend`, `array.without`,
+//!   `array.intersperse`, `array.intercalate`,
+//!   `array.find_index`, `array.find_last`,
+//!   `array.find_last_index`, `array.dedupe`, `array.prepend`,
 //!   `array.range`, `array.zip`, `array.chunk`, `array.map`, `array.filter`,
 //!   `array.reduce`, `array.flat_map`, `array.find`, `array.some`, `array.every`,
 //!   `array.group_by`, `array.partition`, `array.sort_by`, `array.sort_by_desc`,
 //!   `array.compact`, `array.pluck`, `array.min_by`, `array.max_by`,
 //!   `array.count_by`
+//! - [`SetModule`] — `set.unique`, `set.union`, `set.intersection`,
+//!   `set.difference`, `set.symmetric_difference`, `set.without`,
+//!   `set.unique_by`
 //! - [`BoolModule`] — `bool.and`, `bool.or`, `bool.not`, `bool.xor`,
 //!   `bool.nand`, `bool.nor`, `bool.implies`, `bool.eq`
-//! - [`ObjectModule`] — `object.keys`, `object.values`, `object.entries`,
-//!   `object.pick`, `object.omit`, `object.merge`, `object.deep_get`,
-//!   `object.deep_merge`
+//! - [`ObjModule`] — `obj.keys`, `obj.values`, `obj.entries`,
+//!   `obj.from_entries`, `obj.pick`, `obj.omit`, `obj.merge`,
+//!   `obj.deep_get`, `obj.deep_merge`, `obj.get`, `obj.get_or`,
+//!   `obj.set`, `obj.update`, `obj.has_key`, `obj.map_values`,
+//!   `obj.map_keys`, `obj.filter_keys`, `obj.filter_values`,
+//!   `obj.invert`, `obj.path_or`, `obj.set_path`, `obj.update_path`,
+//!   `obj.size`, `obj.clone_deep`
 //! - [`FnModule`] — `fn.pipe`, `fn.flow`, `fn.compose`, `fn.fanout`,
 //!   `fn.choice`, `fn.apply`, `fn.tap`
 //! - [`TypeModule`] — `type.to_string`, `type.to_number`, `type.to_bool`,
@@ -65,15 +71,18 @@
 //!
 //! ```ignore
 //! use ac_runtime_core::ModuleHost;
-//! use ac_lib_utils::{MathModule, StrModule, FpModule};
+//! use ac_lib_utils::{MathModule, StrModule, ArrayModule, BoolModule,
+//!     ObjModule, FnModule, TypeModule, SetModule};
 //!
 //! let host = ModuleHost::new()
 //!     .with(MathModule)
 //!     .with(StrModule)
 //!     .with(ArrayModule)
 //!     .with(BoolModule)
-//!     .with(FpModule)
+//!     .with(ObjModule)
+//!     .with(FnModule)
 //!     .with(TypeModule)
+//!     .with(SetModule)
 //!     .with(DateTimeModule);
 //! ```
 //!
@@ -83,15 +92,18 @@
 mod array;
 mod bool;
 mod datetime;
-mod fp;
+mod r#fn;
 mod math;
+mod obj;
+mod set;
 mod r#str;
 mod r#type;
 
 pub use array::ArrayModule;
 pub use bool::BoolModule;
-pub use datetime::DateTimeModule;
-pub use fp::FpModule;
+pub use r#fn::FnModule;
 pub use math::MathModule;
+pub use obj::ObjModule;
+pub use set::SetModule;
 pub use r#str::StrModule;
 pub use r#type::TypeModule;
