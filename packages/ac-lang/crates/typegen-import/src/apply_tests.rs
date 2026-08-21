@@ -1,30 +1,20 @@
 use serde_json::json;
 
+use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
 use ac_runtime::RuntimeValue;
 use ac_typegen_core::TypegenContext;
-use ac_typegen_key_merge as merge;
-use ac_typegen_key_inherit as inherit;
-use ac_typegen_key_mutable as mutable;
-use ac_typegen_key_expr as expr;
-use ac_typegen_key_arg as arg;
-use ac_resolver_virtual::VirtualResolver;
+use ac_module_resolver_virtual::VirtualResolver;
 
 use crate::apply_imports;
 
-const AC_KEYS: &[&str] = &[
-    merge::KEY,
-    inherit::KEY,
-    mutable::KEY,
-    expr::KEY,
-    arg::KEY,
-];
-
 fn build_ctx(schemas: &[(String, serde_json::Value)], merge_names: &[String]) -> TypegenContext {
+    let vocab = AC_DIALECT.document_vocabulary();
+    let ac_keys: Vec<&str> = vocab.reserved_field_keys();
     let mut ctx = TypegenContext::from_schemas(schemas);
-    merge::filter_fields(&mut ctx, merge_names);
-    ctx.strip_keys(AC_KEYS);
+    ctx.remove_fields(merge_names);
+    ctx.strip_keys(&ac_keys);
     ctx
 }
 
@@ -54,7 +44,7 @@ fn apply_imports_static() {
     let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
-    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_KEYS);
+    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
 
     assert!(!ctx.fields.iter().any(|(n, _)| n.as_str() == "import"));
     assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "name"));
@@ -90,7 +80,7 @@ fn apply_imports_data_driven() {
     let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
-    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_KEYS);
+    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
 
     assert!(!ctx.fields.iter().any(|(n, _)| n.as_str() == "import"));
     assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "name"));
@@ -124,7 +114,7 @@ fn apply_imports_parent_wins() {
     let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
-    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_KEYS);
+    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
 
     let (_, host_schema) = ctx.fields.iter().find(|(n, _)| n.as_str() == "host").unwrap();
     assert_eq!(host_schema["type"], "number");
@@ -144,7 +134,7 @@ fn apply_imports_no_imports_is_noop() {
     let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
-    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_KEYS);
+    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
 
     assert_eq!(ctx.fields.len(), 2);
 }

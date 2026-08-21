@@ -10,9 +10,8 @@
 //! resolver implementation. This makes import resolution testable
 //! without touching the filesystem.
 //!
-//! Depends on `ac-typegen-key-merge` (for filtering merge fields from
-//! imported modules) and `ac-typegen-key-expr` (for reading `expr`
-//! values to detect `import()` calls).
+//! Depends on `ac-typegen-core` (for filtering merge fields from
+//! imported modules and reading `expr` values to detect `import()` calls).
 //!
 //! ## Architectural rule
 //!
@@ -25,12 +24,12 @@
 //! let mut ctx = TypegenContext::from_schemas(&extracted.schemas);
 //!
 //! // 2. AC-key crates: filter + strip (pure)
-//! ac_typegen_key_merge::filter_fields(&mut ctx, &extracted.merge);
+//! ac_typegen_key_set_special::merge::filter_fields(&mut ctx, &extracted.merge);
 //! ctx.strip_keys(&ac_keys);
 //!
 //! // 3. Import resolution: follow imports, merge (via resolver)
 //! ac_typegen_import::apply_imports(
-//!     &mut ctx, &extracted, &data, &resolver, &ac_keys,
+//!     &mut ctx, &extracted, &data, &resolver, &vocab,
 //! );
 //!
 //! // 4. Backend: generate output (pure)
@@ -42,13 +41,39 @@ mod import_resolve;
 
 use std::path::Path;
 
+use ac_dialect::DocumentVocabulary;
+use ac_module_resolver_core::ModuleResolver;
+use ac_typegen_core::{ImportResolver, TypegenContext};
 use serde_json::Value as JsonValue;
-
-use ac_resolver_core::ModuleResolver;
-use ac_typegen_core::TypegenContext;
 
 pub use import_detect::{detect_import_path, extract_data_path, ImportKind};
 pub use import_resolve::resolve_imports;
+
+/// Default import resolver for the AC typegen system.
+///
+/// Implements [`ImportResolver`] by following `import()` expressions
+/// in merge fields, resolving paths via a [`ModuleResolver`], and
+/// merging imported schemas into the parent context.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct DefaultImportResolver;
+
+impl ImportResolver for DefaultImportResolver {
+    fn resolve_imports(
+        &self,
+        ctx: &mut TypegenContext,
+        schemas: &[(String, JsonValue)],
+        merge_fields: &[String],
+        data: &JsonValue,
+        resolver: &dyn ModuleResolver,
+        base: Option<&Path>,
+        vocab: &dyn DocumentVocabulary,
+    ) {
+        let resolved = resolve_imports(schemas, merge_fields, data, resolver, base, vocab);
+        for (_, imported_fields) in &resolved {
+            ctx.merge_fields(imported_fields);
+        }
+    }
+}
 
 /// Apply import resolution to a `TypegenContext`.
 ///
@@ -57,8 +82,8 @@ pub use import_resolve::resolve_imports;
 /// merge fields, strips AC keys, and merges them into the context
 /// (parent wins).
 ///
-/// `ac_keys` is the list of all AC-specific keys to strip from imported
-/// modules. The orchestrator collects these from all AC-key crates.
+/// `vocab` provides the reserved key names used for stripping AC-specific
+/// keys from imported module schemas.
 pub fn apply_imports(
     ctx: &mut TypegenContext,
     schemas: &[(String, JsonValue)],
@@ -66,9 +91,9 @@ pub fn apply_imports(
     data: &JsonValue,
     resolver: &dyn ModuleResolver,
     base: Option<&Path>,
-    ac_keys: &[&str],
+    vocab: &dyn DocumentVocabulary,
 ) {
-    let resolved = resolve_imports(schemas, merge_fields, data, resolver, base, ac_keys);
+    let resolved = resolve_imports(schemas, merge_fields, data, resolver, base, vocab);
 
     for (_, imported_fields) in &resolved {
         ctx.merge_fields(imported_fields);

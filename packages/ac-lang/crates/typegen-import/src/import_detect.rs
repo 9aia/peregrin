@@ -1,4 +1,4 @@
-use ac_resolver_core::IMPORT_FUNCTION;
+use ac_module_resolver_core::IMPORT_FUNCTION;
 use serde_json::Value as JsonValue;
 
 /// The kind of import detected in a field's `expr`.

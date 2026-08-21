@@ -1,10 +1,11 @@
 use std::path::Path;
 
+use ac_dialect::DocumentVocabulary;
 use serde_json::Value as JsonValue;
 
-use ac_resolver_core::ModuleResolver;
+use ac_module_resolver_core::ModuleResolver;
 use ac_typegen_core::strip_keys;
-use ac_typegen_key_expr as expr;
+use ac_typegen_core::get_expr;
 
 use crate::import_detect::{detect_import_path, extract_data_path, ImportKind};
 
@@ -23,7 +24,7 @@ pub fn resolve_imports(
     data: &JsonValue,
     resolver: &dyn ModuleResolver,
     base: Option<&Path>,
-    ac_keys: &[&str],
+    vocab: &dyn DocumentVocabulary,
 ) -> Vec<(String, Vec<(String, JsonValue)>)> {
     let mut results = Vec::new();
     let mut visited = std::collections::HashSet::new();
@@ -33,7 +34,7 @@ pub fn resolve_imports(
             continue;
         };
 
-        let Some(expr_str) = expr::get_expr(raw) else {
+        let Some(expr_str) = get_expr(raw, vocab) else {
             continue;
         };
 
@@ -55,11 +56,12 @@ pub fn resolve_imports(
             continue;
         };
 
+        let ac_keys: Vec<&str> = vocab.reserved_field_keys();
         let imported_fields: Vec<(String, JsonValue)> = module
             .schemas
             .iter()
             .filter(|(name, _)| !module.merge.contains(name))
-            .map(|(name, raw)| (name.clone(), strip_keys(raw, ac_keys)))
+            .map(|(name, raw)| (name.clone(), strip_keys(raw, &ac_keys)))
             .collect();
 
         let nested_results = resolve_imports(
@@ -68,7 +70,7 @@ pub fn resolve_imports(
             &module.data,
             resolver,
             module.base_path.as_deref(),
-            ac_keys,
+            vocab,
         );
 
         let mut all_fields = imported_fields;

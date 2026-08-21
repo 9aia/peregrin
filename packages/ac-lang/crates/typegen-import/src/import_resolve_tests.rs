@@ -1,10 +1,10 @@
 use serde_json::json;
 
-use ac_resolver_virtual::VirtualResolver;
+use ac_dialect::Dialect;
+use ac_dialect_canonical::AC_DIALECT;
+use ac_module_resolver_virtual::VirtualResolver;
 
 use crate::resolve_imports;
-
-const AC_KEYS: &[&str] = &["expr", "arg", "merge", "inheritable", "mutable"];
 
 fn make_resolver() -> VirtualResolver {
     let mut resolver = VirtualResolver::new();
@@ -38,7 +38,7 @@ fn resolves_static_import() {
     let merge = vec!["import".to_string()];
     let data = json!({});
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_KEYS);
+    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
 
     assert_eq!(results.len(), 1);
     let (path, fields) = &results[0];
@@ -67,7 +67,7 @@ fn resolves_data_driven_import() {
     let merge = vec!["import".to_string()];
     let data = json!({ "import": "base.yml" });
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_KEYS);
+    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
 
     assert_eq!(results.len(), 1);
     let (_, fields) = &results[0];
@@ -93,7 +93,7 @@ fn skips_non_import_merge_field() {
     let merge = vec!["config".to_string()];
     let data = json!({});
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_KEYS);
+    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
     assert!(results.is_empty());
 }
 
@@ -114,7 +114,7 @@ fn handles_missing_module_gracefully() {
     let merge = vec!["import".to_string()];
     let data = json!({});
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_KEYS);
+    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
     assert!(results.is_empty());
 }
 
@@ -147,7 +147,7 @@ fn strips_ac_keys_from_imported_schemas() {
     let merge = vec!["import".to_string()];
     let data = json!({});
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_KEYS);
+    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
 
     assert_eq!(results.len(), 1);
     let (_, fields) = &results[0];
@@ -194,7 +194,7 @@ fn resolves_nested_imports() {
     let merge = vec!["import".to_string()];
     let data = json!({});
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_KEYS);
+    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
 
     assert_eq!(results.len(), 1);
     let (_, fields) = &results[0];
