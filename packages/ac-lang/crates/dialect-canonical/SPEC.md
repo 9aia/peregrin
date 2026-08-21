@@ -1,6 +1,6 @@
 # AC Canonical Dialect Specification
 
-**Status:** Draft
+**Status:** Approved
 
 This document specifies the canonical dialect — the default and only shipped implementation of the [Dialect interface](../dialect/SPEC.md). The dialect spec defines the abstract interface; this spec defines the concrete token values, parsing rules, and schema vocabulary for the canonical syntax.
 
@@ -37,13 +37,39 @@ Numbers are parsed as IEEE 754 doubles. Integers (`42`) and floats (`1.5`) are t
 
 ## 5. Implementation
 
-The canonical dialect is implemented in the `ac-dialect-canonical` crate. It provides:
+The canonical dialect implementation provides:
+
+- A **dialect type** that implements `Syntax`, `ExprParser`, `DocumentVocabulary`, and `Dialect`.
+- A **dialect singleton** — a static instance of the dialect type for use at call sites.
+- A **schema type** that implements `Schema<V>` using the canonical schema vocabulary.
+- A **schema vocabulary type** that implements `SchemaVocabulary<V>` for JSON Schema draft 2020-12.
+- A **schema vocabulary singleton** — a static instance of the schema vocabulary type.
+
+### 5.1 Rust implementation
+
+In Rust, the canonical dialect is implemented in the `ac-dialect-canonical` crate. It provides:
 
 - `AcDialect` — implements `Syntax`, `ExprParser`, `DocumentVocabulary`, and `Dialect`
-- `AC_DIALECT` — static singleton instance
-- `JsonSchema` — implements `Schema<V>` for JSON Schema validation
-- `JsonSchemaVocabulary` — implements `SchemaVocabulary<V>` for JSON Schema draft 2020-12
+- `AC_DIALECT` — static singleton instance of `AcDialect`
+- `JsonSchema` — implements `Schema<RuntimeValue>` for JSON Schema validation
+- `JsonSchemaVocabulary` — implements `SchemaVocabulary<RuntimeValue>` for JSON Schema draft 2020-12
 - `JSON_SCHEMA_VOCABULARY` — static singleton instance of `JsonSchemaVocabulary`
+
+In other languages, the equivalent module/package split should be used — e.g. `@ac/dialect-canonical` in a JavaScript/TypeScript monorepo.
+
+### 5.2 Module organization
+
+The canonical implementation package is internally split into modules that mirror the sub-traits from the [Dialect interface](../dialect/SPEC.md). Each module owns one implementation:
+
+| Module                | Contents                                                          |
+| --------------------- | ----------------------------------------------------------------- |
+| `syntax`              | `Syntax` implementation for the dialect type                      |
+| `expr_parser`         | `ExprParser` implementation for the dialect type                  |
+| `document_vocabulary` | `DocumentVocabulary` implementation for the dialect type          |
+| `schema_vocabulary`   | `JsonSchema`, `JsonSchemaVocabulary`, `JSON_SCHEMA_VOCABULARY`    |
+| `dialect`             | `AcDialect`, `AC_DIALECT` — facade that aggregates the four impls |
+
+In Rust, each module is a directory with a `mod.rs` re-exporting the public API. In other languages, the equivalent module/file split should be used.
 
 ---
 
