@@ -10,7 +10,7 @@ use ac_compiler_pass_parse::ParsePass;
 use ac_compiler_pass_typecheck::TypecheckPass;
 use ac_module_resolver_virtual::VirtualResolver;
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 
 fn typecheck_config() -> Config {
     Config {

@@ -55,11 +55,45 @@ impl<H: Host> Vm<H> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
 
+            Expr::Handle { .. } => {
+                // Handle expressions use the resumable evaluation
+                // machinery internally. We start a resumable eval
+                // and run it to completion (handlers intercept
+                // operations inline, so no yielding should occur
+                // unless an operation has no matching handler).
+                let result = self.eval_resumable(expr, ctx, None);
+                match result {
+                    crate::EvalResult::Done(value) => Ok(value),
+                    crate::EvalResult::Yielded { value, .. } => {
+                        // An operation propagated past all handlers.
+                        // Extract the operation name and args.
+                        let name = value
+                            .get("name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
+                        let args: Vec<RuntimeValue> = value
+                            .get("args")
+                            .and_then(|v| v.as_array())
+                            .map(|arr| arr.iter().map(|v| RuntimeValue::new(v.clone())).collect())
+                            .unwrap_or_default();
+                        Err(Error::Operation {
+                            name: name.to_string(),
+                            args,
+                        })
+                    }
+                    crate::EvalResult::Error(err) => Err(err),
+                }
+            }
+
             Expr::Call { name, args } => {
                 let evaluated_args = args
                     .iter()
                     .map(|arg| self.eval(arg, ctx))
                     .collect::<Result<Vec<RuntimeValue>, Error>>()?;
+
+                if let Some(operation) = self.host.operation(name) {
+                    return operation.perform(&evaluated_args, ctx);
+                }
 
                 let function = self
                     .host
@@ -96,11 +130,40 @@ impl<H: Host> Vm<H> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
 
+            Expr::Handle { .. } => {
+                // Handle expressions use the resumable evaluation
+                // machinery internally (same as sync eval).
+                let result = self.eval_resumable(expr, ctx, None);
+                match result {
+                    crate::EvalResult::Done(value) => Ok(value),
+                    crate::EvalResult::Yielded { value, .. } => {
+                        let name = value
+                            .get("name")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("unknown");
+                        let args: Vec<RuntimeValue> = value
+                            .get("args")
+                            .and_then(|v| v.as_array())
+                            .map(|arr| arr.iter().map(|v| RuntimeValue::new(v.clone())).collect())
+                            .unwrap_or_default();
+                        Err(Error::Operation {
+                            name: name.to_string(),
+                            args,
+                        })
+                    }
+                    crate::EvalResult::Error(err) => Err(err),
+                }
+            }
+
             Expr::Call { name, args } => {
                 let mut evaluated_args = Vec::with_capacity(args.len());
                 for arg in args {
                     let value = Box::pin(self.eval_async(arg, ctx)).await?;
                     evaluated_args.push(value);
+                }
+
+                if let Some(operation) = self.host.operation(name) {
+                    return operation.perform(&evaluated_args, ctx);
                 }
 
                 if let Some(function) = self.host.function(name) {

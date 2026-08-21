@@ -10,12 +10,12 @@
 //!
 //! > **Formats translate external representations.**
 
-mod error;
 mod convert;
+mod error;
 mod scanner;
 
+pub use convert::{json_to_yaml, yaml_to_json};
 pub use error::YamlError;
-pub use convert::{yaml_to_json, json_to_yaml};
 
 use ac_runtime::{Frontend, RuntimeValue};
 use serde_json::Value as JsonValue;
@@ -72,7 +72,10 @@ impl Frontend for YamlFrontend {
         to_string(value)
     }
 
-    fn parse_with_locations(&self, input: &str) -> Result<(RuntimeValue, ac_source::SourceMap), Self::Error> {
+    fn parse_with_locations(
+        &self,
+        input: &str,
+    ) -> Result<(RuntimeValue, ac_source::SourceMap), Self::Error> {
         let value = parse(input)?;
         let map = scanner::build_source_map(input, value.inner());
         Ok((value, map))

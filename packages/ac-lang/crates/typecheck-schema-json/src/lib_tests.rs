@@ -10,12 +10,18 @@ fn interprets_string() {
 #[test]
 fn interprets_number() {
     assert_eq!(interpret_schema(&json!({ "type": "number" })), Type::Number);
-    assert_eq!(interpret_schema(&json!({ "type": "integer" })), Type::Number);
+    assert_eq!(
+        interpret_schema(&json!({ "type": "integer" })),
+        Type::Number
+    );
 }
 
 #[test]
 fn interprets_boolean() {
-    assert_eq!(interpret_schema(&json!({ "type": "boolean" })), Type::Boolean);
+    assert_eq!(
+        interpret_schema(&json!({ "type": "boolean" })),
+        Type::Boolean
+    );
 }
 
 #[test]
@@ -68,12 +74,18 @@ fn interprets_object_without_properties() {
 
 #[test]
 fn unknown_type_returns_unknown() {
-    assert_eq!(interpret_schema(&json!({ "type": "custom" })), Type::Unknown);
+    assert_eq!(
+        interpret_schema(&json!({ "type": "custom" })),
+        Type::Unknown
+    );
 }
 
 #[test]
 fn no_type_field_returns_unknown() {
-    assert_eq!(interpret_schema(&json!({ "description": "no type" })), Type::Unknown);
+    assert_eq!(
+        interpret_schema(&json!({ "description": "no type" })),
+        Type::Unknown
+    );
 }
 
 #[test]

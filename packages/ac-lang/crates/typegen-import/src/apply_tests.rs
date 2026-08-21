@@ -3,9 +3,9 @@ use serde_json::json;
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
+use ac_module_resolver_virtual::VirtualResolver;
 use ac_runtime::RuntimeValue;
 use ac_typegen_core::TypegenContext;
-use ac_module_resolver_virtual::VirtualResolver;
 
 use crate::apply_imports;
 
@@ -44,7 +44,15 @@ fn apply_imports_static() {
     let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
-    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
+    apply_imports(
+        &mut ctx,
+        &extracted.schemas,
+        &extracted.merge,
+        &data,
+        &resolver,
+        None,
+        AC_DIALECT.document_vocabulary(),
+    );
 
     assert!(!ctx.fields.iter().any(|(n, _)| n.as_str() == "import"));
     assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "name"));
@@ -80,7 +88,15 @@ fn apply_imports_data_driven() {
     let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
-    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
+    apply_imports(
+        &mut ctx,
+        &extracted.schemas,
+        &extracted.merge,
+        &data,
+        &resolver,
+        None,
+        AC_DIALECT.document_vocabulary(),
+    );
 
     assert!(!ctx.fields.iter().any(|(n, _)| n.as_str() == "import"));
     assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "name"));
@@ -114,9 +130,21 @@ fn apply_imports_parent_wins() {
     let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
-    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
+    apply_imports(
+        &mut ctx,
+        &extracted.schemas,
+        &extracted.merge,
+        &data,
+        &resolver,
+        None,
+        AC_DIALECT.document_vocabulary(),
+    );
 
-    let (_, host_schema) = ctx.fields.iter().find(|(n, _)| n.as_str() == "host").unwrap();
+    let (_, host_schema) = ctx
+        .fields
+        .iter()
+        .find(|(n, _)| n.as_str() == "host")
+        .unwrap();
     assert_eq!(host_schema["type"], "number");
     assert!(ctx.fields.iter().any(|(n, _)| n.as_str() == "port"));
 }
@@ -134,7 +162,15 @@ fn apply_imports_no_imports_is_noop() {
     let extracted = extract_fields(RuntimeValue::new(doc), &AC_DIALECT).unwrap();
     let data = extracted.data.inner().clone();
     let mut ctx = build_ctx(&extracted.schemas, &extracted.merge);
-    apply_imports(&mut ctx, &extracted.schemas, &extracted.merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
+    apply_imports(
+        &mut ctx,
+        &extracted.schemas,
+        &extracted.merge,
+        &data,
+        &resolver,
+        None,
+        AC_DIALECT.document_vocabulary(),
+    );
 
     assert_eq!(ctx.fields.len(), 2);
 }

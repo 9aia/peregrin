@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 mod fp;
 
 pub use fp::FpModule;

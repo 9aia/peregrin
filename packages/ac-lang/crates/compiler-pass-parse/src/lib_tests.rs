@@ -1,5 +1,5 @@
-use ac_compiler_core::{Compilation, Config, Pass, Source};
 use crate::ParsePass;
+use ac_compiler_core::{Compilation, Config, Pass, Source};
 
 fn test_config() -> Config {
     Config {

@@ -18,7 +18,11 @@ pub const KEY: &str = "mutable";
 
 /// Check if a field schema has `mutable: false`.
 pub fn is_immutable(schema: &JsonValue) -> bool {
-    schema.get(KEY).and_then(|v| v.as_bool()).map(|b| !b).unwrap_or(false)
+    schema
+        .get(KEY)
+        .and_then(|v| v.as_bool())
+        .map(|b| !b)
+        .unwrap_or(false)
 }
 
 /// Check that fields declared `mutable: false` are not overridden in

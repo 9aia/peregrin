@@ -18,8 +18,7 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
     }
 
     let fn_sigs: Vec<ac_typecheck_infer::RawFnSig> = Vec::new();
-    let function_table =
-        ac_typecheck_infer::FunctionTable::from_signatures(&fn_sigs, interpreter);
+    let function_table = ac_typecheck_infer::FunctionTable::from_signatures(&fn_sigs, interpreter);
 
     let inheritable_schemas: Vec<(String, serde_json::Value)> = extracted
         .schemas
@@ -33,59 +32,45 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
     let (mut local_errors, data_errors) = rayon::join(
         || {
             let (mut expr_errors, (arg_errors, merge_errors)) = rayon::join(
-                || ac_typecheck_key_expr::check(
-                    &extracted.schemas,
-                    &env,
-                    &function_table,
-                    interpreter,
-                ),
-                || rayon::join(
-                    || ac_typecheck_key_arg::check(&extracted.schemas, interpreter),
-                    || {
-                        ac_typecheck_key_merge::check(
-                            &extracted.schemas,
-                            interpreter,
-                            &env,
-                        )
-                    },
-                ),
+                || {
+                    ac_typecheck_key_expr::check(
+                        &extracted.schemas,
+                        &env,
+                        &function_table,
+                        interpreter,
+                    )
+                },
+                || {
+                    rayon::join(
+                        || ac_typecheck_key_arg::check(&extracted.schemas, interpreter),
+                        || ac_typecheck_key_merge::check(&extracted.schemas, interpreter, &env),
+                    )
+                },
             );
             expr_errors.extend(arg_errors);
             expr_errors.extend(merge_errors);
             expr_errors
         },
         || {
-            let (mut inherit_errors, (mutable_errors, import_errors)) =
-                rayon::join(
-                    || {
-                        ac_typecheck_key_inherit::check(
-                            &inheritable_schemas,
-                            &data,
-                            interpreter,
-                        )
-                    },
-                    || {
-                        rayon::join(
-                            || {
-                                ac_typecheck_key_mutable::check(
-                                    &extracted.immutable,
-                                    &data,
-                                )
-                            },
-                            || {
-                                ac_typecheck_import::check_imports(
-                                    &extracted.schemas,
-                                    &extracted.merge,
-                                    &data,
-                                    config.resolver.as_ref(),
-                                    interpreter,
-                                    &env,
-                                    base.as_deref(),
-                                )
-                            },
-                        )
-                    },
-                );
+            let (mut inherit_errors, (mutable_errors, import_errors)) = rayon::join(
+                || ac_typecheck_key_inherit::check(&inheritable_schemas, &data, interpreter),
+                || {
+                    rayon::join(
+                        || ac_typecheck_key_mutable::check(&extracted.immutable, &data),
+                        || {
+                            ac_typecheck_import::check_imports(
+                                &extracted.schemas,
+                                &extracted.merge,
+                                &data,
+                                config.resolver.as_ref(),
+                                interpreter,
+                                &env,
+                                base.as_deref(),
+                            )
+                        },
+                    )
+                },
+            );
             inherit_errors.extend(mutable_errors);
             inherit_errors.extend(import_errors);
             inherit_errors

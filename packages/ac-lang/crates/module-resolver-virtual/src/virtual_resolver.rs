@@ -32,8 +32,7 @@ impl VirtualResolver {
     /// Register a module by path with raw content (parsed as YAML).
     pub fn add_raw(&mut self, path: &str, content: &str) {
         if let Ok(value) = ac_frontend_yaml::parse(content) {
-            self.modules
-                .insert(path.to_string(), value.inner().clone());
+            self.modules.insert(path.to_string(), value.inner().clone());
         }
     }
 }

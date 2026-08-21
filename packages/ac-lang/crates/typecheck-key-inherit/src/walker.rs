@@ -1,4 +1,4 @@
-use ac_typecheck_core::{is_compatible, SchemaInterpreter, Type, TypeError};
+use ac_typecheck_core::{SchemaInterpreter, Type, TypeError, is_compatible};
 use serde_json::Value as JsonValue;
 
 /// Recursively check that `field` overrides in nested objects are

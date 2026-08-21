@@ -12,8 +12,16 @@ fn validate_all_of() {
             {"required": ["name"]}
         ]
     }));
-    assert!(schema.validate(&RuntimeValue::new(serde_json::json!({"name": "Luis"}))).is_ok());
-    assert!(schema.validate(&RuntimeValue::new(serde_json::json!({"age": 30}))).is_err());
+    assert!(
+        schema
+            .validate(&RuntimeValue::new(serde_json::json!({"name": "Luis"})))
+            .is_ok()
+    );
+    assert!(
+        schema
+            .validate(&RuntimeValue::new(serde_json::json!({"age": 30})))
+            .is_err()
+    );
 }
 
 #[test]

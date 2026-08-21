@@ -9,7 +9,10 @@ pub fn run(args: TypecheckArgs) -> i32 {
             return 1;
         }
     };
-    let base_path = args.input.as_ref().and_then(|p| p.parent().map(|d| d.to_path_buf()));
+    let base_path = args
+        .input
+        .as_ref()
+        .and_then(|p| p.parent().map(|d| d.to_path_buf()));
 
     match ac_compiler::typecheck::run(&input, &args.format, base_path.as_deref()) {
         Ok(report) => {

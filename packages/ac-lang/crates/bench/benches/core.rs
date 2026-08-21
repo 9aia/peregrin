@@ -4,9 +4,9 @@
 //! `ac_typecheck_core::is_compatible` in isolation.
 
 use ac_bench::*;
-use ac_typecheck_core::{is_compatible, SchemaInterpreter, Type};
-use ac_typecheck_schema_json::{interpret_schema, JsonSchemaInterpreter};
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use ac_typecheck_core::{SchemaInterpreter, Type, is_compatible};
+use ac_typecheck_schema_json::{JsonSchemaInterpreter, interpret_schema};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 
 // ---------------------------------------------------------------------------
 // Schema interpretation
@@ -96,9 +96,13 @@ fn bench_compat_object(c: &mut Criterion) {
     for n in [5, 10, 50, 100] {
         let a = object_type(n);
         let b = object_type(n);
-        group.bench_with_input(BenchmarkId::from_parameter(n), &(a, b), |bencher, (a, b)| {
-            bencher.iter(|| black_box(is_compatible(black_box(a), black_box(b))));
-        });
+        group.bench_with_input(
+            BenchmarkId::from_parameter(n),
+            &(a, b),
+            |bencher, (a, b)| {
+                bencher.iter(|| black_box(is_compatible(black_box(a), black_box(b))));
+            },
+        );
     }
     group.finish();
 }
@@ -109,9 +113,13 @@ fn bench_compat_nested_object(c: &mut Criterion) {
     for depth in [1, 5, 10, 20, 50] {
         let a = nested_object_type(depth);
         let b = nested_object_type(depth);
-        group.bench_with_input(BenchmarkId::from_parameter(depth), &(a, b), |bencher, (a, b)| {
-            bencher.iter(|| black_box(is_compatible(black_box(a), black_box(b))));
-        });
+        group.bench_with_input(
+            BenchmarkId::from_parameter(depth),
+            &(a, b),
+            |bencher, (a, b)| {
+                bencher.iter(|| black_box(is_compatible(black_box(a), black_box(b))));
+            },
+        );
     }
     group.finish();
 }
@@ -122,13 +130,17 @@ fn bench_compat_array(c: &mut Criterion) {
     for n in [100, 1000, 10000] {
         let a = array_type(Type::Number);
         let b = array_type(Type::Number);
-        group.bench_with_input(BenchmarkId::from_parameter(n), &(a, b), |bencher, (a, b)| {
-            bencher.iter(|| {
-                for _ in 0..n {
-                    black_box(is_compatible(black_box(a), black_box(b)));
-                }
-            });
-        });
+        group.bench_with_input(
+            BenchmarkId::from_parameter(n),
+            &(a, b),
+            |bencher, (a, b)| {
+                bencher.iter(|| {
+                    for _ in 0..n {
+                        black_box(is_compatible(black_box(a), black_box(b)));
+                    }
+                });
+            },
+        );
     }
     group.finish();
 }

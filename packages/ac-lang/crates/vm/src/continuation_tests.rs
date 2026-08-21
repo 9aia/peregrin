@@ -30,10 +30,7 @@ impl Function for Mul {
 struct YieldingFetch;
 impl Function for YieldingFetch {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let input = args
-            .first()
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown");
+        let input = args.first().and_then(|v| v.as_str()).unwrap_or("unknown");
         Err(Error::Yield(RuntimeValue::new(format!("yield:{input}"))))
     }
 }
@@ -46,10 +43,7 @@ struct CachingFetch {
 }
 impl Function for CachingFetch {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let key = args
-            .first()
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown");
+        let key = args.first().and_then(|v| v.as_str()).unwrap_or("unknown");
         if let Some(cached) = self.cache.get(key) {
             Ok(cached.clone())
         } else {
@@ -108,10 +102,7 @@ impl Host for ClientHost {
 
 impl ClientHost {
     fn new(cache: Vec<(&str, RuntimeValue)>) -> Self {
-        let cache = cache
-            .into_iter()
-            .map(|(k, v)| (k.to_string(), v))
-            .collect();
+        let cache = cache.into_iter().map(|(k, v)| (k.to_string(), v)).collect();
         ClientHost {
             add: Add,
             mul: Mul,
@@ -177,7 +168,10 @@ fn resumable_eval_yields_on_fetch() {
     let expr = Expr::call("fetch", vec![Expr::value(RuntimeValue::new("hello"))]);
     let result = vm.eval_resumable(&expr, &mut ctx, None);
     match result {
-        EvalResult::Yielded { value, continuation } => {
+        EvalResult::Yielded {
+            value,
+            continuation,
+        } => {
             assert_eq!(value.as_str(), Some("yield:hello"));
             assert!(!continuation.is_empty());
         }
@@ -200,7 +194,10 @@ fn resumable_eval_resume_with_different_host() {
     let mut ctx = Context::new();
     let result = server_vm.eval_resumable(&expr, &mut ctx, None);
     let (yielded_value, continuation) = match result {
-        EvalResult::Yielded { value, continuation } => (value, continuation),
+        EvalResult::Yielded {
+            value,
+            continuation,
+        } => (value, continuation),
         other => panic!("expected Yielded, got {other:?}"),
     };
 
@@ -245,7 +242,10 @@ fn resumable_eval_resume_after_nested_yield() {
     let mut ctx = Context::new();
     let result = server_vm.eval_resumable(&expr, &mut ctx, None);
     let (yielded_a, cont_a) = match result {
-        EvalResult::Yielded { value, continuation } => (value, continuation),
+        EvalResult::Yielded {
+            value,
+            continuation,
+        } => (value, continuation),
         other => panic!("expected first Yielded, got {other:?}"),
     };
     assert_eq!(yielded_a.as_str(), Some("yield:a"));
@@ -254,7 +254,10 @@ fn resumable_eval_resume_after_nested_yield() {
     let mut client_vm = crate::Vm::new(ClientHost::new(vec![("a", RuntimeValue::new(3.0))]));
     let result = client_vm.eval_resumable(&expr, &mut ctx, Some(cont_a));
     let (yielded_b, cont_b) = match result {
-        EvalResult::Yielded { value, continuation } => (value, continuation),
+        EvalResult::Yielded {
+            value,
+            continuation,
+        } => (value, continuation),
         other => panic!("expected second Yielded, got {other:?}"),
     };
     assert_eq!(yielded_b.as_str(), Some("yield:b"));
@@ -277,7 +280,11 @@ fn continuation_serialization_roundtrip() {
         frames: vec![Frame {
             name: "add".to_string(),
             evaluated: vec![RuntimeValue::new(1), RuntimeValue::new(2)],
-            pending: vec![Expr::call("fetch", vec![Expr::value(RuntimeValue::new("x"))])],
+            pending: vec![Expr::call(
+                "fetch",
+                vec![Expr::value(RuntimeValue::new("x"))],
+            )],
+            handlers: vec![],
         }],
     };
 
@@ -309,7 +316,10 @@ fn resumable_eval_unknown_function() {
     let mut ctx = Context::new();
     let expr = Expr::call("nonexistent", vec![]);
     let result = vm.eval_resumable(&expr, &mut ctx, None);
-    assert!(matches!(result, EvalResult::Error(Error::UnknownFunction(_))));
+    assert!(matches!(
+        result,
+        EvalResult::Error(Error::UnknownFunction(_))
+    ));
 }
 
 #[test]

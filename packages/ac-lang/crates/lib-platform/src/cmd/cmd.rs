@@ -68,32 +68,30 @@ struct RunFn {
 
 impl Function for RunFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-    let program = args.first().ok_or(Error::ArgumentCount {
-        expected: 1,
-        got: 0,
-    })?;
-    let program = program.as_str().ok_or(Error::TypeMismatch {
-        expected: "string",
-        got: "non-string",
-    })?;
+        let program = args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?;
+        let program = program.as_str().ok_or(Error::TypeMismatch {
+            expected: "string",
+            got: "non-string",
+        })?;
 
-    let arg_strings: Vec<String> = args
-        .iter()
-        .skip(1)
-        .map(|v| {
-            v.as_str()
-                .map(String::from)
-                .ok_or(Error::TypeMismatch {
+        let arg_strings: Vec<String> = args
+            .iter()
+            .skip(1)
+            .map(|v| {
+                v.as_str().map(String::from).ok_or(Error::TypeMismatch {
                     expected: "string",
                     got: "non-string",
                 })
-        })
-        .collect::<Result<_, _>>()?;
+            })
+            .collect::<Result<_, _>>()?;
 
-    let arg_refs: Vec<&str> = arg_strings.iter().map(String::as_str).collect();
-    self.command
-        .run(program, &arg_refs)
-        .map(output_to_value)
-        .map_err(Into::into)
+        let arg_refs: Vec<&str> = arg_strings.iter().map(String::as_str).collect();
+        self.command
+            .run(program, &arg_refs)
+            .map(output_to_value)
+            .map_err(Into::into)
     }
 }

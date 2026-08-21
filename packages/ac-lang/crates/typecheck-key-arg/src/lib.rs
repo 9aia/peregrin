@@ -15,7 +15,7 @@
 //!
 //! > **The arg type must be compatible with the field's declared type.**
 
-use ac_typecheck_core::{is_compatible, SchemaInterpreter, TypeError};
+use ac_typecheck_core::{SchemaInterpreter, TypeError, is_compatible};
 use serde_json::Value as JsonValue;
 
 /// The AC key this crate handles.
@@ -53,12 +53,7 @@ pub fn check_field(
     }
 
     if !is_compatible(&arg_type, &declared) {
-        return Err(TypeError::mismatch(
-            field_name,
-            declared,
-            arg_type,
-            "",
-        ));
+        return Err(TypeError::mismatch(field_name, declared, arg_type, ""));
     }
 
     Ok(())

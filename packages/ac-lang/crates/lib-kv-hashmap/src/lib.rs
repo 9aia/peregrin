@@ -75,9 +75,9 @@ impl KeyValueStore for HashKeyValueStore {
 
 #[cfg(test)]
 mod tests {
+    use ac_lib_kv::KeyValueStoreModule;
     use ac_runtime::RuntimeValue;
     use ac_runtime_core::Module;
-    use ac_lib_kv::KeyValueStoreModule;
     use ac_vm::Context;
 
     use super::HashKeyValueStore;

@@ -10,11 +10,7 @@ fn call(module: &dyn Module, name: &str, args: &[RuntimeValue]) -> RuntimeValue 
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(
-    module: &dyn Module,
-    name: &str,
-    args: &[RuntimeValue],
-) -> Result<RuntimeValue, Error> {
+fn call_err(module: &dyn Module, name: &str, args: &[RuntimeValue]) -> Result<RuntimeValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = Context::new();
     func.call(args, &mut ctx)
@@ -59,12 +55,18 @@ fn module_name() {
 
 #[test]
 fn identity_number() {
-    assert_eq!(call(&FpModule, "identity", &[n(42.0)]).as_number(), Some(42.0));
+    assert_eq!(
+        call(&FpModule, "identity", &[n(42.0)]).as_number(),
+        Some(42.0)
+    );
 }
 
 #[test]
 fn identity_string() {
-    assert_eq!(call(&FpModule, "identity", &[s("hello")]).as_str(), Some("hello"));
+    assert_eq!(
+        call(&FpModule, "identity", &[s("hello")]).as_str(),
+        Some("hello")
+    );
 }
 
 #[test]
@@ -134,22 +136,34 @@ fn is_bool_false() {
 
 #[test]
 fn is_number_true() {
-    assert_eq!(call(&FpModule, "is_number", &[n(42.0)]).as_bool(), Some(true));
+    assert_eq!(
+        call(&FpModule, "is_number", &[n(42.0)]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn is_number_false() {
-    assert_eq!(call(&FpModule, "is_number", &[s("42")]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_number", &[s("42")]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_string_true() {
-    assert_eq!(call(&FpModule, "is_string", &[s("hello")]).as_bool(), Some(true));
+    assert_eq!(
+        call(&FpModule, "is_string", &[s("hello")]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn is_string_false() {
-    assert_eq!(call(&FpModule, "is_string", &[n(42.0)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_string", &[n(42.0)]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
@@ -162,7 +176,10 @@ fn is_array_true() {
 
 #[test]
 fn is_array_false() {
-    assert_eq!(call(&FpModule, "is_array", &[n(42.0)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_array", &[n(42.0)]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
@@ -175,7 +192,10 @@ fn is_object_true() {
 
 #[test]
 fn is_object_false() {
-    assert_eq!(call(&FpModule, "is_object", &[n(42.0)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_object", &[n(42.0)]).as_bool(),
+        Some(false)
+    );
 }
 
 // ── type_of ────────────────────────────────────────────────────────
@@ -187,27 +207,42 @@ fn type_of_null() {
 
 #[test]
 fn type_of_bool() {
-    assert_eq!(call(&FpModule, "type_of", &[b(true)]).as_str(), Some("boolean"));
+    assert_eq!(
+        call(&FpModule, "type_of", &[b(true)]).as_str(),
+        Some("boolean")
+    );
 }
 
 #[test]
 fn type_of_number() {
-    assert_eq!(call(&FpModule, "type_of", &[n(42.0)]).as_str(), Some("number"));
+    assert_eq!(
+        call(&FpModule, "type_of", &[n(42.0)]).as_str(),
+        Some("number")
+    );
 }
 
 #[test]
 fn type_of_string() {
-    assert_eq!(call(&FpModule, "type_of", &[s("hi")]).as_str(), Some("string"));
+    assert_eq!(
+        call(&FpModule, "type_of", &[s("hi")]).as_str(),
+        Some("string")
+    );
 }
 
 #[test]
 fn type_of_array() {
-    assert_eq!(call(&FpModule, "type_of", &[arr(&[])]).as_str(), Some("array"));
+    assert_eq!(
+        call(&FpModule, "type_of", &[arr(&[])]).as_str(),
+        Some("array")
+    );
 }
 
 #[test]
 fn type_of_object() {
-    assert_eq!(call(&FpModule, "type_of", &[obj(&[])]).as_str(), Some("object"));
+    assert_eq!(
+        call(&FpModule, "type_of", &[obj(&[])]).as_str(),
+        Some("object")
+    );
 }
 
 // ── is_empty ───────────────────────────────────────────────────────
@@ -220,12 +255,18 @@ fn is_empty_null() {
 #[test]
 fn is_empty_string() {
     assert_eq!(call(&FpModule, "is_empty", &[s("")]).as_bool(), Some(true));
-    assert_eq!(call(&FpModule, "is_empty", &[s("x")]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_empty", &[s("x")]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_empty_array() {
-    assert_eq!(call(&FpModule, "is_empty", &[arr(&[])]).as_bool(), Some(true));
+    assert_eq!(
+        call(&FpModule, "is_empty", &[arr(&[])]).as_bool(),
+        Some(true)
+    );
     assert_eq!(
         call(&FpModule, "is_empty", &[arr(&[serde_json::json!(1)])]).as_bool(),
         Some(false)
@@ -234,46 +275,81 @@ fn is_empty_array() {
 
 #[test]
 fn is_empty_object() {
-    assert_eq!(call(&FpModule, "is_empty", &[obj(&[])]).as_bool(), Some(true));
     assert_eq!(
-        call(&FpModule, "is_empty", &[obj(&[("a", serde_json::json!(1))])]).as_bool(),
+        call(&FpModule, "is_empty", &[obj(&[])]).as_bool(),
+        Some(true)
+    );
+    assert_eq!(
+        call(
+            &FpModule,
+            "is_empty",
+            &[obj(&[("a", serde_json::json!(1))])]
+        )
+        .as_bool(),
         Some(false)
     );
 }
 
 #[test]
 fn is_empty_number_is_false() {
-    assert_eq!(call(&FpModule, "is_empty", &[n(0.0)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_empty", &[n(0.0)]).as_bool(),
+        Some(false)
+    );
 }
 
 // ── is_truthy ──────────────────────────────────────────────────────
 
 #[test]
 fn is_truthy_bool() {
-    assert_eq!(call(&FpModule, "is_truthy", &[b(true)]).as_bool(), Some(true));
-    assert_eq!(call(&FpModule, "is_truthy", &[b(false)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_truthy", &[b(true)]).as_bool(),
+        Some(true)
+    );
+    assert_eq!(
+        call(&FpModule, "is_truthy", &[b(false)]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_truthy_number() {
-    assert_eq!(call(&FpModule, "is_truthy", &[n(1.0)]).as_bool(), Some(true));
-    assert_eq!(call(&FpModule, "is_truthy", &[n(0.0)]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_truthy", &[n(1.0)]).as_bool(),
+        Some(true)
+    );
+    assert_eq!(
+        call(&FpModule, "is_truthy", &[n(0.0)]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_truthy_string() {
-    assert_eq!(call(&FpModule, "is_truthy", &[s("x")]).as_bool(), Some(true));
-    assert_eq!(call(&FpModule, "is_truthy", &[s("")]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_truthy", &[s("x")]).as_bool(),
+        Some(true)
+    );
+    assert_eq!(
+        call(&FpModule, "is_truthy", &[s("")]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_truthy_null() {
-    assert_eq!(call(&FpModule, "is_truthy", &[null()]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_truthy", &[null()]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
 fn is_truthy_array() {
-    assert_eq!(call(&FpModule, "is_truthy", &[arr(&[])]).as_bool(), Some(false));
+    assert_eq!(
+        call(&FpModule, "is_truthy", &[arr(&[])]).as_bool(),
+        Some(false)
+    );
     assert_eq!(
         call(&FpModule, "is_truthy", &[arr(&[serde_json::json!(1)])]).as_bool(),
         Some(true)
@@ -282,9 +358,17 @@ fn is_truthy_array() {
 
 #[test]
 fn is_truthy_object() {
-    assert_eq!(call(&FpModule, "is_truthy", &[obj(&[])]).as_bool(), Some(false));
     assert_eq!(
-        call(&FpModule, "is_truthy", &[obj(&[("a", serde_json::json!(1))])]).as_bool(),
+        call(&FpModule, "is_truthy", &[obj(&[])]).as_bool(),
+        Some(false)
+    );
+    assert_eq!(
+        call(
+            &FpModule,
+            "is_truthy",
+            &[obj(&[("a", serde_json::json!(1))])]
+        )
+        .as_bool(),
         Some(true)
     );
 }
@@ -334,10 +418,14 @@ fn range_zero_step_errors() {
 
 #[test]
 fn zip_equal_length() {
-    let result = call(&FpModule, "zip", &[
-        arr(&[serde_json::json!(1), serde_json::json!(2)]),
-        arr(&[serde_json::json!("a"), serde_json::json!("b")]),
-    ]);
+    let result = call(
+        &FpModule,
+        "zip",
+        &[
+            arr(&[serde_json::json!(1), serde_json::json!(2)]),
+            arr(&[serde_json::json!("a"), serde_json::json!("b")]),
+        ],
+    );
     let pairs = result.as_array().unwrap();
     assert_eq!(pairs.len(), 2);
     assert_eq!(pairs[0].as_array().unwrap()[0].as_f64(), Some(1.0));
@@ -346,10 +434,18 @@ fn zip_equal_length() {
 
 #[test]
 fn zip_unequal_length_truncates() {
-    let result = call(&FpModule, "zip", &[
-        arr(&[serde_json::json!(1), serde_json::json!(2), serde_json::json!(3)]),
-        arr(&[serde_json::json!("a")]),
-    ]);
+    let result = call(
+        &FpModule,
+        "zip",
+        &[
+            arr(&[
+                serde_json::json!(1),
+                serde_json::json!(2),
+                serde_json::json!(3),
+            ]),
+            arr(&[serde_json::json!("a")]),
+        ],
+    );
     assert_eq!(result.as_array().unwrap().len(), 1);
 }
 
@@ -357,10 +453,19 @@ fn zip_unequal_length_truncates() {
 
 #[test]
 fn chunk_even() {
-    let result = call(&FpModule, "chunk", &[
-        arr(&[serde_json::json!(1), serde_json::json!(2), serde_json::json!(3), serde_json::json!(4)]),
-        n(2.0),
-    ]);
+    let result = call(
+        &FpModule,
+        "chunk",
+        &[
+            arr(&[
+                serde_json::json!(1),
+                serde_json::json!(2),
+                serde_json::json!(3),
+                serde_json::json!(4),
+            ]),
+            n(2.0),
+        ],
+    );
     let chunks = result.as_array().unwrap();
     assert_eq!(chunks.len(), 2);
     assert_eq!(chunks[0].as_array().unwrap().len(), 2);
@@ -369,10 +474,18 @@ fn chunk_even() {
 
 #[test]
 fn chunk_uneven_remainder() {
-    let result = call(&FpModule, "chunk", &[
-        arr(&[serde_json::json!(1), serde_json::json!(2), serde_json::json!(3)]),
-        n(2.0),
-    ]);
+    let result = call(
+        &FpModule,
+        "chunk",
+        &[
+            arr(&[
+                serde_json::json!(1),
+                serde_json::json!(2),
+                serde_json::json!(3),
+            ]),
+            n(2.0),
+        ],
+    );
     let chunks = result.as_array().unwrap();
     assert_eq!(chunks.len(), 2);
     assert_eq!(chunks[0].as_array().unwrap().len(), 2);
@@ -389,10 +502,14 @@ fn chunk_zero_size_errors() {
 
 #[test]
 fn keys_returns_object_keys() {
-    let result = call(&FpModule, "keys", &[obj(&[
-        ("a", serde_json::json!(1)),
-        ("b", serde_json::json!(2)),
-    ])]);
+    let result = call(
+        &FpModule,
+        "keys",
+        &[obj(&[
+            ("a", serde_json::json!(1)),
+            ("b", serde_json::json!(2)),
+        ])],
+    );
     let keys = result.as_array().unwrap();
     assert_eq!(keys.len(), 2);
     assert_eq!(keys[0].as_str(), Some("a"));
@@ -401,10 +518,14 @@ fn keys_returns_object_keys() {
 
 #[test]
 fn values_returns_object_values() {
-    let result = call(&FpModule, "values", &[obj(&[
-        ("a", serde_json::json!(1)),
-        ("b", serde_json::json!(2)),
-    ])]);
+    let result = call(
+        &FpModule,
+        "values",
+        &[obj(&[
+            ("a", serde_json::json!(1)),
+            ("b", serde_json::json!(2)),
+        ])],
+    );
     let values = result.as_array().unwrap();
     assert_eq!(values.len(), 2);
     assert_eq!(values[0].as_f64(), Some(1.0));
@@ -413,9 +534,7 @@ fn values_returns_object_values() {
 
 #[test]
 fn entries_returns_key_value_pairs() {
-    let result = call(&FpModule, "entries", &[obj(&[
-        ("a", serde_json::json!(1)),
-    ])]);
+    let result = call(&FpModule, "entries", &[obj(&[("a", serde_json::json!(1))])]);
     let entries = result.as_array().unwrap();
     assert_eq!(entries.len(), 1);
     let pair = entries[0].as_array().unwrap();
@@ -433,14 +552,18 @@ fn keys_on_non_object_errors() {
 
 #[test]
 fn pick_selects_keys() {
-    let result = call(&FpModule, "pick", &[
-        obj(&[
-            ("a", serde_json::json!(1)),
-            ("b", serde_json::json!(2)),
-            ("c", serde_json::json!(3)),
-        ]),
-        arr(&[serde_json::json!("a"), serde_json::json!("c")]),
-    ]);
+    let result = call(
+        &FpModule,
+        "pick",
+        &[
+            obj(&[
+                ("a", serde_json::json!(1)),
+                ("b", serde_json::json!(2)),
+                ("c", serde_json::json!(3)),
+            ]),
+            arr(&[serde_json::json!("a"), serde_json::json!("c")]),
+        ],
+    );
     let obj = result.as_object().unwrap();
     assert_eq!(obj.len(), 2);
     assert!(obj.contains_key("a"));
@@ -450,23 +573,31 @@ fn pick_selects_keys() {
 
 #[test]
 fn pick_missing_key_ignored() {
-    let result = call(&FpModule, "pick", &[
-        obj(&[("a", serde_json::json!(1))]),
-        arr(&[serde_json::json!("a"), serde_json::json!("z")]),
-    ]);
+    let result = call(
+        &FpModule,
+        "pick",
+        &[
+            obj(&[("a", serde_json::json!(1))]),
+            arr(&[serde_json::json!("a"), serde_json::json!("z")]),
+        ],
+    );
     assert_eq!(result.as_object().unwrap().len(), 1);
 }
 
 #[test]
 fn omit_removes_keys() {
-    let result = call(&FpModule, "omit", &[
-        obj(&[
-            ("a", serde_json::json!(1)),
-            ("b", serde_json::json!(2)),
-            ("c", serde_json::json!(3)),
-        ]),
-        arr(&[serde_json::json!("b")]),
-    ]);
+    let result = call(
+        &FpModule,
+        "omit",
+        &[
+            obj(&[
+                ("a", serde_json::json!(1)),
+                ("b", serde_json::json!(2)),
+                ("c", serde_json::json!(3)),
+            ]),
+            arr(&[serde_json::json!("b")]),
+        ],
+    );
     let obj = result.as_object().unwrap();
     assert_eq!(obj.len(), 2);
     assert!(obj.contains_key("a"));
@@ -478,10 +609,14 @@ fn omit_removes_keys() {
 
 #[test]
 fn merge_two_objects() {
-    let result = call(&FpModule, "merge", &[
-        obj(&[("a", serde_json::json!(1)), ("b", serde_json::json!(2))]),
-        obj(&[("b", serde_json::json!(3)), ("c", serde_json::json!(4))]),
-    ]);
+    let result = call(
+        &FpModule,
+        "merge",
+        &[
+            obj(&[("a", serde_json::json!(1)), ("b", serde_json::json!(2))]),
+            obj(&[("b", serde_json::json!(3)), ("c", serde_json::json!(4))]),
+        ],
+    );
     let obj = result.as_object().unwrap();
     assert_eq!(obj.len(), 3);
     assert_eq!(obj.get("a").unwrap().as_f64(), Some(1.0));
@@ -491,11 +626,18 @@ fn merge_two_objects() {
 
 #[test]
 fn merge_right_wins_on_conflict() {
-    let result = call(&FpModule, "merge", &[
-        obj(&[("a", serde_json::json!(1))]),
-        obj(&[("a", serde_json::json!(99))]),
-    ]);
-    assert_eq!(result.as_object().unwrap().get("a").unwrap().as_f64(), Some(99.0));
+    let result = call(
+        &FpModule,
+        "merge",
+        &[
+            obj(&[("a", serde_json::json!(1))]),
+            obj(&[("a", serde_json::json!(99))]),
+        ],
+    );
+    assert_eq!(
+        result.as_object().unwrap().get("a").unwrap().as_f64(),
+        Some(99.0)
+    );
 }
 
 #[test]
@@ -555,8 +697,14 @@ fn split_args(s: &str) -> Vec<String> {
     let mut current = String::new();
     for ch in s.chars() {
         match ch {
-            '(' => { depth += 1; current.push(ch); }
-            ')' => { depth -= 1; current.push(ch); }
+            '(' => {
+                depth += 1;
+                current.push(ch);
+            }
+            ')' => {
+                depth -= 1;
+                current.push(ch);
+            }
             ',' if depth == 0 => {
                 result.push(current.trim().to_string());
                 current.clear();
@@ -593,7 +741,7 @@ fn eval_arg(arg: &str, vars: &[(String, RuntimeValue)]) -> Result<RuntimeValue, 
     if arg == "null" {
         return Ok(RuntimeValue::new(serde_json::Value::Null));
     }
-    if let Some(paren) = arg.find('(') {
+    if arg.find('(').is_some() {
         return TestEval.eval_expr(arg, vars);
     }
     for (name, val) in vars {
@@ -624,10 +772,18 @@ fn fn_value(body: &str, params: &[&str]) -> RuntimeValue {
 
 #[test]
 fn map_doubles_each_element() {
-    let result = call_with_eval(&FpModule, "map", &[
-        fn_value("add(x, 2)", &["x"]),
-        arr(&[serde_json::json!(1), serde_json::json!(2), serde_json::json!(3)]),
-    ]);
+    let result = call_with_eval(
+        &FpModule,
+        "map",
+        &[
+            fn_value("add(x, 2)", &["x"]),
+            arr(&[
+                serde_json::json!(1),
+                serde_json::json!(2),
+                serde_json::json!(3),
+            ]),
+        ],
+    );
     let mapped = result.as_array().unwrap();
     assert_eq!(mapped.len(), 3);
     assert_eq!(mapped[0].as_f64(), Some(3.0));
@@ -637,19 +793,25 @@ fn map_doubles_each_element() {
 
 #[test]
 fn map_empty_array() {
-    let result = call_with_eval(&FpModule, "map", &[
-        fn_value("add(x, 1)", &["x"]),
-        arr(&[]),
-    ]);
+    let result = call_with_eval(&FpModule, "map", &[fn_value("add(x, 1)", &["x"]), arr(&[])]);
     assert!(result.as_array().unwrap().is_empty());
 }
 
 #[test]
 fn filter_keeps_matching_elements() {
-    let result = call_with_eval(&FpModule, "filter", &[
-        fn_value("add(x, 0)", &["x"]),
-        arr(&[serde_json::json!(0), serde_json::json!(3), serde_json::json!(0), serde_json::json!(5)]),
-    ]);
+    let result = call_with_eval(
+        &FpModule,
+        "filter",
+        &[
+            fn_value("add(x, 0)", &["x"]),
+            arr(&[
+                serde_json::json!(0),
+                serde_json::json!(3),
+                serde_json::json!(0),
+                serde_json::json!(5),
+            ]),
+        ],
+    );
     let filtered = result.as_array().unwrap();
     assert_eq!(filtered.len(), 2);
     assert_eq!(filtered[0].as_f64(), Some(3.0));
@@ -658,48 +820,56 @@ fn filter_keeps_matching_elements() {
 
 #[test]
 fn filter_empty_array() {
-    let result = call_with_eval(&FpModule, "filter", &[
-        fn_value("add(x, 0)", &["x"]),
-        arr(&[]),
-    ]);
+    let result = call_with_eval(
+        &FpModule,
+        "filter",
+        &[fn_value("add(x, 0)", &["x"]), arr(&[])],
+    );
     assert!(result.as_array().unwrap().is_empty());
 }
 
 #[test]
 fn reduce_sums_all_elements() {
-    let result = call_with_eval(&FpModule, "reduce", &[
-        fn_value("add(acc, x)", &["acc", "x"]),
-        arr(&[serde_json::json!(1), serde_json::json!(2), serde_json::json!(3), serde_json::json!(4)]),
-        n(0.0),
-    ]);
+    let result = call_with_eval(
+        &FpModule,
+        "reduce",
+        &[
+            fn_value("add(acc, x)", &["acc", "x"]),
+            arr(&[
+                serde_json::json!(1),
+                serde_json::json!(2),
+                serde_json::json!(3),
+                serde_json::json!(4),
+            ]),
+            n(0.0),
+        ],
+    );
     assert_eq!(result.as_number(), Some(10.0));
 }
 
 #[test]
 fn reduce_empty_returns_initial() {
-    let result = call_with_eval(&FpModule, "reduce", &[
-        fn_value("add(acc, x)", &["acc", "x"]),
-        arr(&[]),
-        n(42.0),
-    ]);
+    let result = call_with_eval(
+        &FpModule,
+        "reduce",
+        &[fn_value("add(acc, x)", &["acc", "x"]), arr(&[]), n(42.0)],
+    );
     assert_eq!(result.as_number(), Some(42.0));
 }
 
 #[test]
 fn map_without_eval_errors() {
-    let result = call_err(&FpModule, "map", &[
-        fn_value("add(x, 1)", &["x"]),
-        arr(&[serde_json::json!(1)]),
-    ]);
+    let result = call_err(
+        &FpModule,
+        "map",
+        &[fn_value("add(x, 1)", &["x"]), arr(&[serde_json::json!(1)])],
+    );
     assert!(matches!(result, Err(Error::PrimitiveError(_))));
 }
 
 #[test]
 fn map_non_function_errors() {
-    let result = call_err(&FpModule, "map", &[
-        n(42.0),
-        arr(&[serde_json::json!(1)]),
-    ]);
+    let result = call_err(&FpModule, "map", &[n(42.0), arr(&[serde_json::json!(1)])]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
@@ -707,47 +877,46 @@ fn map_non_function_errors() {
 
 #[test]
 fn pipe_chains_functions_left_to_right() {
-    let result = call_with_eval(&FpModule, "pipe", &[
-        n(5.0),
-        fn_value("add(x, 10)", &["x"]),
-        fn_value("mul(x, 2)", &["x"]),
-    ]);
+    let result = call_with_eval(
+        &FpModule,
+        "pipe",
+        &[
+            n(5.0),
+            fn_value("add(x, 10)", &["x"]),
+            fn_value("mul(x, 2)", &["x"]),
+        ],
+    );
     assert_eq!(result.as_number(), Some(30.0));
 }
 
 #[test]
 fn pipe_single_function() {
-    let result = call_with_eval(&FpModule, "pipe", &[
-        n(3.0),
-        fn_value("add(x, 7)", &["x"]),
-    ]);
+    let result = call_with_eval(&FpModule, "pipe", &[n(3.0), fn_value("add(x, 7)", &["x"])]);
     assert_eq!(result.as_number(), Some(10.0));
 }
 
 #[test]
 fn pipe_without_eval_errors() {
-    let result = call_err(&FpModule, "pipe", &[
-        n(3.0),
-        fn_value("add(x, 1)", &["x"]),
-    ]);
+    let result = call_err(&FpModule, "pipe", &[n(3.0), fn_value("add(x, 1)", &["x"])]);
     assert!(matches!(result, Err(Error::PrimitiveError(_))));
 }
 
 #[test]
 fn pipe_non_function_errors() {
-    let result = call_err(&FpModule, "pipe", &[
-        n(3.0),
-        n(42.0),
-    ]);
+    let result = call_err(&FpModule, "pipe", &[n(3.0), n(42.0)]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
 #[test]
 fn flow_returns_function_value() {
-    let result = call(&FpModule, "flow", &[
-        fn_value("add(x, 10)", &["x"]),
-        fn_value("mul(x, 2)", &["x"]),
-    ]);
+    let result = call(
+        &FpModule,
+        "flow",
+        &[
+            fn_value("add(x, 10)", &["x"]),
+            fn_value("mul(x, 2)", &["x"]),
+        ],
+    );
     assert!(result.is_function());
     let fv = result.as_function().unwrap();
     assert_eq!(fv.params.len(), 1);
@@ -757,50 +926,58 @@ fn flow_returns_function_value() {
 
 #[test]
 fn flow_three_functions() {
-    let result = call(&FpModule, "flow", &[
-        fn_value("add(x, 1)", &["x"]),
-        fn_value("mul(x, 3)", &["x"]),
-        fn_value("add(x, 100)", &["x"]),
-    ]);
+    let result = call(
+        &FpModule,
+        "flow",
+        &[
+            fn_value("add(x, 1)", &["x"]),
+            fn_value("mul(x, 3)", &["x"]),
+            fn_value("add(x, 100)", &["x"]),
+        ],
+    );
     let fv = result.as_function().unwrap();
     assert_eq!(fv.body, "add((mul((add(x, 1)), 3)), 100)");
 }
 
 #[test]
 fn flow_single_function() {
-    let result = call(&FpModule, "flow", &[
-        fn_value("add(x, 42)", &["x"]),
-    ]);
+    let result = call(&FpModule, "flow", &[fn_value("add(x, 42)", &["x"])]);
     let fv = result.as_function().unwrap();
     assert_eq!(fv.body, "add(x, 42)");
 }
 
 #[test]
 fn flow_with_different_param_names() {
-    let result = call(&FpModule, "flow", &[
-        fn_value("add(x, 10)", &["x"]),
-        fn_value("mul(y, 2)", &["y"]),
-    ]);
+    let result = call(
+        &FpModule,
+        "flow",
+        &[
+            fn_value("add(x, 10)", &["x"]),
+            fn_value("mul(y, 2)", &["y"]),
+        ],
+    );
     let fv = result.as_function().unwrap();
     assert_eq!(fv.body, "mul((add(x, 10)), 2)");
 }
 
 #[test]
 fn compose_returns_function_value() {
-    let result = call(&FpModule, "compose", &[
-        fn_value("add(x, 100)", &["x"]),
-        fn_value("mul(x, 2)", &["x"]),
-        fn_value("add(x, 10)", &["x"]),
-    ]);
+    let result = call(
+        &FpModule,
+        "compose",
+        &[
+            fn_value("add(x, 100)", &["x"]),
+            fn_value("mul(x, 2)", &["x"]),
+            fn_value("add(x, 10)", &["x"]),
+        ],
+    );
     let fv = result.as_function().unwrap();
     assert_eq!(fv.body, "add((mul((add(x, 10)), 2)), 100)");
 }
 
 #[test]
 fn compose_single_function() {
-    let result = call(&FpModule, "compose", &[
-        fn_value("add(x, 42)", &["x"]),
-    ]);
+    let result = call(&FpModule, "compose", &[fn_value("add(x, 42)", &["x"])]);
     let fv = result.as_function().unwrap();
     assert_eq!(fv.body, "add(x, 42)");
 }
@@ -822,15 +999,153 @@ fn flow_and_compose_are_inverse_order() {
 
 #[test]
 fn flow_result_is_callable_via_eval() {
-    let composed = call(&FpModule, "flow", &[
-        fn_value("add(x, 10)", &["x"]),
-        fn_value("mul(x, 2)", &["x"]),
-    ]);
-    let result = call_with_eval(&FpModule, "pipe", &[
-        n(5.0),
-        composed,
-    ]);
+    let composed = call(
+        &FpModule,
+        "flow",
+        &[
+            fn_value("add(x, 10)", &["x"]),
+            fn_value("mul(x, 2)", &["x"]),
+        ],
+    );
+    let result = call_with_eval(&FpModule, "pipe", &[n(5.0), composed]);
     assert_eq!(result.as_number(), Some(30.0));
+}
+
+// ── fanout ─────────────────────────────────────────────────────────
+
+#[test]
+fn fanout_applies_all_functions_to_value() {
+    let result = call_with_eval(
+        &FpModule,
+        "fanout",
+        &[
+            n(5.0),
+            fn_value("add(x, 10)", &["x"]),
+            fn_value("mul(x, 2)", &["x"]),
+            fn_value("add(x, -1)", &["x"]),
+        ],
+    );
+    let arr = result.as_array().unwrap();
+    assert_eq!(arr.len(), 3);
+    assert_eq!(arr[0].as_f64(), Some(15.0));
+    assert_eq!(arr[1].as_f64(), Some(10.0));
+    assert_eq!(arr[2].as_f64(), Some(4.0));
+}
+
+#[test]
+fn fanout_single_function() {
+    let result = call_with_eval(
+        &FpModule,
+        "fanout",
+        &[n(3.0), fn_value("add(x, 7)", &["x"])],
+    );
+    let arr = result.as_array().unwrap();
+    assert_eq!(arr.len(), 1);
+    assert_eq!(arr[0].as_f64(), Some(10.0));
+}
+
+#[test]
+fn fanout_without_eval_errors() {
+    let result = call_err(
+        &FpModule,
+        "fanout",
+        &[n(3.0), fn_value("add(x, 1)", &["x"])],
+    );
+    assert!(matches!(result, Err(Error::PrimitiveError(_))));
+}
+
+#[test]
+fn fanout_non_function_errors() {
+    let result = call_err(&FpModule, "fanout", &[n(3.0), n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn fanout_too_few_args_errors() {
+    let result = call_err(&FpModule, "fanout", &[n(3.0)]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── choice ─────────────────────────────────────────────────────────
+
+#[test]
+fn choice_selects_true_branch() {
+    let result = call_with_eval(
+        &FpModule,
+        "choice",
+        &[
+            n(5.0),
+            fn_value("add(x, 0)", &["x"]),
+            fn_value("mul(x, 100)", &["x"]),
+            fn_value("mul(x, -1)", &["x"]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(500.0));
+}
+
+#[test]
+fn choice_selects_false_branch() {
+    let result = call_with_eval(
+        &FpModule,
+        "choice",
+        &[
+            n(0.0),
+            fn_value("add(x, 0)", &["x"]),
+            fn_value("mul(x, 100)", &["x"]),
+            fn_value("mul(x, -1)", &["x"]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(0.0));
+}
+
+#[test]
+fn choice_with_string_predicate() {
+    let result = call_with_eval(
+        &FpModule,
+        "choice",
+        &[
+            s("hello"),
+            fn_value("x", &["x"]),
+            fn_value("add(x, 0)", &["x"]),
+            fn_value("add(x, 100)", &["x"]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(0.0));
+}
+
+#[test]
+fn choice_without_eval_errors() {
+    let result = call_err(
+        &FpModule,
+        "choice",
+        &[
+            n(1.0),
+            fn_value("x", &["x"]),
+            fn_value("add(x, 1)", &["x"]),
+            fn_value("add(x, 2)", &["x"]),
+        ],
+    );
+    assert!(matches!(result, Err(Error::PrimitiveError(_))));
+}
+
+#[test]
+fn choice_non_function_predicate_errors() {
+    let result = call_err(
+        &FpModule,
+        "choice",
+        &[n(1.0), n(42.0), fn_value("add(x, 1)", &["x"]), fn_value("add(x, 2)", &["x"])],
+    );
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn choice_too_few_args_errors() {
+    let result = call_err(
+        &FpModule,
+        "choice",
+        &[n(1.0), fn_value("x", &["x"]), fn_value("add(x, 1)", &["x"])],
+    );
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
 }
 
 // ── error cases ────────────────────────────────────────────────────

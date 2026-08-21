@@ -33,6 +33,7 @@ pub trait KeyHandler: Send + Sync {
 pub trait ImportResolver: Send + Sync {
     /// Detect and resolve imports from merge fields, merging imported
     /// schemas into the context.
+    #[allow(clippy::too_many_arguments)]
     fn resolve_imports(
         &self,
         ctx: &mut TypegenContext,

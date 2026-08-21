@@ -67,9 +67,10 @@ impl ExprParser for StubDialect {
 
     fn parse_string_literal(&self, s: &str) -> Option<String> {
         let trimmed = s.trim();
-        if trimmed.len() >= 2 && (trimmed.starts_with('"') && trimmed.ends_with('"')) {
-            Some(trimmed[1..trimmed.len() - 1].to_string())
-        } else if trimmed.len() >= 2 && (trimmed.starts_with('\'') && trimmed.ends_with('\'')) {
+        if trimmed.len() >= 2
+            && ((trimmed.starts_with('"') && trimmed.ends_with('"'))
+                || (trimmed.starts_with('\'') && trimmed.ends_with('\'')))
+        {
             Some(trimmed[1..trimmed.len() - 1].to_string())
         } else {
             None

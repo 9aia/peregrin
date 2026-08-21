@@ -17,10 +17,7 @@ use serde_json::Value as JsonValue;
 ///
 /// Returns a list of error messages for any merge fields that could not
 /// be spread.
-pub fn merge_fields(
-    data: &mut JsonValue,
-    merge: &[String],
-) -> Vec<String> {
+pub fn merge_fields(data: &mut JsonValue, merge: &[String]) -> Vec<String> {
     if merge.is_empty() {
         return Vec::new();
     }

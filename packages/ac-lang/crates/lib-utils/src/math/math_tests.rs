@@ -63,10 +63,7 @@ fn max() {
 
 #[test]
 fn sqrt() {
-    assert_eq!(
-        call(&MathModule, "sqrt", &[n(9.0)]).as_number(),
-        Some(3.0)
-    );
+    assert_eq!(call(&MathModule, "sqrt", &[n(9.0)]).as_number(), Some(3.0));
 }
 
 #[test]
@@ -84,7 +81,10 @@ fn sign_positive() {
 
 #[test]
 fn sign_negative() {
-    assert_eq!(call(&MathModule, "sign", &[n(-5.0)]).as_number(), Some(-1.0));
+    assert_eq!(
+        call(&MathModule, "sign", &[n(-5.0)]).as_number(),
+        Some(-1.0)
+    );
 }
 
 #[test]
@@ -95,7 +95,10 @@ fn sign_zero() {
 #[test]
 fn trunc() {
     assert_eq!(call(&MathModule, "trunc", &[n(3.7)]).as_number(), Some(3.0));
-    assert_eq!(call(&MathModule, "trunc", &[n(-3.7)]).as_number(), Some(-3.0));
+    assert_eq!(
+        call(&MathModule, "trunc", &[n(-3.7)]).as_number(),
+        Some(-3.0)
+    );
 }
 
 #[test]
@@ -131,7 +134,10 @@ fn log() {
 
 #[test]
 fn log10() {
-    assert_eq!(call(&MathModule, "log10", &[n(100.0)]).as_number(), Some(2.0));
+    assert_eq!(
+        call(&MathModule, "log10", &[n(100.0)]).as_number(),
+        Some(2.0)
+    );
 }
 
 #[test]

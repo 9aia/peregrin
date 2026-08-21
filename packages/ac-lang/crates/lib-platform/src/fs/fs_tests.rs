@@ -31,7 +31,10 @@ fn module_name() {
 fn read_file() {
     let fs = StubFs::with_file("hello.txt", "hello world");
     let module = FsModule::new(fs);
-    assert_eq!(call(&module, "read", &[s("hello.txt")]).as_str(), Some("hello world"));
+    assert_eq!(
+        call(&module, "read", &[s("hello.txt")]).as_str(),
+        Some("hello world")
+    );
 }
 
 #[test]
@@ -48,7 +51,10 @@ fn read_file_not_found() {
 fn write_file() {
     let module = FsModule::new(StubFs::default());
     call(&module, "write", &[s("out.txt"), s("data")]);
-    assert_eq!(call(&module, "read", &[s("out.txt")]).as_str(), Some("data"));
+    assert_eq!(
+        call(&module, "read", &[s("out.txt")]).as_str(),
+        Some("data")
+    );
 }
 
 #[test]
@@ -69,7 +75,10 @@ fn remove_file() {
     let fs = StubFs::with_file("temp.txt", "x");
     let module = FsModule::new(fs);
     call(&module, "remove", &[s("temp.txt")]);
-    assert_eq!(call(&module, "exists", &[s("temp.txt")]).as_bool(), Some(false));
+    assert_eq!(
+        call(&module, "exists", &[s("temp.txt")]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]

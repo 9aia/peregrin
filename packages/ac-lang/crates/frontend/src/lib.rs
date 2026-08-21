@@ -9,15 +9,15 @@
 //! This crate is interface-agnostic — usable from CLI, MCP, or any
 //! other consumer that needs to parse/serialize AC documents.
 
-mod yaml;
 mod json;
 mod toml;
+mod yaml;
 
 use ac_runtime::Frontend;
 
-pub use yaml::YamlFrontend;
 pub use json::JsonFrontend;
 pub use toml::TomlFrontend;
+pub use yaml::YamlFrontend;
 
 /// Return a `Frontend` for the given format name.
 ///

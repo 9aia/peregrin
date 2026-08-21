@@ -14,7 +14,7 @@
 //! > **Merge fields must be objects, and their properties must be
 //! > type-compatible with the parent scope.**
 
-use ac_typecheck_core::{is_compatible, SchemaInterpreter, Type, TypeError};
+use ac_typecheck_core::{SchemaInterpreter, Type, TypeError, is_compatible};
 use serde_json::Value as JsonValue;
 
 /// The AC key this crate handles.
@@ -50,7 +50,11 @@ pub fn check_field(
         _ => {
             return Err(TypeError::custom(
                 field_name,
-                format!("merge field '{}' must be an object, got {}", field_name, field_type.name()),
+                format!(
+                    "merge field '{}' must be an object, got {}",
+                    field_name,
+                    field_type.name()
+                ),
                 "",
             ));
         }

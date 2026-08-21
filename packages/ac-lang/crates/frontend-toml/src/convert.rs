@@ -9,9 +9,7 @@ pub fn toml_to_json(v: toml::Value) -> JsonValue {
             .unwrap_or(JsonValue::Null),
         toml::Value::Boolean(b) => JsonValue::Bool(b),
         toml::Value::Datetime(dt) => JsonValue::String(dt.to_string()),
-        toml::Value::Array(arr) => {
-            JsonValue::Array(arr.into_iter().map(toml_to_json).collect())
-        }
+        toml::Value::Array(arr) => JsonValue::Array(arr.into_iter().map(toml_to_json).collect()),
         toml::Value::Table(table) => {
             let mut obj = serde_json::Map::new();
             for (k, v) in table {
@@ -38,9 +36,7 @@ pub fn json_to_toml(value: &JsonValue) -> toml::Value {
             }
         }
         JsonValue::String(s) => toml::Value::String(s.clone()),
-        JsonValue::Array(arr) => {
-            toml::Value::Array(arr.iter().map(json_to_toml).collect())
-        }
+        JsonValue::Array(arr) => toml::Value::Array(arr.iter().map(json_to_toml).collect()),
         JsonValue::Object(obj) => {
             let mut table = toml::Table::new();
             for (k, v) in obj {

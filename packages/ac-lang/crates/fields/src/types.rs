@@ -76,7 +76,11 @@ pub struct ComputedField {
 
 impl From<(String, String)> for ComputedField {
     fn from((name, expr): (String, String)) -> Self {
-        ComputedField { name, expr, arg: None }
+        ComputedField {
+            name,
+            expr,
+            arg: None,
+        }
     }
 }
 

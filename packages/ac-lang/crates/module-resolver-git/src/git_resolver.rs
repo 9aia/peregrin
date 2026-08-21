@@ -8,8 +8,8 @@ use ac_frontend::frontend_for;
 use ac_module_resolver_core::{ModuleCache, ModuleResolver, ResolvedModule};
 use ac_module_resolver_noop::NoCache;
 
-use crate::parse::{parse_git_url, GitTarget};
-use crate::fetch::{GitFetcher, DEFAULT_DEPTH};
+use crate::fetch::{DEFAULT_DEPTH, GitFetcher};
+use crate::parse::{GitTarget, parse_git_url};
 
 /// Git-based module resolver.
 ///
@@ -105,22 +105,14 @@ impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
             return Some(cached);
         }
 
-        let local = self
-            .repo_cache
-            .lock()
-            .unwrap()
-            .get(&repo_key)
-            .cloned();
+        let local = self.repo_cache.lock().unwrap().get(&repo_key).cloned();
 
         let content = match local {
             Some(path) => self.fetcher.fetch_file_at(&target, &path)?,
             None => {
                 let path = self.fetcher.cache_path(&target);
                 let content = self.fetcher.fetch_file_at(&target, &path)?;
-                self.repo_cache
-                    .lock()
-                    .unwrap()
-                    .insert(repo_key, path);
+                self.repo_cache.lock().unwrap().insert(repo_key, path);
                 content
             }
         };

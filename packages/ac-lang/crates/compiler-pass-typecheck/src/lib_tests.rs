@@ -1,7 +1,7 @@
+use crate::TypecheckPass;
 use ac_compiler_core::{Compilation, Config, Pass, Source};
 use ac_compiler_pass_extract::ExtractPass;
 use ac_compiler_pass_parse::ParsePass;
-use crate::TypecheckPass;
 
 fn test_config() -> Config {
     Config {
@@ -27,7 +27,8 @@ fn parse_extract_typecheck(yaml: &str) -> Compilation {
 
 #[test]
 fn typecheck_pass_valid_fields_no_errors() {
-    let compilation = parse_extract_typecheck(r#"
+    let compilation = parse_extract_typecheck(
+        r#"
 $:
   host:
     type: string
@@ -36,7 +37,8 @@ $:
 
 host: example.com
 port: 8080
-"#);
+"#,
+    );
     assert!(compilation.type_errors.is_empty());
 }
 
@@ -52,28 +54,32 @@ fn typecheck_pass_without_extracted_returns_error() {
 
 #[test]
 fn typecheck_pass_expr_type_mismatch_reports_error() {
-    let compilation = parse_extract_typecheck(r#"
+    let compilation = parse_extract_typecheck(
+        r#"
 $:
   port:
     type: number
     expr: "8080"
 
 port: 8080
-"#);
+"#,
+    );
     // expr "8080" infers as number, declared as number — should be compatible
     assert!(compilation.type_errors.is_empty());
 }
 
 #[test]
 fn typecheck_pass_expr_string_vs_number_mismatch() {
-    let compilation = parse_extract_typecheck(r#"
+    let compilation = parse_extract_typecheck(
+        r#"
 $:
   host:
     type: number
     expr: "example.com"
 
 host: 8080
-"#);
+"#,
+    );
     // expr "example.com" — if it infers as string, should mismatch with number
     // But "example.com" is not a valid expression path, so it may infer as Unknown
     // Unknown is compatible with everything, so this may not produce an error
@@ -83,7 +89,8 @@ host: 8080
 
 #[test]
 fn typecheck_pass_merge_non_object_reports_error() {
-    let compilation = parse_extract_typecheck(r#"
+    let compilation = parse_extract_typecheck(
+        r#"
 $:
   _base:
     type: string
@@ -93,14 +100,16 @@ $:
 
 _base: hello
 host: example.com
-"#);
+"#,
+    );
     // merge field with type string (not object) should be an error
     assert!(!compilation.type_errors.is_empty());
 }
 
 #[test]
 fn typecheck_pass_merge_error_has_source_location() {
-    let compilation = parse_extract_typecheck(r#"
+    let compilation = parse_extract_typecheck(
+        r#"
 $:
   _base:
     type: string
@@ -110,22 +119,28 @@ $:
 
 _base: hello
 host: example.com
-"#);
+"#,
+    );
     assert!(!compilation.type_errors.is_empty());
     let err = &compilation.type_errors[0];
-    assert!(err.location.is_some(), "error should have a source location, got: {err}");
+    assert!(
+        err.location.is_some(),
+        "error should have a source location, got: {err}"
+    );
 }
 
 #[test]
 fn typecheck_pass_mutable_violation_reports_error() {
-    let compilation = parse_extract_typecheck(r#"
+    let compilation = parse_extract_typecheck(
+        r#"
 $:
   host:
     type: string
     mutable: false
 
 host: example.com
-"#);
+"#,
+    );
     // No nested override, so no mutable violation
     // This just verifies the pass runs without crashing on mutable fields
     let _ = compilation;

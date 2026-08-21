@@ -11,10 +11,13 @@ fn strip_keys_removes_specified_keys() {
         "pattern": "^[a-z]+$"
     });
     let output = strip_keys(&input, &["expr", "arg"]);
-    assert_eq!(output, json!({
-        "type": "string",
-        "pattern": "^[a-z]+$"
-    }));
+    assert_eq!(
+        output,
+        json!({
+            "type": "string",
+            "pattern": "^[a-z]+$"
+        })
+    );
 }
 
 #[test]
@@ -28,14 +31,17 @@ fn strip_keys_is_recursive() {
         "required": ["host"]
     });
     let output = strip_keys(&input, &["expr"]);
-    assert_eq!(output, json!({
-        "type": "object",
-        "properties": {
-            "host": { "type": "string" },
-            "port": { "type": "number" }
-        },
-        "required": ["host"]
-    }));
+    assert_eq!(
+        output,
+        json!({
+            "type": "object",
+            "properties": {
+                "host": { "type": "string" },
+                "port": { "type": "number" }
+            },
+            "required": ["host"]
+        })
+    );
 }
 
 #[test]
@@ -50,15 +56,18 @@ fn strip_keys_handles_arrays() {
         }
     });
     let output = strip_keys(&input, &["expr"]);
-    assert_eq!(output, json!({
-        "type": "array",
-        "items": {
-            "type": "object",
-            "properties": {
-                "name": { "type": "string" }
+    assert_eq!(
+        output,
+        json!({
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" }
+                }
             }
-        }
-    }));
+        })
+    );
 }
 
 #[test]
@@ -70,9 +79,7 @@ fn strip_keys_non_object_unchanged() {
 
 #[test]
 fn from_schemas_clones_raw() {
-    let schemas = vec![
-        ("host".to_string(), json!({ "type": "string", "expr": "x" })),
-    ];
+    let schemas = vec![("host".to_string(), json!({ "type": "string", "expr": "x" }))];
     let ctx = TypegenContext::from_schemas(&schemas);
     assert_eq!(ctx.fields.len(), 1);
     assert_eq!(ctx.fields["host"]["type"], "string");
@@ -95,8 +102,14 @@ fn remove_fields_excludes_named() {
 #[test]
 fn ctx_strip_keys_strips_all_fields() {
     let schemas = vec![
-        ("host".to_string(), json!({ "type": "string", "expr": "x", "arg": true })),
-        ("port".to_string(), json!({ "type": "number", "inheritable": true })),
+        (
+            "host".to_string(),
+            json!({ "type": "string", "expr": "x", "arg": true }),
+        ),
+        (
+            "port".to_string(),
+            json!({ "type": "number", "inheritable": true }),
+        ),
     ];
     let mut ctx = TypegenContext::from_schemas(&schemas);
     ctx.strip_keys(&["expr", "arg", "inheritable"]);
@@ -111,9 +124,7 @@ fn ctx_strip_keys_strips_all_fields() {
 
 #[test]
 fn merge_fields_parent_wins() {
-    let schemas = vec![
-        ("host".to_string(), json!({ "type": "number" })),
-    ];
+    let schemas = vec![("host".to_string(), json!({ "type": "number" }))];
     let mut ctx = TypegenContext::from_schemas(&schemas);
 
     let imported = vec![

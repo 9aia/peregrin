@@ -6,14 +6,15 @@ use serde_json::Value as JsonValue;
 /// - `import('path')` or `import("path")` → static path
 /// - `import(arg)` → data-driven (path from the field's data value)
 pub fn detect_import(schema: &JsonValue, data: &JsonValue, field_name: &str) -> Option<String> {
-    let expr_str = schema
-        .get("expr")
-        .and_then(|v| v.as_str())?;
+    let expr_str = schema.get("expr").and_then(|v| v.as_str())?;
 
     let trimmed = expr_str.trim();
 
     if trimmed == "import(arg)" {
-        return data.get(field_name).and_then(|v| v.as_str()).map(|s| s.to_string());
+        return data
+            .get(field_name)
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string());
     }
 
     if let Some(rest) = trimmed.strip_prefix("import(") {

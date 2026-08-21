@@ -1,6 +1,6 @@
+use crate::ExtractPass;
 use ac_compiler_core::{Compilation, Config, Pass, Source};
 use ac_compiler_pass_parse::ParsePass;
-use crate::ExtractPass;
 
 fn test_config() -> Config {
     Config {
@@ -23,7 +23,8 @@ fn parse_and_extract(yaml: &str) -> Compilation {
 
 #[test]
 fn extract_pass_populates_extracted() {
-    let compilation = parse_and_extract(r#"
+    let compilation = parse_and_extract(
+        r#"
 $:
   name:
     type: string
@@ -32,7 +33,8 @@ $:
 
 name: ac
 version: 1
-"#);
+"#,
+    );
     assert!(compilation.extracted.is_some());
     let extracted = compilation.extracted.unwrap();
     assert_eq!(extracted.schemas.len(), 2);
@@ -59,13 +61,15 @@ fn extract_pass_without_parsed_returns_error() {
 
 #[test]
 fn extract_pass_takes_parsed_value() {
-    let compilation = parse_and_extract(r#"
+    let compilation = parse_and_extract(
+        r#"
 $:
   host:
     type: string
 
 host: example.com
-"#);
+"#,
+    );
     // parsed should be consumed (taken) after extract
     assert!(compilation.parsed.is_none());
     assert!(compilation.extracted.is_some());

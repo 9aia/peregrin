@@ -14,17 +14,17 @@
 //! default) to minimize download size. Subsequent resolves from the same
 //! repo+ref fetch updates from the remote before reading.
 
-mod parse;
 mod fetch;
 mod git_resolver;
+mod parse;
 
-pub use parse::{parse_git_url, GitTarget};
-pub use fetch::{GitFetcher, DEFAULT_DEPTH};
+pub use fetch::{DEFAULT_DEPTH, GitFetcher};
 pub use git_resolver::GitResolver;
+pub use parse::{GitTarget, parse_git_url};
 
-#[cfg(test)]
-mod parse_tests;
 #[cfg(test)]
 mod fetch_tests;
 #[cfg(test)]
 mod lib_tests;
+#[cfg(test)]
+mod parse_tests;

@@ -77,7 +77,10 @@ impl Frontend for JsonFrontend {
         to_string_pretty(value)
     }
 
-    fn parse_with_locations(&self, input: &str) -> Result<(RuntimeValue, ac_source::SourceMap), Self::Error> {
+    fn parse_with_locations(
+        &self,
+        input: &str,
+    ) -> Result<(RuntimeValue, ac_source::SourceMap), Self::Error> {
         let value = parse(input)?;
         let map = scanner::build_source_map(input, value.inner());
         Ok((value, map))

@@ -37,7 +37,7 @@ use std::path::Path;
 use serde_json::Value as JsonValue;
 
 use ac_module_resolver_core::ModuleResolver;
-use ac_typecheck_core::{is_compatible, SchemaInterpreter, TypeEnv, TypeError};
+use ac_typecheck_core::{SchemaInterpreter, TypeEnv, TypeError, is_compatible};
 
 /// Check type compatibility across imported modules.
 ///
@@ -117,7 +117,8 @@ fn check_imports_inner(
         for (name, schema) in &imported_schemas {
             let imported_type = interpreter.interpret(schema);
             if let Some(parent_type) = parent_env.lookup(name)
-                && !imported_type.is_unknown() && !is_compatible(&imported_type, parent_type)
+                && !imported_type.is_unknown()
+                && !is_compatible(&imported_type, parent_type)
             {
                 errors.push(TypeError::mismatch(
                     name,

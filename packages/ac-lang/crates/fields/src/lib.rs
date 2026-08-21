@@ -31,30 +31,30 @@
 //! > **Field extraction and interpolation are domain logic, not CLI
 //! > plumbing.** This crate keeps them testable and reusable.
 
-mod types;
+mod computed;
+mod expression;
 mod extraction;
 mod interpolation;
-mod expression;
-mod path;
-mod computed;
 mod merge;
-mod scope;
 mod namespace;
+mod path;
+mod scope;
+mod types;
 mod validation;
 
-pub use types::{
-    APPLY_FUNCTION, ArgSpec, ComputedField, ExtractedFields, FunctionResolver,
-    Namespaces, NoFunctions, DEFAULT_NAMESPACE,
-};
+pub use ac_dialect::Dialect;
+pub use computed::compute_fields;
+pub use expression::{eval_body, eval_expression};
 pub use extraction::{extract_fields, undeclared_fields};
 pub use interpolation::{interpolate, interpolate_scoped};
-pub use expression::{eval_body, eval_expression};
-pub use computed::compute_fields;
 pub use merge::merge_fields;
-pub use scope::validate_mutable;
 pub use namespace::{build_doc_namespace, build_env_namespace};
+pub use scope::validate_mutable;
+pub use types::{
+    APPLY_FUNCTION, ArgSpec, ComputedField, DEFAULT_NAMESPACE, ExtractedFields, FunctionResolver,
+    Namespaces, NoFunctions,
+};
 pub use validation::{validate_args, validate_return};
-pub use ac_dialect::Dialect;
 
 #[cfg(test)]
 mod test_helpers;

@@ -1,17 +1,15 @@
+use crate::GeneratePass;
 use ac_compiler_core::{Compilation, Config, Pass, Source};
 use ac_compiler_pass_extract::ExtractPass;
 use ac_compiler_pass_parse::ParsePass;
 use ac_compiler_pass_resolve::ResolvePass;
-use crate::GeneratePass;
 
 fn test_config() -> Config {
     Config {
         dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
         resolver: Box::new(ac_module_resolver_virtual::VirtualResolver::new()),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
-        backend: Some(Box::new(
-            ac_typegen_backend_json_schema::JsonSchemaBackend,
-        )),
+        backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }
@@ -30,7 +28,8 @@ fn full_pipeline(yaml: &str) -> Compilation {
 
 #[test]
 fn generate_pass_populates_output() {
-    let compilation = full_pipeline(r#"
+    let compilation = full_pipeline(
+        r#"
 $:
   host:
     type: string
@@ -39,7 +38,8 @@ $:
 
 host: example.com
 port: 8080
-"#);
+"#,
+    );
     assert!(compilation.output.is_some());
     let output = compilation.output.unwrap();
     assert_eq!(output["type"], "object");
@@ -77,13 +77,15 @@ fn generate_pass_without_backend_returns_error() {
 
 #[test]
 fn generate_pass_takes_ctx() {
-    let compilation = full_pipeline(r#"
+    let compilation = full_pipeline(
+        r#"
 $:
   host:
     type: string
 
 host: example.com
-"#);
+"#,
+    );
     // ctx should be consumed after generate
     assert!(compilation.typegen_ctx.is_none());
     assert!(compilation.output.is_some());

@@ -1,5 +1,5 @@
 use crate::expression::eval_expression;
-use crate::types::{ArgSpec, ComputedField, FunctionResolver, Namespaces, DEFAULT_NAMESPACE};
+use crate::types::{ArgSpec, ComputedField, DEFAULT_NAMESPACE, FunctionResolver, Namespaces};
 use ac_dialect::Dialect;
 use serde_json::Value as JsonValue;
 
@@ -54,9 +54,7 @@ pub fn compute_fields(
                 if let Some(ArgSpec::Typed(schema)) = &field.arg
                     && let Err(e) = check_arg_type(arg_val, schema)
                 {
-                    errors.push(format!(
-                        "could not compute field '{}': {e}", field.name
-                    ));
+                    errors.push(format!("could not compute field '{}': {e}", field.name));
                     continue;
                 }
                 namespaces.insert("arg".to_string(), arg_val.clone());
@@ -117,14 +115,10 @@ fn check_arg_type(value: &JsonValue, schema: &JsonValue) -> Result<(), String> {
             {
                 return Ok(());
             }
-            return Err(format!(
-                "arg: expected type integer, got {actual}"
-            ));
+            return Err(format!("arg: expected type integer, got {actual}"));
         }
         if actual != type_name {
-            return Err(format!(
-                "arg: expected type {type_name}, got {actual}"
-            ));
+            return Err(format!("arg: expected type {type_name}, got {actual}"));
         }
     }
     Ok(())

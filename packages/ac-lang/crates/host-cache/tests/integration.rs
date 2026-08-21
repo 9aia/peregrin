@@ -1,7 +1,7 @@
+use ac_ast::Expr;
 use ac_host_cache::{CacheHost, CallCache};
 use ac_runtime::RuntimeValue;
 use ac_vm::{Context, Error, EvalResult, Function, Vm};
-use ac_ast::Expr;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 // ── test functions ───────────────────────────────────────────────
@@ -38,7 +38,11 @@ impl Function for YieldingFetch {
 #[test]
 fn cache_insert_and_get() {
     let mut cache = CallCache::new();
-    cache.insert("add", &[RuntimeValue::new(1), RuntimeValue::new(2)], RuntimeValue::new(3));
+    cache.insert(
+        "add",
+        &[RuntimeValue::new(1), RuntimeValue::new(2)],
+        RuntimeValue::new(3),
+    );
     assert_eq!(cache.len(), 1);
     let result = cache.get("add", &[RuntimeValue::new(1), RuntimeValue::new(2)]);
     assert_eq!(result.unwrap().as_number(), Some(3.0));
@@ -53,19 +57,33 @@ fn cache_miss_returns_none() {
 #[test]
 fn cache_serialization_roundtrip() {
     let mut cache = CallCache::new();
-    cache.insert("add", &[RuntimeValue::new(1), RuntimeValue::new(2)], RuntimeValue::new(3));
-    cache.insert("fetch", &[RuntimeValue::new("hello")], RuntimeValue::new("result_hello_0"));
+    cache.insert(
+        "add",
+        &[RuntimeValue::new(1), RuntimeValue::new(2)],
+        RuntimeValue::new(3),
+    );
+    cache.insert(
+        "fetch",
+        &[RuntimeValue::new("hello")],
+        RuntimeValue::new("result_hello_0"),
+    );
 
     let json = cache.to_json();
     let restored = CallCache::from_json(&json);
 
     assert_eq!(restored.len(), 2);
     assert_eq!(
-        restored.get("add", &[RuntimeValue::new(1), RuntimeValue::new(2)]).unwrap().as_number(),
+        restored
+            .get("add", &[RuntimeValue::new(1), RuntimeValue::new(2)])
+            .unwrap()
+            .as_number(),
         Some(3.0),
     );
     assert_eq!(
-        restored.get("fetch", &[RuntimeValue::new("hello")]).unwrap().as_str(),
+        restored
+            .get("fetch", &[RuntimeValue::new("hello")])
+            .unwrap()
+            .as_str(),
         Some("result_hello_0"),
     );
 }
@@ -83,7 +101,9 @@ fn cache_empty_serialization() {
 #[test]
 fn cache_host_caches_successful_calls() {
     let mut host = CacheHost::new();
-    let fetch = CountingFetch { calls: AtomicUsize::new(0) };
+    let fetch = CountingFetch {
+        calls: AtomicUsize::new(0),
+    };
     host.register("fetch", Box::new(fetch));
     host.register("add", Box::new(Add));
 
@@ -145,7 +165,10 @@ fn end_to_end_server_to_client_migration() {
 
     let result = server_vm.eval_resumable(&expr, &mut ctx, None);
     let (yielded_value, continuation) = match result {
-        EvalResult::Yielded { value, continuation } => (value, continuation),
+        EvalResult::Yielded {
+            value,
+            continuation,
+        } => (value, continuation),
         other => panic!("expected Yielded, got {other:?}"),
     };
     assert_eq!(yielded_value.as_str(), Some("yield:data"));

@@ -36,7 +36,12 @@ fn module_name() {
 #[test]
 fn length() {
     assert_eq!(
-        call(&ArrayModule, "length", &[arr(&[json!(1), json!(2), json!(3)])]).as_number(),
+        call(
+            &ArrayModule,
+            "length",
+            &[arr(&[json!(1), json!(2), json!(3)])]
+        )
+        .as_number(),
         Some(3.0)
     );
 }
@@ -51,7 +56,11 @@ fn length_empty() {
 
 #[test]
 fn reverse() {
-    let result = call(&ArrayModule, "reverse", &[arr(&[json!(1), json!(2), json!(3)])]);
+    let result = call(
+        &ArrayModule,
+        "reverse",
+        &[arr(&[json!(1), json!(2), json!(3)])],
+    );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
     assert_eq!(array[0], json!(3));
@@ -142,7 +151,11 @@ fn slice() {
     let result = call(
         &ArrayModule,
         "slice",
-        &[arr(&[json!(1), json!(2), json!(3), json!(4), json!(5)]), n(1.0), n(4.0)],
+        &[
+            arr(&[json!(1), json!(2), json!(3), json!(4), json!(5)]),
+            n(1.0),
+            n(4.0),
+        ],
     );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
@@ -163,7 +176,11 @@ fn slice_out_of_bounds_clamps() {
 
 #[test]
 fn first() {
-    let result = call(&ArrayModule, "first", &[arr(&[json!(1), json!(2), json!(3)])]);
+    let result = call(
+        &ArrayModule,
+        "first",
+        &[arr(&[json!(1), json!(2), json!(3)])],
+    );
     assert_eq!(result.as_number(), Some(1.0));
 }
 
@@ -176,7 +193,11 @@ fn first_empty() {
 
 #[test]
 fn last() {
-    let result = call(&ArrayModule, "last", &[arr(&[json!(1), json!(2), json!(3)])]);
+    let result = call(
+        &ArrayModule,
+        "last",
+        &[arr(&[json!(1), json!(2), json!(3)])],
+    );
     assert_eq!(result.as_number(), Some(3.0));
 }
 
@@ -317,12 +338,7 @@ fn sum_mixed_types() {
 #[test]
 fn avg() {
     assert_eq!(
-        call(
-            &ArrayModule,
-            "avg",
-            &[arr(&[json!(1), json!(2), json!(3)])]
-        )
-        .as_number(),
+        call(&ArrayModule, "avg", &[arr(&[json!(1), json!(2), json!(3)])]).as_number(),
         Some(2.0)
     );
 }
@@ -338,12 +354,7 @@ fn avg_empty() {
 #[test]
 fn min() {
     assert_eq!(
-        call(
-            &ArrayModule,
-            "min",
-            &[arr(&[json!(3), json!(1), json!(2)])]
-        )
-        .as_number(),
+        call(&ArrayModule, "min", &[arr(&[json!(3), json!(1), json!(2)])]).as_number(),
         Some(1.0)
     );
 }
@@ -357,12 +368,7 @@ fn min_empty() {
 #[test]
 fn max() {
     assert_eq!(
-        call(
-            &ArrayModule,
-            "max",
-            &[arr(&[json!(3), json!(1), json!(2)])]
-        )
-        .as_number(),
+        call(&ArrayModule, "max", &[arr(&[json!(3), json!(1), json!(2)])]).as_number(),
         Some(3.0)
     );
 }

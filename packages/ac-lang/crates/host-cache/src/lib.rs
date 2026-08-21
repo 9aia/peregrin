@@ -53,5 +53,5 @@
 mod cache;
 mod host;
 
-pub use cache::{call_key, CallCache, CallKey};
+pub use cache::{CallCache, CallKey, call_key};
 pub use host::CacheHost;

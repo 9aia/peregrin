@@ -10,11 +10,11 @@
 //! "this is a String", etc.). The VM evaluates expressions that
 //! produce `RuntimeValue`s without knowing what the values mean.
 
-mod value;
 mod frontend;
+mod value;
 
-pub use value::{FunctionValue, HostValue, RuntimeValue};
 pub use frontend::Frontend;
+pub use value::{FunctionValue, HostValue, RuntimeValue};
 
 #[cfg(test)]
 mod value_tests;

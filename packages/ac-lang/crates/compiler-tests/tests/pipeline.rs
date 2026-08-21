@@ -198,15 +198,9 @@ fn custom_pipeline_with_custom_pass() {
 
     struct CountFieldsPass;
     impl Pass for CountFieldsPass {
-        fn run(
-            &self,
-            compilation: &mut Compilation,
-            _config: &Config,
-        ) -> Result<(), String> {
+        fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), String> {
             if let Some(extracted) = &compilation.extracted {
-                compilation.output = Some(JsonValue::Number(
-                    extracted.schemas.len().into(),
-                ));
+                compilation.output = Some(JsonValue::Number(extracted.schemas.len().into()));
             }
             Ok(())
         }
@@ -244,11 +238,13 @@ fn pipeline_passes_run_in_declaration_order() {
     impl Pass for FirstPass {
         fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), String> {
             let n = ORDER.fetch_add(1, Ordering::SeqCst);
-            compilation.type_errors.push(ac_typecheck_core::TypeError::custom(
-                "order",
-                format!("first:{n}"),
-                "",
-            ));
+            compilation
+                .type_errors
+                .push(ac_typecheck_core::TypeError::custom(
+                    "order",
+                    format!("first:{n}"),
+                    "",
+                ));
             Ok(())
         }
     }
@@ -257,11 +253,13 @@ fn pipeline_passes_run_in_declaration_order() {
     impl Pass for SecondPass {
         fn run(&self, compilation: &mut Compilation, _config: &Config) -> Result<(), String> {
             let n = ORDER.fetch_add(1, Ordering::SeqCst);
-            compilation.type_errors.push(ac_typecheck_core::TypeError::custom(
-                "order",
-                format!("second:{n}"),
-                "",
-            ));
+            compilation
+                .type_errors
+                .push(ac_typecheck_core::TypeError::custom(
+                    "order",
+                    format!("second:{n}"),
+                    "",
+                ));
             Ok(())
         }
     }

@@ -69,11 +69,7 @@ impl GitFetcher {
         // Refresh the ref from the remote to avoid stale data.
         let refname = format!("refs/remotes/origin/{}", target.reference);
         if let Ok(mut remote) = repo.find_remote("origin") {
-            let _ = remote.fetch(
-                &[&target.reference],
-                Some(&mut self.fetch_options()),
-                None,
-            );
+            let _ = remote.fetch(&[&target.reference], Some(&mut self.fetch_options()), None);
         }
 
         let oid = repo

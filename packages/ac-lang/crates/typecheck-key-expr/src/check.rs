@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use ac_dialect_canonical::AC_DIALECT;
-use ac_typecheck_core::{is_compatible, SchemaInterpreter, TypeEnv, TypeError};
-use ac_typecheck_infer::{infer_cached, FunctionTable};
+use ac_typecheck_core::{SchemaInterpreter, TypeEnv, TypeError, is_compatible};
+use ac_typecheck_infer::{FunctionTable, infer_cached};
 use serde_json::Value as JsonValue;
 
 /// The AC key this crate handles.
@@ -10,7 +10,10 @@ pub const KEY: &str = "expr";
 
 /// Get the expression string from a field schema, if present.
 pub fn get_expr(schema: &JsonValue) -> Option<String> {
-    schema.get(KEY).and_then(|v| v.as_str()).map(|s| s.to_string())
+    schema
+        .get(KEY)
+        .and_then(|v| v.as_str())
+        .map(|s| s.to_string())
 }
 
 /// Check a single field's `expr` against its declared type.
@@ -39,12 +42,7 @@ pub fn check_field(
     }
 
     if !is_compatible(&inferred, &declared) {
-        return Err(TypeError::mismatch(
-            field_name,
-            declared,
-            inferred,
-            "",
-        ));
+        return Err(TypeError::mismatch(field_name, declared, inferred, ""));
     }
 
     Ok(())
@@ -75,12 +73,7 @@ pub fn check_field_cached(
     }
 
     if !is_compatible(&inferred, &declared) {
-        return Err(TypeError::mismatch(
-            field_name,
-            declared,
-            inferred,
-            "",
-        ));
+        return Err(TypeError::mismatch(field_name, declared, inferred, ""));
     }
 
     Ok(())

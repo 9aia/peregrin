@@ -43,6 +43,8 @@ impl Module for FpModule {
             "pipe" => Some(&Pipe),
             "flow" => Some(&Flow),
             "compose" => Some(&Compose),
+            "fanout" => Some(&Fanout),
+            "choice" => Some(&Choice),
             _ => None,
         }
     }
@@ -77,16 +79,16 @@ fn arr(items: &[serde_json::Value]) -> RuntimeValue {
     RuntimeValue::new(serde_json::Value::Array(items.to_vec()))
 }
 
-fn require_array<'a>(arg: &'a RuntimeValue) -> Result<&'a [serde_json::Value], Error> {
+fn require_array(arg: &RuntimeValue) -> Result<&[serde_json::Value], Error> {
     arg.as_array().ok_or(Error::TypeMismatch {
         expected: "array",
         got: "non-array",
     })
 }
 
-fn require_object<'a>(
-    arg: &'a RuntimeValue,
-) -> Result<&'a serde_json::Map<String, serde_json::Value>, Error> {
+fn require_object(
+    arg: &RuntimeValue,
+) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
     arg.as_object().ok_or(Error::TypeMismatch {
         expected: "object",
         got: "non-object",
@@ -246,16 +248,19 @@ impl Function for Range {
                 got: args.len(),
             });
         }
-        let start = args[0]
-            .as_number()
-            .ok_or(Error::TypeMismatch { expected: "number", got: "non-number" })?;
-        let end = args[1]
-            .as_number()
-            .ok_or(Error::TypeMismatch { expected: "number", got: "non-number" })?;
+        let start = args[0].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        let end = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
         let step = if args.len() >= 3 {
-            args[2]
-                .as_number()
-                .ok_or(Error::TypeMismatch { expected: "number", got: "non-number" })?
+            args[2].as_number().ok_or(Error::TypeMismatch {
+                expected: "number",
+                got: "non-number",
+            })?
         } else {
             1.0
         };
@@ -298,9 +303,7 @@ impl Function for Zip {
         let b = require_array(&args[1])?;
         let len = a.len().min(b.len());
         let pairs: Vec<serde_json::Value> = (0..len)
-            .map(|i| {
-                serde_json::json!([a[i].clone(), b[i].clone()])
-            })
+            .map(|i| serde_json::json!([a[i].clone(), b[i].clone()]))
             .collect();
         Ok(arr(&pairs))
     }
@@ -319,9 +322,10 @@ impl Function for Chunk {
             });
         }
         let input = require_array(&args[0])?;
-        let size = args[1]
-            .as_number()
-            .ok_or(Error::TypeMismatch { expected: "number", got: "non-number" })?;
+        let size = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
         if size <= 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "positive chunk size",
@@ -372,9 +376,7 @@ impl Function for Entries {
         let obj = require_object(arg)?;
         let entries: Vec<serde_json::Value> = obj
             .iter()
-            .map(|(k, v)| {
-                serde_json::json!([serde_json::Value::String(k.clone()), v.clone()])
-            })
+            .map(|(k, v)| serde_json::json!([serde_json::Value::String(k.clone()), v.clone()]))
             .collect();
         Ok(arr(&entries))
     }
@@ -396,10 +398,10 @@ impl Function for Pick {
         let keys = require_array(&args[1])?;
         let mut result = serde_json::Map::new();
         for key_val in keys {
-            if let Some(key) = key_val.as_str() {
-                if let Some(v) = obj.get(key) {
-                    result.insert(key.to_string(), v.clone());
-                }
+            if let Some(key) = key_val.as_str()
+                && let Some(v) = obj.get(key)
+            {
+                result.insert(key.to_string(), v.clone());
             }
         }
         Ok(RuntimeValue::new(serde_json::Value::Object(result)))
@@ -468,9 +470,9 @@ fn require_function_value(arg: &RuntimeValue) -> Result<FunctionValue, Error> {
     })
 }
 
-fn require_function_and_array<'a>(
-    args: &'a [RuntimeValue],
-) -> Result<(FunctionValue, &'a [serde_json::Value]), Error> {
+fn require_function_and_array(
+    args: &[RuntimeValue],
+) -> Result<(FunctionValue, &[serde_json::Value]), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
@@ -486,9 +488,7 @@ fn bind_param(fn_val: &FunctionValue, value: &serde_json::Value) -> Vec<(String,
     fn_val
         .params
         .first()
-        .map(|(name, _)| {
-            vec![(name.clone(), RuntimeValue::new(value.clone()))]
-        })
+        .map(|(name, _)| vec![(name.clone(), RuntimeValue::new(value.clone()))])
         .unwrap_or_default()
 }
 
@@ -557,13 +557,15 @@ impl Function for Reduce {
         let array = require_array(&args[1])?;
         let mut acc = args[2].clone();
 
-        let param_names: Vec<String> = fn_val
-            .params
-            .iter()
-            .map(|(name, _)| name.clone())
-            .collect();
-        let acc_name = param_names.first().cloned().unwrap_or_else(|| "acc".to_string());
-        let item_name = param_names.get(1).cloned().unwrap_or_else(|| "x".to_string());
+        let param_names: Vec<String> = fn_val.params.iter().map(|(name, _)| name.clone()).collect();
+        let acc_name = param_names
+            .first()
+            .cloned()
+            .unwrap_or_else(|| "acc".to_string());
+        let item_name = param_names
+            .get(1)
+            .cloned()
+            .unwrap_or_else(|| "x".to_string());
 
         for item in array {
             let vars = vec![
@@ -693,5 +695,62 @@ impl Function for Compose {
         let reversed: Vec<FunctionValue> = fns.into_iter().rev().collect();
         let composed = inline_chain(&reversed)?;
         Ok(RuntimeValue::new_function(composed))
+    }
+}
+
+// ── fanout / choice ────────────────────────────────────────────────
+//
+// fanout(value, f, g, h) — immediate arrow combinator (&&&): applies
+//   each function to the same value, returns [f(value), g(value), …].
+//   Requires ctx.eval_expr.
+//
+// choice(value, predicate, f, g) — immediate arrow combinator (|||):
+//   evaluates predicate(value); if truthy returns f(value), else
+//   returns g(value). Requires ctx.eval_expr.
+
+#[derive(Clone, Copy)]
+pub struct Fanout;
+impl Function for Fanout {
+    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let value = args[0].clone();
+        let inner = value.into_inner();
+        let mut results = Vec::with_capacity(args.len() - 1);
+        for fn_arg in &args[1..] {
+            let fn_val = require_function_value(fn_arg)?;
+            let vars = bind_param(&fn_val, &inner);
+            let result = ctx.eval_expr(&fn_val.body, &vars)?;
+            results.push(result.into_inner());
+        }
+        Ok(arr(&results))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Choice;
+impl Function for Choice {
+    fn call(&self, args: &[RuntimeValue], ctx: &mut Context) -> Result<RuntimeValue, Error> {
+        if args.len() < 4 {
+            return Err(Error::ArgumentCount {
+                expected: 4,
+                got: args.len(),
+            });
+        }
+        let value = &args[0];
+        let predicate = require_function_value(&args[1])?;
+        let on_true = require_function_value(&args[2])?;
+        let on_false = require_function_value(&args[3])?;
+
+        let inner = value.clone().into_inner();
+        let vars = bind_param(&predicate, &inner);
+        let cond = ctx.eval_expr(&predicate.body, &vars)?;
+        let branch = if is_truthy_value(&cond) { &on_true } else { &on_false };
+        let vars = bind_param(branch, &inner);
+        Ok(ctx.eval_expr(&branch.body, &vars)?)
     }
 }

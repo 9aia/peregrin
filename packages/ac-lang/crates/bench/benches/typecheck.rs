@@ -7,7 +7,7 @@ use ac_bench::*;
 use ac_typecheck_core::TypeEnv;
 use ac_typecheck_infer::FunctionTable;
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 
 fn interpreter() -> JsonSchemaInterpreter {
     JsonSchemaInterpreter
@@ -44,8 +44,7 @@ fn bench_key_arg(c: &mut Criterion) {
         let schemas = arg_schemas(n);
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let errors =
-                    ac_typecheck_key_arg::check(black_box(&schemas), black_box(&interp));
+                let errors = ac_typecheck_key_arg::check(black_box(&schemas), black_box(&interp));
                 black_box(errors);
             });
         });

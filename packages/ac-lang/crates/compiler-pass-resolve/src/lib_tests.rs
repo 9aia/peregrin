@@ -1,16 +1,14 @@
+use crate::ResolvePass;
 use ac_compiler_core::{Compilation, Config, Pass, Source};
 use ac_compiler_pass_extract::ExtractPass;
 use ac_compiler_pass_parse::ParsePass;
-use crate::ResolvePass;
 
 fn test_config() -> Config {
     Config {
         dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
         resolver: Box::new(ac_module_resolver_virtual::VirtualResolver::new()),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
-        backend: Some(Box::new(
-            ac_typegen_backend_json_schema::JsonSchemaBackend,
-        )),
+        backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }
@@ -28,7 +26,8 @@ fn parse_extract_resolve(yaml: &str) -> Compilation {
 
 #[test]
 fn resolve_pass_populates_typegen_ctx() {
-    let compilation = parse_extract_resolve(r#"
+    let compilation = parse_extract_resolve(
+        r#"
 $:
   host:
     type: string
@@ -37,7 +36,8 @@ $:
 
 host: example.com
 port: 8080
-"#);
+"#,
+    );
     assert!(compilation.typegen_ctx.is_some());
 }
 
@@ -53,7 +53,8 @@ fn resolve_pass_without_extracted_returns_error() {
 
 #[test]
 fn resolve_pass_strips_ac_keys() {
-    let compilation = parse_extract_resolve(r#"
+    let compilation = parse_extract_resolve(
+        r#"
 $:
   host:
     type: string
@@ -64,7 +65,8 @@ $:
 
 host: example.com
 port: 8080
-"#);
+"#,
+    );
     assert!(compilation.typegen_ctx.is_some());
     let ctx = compilation.typegen_ctx.unwrap();
     // After stripping, the schemas should not contain AC keys
@@ -76,7 +78,8 @@ port: 8080
 
 #[test]
 fn resolve_pass_filters_merge_fields() {
-    let compilation = parse_extract_resolve(r#"
+    let compilation = parse_extract_resolve(
+        r#"
 $:
   _base:
     type: object
@@ -87,7 +90,8 @@ $:
 _base:
   host: example.com
 host: override.com
-"#);
+"#,
+    );
     assert!(compilation.typegen_ctx.is_some());
     let ctx = compilation.typegen_ctx.unwrap();
     // _base should be filtered out from schemas

@@ -1,6 +1,6 @@
 mod dialect;
 
-pub use dialect::{AcDialect, AC_DIALECT};
+pub use dialect::{AC_DIALECT, AcDialect};
 
 #[cfg(test)]
 mod dialect_tests;

@@ -55,27 +55,27 @@
 //! crates build on top of the core layers to provide the full pipeline.
 
 pub use ac_ast as core;
-pub use ac_runtime as runtime;
+pub use ac_compiler as compiler;
+pub use ac_compiler_core as compiler_core;
+pub use ac_dialect as dialect;
+pub use ac_dialect_canonical as dialect_canonical;
+pub use ac_fields as fields;
 pub use ac_frontend_json as json;
 pub use ac_frontend_toml as toml;
 pub use ac_frontend_yaml as yaml;
-pub use ac_dialect as dialect;
-pub use ac_dialect_canonical as dialect_canonical;
-pub use ac_vm as vm;
-pub use ac_fields as fields;
-pub use ac_source as source;
 pub use ac_host as host;
-pub use ac_compiler as compiler;
-pub use ac_compiler_core as compiler_core;
 pub use ac_module_resolver_core as resolver_core;
+pub use ac_module_resolver_file as resolver_file;
 pub use ac_module_resolver_memory as resolver_memory;
 pub use ac_module_resolver_noop as resolver_noop;
-pub use ac_module_resolver_file as resolver_file;
 pub use ac_module_resolver_virtual as resolver_virtual;
+pub use ac_runtime as runtime;
+pub use ac_source as source;
 pub use ac_typecheck_core as typecheck_core;
 pub use ac_typecheck_schema_json as typecheck_schema_json;
-pub use ac_typegen_core as typegen_core;
 pub use ac_typegen_backend_json_schema as typegen_json_schema;
+pub use ac_typegen_core as typegen_core;
+pub use ac_vm as vm;
 
 /// Convenience prelude.
 ///
@@ -84,24 +84,29 @@ pub use ac_typegen_backend_json_schema as typegen_json_schema;
 /// ```
 pub mod prelude {
     pub use ac_ast::{Expr, Field};
-    pub use ac_runtime::{Frontend, HostValue, RuntimeValue};
+    pub use ac_compiler::{Compilation, Config, Pass, Pipeline, Source};
+    pub use ac_compiler::{
+        default_cli_config, full_pipeline, typecheck_only_config, typecheck_pipeline,
+        typegen_pipeline,
+    };
+    pub use ac_dialect::{Schema, ValidationError};
+    pub use ac_dialect_canonical::JsonSchema;
     pub use ac_frontend_json;
     pub use ac_frontend_toml;
     pub use ac_frontend_yaml;
-    pub use ac_dialect::{Schema, ValidationError};
-    pub use ac_dialect_canonical::JsonSchema;
-    pub use ac_vm::{Context, Error, Function, Host, Vm};
-    pub use ac_source::{SourceLocation, SourceMap};
     pub use ac_host::DefaultHost;
-    pub use ac_compiler::{Compilation, Config, Pass, Pipeline, Source};
-    pub use ac_compiler::{default_cli_config, typecheck_only_config, typegen_pipeline, typecheck_pipeline, full_pipeline};
-    pub use ac_module_resolver_core::{ModuleResolver, ResolvedModule, ModuleCache, CachingResolver, ChainResolver};
+    pub use ac_module_resolver_core::{
+        CachingResolver, ChainResolver, ModuleCache, ModuleResolver, ResolvedModule,
+    };
+    pub use ac_module_resolver_file::FileResolver;
     pub use ac_module_resolver_memory::MemoryModuleCache;
     pub use ac_module_resolver_noop::NoCache;
-    pub use ac_module_resolver_file::FileResolver;
     pub use ac_module_resolver_virtual::VirtualResolver;
-    pub use ac_typecheck_core::{Type, TypeEnv, TypeError, TypeResult, SchemaInterpreter};
+    pub use ac_runtime::{Frontend, HostValue, RuntimeValue};
+    pub use ac_source::{SourceLocation, SourceMap};
+    pub use ac_typecheck_core::{SchemaInterpreter, Type, TypeEnv, TypeError, TypeResult};
     pub use ac_typecheck_schema_json::JsonSchemaInterpreter;
-    pub use ac_typegen_core::{TypegenContext, TypegenBackend};
     pub use ac_typegen_backend_json_schema::JsonSchemaBackend;
+    pub use ac_typegen_core::{TypegenBackend, TypegenContext};
+    pub use ac_vm::{Context, Error, Function, Host, Vm};
 }

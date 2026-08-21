@@ -1,9 +1,9 @@
 use ac_runtime::RuntimeValue;
 
+use crate::document_vocabulary::DocumentVocabulary;
 use crate::expr_parser::ExprParser;
 use crate::schema_vocabulary::SchemaVocabulary;
 use crate::syntax::Syntax;
-use crate::document_vocabulary::DocumentVocabulary;
 
 /// A dialect for parsing and evaluating AC expressions and documents.
 ///

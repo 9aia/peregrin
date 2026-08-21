@@ -20,14 +20,26 @@ fn error_display_primitive_error() {
 
 #[test]
 fn error_display_type_mismatch() {
-    let err = Error::TypeMismatch { expected: "string", got: "number" };
-    assert_eq!(err.to_string(), "type mismatch: expected string, got number");
+    let err = Error::TypeMismatch {
+        expected: "string",
+        got: "number",
+    };
+    assert_eq!(
+        err.to_string(),
+        "type mismatch: expected string, got number"
+    );
 }
 
 #[test]
 fn error_display_argument_count() {
-    let err = Error::ArgumentCount { expected: 2, got: 1 };
-    assert_eq!(err.to_string(), "argument count mismatch: expected 2, got 1");
+    let err = Error::ArgumentCount {
+        expected: 2,
+        got: 1,
+    };
+    assert_eq!(
+        err.to_string(),
+        "argument count mismatch: expected 2, got 1"
+    );
 }
 
 #[test]
@@ -48,4 +60,61 @@ fn error_yield_clone_eq() {
     let err = Error::Yield(ac_runtime::RuntimeValue::new("hello"));
     let cloned = err.clone();
     assert_eq!(err, cloned);
+}
+
+#[test]
+fn error_display_operation() {
+    let err = Error::Operation {
+        name: "fetch".to_string(),
+        args: vec![ac_runtime::RuntimeValue::new("url")],
+    };
+    let s = err.to_string();
+    assert!(s.contains("fetch"));
+    assert!(s.contains("operation"));
+}
+
+#[test]
+fn error_operation_clone_eq() {
+    let err = Error::Operation {
+        name: "fetch".to_string(),
+        args: vec![ac_runtime::RuntimeValue::new(42)],
+    };
+    let cloned = err.clone();
+    assert_eq!(err, cloned);
+}
+
+#[test]
+fn error_operation_with_empty_args_display() {
+    let err = Error::Operation {
+        name: "ping".to_string(),
+        args: vec![],
+    };
+    let s = err.to_string();
+    assert!(s.contains("ping"));
+    assert!(s.contains("0 args"));
+}
+
+#[test]
+fn error_all_variants_are_cloneable() {
+    let variants: Vec<Error> = vec![
+        Error::UnknownFunction("f".to_string()),
+        Error::UnknownVariable("v".to_string()),
+        Error::PrimitiveError("boom".to_string()),
+        Error::TypeMismatch {
+            expected: "int",
+            got: "str",
+        },
+        Error::ArgumentCount {
+            expected: 1,
+            got: 2,
+        },
+        Error::Yield(ac_runtime::RuntimeValue::new(0)),
+        Error::Operation {
+            name: "op".to_string(),
+            args: vec![],
+        },
+    ];
+    for v in &variants {
+        let _ = v.clone();
+    }
 }

@@ -1,6 +1,6 @@
 mod schema;
-mod validation_error;
 mod schema_vocabulary;
+mod validation_error;
 
 pub mod schema_stub;
 
@@ -16,5 +16,5 @@ mod schema_vocabulary_tests;
 mod validation_error_tests;
 
 pub use schema::Schema;
-pub use validation_error::ValidationError;
 pub use schema_vocabulary::SchemaVocabulary;
+pub use validation_error::ValidationError;

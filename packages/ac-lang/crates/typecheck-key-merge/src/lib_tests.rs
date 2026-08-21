@@ -97,8 +97,14 @@ fn check_multiple_merge_fields() {
     let interp = JsonInterpreter;
     let env = TypeEnv::new();
     let schemas = vec![
-        ("ok".to_string(), json!({ "type": "object", "merge": true, "properties": {} })),
-        ("bad".to_string(), json!({ "type": "string", "merge": true })),
+        (
+            "ok".to_string(),
+            json!({ "type": "object", "merge": true, "properties": {} }),
+        ),
+        (
+            "bad".to_string(),
+            json!({ "type": "string", "merge": true }),
+        ),
     ];
     let errors = check(&schemas, &interp, &env);
     assert_eq!(errors.len(), 1);

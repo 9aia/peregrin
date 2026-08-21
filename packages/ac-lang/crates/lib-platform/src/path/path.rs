@@ -93,7 +93,10 @@ struct JoinFn {
 impl Function for JoinFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let parts = collect_string_args(args)?;
-        self.path.join(&parts).map(RuntimeValue::new).map_err(Into::into)
+        self.path
+            .join(&parts)
+            .map(RuntimeValue::new)
+            .map_err(Into::into)
     }
 }
 
@@ -104,7 +107,10 @@ struct ResolveFn {
 impl Function for ResolveFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let parts = collect_string_args(args)?;
-        self.path.resolve(&parts).map(RuntimeValue::new).map_err(Into::into)
+        self.path
+            .resolve(&parts)
+            .map(RuntimeValue::new)
+            .map_err(Into::into)
     }
 }
 
@@ -115,7 +121,10 @@ struct BasenameFn {
 impl Function for BasenameFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let path = require_one_string(args)?;
-        self.path.basename(path).map(RuntimeValue::new).map_err(Into::into)
+        self.path
+            .basename(path)
+            .map(RuntimeValue::new)
+            .map_err(Into::into)
     }
 }
 
@@ -126,7 +135,10 @@ struct DirnameFn {
 impl Function for DirnameFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let path = require_one_string(args)?;
-        self.path.dirname(path).map(RuntimeValue::new).map_err(Into::into)
+        self.path
+            .dirname(path)
+            .map(RuntimeValue::new)
+            .map_err(Into::into)
     }
 }
 
@@ -137,6 +149,9 @@ struct ExtnameFn {
 impl Function for ExtnameFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let path = require_one_string(args)?;
-        self.path.extname(path).map(RuntimeValue::new).map_err(Into::into)
+        self.path
+            .extname(path)
+            .map(RuntimeValue::new)
+            .map_err(Into::into)
     }
 }

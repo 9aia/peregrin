@@ -34,11 +34,21 @@ impl KeyValueStoreModule {
     pub fn new(store: impl KeyValueStore + 'static) -> Self {
         let store = Arc::new(store);
         KeyValueStoreModule {
-            get: GetFn { store: store.clone() },
-            set: SetFn { store: store.clone() },
-            remove: RemoveFn { store: store.clone() },
-            clear: ClearFn { store: store.clone() },
-            has: HasFn { store: store.clone() },
+            get: GetFn {
+                store: store.clone(),
+            },
+            set: SetFn {
+                store: store.clone(),
+            },
+            remove: RemoveFn {
+                store: store.clone(),
+            },
+            clear: ClearFn {
+                store: store.clone(),
+            },
+            has: HasFn {
+                store: store.clone(),
+            },
             size: SizeFn { store },
         }
     }
@@ -148,7 +158,10 @@ struct HasFn {
 impl Function for HasFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let key = require_one_string(args)?;
-        self.store.has(key).map(RuntimeValue::new).map_err(Into::into)
+        self.store
+            .has(key)
+            .map(RuntimeValue::new)
+            .map_err(Into::into)
     }
 }
 

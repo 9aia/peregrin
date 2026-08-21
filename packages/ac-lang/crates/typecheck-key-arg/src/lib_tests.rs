@@ -48,8 +48,14 @@ fn unknown_arg_type_passes() {
 fn check_multiple_fields() {
     let interp = JsonInterpreter;
     let schemas = vec![
-        ("ok".to_string(), json!({ "type": "number", "arg": { "type": "number" } })),
-        ("bad".to_string(), json!({ "type": "string", "arg": { "type": "number" } })),
+        (
+            "ok".to_string(),
+            json!({ "type": "number", "arg": { "type": "number" } }),
+        ),
+        (
+            "bad".to_string(),
+            json!({ "type": "string", "arg": { "type": "number" } }),
+        ),
     ];
     let errors = check(&schemas, &interp);
     assert_eq!(errors.len(), 1);

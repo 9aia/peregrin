@@ -56,6 +56,9 @@ members = [
   "crates/cli",
   "crates/experiment-host-sugar",
   "crates/meta",
+  "crates/store",
+  "crates/codebase",
+  "crates/integration-tests",
 ]
 resolver = "3"
 
@@ -112,6 +115,10 @@ ac-typecheck-key-inherit = { path = "crates/typecheck-key-inherit" }
 ac-typecheck-key-mutable = { path = "crates/typecheck-key-mutable" }
 ac-typecheck-import = { path = "crates/typecheck-import" }
 ac-typecheck-schema-json = { path = "crates/typecheck-schema-json" }
+ac-meta = { path = "crates/meta" }
+ac-store = { path = "crates/store" }
+ac-codebase = { path = "crates/codebase" }
+ac-integration-tests = { path = "crates/integration-tests" }
 hex = "0.4"
 indexmap = "2"
 rayon = "1"
@@ -147,6 +154,8 @@ ac-typecheck-core.workspace = true
 ac-typecheck-schema-json.workspace = true
 ac-typegen-core.workspace = true
 ac-typegen-backend-json-schema.workspace = true
+ac-store.workspace = true
+ac-codebase.workspace = true
 
 [dev-dependencies]
 serde_json = "1"
@@ -170,3 +179,19 @@ path = "examples/functions/main.rs"
 [[example]]
 name = "fields"
 path = "examples/fields/main.rs"
+
+[[example]]
+name = "handlers"
+path = "examples/handlers/main.rs"
+
+[[example]]
+name = "resumable"
+path = "examples/resumable/main.rs"
+
+[[example]]
+name = "content-addressing"
+path = "examples/content-addressing/main.rs"
+
+[[example]]
+name = "multi-handler"
+path = "examples/multi-handler/main.rs"

@@ -31,10 +31,7 @@ impl FunctionTable {
     /// Each entry is `(function_name, params, return_schema)` where
     /// `params` is a list of `(param_name, raw_schema)` pairs and
     /// `return_schema` is the raw return type schema (if declared).
-    pub fn from_signatures(
-        sigs: &[RawFnSig],
-        interpreter: &dyn SchemaInterpreter,
-    ) -> Self {
+    pub fn from_signatures(sigs: &[RawFnSig], interpreter: &dyn SchemaInterpreter) -> Self {
         let mut table = FunctionTable::new();
         for (name, params, return_schema) in sigs {
             let param_types: Vec<(String, Type)> = params

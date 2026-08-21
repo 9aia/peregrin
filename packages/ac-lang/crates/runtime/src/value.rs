@@ -157,9 +157,9 @@ impl RuntimeValue {
 
     /// Returns true if this value is a function value (has a `body` string field).
     pub fn is_function(&self) -> bool {
-        self.0.as_object().is_some_and(|obj| {
-            obj.get("body").is_some_and(|v| v.is_string())
-        })
+        self.0
+            .as_object()
+            .is_some_and(|obj| obj.get("body").is_some_and(|v| v.is_string()))
     }
 
     // ── accessors ───────────────────────────────────────────────

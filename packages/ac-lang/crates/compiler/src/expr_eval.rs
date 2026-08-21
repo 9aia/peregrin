@@ -46,7 +46,9 @@ impl FunctionResolver for ExprEval {
     fn call(&self, name: &str, args: &[serde_json::Value]) -> Result<serde_json::Value, String> {
         let depth = self.depth.get();
         if depth >= MAX_DEPTH {
-            return Err(format!("maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"));
+            return Err(format!(
+                "maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"
+            ));
         }
         self.depth.set(depth + 1);
         let result = self.call_inner(name, args);
@@ -56,7 +58,11 @@ impl FunctionResolver for ExprEval {
 }
 
 impl ExprEval {
-    fn call_inner(&self, name: &str, args: &[serde_json::Value]) -> Result<serde_json::Value, String> {
+    fn call_inner(
+        &self,
+        name: &str,
+        args: &[serde_json::Value],
+    ) -> Result<serde_json::Value, String> {
         if name == APPLY_FUNCTION {
             return self.call_apply(args);
         }
@@ -105,8 +111,9 @@ impl ExprEval {
             .map(|((pname, _), arg)| (pname.clone(), arg.clone()))
             .collect();
 
-        let result = ac_fields::eval_body(&fn_val.body, &params, &self.namespaces, self, &AC_DIALECT)
-            .ok_or_else(|| "apply(): failed to evaluate function body".to_string())?;
+        let result =
+            ac_fields::eval_body(&fn_val.body, &params, &self.namespaces, self, &AC_DIALECT)
+                .ok_or_else(|| "apply(): failed to evaluate function body".to_string())?;
 
         Ok(result)
     }
@@ -124,7 +131,9 @@ impl Eval for ExprEval {
             .collect();
 
         let result = ac_fields::eval_body(expr, &params, &self.namespaces, self, &AC_DIALECT)
-            .ok_or_else(|| Error::PrimitiveError(format!("failed to evaluate expression: {expr}")))?;
+            .ok_or_else(|| {
+                Error::PrimitiveError(format!("failed to evaluate expression: {expr}"))
+            })?;
 
         Ok(RuntimeValue::new(result))
     }

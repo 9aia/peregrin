@@ -1,5 +1,5 @@
-use ac_source::SourceLocation;
 use crate::Type;
+use ac_source::SourceLocation;
 
 /// A type error detected during static checking.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -45,7 +45,11 @@ impl TypeError {
     }
 
     /// Create a generic error with a custom message.
-    pub fn custom(field: impl Into<String>, message: impl Into<String>, path: impl Into<String>) -> Self {
+    pub fn custom(
+        field: impl Into<String>,
+        message: impl Into<String>,
+        path: impl Into<String>,
+    ) -> Self {
         TypeError {
             field: field.into(),
             expected: None,

@@ -42,7 +42,9 @@ impl Source {
     /// Base path for resolving relative imports — the parent directory
     /// of the source file, if known.
     pub fn base_path(&self) -> Option<PathBuf> {
-        self.path.as_ref().and_then(|p| p.parent().map(|p| p.to_path_buf()))
+        self.path
+            .as_ref()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
     }
 }
 

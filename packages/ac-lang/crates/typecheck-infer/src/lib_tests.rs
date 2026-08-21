@@ -28,7 +28,10 @@ fn parse_boolean_literal() {
 
 #[test]
 fn parse_null_literal() {
-    assert_eq!(parse_expr("null", &AC_DIALECT).unwrap(), ExprAst::Literal(Type::Null));
+    assert_eq!(
+        parse_expr("null", &AC_DIALECT).unwrap(),
+        ExprAst::Literal(Type::Null)
+    );
 }
 
 #[test]
@@ -50,7 +53,10 @@ fn parse_function_call() {
         ast,
         ExprAst::Call(
             "add".to_string(),
-            vec![ExprAst::Literal(Type::Number), ExprAst::Literal(Type::Number)]
+            vec![
+                ExprAst::Literal(Type::Number),
+                ExprAst::Literal(Type::Number)
+            ]
         )
     );
 }
@@ -65,7 +71,10 @@ fn parse_nested_function_call() {
             vec![
                 ExprAst::Call(
                     "mul".to_string(),
-                    vec![ExprAst::Literal(Type::Number), ExprAst::Literal(Type::Number)]
+                    vec![
+                        ExprAst::Literal(Type::Number),
+                        ExprAst::Literal(Type::Number)
+                    ]
                 ),
                 ExprAst::Literal(Type::Number),
             ]
@@ -80,7 +89,10 @@ fn parse_dollar_wrapped() {
         ast,
         ExprAst::Call(
             "add".to_string(),
-            vec![ExprAst::Literal(Type::Number), ExprAst::Literal(Type::Number)]
+            vec![
+                ExprAst::Literal(Type::Number),
+                ExprAst::Literal(Type::Number)
+            ]
         )
     );
 }
@@ -151,14 +163,20 @@ fn infer_nested_function_call() {
         },
     );
 
-    assert_eq!(infer("add(add(1, 2), x)", &env, &funcs, &AC_DIALECT), Type::Number);
+    assert_eq!(
+        infer("add(add(1, 2), x)", &env, &funcs, &AC_DIALECT),
+        Type::Number
+    );
 }
 
 #[test]
 fn infer_unknown_function() {
     let env = TypeEnv::new();
     let funcs = FunctionTable::new();
-    assert_eq!(infer("unknown(1)", &env, &funcs, &AC_DIALECT), Type::Unknown);
+    assert_eq!(
+        infer("unknown(1)", &env, &funcs, &AC_DIALECT),
+        Type::Unknown
+    );
 }
 
 #[test]
@@ -194,7 +212,10 @@ fn infer_type_mismatch_in_args() {
     );
 
     let env = TypeEnv::new();
-    assert_eq!(infer("add(1, \"hello\")", &env, &funcs, &AC_DIALECT), Type::Unknown);
+    assert_eq!(
+        infer("add(1, \"hello\")", &env, &funcs, &AC_DIALECT),
+        Type::Unknown
+    );
 }
 
 #[test]
@@ -208,8 +229,14 @@ fn infer_dotted_path_into_object() {
 
     let funcs = FunctionTable::new();
     assert_eq!(infer("doc.name", &env, &funcs, &AC_DIALECT), Type::String);
-    assert_eq!(infer("doc.version", &env, &funcs, &AC_DIALECT), Type::Number);
-    assert_eq!(infer("doc.missing", &env, &funcs, &AC_DIALECT), Type::Unknown);
+    assert_eq!(
+        infer("doc.version", &env, &funcs, &AC_DIALECT),
+        Type::Number
+    );
+    assert_eq!(
+        infer("doc.missing", &env, &funcs, &AC_DIALECT),
+        Type::Unknown
+    );
 }
 
 #[test]
@@ -266,7 +293,10 @@ fn infer_call_function_typed_field_via_shorthand() {
     env.insert("doc", Type::Object(doc_props));
 
     let funcs = FunctionTable::new();
-    assert_eq!(infer("transform(5)", &env, &funcs, &AC_DIALECT), Type::Number);
+    assert_eq!(
+        infer("transform(5)", &env, &funcs, &AC_DIALECT),
+        Type::Number
+    );
 }
 
 #[test]
@@ -281,7 +311,10 @@ fn infer_call_function_typed_arg_mismatch() {
     );
 
     let funcs = FunctionTable::new();
-    assert_eq!(infer("f(\"hello\")", &env, &funcs, &AC_DIALECT), Type::Unknown);
+    assert_eq!(
+        infer("f(\"hello\")", &env, &funcs, &AC_DIALECT),
+        Type::Unknown
+    );
 }
 
 #[test]

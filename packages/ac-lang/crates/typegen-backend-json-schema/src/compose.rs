@@ -1,5 +1,5 @@
 use indexmap::IndexMap;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 /// Compose a root JSON Schema from clean field schema fragments.
 ///

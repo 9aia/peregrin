@@ -2,13 +2,13 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::path::Path;
 
-use ac_fields;
 use ac_dialect::Dialect;
+use ac_dialect::Schema;
 use ac_dialect_canonical::AC_DIALECT;
+use ac_fields;
 use ac_frontend::frontend_for;
 use ac_host::DefaultHost;
 use ac_runtime::RuntimeValue;
-use ac_dialect::Schema;
 
 use crate::resolver::VmResolver;
 
@@ -52,7 +52,10 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
     let data = extracted.data;
 
     let mut namespaces = ac_fields::Namespaces::new();
-    namespaces.insert(ac_fields::DEFAULT_NAMESPACE.to_string(), ac_fields::build_doc_namespace(&data));
+    namespaces.insert(
+        ac_fields::DEFAULT_NAMESPACE.to_string(),
+        ac_fields::build_doc_namespace(&data),
+    );
     namespaces.insert("env".to_string(), ac_fields::build_env_namespace());
 
     let host = DefaultHost::default();
@@ -79,8 +82,13 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
 
     let mut errors = Vec::new();
 
-    let compute_errors =
-        ac_fields::compute_fields(data.inner_mut(), &computed, &mut namespaces, &resolver, &AC_DIALECT);
+    let compute_errors = ac_fields::compute_fields(
+        data.inner_mut(),
+        &computed,
+        &mut namespaces,
+        &resolver,
+        &AC_DIALECT,
+    );
     errors.extend(compute_errors);
 
     let merge_errors = ac_fields::merge_fields(data.inner_mut(), &merge);
@@ -91,7 +99,9 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
         .iter()
         .filter(|(name, _)| !merge.iter().any(|m| m == name))
         .map(|(name, raw)| {
-            let compiled = vocab.compile(raw).map_err(|e| format!("{name}: invalid schema — {e}"))?;
+            let compiled = vocab
+                .compile(raw)
+                .map_err(|e| format!("{name}: invalid schema — {e}"))?;
             Ok::<_, String>((name.clone(), compiled))
         })
         .collect::<Result<Vec<_>, _>>()?;
@@ -101,8 +111,16 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
 
     for (name, schema) in &schemas {
         let type_name = ac_dialect_canonical::JsonSchema::new(
-            field_schemas.iter().find(|(n, _)| n == name).unwrap().1.clone()
-        ).type_name().unwrap_or("any").to_string();
+            field_schemas
+                .iter()
+                .find(|(n, _)| n == name)
+                .unwrap()
+                .1
+                .clone(),
+        )
+        .type_name()
+        .unwrap_or("any")
+        .to_string();
         field_types.push((name.clone(), type_name));
 
         let field_value = data.get(name).unwrap_or(&serde_json::Value::Null);

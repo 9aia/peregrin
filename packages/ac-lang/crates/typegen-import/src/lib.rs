@@ -46,7 +46,7 @@ use ac_module_resolver_core::ModuleResolver;
 use ac_typegen_core::{ImportResolver, TypegenContext};
 use serde_json::Value as JsonValue;
 
-pub use import_detect::{detect_import_path, extract_data_path, ImportKind};
+pub use import_detect::{ImportKind, detect_import_path, extract_data_path};
 pub use import_resolve::resolve_imports;
 
 /// Default import resolver for the AC typegen system.
@@ -101,8 +101,8 @@ pub fn apply_imports(
 }
 
 #[cfg(test)]
+mod apply_tests;
+#[cfg(test)]
 mod import_detect_tests;
 #[cfg(test)]
 mod import_resolve_tests;
-#[cfg(test)]
-mod apply_tests;

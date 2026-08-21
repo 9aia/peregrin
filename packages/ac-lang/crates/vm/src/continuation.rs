@@ -43,7 +43,7 @@
 //! let result = vm.eval_resumable(&expr, &mut ctx, Some(cont));
 //! ```
 
-use ac_ast::Expr;
+use ac_ast::{Expr, HandlerClause};
 use ac_runtime::RuntimeValue;
 
 use crate::Context;
@@ -51,6 +51,7 @@ use crate::Error;
 use crate::Host;
 
 type RuntimeExpr = Expr<RuntimeValue>;
+type RuntimeHandlerClause = HandlerClause<RuntimeValue>;
 
 /// A single frame in the evaluation stack.
 ///
@@ -62,8 +63,11 @@ pub struct Frame {
     pub name: String,
     /// Arguments that have already been evaluated.
     pub evaluated: Vec<RuntimeValue>,
-    /// Arguments that still need to be evaluated (remaining, in order).
+    /// Arguments that still need evaluation (remaining, in order).
     pub pending: Vec<RuntimeExpr>,
+    /// Handler clauses active for this frame (from enclosing Handle exprs).
+    /// Empty for frames outside any handler. Innermost handler is last.
+    pub handlers: Vec<RuntimeHandlerClause>,
 }
 
 /// A serializable continuation of a paused evaluation.
@@ -103,6 +107,7 @@ impl Continuation {
                         "name": frame.name,
                         "evaluated": frame.evaluated.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>(),
                         "pending": frame.pending.iter().map(expr_to_json).collect::<Vec<_>>(),
+                        "handlers": frame.handlers.iter().map(handler_clause_to_json).collect::<Vec<_>>(),
                     })
                 })
                 .collect(),
@@ -111,9 +116,9 @@ impl Continuation {
 
     /// Deserializes a continuation from a JSON value.
     pub fn from_json(value: &serde_json::Value) -> Result<Self, Error> {
-        let arr = value
-            .as_array()
-            .ok_or_else(|| Error::PrimitiveError("continuation must be a JSON array".to_string()))?;
+        let arr = value.as_array().ok_or_else(|| {
+            Error::PrimitiveError("continuation must be a JSON array".to_string())
+        })?;
 
         let frames = arr
             .iter()
@@ -135,6 +140,11 @@ fn expr_to_json(expr: &RuntimeExpr) -> serde_json::Value {
             "name": name,
             "args": args.iter().map(expr_to_json).collect::<Vec<_>>(),
         }),
+        Expr::Handle { body, handlers } => serde_json::json!({
+            "type": "handle",
+            "body": expr_to_json(body),
+            "handlers": handlers.iter().map(handler_clause_to_json).collect::<Vec<_>>(),
+        }),
     }
 }
 
@@ -145,30 +155,102 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error> {
 
     match obj.get("type").and_then(|v| v.as_str()) {
         Some("value") => {
-            let val = obj
-                .get("value")
-                .ok_or_else(|| Error::PrimitiveError("value expression missing 'value' field".to_string()))?;
+            let val = obj.get("value").ok_or_else(|| {
+                Error::PrimitiveError("value expression missing 'value' field".to_string())
+            })?;
             Ok(Expr::Value(RuntimeValue::new(val.clone())))
         }
         Some("call") => {
             let name = obj
                 .get("name")
                 .and_then(|v| v.as_str())
-                .ok_or_else(|| Error::PrimitiveError("call expression missing 'name' field".to_string()))?
+                .ok_or_else(|| {
+                    Error::PrimitiveError("call expression missing 'name' field".to_string())
+                })?
                 .to_string();
             let args = obj
                 .get("args")
                 .and_then(|v| v.as_array())
-                .ok_or_else(|| Error::PrimitiveError("call expression missing 'args' array".to_string()))?
+                .ok_or_else(|| {
+                    Error::PrimitiveError("call expression missing 'args' array".to_string())
+                })?
                 .iter()
                 .map(expr_from_json)
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(Expr::Call { name, args })
         }
+        Some("handle") => {
+            let body = obj
+                .get("body")
+                .ok_or_else(|| {
+                    Error::PrimitiveError("handle expression missing 'body' field".to_string())
+                })
+                .and_then(expr_from_json)
+                .map(Box::new)?;
+            let handlers = obj
+                .get("handlers")
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| {
+                    Error::PrimitiveError("handle expression missing 'handlers' array".to_string())
+                })?
+                .iter()
+                .map(handler_clause_from_json)
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Expr::Handle { body, handlers })
+        }
         other => Err(Error::PrimitiveError(format!(
             "unknown expression type: {other:?}"
         ))),
     }
+}
+
+fn handler_clause_to_json(clause: &RuntimeHandlerClause) -> serde_json::Value {
+    serde_json::json!({
+        "op": clause.op_name,
+        "params": clause.params,
+        "resume": clause.continuation_name,
+        "body": expr_to_json(&clause.body),
+    })
+}
+
+fn handler_clause_from_json(value: &serde_json::Value) -> Result<RuntimeHandlerClause, Error> {
+    let obj = value
+        .as_object()
+        .ok_or_else(|| Error::PrimitiveError("handler clause must be a JSON object".to_string()))?;
+
+    let op_name = obj
+        .get("op")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| Error::PrimitiveError("handler clause missing 'op' field".to_string()))?
+        .to_string();
+
+    let params = obj
+        .get("params")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    let continuation_name = obj
+        .get("resume")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| Error::PrimitiveError("handler clause missing 'resume' field".to_string()))?
+        .to_string();
+
+    let body = obj
+        .get("body")
+        .ok_or_else(|| Error::PrimitiveError("handler clause missing 'body' field".to_string()))
+        .and_then(expr_from_json)?;
+
+    Ok(HandlerClause {
+        op_name,
+        params,
+        continuation_name,
+        body,
+    })
 }
 
 fn frame_from_json(value: &serde_json::Value) -> Result<Frame, Error> {
@@ -202,6 +284,16 @@ fn frame_from_json(value: &serde_json::Value) -> Result<Frame, Error> {
         name,
         evaluated,
         pending,
+        handlers: obj
+            .get("handlers")
+            .and_then(|v| v.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .map(handler_clause_from_json)
+                    .collect::<Result<Vec<_>, _>>()
+            })
+            .transpose()?
+            .unwrap_or_default(),
     })
 }
 
@@ -285,7 +377,7 @@ impl<H: Host> crate::Vm<H> {
             None => {
                 return EvalResult::Error(Error::PrimitiveError(
                     "cannot resume: empty continuation".to_string(),
-                ))
+                ));
             }
         };
         frames.remove(0);
@@ -308,6 +400,80 @@ impl<H: Host> crate::Vm<H> {
                 EvalResult::Yielded {
                     value: yielded_value,
                     continuation: Continuation { frames },
+                }
+            }
+            Err(Error::Operation { name, args }) => {
+                // The resumed operation signaled. Check handler
+                // clauses on the bottom frame for a match.
+                let matching_clause = bottom.handlers.iter().rev().find(|h| h.op_name == name);
+
+                if let Some(clause) = matching_clause {
+                    // Found a matching handler. Bind params and
+                    // continuation, then evaluate the handler body.
+                    ctx.push_scope();
+
+                    for (i, param) in clause.params.iter().enumerate() {
+                        if let Some(arg) = args.get(i) {
+                            ctx.define(param.clone(), arg.clone());
+                        }
+                    }
+
+                    // Build continuation from remaining frames (the
+                    // parent frames waiting for the result). The
+                    // signaling frame (bottom) is NOT included.
+                    let cont_value = RuntimeValue::new(serde_json::json!({
+                        "type": "continuation",
+                        "frames": frames.iter().map(|f| {
+                            serde_json::json!({
+                                "name": f.name,
+                                "evaluated": f.evaluated.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>(),
+                                "pending": f.pending.iter().map(expr_to_json).collect::<Vec<_>>(),
+                                "handlers": f.handlers.iter().map(handler_clause_to_json).collect::<Vec<_>>(),
+                            })
+                        }).collect::<Vec<_>>(),
+                    }));
+                    ctx.define(&clause.continuation_name, cont_value);
+
+                    let mut fresh_stack = Vec::new();
+                    let remaining_handlers: Vec<RuntimeHandlerClause> = bottom
+                        .handlers
+                        .iter()
+                        .filter(|h| h.op_name != clause.op_name)
+                        .cloned()
+                        .collect();
+                    let step_result = self.eval_step_with_handlers(
+                        &clause.body,
+                        ctx,
+                        &mut fresh_stack,
+                        &remaining_handlers,
+                    );
+                    ctx.pop_scope();
+
+                    match step_result {
+                        StepResult::Done(v) => EvalResult::Done(v),
+                        StepResult::Yield {
+                            value,
+                            frames: yield_frames,
+                        } => EvalResult::Yielded {
+                            value,
+                            continuation: Continuation {
+                                frames: yield_frames,
+                            },
+                        },
+                        StepResult::Error(err) => EvalResult::Error(err),
+                    }
+                } else {
+                    // No matching handler — propagate.
+                    frames.insert(0, bottom);
+                    let op_value = RuntimeValue::new(serde_json::json!({
+                        "type": "operation",
+                        "name": name,
+                        "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>(),
+                    }));
+                    EvalResult::Yielded {
+                        value: op_value,
+                        continuation: Continuation { frames },
+                    }
                 }
             }
             Err(err) => EvalResult::Error(err),
@@ -333,13 +499,18 @@ impl<H: Host> crate::Vm<H> {
         let mut fresh_stack = Vec::new();
         match self.eval_frame(&mut frame, ctx, &mut fresh_stack) {
             StepResult::Done(result) => self.unwind(frames, result, ctx),
-            StepResult::Yield { value, frames: mut yield_frames } => {
+            StepResult::Yield {
+                value,
+                frames: mut yield_frames,
+            } => {
                 // yield_frames are innermost-to-current. Append the
                 // remaining ancestor frames to get the full stack.
                 yield_frames.extend(frames);
                 EvalResult::Yielded {
                     value,
-                    continuation: Continuation { frames: yield_frames },
+                    continuation: Continuation {
+                        frames: yield_frames,
+                    },
                 }
             }
             StepResult::Error(err) => EvalResult::Error(err),
@@ -353,9 +524,12 @@ impl<H: Host> crate::Vm<H> {
         stack: &mut Vec<Frame>,
     ) -> StepResult {
         // Evaluate remaining pending args one by one.
+        // Propagate this frame's handlers to child frames so that
+        // operations in nested calls can be intercepted.
+        let handlers = frame.handlers.clone();
         while !frame.pending.is_empty() {
             let arg = frame.pending.remove(0);
-            match self.eval_step(&arg, ctx, stack) {
+            match self.eval_step_with_handlers(&arg, ctx, stack, &handlers) {
                 StepResult::Done(value) => frame.evaluated.push(value),
                 StepResult::Yield { value, mut frames } => {
                     // Push the current frame (with partial progress) onto
@@ -367,7 +541,53 @@ impl<H: Host> crate::Vm<H> {
             }
         }
 
-        // All args evaluated — dispatch the call.
+        // All args evaluated — check if this is a continuation call.
+        // A continuation is a variable bound by a handler clause that
+        // holds captured frames. Calling it resumes the captured
+        // evaluation with the first argument as the result.
+        if let Ok(var) = ctx.get(&frame.name)
+            && var.get("type").and_then(|v| v.as_str()) == Some("continuation")
+        {
+            // Extract the resume value (first arg).
+            let resume_value = frame
+                .evaluated
+                .first()
+                .cloned()
+                .unwrap_or(RuntimeValue::new(serde_json::Value::Null));
+
+            // Deserialize the captured frames.
+            let frames_json = var.get("frames").and_then(|v| v.as_array());
+            if let Some(frames_json) = frames_json {
+                let captured_frames: Result<Vec<Frame>, Error> =
+                    frames_json.iter().map(frame_from_json).collect();
+
+                match captured_frames {
+                    Ok(captured_frames) => {
+                        if captured_frames.is_empty() {
+                            return StepResult::Done(resume_value);
+                        }
+
+                        // Resume: feed the resume value to the captured
+                        // frames, exactly like `unwind`.
+                        let result = self.unwind(captured_frames, resume_value, ctx);
+                        return match result {
+                            EvalResult::Done(v) => StepResult::Done(v),
+                            EvalResult::Yielded {
+                                value,
+                                continuation,
+                            } => StepResult::Yield {
+                                value,
+                                frames: continuation.frames,
+                            },
+                            EvalResult::Error(err) => StepResult::Error(err),
+                        };
+                    }
+                    Err(err) => return StepResult::Error(err),
+                }
+            }
+        }
+
+        // Not a continuation call — dispatch normally.
         match self.dispatch_call(&frame.name, &frame.evaluated, ctx) {
             Ok(value) => StepResult::Done(value),
             Err(Error::Yield(yielded_value)) => {
@@ -376,6 +596,71 @@ impl<H: Host> crate::Vm<H> {
                 StepResult::Yield {
                     value: yielded_value,
                     frames: std::mem::take(stack),
+                }
+            }
+            Err(Error::Operation { name, args }) => {
+                // A typed operation signaled. Check handler clauses
+                // on this frame for a matching operation.
+                let matching_clause = frame.handlers.iter().rev().find(|h| h.op_name == name);
+
+                if let Some(clause) = matching_clause {
+                    // Found a matching handler. Bind params and
+                    // continuation, then evaluate the handler body.
+                    ctx.push_scope();
+
+                    // Bind operation args to handler params.
+                    for (i, param) in clause.params.iter().enumerate() {
+                        if let Some(arg) = args.get(i) {
+                            ctx.define(param.clone(), arg.clone());
+                        }
+                    }
+
+                    // Bind the continuation. The continuation contains
+                    // the PARENT frames (from the stack) that are waiting
+                    // for the result of this call. The signaling frame
+                    // itself is NOT included — its operation has been
+                    // handled, and the handler provides the result.
+                    let cont_frames = std::mem::take(stack);
+                    let cont_value = RuntimeValue::new(serde_json::json!({
+                        "type": "continuation",
+                        "frames": cont_frames.iter().map(|f| {
+                            serde_json::json!({
+                                "name": f.name,
+                                "evaluated": f.evaluated.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>(),
+                                "pending": f.pending.iter().map(expr_to_json).collect::<Vec<_>>(),
+                                "handlers": f.handlers.iter().map(handler_clause_to_json).collect::<Vec<_>>(),
+                            })
+                        }).collect::<Vec<_>>(),
+                    }));
+                    ctx.define(&clause.continuation_name, cont_value);
+
+                    // Evaluate the handler body.
+                    // Propagate remaining handlers (excluding the matched
+                    // clause) so nested operations can be intercepted.
+                    let remaining_handlers: Vec<RuntimeHandlerClause> = frame
+                        .handlers
+                        .iter()
+                        .filter(|h| h.op_name != clause.op_name)
+                        .cloned()
+                        .collect();
+                    let result =
+                        self.eval_step_with_handlers(&clause.body, ctx, stack, &remaining_handlers);
+
+                    ctx.pop_scope();
+                    result
+                } else {
+                    // No matching handler — propagate the operation
+                    // as a structured yield to the caller.
+                    stack.push(frame.clone());
+                    let op_value = RuntimeValue::new(serde_json::json!({
+                        "type": "operation",
+                        "name": name,
+                        "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>(),
+                    }));
+                    StepResult::Yield {
+                        value: op_value,
+                        frames: std::mem::take(stack),
+                    }
                 }
             }
             Err(err) => StepResult::Error(err),
@@ -388,6 +673,16 @@ impl<H: Host> crate::Vm<H> {
         ctx: &mut Context,
         stack: &mut Vec<Frame>,
     ) -> StepResult {
+        self.eval_step_with_handlers(expr, ctx, stack, &[])
+    }
+
+    fn eval_step_with_handlers(
+        &mut self,
+        expr: &RuntimeExpr,
+        ctx: &mut Context,
+        stack: &mut Vec<Frame>,
+        inherited_handlers: &[RuntimeHandlerClause],
+    ) -> StepResult {
         match expr {
             Expr::Value(value) => StepResult::Done(value.clone()),
 
@@ -396,8 +691,54 @@ impl<H: Host> crate::Vm<H> {
                     name: name.clone(),
                     evaluated: Vec::with_capacity(args.len()),
                     pending: args.clone(),
+                    handlers: inherited_handlers.to_vec(),
                 };
                 self.eval_frame(&mut frame, ctx, stack)
+            }
+
+            Expr::Handle { body, handlers } => {
+                // Merge inner handlers with inherited (outer) handlers.
+                // Inner handlers take precedence (checked first).
+                let mut all_handlers = handlers.clone();
+                all_handlers.extend(inherited_handlers.iter().cloned());
+                self.eval_handle(body, &all_handlers, ctx, stack)
+            }
+        }
+    }
+
+    /// Evaluate a handle body with handler clauses active.
+    ///
+    /// The handlers are attached to any frame that yields during
+    /// evaluation of body. When an operation signals, `eval_frame`
+    /// checks the frame's handlers for a matching clause.
+    fn eval_handle(
+        &mut self,
+        body: &RuntimeExpr,
+        handlers: &[RuntimeHandlerClause],
+        ctx: &mut Context,
+        stack: &mut Vec<Frame>,
+    ) -> StepResult {
+        match body {
+            Expr::Value(value) => StepResult::Done(value.clone()),
+
+            Expr::Call { name, args } => {
+                let mut frame = Frame {
+                    name: name.clone(),
+                    evaluated: Vec::with_capacity(args.len()),
+                    pending: args.clone(),
+                    handlers: handlers.to_vec(),
+                };
+                self.eval_frame(&mut frame, ctx, stack)
+            }
+
+            Expr::Handle {
+                body: inner_body,
+                handlers: inner_handlers,
+            } => {
+                // Nested handle: inner handlers take precedence.
+                let mut merged = inner_handlers.clone();
+                merged.extend(handlers.iter().cloned());
+                self.eval_handle(inner_body, &merged, ctx, stack)
             }
         }
     }
@@ -408,6 +749,14 @@ impl<H: Host> crate::Vm<H> {
         args: &[RuntimeValue],
         ctx: &mut Context,
     ) -> Result<RuntimeValue, Error> {
+        // Check operations first — operations signal (yield) rather
+        // than complete. If an operation is found and it signals
+        // (returns Err(Error::Operation { ... })), the caller
+        // (eval_frame) captures the continuation.
+        if let Some(operation) = self.host().operation(name) {
+            return operation.perform(args, ctx);
+        }
+
         if let Some(function) = self.host().function(name) {
             return function.call(args, ctx);
         }

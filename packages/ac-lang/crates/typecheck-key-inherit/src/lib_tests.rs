@@ -1,6 +1,6 @@
 use super::*;
 use ac_typecheck_core::{SchemaInterpreter, Type};
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 struct JsonInterpreter;
 
@@ -35,7 +35,10 @@ fn no_inheritable_fields_no_errors() {
 #[test]
 fn compatible_override_no_errors() {
     let interp = JsonInterpreter;
-    let schemas = vec![("mode".to_string(), json!({ "type": "string", "inheritable": true }))];
+    let schemas = vec![(
+        "mode".to_string(),
+        json!({ "type": "string", "inheritable": true }),
+    )];
     let data = json!({
         "mode": "read-only",
         "config": {
@@ -49,7 +52,10 @@ fn compatible_override_no_errors() {
 #[test]
 fn incompatible_override_reports_error() {
     let interp = JsonInterpreter;
-    let schemas = vec![("mode".to_string(), json!({ "type": "string", "inheritable": true }))];
+    let schemas = vec![(
+        "mode".to_string(),
+        json!({ "type": "string", "inheritable": true }),
+    )];
     let data = json!({
         "mode": "read-only",
         "config": {
@@ -65,7 +71,10 @@ fn incompatible_override_reports_error() {
 #[test]
 fn deep_override_checked() {
     let interp = JsonInterpreter;
-    let schemas = vec![("mode".to_string(), json!({ "type": "string", "inheritable": true }))];
+    let schemas = vec![(
+        "mode".to_string(),
+        json!({ "type": "string", "inheritable": true }),
+    )];
     let data = json!({
         "mode": "read-only",
         "server": {

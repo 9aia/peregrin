@@ -43,12 +43,11 @@ impl JsonSchema {
 
 impl Schema<RuntimeValue> for JsonSchema {
     fn validate(&self, value: &RuntimeValue) -> Result<(), ValidationError> {
-        let validator = jsonschema::draft202012::new(&self.raw)
-            .map_err(|e| ValidationError {
-                message: format!("invalid JSON schema: {e}"),
-                path: String::new(),
-                location: None,
-            })?;
+        let validator = jsonschema::draft202012::new(&self.raw).map_err(|e| ValidationError {
+            message: format!("invalid JSON schema: {e}"),
+            path: String::new(),
+            location: None,
+        })?;
 
         validator
             .validate(value.inner())

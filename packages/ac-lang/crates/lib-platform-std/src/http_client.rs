@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ac_lib_platform::{HttpClient, HttpRequest, HttpResponse, HttpMethod, PlatformError};
+use ac_lib_platform::{HttpClient, HttpMethod, HttpRequest, HttpResponse, PlatformError};
 
 /// HTTP client implementation backed by [`ureq`].
 #[derive(Default)]
@@ -9,9 +9,7 @@ pub struct StdHttpClient;
 fn extract_headers(resp: &ureq::Response) -> HashMap<String, String> {
     resp.headers_names()
         .into_iter()
-        .filter_map(|name| {
-            resp.header(&name).map(|value| (name, value.to_string()))
-        })
+        .filter_map(|name| resp.header(&name).map(|value| (name, value.to_string())))
         .collect()
 }
 
@@ -64,7 +62,9 @@ impl HttpClient for StdHttpClient {
         };
 
         response
-            .map_err(|e| PlatformError::Network { message: e.to_string() })
+            .map_err(|e| PlatformError::Network {
+                message: e.to_string(),
+            })
             .and_then(into_http_response)
     }
 }

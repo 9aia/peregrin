@@ -105,7 +105,8 @@ impl TypegenContext {
     ///
     /// Used by `ac-typegen-merge` to exclude merge fields.
     pub fn remove_fields(&mut self, names: &[String]) {
-        self.fields.retain(|n, _| !names.iter().any(|name| name == n));
+        self.fields
+            .retain(|n, _| !names.iter().any(|name| name == n));
     }
 
     /// Recursively strip the given keys from all field schemas, in place.
@@ -151,7 +152,7 @@ pub trait TypegenBackend: Send + Sync {
 
 mod plugin;
 
-pub use plugin::{get_expr, ImportResolver, KeyHandler};
+pub use plugin::{ImportResolver, KeyHandler, get_expr};
 
 #[cfg(test)]
 mod lib_tests;

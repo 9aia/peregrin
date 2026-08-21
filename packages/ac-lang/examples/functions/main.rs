@@ -21,11 +21,17 @@ impl Function for Mul {
         let a = args
             .first()
             .and_then(|v| v.as_number())
-            .ok_or(Error::ArgumentCount { expected: 2, got: args.len() })?;
+            .ok_or(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            })?;
         let b = args
             .get(1)
             .and_then(|v| v.as_number())
-            .ok_or(Error::ArgumentCount { expected: 2, got: args.len() })?;
+            .ok_or(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            })?;
         Ok(RuntimeValue::new(serde_json::json!(a * b)))
     }
 }
@@ -37,11 +43,17 @@ impl Function for Add {
         let a = args
             .first()
             .and_then(|v| v.as_number())
-            .ok_or(Error::ArgumentCount { expected: 2, got: args.len() })?;
+            .ok_or(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            })?;
         let b = args
             .get(1)
             .and_then(|v| v.as_number())
-            .ok_or(Error::ArgumentCount { expected: 2, got: args.len() })?;
+            .ok_or(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            })?;
         Ok(RuntimeValue::new(serde_json::json!(a + b)))
     }
 }
@@ -70,8 +82,7 @@ fn main() {
     let mut ctx = Context::new();
 
     // Parse YAML input from examples/functions/input.yml
-    let yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("examples/functions/input.yml");
+    let yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/functions/input.yml");
     let yaml_input = std::fs::read_to_string(&yaml_path)
         .unwrap_or_else(|_| panic!("failed to read {}", yaml_path.display()));
     let config = ac_frontend_yaml::parse(&yaml_input).unwrap();
@@ -82,12 +93,27 @@ fn main() {
     let expr = Expr::call(
         "mul",
         vec![
-            Expr::call("add", vec![Expr::value(RuntimeValue::new(1.0)), Expr::value(RuntimeValue::new(2.0))]),
-            Expr::call("add", vec![Expr::value(RuntimeValue::new(3.0)), Expr::value(RuntimeValue::new(4.0))]),
+            Expr::call(
+                "add",
+                vec![
+                    Expr::value(RuntimeValue::new(1.0)),
+                    Expr::value(RuntimeValue::new(2.0)),
+                ],
+            ),
+            Expr::call(
+                "add",
+                vec![
+                    Expr::value(RuntimeValue::new(3.0)),
+                    Expr::value(RuntimeValue::new(4.0)),
+                ],
+            ),
         ],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
-    println!("mul(add(1, 2), add(3, 4)) = {}", ac_frontend_yaml::to_string(&result).unwrap().trim());
+    println!(
+        "mul(add(1, 2), add(3, 4)) = {}",
+        ac_frontend_yaml::to_string(&result).unwrap().trim()
+    );
 
     // Variable scoping — context still manages named values
     ctx.define("base", RuntimeValue::new(serde_json::json!(10.0)));
@@ -95,11 +121,17 @@ fn main() {
     ctx.define("base", RuntimeValue::new(serde_json::json!(20.0)));
 
     let result = ctx.get("base").unwrap();
-    println!("inner scope base = {}", ac_frontend_yaml::to_string(&result).unwrap().trim());
+    println!(
+        "inner scope base = {}",
+        ac_frontend_yaml::to_string(&result).unwrap().trim()
+    );
 
     ctx.pop_scope();
     let result = ctx.get("base").unwrap();
-    println!("after pop, base = {}", ac_frontend_yaml::to_string(&result).unwrap().trim());
+    println!(
+        "after pop, base = {}",
+        ac_frontend_yaml::to_string(&result).unwrap().trim()
+    );
 
     // Build an object from fields and output as YAML
     let mut obj = serde_json::Map::new();

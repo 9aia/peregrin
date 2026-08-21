@@ -11,10 +11,10 @@
 //! > **Inherited field overrides must be type-compatible with the
 //! > parent declaration.**
 
-mod walker;
 mod check;
+mod walker;
 
-pub use check::{check, is_inheritable, KEY};
+pub use check::{KEY, check, is_inheritable};
 
 #[cfg(test)]
 mod lib_tests;

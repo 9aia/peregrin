@@ -1,5 +1,5 @@
-use ac_runtime::RuntimeValue;
 use ac_dialect::Schema;
+use ac_runtime::RuntimeValue;
 
 /// Validates function call arguments against declared param schemas.
 ///
@@ -29,5 +29,7 @@ pub fn validate_return(
     value: &RuntimeValue,
     return_schema: &dyn Schema<RuntimeValue>,
 ) -> Result<(), String> {
-    return_schema.validate(value).map_err(|e| format!("return: {e}"))
+    return_schema
+        .validate(value)
+        .map_err(|e| format!("return: {e}"))
 }

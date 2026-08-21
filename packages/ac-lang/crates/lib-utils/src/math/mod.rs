@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 mod math;
 
 pub use math::MathModule;

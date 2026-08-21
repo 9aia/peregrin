@@ -101,7 +101,10 @@ string_unary_fn!(Lower, |input: &str| input.to_lowercase());
 string_unary_fn!(Trim, |input: &str| input.trim().to_string());
 string_unary_fn!(TrimStart, |input: &str| input.trim_start().to_string());
 string_unary_fn!(TrimEnd, |input: &str| input.trim_end().to_string());
-string_unary_fn!(Reverse, |input: &str| input.chars().rev().collect::<String>());
+string_unary_fn!(Reverse, |input: &str| input
+    .chars()
+    .rev()
+    .collect::<String>());
 
 #[derive(Clone, Copy)]
 pub struct Split;
@@ -127,16 +130,11 @@ impl Function for Join {
             });
         }
         let sep = require_string(&args[1])?;
-        let arr = args[0]
-            .as_array()
-            .ok_or(Error::TypeMismatch {
-                expected: "array",
-                got: "non-array",
-            })?;
-        let parts: Vec<&str> = arr
-            .iter()
-            .filter_map(|v| v.as_str())
-            .collect();
+        let arr = args[0].as_array().ok_or(Error::TypeMismatch {
+            expected: "array",
+            got: "non-array",
+        })?;
+        let parts: Vec<&str> = arr.iter().filter_map(|v| v.as_str()).collect();
         Ok(s(parts.join(sep)))
     }
 }
@@ -212,12 +210,10 @@ impl Function for Repeat {
             });
         }
         let input = require_string(&args[0])?;
-        let count = args[1]
-            .as_number()
-            .ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })? as usize;
+        let count = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })? as usize;
         Ok(s(input.repeat(count)))
     }
 }
@@ -233,12 +229,10 @@ impl Function for CharAt {
             });
         }
         let input = require_string(&args[0])?;
-        let index = args[1]
-            .as_number()
-            .ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })? as usize;
+        let index = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })? as usize;
         match input.chars().nth(index) {
             Some(ch) => Ok(s(ch.to_string())),
             None => Ok(RuntimeValue::new(serde_json::Value::Null)),
@@ -257,18 +251,14 @@ impl Function for Slice {
             });
         }
         let input = require_string(&args[0])?;
-        let start = args[1]
-            .as_number()
-            .ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })? as usize;
-        let end = args[2]
-            .as_number()
-            .ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })? as usize;
+        let start = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })? as usize;
+        let end = args[2].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })? as usize;
         let end = end.min(input.len());
         let start = start.min(end);
         Ok(s(input[start..end].to_string()))
@@ -300,12 +290,10 @@ impl Function for PadLeft {
             });
         }
         let input = require_string(&args[0])?;
-        let target_len = args[1]
-            .as_number()
-            .ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })? as usize;
+        let target_len = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })? as usize;
         let pad_char = require_string(&args[2])?;
         Ok(s(pad_to_len(input, target_len, pad_char, true)))
     }
@@ -322,12 +310,10 @@ impl Function for PadRight {
             });
         }
         let input = require_string(&args[0])?;
-        let target_len = args[1]
-            .as_number()
-            .ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })? as usize;
+        let target_len = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })? as usize;
         let pad_char = require_string(&args[2])?;
         Ok(s(pad_to_len(input, target_len, pad_char, false)))
     }

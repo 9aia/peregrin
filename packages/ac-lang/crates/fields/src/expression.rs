@@ -1,5 +1,5 @@
 use crate::path::resolve_path;
-use crate::types::{APPLY_FUNCTION, FunctionResolver, Namespaces, DEFAULT_NAMESPACE};
+use crate::types::{APPLY_FUNCTION, DEFAULT_NAMESPACE, FunctionResolver, Namespaces};
 use ac_dialect::Dialect;
 use serde_json::Value as JsonValue;
 
@@ -86,7 +86,7 @@ pub(crate) fn eval_expr_inner(
         {
             let mut apply_args = vec![val];
             apply_args.extend(args.iter().cloned());
-            if let Some(result) = resolver.call(APPLY_FUNCTION, &apply_args).ok() {
+            if let Ok(result) = resolver.call(APPLY_FUNCTION, &apply_args) {
                 return Some(result);
             }
         }
@@ -126,7 +126,12 @@ fn parse_args(
 /// - `true` / `false` → boolean literal
 /// - `${...}` → nested interpolation (recursive)
 /// - `ns.path` or `shorthand` → path lookup
-fn eval_arg(arg: &str, namespaces: &Namespaces, resolver: &dyn FunctionResolver, dialect: &dyn Dialect) -> Option<JsonValue> {
+fn eval_arg(
+    arg: &str,
+    namespaces: &Namespaces,
+    resolver: &dyn FunctionResolver,
+    dialect: &dyn Dialect,
+) -> Option<JsonValue> {
     let arg = arg.trim();
 
     // Nested interpolation (e.g. ${...} for canonical dialect)

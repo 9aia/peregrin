@@ -73,7 +73,11 @@ fn join() {
 
 #[test]
 fn replace() {
-    let result = call(&StringModule, "replace", &[s("foo bar foo"), s("foo"), s("baz")]);
+    let result = call(
+        &StringModule,
+        "replace",
+        &[s("foo bar foo"), s("foo"), s("baz")],
+    );
     assert_eq!(result.as_str(), Some("baz bar baz"));
 }
 

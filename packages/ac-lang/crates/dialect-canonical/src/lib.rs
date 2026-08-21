@@ -19,10 +19,10 @@
 #![allow(clippy::module_inception)]
 
 mod dialect;
+mod document_vocabulary;
 mod expr_parser;
 mod schema_vocabulary;
 mod syntax;
-mod document_vocabulary;
 
-pub use dialect::{AcDialect, AC_DIALECT};
-pub use schema_vocabulary::{JsonSchema, JsonSchemaVocabulary, JSON_SCHEMA_VOCABULARY};
+pub use dialect::{AC_DIALECT, AcDialect};
+pub use schema_vocabulary::{JSON_SCHEMA_VOCABULARY, JsonSchema, JsonSchemaVocabulary};

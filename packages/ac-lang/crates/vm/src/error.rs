@@ -23,10 +23,7 @@ pub enum Error {
     },
 
     /// The argument count did not match what the primitive expected.
-    ArgumentCount {
-        expected: usize,
-        got: usize,
-    },
+    ArgumentCount { expected: usize, got: usize },
 
     /// The VM yielded control to the caller.
     ///
@@ -38,6 +35,22 @@ pub enum Error {
     /// when a host future is not yet ready — these are handled by the
     /// executor and do not produce this variant.
     Yield(ac_runtime::RuntimeValue),
+
+    /// A typed operation was performed and signaled.
+    ///
+    /// An [`Operation`](crate::Operation) returned this error to signal
+    /// that it needs a handler to intercept. The VM captures the
+    /// continuation and yields `EvalResult::Yielded` with the operation
+    /// name and arguments embedded.
+    ///
+    /// Unlike [`Error::Yield`], this carries structured data (operation
+    /// name + evaluated args) that a handler can match on.
+    Operation {
+        /// The operation name (e.g. `"fetch"`).
+        name: String,
+        /// The evaluated arguments passed to the operation.
+        args: Vec<ac_runtime::RuntimeValue>,
+    },
 }
 
 impl std::fmt::Display for Error {
@@ -60,6 +73,9 @@ impl std::fmt::Display for Error {
             }
             Error::Yield(value) => {
                 write!(f, "yielded: {value:?}")
+            }
+            Error::Operation { name, args } => {
+                write!(f, "operation {name} signaled with {} args", args.len())
             }
         }
     }

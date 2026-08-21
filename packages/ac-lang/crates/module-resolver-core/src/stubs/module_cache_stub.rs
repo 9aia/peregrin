@@ -11,7 +11,9 @@ pub struct TestCache {
 
 impl TestCache {
     pub fn new() -> Self {
-        TestCache { map: Mutex::new(HashMap::new()) }
+        TestCache {
+            map: Mutex::new(HashMap::new()),
+        }
     }
 }
 

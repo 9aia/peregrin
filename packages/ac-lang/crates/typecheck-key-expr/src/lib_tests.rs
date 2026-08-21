@@ -1,7 +1,7 @@
 use super::*;
 use ac_typecheck_core::{FunctionType, SchemaInterpreter, Type, TypeEnv};
 use ac_typecheck_infer::FunctionTable;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 struct JsonInterpreter;
 
@@ -81,8 +81,14 @@ fn check_multiple_fields() {
     let (env, funcs) = make_env();
     let interp = JsonInterpreter;
     let schemas = vec![
-        ("ok".to_string(), json!({ "type": "number", "expr": "mul(version, 2)" })),
-        ("bad".to_string(), json!({ "type": "string", "expr": "mul(version, 2)" })),
+        (
+            "ok".to_string(),
+            json!({ "type": "number", "expr": "mul(version, 2)" }),
+        ),
+        (
+            "bad".to_string(),
+            json!({ "type": "string", "expr": "mul(version, 2)" }),
+        ),
     ];
     let errors = check(&schemas, &env, &funcs, &interp);
     assert_eq!(errors.len(), 1);

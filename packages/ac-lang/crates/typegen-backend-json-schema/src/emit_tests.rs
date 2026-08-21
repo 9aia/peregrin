@@ -1,17 +1,23 @@
-use crate::{write_schema_file, inject_schema_comment};
+use crate::{inject_schema_comment, write_schema_file};
 use serde_json::json;
 use std::io::Read;
 
 #[test]
 fn writes_schema_file() {
     let mut tmp = std::env::temp_dir();
-    tmp.push(format!("ac_typegen_json_test_{}.schema.json", std::process::id()));
+    tmp.push(format!(
+        "ac_typegen_json_test_{}.schema.json",
+        std::process::id()
+    ));
     let schema = json!({ "type": "object" });
 
     write_schema_file(&schema, &tmp).unwrap();
 
     let mut content = String::new();
-    std::fs::File::open(&tmp).unwrap().read_to_string(&mut content).unwrap();
+    std::fs::File::open(&tmp)
+        .unwrap()
+        .read_to_string(&mut content)
+        .unwrap();
     assert!(content.contains("\"type\": \"object\""));
     assert!(content.ends_with('\n'));
 
@@ -21,7 +27,10 @@ fn writes_schema_file() {
 #[test]
 fn creates_parent_directories() {
     let mut tmp = std::env::temp_dir();
-    tmp.push(format!("ac_typegen_json_test_{}/nested/dir/schema.json", std::process::id()));
+    tmp.push(format!(
+        "ac_typegen_json_test_{}/nested/dir/schema.json",
+        std::process::id()
+    ));
     let schema = json!({ "type": "object" });
 
     write_schema_file(&schema, &tmp).unwrap();
@@ -48,8 +57,12 @@ fn injects_comment_when_missing() {
 #[test]
 fn does_not_inject_when_present() {
     let mut tmp = std::env::temp_dir();
-    tmp.push(format!("ac_typegen_json_test_present_{}.yml", std::process::id()));
-    let original = "# yaml-language-server: $schema=existing.json\nfields:\n  host:\n    type: string\n";
+    tmp.push(format!(
+        "ac_typegen_json_test_present_{}.yml",
+        std::process::id()
+    ));
+    let original =
+        "# yaml-language-server: $schema=existing.json\nfields:\n  host:\n    type: string\n";
     std::fs::write(&tmp, original).unwrap();
 
     inject_schema_comment(&tmp, ".ac/generated/schemas/main.schema.json").unwrap();

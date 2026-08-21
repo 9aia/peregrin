@@ -23,18 +23,18 @@
 //!     .with(TmpModule::new(StdTmp));
 //! ```
 
-mod fs;
+mod cmd;
 mod env;
+mod fs;
+mod http_client;
 mod path;
 mod time;
-mod http_client;
-mod cmd;
 mod tmp;
 
-pub use fs::StdFs;
+pub use cmd::StdCmd;
 pub use env::StdEnv;
+pub use fs::StdFs;
+pub use http_client::StdHttpClient;
 pub use path::StdPath;
 pub use time::StdTime;
-pub use http_client::StdHttpClient;
-pub use cmd::StdCmd;
 pub use tmp::StdTmp;

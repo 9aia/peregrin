@@ -6,10 +6,7 @@ use serde_json::Value as JsonValue;
 /// Walks the data tree. For each immutable field, compares every nested
 /// occurrence against the root value. Returns a list of error messages
 /// for any mismatches.
-pub fn validate_mutable(
-    data: &JsonValue,
-    immutable: &[String],
-) -> Vec<String> {
+pub fn validate_mutable(data: &JsonValue, immutable: &[String]) -> Vec<String> {
     if immutable.is_empty() {
         return Vec::new();
     }

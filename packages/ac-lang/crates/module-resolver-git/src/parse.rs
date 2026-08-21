@@ -31,7 +31,10 @@ pub fn parse_git_url(input: &str) -> Option<GitTarget> {
 
     let full_path = url.path();
     let (repo_path, after_git) = full_path.split_once(".git")?;
-    let after_git = after_git.strip_prefix('@').or_else(|| after_git.strip_prefix('/')).unwrap_or(after_git);
+    let after_git = after_git
+        .strip_prefix('@')
+        .or_else(|| after_git.strip_prefix('/'))
+        .unwrap_or(after_git);
 
     let (reference, file_path) = after_git
         .split_once('/')

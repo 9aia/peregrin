@@ -1,7 +1,7 @@
 use super::*;
 use ac_module_resolver_core::{ModuleResolver, ResolvedModule};
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 struct StaticResolver {
     modules: std::collections::HashMap<String, JsonValue>,
@@ -36,10 +36,11 @@ impl ModuleResolver for StaticResolver {
             .map(|arr| {
                 arr.iter()
                     .filter_map(|v| {
-                        v.as_array()
-                            .and_then(|pair| pair.get(0)?.as_str().map(|s| {
-                                (s.to_string(), pair.get(1).cloned().unwrap_or(json!({})))
-                            }))
+                        v.as_array().and_then(|pair| {
+                            pair.get(0)?
+                                .as_str()
+                                .map(|s| (s.to_string(), pair.get(1).cloned().unwrap_or(json!({}))))
+                        })
                     })
                     .collect()
             })
@@ -48,7 +49,11 @@ impl ModuleResolver for StaticResolver {
         let merge: Vec<String> = entry
             .get("_merge")
             .and_then(|v| v.as_array())
-            .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str().map(String::from))
+                    .collect()
+            })
             .unwrap_or_default();
 
         let data = entry.get("_data").cloned().unwrap_or(json!({}));
@@ -93,11 +98,14 @@ fn import_compatible_types_no_errors() {
     let interp = JsonSchemaInterpreter;
     let local_schemas = vec![
         ("host".to_string(), json!({ "type": "string" })),
-        ("_base".to_string(), json!({
-            "type": "object",
-            "merge": true,
-            "expr": "import('base.yml')"
-        })),
+        (
+            "_base".to_string(),
+            json!({
+                "type": "object",
+                "merge": true,
+                "expr": "import('base.yml')"
+            }),
+        ),
     ];
     let env = make_env(&local_schemas);
     let data = json!({});
@@ -125,11 +133,14 @@ fn import_incompatible_types_reports_error() {
     let interp = JsonSchemaInterpreter;
     let local_schemas = vec![
         ("host".to_string(), json!({ "type": "string" })),
-        ("_base".to_string(), json!({
-            "type": "object",
-            "merge": true,
-            "expr": "import('base.yml')"
-        })),
+        (
+            "_base".to_string(),
+            json!({
+                "type": "object",
+                "merge": true,
+                "expr": "import('base.yml')"
+            }),
+        ),
     ];
     let env = make_env(&local_schemas);
     let data = json!({});
@@ -158,11 +169,14 @@ fn import_new_field_no_error() {
     let interp = JsonSchemaInterpreter;
     let local_schemas = vec![
         ("host".to_string(), json!({ "type": "string" })),
-        ("_base".to_string(), json!({
-            "type": "object",
-            "merge": true,
-            "expr": "import('base.yml')"
-        })),
+        (
+            "_base".to_string(),
+            json!({
+                "type": "object",
+                "merge": true,
+                "expr": "import('base.yml')"
+            }),
+        ),
     ];
     let env = make_env(&local_schemas);
     let data = json!({});
@@ -182,13 +196,14 @@ fn import_new_field_no_error() {
 fn unresolvable_import_reports_error() {
     let resolver = StaticResolver::new();
     let interp = JsonSchemaInterpreter;
-    let local_schemas = vec![
-        ("_base".to_string(), json!({
+    let local_schemas = vec![(
+        "_base".to_string(),
+        json!({
             "type": "object",
             "merge": true,
             "expr": "import('missing.yml')"
-        })),
-    ];
+        }),
+    )];
     let env = make_env(&local_schemas);
     let data = json!({});
     let errors = check_imports(
@@ -216,11 +231,14 @@ fn data_driven_import() {
     let interp = JsonSchemaInterpreter;
     let local_schemas = vec![
         ("host".to_string(), json!({ "type": "string" })),
-        ("_base".to_string(), json!({
-            "type": "object",
-            "merge": true,
-            "expr": "import(arg)"
-        })),
+        (
+            "_base".to_string(),
+            json!({
+                "type": "object",
+                "merge": true,
+                "expr": "import(arg)"
+            }),
+        ),
     ];
     let env = make_env(&local_schemas);
     let data = json!({ "_base": "base.yml" });
@@ -241,31 +259,38 @@ fn circular_import_no_infinite_loop() {
     let mut resolver = StaticResolver::new();
     resolver.add_module(
         "a.yml",
-        vec![("_b".to_string(), json!({
-            "type": "object",
-            "merge": true,
-            "expr": "import('b.yml')"
-        }))],
+        vec![(
+            "_b".to_string(),
+            json!({
+                "type": "object",
+                "merge": true,
+                "expr": "import('b.yml')"
+            }),
+        )],
         vec!["_b".to_string()],
     );
     resolver.add_module(
         "b.yml",
-        vec![("_a".to_string(), json!({
-            "type": "object",
-            "merge": true,
-            "expr": "import('a.yml')"
-        }))],
+        vec![(
+            "_a".to_string(),
+            json!({
+                "type": "object",
+                "merge": true,
+                "expr": "import('a.yml')"
+            }),
+        )],
         vec!["_a".to_string()],
     );
 
     let interp = JsonSchemaInterpreter;
-    let local_schemas = vec![
-        ("_a".to_string(), json!({
+    let local_schemas = vec![(
+        "_a".to_string(),
+        json!({
             "type": "object",
             "merge": true,
             "expr": "import('a.yml')"
-        })),
-    ];
+        }),
+    )];
     let env = make_env(&local_schemas);
     let data = json!({});
     let errors = check_imports(

@@ -23,24 +23,18 @@ pub fn is_compatible(actual: &Type, expected: &Type) -> bool {
 
         (Type::Array(a_item), Type::Array(e_item)) => is_compatible(a_item, e_item),
 
-        (Type::Object(a_props), Type::Object(e_props)) => {
-            e_props.iter().all(|(key, e_ty)| {
-                a_props
-                    .get(key)
-                    .map(|a_ty| is_compatible(a_ty, e_ty))
-                    .unwrap_or(false)
-            })
-        }
+        (Type::Object(a_props), Type::Object(e_props)) => e_props.iter().all(|(key, e_ty)| {
+            a_props
+                .get(key)
+                .map(|a_ty| is_compatible(a_ty, e_ty))
+                .unwrap_or(false)
+        }),
 
-        (
-            Type::Function(a_fn),
-            Type::Function(e_fn),
-        ) => {
+        (Type::Function(a_fn), Type::Function(e_fn)) => {
             if a_fn.params.len() != e_fn.params.len() {
                 return false;
             }
-            a_fn
-                .params
+            a_fn.params
                 .iter()
                 .zip(&e_fn.params)
                 .all(|((_, a_ty), (_, e_ty))| is_compatible(a_ty, e_ty))

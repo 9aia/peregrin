@@ -166,7 +166,6 @@ fn noop_waker() -> std::task::Waker {
         RawWaker::new(std::ptr::null(), &VTABLE)
     }
     fn noop(_: *const ()) {}
-    static VTABLE: RawWakerVTable =
-        RawWakerVTable::new(noop_clone, noop, noop, noop);
+    static VTABLE: RawWakerVTable = RawWakerVTable::new(noop_clone, noop, noop, noop);
     unsafe { std::task::Waker::from_raw(RawWaker::new(std::ptr::null(), &VTABLE)) }
 }

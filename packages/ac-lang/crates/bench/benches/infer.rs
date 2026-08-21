@@ -6,8 +6,8 @@
 use ac_bench::*;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_typecheck_core::{Type, TypeEnv};
-use ac_typecheck_infer::{infer, infer_cached, parse_expr, FunctionTable};
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use ac_typecheck_infer::{FunctionTable, infer, infer_cached, parse_expr};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 
 /// `parse_expr` on literal expressions.
 fn bench_parse_literals(c: &mut Criterion) {
@@ -47,7 +47,12 @@ fn bench_infer_batch(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::from_parameter(n), &exprs, |b, exprs| {
             b.iter(|| {
                 for e in exprs {
-                    black_box(infer(black_box(e), black_box(&env), black_box(&functions), &AC_DIALECT));
+                    black_box(infer(
+                        black_box(e),
+                        black_box(&env),
+                        black_box(&functions),
+                        &AC_DIALECT,
+                    ));
                 }
             });
         });
@@ -63,22 +68,26 @@ fn bench_infer_cached(c: &mut Criterion) {
     for (n, repeats) in [(100, 1), (100, 5), (100, 10)] {
         let exprs = mixed_exprs(n);
         let label = format!("{n}x{repeats}");
-        group.bench_with_input(BenchmarkId::from_parameter(&label), &(exprs, repeats), |b, (exprs, repeats)| {
-            b.iter(|| {
-                let mut cache = std::collections::HashMap::new();
-                for _ in 0..*repeats {
-                    for e in exprs {
-                        black_box(infer_cached(
-                            black_box(e),
-                            black_box(&env),
-                            black_box(&functions),
-                            black_box(&mut cache),
-                            &AC_DIALECT,
-                        ));
+        group.bench_with_input(
+            BenchmarkId::from_parameter(&label),
+            &(exprs, repeats),
+            |b, (exprs, repeats)| {
+                b.iter(|| {
+                    let mut cache = std::collections::HashMap::new();
+                    for _ in 0..*repeats {
+                        for e in exprs {
+                            black_box(infer_cached(
+                                black_box(e),
+                                black_box(&env),
+                                black_box(&functions),
+                                black_box(&mut cache),
+                                &AC_DIALECT,
+                            ));
+                        }
                     }
-                }
-            });
-        });
+                });
+            },
+        );
     }
     group.finish();
 }
@@ -102,7 +111,12 @@ fn bench_infer_nested_calls(c: &mut Criterion) {
         let expr = nested_call_expr(depth);
         group.bench_with_input(BenchmarkId::from_parameter(depth), &expr, |b, expr| {
             b.iter(|| {
-                black_box(infer(black_box(expr), black_box(&env), black_box(&functions), &AC_DIALECT));
+                black_box(infer(
+                    black_box(expr),
+                    black_box(&env),
+                    black_box(&functions),
+                    &AC_DIALECT,
+                ));
             });
         });
     }

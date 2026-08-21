@@ -3,6 +3,7 @@ use std::pin::Pin;
 
 use crate::Context;
 use crate::Error;
+use crate::Operation;
 use ac_runtime::RuntimeValue;
 
 /// Provides functions to the VM.
@@ -43,6 +44,21 @@ pub trait Host {
     /// (network I/O, timers, cooperative yielding). The async VM
     /// checks this after [`Host::function`] returns `None`.
     fn async_function(&self, _name: &str) -> Option<&dyn AsyncFunction> {
+        None
+    }
+
+    /// Resolve a name to a typed [`Operation`].
+    ///
+    /// Returns `None` by default. Override to provide operations that
+    /// signal (yield) instead of completing. The VM checks this before
+    /// [`Host::function`] — if a name resolves to an operation, the
+    /// operation's `perform` method is called instead of a function's
+    /// `call` method.
+    ///
+    /// Operations enable algebraic effect handling: the VM captures
+    /// the continuation when an operation signals, and a handler can
+    /// intercept, inspect the arguments, and resume.
+    fn operation(&self, _name: &str) -> Option<&dyn Operation> {
         None
     }
 }

@@ -34,7 +34,7 @@ impl HttpMethod {
         }
     }
 
-    pub fn from_str(s: &str) -> Option<Self> {
+    pub fn parse(s: &str) -> Option<Self> {
         match s.to_ascii_uppercase().as_str() {
             "GET" => Some(Self::Get),
             "POST" => Some(Self::Post),
@@ -172,12 +172,24 @@ impl HttpClientModule {
     pub fn new(client: impl HttpClient + 'static) -> Self {
         let client = Arc::new(client);
         HttpClientModule {
-            get: GetFn { client: client.clone() },
-            post: PostFn { client: client.clone() },
-            put: PutFn { client: client.clone() },
-            patch: PatchFn { client: client.clone() },
-            delete: DeleteFn { client: client.clone() },
-            head: HeadFn { client: client.clone() },
+            get: GetFn {
+                client: client.clone(),
+            },
+            post: PostFn {
+                client: client.clone(),
+            },
+            put: PutFn {
+                client: client.clone(),
+            },
+            patch: PatchFn {
+                client: client.clone(),
+            },
+            delete: DeleteFn {
+                client: client.clone(),
+            },
+            head: HeadFn {
+                client: client.clone(),
+            },
             request: RequestFn { client },
         }
     }
@@ -334,9 +346,8 @@ struct RequestFn {
 impl Function for RequestFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let method_str = require_string_at(args, 0)?;
-        let method = HttpMethod::from_str(method_str).ok_or_else(|| {
-            Error::PrimitiveError(format!("unknown HTTP method: {method_str}"))
-        })?;
+        let method = HttpMethod::parse(method_str)
+            .ok_or_else(|| Error::PrimitiveError(format!("unknown HTTP method: {method_str}")))?;
         let url = require_string_at(args, 1)?;
         let body = match args.get(2) {
             None => None,

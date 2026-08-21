@@ -14,10 +14,7 @@ impl Function for Add {
 pub struct Mul;
 impl Function for Mul {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let product = args
-            .iter()
-            .filter_map(|v| v.as_number())
-            .product::<f64>();
+        let product = args.iter().filter_map(|v| v.as_number()).product::<f64>();
         Ok(RuntimeValue::new(serde_json::json!(product)))
     }
 }
@@ -34,7 +31,7 @@ impl Function for Concat {
                     return Err(Error::TypeMismatch {
                         expected: "string",
                         got: "non-string",
-                    })
+                    });
                 }
             }
         }
@@ -46,9 +43,10 @@ impl Function for Concat {
 pub struct Len;
 impl Function for Len {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let arg = args
-            .first()
-            .ok_or(Error::ArgumentCount { expected: 1, got: 0 })?;
+        let arg = args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?;
         let len = match arg.inner() {
             serde_json::Value::String(s) => s.len(),
             serde_json::Value::Array(a) => a.len(),
@@ -57,7 +55,7 @@ impl Function for Len {
                 return Err(Error::TypeMismatch {
                     expected: "string, array, or object",
                     got: "other",
-                })
+                });
             }
         };
         Ok(RuntimeValue::new(serde_json::json!(len)))

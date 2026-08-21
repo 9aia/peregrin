@@ -1,4 +1,4 @@
-use crate::import_detect::{detect_import_path, extract_data_path, ImportKind};
+use crate::import_detect::{ImportKind, detect_import_path, extract_data_path};
 
 #[test]
 fn detects_static_single_quotes() {

@@ -16,17 +16,17 @@
 //! linting) can take `&dyn ModuleResolver` without caring where modules
 //! come from.
 
-mod module_resolver;
-mod resolved_module;
 mod module_cache;
 mod module_caching_resolver;
 mod module_chain_resolver;
+mod module_resolver;
+mod resolved_module;
 
-pub use module_resolver::ModuleResolver;
-pub use resolved_module::ResolvedModule;
 pub use module_cache::ModuleCache;
 pub use module_caching_resolver::CachingResolver;
 pub use module_chain_resolver::ChainResolver;
+pub use module_resolver::ModuleResolver;
+pub use resolved_module::ResolvedModule;
 
 /// The conventional name of the host function that triggers module resolution.
 ///
@@ -42,13 +42,13 @@ pub mod resolved_module_test_helpers;
 #[cfg(test)]
 mod stubs {
     pub mod counting_resolver_stub;
+    pub mod module_cache_stub;
     pub mod none_resolver_stub;
     pub mod static_resolver_stub;
-    pub mod module_cache_stub;
 }
-#[cfg(test)]
-mod module_resolver_tests;
 #[cfg(test)]
 mod module_caching_resolver_tests;
 #[cfg(test)]
 mod module_chain_resolver_tests;
+#[cfg(test)]
+mod module_resolver_tests;

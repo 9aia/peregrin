@@ -6,6 +6,7 @@ use ac_vm::{Context, Error, Function};
 use crate::module::Module;
 
 /// A minimal module implementation for testing.
+#[allow(dead_code)]
 pub struct StubModule;
 
 impl Module for StubModule {
@@ -22,6 +23,7 @@ impl Module for StubModule {
 }
 
 #[derive(Clone)]
+#[allow(dead_code)]
 struct Echo;
 
 impl Function for Echo {
@@ -31,4 +33,5 @@ impl Function for Echo {
 }
 
 /// A static [`StubModule`] instance for convenience.
+#[allow(dead_code)]
 pub static STUB_MODULE: StubModule = StubModule;

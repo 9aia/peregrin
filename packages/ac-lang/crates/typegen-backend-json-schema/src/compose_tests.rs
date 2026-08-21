@@ -1,6 +1,6 @@
 use crate::compose_schema;
 use indexmap::IndexMap;
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 fn make_fields(pairs: Vec<(&str, JsonValue)>) -> IndexMap<String, JsonValue> {
     pairs.into_iter().map(|(k, v)| (k.to_string(), v)).collect()
@@ -33,16 +33,17 @@ fn composes_empty_fields() {
 
 #[test]
 fn preserves_complex_schema_vocabulary() {
-    let fields = make_fields(vec![
-        ("config", json!({
+    let fields = make_fields(vec![(
+        "config",
+        json!({
             "type": "object",
             "properties": {
                 "host": { "type": "string" },
                 "port": { "type": "number" }
             },
             "required": ["host"]
-        })),
-    ]);
+        }),
+    )]);
     let schema = compose_schema(&fields);
 
     assert_eq!(schema["properties"]["config"]["type"], "object");
@@ -56,14 +57,20 @@ fn preserves_complex_schema_vocabulary() {
 #[test]
 fn preserves_enum_and_pattern() {
     let fields = make_fields(vec![
-        ("level", json!({
-            "type": "string",
-            "enum": ["debug", "info", "warn", "error"]
-        })),
-        ("name", json!({
-            "type": "string",
-            "pattern": "^[a-z_]+$"
-        })),
+        (
+            "level",
+            json!({
+                "type": "string",
+                "enum": ["debug", "info", "warn", "error"]
+            }),
+        ),
+        (
+            "name",
+            json!({
+                "type": "string",
+                "pattern": "^[a-z_]+$"
+            }),
+        ),
     ]);
     let schema = compose_schema(&fields);
 

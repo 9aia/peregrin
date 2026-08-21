@@ -1,4 +1,4 @@
-use ac_frontend::{frontend_for, YamlFrontend};
+use ac_frontend::{YamlFrontend, frontend_for};
 use ac_runtime::Frontend;
 
 pub fn run(input: &str, format: &str) -> Result<String, String> {

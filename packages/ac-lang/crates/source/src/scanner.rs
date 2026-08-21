@@ -49,7 +49,10 @@ impl LineIndex {
 
     /// Returns the byte offset where the given line (0-indexed) begins.
     pub fn line_start(&self, line_idx: usize) -> usize {
-        self.starts.get(line_idx).copied().unwrap_or(self.source_len)
+        self.starts
+            .get(line_idx)
+            .copied()
+            .unwrap_or(self.source_len)
     }
 
     /// Returns the byte offset where the given line (0-indexed) ends

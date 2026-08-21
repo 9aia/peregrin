@@ -8,14 +8,13 @@
 
 use std::path::PathBuf;
 
-use ac_dialect_canonical::AC_DIALECT;
-use ac_runtime::RuntimeValue;
 use ac_dialect::Schema;
+use ac_dialect_canonical::AC_DIALECT;
 use ac_dialect_canonical::JsonSchema;
+use ac_runtime::RuntimeValue;
 
 fn main() {
-    let yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("examples/fields/input.yml");
+    let yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/fields/input.yml");
     let yaml_input = std::fs::read_to_string(&yaml_path)
         .unwrap_or_else(|_| panic!("failed to read {}", yaml_path.display()));
 
@@ -55,7 +54,12 @@ fn main() {
     namespaces.insert("env".to_string(), ac_fields::build_env_namespace());
 
     // Interpolate ${doc.*} and ${env.*} in all data values
-    let interpolated = ac_fields::interpolate(data.inner(), &namespaces, &ac_fields::NoFunctions, &ac_dialect_canonical::AC_DIALECT);
+    let interpolated = ac_fields::interpolate(
+        data.inner(),
+        &namespaces,
+        &ac_fields::NoFunctions,
+        &ac_dialect_canonical::AC_DIALECT,
+    );
     let data = RuntimeValue::new(interpolated);
 
     println!("interpolated values:");

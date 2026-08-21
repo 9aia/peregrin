@@ -36,14 +36,14 @@ impl Module for ArrayModule {
     }
 }
 
-fn require_array<'a>(arg: &'a RuntimeValue) -> Result<&'a [serde_json::Value], Error> {
+fn require_array(arg: &RuntimeValue) -> Result<&[serde_json::Value], Error> {
     arg.as_array().ok_or(Error::TypeMismatch {
         expected: "array",
         got: "non-array",
     })
 }
 
-fn require_one_array<'a>(args: &'a [RuntimeValue]) -> Result<&'a [serde_json::Value], Error> {
+fn require_one_array(args: &[RuntimeValue]) -> Result<&[serde_json::Value], Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
         got: 0,
@@ -51,9 +51,9 @@ fn require_one_array<'a>(args: &'a [RuntimeValue]) -> Result<&'a [serde_json::Va
     require_array(arg)
 }
 
-fn require_two_arrays<'a>(
-    args: &'a [RuntimeValue],
-) -> Result<(&'a [serde_json::Value], &'a [serde_json::Value]), Error> {
+fn require_two_arrays(
+    args: &[RuntimeValue],
+) -> Result<(&[serde_json::Value], &[serde_json::Value]), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
@@ -94,7 +94,10 @@ macro_rules! array_unary_fn {
     };
 }
 
-array_unary_fn!(Length, |input: &[serde_json::Value]| num(input.len() as f64));
+array_unary_fn!(
+    Length,
+    |input: &[serde_json::Value]| num(input.len() as f64)
+);
 array_unary_fn!(Reverse, |input: &[serde_json::Value]| {
     let reversed: Vec<serde_json::Value> = input.iter().rev().cloned().collect();
     arr(&reversed)
@@ -122,17 +125,11 @@ array_unary_fn!(Flatten, |input: &[serde_json::Value]| {
     arr(&flat)
 });
 array_unary_fn!(Sum, |input: &[serde_json::Value]| {
-    let total: f64 = input
-        .iter()
-        .filter_map(|v| v.as_f64())
-        .sum();
+    let total: f64 = input.iter().filter_map(|v| v.as_f64()).sum();
     num(total)
 });
 array_unary_fn!(Avg, |input: &[serde_json::Value]| {
-    let numbers: Vec<f64> = input
-        .iter()
-        .filter_map(|v| v.as_f64())
-        .collect();
+    let numbers: Vec<f64> = input.iter().filter_map(|v| v.as_f64()).collect();
     if numbers.is_empty() {
         num(0.0)
     } else {
@@ -140,20 +137,14 @@ array_unary_fn!(Avg, |input: &[serde_json::Value]| {
     }
 });
 array_unary_fn!(Min, |input: &[serde_json::Value]| {
-    let numbers: Vec<f64> = input
-        .iter()
-        .filter_map(|v| v.as_f64())
-        .collect();
+    let numbers: Vec<f64> = input.iter().filter_map(|v| v.as_f64()).collect();
     match numbers.iter().copied().min_by(|a, c| a.total_cmp(c)) {
         Some(m) => num(m),
         None => RuntimeValue::new(serde_json::Value::Null),
     }
 });
 array_unary_fn!(Max, |input: &[serde_json::Value]| {
-    let numbers: Vec<f64> = input
-        .iter()
-        .filter_map(|v| v.as_f64())
-        .collect();
+    let numbers: Vec<f64> = input.iter().filter_map(|v| v.as_f64()).collect();
     match numbers.iter().copied().max_by(|a, c| a.total_cmp(c)) {
         Some(m) => num(m),
         None => RuntimeValue::new(serde_json::Value::Null),
@@ -221,18 +212,14 @@ impl Function for Slice {
             });
         }
         let array = require_array(&args[0])?;
-        let start = args[1]
-            .as_number()
-            .ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })? as usize;
-        let end = args[2]
-            .as_number()
-            .ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number",
-            })? as usize;
+        let start = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })? as usize;
+        let end = args[2].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })? as usize;
         let end = end.min(array.len());
         let start = start.min(end);
         Ok(arr(&array[start..end]))
@@ -245,20 +232,16 @@ impl Function for Sort {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let input = require_one_array(args)?;
         let mut sorted: Vec<serde_json::Value> = input.to_vec();
-        sorted.sort_by(|a, c| {
-            match (a.as_f64(), c.as_f64()) {
-                (Some(an), Some(cn)) => {
-                    an.partial_cmp(&cn).unwrap_or(std::cmp::Ordering::Equal)
-                }
+        sorted.sort_by(|a, c| match (a.as_f64(), c.as_f64()) {
+            (Some(an), Some(cn)) => an.partial_cmp(&cn).unwrap_or(std::cmp::Ordering::Equal),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            _ => match (a.as_str(), c.as_str()) {
+                (Some(as_), Some(cs)) => as_.cmp(cs),
                 (Some(_), None) => std::cmp::Ordering::Less,
                 (None, Some(_)) => std::cmp::Ordering::Greater,
-                _ => match (a.as_str(), c.as_str()) {
-                    (Some(as_), Some(cs)) => as_.cmp(cs),
-                    (Some(_), None) => std::cmp::Ordering::Less,
-                    (None, Some(_)) => std::cmp::Ordering::Greater,
-                    _ => std::cmp::Ordering::Equal,
-                },
-            }
+                _ => std::cmp::Ordering::Equal,
+            },
         });
         Ok(arr(&sorted))
     }

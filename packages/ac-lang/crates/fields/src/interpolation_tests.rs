@@ -7,7 +7,10 @@ use ac_dialect_canonical::AC_DIALECT;
 fn interpolate_basic() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), serde_json::json!({"name": "alice"}));
-    ns.insert("env".to_string(), serde_json::json!({"HOME": "/home/alice"}));
+    ns.insert(
+        "env".to_string(),
+        serde_json::json!({"HOME": "/home/alice"}),
+    );
 
     let value = serde_json::json!({
         "greeting": "hello, ${doc.name}!",

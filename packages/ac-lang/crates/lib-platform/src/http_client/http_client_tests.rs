@@ -35,10 +35,7 @@ fn module_name() {
 
 #[test]
 fn get() {
-    let client = StubHttpClient::with(
-        "https://example.com",
-        HttpResponse::new(200, "ok"),
-    );
+    let client = StubHttpClient::with("https://example.com", HttpResponse::new(200, "ok"));
     let module = HttpClientModule::new(client);
     let result = call(&module, "get", &[s("https://example.com")]);
     let obj = result.inner();
@@ -49,10 +46,7 @@ fn get() {
 
 #[test]
 fn get_with_headers() {
-    let client = StubHttpClient::with(
-        "https://example.com",
-        HttpResponse::new(200, "ok"),
-    );
+    let client = StubHttpClient::with("https://example.com", HttpResponse::new(200, "ok"));
     let module = HttpClientModule::new(client);
     let headers = o(&[("Authorization", "Bearer token123")]);
     let result = call(&module, "get", &[s("https://example.com"), headers]);
@@ -62,10 +56,7 @@ fn get_with_headers() {
 
 #[test]
 fn post() {
-    let client = StubHttpClient::with(
-        "https://api.com",
-        HttpResponse::new(201, "created"),
-    );
+    let client = StubHttpClient::with("https://api.com", HttpResponse::new(201, "created"));
     let module = HttpClientModule::new(client);
     let result = call(&module, "post", &[s("https://api.com"), s("payload")]);
     let obj = result.inner();
@@ -76,25 +67,27 @@ fn post() {
 
 #[test]
 fn post_with_headers() {
-    let client = StubHttpClient::with(
-        "https://api.com",
-        HttpResponse::new(201, "created"),
-    );
+    let client = StubHttpClient::with("https://api.com", HttpResponse::new(201, "created"));
     let module = HttpClientModule::new(client);
     let headers = o(&[("Content-Type", "application/json")]);
-    let result = call(&module, "post", &[s("https://api.com"), s("payload"), headers]);
+    let result = call(
+        &module,
+        "post",
+        &[s("https://api.com"), s("payload"), headers],
+    );
     let obj = result.inner();
     assert_eq!(obj["status"], 201);
 }
 
 #[test]
 fn put() {
-    let client = StubHttpClient::with(
-        "https://api.com/items/1",
-        HttpResponse::new(200, "updated"),
-    );
+    let client = StubHttpClient::with("https://api.com/items/1", HttpResponse::new(200, "updated"));
     let module = HttpClientModule::new(client);
-    let result = call(&module, "put", &[s("https://api.com/items/1"), s("payload")]);
+    let result = call(
+        &module,
+        "put",
+        &[s("https://api.com/items/1"), s("payload")],
+    );
     let obj = result.inner();
     assert_eq!(obj["status"], 200);
     assert_eq!(obj["body"], "updated");
@@ -102,12 +95,13 @@ fn put() {
 
 #[test]
 fn patch() {
-    let client = StubHttpClient::with(
-        "https://api.com/items/1",
-        HttpResponse::new(200, "patched"),
-    );
+    let client = StubHttpClient::with("https://api.com/items/1", HttpResponse::new(200, "patched"));
     let module = HttpClientModule::new(client);
-    let result = call(&module, "patch", &[s("https://api.com/items/1"), s("payload")]);
+    let result = call(
+        &module,
+        "patch",
+        &[s("https://api.com/items/1"), s("payload")],
+    );
     let obj = result.inner();
     assert_eq!(obj["status"], 200);
     assert_eq!(obj["body"], "patched");
@@ -115,10 +109,7 @@ fn patch() {
 
 #[test]
 fn delete() {
-    let client = StubHttpClient::with(
-        "https://api.com/items/1",
-        HttpResponse::new(204, ""),
-    );
+    let client = StubHttpClient::with("https://api.com/items/1", HttpResponse::new(204, ""));
     let module = HttpClientModule::new(client);
     let result = call(&module, "delete", &[s("https://api.com/items/1")]);
     let obj = result.inner();
@@ -129,10 +120,7 @@ fn delete() {
 
 #[test]
 fn delete_with_headers() {
-    let client = StubHttpClient::with(
-        "https://api.com/items/1",
-        HttpResponse::new(204, ""),
-    );
+    let client = StubHttpClient::with("https://api.com/items/1", HttpResponse::new(204, ""));
     let module = HttpClientModule::new(client);
     let headers = o(&[("Authorization", "Bearer token")]);
     let result = call(&module, "delete", &[s("https://api.com/items/1"), headers]);
@@ -142,10 +130,7 @@ fn delete_with_headers() {
 
 #[test]
 fn head() {
-    let client = StubHttpClient::with(
-        "https://example.com",
-        HttpResponse::new(200, ""),
-    );
+    let client = StubHttpClient::with("https://example.com", HttpResponse::new(200, ""));
     let module = HttpClientModule::new(client);
     let result = call(&module, "head", &[s("https://example.com")]);
     let obj = result.inner();
@@ -154,12 +139,13 @@ fn head() {
 
 #[test]
 fn request_get_with_null_body() {
-    let client = StubHttpClient::with(
-        "https://example.com",
-        HttpResponse::new(200, "ok"),
-    );
+    let client = StubHttpClient::with("https://example.com", HttpResponse::new(200, "ok"));
     let module = HttpClientModule::new(client);
-    let result = call(&module, "request", &[s("GET"), s("https://example.com"), null(), null()]);
+    let result = call(
+        &module,
+        "request",
+        &[s("GET"), s("https://example.com"), null(), null()],
+    );
     let obj = result.inner();
     assert_eq!(obj["status"], 200);
     assert_eq!(obj["body"], "ok");
@@ -167,27 +153,27 @@ fn request_get_with_null_body() {
 
 #[test]
 fn request_post_with_body_and_headers() {
-    let client = StubHttpClient::with(
-        "https://api.com",
-        HttpResponse::new(201, "created"),
-    );
+    let client = StubHttpClient::with("https://api.com", HttpResponse::new(201, "created"));
     let module = HttpClientModule::new(client);
     let headers = o(&[("Content-Type", "application/json")]);
-    let result = call(&module, "request", &[
-        s("POST"), s("https://api.com"), s("payload"), headers,
-    ]);
+    let result = call(
+        &module,
+        "request",
+        &[s("POST"), s("https://api.com"), s("payload"), headers],
+    );
     let obj = result.inner();
     assert_eq!(obj["status"], 201);
 }
 
 #[test]
 fn request_case_insensitive_method() {
-    let client = StubHttpClient::with(
-        "https://example.com",
-        HttpResponse::new(200, "ok"),
-    );
+    let client = StubHttpClient::with("https://example.com", HttpResponse::new(200, "ok"));
     let module = HttpClientModule::new(client);
-    let result = call(&module, "request", &[s("get"), s("https://example.com"), null(), null()]);
+    let result = call(
+        &module,
+        "request",
+        &[s("get"), s("https://example.com"), null(), null()],
+    );
     let obj = result.inner();
     assert_eq!(obj["status"], 200);
 }
@@ -198,7 +184,10 @@ fn request_unknown_method() {
     let func = module.function("request").unwrap();
     let mut ctx = Context::new();
     let err = func
-        .call(&[s("BOGUS"), s("https://example.com"), null(), null()], &mut ctx)
+        .call(
+            &[s("BOGUS"), s("https://example.com"), null(), null()],
+            &mut ctx,
+        )
         .unwrap_err();
     match err {
         ac_vm::Error::PrimitiveError(msg) => assert!(msg.contains("unknown HTTP method")),
@@ -223,10 +212,7 @@ fn response_headers() {
 
 #[test]
 fn response_ok_false_for_4xx() {
-    let client = StubHttpClient::with(
-        "https://example.com",
-        HttpResponse::new(404, "not found"),
-    );
+    let client = StubHttpClient::with("https://example.com", HttpResponse::new(404, "not found"));
     let module = HttpClientModule::new(client);
     let result = call(&module, "get", &[s("https://example.com")]);
     let obj = result.inner();
@@ -254,9 +240,7 @@ fn get_not_found() {
     let module = HttpClientModule::new(StubHttpClient::default());
     let func = module.function("get").unwrap();
     let mut ctx = Context::new();
-    let err = func
-        .call(&[s("https://nope.com")], &mut ctx)
-        .unwrap_err();
+    let err = func.call(&[s("https://nope.com")], &mut ctx).unwrap_err();
     match err {
         ac_vm::Error::PrimitiveError(msg) => assert!(msg.contains("no canned response")),
         other => panic!("expected PrimitiveError, got {other:?}"),

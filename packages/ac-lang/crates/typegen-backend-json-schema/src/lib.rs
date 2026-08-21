@@ -17,7 +17,7 @@ use serde_json::Value as JsonValue;
 use ac_typegen_core::{TypegenBackend, TypegenContext};
 
 pub use compose::compose_schema;
-pub use emit::{write_schema_file, inject_schema_comment};
+pub use emit::{inject_schema_comment, write_schema_file};
 
 /// JSON Schema backend. Produces `JsonValue` output.
 #[derive(Debug, Clone, Copy, Default)]

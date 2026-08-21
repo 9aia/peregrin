@@ -46,6 +46,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-codebase"
+version = "0.1.0"
+dependencies = [
+ "ac-runtime",
+ "ac-store",
+ "hex",
+ "serde_json",
+ "sha2",
+]
+
+[[package]]
 name = "ac-compiler"
 version = "0.1.0"
 dependencies = [
@@ -304,10 +315,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-integration-tests"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-codebase",
+ "ac-host-cache",
+ "ac-runtime",
+ "ac-store",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
 name = "ac-lang"
 version = "0.1.0"
 dependencies = [
  "ac-ast",
+ "ac-codebase",
  "ac-compiler",
  "ac-compiler-core",
  "ac-dialect",
@@ -330,6 +355,7 @@ dependencies = [
  "ac-runtime",
  "ac-runtime-core",
  "ac-source",
+ "ac-store",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
@@ -506,6 +532,17 @@ name = "ac-source"
 version = "0.1.0"
 dependencies = [
  "serde_json",
+]
+
+[[package]]
+name = "ac-store"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-runtime",
+ "hex",
+ "serde_json",
+ "sha2",
 ]
 
 [[package]]

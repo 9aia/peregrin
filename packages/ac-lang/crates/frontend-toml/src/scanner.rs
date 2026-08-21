@@ -22,15 +22,20 @@ pub fn build_source_map(input: &str, value: &Value) -> SourceMap {
     let sections = find_sections(input, &lines);
 
     // Second pass: walk the value tree and resolve each key
-    walk_value(value, "", &mut |_path, key, parent_path| {
-        let section_line = sections
-            .iter()
-            .find(|s| s.path == parent_path)
-            .map(|s| s.line_start);
+    walk_value(
+        value,
+        "",
+        &mut |_path, key, parent_path| {
+            let section_line = sections
+                .iter()
+                .find(|s| s.path == parent_path)
+                .map(|s| s.line_start);
 
-        let search_from = section_line.unwrap_or(0);
-        find_toml_key(input, &lines, key, search_from)
-    }, &mut map);
+            let search_from = section_line.unwrap_or(0);
+            find_toml_key(input, &lines, key, search_from)
+        },
+        &mut map,
+    );
 
     map
 }
@@ -56,14 +61,8 @@ fn find_sections(source: &str, lines: &LineIndex) -> Vec<Section> {
         if trimmed.starts_with('[') {
             let inner = trimmed.trim_start_matches('[').trim_end_matches(']').trim();
             // Remove surrounding quotes if present
-            let path = inner
-                .trim_matches('"')
-                .trim_matches('\'')
-                .to_string();
-            sections.push(Section {
-                path,
-                line_start,
-            });
+            let path = inner.trim_matches('"').trim_matches('\'').to_string();
+            sections.push(Section { path, line_start });
         }
     }
 

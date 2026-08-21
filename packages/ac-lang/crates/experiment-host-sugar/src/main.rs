@@ -6,7 +6,7 @@ use std::collections::HashMap;
 
 use ac_compiler::VmResolver;
 use ac_dialect_canonical::AC_DIALECT;
-use ac_fields::{DEFAULT_NAMESPACE, eval_expression, build_doc_namespace};
+use ac_fields::{DEFAULT_NAMESPACE, build_doc_namespace, eval_expression};
 use ac_host::DefaultHost;
 use ac_module_resolver_file::FileResolver;
 use ac_module_resolver_memory::MemoryModuleCache;

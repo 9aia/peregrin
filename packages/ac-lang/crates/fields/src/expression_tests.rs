@@ -18,7 +18,13 @@ fn eval_body_composed_functions() {
     let ns = Namespaces::new();
 
     let params = vec![("x".to_string(), serde_json::json!(5))];
-    let result = eval_body("double(double(x))", &params, &ns, &MathResolver, &AC_DIALECT);
+    let result = eval_body(
+        "double(double(x))",
+        &params,
+        &ns,
+        &MathResolver,
+        &AC_DIALECT,
+    );
     assert_eq!(result.unwrap().as_f64(), Some(20.0));
 }
 
@@ -28,7 +34,13 @@ fn eval_body_with_doc_namespace() {
     ns.insert("doc".to_string(), serde_json::json!({"version": 3}));
 
     let params = vec![("x".to_string(), serde_json::json!(2))];
-    let result = eval_body("mul(x, doc.version)", &params, &ns, &MulResolver, &AC_DIALECT);
+    let result = eval_body(
+        "mul(x, doc.version)",
+        &params,
+        &ns,
+        &MulResolver,
+        &AC_DIALECT,
+    );
     assert_eq!(result.unwrap().as_f64(), Some(6.0));
 }
 
@@ -63,7 +75,11 @@ fn call_function_value_from_param() {
     };
     ns.insert("doc".to_string(), fn_val.to_json());
 
-    let resolver = ApplyResolver { inner: &MulResolver, namespaces: &ns, dialect: &AC_DIALECT };
+    let resolver = ApplyResolver {
+        inner: &MulResolver,
+        namespaces: &ns,
+        dialect: &AC_DIALECT,
+    };
     let result = eval_expression("doc(5)", &ns, &resolver, &AC_DIALECT);
     assert_eq!(result.unwrap().as_f64(), Some(10.0));
 }
@@ -80,7 +96,11 @@ fn call_function_value_from_shorthand() {
     doc.insert("transform".to_string(), fn_val.to_json());
     ns.insert("doc".to_string(), serde_json::Value::Object(doc));
 
-    let resolver = ApplyResolver { inner: &MulResolver, namespaces: &ns, dialect: &AC_DIALECT };
+    let resolver = ApplyResolver {
+        inner: &MulResolver,
+        namespaces: &ns,
+        dialect: &AC_DIALECT,
+    };
     let result = eval_expression("transform(4)", &ns, &resolver, &AC_DIALECT);
     assert_eq!(result.unwrap().as_f64(), Some(12.0));
 }
@@ -97,7 +117,11 @@ fn call_function_value_nested_in_body() {
     doc.insert("double".to_string(), double_fn.to_json());
     ns.insert("doc".to_string(), serde_json::Value::Object(doc));
 
-    let resolver = ApplyResolver { inner: &MulResolver, namespaces: &ns, dialect: &AC_DIALECT };
+    let resolver = ApplyResolver {
+        inner: &MulResolver,
+        namespaces: &ns,
+        dialect: &AC_DIALECT,
+    };
     let result = eval_expression("mul(double(5), 3)", &ns, &resolver, &AC_DIALECT);
     assert_eq!(result.unwrap().as_f64(), Some(30.0));
 }

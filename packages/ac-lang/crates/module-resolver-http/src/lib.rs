@@ -11,12 +11,12 @@
 //! Relative paths are resolved against the base URL (the URL of the
 //! importing document).
 
-mod url;
 mod http_resolver;
+mod url;
 
 pub use http_resolver::HttpResolver;
 
 #[cfg(test)]
-mod url_tests;
-#[cfg(test)]
 mod lib_tests;
+#[cfg(test)]
+mod url_tests;

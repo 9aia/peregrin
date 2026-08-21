@@ -11,7 +11,10 @@ fn source_new_without_path() {
 #[test]
 fn source_with_path_sets_path() {
     let source = Source::new("name: ac", "yaml").with_path("/tmp/test.yaml");
-    assert_eq!(source.path, Some(std::path::PathBuf::from("/tmp/test.yaml")));
+    assert_eq!(
+        source.path,
+        Some(std::path::PathBuf::from("/tmp/test.yaml"))
+    );
 }
 
 #[test]

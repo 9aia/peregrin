@@ -38,7 +38,14 @@ fn resolves_static_import() {
     let merge = vec!["import".to_string()];
     let data = json!({});
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
+    let results = resolve_imports(
+        &schemas,
+        &merge,
+        &data,
+        &resolver,
+        None,
+        AC_DIALECT.document_vocabulary(),
+    );
 
     assert_eq!(results.len(), 1);
     let (path, fields) = &results[0];
@@ -67,7 +74,14 @@ fn resolves_data_driven_import() {
     let merge = vec!["import".to_string()];
     let data = json!({ "import": "base.yml" });
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
+    let results = resolve_imports(
+        &schemas,
+        &merge,
+        &data,
+        &resolver,
+        None,
+        AC_DIALECT.document_vocabulary(),
+    );
 
     assert_eq!(results.len(), 1);
     let (_, fields) = &results[0];
@@ -79,21 +93,26 @@ fn resolves_data_driven_import() {
 fn skips_non_import_merge_field() {
     let resolver = make_resolver();
 
-    let schemas = vec![
-        (
-            "config".to_string(),
-            json!({
-                "type": "object",
-                "arg": { "type": "object" },
-                "expr": "arg",
-                "merge": true
-            }),
-        ),
-    ];
+    let schemas = vec![(
+        "config".to_string(),
+        json!({
+            "type": "object",
+            "arg": { "type": "object" },
+            "expr": "arg",
+            "merge": true
+        }),
+    )];
     let merge = vec!["config".to_string()];
     let data = json!({});
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
+    let results = resolve_imports(
+        &schemas,
+        &merge,
+        &data,
+        &resolver,
+        None,
+        AC_DIALECT.document_vocabulary(),
+    );
     assert!(results.is_empty());
 }
 
@@ -101,20 +120,25 @@ fn skips_non_import_merge_field() {
 fn handles_missing_module_gracefully() {
     let resolver = VirtualResolver::new();
 
-    let schemas = vec![
-        (
-            "import".to_string(),
-            json!({
-                "type": "object",
-                "expr": "import('nonexistent.yml')",
-                "merge": true
-            }),
-        ),
-    ];
+    let schemas = vec![(
+        "import".to_string(),
+        json!({
+            "type": "object",
+            "expr": "import('nonexistent.yml')",
+            "merge": true
+        }),
+    )];
     let merge = vec!["import".to_string()];
     let data = json!({});
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
+    let results = resolve_imports(
+        &schemas,
+        &merge,
+        &data,
+        &resolver,
+        None,
+        AC_DIALECT.document_vocabulary(),
+    );
     assert!(results.is_empty());
 }
 
@@ -134,20 +158,25 @@ fn strips_ac_keys_from_imported_schemas() {
         }),
     );
 
-    let schemas = vec![
-        (
-            "import".to_string(),
-            json!({
-                "type": "object",
-                "expr": "import('base3.yml')",
-                "merge": true
-            }),
-        ),
-    ];
+    let schemas = vec![(
+        "import".to_string(),
+        json!({
+            "type": "object",
+            "expr": "import('base3.yml')",
+            "merge": true
+        }),
+    )];
     let merge = vec!["import".to_string()];
     let data = json!({});
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
+    let results = resolve_imports(
+        &schemas,
+        &merge,
+        &data,
+        &resolver,
+        None,
+        AC_DIALECT.document_vocabulary(),
+    );
 
     assert_eq!(results.len(), 1);
     let (_, fields) = &results[0];
@@ -181,20 +210,25 @@ fn resolves_nested_imports() {
         }),
     );
 
-    let schemas = vec![
-        (
-            "import".to_string(),
-            json!({
-                "type": "object",
-                "expr": "import('parent.yml')",
-                "merge": true
-            }),
-        ),
-    ];
+    let schemas = vec![(
+        "import".to_string(),
+        json!({
+            "type": "object",
+            "expr": "import('parent.yml')",
+            "merge": true
+        }),
+    )];
     let merge = vec!["import".to_string()];
     let data = json!({});
 
-    let results = resolve_imports(&schemas, &merge, &data, &resolver, None, AC_DIALECT.document_vocabulary());
+    let results = resolve_imports(
+        &schemas,
+        &merge,
+        &data,
+        &resolver,
+        None,
+        AC_DIALECT.document_vocabulary(),
+    );
 
     assert_eq!(results.len(), 1);
     let (_, fields) = &results[0];

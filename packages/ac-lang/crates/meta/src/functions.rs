@@ -15,9 +15,10 @@ pub struct TypeOf;
 
 impl Function for TypeOf {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let v = args
-            .first()
-            .ok_or(Error::ArgumentCount { expected: 1, got: 0 })?;
+        let v = args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?;
         let type_name = match v.inner() {
             JsonValue::Null => "null",
             JsonValue::Bool(_) => "boolean",
@@ -42,9 +43,10 @@ pub struct Keys;
 
 impl Function for Keys {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let v = args
-            .first()
-            .ok_or(Error::ArgumentCount { expected: 1, got: 0 })?;
+        let v = args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?;
         let obj = v.as_object().ok_or(Error::TypeMismatch {
             expected: "object",
             got: "non-object",
@@ -61,9 +63,10 @@ pub struct IsFunction;
 
 impl Function for IsFunction {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let v = args
-            .first()
-            .ok_or(Error::ArgumentCount { expected: 1, got: 0 })?;
+        let v = args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?;
         Ok(RuntimeValue::new(v.is_function()))
     }
 }
@@ -114,10 +117,9 @@ impl Function for Parse {
                 expected: "string",
                 got: "non-string",
             })?;
-        let ast = parse_expr_to_json(expr_str, &AC_DIALECT)
-            .ok_or(Error::PrimitiveError(format!(
-                "parse(): failed to parse expression: {expr_str}"
-            )))?;
+        let ast = parse_expr_to_json(expr_str, &AC_DIALECT).ok_or(Error::PrimitiveError(
+            format!("parse(): failed to parse expression: {expr_str}"),
+        ))?;
         Ok(RuntimeValue::new(ast))
     }
 }
@@ -129,13 +131,13 @@ pub struct AstToString;
 
 impl Function for AstToString {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let ast = args
-            .first()
-            .ok_or(Error::ArgumentCount { expected: 1, got: 0 })?;
-        let s = ast_to_string_inner(ast.inner(), &AC_DIALECT)
-            .ok_or(Error::PrimitiveError(
-                "ast_to_string(): invalid AST structure".to_string(),
-            ))?;
+        let ast = args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?;
+        let s = ast_to_string_inner(ast.inner(), &AC_DIALECT).ok_or(Error::PrimitiveError(
+            "ast_to_string(): invalid AST structure".to_string(),
+        ))?;
         Ok(RuntimeValue::new(s))
     }
 }
@@ -147,9 +149,10 @@ pub struct AstName;
 
 impl Function for AstName {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let ast = args
-            .first()
-            .ok_or(Error::ArgumentCount { expected: 1, got: 0 })?;
+        let ast = args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?;
         let obj = ast.as_object().ok_or(Error::TypeMismatch {
             expected: "object",
             got: "non-object",
@@ -175,9 +178,10 @@ pub struct AstArgs;
 
 impl Function for AstArgs {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let ast = args
-            .first()
-            .ok_or(Error::ArgumentCount { expected: 1, got: 0 })?;
+        let ast = args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?;
         let obj = ast.as_object().ok_or(Error::TypeMismatch {
             expected: "object",
             got: "non-object",
@@ -203,9 +207,10 @@ pub struct AstIsCall;
 
 impl Function for AstIsCall {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        let ast = args
-            .first()
-            .ok_or(Error::ArgumentCount { expected: 1, got: 0 })?;
+        let ast = args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?;
         let is_call = ast
             .as_object()
             .is_some_and(|obj| obj.get("kind").is_some_and(|k| k.as_str() == Some("call")));

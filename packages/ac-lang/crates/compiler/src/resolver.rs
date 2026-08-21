@@ -14,7 +14,7 @@ use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, APPLY_FUNCTION, FunctionResolver};
 use ac_host::DefaultHost;
-use ac_module_resolver_core::{ModuleResolver, IMPORT_FUNCTION};
+use ac_module_resolver_core::{IMPORT_FUNCTION, ModuleResolver};
 use ac_runtime::{FunctionValue, RuntimeValue};
 use ac_vm::{Context, Vm};
 
@@ -45,7 +45,9 @@ impl<'a> FunctionResolver for VmResolver<'a> {
     fn call(&self, name: &str, args: &[serde_json::Value]) -> Result<serde_json::Value, String> {
         let depth = self.depth.get();
         if depth >= MAX_DEPTH {
-            return Err(format!("maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"));
+            return Err(format!(
+                "maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"
+            ));
         }
         self.depth.set(depth + 1);
         let result = self.call_inner(name, args);
@@ -55,7 +57,11 @@ impl<'a> FunctionResolver for VmResolver<'a> {
 }
 
 impl<'a> VmResolver<'a> {
-    fn call_inner(&self, name: &str, args: &[serde_json::Value]) -> Result<serde_json::Value, String> {
+    fn call_inner(
+        &self,
+        name: &str,
+        args: &[serde_json::Value],
+    ) -> Result<serde_json::Value, String> {
         if name == IMPORT_FUNCTION {
             return self.call_import(args);
         }
@@ -116,11 +122,14 @@ impl<'a> VmResolver<'a> {
             .map(|((pname, _), arg)| (pname.clone(), arg.clone()))
             .collect();
 
-        let result = ac_fields::eval_body(&fn_val.body, &params, &self.namespaces, self, &AC_DIALECT)
-            .ok_or_else(|| "apply(): failed to evaluate function body".to_string())?;
+        let result =
+            ac_fields::eval_body(&fn_val.body, &params, &self.namespaces, self, &AC_DIALECT)
+                .ok_or_else(|| "apply(): failed to evaluate function body".to_string())?;
 
         if let Some(ret_raw) = &fn_val.return_schema {
-            let ret_schema = AC_DIALECT.schema_vocabulary().compile(ret_raw)
+            let ret_schema = AC_DIALECT
+                .schema_vocabulary()
+                .compile(ret_raw)
                 .map_err(|e| format!("invalid return schema: {e}"))?;
             ac_fields::validate_return(&RuntimeValue::new(result.clone()), ret_schema.as_ref())?;
         }
@@ -143,9 +152,9 @@ impl<'a> VmResolver<'a> {
             return Ok(cached.clone());
         }
 
-        let resolver = self.resolver.ok_or_else(|| {
-            "import(): no module resolver configured".to_string()
-        })?;
+        let resolver = self
+            .resolver
+            .ok_or_else(|| "import(): no module resolver configured".to_string())?;
 
         let module = resolver
             .resolve(path_str, self.base_path.as_deref())

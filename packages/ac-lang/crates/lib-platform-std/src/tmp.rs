@@ -1,5 +1,4 @@
 use std::fs;
-use std::path::PathBuf;
 
 use ac_lib_platform::{PlatformError, Tmp};
 

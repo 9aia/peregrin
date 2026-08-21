@@ -1,8 +1,8 @@
 use ac_runtime::RuntimeValue;
 use ac_vm::{Context, Host, Vm};
 
-use crate::module::module_stub::StubModule;
 use crate::host::ModuleHost;
+use crate::module::module_stub::StubModule;
 
 use ac_ast::Expr;
 

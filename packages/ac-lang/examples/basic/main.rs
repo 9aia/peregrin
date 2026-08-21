@@ -20,11 +20,17 @@ impl Function for Add {
         let a = args
             .first()
             .and_then(|v| v.as_number())
-            .ok_or(Error::ArgumentCount { expected: 2, got: args.len() })?;
+            .ok_or(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            })?;
         let b = args
             .get(1)
             .and_then(|v| v.as_number())
-            .ok_or(Error::ArgumentCount { expected: 2, got: args.len() })?;
+            .ok_or(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            })?;
         Ok(RuntimeValue::new(serde_json::json!(a + b)))
     }
 }
@@ -41,7 +47,7 @@ impl Function for Concat {
                     return Err(Error::TypeMismatch {
                         expected: "string",
                         got: "non-string",
-                    })
+                    });
                 }
             }
         }
@@ -76,8 +82,7 @@ fn main() {
     let mut ctx = Context::new();
 
     // Parse YAML input from examples/basic/input.yml
-    let yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("examples/basic/input.yml");
+    let yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/basic/input.yml");
     let yaml_input = std::fs::read_to_string(&yaml_path)
         .unwrap_or_else(|_| panic!("failed to read {}", yaml_path.display()));
     let value = ac_frontend_yaml::parse(&yaml_input).unwrap();
@@ -85,9 +90,18 @@ fn main() {
     println!("{}", ac_frontend_yaml::to_string(&value).unwrap());
 
     // Evaluate: add(1, 2)
-    let expr = Expr::call("add", vec![Expr::value(RuntimeValue::new(1.0)), Expr::value(RuntimeValue::new(2.0))]);
+    let expr = Expr::call(
+        "add",
+        vec![
+            Expr::value(RuntimeValue::new(1.0)),
+            Expr::value(RuntimeValue::new(2.0)),
+        ],
+    );
     let result = vm.eval(&expr, &mut ctx).unwrap();
-    println!("add(1, 2) = {}", ac_frontend_yaml::to_string(&result).unwrap().trim());
+    println!(
+        "add(1, 2) = {}",
+        ac_frontend_yaml::to_string(&result).unwrap().trim()
+    );
 
     // Evaluate: concat("hello, ", "world")
     let expr = Expr::call(
@@ -98,7 +112,10 @@ fn main() {
         ],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
-    println!("concat(\"hello, \", \"world\") = {}", ac_frontend_yaml::to_string(&result).unwrap().trim());
+    println!(
+        "concat(\"hello, \", \"world\") = {}",
+        ac_frontend_yaml::to_string(&result).unwrap().trim()
+    );
 
     println!("\nAll assertions passed.");
 }

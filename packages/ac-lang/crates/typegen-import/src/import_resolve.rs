@@ -4,10 +4,10 @@ use ac_dialect::DocumentVocabulary;
 use serde_json::Value as JsonValue;
 
 use ac_module_resolver_core::ModuleResolver;
-use ac_typegen_core::strip_keys;
 use ac_typegen_core::get_expr;
+use ac_typegen_core::strip_keys;
 
-use crate::import_detect::{detect_import_path, extract_data_path, ImportKind};
+use crate::import_detect::{ImportKind, detect_import_path, extract_data_path};
 
 /// Resolve imports from merge fields.
 ///

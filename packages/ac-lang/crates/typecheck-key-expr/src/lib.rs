@@ -11,7 +11,7 @@
 
 mod check;
 
-pub use check::{check, check_field, check_field_cached, get_expr, KEY};
+pub use check::{KEY, check, check_field, check_field_cached, get_expr};
 
 #[cfg(test)]
 mod lib_tests;

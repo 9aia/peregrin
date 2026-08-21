@@ -42,10 +42,7 @@ fn resolve_absolute() {
 #[test]
 fn resolve_relative() {
     let module = PathModule::new(StubPath::default());
-    assert_eq!(
-        call(&module, "resolve", &[s("rel")]).as_str(),
-        Some("/rel")
-    );
+    assert_eq!(call(&module, "resolve", &[s("rel")]).as_str(), Some("/rel"));
 }
 
 #[test]
@@ -78,10 +75,7 @@ fn extname() {
 #[test]
 fn extname_no_extension() {
     let module = PathModule::new(StubPath::default());
-    assert_eq!(
-        call(&module, "extname", &[s("README")]).as_str(),
-        Some("")
-    );
+    assert_eq!(call(&module, "extname", &[s("README")]).as_str(), Some(""));
 }
 
 #[test]

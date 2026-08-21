@@ -22,10 +22,10 @@ use std::collections::HashMap;
 
 use ac_dialect::Dialect;
 
-pub use parser::{parse_expr, ExprAst};
+pub use parser::{ExprAst, parse_expr};
 pub use table::{FunctionTable, RawFnSig};
 
-use ac_typecheck_core::{is_compatible, FunctionType, Type, TypeEnv};
+use ac_typecheck_core::{FunctionType, Type, TypeEnv, is_compatible};
 
 /// The conventional name of the default namespace used for shorthand
 /// path resolution in type inference (bare `name` → `DEFAULT_NAMESPACE.name`).
@@ -76,13 +76,16 @@ pub fn infer_cached(
 }
 
 /// Infer the type of a parsed expression AST.
-pub fn infer_ast(ast: &ExprAst, env: &TypeEnv, functions: &FunctionTable, dialect: &dyn Dialect) -> Type {
+pub fn infer_ast(
+    ast: &ExprAst,
+    env: &TypeEnv,
+    functions: &FunctionTable,
+    dialect: &dyn Dialect,
+) -> Type {
     match ast {
         ExprAst::Literal(ty) => ty.clone(),
 
-        ExprAst::Path(path) => {
-            resolve_path_type(path, env, dialect)
-        }
+        ExprAst::Path(path) => resolve_path_type(path, env, dialect),
 
         ExprAst::Call(name, args) => {
             let arg_types: Vec<Type> = args
@@ -92,7 +95,7 @@ pub fn infer_ast(ast: &ExprAst, env: &TypeEnv, functions: &FunctionTable, dialec
 
             // Try named function table first.
             if let Some(fn_type) = functions.lookup(name) {
-                return check_call(&fn_type, &arg_types);
+                return check_call(fn_type, &arg_types);
             }
 
             // Try resolving as a path to a function-typed value.

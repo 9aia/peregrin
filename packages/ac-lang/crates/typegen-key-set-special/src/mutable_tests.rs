@@ -2,14 +2,15 @@ use serde_json::json;
 
 use ac_typegen_core::TypegenContext;
 
-use ac_dialect::dialect::dialect_stub::stub_vocab;
 use crate::mutable;
+use ac_dialect::dialect::dialect_stub::stub_vocab;
 
 #[test]
 fn strip_removes_mutable_key() {
-    let schemas = vec![
-        ("port".to_string(), json!({ "type": "number", "mutable": false })),
-    ];
+    let schemas = vec![(
+        "port".to_string(),
+        json!({ "type": "number", "mutable": false }),
+    )];
     let mut ctx = TypegenContext::from_schemas(&schemas);
     mutable::strip_key(&mut ctx, stub_vocab());
     let schema = &ctx.fields["port"];

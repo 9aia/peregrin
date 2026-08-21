@@ -63,13 +63,13 @@
 
 #![allow(clippy::module_inception)]
 
+mod cmd;
+mod env;
 mod error;
 mod fs;
-mod env;
+mod http_client;
 mod path;
 mod time;
-mod http_client;
-mod cmd;
 mod tmp;
 
 pub use error::PlatformError;
@@ -88,9 +88,9 @@ pub use time::TimeModule;
 
 pub use http_client::HttpClient;
 pub use http_client::HttpClientModule;
+pub use http_client::HttpMethod;
 pub use http_client::HttpRequest;
 pub use http_client::HttpResponse;
-pub use http_client::HttpMethod;
 
 pub use cmd::Cmd;
 pub use cmd::CmdModule;
@@ -100,10 +100,10 @@ pub use tmp::Tmp;
 pub use tmp::TmpModule;
 
 // Re-export stubs for convenience.
-pub use fs::fs_stub::StubFs;
+pub use cmd::cmd_stub::StubCmd;
 pub use env::env_stub::StubEnv;
+pub use fs::fs_stub::StubFs;
+pub use http_client::http_client_stub::StubHttpClient;
 pub use path::path_stub::StubPath;
 pub use time::time_stub::StubTime;
-pub use http_client::http_client_stub::StubHttpClient;
-pub use cmd::cmd_stub::StubCmd;
 pub use tmp::tmp_stub::StubTmp;

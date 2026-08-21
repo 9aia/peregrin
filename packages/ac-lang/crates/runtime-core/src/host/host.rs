@@ -37,7 +37,9 @@ pub struct ModuleHost {
 impl ModuleHost {
     /// Creates a new empty host.
     pub fn new() -> Self {
-        ModuleHost { modules: Vec::new() }
+        ModuleHost {
+            modules: Vec::new(),
+        }
     }
 
     /// Registers a module.
@@ -66,9 +68,7 @@ impl Host for ModuleHost {
                 .find(|m| m.name() == module_name)
                 .and_then(|m| m.function(func_name))
         } else {
-            self.modules
-                .iter()
-                .find_map(|m| m.function(name))
+            self.modules.iter().find_map(|m| m.function(name))
         }
     }
 }

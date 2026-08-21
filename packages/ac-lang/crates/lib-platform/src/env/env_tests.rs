@@ -25,7 +25,10 @@ fn module_name() {
 fn get_existing() {
     let env = StubEnv::with("HOME", "/home/user");
     let module = EnvModule::new(env);
-    assert_eq!(call(&module, "get", &[s("HOME")]).as_str(), Some("/home/user"));
+    assert_eq!(
+        call(&module, "get", &[s("HOME")]).as_str(),
+        Some("/home/user")
+    );
 }
 
 #[test]

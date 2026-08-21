@@ -20,6 +20,7 @@ mod continuation;
 mod error;
 mod eval;
 mod host;
+mod operation;
 mod vm;
 
 pub use context::Context;
@@ -27,6 +28,7 @@ pub use continuation::{Continuation, EvalResult, Frame};
 pub use error::Error;
 pub use eval::{AsyncEval, Eval};
 pub use host::{AsyncFunction, Function, Host};
+pub use operation::{Operation, OperationSig};
 pub use vm::Vm;
 
 #[cfg(test)]
@@ -37,6 +39,12 @@ mod continuation_tests;
 
 #[cfg(test)]
 mod error_tests;
+
+#[cfg(test)]
+mod handler_tests;
+
+#[cfg(test)]
+mod operation_tests;
 
 #[cfg(test)]
 mod vm_tests;

@@ -12,7 +12,9 @@ pub fn yaml_to_json(v: serde_yaml::Value) -> Result<JsonValue, crate::error::Yam
             } else if let Some(f) = n.as_f64() {
                 serde_json::Number::from_f64(f)
                     .map(JsonValue::Number)
-                    .ok_or_else(|| crate::error::YamlError::Convert(format!("cannot represent number: {f}")))
+                    .ok_or_else(|| {
+                        crate::error::YamlError::Convert(format!("cannot represent number: {f}"))
+                    })
             } else {
                 Ok(JsonValue::Null)
             }

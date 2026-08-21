@@ -3,15 +3,15 @@
 //! These test the extract → interpolate → compute → merge → validate
 //! flow directly, without going through the engine pipeline.
 
-use ac_fields::{
-    self, extract_fields, interpolate, compute_fields, merge_fields,
-    build_doc_namespace, FunctionResolver, Namespaces,
-};
+use ac_dialect::Schema;
 use ac_dialect_canonical::AC_DIALECT;
+use ac_dialect_canonical::JsonSchema;
+use ac_fields::{
+    self, FunctionResolver, Namespaces, build_doc_namespace, compute_fields, extract_fields,
+    interpolate, merge_fields,
+};
 use ac_frontend_yaml;
 use ac_runtime::RuntimeValue;
-use ac_dialect::Schema;
-use ac_dialect_canonical::JsonSchema;
 use serde_json::Value as JsonValue;
 
 struct AddResolver;
@@ -60,10 +60,21 @@ version: 3
     let mut namespaces = Namespaces::new();
     namespaces.insert("doc".to_string(), build_doc_namespace(&extracted.data));
 
-    let interpolated = interpolate(extracted.data.inner(), &namespaces, &AddResolver, &AC_DIALECT);
+    let interpolated = interpolate(
+        extracted.data.inner(),
+        &namespaces,
+        &AddResolver,
+        &AC_DIALECT,
+    );
     let mut data = RuntimeValue::new(interpolated);
 
-    let compute_errors = compute_fields(data.inner_mut(), &extracted.computed, &mut namespaces, &AddResolver, &AC_DIALECT);
+    let compute_errors = compute_fields(
+        data.inner_mut(),
+        &extracted.computed,
+        &mut namespaces,
+        &AddResolver,
+        &AC_DIALECT,
+    );
     assert!(compute_errors.is_empty());
 
     assert_eq!(data.get("name").unwrap().as_str(), Some("ac"));
@@ -74,7 +85,10 @@ version: 3
         let schema = JsonSchema::new(raw.clone());
         let field_value = data.get(name).unwrap_or(&JsonValue::Null);
         let field_rv = RuntimeValue::new(field_value.clone());
-        assert!(schema.validate(&field_rv).is_ok(), "field {name} should validate");
+        assert!(
+            schema.validate(&field_rv).is_ok(),
+            "field {name} should validate"
+        );
     }
 }
 

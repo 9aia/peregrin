@@ -1,9 +1,7 @@
 use ac_dialect::Dialect;
 use ac_runtime::RuntimeValue;
 
-use crate::types::{
-    ArgSpec, ComputedField, ExtractedFields,
-};
+use crate::types::{ArgSpec, ComputedField, ExtractedFields};
 
 /// Extracts the `$` key from a value, returning
 /// `(field_schemas, data_without_fields)`.
@@ -26,16 +24,16 @@ pub fn extract_fields(
     let reserved = dialect.document_vocabulary().top_level_reserved_keys();
 
     // Borrow the value to extract schemas, then move it into data.
-    if let Some(obj) = value.as_object() {
-        if let Some(fields) = obj.get(fields_key).and_then(|v| v.as_object()) {
-            for (name, schema_val) in fields {
-                if reserved.contains(&name.as_str()) {
-                    return Err(format!(
-                        "'{name}' is a reserved field name and cannot be declared in {fields_key}:"
-                    ));
-                }
-                schemas.push((name.clone(), schema_val.clone()));
+    if let Some(obj) = value.as_object()
+        && let Some(fields) = obj.get(fields_key).and_then(|v| v.as_object())
+    {
+        for (name, schema_val) in fields {
+            if reserved.contains(&name.as_str()) {
+                return Err(format!(
+                    "'{name}' is a reserved field name and cannot be declared in {fields_key}:"
+                ));
             }
+            schemas.push((name.clone(), schema_val.clone()));
         }
     }
 
@@ -87,15 +85,19 @@ pub fn extract_fields(
         }
     }
 
-    Ok(ExtractedFields { schemas, data, inheritable, immutable, computed, merge })
+    Ok(ExtractedFields {
+        schemas,
+        data,
+        inheritable,
+        immutable,
+        computed,
+        merge,
+    })
 }
 
 /// Returns the names of fields present in `data` but not declared in
 /// `declared_names`.
-pub fn undeclared_fields<'a>(
-    data: &'a RuntimeValue,
-    declared: &[&str],
-) -> Vec<&'a str> {
+pub fn undeclared_fields<'a>(data: &'a RuntimeValue, declared: &[&str]) -> Vec<&'a str> {
     let declared_set: std::collections::HashSet<&str> = declared.iter().copied().collect();
     data.as_object()
         .map(|obj| {

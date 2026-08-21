@@ -44,9 +44,7 @@ fn test_config_with_backend() -> Config {
         dialect: Box::new(ac_dialect_canonical::AC_DIALECT),
         resolver: Box::new(ac_module_resolver_virtual::VirtualResolver::new()),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
-        backend: Some(Box::new(
-            ac_typegen_backend_json_schema::JsonSchemaBackend,
-        )),
+        backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }

@@ -1,11 +1,11 @@
 use serde_json::json;
 
+use crate::{JsonSchemaBackend, compose_schema};
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
 use ac_runtime::RuntimeValue;
 use ac_typegen_core::{TypegenBackend, TypegenContext};
-use crate::{JsonSchemaBackend, compose_schema};
 
 fn build_ctx(extracted: &ac_fields::ExtractedFields) -> TypegenContext {
     let vocab = AC_DIALECT.document_vocabulary();

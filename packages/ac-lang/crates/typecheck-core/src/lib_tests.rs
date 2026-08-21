@@ -1,4 +1,4 @@
-use crate::{is_compatible, Type, TypeEnv, TypeError};
+use crate::{Type, TypeEnv, TypeError, is_compatible};
 
 #[test]
 fn type_names_are_readable() {
@@ -52,10 +52,7 @@ fn object_compatibility_allows_extra_properties() {
     let mut e = std::collections::BTreeMap::new();
     e.insert("name".to_string(), Type::String);
 
-    assert!(is_compatible(
-        &Type::Object(a),
-        &Type::Object(e)
-    ));
+    assert!(is_compatible(&Type::Object(a), &Type::Object(e)));
 }
 
 #[test]
@@ -64,10 +61,7 @@ fn object_incompatibility_on_missing_property() {
     let mut e = std::collections::BTreeMap::new();
     e.insert("name".to_string(), Type::String);
 
-    assert!(!is_compatible(
-        &Type::Object(a),
-        &Type::Object(e)
-    ));
+    assert!(!is_compatible(&Type::Object(a), &Type::Object(e)));
 }
 
 #[test]
@@ -130,10 +124,16 @@ fn type_error_custom_message() {
 fn type_error_display_with_location() {
     let err = TypeError::mismatch("version", Type::Number, Type::String, "config");
     let displayed = err.display();
-    assert!(!displayed.contains("["), "without location, no bracket prefix: {displayed}");
+    assert!(
+        !displayed.contains("["),
+        "without location, no bracket prefix: {displayed}"
+    );
 
     let mut err = err;
     err.location = Some(ac_source::SourceLocation::new(5, 10));
     let displayed = err.display();
-    assert!(displayed.contains("[5:10]"), "with location, display should contain [5:10]: {displayed}");
+    assert!(
+        displayed.contains("[5:10]"),
+        "with location, display should contain [5:10]: {displayed}"
+    );
 }

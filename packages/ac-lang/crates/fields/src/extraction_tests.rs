@@ -39,7 +39,14 @@ fn extract_fields_with_functions_as_data() {
     let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     assert_eq!(extracted.schemas.len(), 2);
     // `functions` stays in data as a regular field
-    assert!(extracted.data.as_object().unwrap().get("functions").is_some());
+    assert!(
+        extracted
+            .data
+            .as_object()
+            .unwrap()
+            .get("functions")
+            .is_some()
+    );
 }
 
 #[test]
@@ -86,7 +93,10 @@ fn extract_fields_inheritable() {
     let extracted = extract_fields(value, &AC_DIALECT).unwrap();
     let inheritable_set: std::collections::HashSet<&str> =
         extracted.inheritable.iter().map(|s| s.as_str()).collect();
-    assert_eq!(inheritable_set, ["permission_mode", "env_name"].into_iter().collect());
+    assert_eq!(
+        inheritable_set,
+        ["permission_mode", "env_name"].into_iter().collect()
+    );
     assert_eq!(extracted.immutable, vec!["env_name"]);
 }
 

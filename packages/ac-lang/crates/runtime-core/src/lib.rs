@@ -17,8 +17,8 @@
 
 #![allow(clippy::module_inception)]
 
-mod module;
 mod host;
+mod module;
 
-pub use module::Module;
 pub use host::ModuleHost;
+pub use module::Module;

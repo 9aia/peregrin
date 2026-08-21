@@ -29,7 +29,7 @@ impl Pass for ResolvePass {
 
         let mut ctx = ac_typegen_core::TypegenContext::from_schemas(&extracted.schemas);
         config.key_handler.filter_fields(&mut ctx, &extracted.merge);
-        config.key_handler.strip_keys(&mut ctx, &*vocab);
+        config.key_handler.strip_keys(&mut ctx, vocab);
 
         let base = compilation.source.base_path();
         config.import_resolver.resolve_imports(
@@ -39,7 +39,7 @@ impl Pass for ResolvePass {
             data,
             config.resolver.as_ref(),
             base.as_deref(),
-            &*vocab,
+            vocab,
         );
 
         compilation.typegen_ctx = Some(ctx);

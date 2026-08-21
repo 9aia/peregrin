@@ -122,3 +122,160 @@ fn runtime_value_is_function() {
     assert!(!obj.is_function());
     assert!(obj.as_function().is_none());
 }
+
+// ── FunctionValue map-format params ───────────────────────────────
+
+#[test]
+fn function_value_map_format_params() {
+    let json = serde_json::json!({
+        "params": {"x": {"type": "number"}, "y": {"type": "string"}},
+        "body": "concat(x, y)",
+    });
+    let fn_val = FunctionValue::from_json(&json).unwrap();
+    assert_eq!(fn_val.params.len(), 2);
+    assert_eq!(fn_val.body, "concat(x, y)");
+}
+
+#[test]
+fn function_value_array_format_params() {
+    let json = serde_json::json!({
+        "params": [
+            {"name": "x", "schema": {"type": "number"}},
+            {"name": "y", "schema": {"type": "string"}},
+        ],
+        "body": "concat(x, y)",
+    });
+    let fn_val = FunctionValue::from_json(&json).unwrap();
+    assert_eq!(fn_val.params.len(), 2);
+    assert_eq!(fn_val.params[0].0, "x");
+    assert_eq!(fn_val.params[1].0, "y");
+}
+
+#[test]
+fn function_value_no_params() {
+    let json = serde_json::json!({"body": "42"});
+    let fn_val = FunctionValue::from_json(&json).unwrap();
+    assert!(fn_val.params.is_empty());
+    assert_eq!(fn_val.body, "42");
+    assert!(fn_val.return_schema.is_none());
+}
+
+#[test]
+fn function_value_empty_params_array() {
+    let json = serde_json::json!({"params": [], "body": "noop"});
+    let fn_val = FunctionValue::from_json(&json).unwrap();
+    assert!(fn_val.params.is_empty());
+}
+
+#[test]
+fn function_value_with_null_schema() {
+    let json = serde_json::json!({
+        "params": [{"name": "x", "schema": null}],
+        "body": "x",
+    });
+    let fn_val = FunctionValue::from_json(&json).unwrap();
+    assert_eq!(fn_val.params.len(), 1);
+    assert_eq!(fn_val.params[0].0, "x");
+    assert_eq!(fn_val.params[0].1, serde_json::Value::Null);
+}
+
+#[test]
+fn function_value_roundtrip_with_return_schema() {
+    let fn_val = FunctionValue {
+        params: vec![
+            ("x".to_string(), serde_json::json!({"type": "number"})),
+            ("y".to_string(), serde_json::json!({"type": "string"})),
+        ],
+        return_schema: Some(serde_json::json!({"type": "object"})),
+        body: "transform(x, y)".to_string(),
+    };
+    let json = fn_val.to_json();
+    let decoded = FunctionValue::from_json(&json).unwrap();
+    assert_eq!(decoded, fn_val);
+}
+
+#[test]
+fn function_value_roundtrip_no_params_no_return() {
+    let fn_val = FunctionValue {
+        params: vec![],
+        return_schema: None,
+        body: "answer".to_string(),
+    };
+    let json = fn_val.to_json();
+    let decoded = FunctionValue::from_json(&json).unwrap();
+    assert_eq!(decoded, fn_val);
+}
+
+// ── RuntimeValue edge cases ───────────────────────────────────────
+
+#[test]
+fn runtime_value_new_from_bool() {
+    let v = RuntimeValue::new(false);
+    assert!(v.is_bool());
+    assert_eq!(v.as_bool(), Some(false));
+}
+
+#[test]
+fn runtime_value_new_from_float() {
+    let v = RuntimeValue::new(3.14);
+    assert!(v.is_number());
+    assert_eq!(v.as_number(), Some(3.14));
+}
+
+#[test]
+fn runtime_value_new_from_array() {
+    let v = RuntimeValue::new(vec!["a", "b", "c"]);
+    assert!(v.is_array());
+    assert_eq!(v.as_array().unwrap().len(), 3);
+}
+
+#[test]
+fn runtime_value_new_from_nested_object() {
+    let v = RuntimeValue::new(serde_json::json!({
+        "outer": {"inner": "value"},
+        "list": [1, 2, 3],
+    }));
+    assert!(v.is_object());
+    assert_eq!(
+        v.get("outer").unwrap().get("inner").unwrap().as_str(),
+        Some("value")
+    );
+    assert_eq!(v.get("list").unwrap().as_array().unwrap().len(), 3);
+}
+
+#[test]
+fn runtime_value_as_object_mut() {
+    let mut v = RuntimeValue::new(serde_json::json!({"a": 1}));
+    {
+        let obj = v.as_object_mut().unwrap();
+        obj.insert("b".to_string(), serde_json::json!(2));
+    }
+    assert_eq!(v.get("b").unwrap().as_i64(), Some(2));
+}
+
+#[test]
+fn runtime_value_new_function_and_check() {
+    let fn_val = FunctionValue {
+        params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
+        return_schema: None,
+        body: "mul(x, 2)".to_string(),
+    };
+    let rv = RuntimeValue::new_function(fn_val.clone());
+    assert!(rv.is_function());
+    let decoded = rv.as_function().unwrap();
+    assert_eq!(decoded, fn_val);
+}
+
+#[test]
+fn runtime_value_clone_eq() {
+    let v1 = RuntimeValue::new(serde_json::json!({"a": 1, "b": [2, 3]}));
+    let v2 = v1.clone();
+    assert_eq!(v1, v2);
+}
+
+#[test]
+fn runtime_value_default_eq_null() {
+    let v1 = RuntimeValue::default();
+    let v2 = RuntimeValue::new(serde_json::Value::Null);
+    assert_eq!(v1, v2);
+}

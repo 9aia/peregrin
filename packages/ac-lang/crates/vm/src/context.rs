@@ -1,6 +1,6 @@
+use crate::AsyncEval;
 use crate::Error;
 use crate::Eval;
-use crate::AsyncEval;
 use ac_runtime::RuntimeValue;
 use indexmap::IndexMap;
 use std::future::Future;

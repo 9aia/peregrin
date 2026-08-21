@@ -1,7 +1,7 @@
 use ac_runtime::RuntimeValue;
 
-use crate::schema_vocabulary::{Schema, SchemaVocabulary};
 use crate::schema_vocabulary::schema_stub::StubSchema;
+use crate::schema_vocabulary::{Schema, SchemaVocabulary};
 
 /// A minimal schema vocabulary for testing.
 pub struct StubVocabulary;

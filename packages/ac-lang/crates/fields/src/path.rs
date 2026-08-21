@@ -1,4 +1,4 @@
-use crate::types::{Namespaces, DEFAULT_NAMESPACE};
+use crate::types::{DEFAULT_NAMESPACE, Namespaces};
 use serde_json::Value as JsonValue;
 
 /// Resolves a single path segment on a `JsonValue`, supporting both
@@ -18,7 +18,11 @@ pub(crate) fn resolve_segment<'a>(value: &'a JsonValue, part: &str) -> Option<&'
 ///
 /// Shorthand: if the first segment is not a known namespace, try the default
 /// namespace (`DEFAULT_NAMESPACE`, conventionally `"doc"`).
-pub(crate) fn resolve_path(expr: &str, namespaces: &Namespaces, path_separator: char) -> Option<JsonValue> {
+pub(crate) fn resolve_path(
+    expr: &str,
+    namespaces: &Namespaces,
+    path_separator: char,
+) -> Option<JsonValue> {
     let parts: Vec<&str> = expr.split(path_separator).collect();
     if parts.is_empty() {
         return None;
@@ -29,7 +33,9 @@ pub(crate) fn resolve_path(expr: &str, namespaces: &Namespaces, path_separator: 
 
     // Shorthand: if root is not a namespace, try the default namespace.
     if current.is_none() && !namespaces.contains_key(root) {
-        current = namespaces.get(DEFAULT_NAMESPACE).and_then(|d| resolve_segment(d, root));
+        current = namespaces
+            .get(DEFAULT_NAMESPACE)
+            .and_then(|d| resolve_segment(d, root));
         for part in parts.iter().skip(1) {
             current = current.and_then(|v| resolve_segment(v, part));
         }

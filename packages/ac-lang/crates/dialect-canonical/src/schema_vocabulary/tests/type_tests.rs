@@ -22,7 +22,11 @@ fn validate_integer() {
 fn validate_multi_type() {
     let schema = JsonSchema::new(serde_json::json!({"type": ["string", "null"]}));
     assert!(schema.validate(&RuntimeValue::new("hello")).is_ok());
-    assert!(schema.validate(&RuntimeValue::new(serde_json::Value::Null)).is_ok());
+    assert!(
+        schema
+            .validate(&RuntimeValue::new(serde_json::Value::Null))
+            .is_ok()
+    );
     assert!(schema.validate(&RuntimeValue::new(42)).is_err());
 }
 

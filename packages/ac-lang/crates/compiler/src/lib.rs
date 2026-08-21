@@ -25,12 +25,12 @@
 mod expr_eval;
 mod resolver;
 
-pub mod parse;
 pub mod eval;
-pub mod validate;
 pub mod fields;
-pub mod typegen;
+pub mod parse;
 pub mod typecheck;
+pub mod typegen;
+pub mod validate;
 
 pub use ac_compiler_core::{Compilation, Config, Pass, Pipeline, Source};
 pub use expr_eval::ExprEval;
@@ -47,9 +47,7 @@ pub fn default_cli_config() -> Config {
             ac_module_resolver_memory::MemoryModuleCache::new(),
         )),
         interpreter: Box::new(ac_typecheck_schema_json::JsonSchemaInterpreter),
-        backend: Some(Box::new(
-            ac_typegen_backend_json_schema::JsonSchemaBackend,
-        )),
+        backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
     }

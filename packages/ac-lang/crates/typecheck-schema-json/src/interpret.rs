@@ -73,10 +73,7 @@ pub fn infer_json_type(value: &JsonValue) -> Type {
         JsonValue::Number(_) => Type::Number,
         JsonValue::String(_) => Type::String,
         JsonValue::Array(arr) => {
-            let item = arr
-                .first()
-                .map(infer_json_type)
-                .unwrap_or(Type::Unknown);
+            let item = arr.first().map(infer_json_type).unwrap_or(Type::Unknown);
             Type::Array(Box::new(item))
         }
         JsonValue::Object(obj) => {

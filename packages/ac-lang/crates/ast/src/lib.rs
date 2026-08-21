@@ -20,7 +20,7 @@
 mod expr;
 mod field;
 
-pub use expr::Expr;
+pub use expr::{Expr, HandlerClause};
 pub use field::Field;
 
 #[cfg(test)]

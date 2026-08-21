@@ -1,5 +1,5 @@
 use crate::expression::eval_expr_inner;
-use crate::types::{FunctionResolver, Namespaces, DEFAULT_NAMESPACE};
+use crate::types::{DEFAULT_NAMESPACE, FunctionResolver, Namespaces};
 use ac_dialect::Dialect;
 use serde_json::Value as JsonValue;
 
@@ -24,9 +24,11 @@ pub fn interpolate(
         JsonValue::String(s) if s.contains(prefix) => {
             resolve_interpolation(s, namespaces, resolver, dialect)
         }
-        JsonValue::Array(arr) => {
-            JsonValue::Array(arr.iter().map(|v| interpolate(v, namespaces, resolver, dialect)).collect())
-        }
+        JsonValue::Array(arr) => JsonValue::Array(
+            arr.iter()
+                .map(|v| interpolate(v, namespaces, resolver, dialect))
+                .collect(),
+        ),
         JsonValue::Object(obj) => JsonValue::Object(
             obj.iter()
                 .map(|(k, v)| (k.clone(), interpolate(v, namespaces, resolver, dialect)))
@@ -54,10 +56,16 @@ pub fn interpolate_scoped(
     if inheritable.is_empty() {
         return interpolate(value, namespaces, resolver, dialect);
     }
-    let inheritable_set: std::collections::HashSet<String> =
-        inheritable.iter().cloned().collect();
+    let inheritable_set: std::collections::HashSet<String> = inheritable.iter().cloned().collect();
     let empty_scope = serde_json::Map::new();
-    interpolate_with_scope(value, namespaces, &inheritable_set, &empty_scope, resolver, dialect)
+    interpolate_with_scope(
+        value,
+        namespaces,
+        &inheritable_set,
+        &empty_scope,
+        resolver,
+        dialect,
+    )
 }
 
 /// Internal: scope-aware interpolation. Carries a `scope` (inheritable field
@@ -99,7 +107,14 @@ fn interpolate_with_scope(
                     .map(|(k, v)| {
                         (
                             k.clone(),
-                            interpolate_with_scope(v, &child_ns, inheritable, &current_scope, resolver, dialect),
+                            interpolate_with_scope(
+                                v,
+                                &child_ns,
+                                inheritable,
+                                &current_scope,
+                                resolver,
+                                dialect,
+                            ),
                         )
                     })
                     .collect(),
@@ -108,13 +123,13 @@ fn interpolate_with_scope(
         JsonValue::String(s) if s.contains(prefix) => {
             resolve_interpolation(s, namespaces, resolver, dialect)
         }
-        JsonValue::Array(arr) => {
-            JsonValue::Array(
-                arr.iter()
-                    .map(|v| interpolate_with_scope(v, namespaces, inheritable, scope, resolver, dialect))
-                    .collect(),
-            )
-        }
+        JsonValue::Array(arr) => JsonValue::Array(
+            arr.iter()
+                .map(|v| {
+                    interpolate_with_scope(v, namespaces, inheritable, scope, resolver, dialect)
+                })
+                .collect(),
+        ),
         _ => value.clone(),
     }
 }

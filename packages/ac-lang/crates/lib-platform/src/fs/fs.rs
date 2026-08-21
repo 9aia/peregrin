@@ -84,7 +84,10 @@ struct ReadFileFn {
 impl Function for ReadFileFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let path = require_string_arg(args, 1)?[0];
-        self.fs.read_file(path).map(RuntimeValue::new).map_err(Into::into)
+        self.fs
+            .read_file(path)
+            .map(RuntimeValue::new)
+            .map_err(Into::into)
     }
 }
 
@@ -111,7 +114,10 @@ struct ExistsFn {
 impl Function for ExistsFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let path = require_string_arg(args, 1)?[0];
-        self.fs.exists(path).map(RuntimeValue::new).map_err(Into::into)
+        self.fs
+            .exists(path)
+            .map(RuntimeValue::new)
+            .map_err(Into::into)
     }
 }
 
@@ -135,10 +141,8 @@ impl Function for ListDirFn {
     fn call(&self, args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         let entries = self.fs.list_dir(path)?;
-        let arr: Vec<serde_json::Value> = entries
-            .into_iter()
-            .map(serde_json::Value::String)
-            .collect();
+        let arr: Vec<serde_json::Value> =
+            entries.into_iter().map(serde_json::Value::String).collect();
         Ok(RuntimeValue::new(serde_json::Value::Array(arr)))
     }
 }

@@ -23,25 +23,22 @@ pub enum TypegenResult {
 }
 
 pub fn run(args: &TypegenInput) -> Result<TypegenResult, String> {
-    let source = Source::new(args.input, args.format)
-        .with_path(args.input_path);
+    let source = Source::new(args.input, args.format).with_path(args.input_path);
 
     let pipeline = crate::typegen_pipeline(crate::default_cli_config());
     let compilation = pipeline.run(source)?;
 
-    let output = compilation
-        .output
-        .ok_or("typegen: no output generated")?;
+    let output = compilation.output.ok_or("typegen: no output generated")?;
 
     match args.output_format {
         "json-schema" => {
             if args.stdout {
-                let json = serde_json::to_string_pretty(&output)
-                    .map_err(|e| e.to_string())?;
+                let json = serde_json::to_string_pretty(&output).map_err(|e| e.to_string())?;
                 return Ok(TypegenResult::Stdout(json));
             }
 
-            let filename = args.input_path
+            let filename = args
+                .input_path
                 .file_stem()
                 .and_then(|s| s.to_str())
                 .unwrap_or("schema");
@@ -58,6 +55,8 @@ pub fn run(args: &TypegenInput) -> Result<TypegenResult, String> {
 
             Ok(TypegenResult::FileWritten(schema_path))
         }
-        other => Err(format!("unknown output format: {other}\n  available: json-schema")),
+        other => Err(format!(
+            "unknown output format: {other}\n  available: json-schema"
+        )),
     }
 }

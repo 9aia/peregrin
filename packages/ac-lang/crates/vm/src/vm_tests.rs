@@ -13,8 +13,7 @@ fn block_on<F: Future>(future: F) -> F::Output {
         RawWaker::new(std::ptr::null(), &VTABLE)
     }
     fn noop(_: *const ()) {}
-    static VTABLE: RawWakerVTable =
-        RawWakerVTable::new(noop_clone, noop, noop, noop);
+    static VTABLE: RawWakerVTable = RawWakerVTable::new(noop_clone, noop, noop, noop);
 
     let waker = unsafe { Waker::from_raw(RawWaker::new(std::ptr::null(), &VTABLE)) };
     let mut cx = TaskContext::from_waker(&waker);
@@ -70,7 +69,13 @@ fn vm_eval_value() {
 fn vm_eval_call() {
     let mut vm = Vm::new(DefaultHost::default());
     let mut ctx = Context::new();
-    let expr = Expr::call("add", vec![Expr::value(RuntimeValue::new(1)), Expr::value(RuntimeValue::new(2))]);
+    let expr = Expr::call(
+        "add",
+        vec![
+            Expr::value(RuntimeValue::new(1)),
+            Expr::value(RuntimeValue::new(2)),
+        ],
+    );
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(3.0));
 }
@@ -263,4 +268,267 @@ fn vm_eval_async_unknown_function() {
     let expr = Expr::call("nonexistent", vec![]);
     let result = block_on(vm.eval_async(&expr, &mut ctx));
     assert!(matches!(result, Err(Error::UnknownFunction(_))));
+}
+
+// ── deeply nested sync eval ───────────────────────────────────────
+
+#[test]
+fn vm_eval_deeply_nested_calls() {
+    // add(add(add(1, 2), add(3, 4)), add(5, 6)) = 21
+    let expr = Expr::call(
+        "add",
+        vec![
+            Expr::call(
+                "add",
+                vec![
+                    Expr::call(
+                        "add",
+                        vec![
+                            Expr::value(RuntimeValue::new(1)),
+                            Expr::value(RuntimeValue::new(2)),
+                        ],
+                    ),
+                    Expr::call(
+                        "add",
+                        vec![
+                            Expr::value(RuntimeValue::new(3)),
+                            Expr::value(RuntimeValue::new(4)),
+                        ],
+                    ),
+                ],
+            ),
+            Expr::call(
+                "add",
+                vec![
+                    Expr::value(RuntimeValue::new(5)),
+                    Expr::value(RuntimeValue::new(6)),
+                ],
+            ),
+        ],
+    );
+    let mut vm = Vm::new(DefaultHost::default());
+    let mut ctx = Context::new();
+    let result = vm.eval(&expr, &mut ctx).unwrap();
+    assert_eq!(result.as_number(), Some(21.0));
+}
+
+#[test]
+fn vm_eval_call_with_no_args() {
+    struct GetAnswer;
+    impl Function for GetAnswer {
+        fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+            Ok(RuntimeValue::new(42))
+        }
+    }
+    struct AnswerHost {
+        answer: GetAnswer,
+    }
+    impl Host for AnswerHost {
+        fn function(&self, name: &str) -> Option<&dyn Function> {
+            match name {
+                "answer" => Some(&self.answer),
+                _ => None,
+            }
+        }
+    }
+    impl Default for AnswerHost {
+        fn default() -> Self {
+            AnswerHost { answer: GetAnswer }
+        }
+    }
+
+    let mut vm = Vm::new(AnswerHost::default());
+    let mut ctx = Context::new();
+    let expr = Expr::call("answer", vec![]);
+    let result = vm.eval(&expr, &mut ctx).unwrap();
+    assert_eq!(result.as_number(), Some(42.0));
+}
+
+#[test]
+fn vm_eval_value_types() {
+    let mut vm = Vm::new(DefaultHost::default());
+    let mut ctx = Context::new();
+
+    // String
+    let result = vm
+        .eval(&Expr::value(RuntimeValue::new("hello")), &mut ctx)
+        .unwrap();
+    assert_eq!(result.as_str(), Some("hello"));
+
+    // Boolean
+    let result = vm
+        .eval(&Expr::value(RuntimeValue::new(true)), &mut ctx)
+        .unwrap();
+    assert_eq!(result.as_bool(), Some(true));
+
+    // Null
+    let result = vm
+        .eval(
+            &Expr::value(RuntimeValue::new(serde_json::Value::Null)),
+            &mut ctx,
+        )
+        .unwrap();
+    assert!(result.is_null());
+
+    // Array
+    let result = vm
+        .eval(&Expr::value(RuntimeValue::new(vec![1, 2, 3])), &mut ctx)
+        .unwrap();
+    assert_eq!(result.as_array().unwrap().len(), 3);
+
+    // Object
+    let result = vm
+        .eval(
+            &Expr::value(RuntimeValue::new(serde_json::json!({"key": "val"}))),
+            &mut ctx,
+        )
+        .unwrap();
+    assert_eq!(result.get("key").unwrap().as_str(), Some("val"));
+}
+
+// ── handle via eval (not just resumable) ──────────────────────────
+
+#[derive(Clone)]
+struct PingOp;
+impl crate::Operation for PingOp {
+    fn signature(&self) -> crate::OperationSig {
+        crate::OperationSig {
+            name: "ping".to_string(),
+            params: vec![],
+            return_schema: None,
+        }
+    }
+    fn perform(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
+        Err(Error::Operation {
+            name: "ping".to_string(),
+            args: vec![],
+        })
+    }
+}
+
+#[derive(Clone)]
+struct PingHost {
+    add: Add,
+    ping: PingOp,
+}
+impl Host for PingHost {
+    fn function(&self, name: &str) -> Option<&dyn Function> {
+        match name {
+            "add" => Some(&self.add),
+            _ => None,
+        }
+    }
+    fn operation(&self, name: &str) -> Option<&dyn crate::Operation> {
+        match name {
+            "ping" => Some(&self.ping),
+            _ => None,
+        }
+    }
+}
+impl Default for PingHost {
+    fn default() -> Self {
+        PingHost {
+            add: Add,
+            ping: PingOp,
+        }
+    }
+}
+
+#[test]
+fn vm_eval_handle_intercepts_via_eval() {
+    use ac_ast::HandlerClause;
+    let expr = Expr::handle(
+        Expr::call("ping", vec![]),
+        vec![HandlerClause {
+            op_name: "ping".to_string(),
+            params: vec![],
+            continuation_name: "k".to_string(),
+            body: Expr::value(RuntimeValue::new("pong")),
+        }],
+    );
+    let mut vm = Vm::new(PingHost::default());
+    let mut ctx = Context::new();
+    let result = vm.eval(&expr, &mut ctx).unwrap();
+    assert_eq!(result.as_str(), Some("pong"));
+}
+
+#[test]
+fn vm_eval_handle_resume_via_eval() {
+    use ac_ast::HandlerClause;
+    // handle(add(ping(), 10)) — handler resumes k with 42 → add(42, 10) = 52
+    let expr = Expr::handle(
+        Expr::call(
+            "add",
+            vec![
+                Expr::call("ping", vec![]),
+                Expr::value(RuntimeValue::new(10)),
+            ],
+        ),
+        vec![HandlerClause {
+            op_name: "ping".to_string(),
+            params: vec![],
+            continuation_name: "k".to_string(),
+            body: Expr::call("k", vec![Expr::value(RuntimeValue::new(42.0))]),
+        }],
+    );
+    let mut vm = Vm::new(PingHost::default());
+    let mut ctx = Context::new();
+    let result = vm.eval(&expr, &mut ctx).unwrap();
+    assert_eq!(result.as_number(), Some(52.0));
+}
+
+#[test]
+fn vm_eval_handle_no_match_propagates_as_operation_error() {
+    use ac_ast::HandlerClause;
+    let expr = Expr::handle(
+        Expr::call("ping", vec![]),
+        vec![HandlerClause {
+            op_name: "other".to_string(),
+            params: vec![],
+            continuation_name: "k".to_string(),
+            body: Expr::value(RuntimeValue::new("unused")),
+        }],
+    );
+    let mut vm = Vm::new(PingHost::default());
+    let mut ctx = Context::new();
+    let result = vm.eval(&expr, &mut ctx);
+    assert!(matches!(result, Err(Error::Operation { ref name, .. }) if name == "ping"));
+}
+
+#[test]
+fn vm_eval_handle_pure_body_returns_body_value() {
+    use ac_ast::HandlerClause;
+    let expr = Expr::handle(
+        Expr::value(RuntimeValue::new(99)),
+        vec![HandlerClause {
+            op_name: "ping".to_string(),
+            params: vec![],
+            continuation_name: "k".to_string(),
+            body: Expr::value(RuntimeValue::new("never")),
+        }],
+    );
+    let mut vm = Vm::new(PingHost::default());
+    let mut ctx = Context::new();
+    let result = vm.eval(&expr, &mut ctx).unwrap();
+    assert_eq!(result.as_number(), Some(99.0));
+}
+
+// ── async eval with handle ────────────────────────────────────────
+
+#[test]
+fn vm_eval_async_handle_intercepts() {
+    use ac_ast::HandlerClause;
+    let expr = Expr::handle(
+        Expr::call("ping", vec![]),
+        vec![HandlerClause {
+            op_name: "ping".to_string(),
+            params: vec![],
+            continuation_name: "k".to_string(),
+            body: Expr::value(RuntimeValue::new("async-pong")),
+        }],
+    );
+    let mut vm = Vm::new(PingHost::default());
+    let mut ctx = Context::new();
+    let result = block_on(vm.eval_async(&expr, &mut ctx)).unwrap();
+    assert_eq!(result.as_str(), Some("async-pong"));
 }

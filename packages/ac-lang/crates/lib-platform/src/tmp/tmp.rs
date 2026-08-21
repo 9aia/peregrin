@@ -52,10 +52,7 @@ struct FileFn {
 
 impl Function for FileFn {
     fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        self.tmp
-            .file()
-            .map(RuntimeValue::new)
-            .map_err(Into::into)
+        self.tmp.file().map(RuntimeValue::new).map_err(Into::into)
     }
 }
 
@@ -65,9 +62,6 @@ struct DirFn {
 
 impl Function for DirFn {
     fn call(&self, _args: &[RuntimeValue], _ctx: &mut Context) -> Result<RuntimeValue, Error> {
-        self.tmp
-            .dir()
-            .map(RuntimeValue::new)
-            .map_err(Into::into)
+        self.tmp.dir().map(RuntimeValue::new).map_err(Into::into)
     }
 }

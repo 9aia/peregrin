@@ -8,7 +8,8 @@ fn yaml_to_json_basic() {
 
 #[test]
 fn yaml_to_json_nested() {
-    let yaml: serde_yaml::Value = serde_yaml::from_str("author:\n  name: alice\n  email: alice@example.com\n").unwrap();
+    let yaml: serde_yaml::Value =
+        serde_yaml::from_str("author:\n  name: alice\n  email: alice@example.com\n").unwrap();
     let json = super::yaml_to_json(yaml).unwrap();
     assert_eq!(json["author"]["name"], "alice");
     assert_eq!(json["author"]["email"], "alice@example.com");

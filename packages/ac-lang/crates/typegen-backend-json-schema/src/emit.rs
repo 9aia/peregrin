@@ -11,9 +11,11 @@ pub fn write_schema_file(schema: &JsonValue, path: &Path) -> Result<(), String> 
         std::fs::create_dir_all(parent)
             .map_err(|e| format!("failed to create {}: {e}", parent.display()))?;
     }
-    let content = format!("{}\n", serde_json::to_string_pretty(schema).map_err(|e| e.to_string())?);
-    std::fs::write(path, content)
-        .map_err(|e| format!("failed to write {}: {e}", path.display()))
+    let content = format!(
+        "{}\n",
+        serde_json::to_string_pretty(schema).map_err(|e| e.to_string())?
+    );
+    std::fs::write(path, content).map_err(|e| format!("failed to write {}: {e}", path.display()))
 }
 
 /// Inject a `# yaml-language-server: $schema=...` comment at the top

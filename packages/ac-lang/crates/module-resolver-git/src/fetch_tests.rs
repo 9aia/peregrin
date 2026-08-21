@@ -1,4 +1,4 @@
-use crate::fetch::{GitFetcher, DEFAULT_DEPTH};
+use crate::fetch::{DEFAULT_DEPTH, GitFetcher};
 use crate::parse::GitTarget;
 
 #[test]

@@ -5,7 +5,10 @@ use ac_typegen_core::TypegenContext;
 
 /// Check if a field schema has `merge: true`.
 pub fn is_merge_field(schema: &JsonValue, vocab: &dyn DocumentVocabulary) -> bool {
-    schema.get(vocab.merge_key()).and_then(|v| v.as_bool()).unwrap_or(false)
+    schema
+        .get(vocab.merge_key())
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
 }
 
 /// Remove merge fields from the context by name.

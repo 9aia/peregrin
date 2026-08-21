@@ -4,7 +4,7 @@
 //! each benchmark target can construct realistic inputs without
 //! duplicating boilerplate.
 
-use serde_json::{json, Value as JsonValue};
+use serde_json::{Value as JsonValue, json};
 
 // ---------------------------------------------------------------------------
 // YAML document generators
@@ -169,10 +169,7 @@ pub fn simple_schemas(n: usize) -> Vec<(String, JsonValue)> {
                 2 => "boolean",
                 _ => "object",
             };
-            (
-                format!("field_{i}"),
-                json!({ "type": ty }),
-            )
+            (format!("field_{i}"), json!({ "type": ty }))
         })
         .collect()
 }

@@ -42,11 +42,8 @@ pub trait Eval {
     /// # Returns
     ///
     /// The evaluated [`RuntimeValue`], or an [`Error`] if evaluation failed.
-    fn eval_expr(
-        &self,
-        expr: &str,
-        vars: &[(String, RuntimeValue)],
-    ) -> Result<RuntimeValue, Error>;
+    fn eval_expr(&self, expr: &str, vars: &[(String, RuntimeValue)])
+    -> Result<RuntimeValue, Error>;
 }
 
 /// An async callback that evaluates an expression string with variable bindings.

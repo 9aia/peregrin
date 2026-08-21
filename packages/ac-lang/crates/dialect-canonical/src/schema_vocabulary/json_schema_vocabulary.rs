@@ -15,7 +15,10 @@ impl SchemaVocabulary<RuntimeValue> for JsonSchemaVocabulary {
         "json-schema-draft-2020-12"
     }
 
-    fn compile(&self, raw: &serde_json::Value) -> Result<Box<dyn Schema<RuntimeValue>>, ValidationError> {
+    fn compile(
+        &self,
+        raw: &serde_json::Value,
+    ) -> Result<Box<dyn Schema<RuntimeValue>>, ValidationError> {
         Ok(Box::new(JsonSchema::new(raw.clone())))
     }
 }

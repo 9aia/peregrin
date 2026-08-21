@@ -18,9 +18,12 @@ pub fn build_source_map(input: &str, value: &Value) -> SourceMap {
     let lines = LineIndex::new(input);
 
     let source = input;
-    walk_value(value, "", &mut |_path, key, parent_path| {
-        find_key_location(source, &lines, key, parent_path)
-    }, &mut map);
+    walk_value(
+        value,
+        "",
+        &mut |_path, key, parent_path| find_key_location(source, &lines, key, parent_path),
+        &mut map,
+    );
 
     map
 }
@@ -46,7 +49,14 @@ fn find_key_location(
         Some(found.indent + 1)
     };
 
-    let found = MATCHER.find_key_in_lines(source, lines, key, search_from, min_indent, min_indent.is_some())?;
+    let found = MATCHER.find_key_in_lines(
+        source,
+        lines,
+        key,
+        search_from,
+        min_indent,
+        min_indent.is_some(),
+    )?;
     Some(lines.at_offset(found.key_offset))
 }
 
@@ -56,7 +66,14 @@ fn find_path_offset(source: &str, lines: &LineIndex, path: &str) -> Option<usize
     let mut min_indent: Option<usize> = None;
 
     for segment in &segments {
-        let found = MATCHER.find_key_in_lines(source, lines, segment, search_from, min_indent, min_indent.is_some())?;
+        let found = MATCHER.find_key_in_lines(
+            source,
+            lines,
+            segment,
+            search_from,
+            min_indent,
+            min_indent.is_some(),
+        )?;
         search_from = found.value_offset;
         min_indent = Some(found.indent + 1);
     }

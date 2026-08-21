@@ -85,18 +85,12 @@ fn or_false() {
 
 #[test]
 fn not_true() {
-    assert_eq!(
-        call(&BoolModule, "not", &[b(true)]).as_bool(),
-        Some(false)
-    );
+    assert_eq!(call(&BoolModule, "not", &[b(true)]).as_bool(), Some(false));
 }
 
 #[test]
 fn not_false() {
-    assert_eq!(
-        call(&BoolModule, "not", &[b(false)]).as_bool(),
-        Some(true)
-    );
+    assert_eq!(call(&BoolModule, "not", &[b(false)]).as_bool(), Some(true));
 }
 
 #[test]
@@ -213,10 +207,7 @@ fn eq_false() {
 
 #[test]
 fn from_bool() {
-    assert_eq!(
-        call(&BoolModule, "from", &[b(true)]).as_bool(),
-        Some(true)
-    );
+    assert_eq!(call(&BoolModule, "from", &[b(true)]).as_bool(), Some(true));
     assert_eq!(
         call(&BoolModule, "from", &[b(false)]).as_bool(),
         Some(false)
@@ -225,14 +216,8 @@ fn from_bool() {
 
 #[test]
 fn from_number() {
-    assert_eq!(
-        call(&BoolModule, "from", &[n(1.0)]).as_bool(),
-        Some(true)
-    );
-    assert_eq!(
-        call(&BoolModule, "from", &[n(0.0)]).as_bool(),
-        Some(false)
-    );
+    assert_eq!(call(&BoolModule, "from", &[n(1.0)]).as_bool(), Some(true));
+    assert_eq!(call(&BoolModule, "from", &[n(0.0)]).as_bool(), Some(false));
 }
 
 #[test]
@@ -241,18 +226,12 @@ fn from_string() {
         call(&BoolModule, "from", &[s("hello")]).as_bool(),
         Some(true)
     );
-    assert_eq!(
-        call(&BoolModule, "from", &[s("")]).as_bool(),
-        Some(false)
-    );
+    assert_eq!(call(&BoolModule, "from", &[s("")]).as_bool(), Some(false));
 }
 
 #[test]
 fn from_null() {
-    assert_eq!(
-        call(&BoolModule, "from", &[null()]).as_bool(),
-        Some(false)
-    );
+    assert_eq!(call(&BoolModule, "from", &[null()]).as_bool(), Some(false));
 }
 
 #[test]

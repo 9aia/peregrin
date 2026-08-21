@@ -1,7 +1,7 @@
 use super::*;
+use ac_ast::Expr;
 use ac_runtime::RuntimeValue;
 use ac_vm::{Context, Eval, Vm};
-use ac_ast::Expr;
 
 // ── typeof ──────────────────────────────────────────────────
 
@@ -60,7 +60,9 @@ fn typeof_function() {
 fn keys_of_object() {
     let v = call_meta(
         "keys",
-        &[RuntimeValue::new(serde_json::json!({"a": 1, "b": 2, "c": 3}))],
+        &[RuntimeValue::new(
+            serde_json::json!({"a": 1, "b": 2, "c": 3}),
+        )],
     );
     let arr = v.as_array().unwrap();
     let names: Vec<&str> = arr.iter().filter_map(|v| v.as_str()).collect();
@@ -124,10 +126,7 @@ fn eval_with_callback() {
     ctx.set_eval(Box::new(SimpleEval));
     ctx.define("x", RuntimeValue::new(21));
 
-    let expr = Expr::call(
-        "eval",
-        vec![Expr::value(RuntimeValue::new("mul(x, 2)"))],
-    );
+    let expr = Expr::call("eval", vec![Expr::value(RuntimeValue::new("mul(x, 2)"))]);
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(42.0));
 }
@@ -137,10 +136,7 @@ fn eval_without_callback_errors() {
     let mut vm = Vm::new(MetaHost::default());
     let mut ctx = Context::new();
 
-    let expr = Expr::call(
-        "eval",
-        vec![Expr::value(RuntimeValue::new("add(1, 2)"))],
-    );
+    let expr = Expr::call("eval", vec![Expr::value(RuntimeValue::new("add(1, 2)"))]);
     let result = vm.eval(&expr, &mut ctx);
     assert!(result.is_err());
 }

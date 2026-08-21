@@ -14,7 +14,9 @@ impl Fs for StdFs {
             std::io::ErrorKind::PermissionDenied => {
                 PlatformError::PermissionDenied { path: path.into() }
             }
-            _ => PlatformError::Io { message: e.to_string() },
+            _ => PlatformError::Io {
+                message: e.to_string(),
+            },
         })
     }
 
@@ -23,10 +25,10 @@ impl Fs for StdFs {
             std::io::ErrorKind::PermissionDenied => {
                 PlatformError::PermissionDenied { path: path.into() }
             }
-            std::io::ErrorKind::AlreadyExists => {
-                PlatformError::AlreadyExists { path: path.into() }
-            }
-            _ => PlatformError::Io { message: e.to_string() },
+            std::io::ErrorKind::AlreadyExists => PlatformError::AlreadyExists { path: path.into() },
+            _ => PlatformError::Io {
+                message: e.to_string(),
+            },
         })
     }
 
@@ -37,7 +39,9 @@ impl Fs for StdFs {
     fn remove(&self, path: &str) -> Result<(), PlatformError> {
         let meta = fs::metadata(path).map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => PlatformError::NotFound { path: path.into() },
-            _ => PlatformError::Io { message: e.to_string() },
+            _ => PlatformError::Io {
+                message: e.to_string(),
+            },
         })?;
 
         if meta.is_dir() {
@@ -45,18 +49,24 @@ impl Fs for StdFs {
         } else {
             fs::remove_file(path)
         }
-        .map_err(|e| PlatformError::Io { message: e.to_string() })
+        .map_err(|e| PlatformError::Io {
+            message: e.to_string(),
+        })
     }
 
     fn list_dir(&self, path: &str) -> Result<Vec<String>, PlatformError> {
         let entries = fs::read_dir(path).map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => PlatformError::NotFound { path: path.into() },
-            _ => PlatformError::Io { message: e.to_string() },
+            _ => PlatformError::Io {
+                message: e.to_string(),
+            },
         })?;
 
         let mut names = Vec::new();
         for entry in entries {
-            let entry = entry.map_err(|e| PlatformError::Io { message: e.to_string() })?;
+            let entry = entry.map_err(|e| PlatformError::Io {
+                message: e.to_string(),
+            })?;
             names.push(entry.file_name().to_string_lossy().into_owned());
         }
         Ok(names)
