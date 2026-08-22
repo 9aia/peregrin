@@ -39,10 +39,10 @@ impl ExprParser for AcDialect {
                 in_string = true;
                 quote_char = ch;
                 current.push(ch);
-            } else if ch == '(' {
+            } else if ch == '(' || ch == '[' {
                 depth += 1;
                 current.push(ch);
-            } else if ch == ')' {
+            } else if ch == ')' || ch == ']' {
                 depth -= 1;
                 current.push(ch);
             } else if ch == ',' && depth == 0 {

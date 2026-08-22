@@ -1,0 +1,18 @@
+[package]
+name = "ac-type-host"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+serde_json = "1"
+ac-ast.workspace = true
+ac-runtime.workspace = true
+ac-runtime-core.workspace = true
+ac-vm.workspace = true
+ac-typecheck-core.workspace = true
+ac-dialect.workspace = true
+ac-dialect-canonical.workspace = true
+ac-lib-utils.workspace = true
+ac-fields.workspace = true
+
+[dev-dependencies]

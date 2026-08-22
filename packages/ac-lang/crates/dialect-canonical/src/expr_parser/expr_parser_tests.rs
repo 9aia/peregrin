@@ -29,6 +29,15 @@ fn split_args_nested() {
 }
 
 #[test]
+fn split_args_array_literal() {
+    let d = AcDialect;
+    let args = d.parser().split_args("is_compatible, [obj.get(actual, \"item\"), obj.get(expected, \"item\")]");
+    assert_eq!(args.len(), 2);
+    assert_eq!(args[0], "is_compatible");
+    assert_eq!(args[1].trim(), "[obj.get(actual, \"item\"), obj.get(expected, \"item\")]");
+}
+
+#[test]
 fn parse_string_literal_double() {
     let d = AcDialect;
     assert_eq!(

@@ -65,6 +65,7 @@ members = [
   "crates/store",
   "crates/codebase",
   "crates/integration-tests",
+  "crates/type-host",
 ]
 resolver = "3"
 
@@ -131,6 +132,7 @@ ac-meta = { path = "crates/meta" }
 ac-store = { path = "crates/store" }
 ac-codebase = { path = "crates/codebase" }
 ac-integration-tests = { path = "crates/integration-tests" }
+ac-type-host = { path = "crates/type-host" }
 rand = "0.9"
 hex = "0.4"
 md-5 = "0.10"

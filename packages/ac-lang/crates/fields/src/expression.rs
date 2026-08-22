@@ -166,6 +166,13 @@ fn eval_arg(
         return Some(JsonValue::Null);
     }
 
+    // Array literal: [a, b, c]
+    if arg.starts_with('[') && arg.ends_with(']') && arg.len() >= 2 {
+        let inner = &arg[1..arg.len() - 1];
+        let items = parse_args(inner, namespaces, resolver, dialect)?;
+        return Some(JsonValue::Array(items));
+    }
+
     // Nested function call
     if dialect.parser().find_call_open(arg).is_some() {
         return eval_expr_inner(arg, namespaces, resolver, dialect);

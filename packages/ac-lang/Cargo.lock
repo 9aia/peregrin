@@ -191,6 +191,7 @@ dependencies = [
  "ac-typecheck-key-inherit",
  "ac-typecheck-key-merge",
  "ac-typecheck-key-mutable",
+ "ac-typecheck-key-termination",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
  "ac-typegen-import",
@@ -633,6 +634,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-type-host"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-dialect",
+ "ac-dialect-canonical",
+ "ac-fields",
+ "ac-lib-utils",
+ "ac-runtime",
+ "ac-runtime-core",
+ "ac-typecheck-core",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
 name = "ac-typecheck-core"
 version = "0.1.0"
 dependencies = [
@@ -706,6 +723,17 @@ name = "ac-typecheck-key-mutable"
 version = "0.1.0"
 dependencies = [
  "ac-typecheck-core",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-typecheck-key-termination"
+version = "0.1.0"
+dependencies = [
+ "ac-dialect",
+ "ac-dialect-canonical",
+ "ac-typecheck-core",
+ "ac-typecheck-infer",
  "serde_json",
 ]
 

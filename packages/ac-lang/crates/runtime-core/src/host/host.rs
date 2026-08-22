@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use ac_vm::{Function, GenericFunction, Host, LazyFunction};
 
 use crate::module::Module;
@@ -30,8 +32,9 @@ use crate::module::Module;
 /// ```
 ///
 /// The VM sees only the `Host` interface — it does not know about modules.
+#[derive(Clone)]
 pub struct ModuleHost {
-    modules: Vec<Box<dyn Module>>,
+    modules: Vec<Rc<dyn Module>>,
 }
 
 impl ModuleHost {
@@ -44,7 +47,7 @@ impl ModuleHost {
 
     /// Registers a module.
     pub fn with(mut self, module: impl Module + 'static) -> Self {
-        self.modules.push(Box::new(module));
+        self.modules.push(Rc::new(module));
         self
     }
 
