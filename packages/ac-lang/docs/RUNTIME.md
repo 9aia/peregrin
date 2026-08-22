@@ -11,25 +11,36 @@ For the language specification itself, see [LANG.md](./LANG.md). For the dialect
 
 The runtime provides:
 
-- **VM** — evaluates expression trees with host-provided functions.
+- **VM** — evaluates expression trees with host-provided functions, operations, and lazy functions.
 - **Host functions** — `add`, `mul`, `concat`, `len`, `import`, `apply`, and user-defined function bodies.
+- **Lazy functions** — short-circuit evaluation for `if`, `and`, `or` via the `LazyFunction` trait.
+- **Async functions** — non-blocking I/O via the `AsyncFunction` trait and `eval_async`.
+- **Operations & handlers** — algebraic effect handling via the `Operation` trait and `handle` expressions.
+- **Resumable evaluation** — serializable continuations for cross-machine evaluation migration via `eval_resumable`.
+- **Caching host** — `CallCache` + `CacheHost` for cross-machine resumability without re-execution.
+- **Content-addressed storage** — `DefinitionStore`, `NameRegistry`, `EvalCache` for hash-based dedup and caching.
+- **Module system** — `Module` trait + `ModuleHost` for composing qualified function namespaces (`fs.read`, `http.get`, `math.abs`).
+- **Platform services** — abstract `Fs`, `Env`, `Path`, `Time`, `HttpClient`, `Cmd`, `Tmp` service traits with stub and stdlib implementations.
+- **Standard library** — math, string, datetime, crypto, random, key-value, and internationalization modules.
 - **Environment access** — `env` namespace exposes process environment variables.
-- **Module resolution** — file, HTTP, and Git resolvers for `import()` calls.
+- **Module resolution** — file, HTTP, Git, virtual, and noop resolvers for `import()` calls.
 - **Schema validation** — JSON Schema (draft 2020-12) validation of field values.
 - **Source location tracking** — line:column mapping for error reporting.
+- **Dialect system** — `Dialect` trait abstracting syntax tokens, key names, and schema vocabulary behind a swappable interface.
 - **Compiler pipeline** — composable passes for parsing, extraction, import resolution, type checking, and type generation.
 - **CLI** — the `ac` command-line tool.
 
 ## 2. Architecture
 
-The runtime is organized into five layers, each building on the one below. No layer depends on a layer above it.
+The runtime is organized into six layers, each building on the one below. No layer depends on a layer above it.
 
 ```
-Layer 5 — CLI                     CLI tool
-Layer 4 — Compiler pipeline         compiler, pipeline core, pass implementations, benchmarks
-Layer 3 — Type system & generation type checking, type generation, module resolution
-Layer 2 — Domain logic            fields, host functions, frontend factory
-Layer 1 — Core                    AST, values, VM, schema, source locations, format frontends
+Layer 6 — CLI                     CLI tool
+Layer 5 — Compiler pipeline         compiler, pipeline core, pass implementations, benchmarks
+Layer 4 — Type system & generation type checking, type generation, module resolution
+Layer 3 — Domain logic            fields, host functions, frontend factory, dialect, platform services
+Layer 2 — Runtime                 values, VM, host, continuation, store, modules, standard library
+Layer 1 — Core                    AST, schema, source locations, format frontends
 ```
 
 ### 2.1 Layer responsibilities
@@ -39,8 +50,6 @@ Layer 1 — Core                    AST, values, VM, schema, source locations, f
 | Component         | Responsibility                                                 |
 | ----------------- | -------------------------------------------------------------- |
 | **AST**           | Expression trees and field bindings — generic, no dependencies |
-| **Values**        | JSON-compatible value type, frontend interface                 |
-| **VM**            | Expression evaluator, host interface, execution context        |
 | **Schema**        | Schema validation interface, validation error                  |
 | **Schema (JSON)** | JSON Schema implementation of the schema interface             |
 | **Source**        | Source location, source map, line index, key matcher           |
@@ -48,15 +57,35 @@ Layer 1 — Core                    AST, values, VM, schema, source locations, f
 | **Frontend-YAML** | YAML parse/serialize to values + source map                    |
 | **Frontend-TOML** | TOML parse/serialize to values + source map                    |
 
-#### Layer 2 — Domain logic
+#### Layer 2 — Runtime
+
+| Component             | Responsibility                                                                                                                     |
+| --------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| **Values**            | `NonFunctionValue` (wraps `serde_json::Value`), `FunctionValue`, `Frontend` trait                                                  |
+| **VM**                | Expression evaluator, `Host`/`Function`/`AsyncFunction`/`LazyFunction`/`Operation` traits, `Context`, `Continuation`, `EvalResult` |
+| **Host**              | Default host with `add`, `mul`, `concat`, `len` primitives                                                                         |
+| **Host-cache**        | `CallCache` + `CacheHost` for cross-machine resumability                                                                           |
+| **Store**             | `DefinitionStore`, `NameRegistry`, `EvalCache` for content-addressed storage                                                       |
+| **Runtime-core**      | `Module` trait + `ModuleHost` for composing qualified function namespaces                                                          |
+| **Dialect**           | `Dialect`/`Syntax`/`ExprParser`/`DocumentVocabulary`/`SchemaVocabulary` traits                                                     |
+| **Dialect-canonical** | Canonical AC dialect implementation (JSON Schema vocabulary, `${...}` syntax)                                                      |
+| **lib-utils**         | Math, string, and utility modules                                                                                                  |
+| **lib-crypto**        | Cryptographic functions module                                                                                                     |
+| **lib-datetime**      | Date/time functions module                                                                                                         |
+| **lib-rand**          | Random number generation module                                                                                                    |
+| **lib-kv**            | Key-value store interface + hashmap implementation                                                                                 |
+| **lib-intl**          | Internationalization (number formatting, string comparison, segmentation, display names, duration formatting, supported locales)   |
+| **lib-platform**      | Abstract `Fs`, `Env`, `Path`, `Time`, `HttpClient`, `Cmd`, `Tmp` service traits                                                    |
+| **lib-platform-std**  | Concrete stdlib implementations of platform service traits                                                                         |
+
+#### Layer 3 — Domain logic
 
 | Component            | Responsibility                                                             |
 | -------------------- | -------------------------------------------------------------------------- |
 | **Fields**           | Field extraction, interpolation, computed fields, merge, scope, validation |
-| **Host**             | Default host with `add`, `mul`, `concat`, `len` primitives                 |
 | **Frontend factory** | Maps format names to frontend implementations                              |
 
-#### Layer 3 — Type system, type generation, module resolution
+#### Layer 4 — Type system, type generation, module resolution
 
 | Component                 | Responsibility                                                                        |
 | ------------------------- | ------------------------------------------------------------------------------------- |
@@ -73,8 +102,10 @@ Layer 1 — Core                    AST, values, VM, schema, source locations, f
 | **Resolver virtual**      | In-memory module loading (for tests)                                                  |
 | **Resolver HTTP**         | HTTP(S) module loading                                                                |
 | **Resolver Git**          | Git repository module loading                                                         |
+| **Resolver memory**       | In-memory module cache                                                                |
+| **Resolver noop**         | No-op resolver (for sandboxed/no-import hosts)                                        |
 
-#### Layer 4 — Compiler pipeline
+#### Layer 5 — Compiler pipeline
 
 | Component           | Responsibility                                                                                 |
 | ------------------- | ---------------------------------------------------------------------------------------------- |
@@ -87,7 +118,7 @@ Layer 1 — Core                    AST, values, VM, schema, source locations, f
 | **Engine**          | Preset pipelines + non-pipeline operations (parse, eval, validate, fields, typegen, typecheck) |
 | **Benchmarks**      | Performance benchmarks for core, pipeline, inference, typecheck                                |
 
-#### Layer 5 — CLI
+#### Layer 6 — CLI
 
 | Component | Responsibility                                            |
 | --------- | --------------------------------------------------------- |
@@ -99,9 +130,15 @@ Layer 1 — Core                    AST, values, VM, schema, source locations, f
 - The schema interface depends only on source locations (for error reporting).
 - Source location tracking is format-agnostic.
 - The value type is the only component that couples to a JSON value library.
+- The VM depends only on the AST and value type — it knows nothing about modules, fields, or I/O.
+- The continuation system depends only on the AST and value type — all data is JSON-serializable.
+- The dialect traits depend only on the value type — no syntax or I/O dependencies.
+- The platform service traits have no platform dependencies — stubs are in-memory, stdlib implementations are in a separate crate.
+- The module system (`Module` / `ModuleHost`) depends only on the VM `Host` trait — the VM is unaware of modules.
+- The standard library modules depend only on the value type and module trait — no VM or compiler dependencies.
 - The fields module does not depend on the VM — the caller bridges the two via a function resolver interface.
 - The typecheck core and typegen core have no knowledge of AC-specific keys (`expr`, `arg`, `merge`, `inheritable`, `mutable`). Each key has its own handler.
-- The resolver core defines the module resolver and module cache interfaces; implementations (file, virtual, HTTP, Git) do the I/O.
+- The resolver core defines the module resolver and module cache interfaces; implementations (file, virtual, HTTP, Git, noop) do the I/O.
 - The compiler core is pass-agnostic — it defines the pass interface and pipeline builder but depends on no specific passes.
 - The compiler depends on all pass implementations and provides preset pipelines.
 - The CLI depends only on the compiler — all logic lives in the compiler.
@@ -126,16 +163,27 @@ An alias for the runtime value used at the VM/host boundary to clarify intent.
 
 ### 4.1 Execution engine
 
-The VM walks expression trees and produces values. It is parameterized by a host that provides functions.
+The VM walks expression trees and produces values. It is parameterized by a host that provides functions, operations, and lazy functions.
 
 **Evaluation rules:**
 
 1. A `Value` node evaluates to itself.
 2. A `Call` node evaluates each argument left-to-right, resolves the function by name via the host, then invokes the function with the evaluated arguments and the current context.
+3. A `Handle` node evaluates its body with handler clauses active. When an operation signals, the VM searches handler clauses innermost-first for a match.
+
+The VM checks `Host::lazy_function` before `Host::function` and `Host::operation`. If a name resolves to a lazy function, the VM passes the raw expression tree instead of pre-evaluated values.
 
 ### 4.2 Host interface
 
 The host provides function lookups by name. The VM has no built-in functions — all capabilities come from the host implementation.
+
+| Trait           | Purpose                                                                            |
+| --------------- | ---------------------------------------------------------------------------------- |
+| `Host`          | Resolve function names to callables; the primary interface                         |
+| `Function`      | Sync function — receives evaluated args, returns a value or error                  |
+| `AsyncFunction` | Async function — returns a `Future` for non-blocking I/O                           |
+| `LazyFunction`  | Lazy function — receives unevaluated args, decides which to evaluate               |
+| `Operation`     | Effect operation — signals (yields) instead of completing; intercepted by handlers |
 
 ### 4.3 Default host functions
 
@@ -151,11 +199,65 @@ The default host provides these primitives:
 
 The `apply` function is the bridge between data and computation: it takes a function value (an object with a `body` field, params, and optional return schema) and remaining arguments, binds the arguments to the function's params, and evaluates the body. This is what makes functions first-class — `double(5)` desugars to `apply(double, 5)` when `double` resolves to a function value via path lookup.
 
-### 4.4 Function interface
+### 4.4 Operations and handlers
 
-A function receives evaluated arguments and the execution context, and returns a value or an error. Functions must be callable without exclusive access to themselves; functions requiring mutable state must use interior mutability patterns.
+Operations are the language's primary mechanism for **control flow as data**. An operation signals (yields) instead of returning. The VM captures the current continuation and searches handler clauses for a match.
 
-### 4.5 Execution context
+The `Operation` trait defines:
+
+- **`signature()`** — operation name, param schemas, return schema.
+- **`perform()`** — called by the VM; returns `Err(Error::Operation { name, args })` to signal, or `Ok(value)` to complete without signaling.
+
+The VM checks `Host::operation` before `Host::function`. If a name resolves to an operation, the operation's `perform` method is called instead of a function's `call` method.
+
+When an operation signals and a matching handler clause is found:
+
+1. Operation arguments are bound to the handler's params.
+2. The captured continuation (frame stack) is bound to the handler's continuation variable.
+3. The handler body is evaluated. The handler can resume the continuation (`k(42)`), discard it (return a value), or re-raise (perform another operation).
+
+If no handler matches, the operation propagates to the caller as an unhandled operation yield.
+
+### 4.5 Lazy functions
+
+The `LazyFunction` trait enables short-circuit evaluation. A lazy function receives unevaluated argument expressions and an `evaluate` closure. It decides which arguments to evaluate and in what order.
+
+This enables `if(cond, then, else)`, `and(a, b)`, and `or(a, b)` as host-provided functions without baking control flow into the kernel. The VM checks `Host::lazy_function` before `Host::function` and `Host::operation`.
+
+### 4.6 Async evaluation
+
+The `AsyncFunction` trait enables non-blocking I/O. Async functions return `Pin<Box<dyn Future<...>>>`, allowing network requests, timers, and cooperative yielding without blocking the calling thread.
+
+The async VM (`eval_async`) checks `Host::async_function` after `Host::function` returns `None`. A host can provide both sync and async functions — the VM uses whichever is available for a given name.
+
+An async function can yield control to the executor by awaiting a pending future, or yield a value to the caller by returning `Err(Error::Yield(value))` for explicit resumability.
+
+### 4.7 Resumable evaluation
+
+The VM provides `eval_resumable`, which uses an explicit frame stack instead of the native call stack. This enables cross-machine resumability.
+
+**How it works:**
+
+1. When a host function returns `Err(Error::Yield(value))`, the VM captures the current frame stack into a `Continuation`.
+2. The caller receives `EvalResult::Yielded { value, continuation }`.
+3. The continuation is serializable via `Continuation::to_json()` — all data is JSON-compatible.
+4. To resume, call `eval_resumable` with `Continuation::from_json(json)` and a potentially different `Vm` with a different `Host`.
+5. The resumed host can use a `CallCache` to return cached results for calls already made on the original host.
+
+The `Continuation` contains:
+
+- **Frame stack** — each `Frame` records the function name, evaluated arguments, pending expressions, and active handler clauses.
+- All data is JSON-compatible: function names are strings, values are `serde_json::Value`, expressions are `Expr<NonFunctionValue>`, handler clauses are `HandlerClause<NonFunctionValue>`.
+
+The `EvalResult` enum:
+
+| Variant                           | Meaning                                     |
+| --------------------------------- | ------------------------------------------- |
+| `Done(value)`                     | Evaluation completed successfully           |
+| `Yielded { value, continuation }` | Evaluation paused — a host function yielded |
+| `Error(err)`                      | Evaluation failed                           |
+
+### 4.8 Execution context
 
 The context maintains a stack of scopes for variable bindings.
 
@@ -167,15 +269,17 @@ The context maintains a stack of scopes for variable bindings.
 | **Resolve**                | Searches from the innermost scope outward. Returns `UnknownVariable` if not found. |
 | **Depth**                  | Reports the current scope depth (global = 1).                                      |
 
-### 4.6 VM errors
+### 4.9 VM errors
 
-| Error             | Meaning                                                   |
-| ----------------- | --------------------------------------------------------- |
-| `UnknownFunction` | A function name was not found in the host.                |
-| `UnknownVariable` | A variable name was not found in any scope.               |
-| `PrimitiveError`  | A primitive operation failed with a message.              |
-| `TypeMismatch`    | A value did not match the expected type.                  |
-| `ArgumentCount`   | The number of arguments did not match the expected count. |
+| Error             | Meaning                                                              |
+| ----------------- | -------------------------------------------------------------------- |
+| `UnknownFunction` | A function name was not found in the host.                           |
+| `UnknownVariable` | A variable name was not found in any scope.                          |
+| `PrimitiveError`  | A primitive operation failed with a message.                         |
+| `TypeMismatch`    | A value did not match the expected type.                             |
+| `ArgumentCount`   | The number of arguments did not match the expected count.            |
+| `Yield`           | A host function yielded — captures a value for resumable evaluation. |
+| `Operation`       | An operation signaled — carries the operation name and arguments.    |
 
 Errors are comparable for testing and replay purposes.
 
@@ -307,11 +411,148 @@ The VmResolver bridges the function resolver interface to the VM + host. Key beh
 - **Param validation** — before dispatching to the VM or evaluating a body, args are validated against param schemas using the schema validator.
 - **Return validation** — after the call, the return value is validated against the return schema (if declared).
 
-## 10. Compiler pipeline
+## 10. Module system
+
+The `Module` trait groups host functions by namespace, enabling qualified calls like `fs.read("config.yml")`, `math.abs(x)`, `http.get("https://...")`. A `ModuleHost` composes multiple modules into a single `Host` implementation — the VM sees only `Host::function(name)`.
+
+### 10.1 Module trait
+
+A module provides function lookups by qualified name. The `ModuleHost` routes `name.subname` calls to the appropriate module. The VM is unaware of modules — it only calls `Host::function(name)`.
+
+### 10.2 ModuleHost composition
+
+```rust
+let host = ModuleHost::new()
+    .with(MathModule)
+    .with(StrModule)
+    .with(FsModule::new(StdFs))
+    .with(EnvModule::new(StdEnv))
+    .with(HttpClientModule::new(StdHttpClient));
+```
+
+Each module is independent. Adding or removing a module only affects which function names are available — no core changes needed.
+
+## 11. Platform services
+
+Abstract service traits bridge host capabilities (filesystem, environment, path manipulation, time, HTTP, command execution, temp files) into callable `Module` implementations.
+
+### 11.1 Service traits
+
+| Service     | Trait        | Functions                                     | Description           |
+| ----------- | ------------ | --------------------------------------------- | --------------------- |
+| Filesystem  | `Fs`         | `fs.read`, `fs.write`, `fs.exists`, `fs.list` | File I/O              |
+| Environment | `Env`        | `env.get`, `env.set`, `env.keys`              | Environment variables |
+| Path        | `Path`       | `path.join`, `path.dirname`, `path.basename`  | Path manipulation     |
+| Time        | `Time`       | `time.now`, `time.format`                     | Time access           |
+| HTTP        | `HttpClient` | `http.get`, `http.post`                       | HTTP client           |
+| Command     | `Cmd`        | `cmd.run`                                     | Process execution     |
+| Temp        | `Tmp`        | `tmp.file`, `tmp.dir`                         | Temporary files/dirs  |
+
+### 11.2 Implementations
+
+- **Stub implementations** — in-memory, no I/O. Ideal for tests and sandboxed hosts.
+- **Stdlib implementations** (`ac-lib-platform-std`) — concrete implementations using Rust stdlib + common crates.
+
+Each service trait is abstract — no platform dependencies in the interface crate. The stdlib crate provides concrete implementations. A `ModuleHost` composes services into a single host — plug in only what each environment needs.
+
+## 12. Content-addressed storage
+
+### 12.1 DefinitionStore
+
+Stores `FunctionValue` definitions indexed by SHA-256 hash of their canonical JSON. Enables deduplication, reproducible builds, and cross-machine sharing.
+
+### 12.2 NameRegistry
+
+Maps human-readable names to content-addressed hashes. Resolves names to definitions at runtime.
+
+### 12.3 EvalCache
+
+Caches evaluation results keyed by expression + input context. Enables memoization and replay — if the same expression is evaluated with the same inputs, the cached result is returned without re-evaluation.
+
+Content addressing is a storage layer, not a language-level constraint — documents evaluate correctly without ever touching a `DefinitionStore`.
+
+## 13. Caching host
+
+The `CacheHost` wraps another host with a `CallCache` — a serializable cache mapping `(function, args)` keys to result values.
+
+### 13.1 Cross-machine resumability
+
+When a VM evaluation yields, the caller captures a `Continuation` and the yielded value. To resume on another machine, the new host needs to return results for calls already made — without re-executing them.
+
+```rust
+// Server: register functions, evaluate, hit a yield
+let mut host = CacheHost::new();
+host.register("add", Box::new(AddFunction));
+host.register("fetch", Box::new(FetchFunction)); // yields
+let vm = Vm::new(host);
+let result = vm.eval_resumable(&expr, &mut ctx, None);
+
+// Ship continuation + cache to client
+let cont_json = continuation.to_json();
+let cache_json = vm.host().cache().to_json();
+
+// Client: restore cache, resume with different host
+let cache = CallCache::from_json(&received_cache_json);
+let mut host = CacheHost::with_cache(cache);
+host.register("add", Box::new(AddFunction));
+host.register("fetch", Box::new(ClientFetchFunction));
+let vm = Vm::new(host);
+let result = vm.eval_resumable(&expr, &mut ctx, Some(cont));
+```
+
+The `CallCache` is serializable to JSON, enabling cross-machine migration of in-progress evaluation without re-executing completed calls.
+
+## 14. Dialect system
+
+The `Dialect` trait abstracts the language's syntax tokens, reserved key names, and schema vocabulary behind a swappable interface. The canonical dialect is the only shipped implementation, but custom dialects are architecturally possible.
+
+### 14.1 Dialect trait
+
+The `Dialect` trait is a facade grouping four sub-traits:
+
+| Sub-trait            | Abstracts                                                   |
+| -------------------- | ----------------------------------------------------------- |
+| `Syntax`             | Interpolation markers, path separator, call delimiters      |
+| `ExprParser`         | Expression parsing rules                                    |
+| `DocumentVocabulary` | Reserved key names (`$`, `expr`, `body`, `functions`, etc.) |
+| `SchemaVocabulary`   | Schema language vocabulary (JSON Schema by default)         |
+
+### 14.2 Canonical dialect
+
+`AcDialect` is a zero-sized struct implementing the `Dialect` trait with the canonical AC language values:
+
+- Interpolation: `${` ... `}`
+- Path separator: `.`
+- Call delimiters: `(` ... `)`
+- Schema vocabulary: JSON Schema draft 2020-12
+
+It is a `#[derive(Clone, Copy)]` static singleton — a value that can be easily passed around and used as the language definition in compiler configuration.
+
+### 14.3 Compiler configuration
+
+The compiler `Config` holds a `Box<dyn Dialect>`, meaning the specific language definition (dialect) is a configurable and swappable value at runtime. A custom dialect may use different key names, interpolation markers, or schema vocabulary without changing the compiler, VM, or fields pipeline.
+
+## 15. Standard library
+
+The runtime provides standard library modules that can be composed into a `ModuleHost`:
+
+| Module    | Crate             | Functions                                                                                                                           |
+| --------- | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Math      | `ac-lib-utils`    | `math.abs`, `math.floor`, `math.ceil`, `math.round`, `math.min`, `math.max`, etc.                                                   |
+| String    | `ac-lib-utils`    | `str.upper`, `str.lower`, `str.trim`, `str.split`, `str.replace`, etc.                                                              |
+| DateTime  | `ac-lib-datetime` | `datetime.now`, `datetime.format`, `datetime.parse`, etc.                                                                           |
+| Crypto    | `ac-lib-crypto`   | `crypto.sha256`, `crypto.hmac`, etc.                                                                                                |
+| Random    | `ac-lib-rand`     | `rand.int`, `rand.float`, `rand.pick`, etc.                                                                                         |
+| Key-Value | `ac-lib-kv`       | `kv.get`, `kv.set`, `kv.delete` (interface + hashmap impl)                                                                          |
+| Intl      | `ac-lib-intl`     | `intl.format_number`, `intl.compare_strings`, `intl.segment`, `intl.display_name`, `intl.format_duration`, `intl.supported_locales` |
+
+Each module is independent — include only what the host environment needs.
+
+## 16. Compiler pipeline
 
 The compiler provides a composable pipeline for compile-time operations: parsing, field extraction, import resolution, type checking, and type generation. The pipeline is a sequence of stateless passes that run in order, each receiving the compilation state and configuration.
 
-### 10.1 Compilation state
+### 16.1 Compilation state
 
 A compilation flows through the pipeline, accumulating state as each pass runs:
 
@@ -327,7 +568,7 @@ A compilation flows through the pipeline, accumulating state as each pass runs:
 
 After all passes complete, the pipeline resolves error locations using the source map, populating the `location` field on any type errors that don't already have one.
 
-### 10.2 Configuration
+### 16.2 Configuration
 
 The configuration holds the pluggable components:
 
@@ -340,7 +581,7 @@ The compiler provides default configurations:
 - **Default** — file resolver (with memory cache) + JSON Schema interpreter + JSON Schema backend.
 - **Typecheck-only** — file resolver (with memory cache) + JSON Schema interpreter + no backend.
 
-### 10.3 Pass interface
+### 16.3 Pass interface
 
 Each pass implements:
 
@@ -349,7 +590,7 @@ Each pass implements:
 
 Custom passes (linting, optimization, JIT) implement the pass interface and slot into the pipeline without core changes.
 
-### 10.4 Built-in passes
+### 16.4 Built-in passes
 
 | Pass      | Input → Output                                  |
 | --------- | ----------------------------------------------- |
@@ -359,7 +600,7 @@ Custom passes (linting, optimization, JIT) implement the pass interface and slot
 | Typecheck | extracted fields → type errors (parallelizable) |
 | Generate  | typegen context → output                        |
 
-### 10.5 Preset pipelines
+### 16.5 Preset pipelines
 
 | Preset      | Passes                                           | Use case                         |
 | ----------- | ------------------------------------------------ | -------------------------------- |
@@ -367,7 +608,7 @@ Custom passes (linting, optimization, JIT) implement the pass interface and slot
 | `typecheck` | parse → extract → typecheck                      | Static type checking             |
 | `full`      | parse → extract → resolve → typecheck → generate | Type-safe code generation        |
 
-### 10.6 Parallel type checking
+### 16.6 Parallel type checking
 
 The typecheck pass parallelizes independent checks. Six leaf checks run concurrently:
 
@@ -376,7 +617,7 @@ The typecheck pass parallelizes independent checks. Six leaf checks run concurre
 
 The module resolver and module cache must be thread-safe to support this.
 
-## 11. CLI
+## 17. CLI
 
 The `ac` command-line tool is a thin wrapper around the compiler. It provides argument parsing and delegates all logic to the compiler.
 
@@ -384,25 +625,25 @@ Commands: `parse`, `eval`, `validate`, `fields`, `typegen`, `typecheck`.
 
 The CLI provides default host functions (`add`, `mul`, `concat`, `len`, `import`, `apply`) via the default host and VmResolver.
 
-## 12. Facade
+## 18. Facade
 
 The top-level package is a batteries-included facade that re-exports all public components in a single dependency. It provides a prelude for convenient imports. This is the recommended entry point for most users.
 
-## 13. Testing and benchmarking
+## 19. Testing and benchmarking
 
-### 13.1 Unit tests
+### 19.1 Unit tests
 
 Unit tests are co-located with implementation, keeping tests close to the code they test.
 
-### 13.2 Integration tests
+### 19.2 Integration tests
 
 Integration tests cover the full pipeline (parse → extract → resolve → typecheck → generate) with real YAML/JSON/TOML inputs.
 
-### 13.3 Fuzzing
+### 19.3 Fuzzing
 
 The runtime includes fuzzing infrastructure with targets for expression parsing, interpolation, scoped interpolation, and expression type inference. Curated seed corpora cover edge cases: paths, unary operators, multi-arg calls, empty inputs, comma handling, unmatched parentheses.
 
-### 13.4 Benchmarks
+### 19.4 Benchmarks
 
 Benchmarks measure:
 
@@ -415,24 +656,31 @@ Benchmarks measure:
 
 Benchmarks cover flat documents, `expr:`-heavy documents, inheritable fields with nesting, and mixed-feature documents at varying sizes (10–1000 fields). Individual pass costs are also measured (parse-only, parse+extract).
 
-## 14. Extension points
+## 20. Extension points
 
-| Extension                | How                                                   | Touches            |
-| ------------------------ | ----------------------------------------------------- | ------------------ |
-| New format               | Implement the frontend interface + add to the factory | New component only |
-| New schema language      | Implement the schema interface                        | New component only |
-| New schema interpreter   | Implement the schema interpreter for type checking    | New component only |
-| New typegen backend      | Implement the typegen backend for type generation     | New component only |
-| New module resolver      | Implement the module resolver interface               | New component only |
-| New module cache         | Implement the module cache interface                  | New component only |
-| New host function        | Implement the function interface, register with host  | Host impl only     |
-| Custom namespace         | Insert into the namespaces map                        | Caller code        |
-| Custom function resolver | Implement the function resolver interface             | Caller code        |
-| Custom pipeline pass     | Implement the pass interface, add to pipeline         | New component only |
-| Native values            | Extend the value type with a native variant           | Value type only    |
-| Multi-source imports     | Compose resolvers with the chain resolver             | Caller code        |
+| Extension                  | How                                                         | Touches            |
+| -------------------------- | ----------------------------------------------------------- | ------------------ |
+| New format                 | Implement the frontend interface + add to the factory       | New component only |
+| New schema language        | Implement the schema interface                              | New component only |
+| New schema interpreter     | Implement the schema interpreter for type checking          | New component only |
+| New typegen backend        | Implement the typegen backend for type generation           | New component only |
+| New module resolver        | Implement the module resolver interface                     | New component only |
+| New module cache           | Implement the module cache interface                        | New component only |
+| New host function          | Implement the `Function` interface, register with host      | Host impl only     |
+| New async function         | Implement the `AsyncFunction` interface, register with host | Host impl only     |
+| New lazy function          | Implement the `LazyFunction` interface, register with host  | Host impl only     |
+| New operation              | Implement the `Operation` trait, register with host         | Host impl only     |
+| New module                 | Implement the `Module` trait, add to `ModuleHost`           | New component only |
+| New platform service       | Implement the service trait, add as a `Module`              | New component only |
+| New dialect                | Implement the `Dialect` trait, use in compiler `Config`     | New component only |
+| Custom namespace           | Insert into the namespaces map                              | Caller code        |
+| Custom function resolver   | Implement the function resolver interface                   | Caller code        |
+| Custom pipeline pass       | Implement the pass interface, add to pipeline               | New component only |
+| Native values              | Extend the value type with a native variant                 | Value type only    |
+| Multi-source imports       | Compose resolvers with the chain resolver                   | Caller code        |
+| Cross-machine resumability | Use `eval_resumable` + `CacheHost` + `CallCache`            | Caller code        |
 
-## 15. Porting notes
+## 21. Porting notes
 
 When porting the runtime to another language:
 
@@ -440,11 +688,15 @@ When porting the runtime to another language:
 2. **Define the value type** — wrap the target language's JSON value type. Implement predicates, accessors, and conversions.
 3. **Implement the frontend interface** — at minimum YAML and JSON. Use the target language's native YAML/JSON parsers.
 4. **Implement the schema interface** — use a JSON Schema validator library for the target language.
-5. **Implement the VM** — a simple recursive tree walker. The host interface provides function lookup.
-6. **Implement field extraction** — single-pass extraction of schemas, functions, data, inheritable, immutable, computed, merge.
-7. **Implement interpolation** — recursive `${...}` replacement with path lookup and function call resolution.
-8. **Implement the expression parser** — recursive descent for function calls, path lookups, and literals. Handle string literals, nested parens, and comma-separated arguments.
-9. **Implement module resolvers** — at minimum a file resolver. Use the module cache pattern for memoization.
-10. **Implement the compiler pipeline** — pass interface + pipeline builder. Each pass reads/writes a compilation state.
-11. **Source location tracking** — scan source text during parsing to build a path → location map. Resolve error locations after all passes.
-12. **Parallel type checking** — if the target language supports parallelism, parallelize independent type checks. The module resolver and module cache must be thread-safe.
+5. **Implement the VM** — a tree walker with `Host`, `Function`, `AsyncFunction`, `LazyFunction`, and `Operation` traits. Support `eval`, `eval_async`, and `eval_resumable`.
+6. **Implement continuations** — serializable frame stack for `eval_resumable`. Each frame records function name, evaluated args, pending expressions, and handler clauses. Serialize to JSON for cross-machine resumability.
+7. **Implement field extraction** — single-pass extraction of schemas, functions, data, inheritable, immutable, computed, merge.
+8. **Implement interpolation** — recursive `${...}` replacement with path lookup and function call resolution.
+9. **Implement the expression parser** — recursive descent for function calls, path lookups, literals, and handle expressions. Handle string literals, nested parens, and comma-separated arguments.
+10. **Implement module resolvers** — at minimum a file resolver. Use the module cache pattern for memoization.
+11. **Implement the module system** — `Module` trait + `ModuleHost` for composing qualified function namespaces.
+12. **Implement platform services** — abstract service traits for `Fs`, `Env`, `Path`, `Time`, `HttpClient`, `Cmd`, `Tmp` with stub and native implementations.
+13. **Implement the dialect system** — `Dialect` trait abstracting syntax, vocabulary, and schema. Canonical dialect with `${...}` interpolation and JSON Schema.
+14. **Implement the compiler pipeline** — pass interface + pipeline builder. Each pass reads/writes a compilation state.
+15. **Source location tracking** — scan source text during parsing to build a path → location map. Resolve error locations after all passes.
+16. **Parallel type checking** — if the target language supports parallelism, parallelize independent type checks. The module resolver and module cache must be thread-safe.

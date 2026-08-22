@@ -5,9 +5,11 @@
 
 ## 1. Overview
 
-AC is a small, embeddable language for self-describing documents. A document can declare its own structure (`$:`), compute values (`expr:`), interpolate (`${...}`), and load external documents — all validated by a schema system. Functions emerge from data: an object with a `body` field stored in any field is callable via the `apply` host primitive.
+AC is a small, embeddable scripting language for self-describing documents and general-purpose computation. A document can declare its own structure (`$:`), compute values (`expr:`), interpolate (`${...}`), load external documents, perform I/O via host-provided operations, and suspend/resume evaluation across machines — all validated by a schema system. Functions emerge from data: an object with a `body` field stored in any field is callable via the `apply` host primitive.
 
-The language kernel is deliberately small — literals, path lookups, function calls. General-purpose computation is emergent: a host that provides `if`, `map`, `filter`, `reduce`, `match` can reach arbitrary expressiveness without the language baking in control flow. The scope boundary is in what the _language_ defines, not in what a _host_ can provide.
+The language kernel is deliberately small — literals, path lookups, function calls, and handle expressions. General-purpose computation is emergent: a host that provides `if`, `map`, `filter`, `reduce`, `match` can reach arbitrary expressiveness without the language baking in control flow. The scope boundary is in what the _language_ defines, not in what a _host_ can provide.
+
+The language is designed for embedding across diverse host environments — game engines, browsers, servers, CLI tools — where the same program can run under different hosts with different capabilities. Serializable continuations enable cross-machine resumability: evaluation can start on a server, yield on an operation, and resume on a client with a different host.
 
 The language is designed to be portable: the specification is independent of any particular runtime or host language. See [RUNTIME.md](./RUNTIME.md) for the reference runtime implementation and [DIALECT.md](./DIALECT.md) for the dialect interface that abstracts the canonical syntax in implementations.
 
@@ -23,9 +25,13 @@ The language design yields several emergent properties:
 - **Sandboxing-compatible.** The host controls all functions, namespaces, and side effects. The language defines no built-in I/O, no standard library, no implicit access to the filesystem, network, or environment. Sandboxing is a host policy decision — a host that provides only pure functions is automatically sandboxed.
 - **Closure-free.** Function values are plain JSON objects with `params` and a `body` string. They capture no environment — all bindings are explicit parameters. This makes functions serializable, cacheable, and content-addressable. A function value can be stored in a file, sent over a network, or hashed, and it will evaluate identically anywhere.
 - **Serializable.** All values are JSON-serializable. `NonFunctionValue` wraps `serde_json::Value`. Function values serialize like any other object. Documents, definitions, and evaluation results can be persisted, transmitted, and restored without loss.
+- **Resumable.** Evaluation can be paused mid-computation and resumed later — potentially on a different machine with a different host. The VM captures the evaluation state as a serializable `Continuation` (a stack of `Frame`s, all JSON-compatible). This enables server-side rendering that yields to the client, long-running computations that checkpoint, and cross-machine migration of in-progress evaluation.
+- **Async-capable.** The VM supports async host functions via the `AsyncFunction` trait. Async functions return `Future`s, enabling non-blocking I/O (network requests, timers, cooperative yielding) without blocking the calling thread. The async VM (`eval_async`) awaits these futures during evaluation.
+- **Lazy evaluation.** The `LazyFunction` trait enables short-circuit evaluation. A lazy function receives unevaluated argument expressions and decides which to evaluate — enabling `if`, `and`, `or`, and conditional computation without baking control flow into the kernel.
 - **Content-addressable (optional).** Definitions can be identified by SHA-256 hash of their canonical JSON for deduplication, reproducible builds, and cross-machine sharing. Content addressing is a storage layer, not a language-level constraint — documents evaluate correctly without ever touching a `DefinitionStore`.
 - **Format-agnostic.** Documents can be written in YAML, JSON, TOML, or any format that maps to JSON-compatible values.
 - **Schema-agnostic.** The `Schema<V>` trait is abstract. JSON Schema by default; any schema language can implement it.
+- **Module-organized.** The `Module` trait groups host functions by namespace, enabling qualified calls like `fs.read("config.yml")`, `math.abs(x)`, `http.get("https://...")`. A `ModuleHost` composes modules into a single host. Which modules exist is a runtime host decision.
 
 ## 2. Document structure
 
@@ -189,7 +195,86 @@ The inner handler matches first (handler search is innermost-first).
 
 The VM checks `Host::operation` before `Host::function`. If a name resolves to an operation, the operation's `perform` method is called instead of a function's `call` method. An operation can also complete without signaling (return a value directly), e.g., for cached results — in that case, no handler is triggered.
 
+The continuation bound to `k` is **serializable** — it is a stack of frames, each containing the function name, evaluated arguments, pending expressions, and active handler clauses. All data is JSON-compatible. This means a handler can serialize the continuation, send it to another machine, and resume there with a different host. See [§4.7](#47-resumable-evaluation) for details.
+
 Which operations exist is a **runtime host decision**. The language defines the `handle` mechanism and the operation signaling protocol; the host provides the operations. See [RUNTIME.md](./RUNTIME.md) for the reference runtime's operation configuration.
+
+### 4.6 Lazy functions
+
+The `LazyFunction` trait enables **short-circuit evaluation** — a function that receives unevaluated argument expressions and decides which to evaluate. This is how control flow emerges without baking it into the kernel:
+
+| Function               | Behavior                                                          |
+| ---------------------- | ----------------------------------------------------------------- |
+| `if(cond, then, else)` | Evaluates `cond`; evaluates only the chosen branch                |
+| `and(a, b)`            | Evaluates `a`; if `false`, returns `false` without evaluating `b` |
+| `or(a, b)`             | Evaluates `a`; if `true`, returns `true` without evaluating `b`   |
+
+The VM checks `Host::lazy_function` before `Host::function` and `Host::operation`. If a name resolves to a lazy function, the VM passes the raw expression tree instead of pre-evaluated values. The function calls an `evaluate` closure to evaluate specific arguments on demand.
+
+Lazy functions are a **runtime host decision** — the language defines the mechanism, the host provides the implementations. See [RUNTIME.md](./RUNTIME.md) for the reference runtime's lazy function configuration.
+
+### 4.7 Resumable evaluation
+
+Evaluation can be paused mid-computation and resumed later — potentially on a different machine with a different host. The VM provides `eval_resumable`, which uses an explicit frame stack instead of the native call stack.
+
+**How it works:**
+
+1. When a host function returns `Err(Error::Yield(value))`, the VM captures the current frame stack into a `Continuation`.
+2. The caller receives `EvalResult::Yielded { value, continuation }`.
+3. The continuation is serializable via `Continuation::to_json()` — all data is JSON-compatible (function names, values, expression trees, handler clauses).
+4. To resume, call `eval_resumable` again with a `Continuation::from_json(json)` and a potentially different `Vm` with a different `Host`.
+5. The resumed host can use a `CallCache` to return cached results for calls already made on the original host, avoiding re-execution.
+
+```
+// Machine A (server): start evaluation
+let result = vm.eval_resumable(&expr, &mut ctx, None);
+match result {
+    EvalResult::Yielded { value, continuation } => {
+        let cont_json = continuation.to_json();
+        let cache_json = vm.host().cache().to_json();
+        send_to_client(cont_json, cache_json);
+    }
+    EvalResult::Done(value) => { /* finished */ }
+    EvalResult::Error(err) => { /* handle error */ }
+}
+
+// Machine B (client): resume with different host
+let cont = Continuation::from_json(&received_cont_json)?;
+let cache = CallCache::from_json(&received_cache_json);
+let vm = Vm::new(CacheHost::with_cache(cache, client_host));
+let result = vm.eval_resumable(&expr, &mut ctx, Some(cont));
+```
+
+The continuation captures:
+
+- **Frame stack** — each frame records the function name, evaluated arguments, pending expressions, and active handler clauses.
+- **Handler clauses** — if an operation signals during resumption, the handler clauses travel with the continuation.
+
+The host function that yielded will **not** be called again on resume — its result is expected from the `CallCache` or the new host. This enables server-side rendering that yields on a `fetch` operation, ships the continuation to the browser, and resumes with a client-side `fetch` implementation.
+
+### 4.8 Async evaluation
+
+The VM supports async host functions via the `AsyncFunction` trait. Async functions return `Future`s, enabling non-blocking I/O without blocking the calling thread.
+
+The async VM (`eval_async`) checks `Host::async_function` after `Host::function` returns `None`. This means a host can provide both sync and async functions, and the VM uses whichever is available for a given name.
+
+```
+struct Fetch;
+impl AsyncFunction for Fetch {
+    fn call<'a>(&'a self, args: &'a [NonFunctionValue], _ctx: &'a mut Context)
+        -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>>
+    {
+        Box::pin(async {
+            // async work here
+            Ok(NonFunctionValue::new("result"))
+        })
+    }
+}
+```
+
+An async function can also yield control to the executor by awaiting a pending future (e.g. `tokio::task::yield_now().await`), or yield a value to the caller by returning `Err(Error::Yield(value))` for explicit resumability.
+
+Which async functions exist is a **runtime host decision**. See [RUNTIME.md](./RUNTIME.md) for the reference runtime's async configuration.
 
 ## 5. Interpolation
 
@@ -549,6 +634,8 @@ config:
 ## 8. Module system
 
 The language defines no built-in functions. Module loading is a **runtime host capability** — the reference runtime conventionally provides an `import()` host function that loads an external document by path. Function application is another host capability — the reference runtime provides `apply()` for evaluating function values. Imported documents may contain function values in their data, which become available to the importer's expressions via path resolution.
+
+The `Module` trait groups host functions by namespace, enabling qualified calls like `fs.read("config.yml")`, `math.abs(x)`, `http.get("https://...")`. A `ModuleHost` composes multiple modules into a single `Host` implementation — the VM sees only `Host::function(name)`. Which modules exist is a runtime host decision.
 
 A runtime host may provide module loading under a different function name, through a different mechanism, or not at all. The module system semantics described below apply to the reference runtime's `import()` convention.
 
@@ -1083,9 +1170,27 @@ After processing: `result` → `"cached"` (handler intercepts `fetch` and return
 
 ## 13. Emergent patterns
 
-The language kernel is small — six primitives (literals, path lookups, function calls, handle expressions, field declarations, and interpolation) compose to produce complex patterns. See [small-kernel.md](./explanations/small-kernel.md) for the design rationale and examples.
+The language kernel is small — literals, path lookups, function calls, handle expressions, lazy functions, and field declarations compose to produce complex patterns. Control flow (`if`, `and`, `or`), async I/O, cross-machine resumability, and capability-guarded effects all emerge from the host + kernel split. See [small-kernel.md](./explanations/small-kernel.md) for the design rationale and examples.
 
-## 14. Future directions
+## 14. Platform services
+
+The reference runtime provides abstract service traits for common platform capabilities. These are **runtime host decisions** — the language defines no built-in I/O. The reference runtime conventionally provides:
+
+| Service     | Trait        | Functions                                     | Example                    |
+| ----------- | ------------ | --------------------------------------------- | -------------------------- |
+| Filesystem  | `Fs`         | `fs.read`, `fs.write`, `fs.exists`, `fs.list` | `fs.read("config.yml")`    |
+| Environment | `Env`        | `env.get`, `env.set`, `env.keys`              | `env.get("HOME")`          |
+| Path        | `Path`       | `path.join`, `path.dirname`, `path.basename`  | `path.join("a", "b")`      |
+| Time        | `Time`       | `time.now`, `time.format`                     | `time.now()`               |
+| HTTP        | `HttpClient` | `http.get`, `http.post`                       | `http.get("https://...")`  |
+| Command     | `Cmd`        | `cmd.run`                                     | `cmd.run("echo", "hello")` |
+| Temp        | `Tmp`        | `tmp.file`, `tmp.dir`                         | `tmp.file()`               |
+
+Each service trait has stub implementations for testing and concrete implementations using the host platform's native APIs. A `ModuleHost` composes services into a single host — plug in only what each environment needs.
+
+See [RUNTIME.md](./RUNTIME.md) for the reference runtime's platform service configuration.
+
+## 15. Future directions
 
 - **Additional typegen backends** — TypeScript `.d.ts`, Rust structs, Python `TypedDict`.
 - **Integer subtyping** — `integer` as a subtype of `number` in the type system.
@@ -1093,3 +1198,4 @@ The language kernel is small — six primitives (literals, path lookups, functio
 - **Source location tracking for runtime errors** — extend source map usage to interpolation and computation errors, not just type errors.
 - **Sandboxing primitives** — resource limits (evaluation depth, memory budget, time budget) enforceable by the host without language changes.
 - **Content-addressed module resolution** — `import(hash:...)` as an alternative to path-based imports, enabling reproducible builds without pinned paths.
+- **Declarative effect system** — operations declared as data in the document (signatures, effect categories, capability requirements), enabling auditable capability contracts that ship with programs.

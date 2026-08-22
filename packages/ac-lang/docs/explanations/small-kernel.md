@@ -1,23 +1,26 @@
 # Why the language kernel is small
 
-The AC language kernel has five primitives:
+The AC language kernel has six primitives:
 
-| Primitive     | What it does                               |
-| ------------- | ------------------------------------------ |
-| `$:`          | Declare schema for data                    |
-| `expr:`       | Compute a field's value                    |
-| `arg:`        | Feed a field's data value into its `expr:` |
-| `merge: true` | Spread computed object into parent scope   |
-| `${...}`      | Interpolate paths and function calls       |
+| Primitive              | What it does                               |
+| ---------------------- | ------------------------------------------ |
+| `$:`                   | Declare schema for data                    |
+| `expr:`                | Compute a field's value                    |
+| `arg:`                 | Feed a field's data value into its `expr:` |
+| `merge: true`          | Spread computed object into parent scope   |
+| `${...}`               | Interpolate paths and function calls       |
+| `handle(body) { ... }` | Intercept operations with handler clauses  |
 
-The language's expressive power comes from **composition** of these primitives, not from adding keywords. Patterns that would require dedicated syntax in other languages emerge naturally from field declarations.
+The language's expressive power comes from **composition** of these primitives, not from adding keywords. Patterns that would require dedicated syntax in other languages emerge naturally from field declarations and host-provided functions.
 
-The reference runtime provides two host primitives:
+The reference runtime provides these host primitives:
 
-| Host primitive   | What it does                       |
-| ---------------- | ---------------------------------- |
-| `import(path)`   | Load an external document          |
-| `apply(fn, ...)` | Apply a first-class function value |
+| Host primitive           | What it does                       |
+| ------------------------ | ---------------------------------- |
+| `import(path)`           | Load an external document          |
+| `apply(fn, ...)`         | Apply a first-class function value |
+| `if(cond, then, else)`   | Conditional evaluation (lazy)      |
+| `and(a, b)` / `or(a, b)` | Short-circuit logic (lazy)         |
 
 These are runtime host conventions, not language-level features. A runtime host may provide different functions or none at all.
 
@@ -84,7 +87,12 @@ The field name `functions` is just a regular name — not a reserved keyword. Us
 - **`config` field** — `arg: { type: object }` + `expr: "arg"` + `merge: true`: spread a data object into scope without importing a file
 - **Dynamic import** — compute the import path at runtime: `expr: "import(concat(arg, env.ENV))"` (see [LANG.md](../../docs/LANG.md) §8.3)
 - **Function libraries** — `import()` a document with function values in its data; the functions are accessible via path resolution (e.g. `lib.functions.my_fn(arg)`)
+- **Control flow** — `if`, `and`, `or` as lazy host functions; `map`, `filter`, `reduce` as regular host functions
+- **Error handling** — operations signal via `handle` expressions; handlers intercept, resume, or discard
+- **Async I/O** — `AsyncFunction` trait for non-blocking network/timer operations via `eval_async`
+- **Cross-machine resumability** — `eval_resumable` + serializable `Continuation` + `CacheHost` for server→client migration
+- **Platform services** — `fs.read`, `env.get`, `http.get`, `cmd.run` via `Module` + `ModuleHost` composition
 
 ## The principle
 
-The kernel stays small. The library of patterns grows. Users can invent their own field conventions without touching the compiler. The language is its own metalanguage — it describes its own extensions using its own field declaration syntax.
+The kernel stays small. The library of patterns grows. Users can invent their own field conventions without touching the compiler. The language is its own metalanguage — it describes its own extensions using its own field declaration syntax. Control flow, async I/O, cross-machine resumability, and platform services all emerge from the host + kernel split.

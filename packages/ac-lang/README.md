@@ -1,8 +1,8 @@
 # ac-lang
 
-A small, embeddable language runtime where **schemas define types**, **frontends parse formats**, and **the host provides all functions**. The core is agnostic of all three.
+A small, embeddable scripting language runtime where **schemas define types**, **frontends parse formats**, and **the host provides all functions**. The core is agnostic of all three. Designed for embedding across diverse host environments — game engines, browsers, servers, CLI tools — where the same program can run under different hosts with different capabilities.
 
-The language kernel is deliberately small — literals, path lookups, function calls. General-purpose computation is emergent: a host that provides `if`, `map`, `filter`, `reduce`, `match` can reach arbitrary expressiveness without the language baking in control flow. The scope boundary is in what the _language_ defines, not in what a _host_ can provide.
+The language kernel is deliberately small — literals, path lookups, function calls, and handle expressions. General-purpose computation is emergent: a host that provides `if`, `map`, `filter`, `reduce`, `match` can reach arbitrary expressiveness without the language baking in control flow. The scope boundary is in what the _language_ defines, not in what a _host_ can provide.
 
 ## Properties
 
@@ -10,9 +10,13 @@ The language kernel is deliberately small — literals, path lookups, function c
 - **Sandboxing-compatible.** The host controls all functions, namespaces, and side effects. No built-in I/O, no standard library, no implicit access. Sandboxing is a host policy, not a language feature.
 - **Closure-free.** Function values are plain JSON objects with `params` and a `body` string — they capture no environment. All bindings are explicit parameters. This makes functions serializable, cacheable, and content-addressable.
 - **Serializable.** All values are JSON-serializable (`NonFunctionValue = serde_json::Value`). Function values serialize like any other object. Documents, definitions, and evaluation results can be persisted, transmitted, and restored without loss.
+- **Resumable.** Evaluation can be paused mid-computation and resumed on a different machine with a different host. The VM captures evaluation state as a serializable `Continuation` (JSON-compatible frame stack). Enables server-side rendering that yields to the client, long-running computations that checkpoint, and cross-machine migration.
+- **Async-capable.** The `AsyncFunction` trait enables non-blocking I/O via `Future`s. The async VM (`eval_async`) awaits these during evaluation.
+- **Lazy evaluation.** The `LazyFunction` trait enables short-circuit evaluation (`if`, `and`, `or`) without baking control flow into the kernel.
 - **Content-addressable (optional).** Definitions can be identified by SHA-256 hash of their canonical JSON for deduplication, reproducible builds, and cross-machine sharing. Content addressing is a storage layer — documents evaluate correctly without it.
 - **Format-agnostic.** Documents can be written in YAML, JSON, TOML, or any format that maps to JSON-compatible values.
 - **Schema-agnostic.** The `Schema<V>` trait is abstract. JSON Schema by default; any schema language can implement it.
+- **Module-organized.** The `Module` trait groups host functions by namespace (`fs.read`, `math.abs`, `http.get`). A `ModuleHost` composes modules into a single host.
 
 See [design-principles.md](./docs/explanations/design-principles.md) for the full list.
 
@@ -46,23 +50,46 @@ The VM genuinely doesn't know what a String, Number, Boolean, Object, Array, Dat
 
 ```
 crates/
-├── core/           # Expr<V>, Field<V> — generic, zero dependencies
-├── runtime/        # NonFunctionValue(serde_json::Value) + Frontend trait — the concrete value type
-├── vm/             # Vm, Host, Function, Context
-├── schema/         # Schema<V> trait + ValidationError — zero dependencies
-├── schema-json/    # JsonSchema — JSON Schema implementation of Schema<NonFunctionValue>
-├── fields/         # Field extraction, interpolation, undeclared-field detection
-├── frontend-json/  # JSON parse/serialize → NonFunctionValue (implements Frontend)
-├── frontend-yaml/  # YAML parse/serialize → NonFunctionValue (implements Frontend)
-├── frontend-toml/  # TOML parse/serialize → NonFunctionValue (implements Frontend)
-└── cli/            # `ac` CLI — parse, evaluate, validate (clap)
+├── ast/                  # Expr<V>, Field<V> — generic, zero dependencies
+├── runtime/              # NonFunctionValue(serde_json::Value), FunctionValue, Frontend trait
+├── runtime-core/         # Module trait + ModuleHost — qualified function namespaces
+├── vm/                   # Vm, Host, Function, AsyncFunction, LazyFunction, Operation, Context, Continuation
+├── host/                 # Default host: add, mul, concat, len
+├── host-cache/           # CacheHost + CallCache — cross-machine resumability
+├── store/                # DefinitionStore, NameRegistry, EvalCache — content-addressed storage
+├── dialect/              # Dialect/Syntax/ExprParser/DocumentVocabulary/SchemaVocabulary traits
+├── dialect-canonical/    # Canonical AC dialect (JSON Schema, ${...} syntax)
+├── schema-json/          # JsonSchema — JSON Schema implementation of Schema<NonFunctionValue>
+├── fields/               # Field extraction, interpolation, computed fields, merge, scope
+├── frontend-json/        # JSON parse/serialize → NonFunctionValue
+├── frontend-yaml/        # YAML parse/serialize → NonFunctionValue
+├── frontend-toml/        # TOML parse/serialize → NonFunctionValue
+├── lib-utils/            # Math, string, utility modules
+├── lib-crypto/           # Cryptographic functions module
+├── lib-datetime/         # Date/time functions module
+├── lib-rand/             # Random number generation module
+├── lib-kv/               # Key-value store interface + hashmap implementation
+├── lib-intl/             # Internationalization (number formatting, string comparison, etc.)
+├── lib-platform/         # Abstract Fs, Env, Path, Time, HttpClient, Cmd, Tmp service traits
+├── lib-platform-std/     # Concrete stdlib implementations of platform service traits
+├── module-resolver-core/ # Module resolver interface, module cache, chain resolver
+├── module-resolver-file/ # Filesystem module loading
+├── module-resolver-http/ # HTTP(S) module loading
+├── module-resolver-git/  # Git repository module loading
+├── module-resolver-virtual/ # In-memory module loading (for tests)
+├── module-resolver-noop/ # No-op resolver (for sandboxed/no-import hosts)
+├── compiler-core/        # Compilation state, config, pass interface, pipeline builder
+├── compiler/             # Preset pipelines + engine (parse, eval, validate, fields, typegen, typecheck)
+├── typecheck-*/          # Type checking: core, inference, schema-JSON, key checks
+├── typegen-*/            # Type generation: core, key handlers, import, backend-JSON
+└── cli/                  # `ac` CLI — parse, evaluate, validate (clap)
 ```
 
 **`ac-ast`** — the language model. `Expr<V>` (value or call) and `Field<V>` (name + value). Generic over the value type, zero dependencies. No knowledge of formats or schemas.
 
 **`ac-runtime`** — the concrete value representation. `NonFunctionValue` wraps `serde_json::Value` (private inner field, accessed via `inner()`/`inner_mut()`/`into_inner()`). Also defines the `Frontend` trait — the abstract interface for format parsers. This is the only crate that couples to `serde_json` for values. Core stays clean.
 
-**`ac-vm`** — the execution engine. `Vm<H>` walks expression trees. `Host` resolves function names. `Function` is the trait host-provided callables implement. `Context` manages variable scopes. The VM does not depend on any schema or frontend crate.
+**`ac-vm`** — the execution engine. `Vm<H>` walks expression trees. `Host` resolves function names. Supports sync (`Function`), async (`AsyncFunction`), lazy (`LazyFunction`), and operation (`Operation`) callables. `Context` manages variable scopes. `Continuation` captures serializable evaluation state for cross-machine resumability via `eval_resumable`.
 
 **`ac-schema`** — abstract `Schema<V>` trait and `ValidationError`. Zero dependencies. Knows nothing about JSON Schema, `$ref`, `allOf`, `format`, or any concrete schema language. Any schema system can implement this trait.
 
