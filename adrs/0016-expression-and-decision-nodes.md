@@ -6,7 +6,7 @@ Proposed
 
 ## Context
 
-Many Peregrin examples implement branching and data transformation with `driver: shell`. Examples `02-branching.yaml`, `13-saga.yaml`, and `20-deploy-pipeline.yaml` use shell `if` statements, `exit 0`/`exit 1`, and `with.emit` maps to route events. This is flexible but verbose, not type-checkable, and mixes workflow logic with arbitrary process execution.
+Many Peregrin examples implement branching and data transformation with `driver: shell`. Examples `02-branching.yaml`, `13-saga.yaml`, and `20-deploy-pipeline.yaml` use shell `if` statements, `exit 0`/`exit 1`, and `params.emit` maps to route events. This is flexible but verbose, not type-checkable, and mixes workflow logic with arbitrary process execution.
 
 A declarative expression driver would let authors branch, transform, and set state without spawning a process.
 
@@ -21,7 +21,7 @@ Introduce an `expr` driver that can evaluate conditions, transform payloads, set
   driver: expr
   on: [alert.received]
   emits: [alert.critical, alert.minor]
-  with:
+  params:
     choice:
       - if: "event.payload.severity == 'critical'"
         emit: alert.critical
@@ -37,7 +37,7 @@ Introduce an `expr` driver that can evaluate conditions, transform payloads, set
   on: [lint.passed, test.passed]
   mode: all
   emits: [summary.ready]
-  with:
+  params:
     set_state:
       status: ok
     emit:
@@ -51,7 +51,7 @@ Introduce an `expr` driver that can evaluate conditions, transform payloads, set
   driver: expr
   on: [alert.received]
   emits: [alert.important]
-  with:
+  params:
     filter: "event.payload.severity in ['critical', 'high']"
     emit: alert.important
 ```

@@ -27,7 +27,7 @@ Introduce two built-in drivers: `map` and `reduce`.
   driver: map
   on: [start]
   emits: [shard.*.start]
-  with:
+  params:
     from: config.plugins
     event: shard.{item}.start
     payload:
@@ -45,7 +45,7 @@ This emits `shard.auth.start`, `shard.billing.start`, etc.
   driver: reduce
   on: [shard.*.done, shard.*.failed]
   emits: [migration.complete, migration.partial]
-  with:
+  params:
     source: dispatch
     emit_when:
       all_succeeded: migration.complete

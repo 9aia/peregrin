@@ -35,8 +35,8 @@ import:
 
 `ac validate` should catch:
 - Events emitted by a node that are not declared in `emits`.
-- Missing secrets referenced in `with`.
-- Unknown placeholders in `with` when `strict: true`.
+- Missing secrets referenced in `params`.
+- Unknown placeholders in `params` when `strict: true`.
 - Payload fields that do not match `events:` or `*.event.json` schemas.
 - Capability violations (see ADR-0019).
 

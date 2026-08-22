@@ -2,13 +2,13 @@
 
 ## Status
 
-Proposed
+Archived
 
 ## Context
 
 Peregrin workflows are written in YAML and consumed by both the engine and
 tooling such as the exporter (ADR-0006) and the CLI. Today the YAML only carries
-runtime-relevant fields: events, nodes, drivers, and `with` values. There is no
+runtime-relevant fields: events, nodes, drivers, and `params` values. There is no
 place for human-readable metadata: descriptions, examples, deprecation notices,
 authors, tags, or documentation links. This forces the exporter, documentation
 generators, and library browsers to infer meaning from identifiers or to
@@ -53,7 +53,7 @@ nodes:
     annotations:
       description: Run the test suite.
       example: npm test
-    with:
+    params:
       cmd: "npm test"
 ```
 

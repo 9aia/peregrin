@@ -38,14 +38,14 @@ nodes:
     driver: shell
     on: [pr.opened]
     emits: [build.done, build.failed]
-    with:
+    params:
       cmd: "npm test"
 
   - id: upgrade
     driver: runner
     version: "1.2.0"
     on: [start]
-    with:
+    params:
       workflow: dependency-upgrade
 ```
 

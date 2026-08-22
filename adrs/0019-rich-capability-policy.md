@@ -42,13 +42,13 @@ capabilities:
 
 Rules are evaluated in order: explicit `deny` overrides `allow`, and `default_policy` is the fallback. Placeholders such as `${config.*}` and `${state.*}` are resolved at validation and runtime.
 
-Validation at `ac validate` checks that every node's `with` values are allowed by the policy. For example, an `http` node that calls a host not in the allowlist fails validation in `strict` mode or emits a `capability.violation` at runtime otherwise.
+Validation at `ac validate` checks that every node's `params` values are allowed by the policy. For example, an `http` node that calls a host not in the allowlist fails validation in `strict` mode or emits a `capability.violation` at runtime otherwise.
 
 ## Consequences
 
 - Agentic workflows can be constrained without writing shell wrappers.
 - `ac validate` can catch unsafe workflows before they run.
-- The capability checker must be extended to understand each driver's `with` schema.
+- The capability checker must be extended to understand each driver's `params` schema.
 - New driver authors must supply a capability manifest.
 
 ## Alternatives considered

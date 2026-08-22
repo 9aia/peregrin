@@ -25,9 +25,9 @@ nodes:
     compensate:
       on: [workflow.failed]
       driver: shell
-      with:
+      params:
         cmd: "release-reservation ${event.payload.reservation_id}"
-    with:
+    params:
       cmd: "reserve-inventory ${config.sku}"
 
   - id: charge
@@ -37,19 +37,19 @@ nodes:
     compensate:
       on: [workflow.failed]
       driver: http
-      with:
+      params:
         method: POST
         url: "https://payments.example.com/refund"
         json:
           charge_id: "${event.payload.charge_id}"
-    with:
+    params:
       cmd: "charge-card ${event.payload.reservation_id}"
 
   - id: ship
     driver: shell
     on: [charge.done]
     emits: [order.shipped]
-    with:
+    params:
       cmd: "ship-order ${event.payload.reservation_id}"
 ```
 

@@ -8,7 +8,7 @@ Proposed
 
 Peregrin workflows use event payloads, secrets, config, and runtime values as the source of truth for driver inputs. By default, the template engine, the payload validation, and the driver environment are permissive:
 
-- An unknown placeholder in a `with` field is left for the shell to interpret.
+- An unknown placeholder in a `params` field is left for the shell to interpret.
 - A missing event payload field silently becomes an empty string.
 - A missing schema does not reject a payload.
 - A workflow that receives extra events or uses an unlisted driver is not necessarily an error.
@@ -25,8 +25,8 @@ The `strict` field activates the following behaviours:
 
 1. **Required schemas.** Every event listed in `events` must have a payload schema defined. Payloads must validate against the schema before the event is accepted by the runner. A validation failure is a runtime error.
 2. **Deny by default.** Every node must declare an explicit `emits` list. If a driver returns an event type not declared in `emits`, the runner rejects it. If a node fires without declaring `on` or `emits`, the runner treats it as an error.
-3. **Unknown placeholder rejection.** Any `${...}` expression in `with` values that the template engine cannot resolve becomes a `TemplateError` instead of being left untouched or rendered as an empty string.
-4. **Missing secrets rejection.** If a `with` block references a secret (e.g. via `with.secrets` or `ctx.getSecret`) that is not present, the runner fails instead of returning an empty string.
+3. **Unknown placeholder rejection.** Any `${...}` expression in `params` values that the template engine cannot resolve becomes a `TemplateError` instead of being left untouched or rendered as an empty string.
+4. **Missing secrets rejection.** If a `params` block references a secret (e.g. via `params.secrets` or `ctx.getSecret`) that is not present, the runner fails instead of returning an empty string.
 5. **Unknown driver / handler rejection.** If the workflow references a driver or handler that is not registered, the runner fails immediately.
 6. **No implicit defaults for safety-critical fields.** Capabilities and resources are not auto-inferred; they must be explicitly declared, and any operation outside the declared capability set fails.
 

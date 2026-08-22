@@ -22,7 +22,7 @@ nodes:
     driver: subworkflow
     on: [start]
     emits: [worktree.ready, worktree.failed]
-    with:
+    params:
       path: lib/git/worktree.yaml
       inputs:
         repo: "${config.repo}"
@@ -35,7 +35,7 @@ nodes:
   - id: run-fix
     driver: agent
     on: [worktree.ready]
-    with:
+    params:
       prompt_file: prompts/fix.md
       cwd: "${event.payload.worktree_path}"
 ```

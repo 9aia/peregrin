@@ -27,12 +27,9 @@ Introduce three new ports in `ac-core` following the same pattern as `EventStore
    - The default implementation, `ac-dlq-jsonl`, appends to a local `.dlq.jsonl` file.
    - Future implementations can target SQS, RabbitMQ, Redis, Kafka, etc.
 
-2. **`ExportLog`**
-   - `append(record: ExportRecord): void`
-   - `close(): void`
-   - `ExportRecord` is a union of `NodeRecord`, `EventRecord`, `SpanRecord`, and `ErrorRecord`.
-   - The default implementation, `ac-export-jsonl`, writes to a local `.export-log.jsonl` file.
-   - Future implementations can target S3, stdout, OpenTelemetry, BigQuery, etc.
+2. **`ExportLog`** — superseded by ADR-0028.
+   - The naming and CLI integration moved to the provider-based history/traces/metrics design in ADR-0028.
+   - The record shape (`NodeRecord`, `EventRecord`, `SpanRecord`, `ErrorRecord`) survives as the `HistoryRecord` in ADR-0028.
 
 3. **`Queue` (optional inbound/outbound adapter)**
    - `subscribe(eventType: string, handler: (event: Event) => void): void`

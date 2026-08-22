@@ -21,7 +21,7 @@ Introduce two built-in drivers: `delay` and `schedule`.
   driver: delay
   on: [deploy.failed]
   emits: [cooldown.done]
-  with:
+  params:
     duration: 5m
 ```
 
@@ -34,7 +34,7 @@ Introduce two built-in drivers: `delay` and `schedule`.
   driver: schedule
   on: [start]
   emits: [report.due]
-  with:
+  params:
     cron: "0 9 * * *"
     timezone: America/New_York
 ```

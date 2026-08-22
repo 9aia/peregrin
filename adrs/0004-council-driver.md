@@ -32,7 +32,7 @@ Introduce a built-in `council` driver. The driver turns one node into a voting r
   driver: council
   on: [pr.opened]
   emits: [council.approved, council.rejected, council.tie, council.no_quorum]
-  with:
+  params:
     prompt: "Review this PR and vote yes or no. ${event.payload.diff}"
     members:
       - agent:claude
@@ -44,7 +44,7 @@ Introduce a built-in `council` driver. The driver turns one node into a voting r
     tie_breaker: human
 ```
 
-### `with` fields
+### `params` fields
 
 | Field            | Type   | Default                | Description                                                       |
 | ---------------- | ------ | ---------------------- | ----------------------------------------------------------------- |
@@ -62,7 +62,7 @@ Introduce a built-in `council` driver. The driver turns one node into a voting r
 
 ### How it works
 
-1. The driver resolves `with` values and the prompt.
+1. The driver resolves `params` values and the prompt.
 2. For each member, it calls the corresponding voter:
    - `agent:<runner>` — invokes the `agent` driver with the same prompt.
    - `human` — uses the `human` driver to ask for input.

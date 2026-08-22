@@ -2,7 +2,7 @@
 
 ## Status
 
-Proposed
+Accepted
 
 ## Context
 
@@ -63,7 +63,7 @@ nodes:
     driver: human
     on: [review.needed]
     emits: [review.approved, review.rejected]
-    with:
+    params:
       prompt: "Approve this change?"
       timeout: 0 # explicit: wait as long as necessary
 
@@ -71,7 +71,7 @@ nodes:
     driver: webhook
     on: [start]
     emits: [webhook.received]
-    with:
+    params:
       port: 8080
       timeout: 0 # explicit: no timeout
 
@@ -79,7 +79,7 @@ nodes:
     driver: cli
     on: [start]
     emits: [check.done]
-    with:
+    params:
       cmd: "curl -sf https://api.example.com/health"
       interval: 5
       max_fires: 10 # bounded

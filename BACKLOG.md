@@ -11,7 +11,7 @@ runtimes must implement to be compatible with the same YAML workflows.
 
 ### Scope
 
-- Full YAML schema with field semantics, defaults, and validation rules.
+- Full YAML schema params field semantics, defaults, and validation rules.
 - Event graph model: node lifecycle, bus semantics, and ordering guarantees.
 - Driver contract: signature, `ExecutionContext`, error handling, and allowed
   events.
@@ -56,8 +56,8 @@ These pages either need to be rewritten for TypeScript or moved behind a
 ##### What is still Python
 
 The `python` driver (`packages/ac-driver-python`) still exists in the
-TypeScript runtime. It spawns the `python` interpreter with `with.script`,
-`with.module`, and `with.function`. This is a shell-out, not a Python SDK.
+TypeScript runtime. It spawns the `python` interpreter with `params.script`,
+`params.module`, and `params.function`. This is a shell-out, not a Python SDK.
 The reference docs for `driver: python` should reflect that.
 
 ##### Proposed Python SDK scope (future)
@@ -121,11 +121,32 @@ An optional web UI that connects to a running engine or a campaign store to
 visualise event graphs, the event log, campaign status, metrics, and
 human-in-the-loop approvals. See [ADR-0011: Web UI](/adrs/0011-webui.md).
 
+## Resolver: additional ModuleResolver implementations
+
+The `ModuleResolver` trait in `ac-resolver-core` abstracts how import paths
+are loaded. Two implementations exist today: `ac-resolver-file` (filesystem)
+and `ac-resolver-virtual` (in-memory). Additional implementations:
+
+### `ac-resolver-git`
+
+A `GitResolver` that clones/fetches modules from Git repositories. Supports
+specifiers like `git+https://github.com/org/repo@ref/path/to/module.yml`.
+Caches clones locally. Useful for importing shared field definitions from
+versioned repositories without a local checkout.
+
+### `ac-resolver-http`
+
+An `HttpResolver` that fetches modules via HTTP GET. Given a URL (or a
+base URL + relative path), performs a GET request, parses the response body
+with the appropriate frontend (by Content-Type or extension), and returns
+the extracted fields. Useful for pulling schemas from a remote registry or
+CDN. Should support caching, timeouts, and custom headers.
+
 ## Doc audit: Python references
 
 - The `python` driver reference (`docs/ac/reference/drivers/python.md`) needs
-  to describe the TypeScript driver's `with.script` / `with.module` /
-  `with.function` interface.
+  to describe the TypeScript driver's `params.script` / `params.module` /
+  `params.function` interface.
 - `docs/ac/explanation/handlers.md` needs to be rewritten around TypeScript
   drivers, or renamed to "Drivers".
 - `docs/ac/reference/handler-registration.md` should become a TypeScript

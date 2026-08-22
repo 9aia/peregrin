@@ -41,7 +41,7 @@ several target formats.
 
 2. **Markdown overview**
    A runbook per workflow: event glossary, node table, driver callouts,
-   `with` parameters, `emits` per node, and a prose description of the campaign
+   `params` parameters, `emits` per node, and a prose description of the campaign
    shape.
 
 3. **Event schema stubs**
@@ -51,7 +51,7 @@ several target formats.
    Per-node stub tests for each emitted event and driver invocation.
 
 5. **Prompt templates**
-   Rendered `with.prompt` values for `agent` and `human` nodes, pre-filled with
+   Rendered `params.prompt` values for `agent` and `human` nodes, pre-filled with
    placeholder hints.
 
 6. **Campaign map for libraries**
