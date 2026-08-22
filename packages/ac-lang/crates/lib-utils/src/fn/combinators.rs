@@ -1,55 +1,10 @@
 use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_vm::{Context, Error, Function};
 
-fn arr(items: &[serde_json::Value]) -> NonFunctionValue {
-    NonFunctionValue::new(serde_json::Value::Array(items.to_vec()))
-}
-
-fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error> {
-    arg.as_function().ok_or(Error::TypeMismatch {
-        expected: "function value",
-        got: "non-function",
-    })
-}
-
-fn bind_param(
-    fn_val: &FunctionValue,
-    value: &serde_json::Value,
-) -> Vec<(String, NonFunctionValue)> {
-    fn_val
-        .params
-        .first()
-        .map(|(name, _)| vec![(name.clone(), NonFunctionValue::new(value.clone()))])
-        .unwrap_or_default()
-}
-
-fn is_truthy_value(value: &NonFunctionValue) -> bool {
-    if let Some(b) = value.as_bool() {
-        b
-    } else if let Some(n) = value.as_number() {
-        n != 0.0
-    } else if let Some(s) = value.as_str() {
-        !s.is_empty()
-    } else if value.is_null() {
-        false
-    } else if let Some(arr) = value.as_array() {
-        !arr.is_empty()
-    } else if let Some(obj) = value.as_object() {
-        !obj.is_empty()
-    } else {
-        true
-    }
-}
-
-fn require_functions(args: &[NonFunctionValue]) -> Result<Vec<FunctionValue>, Error> {
-    if args.is_empty() {
-        return Err(Error::ArgumentCount {
-            expected: 1,
-            got: 0,
-        });
-    }
-    args.iter().map(require_function_value).collect()
-}
+use crate::shared::{
+    arr, apply_fn, bind_all_params, is_truthy_fn, require_array, require_function_value,
+    require_functions,
+};
 
 fn substitute_param(body: &str, param: &str, replacement: &str) -> String {
     let wrapped = format!("({replacement})");
@@ -60,16 +15,25 @@ fn substitute_param(body: &str, param: &str, replacement: &str) -> String {
     while i < body.len() {
         let ch = bytes[i];
         if in_string {
-            result.push(ch as char);
+            if ch == b'\\' && i + 1 < body.len() {
+                result.push_str(&body[i..i + 2]);
+                i += 2;
+                continue;
+            }
             if ch == b'"' {
                 in_string = false;
+                result.push('"');
+                i += 1;
+                continue;
             }
-            i += 1;
+            let end = next_char_boundary(body, i);
+            result.push_str(&body[i..end]);
+            i = end;
             continue;
         }
         if ch == b'"' {
             in_string = true;
-            result.push(ch as char);
+            result.push('"');
             i += 1;
             continue;
         }
@@ -83,10 +47,19 @@ fn substitute_param(body: &str, param: &str, replacement: &str) -> String {
                 continue;
             }
         }
-        result.push(ch as char);
-        i += 1;
+        let end = next_char_boundary(body, i);
+        result.push_str(&body[i..end]);
+        i = end;
     }
     result
+}
+
+fn next_char_boundary(s: &str, i: usize) -> usize {
+    let mut j = i + 1;
+    while j < s.len() && !s.is_char_boundary(j) {
+        j += 1;
+    }
+    j
 }
 
 fn is_ident_char(b: u8) -> bool {
@@ -124,28 +97,6 @@ fn inline_chain(fns: &[FunctionValue]) -> Result<FunctionValue, Error> {
     })
 }
 
-fn require_array(arg: &NonFunctionValue) -> Result<&[serde_json::Value], Error> {
-    arg.as_array().ok_or(Error::TypeMismatch {
-        expected: "array",
-        got: "non-array",
-    })
-}
-
-fn bind_all_params(
-    fn_val: &FunctionValue,
-    args: &[serde_json::Value],
-) -> Vec<(String, NonFunctionValue)> {
-    fn_val
-        .params
-        .iter()
-        .enumerate()
-        .map(|(i, (name, _))| {
-            let val = args.get(i).cloned().unwrap_or(serde_json::Value::Null);
-            (name.clone(), NonFunctionValue::new(val))
-        })
-        .collect()
-}
-
 // ── pipe ───────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy)]
@@ -165,8 +116,7 @@ impl Function for Pipe {
         let mut value = args[0].clone();
         for fn_arg in &args[1..] {
             let fn_val = require_function_value(fn_arg)?;
-            let vars = bind_param(&fn_val, &value.into_inner());
-            value = ctx.eval_expr(&fn_val.body, &vars)?;
+            value = apply_fn(ctx, &fn_val, &value.into_inner())?;
         }
         Ok(value)
     }
@@ -224,8 +174,7 @@ impl Function for Fanout {
         let mut results = Vec::with_capacity(args.len() - 1);
         for fn_arg in &args[1..] {
             let fn_val = require_function_value(fn_arg)?;
-            let vars = bind_param(&fn_val, &inner);
-            let result = ctx.eval_expr(&fn_val.body, &vars)?;
+            let result = apply_fn(ctx, &fn_val, &inner)?;
             results.push(result.into_inner());
         }
         Ok(arr(&results))
@@ -254,15 +203,9 @@ impl Function for Choice {
         let on_false = require_function_value(&args[3])?;
 
         let inner = value.clone().into_inner();
-        let vars = bind_param(&predicate, &inner);
-        let cond = ctx.eval_expr(&predicate.body, &vars)?;
-        let branch = if is_truthy_value(&cond) {
-            &on_true
-        } else {
-            &on_false
-        };
-        let vars = bind_param(branch, &inner);
-        Ok(ctx.eval_expr(&branch.body, &vars)?)
+        let is_true = is_truthy_fn(ctx, &predicate, &inner)?;
+        let branch = if is_true { &on_true } else { &on_false };
+        Ok(apply_fn(ctx, branch, &inner)?)
     }
 }
 
@@ -308,8 +251,7 @@ impl Function for Tap {
         let fn_val = require_function_value(&args[0])?;
         let value = &args[1];
         let inner = value.clone().into_inner();
-        let vars = bind_param(&fn_val, &inner);
-        let _ = ctx.eval_expr(&fn_val.body, &vars)?;
+        let _ = apply_fn(ctx, &fn_val, &inner)?;
         Ok(value.clone())
     }
 }

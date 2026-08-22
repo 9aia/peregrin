@@ -284,6 +284,58 @@ fn flow_preserves_param_inside_string_literals() {
     assert_eq!(fv.body, "concat(\"y\", (concat(\"x\", x)))");
 }
 
+#[test]
+fn flow_handles_escaped_quotes_in_string_literals() {
+    let result = call(
+        "flow",
+        &[
+            fn_value("add(x, 1)", &["x"]),
+            fn_value("concat(\"hello \\\"x\\\"\", x)", &["x"]),
+        ],
+    );
+    let fv = result.as_function().unwrap();
+    assert_eq!(fv.body, "concat(\"hello \\\"x\\\"\", (add(x, 1)))");
+}
+
+#[test]
+fn flow_does_not_substring_match_param_names() {
+    let result = call(
+        "flow",
+        &[
+            fn_value("add(x, 1)", &["x"]),
+            fn_value("add(x2, x)", &["x"]),
+        ],
+    );
+    let fv = result.as_function().unwrap();
+    assert_eq!(fv.body, "add(x2, (add(x, 1)))");
+}
+
+#[test]
+fn flow_longer_param_name_does_not_match_shorter() {
+    let result = call(
+        "flow",
+        &[
+            fn_value("add(x, 1)", &["x"]),
+            fn_value("add(x, x2)", &["x2"]),
+        ],
+    );
+    let fv = result.as_function().unwrap();
+    assert_eq!(fv.body, "add(x, (add(x, 1)))");
+}
+
+#[test]
+fn flow_handles_unicode_in_string_literals() {
+    let result = call(
+        "flow",
+        &[
+            fn_value("add(x, 1)", &["x"]),
+            fn_value("concat(\"café\", x)", &["x"]),
+        ],
+    );
+    let fv = result.as_function().unwrap();
+    assert_eq!(fv.body, "concat(\"café\", (add(x, 1)))");
+}
+
 // ── compose ────────────────────────────────────────────────────────
 
 #[test]
