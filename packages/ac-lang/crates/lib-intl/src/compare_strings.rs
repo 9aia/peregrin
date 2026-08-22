@@ -21,6 +21,8 @@ use super::provider::IntlProvider;
 /// - `caseFirst`: `"upper"`, `"lower"`, or `"false"` (default)
 /// - `numeric`: `true` or `false` (default) — sorts digit sequences by numeric value
 /// - `ignorePunctuation`: `true` or `false` (default)
+/// - `usage`: `"sort"` (default) or `"search"` — selects sort vs search collation
+/// - `collation`: collation variant string (e.g. `"phonebk"` for German phonebook)
 ///
 /// Examples:
 /// - `intl.compare_strings("a", "b")` → `-1`
@@ -77,6 +79,20 @@ impl Function for CompareStrings {
             Some(false) => Some(CollationNumericOrdering::False),
             _ => None,
         };
+
+        let usage = opt_str(opts, "usage").unwrap_or("sort");
+        let collation = opt_str(opts, "collation");
+        if usage == "search" || collation == Some("search") {
+            prefs.collation_type = Some(icu::collator::preferences::CollationType::Search);
+        } else if let Some(col) = collation {
+            prefs.collation_type = match col {
+                "phonebk" => Some(icu::collator::preferences::CollationType::Phonebk),
+                "stroke" => Some(icu::collator::preferences::CollationType::Stroke),
+                "trad" => Some(icu::collator::preferences::CollationType::Trad),
+                "pinyin" => Some(icu::collator::preferences::CollationType::Pinyin),
+                _ => None,
+            };
+        }
 
         if let Some(true) = opt_bool(opts, "ignorePunctuation") {
             options.alternate_handling = Some(AlternateHandling::Shifted);

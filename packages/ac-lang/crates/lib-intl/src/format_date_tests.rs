@@ -153,3 +153,128 @@ fn format_date_negative_year() {
     let str = result.as_str().expect("string result");
     assert!(!str.is_empty());
 }
+
+// ── hourCycle ────────────────────────────────────────────────────
+
+#[test]
+fn format_date_hour_cycle_h23() {
+    let result = call(&[s("2024-05-08T14:30:00"), s("en"), obj(&[("type", "time"), ("hourCycle", "h23")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("14:30"), "got: {str}");
+}
+
+#[test]
+fn format_date_hour_cycle_h12() {
+    let result = call(&[s("2024-05-08T14:30:00"), s("en"), obj(&[("type", "time"), ("hourCycle", "h12")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2:30") || str.contains("PM"), "got: {str}");
+}
+
+// ── calendar ─────────────────────────────────────────────────────
+
+#[test]
+fn format_date_buddhist_calendar() {
+    let result = call(&[s("2024-05-08"), s("en"), obj(&[("calendar", "buddhist")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2567"), "buddhist year should be 2567, got: {str}");
+}
+
+#[test]
+fn format_date_japanese_calendar() {
+    let result = call(&[s("2024-05-08"), s("ja"), obj(&[("calendar", "japanese")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty());
+}
+
+#[test]
+fn format_date_hebrew_calendar() {
+    let result = call(&[s("2024-05-08"), s("en"), obj(&[("calendar", "hebrew")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty());
+}
+
+// ── fractionalSecondDigits ───────────────────────────────────────
+
+#[test]
+fn format_date_fractional_seconds_3() {
+    let result = call(&[s("2024-05-08T14:30:00.123"), s("en"), obj(&[("type", "time"), ("fractionalSecondDigits", "3")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("123"), "got: {str}");
+}
+
+#[test]
+fn format_time_fractional_seconds_1() {
+    let result = call(&[s("14:30:00.1"), s("en"), obj(&[("type", "time"), ("fractionalSecondDigits", "1")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("1"), "got: {str}");
+}
+
+#[test]
+fn format_time_fractional_seconds_2() {
+    let result = call(&[s("14:30:00.12"), s("en"), obj(&[("type", "time"), ("fractionalSecondDigits", "2")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("12"), "got: {str}");
+}
+
+#[test]
+fn format_time_fractional_seconds_pads_single_digit() {
+    let result = call(&[s("14:30:00.1"), s("en"), obj(&[("type", "time"), ("fractionalSecondDigits", "3")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("100"), "single digit .1 should pad to .100, got: {str}");
+}
+
+#[test]
+fn format_time_fractional_seconds_truncates_6_digits() {
+    let result = call(&[s("14:30:00.123456"), s("en"), obj(&[("type", "time"), ("fractionalSecondDigits", "3")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("123"), "got: {str}");
+}
+
+#[test]
+fn format_datetime_fractional_seconds_3() {
+    let result = call(&[s("2024-05-08T14:30:00.123"), s("en"), obj(&[("type", "datetime"), ("fractionalSecondDigits", "3")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("123"), "got: {str}");
+}
+
+#[test]
+fn format_datetime_fractional_seconds_with_z() {
+    let result = call(&[s("2024-05-08T14:30:00.123Z"), s("en"), obj(&[("type", "datetime"), ("fractionalSecondDigits", "3")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("123"), "got: {str}");
+}
+
+#[test]
+fn format_datetime_fractional_seconds_with_offset() {
+    let result = call(&[s("2024-05-08T14:30:00.123+05:30"), s("en"), obj(&[("type", "datetime"), ("fractionalSecondDigits", "3")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("123"), "got: {str}");
+}
+
+#[test]
+fn format_time_fractional_seconds_with_z() {
+    let result = call(&[s("14:30:00.123Z"), s("en"), obj(&[("type", "time"), ("fractionalSecondDigits", "3")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("123"), "got: {str}");
+}
+
+#[test]
+fn format_time_fractional_seconds_no_digits_option() {
+    let result = call(&[s("14:30:00.123"), s("en"), obj(&[("type", "time")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.contains("123"), "without fractionalSecondDigits, subseconds should not appear, got: {str}");
+}
+
+#[test]
+fn format_time_fractional_seconds_9_digits() {
+    let result = call(&[s("14:30:00.123456789"), s("en"), obj(&[("type", "time"), ("fractionalSecondDigits", "3")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("123"), "9-digit fractional should truncate to 3 for display, got: {str}");
+}
+
+#[test]
+fn format_time_no_fractional_seconds_with_digits_option() {
+    let result = call(&[s("14:30:00"), s("en"), obj(&[("type", "time"), ("fractionalSecondDigits", "3")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("000"), "no fractional seconds with digits=3 should show .000, got: {str}");
+}

@@ -250,3 +250,65 @@ fn format_number_sign_display_never() {
     let str = result.as_str().expect("string result");
     assert!(!str.contains("-"));
 }
+
+// ── Rounding modes ───────────────────────────────────────────────
+
+#[test]
+fn format_number_rounding_mode_floor() {
+    let result = call(&IntlModule::new(), "format_number", &[n(12.99), s("en"), obj(&[("maximumFractionDigits", "0"), ("roundingMode", "floor")])]);
+    let str = result.as_str().expect("string result");
+    assert_eq!(str, "12");
+}
+
+#[test]
+fn format_number_rounding_mode_ceil() {
+    let result = call(&IntlModule::new(), "format_number", &[n(12.01), s("en"), obj(&[("maximumFractionDigits", "0"), ("roundingMode", "ceil")])]);
+    let str = result.as_str().expect("string result");
+    assert_eq!(str, "13");
+}
+
+#[test]
+fn format_number_rounding_mode_trunc() {
+    let result = call(&IntlModule::new(), "format_number", &[n(12.99), s("en"), obj(&[("maximumFractionDigits", "0"), ("roundingMode", "trunc")])]);
+    let str = result.as_str().expect("string result");
+    assert_eq!(str, "12");
+}
+
+#[test]
+fn format_number_rounding_mode_half_even() {
+    let result = call(&IntlModule::new(), "format_number", &[n(2.5), s("en"), obj(&[("maximumFractionDigits", "0"), ("roundingMode", "halfEven")])]);
+    let str = result.as_str().expect("string result");
+    assert_eq!(str, "2");
+}
+
+#[test]
+fn format_number_rounding_mode_half_expand() {
+    let result = call(&IntlModule::new(), "format_number", &[n(2.5), s("en"), obj(&[("maximumFractionDigits", "0"), ("roundingMode", "halfExpand")])]);
+    let str = result.as_str().expect("string result");
+    assert_eq!(str, "3");
+}
+
+// ── Currency narrowSymbol ────────────────────────────────────────
+
+#[test]
+fn format_number_currency_narrow_symbol() {
+    let result = call(&IntlModule::new(), "format_number", &[n(1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD"), ("currencyDisplay", "narrowSymbol")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("1,234.56"));
+}
+
+// ── Currency sign (accounting) ───────────────────────────────────
+
+#[test]
+fn format_number_currency_sign_standard() {
+    let result = call(&IntlModule::new(), "format_number", &[n(-1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD"), ("currencySign", "standard")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("-"), "standard sign should have minus: {str}");
+}
+
+#[test]
+fn format_number_currency_sign_accounting() {
+    let result = call(&IntlModule::new(), "format_number", &[n(-1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD"), ("currencySign", "accounting")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("(") || str.contains("-"), "accounting sign should use parentheses or minus: {str}");
+}

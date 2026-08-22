@@ -1,11 +1,12 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
-use fixed_decimal::SignDisplay;
+use fixed_decimal::{SignDisplay, SignedRoundingMode, UnsignedRoundingMode};
 use icu::decimal::input::Decimal;
 use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
 use icu::decimal::options::{DecimalFormatterOptions, GroupingStrategy};
 use icu::experimental::dimension::currency::CurrencyType;
 use icu::experimental::dimension::currency::formatter::CurrencyFormatter;
+use icu::experimental::dimension::currency::options::{CurrencyFormatterOptions, CurrencyUsage};
 use icu::experimental::dimension::percent::formatter::PercentFormatter;
 use writeable::Writeable;
 
@@ -21,7 +22,8 @@ use super::provider::IntlProvider;
 /// Options:
 /// - `style`: `"decimal"` (default), `"percent"`, or `"currency"`
 /// - `currency`: 3-letter ISO 4217 code (required when `style: "currency"`)
-/// - `currencyDisplay`: `"symbol"` (default) or `"code"`
+/// - `currencyDisplay`: `"symbol"` (default), `"narrowSymbol"`, or `"code"`
+/// - `currencySign`: `"standard"` (default) or `"accounting"` (for negative values, uses parentheses)
 /// - `notation`: `"standard"` (default) or `"compact"`
 /// - `minimumFractionDigits`: minimum fraction digits to display
 /// - `maximumFractionDigits`: maximum fraction digits to display
@@ -29,6 +31,7 @@ use super::provider::IntlProvider;
 /// - `maximumSignificantDigits`: maximum significant digits
 /// - `useGrouping`: `true` (default) or `false`
 /// - `signDisplay`: `"auto"` (default), `"always"`, `"never"`, `"exceptZero"`, `"negative"`
+/// - `roundingMode`: `"halfEven"` (default), `"ceil"`, `"floor"`, `"expand"`, `"trunc"`, `"halfCeil"`, `"halfExpand"`, `"halfFloor"`, `"halfTrunc"`
 ///
 /// Examples:
 /// - `intl.format_number(1234567.89)` → `"1,234,567.89"`
@@ -104,20 +107,35 @@ fn apply_sign_display(decimal: &mut Decimal, opts: Option<&serde_json::Map<Strin
     }
 }
 
+fn parse_rounding_mode(opts: Option<&serde_json::Map<String, serde_json::Value>>) -> SignedRoundingMode {
+    match opt_str(opts, "roundingMode").unwrap_or("halfEven") {
+        "ceil" => SignedRoundingMode::Ceil,
+        "floor" => SignedRoundingMode::Floor,
+        "expand" => SignedRoundingMode::Unsigned(UnsignedRoundingMode::Expand),
+        "trunc" => SignedRoundingMode::Unsigned(UnsignedRoundingMode::Trunc),
+        "halfCeil" => SignedRoundingMode::HalfCeil,
+        "halfExpand" => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfExpand),
+        "halfFloor" => SignedRoundingMode::HalfFloor,
+        "halfTrunc" => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfTrunc),
+        _ => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfEven),
+    }
+}
+
 fn apply_fraction_digits(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
-    if let Some(min) = opt_int(opts, "minimumFractionDigits") {
-        if min > 0 {
-            decimal.pad_end(-i16::try_from(min).unwrap_or(0));
-        }
+    let rounding_mode = parse_rounding_mode(opts);
+    if let Some(min) = opt_int(opts, "minimumFractionDigits")
+        && min > 0
+    {
+        decimal.pad_end(-i16::try_from(min).unwrap_or(0));
     }
     if let Some(max) = opt_int(opts, "maximumFractionDigits") {
         let max = i16::try_from(max).unwrap_or(0);
         if max >= 0 {
-            decimal.round(-max);
-            if let Some(min) = opt_int(opts, "minimumFractionDigits") {
-                if min > 0 {
-                    decimal.pad_end(-i16::try_from(min).unwrap_or(0));
-                }
+            decimal.round_with_mode(-max, rounding_mode);
+            if let Some(min) = opt_int(opts, "minimumFractionDigits")
+                && min > 0
+            {
+                decimal.pad_end(-i16::try_from(min).unwrap_or(0));
             }
         }
     }
@@ -200,11 +218,20 @@ fn format_currency(n: f64, locale: &icu::locale::Locale, currency: &str, display
     let currency_code = CurrencyType::try_from_str(currency)
         .map_err(|_| IntlError::InvalidCurrency { code: currency.to_string() }.into_vm_error())?;
 
+    let usage = match opt_str(opts, "currencySign") {
+        Some("accounting") => CurrencyUsage::Accounting,
+        _ => CurrencyUsage::Standard,
+    };
+    let mut currency_opts = CurrencyFormatterOptions::default();
+    currency_opts.usage = usage;
+
     let formatter = match (display, dp.as_buffer_provider()) {
-        ("code", Some(p)) => CurrencyFormatter::try_new_code_with_buffer_provider(p, locale.into(), currency_code, Default::default()),
-        ("code", None) => CurrencyFormatter::try_new_code(locale.into(), currency_code, Default::default()),
-        (_, Some(p)) => CurrencyFormatter::try_new_symbol_with_buffer_provider(p, locale.into(), currency_code, Default::default()),
-        (_, None) => CurrencyFormatter::try_new_symbol(locale.into(), currency_code, Default::default()),
+        ("code", Some(p)) => CurrencyFormatter::try_new_code_with_buffer_provider(p, locale.into(), currency_code, currency_opts),
+        ("code", None) => CurrencyFormatter::try_new_code(locale.into(), currency_code, currency_opts),
+        ("narrowSymbol", Some(p)) => CurrencyFormatter::try_new_symbol_narrow_with_buffer_provider(p, locale.into(), currency_code, currency_opts),
+        ("narrowSymbol", None) => CurrencyFormatter::try_new_symbol_narrow(locale.into(), currency_code, currency_opts),
+        (_, Some(p)) => CurrencyFormatter::try_new_symbol_with_buffer_provider(p, locale.into(), currency_code, currency_opts),
+        (_, None) => CurrencyFormatter::try_new_symbol(locale.into(), currency_code, currency_opts),
     }
     .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 

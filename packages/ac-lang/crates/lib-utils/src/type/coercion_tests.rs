@@ -252,7 +252,7 @@ fn to_number_from_null() {
 }
 
 #[test]
-fn to_number_from_array_returns_length() {
+fn to_number_from_array_returns_zero() {
     assert_eq!(
         call(
             &TypeModule,
@@ -264,7 +264,7 @@ fn to_number_from_array_returns_length() {
             ])]
         )
         .as_number(),
-        Some(3.0)
+        Some(0.0)
     );
 }
 
@@ -277,7 +277,7 @@ fn to_number_from_empty_array() {
 }
 
 #[test]
-fn to_number_from_object_returns_key_count() {
+fn to_number_from_object_returns_zero() {
     assert_eq!(
         call(
             &TypeModule,
@@ -288,7 +288,7 @@ fn to_number_from_object_returns_key_count() {
             ])]
         )
         .as_number(),
-        Some(2.0)
+        Some(0.0)
     );
 }
 
@@ -535,7 +535,7 @@ fn to_number_from_string_float_with_exponent() {
 }
 
 #[test]
-fn to_number_from_nested_array_returns_length() {
+fn to_number_from_nested_array_returns_zero() {
     assert_eq!(
         call(
             &TypeModule,
@@ -543,12 +543,12 @@ fn to_number_from_nested_array_returns_length() {
             &[arr(&[serde_json::json!([1, 2]), serde_json::json!("x"),])]
         )
         .as_number(),
-        Some(2.0)
+        Some(0.0)
     );
 }
 
 #[test]
-fn to_number_from_nested_object_returns_key_count() {
+fn to_number_from_nested_object_returns_zero() {
     assert_eq!(
         call(
             &TypeModule,
@@ -560,7 +560,7 @@ fn to_number_from_nested_object_returns_key_count() {
             ])]
         )
         .as_number(),
-        Some(3.0)
+        Some(0.0)
     );
 }
 

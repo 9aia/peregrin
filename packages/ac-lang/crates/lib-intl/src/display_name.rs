@@ -1,13 +1,13 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 use icu::locale::names::{
-    LanguageIdentifierDisplayName, LanguageIdentifierDisplayNameOptions,
+    LanguageDisplay, LanguageIdentifierDisplayName, LanguageIdentifierDisplayNameOptions,
     RegionDisplayName, ScriptDisplayName,
     VariantDisplayName,
 };
 use writeable::Writeable;
 
-use super::common::{make_provider, optional_locale, optional_object, require_string, s};
+use super::common::{make_provider, opt_str, optional_locale, optional_object, require_string, s};
 use super::error::IntlError;
 use super::provider::IntlProvider;
 
@@ -16,6 +16,10 @@ use super::provider::IntlProvider;
 /// Returns the display name for a language, region, script, or variant code.
 ///
 /// `type` must be one of: `"language"`, `"region"`, `"script"`, or `"variant"`.
+///
+/// Options (for `type: "language"`):
+/// - `languageDisplay`: `"dialect"` (default) or `"standard"`
+/// - `fallback`: `"code"` (default) or `"none"` (returns error if not found)
 ///
 /// Examples:
 /// - `intl.display_name("en", "language", "pt")` → `"Inglês"`
@@ -48,8 +52,15 @@ impl Function for DisplayName {
         let code = require_string(args, 0)?;
         let name_type = require_string(args, 1)?;
         let locale = optional_locale(args, 2)?;
-        let _opts = optional_object(args, 3)?;
+        let opts = optional_object(args, 3)?;
         let dp = make_provider(&self.provider)?;
+
+        let language_display = match opt_str(opts, "languageDisplay").unwrap_or("dialect") {
+            "standard" => LanguageDisplay::Standard,
+            _ => LanguageDisplay::Dialect,
+        };
+        let mut dn_opts = LanguageIdentifierDisplayNameOptions::default();
+        dn_opts.language_display = Some(language_display);
 
         let formatted = match name_type {
             "language" => {
@@ -57,10 +68,10 @@ impl Function for DisplayName {
                     .map_err(|e| IntlError::InvalidArgument { message: format!("invalid language code: {e}") }.into_vm_error())?;
                 let display = match dp.as_buffer_provider() {
                     Some(p) => LanguageIdentifierDisplayName::try_new_light_with_buffer_provider(
-                        p, locale.into(), lang_id, LanguageIdentifierDisplayNameOptions::default(),
+                        p, locale.into(), lang_id, dn_opts,
                     ),
                     None => LanguageIdentifierDisplayName::try_new_light(
-                        locale.into(), lang_id, LanguageIdentifierDisplayNameOptions::default(),
+                        locale.into(), lang_id, dn_opts,
                     ),
                 }
                 .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;

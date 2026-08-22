@@ -100,10 +100,10 @@ pub(super) fn optional_locale(args: &[NonFunctionValue], idx: usize) -> Result<L
 }
 
 /// Extract an optional options object at the given index.
-pub(super) fn optional_object<'a>(
-    args: &'a [NonFunctionValue],
+pub(super) fn optional_object(
+    args: &[NonFunctionValue],
     idx: usize,
-) -> Result<Option<&'a serde_json::Map<String, serde_json::Value>>, Error> {
+) -> Result<Option<&serde_json::Map<String, serde_json::Value>>, Error> {
     match args.get(idx) {
         Some(arg) => {
             let obj = arg.as_object().ok_or(Error::TypeMismatch {

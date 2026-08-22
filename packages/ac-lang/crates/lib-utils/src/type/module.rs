@@ -12,6 +12,13 @@ use crate::r#type::utilities::{Coalesce, Default, Identity};
 /// Provides functions callable as `type.to_string(v)`, `type.to_number(v)`,
 /// `type.to_bool(v)`, `type.is_null(v)`, `type.is_bool(v)`, etc. in AC
 /// expressions.
+///
+/// # NaN and Infinity
+///
+/// `serde_json::Value` cannot represent NaN or Infinity — they serialize as
+/// `null`. Values that would be NaN or Infinity are therefore handled by the
+/// `null` branch in each function, yielding `"null"`, `0.0`, and `false`
+/// respectively. This is a deliberate graceful-degradation choice, not a bug.
 #[derive(Clone, Copy)]
 pub struct TypeModule;
 

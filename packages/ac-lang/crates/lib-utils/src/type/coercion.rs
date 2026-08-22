@@ -57,10 +57,6 @@ impl Function for ToNumber {
             }
         } else if arg.is_null() {
             0.0
-        } else if let Some(arr) = arg.as_array() {
-            arr.len() as f64
-        } else if let Some(obj) = arg.as_object() {
-            obj.len() as f64
         } else {
             0.0
         };
@@ -90,7 +86,7 @@ impl Function for ToBool {
         } else if let Some(obj) = arg.as_object() {
             !obj.is_empty()
         } else {
-            true
+            false
         };
         Ok(NonFunctionValue::new(result))
     }

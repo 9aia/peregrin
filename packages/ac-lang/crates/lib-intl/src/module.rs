@@ -11,7 +11,7 @@ use super::format_relative_time::FormatRelativeTime;
 use super::provider::IntlProvider;
 use super::segment::Segment;
 use super::select_plural::SelectPlural;
-use super::supported_locales::SupportedLocalesOf;
+use super::locale_match::{GetCanonicalLocales, SupportedLocalesOf};
 
 /// The `intl` module — internationalization functions.
 ///
@@ -45,6 +45,7 @@ pub struct IntlModule {
     f_display_name: DisplayName,
     f_segment: Segment,
     f_supported_locales_of: SupportedLocalesOf,
+    f_get_canonical_locales: GetCanonicalLocales,
 }
 
 impl Default for IntlModule {
@@ -68,6 +69,7 @@ impl IntlModule {
             f_display_name: DisplayName::new(),
             f_segment: Segment::new(),
             f_supported_locales_of: SupportedLocalesOf::new(),
+            f_get_canonical_locales: GetCanonicalLocales,
         }
     }
 
@@ -91,6 +93,7 @@ impl IntlModule {
             f_display_name: DisplayName::with_provider(provider.clone()),
             f_segment: Segment::with_provider(provider.clone()),
             f_supported_locales_of: SupportedLocalesOf::with_provider(provider),
+            f_get_canonical_locales: GetCanonicalLocales,
         }
     }
 
@@ -124,6 +127,7 @@ impl Module for IntlModule {
             "display_name" => Some(&self.f_display_name),
             "segment" => Some(&self.f_segment),
             "supported_locales_of" => Some(&self.f_supported_locales_of),
+            "get_canonical_locales" => Some(&self.f_get_canonical_locales),
             _ => None,
         }
     }

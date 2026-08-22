@@ -106,12 +106,18 @@ fn collect_segments<I: Iterator<Item = usize>>(text: &str, breakpoints: I) -> Ve
     for breakpoint in breakpoints {
         if breakpoint > start {
             let segment = &text[start..breakpoint];
-            result.push(serde_json::json!(segment));
+            result.push(serde_json::json!({
+                "segment": segment,
+                "index": start,
+            }));
         }
         start = breakpoint;
     }
     if start < text.len() {
-        result.push(serde_json::json!(&text[start..]));
+        result.push(serde_json::json!({
+            "segment": &text[start..],
+            "index": start,
+        }));
     }
     result
 }
@@ -122,17 +128,23 @@ fn collect_word_segments<I: Iterator<Item = usize>>(text: &str, breakpoints: I) 
     for word_break in breakpoints {
         if word_break > start {
             let segment = &text[start..word_break];
-            if segment.chars().any(|c| c.is_alphanumeric()) {
-                result.push(serde_json::json!(segment));
-            }
+            let is_word_like = segment.chars().any(|c| c.is_alphanumeric());
+            result.push(serde_json::json!({
+                "segment": segment,
+                "index": start,
+                "isWordLike": is_word_like,
+            }));
         }
         start = word_break;
     }
     if start < text.len() {
         let segment = &text[start..];
-        if segment.chars().any(|c| c.is_alphanumeric()) {
-            result.push(serde_json::json!(segment));
-        }
+        let is_word_like = segment.chars().any(|c| c.is_alphanumeric());
+        result.push(serde_json::json!({
+            "segment": segment,
+            "index": start,
+            "isWordLike": is_word_like,
+        }));
     }
     result
 }

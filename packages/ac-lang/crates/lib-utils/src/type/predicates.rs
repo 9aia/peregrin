@@ -114,7 +114,7 @@ impl Function for IsTruthy {
         } else if let Some(obj) = arg.as_object() {
             !obj.is_empty()
         } else {
-            true
+            false
         };
         Ok(b(truthy))
     }
