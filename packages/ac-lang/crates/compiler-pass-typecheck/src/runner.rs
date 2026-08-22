@@ -122,7 +122,7 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
 
     let (mut local_errors, data_errors) = rayon::join(
         || {
-            let (mut expr_errors, (arg_errors, merge_errors)) = rayon::join(
+            let (mut expr_errors, ((arg_errors, merge_errors), termination_errors)) = rayon::join(
                 || {
                     ac_typecheck_key_expr::check(
                         &extracted.schemas,
@@ -133,13 +133,22 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
                 },
                 || {
                     rayon::join(
-                        || ac_typecheck_key_arg::check(&extracted.schemas, interpreter),
-                        || ac_typecheck_key_merge::check(&extracted.schemas, interpreter, &env),
+                        || {
+                            rayon::join(
+                                || ac_typecheck_key_arg::check(&extracted.schemas, interpreter),
+                                || ac_typecheck_key_merge::check(&extracted.schemas, interpreter, &env),
+                            )
+                        },
+                        || {
+                            let bodies = ac_typecheck_key_termination::extract_function_bodies(&data);
+                            ac_typecheck_key_termination::check(&bodies, &ac_dialect_canonical::AC_DIALECT)
+                        },
                     )
                 },
             );
             expr_errors.extend(arg_errors);
             expr_errors.extend(merge_errors);
+            expr_errors.extend(termination_errors);
             expr_errors
         },
         || {

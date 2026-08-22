@@ -43,6 +43,7 @@ members = [
   "crates/typecheck-key-merge",
   "crates/typecheck-key-inherit",
   "crates/typecheck-key-mutable",
+  "crates/typecheck-key-termination",
   "crates/typecheck-import",
   "crates/typecheck-schema-json",
   "crates/frontend",
@@ -123,6 +124,7 @@ ac-typecheck-key-arg = { path = "crates/typecheck-key-arg" }
 ac-typecheck-key-merge = { path = "crates/typecheck-key-merge" }
 ac-typecheck-key-inherit = { path = "crates/typecheck-key-inherit" }
 ac-typecheck-key-mutable = { path = "crates/typecheck-key-mutable" }
+ac-typecheck-key-termination = { path = "crates/typecheck-key-termination" }
 ac-typecheck-import = { path = "crates/typecheck-import" }
 ac-typecheck-schema-json = { path = "crates/typecheck-schema-json" }
 ac-meta = { path = "crates/meta" }
