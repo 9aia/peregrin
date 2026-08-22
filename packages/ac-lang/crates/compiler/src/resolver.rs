@@ -16,6 +16,8 @@ use ac_fields::{self, APPLY_FUNCTION, FunctionResolver};
 use ac_host::DefaultHost;
 use ac_module_resolver_core::{IMPORT_FUNCTION, ModuleResolver};
 use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_typecheck_core::TypeEnv;
+use ac_typecheck_infer::{FunctionTable, infer_with_type_args};
 use ac_vm::{Context, Vm};
 
 use crate::expr_eval::ExprEval;
@@ -37,6 +39,12 @@ pub struct VmResolver<'a> {
     pub base_path: Option<PathBuf>,
     pub import_cache: RefCell<HashMap<String, serde_json::Value>>,
     pub resolver: Option<&'a dyn ModuleResolver>,
+    /// Optional typechecker context for resolving generic type arguments.
+    /// When set, `type_args_for` uses this to infer concrete type arguments
+    /// for generic function calls.
+    pub type_env: Option<TypeEnv>,
+    /// Optional function table for resolving generic type arguments.
+    pub function_table: Option<FunctionTable>,
 }
 
 const MAX_DEPTH: usize = 64;
@@ -50,9 +58,34 @@ impl<'a> FunctionResolver for VmResolver<'a> {
             ));
         }
         self.depth.set(depth + 1);
-        let result = self.call_inner(name, args);
+        let result = self.call_inner(name, args, &[]);
         self.depth.set(depth);
         result
+    }
+
+    fn call_with_type_args(
+        &self,
+        name: &str,
+        args: &[serde_json::Value],
+        type_args: &[String],
+    ) -> Result<serde_json::Value, String> {
+        let depth = self.depth.get();
+        if depth >= MAX_DEPTH {
+            return Err(format!(
+                "maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"
+            ));
+        }
+        self.depth.set(depth + 1);
+        let result = self.call_inner(name, args, type_args);
+        self.depth.set(depth);
+        result
+    }
+
+    fn type_args_for(&self, expr: &str) -> Vec<String> {
+        let (Some(env), Some(table)) = (&self.type_env, &self.function_table) else {
+            return Vec::new();
+        };
+        infer_with_type_args(expr, env, table, &AC_DIALECT).type_args
     }
 }
 
@@ -61,6 +94,7 @@ impl<'a> VmResolver<'a> {
         &self,
         name: &str,
         args: &[serde_json::Value],
+        type_args: &[String],
     ) -> Result<serde_json::Value, String> {
         if name == IMPORT_FUNCTION {
             return self.call_import(args);
@@ -88,7 +122,11 @@ impl<'a> VmResolver<'a> {
             .iter()
             .map(|v| Expr::value(NonFunctionValue::new(v.clone())))
             .collect();
-        let expr = Expr::call(name, expr_args);
+        let expr = if type_args.is_empty() {
+            Expr::call(name, expr_args)
+        } else {
+            Expr::call_with_type_args(name, expr_args, type_args.to_vec())
+        };
         let result = vm.eval(&expr, &mut ctx).map_err(|e| e.to_string())?;
 
         Ok(result.into_inner())

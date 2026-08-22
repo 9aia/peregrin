@@ -170,5 +170,11 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
     local_errors.extend(data_errors);
 
     compilation.type_errors = local_errors;
+
+    // Store the type environment and function table for downstream
+    // consumers (e.g. generic type arg resolution during evaluation).
+    compilation.store(env);
+    compilation.store(function_table);
+
     Ok(())
 }

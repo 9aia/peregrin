@@ -1,4 +1,4 @@
-use ac_vm::{Function, Host, LazyFunction};
+use ac_vm::{Function, GenericFunction, Host, LazyFunction};
 
 use crate::module::Module;
 
@@ -80,6 +80,17 @@ impl Host for ModuleHost {
                 .and_then(|m| m.lazy_function(func_name))
         } else {
             self.modules.iter().find_map(|m| m.lazy_function(name))
+        }
+    }
+
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+        if let Some((module_name, func_name)) = name.split_once('.') {
+            self.modules
+                .iter()
+                .find(|m| m.name() == module_name)
+                .and_then(|m| m.generic_function(func_name))
+        } else {
+            self.modules.iter().find_map(|m| m.generic_function(name))
         }
     }
 }

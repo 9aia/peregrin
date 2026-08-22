@@ -38,6 +38,37 @@ pub type Namespaces = HashMap<String, JsonValue>;
 pub trait FunctionResolver {
     /// Calls `name` with `args`, returning the result.
     fn call(&self, name: &str, args: &[JsonValue]) -> Result<JsonValue, String>;
+
+    /// Calls `name` with `args` and resolved `type_args`.
+    ///
+    /// `type_args` is a vector of concrete type name strings (one per
+    /// type parameter, in declaration order) resolved by the typechecker.
+    /// Empty for monomorphic calls.
+    ///
+    /// Default implementation ignores `type_args` and delegates to [`call`].
+    /// Override to pass type arguments through to the VM for `GenericFunction`
+    /// dispatch.
+    fn call_with_type_args(
+        &self,
+        name: &str,
+        args: &[JsonValue],
+        _type_args: &[String],
+    ) -> Result<JsonValue, String> {
+        self.call(name, args)
+    }
+
+    /// Resolve type arguments for a generic call expression.
+    ///
+    /// `expr` is the full expression string (e.g. `"array.map(fn, arr)"`).
+    /// Returns a vector of concrete type name strings, one per type
+    /// parameter in declaration order. Empty for monomorphic calls or
+    /// when type information is unavailable.
+    ///
+    /// Default implementation returns empty — no type args resolved.
+    /// Override to provide typechecker-backed resolution.
+    fn type_args_for(&self, _expr: &str) -> Vec<String> {
+        Vec::new()
+    }
 }
 
 /// A `FunctionResolver` that does nothing — all calls fail.

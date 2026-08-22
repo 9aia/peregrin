@@ -30,10 +30,13 @@ impl HostFunctionSigs {
     /// Default host function signatures for the reference runtime.
     ///
     /// These mirror `ac_host::DefaultHost` — `add`, `mul`, `concat`, `len`.
-    /// All are monomorphic.
+    /// Also includes generic signatures for higher-order array functions
+    /// (`array.map`, `array.filter`, `array.reduce`) that are used by
+    /// `ac-lib-utils`.
     pub fn default_host() -> Self {
         use serde_json::json;
         HostFunctionSigs(vec![
+            // ── monomorphic builtins ──────────────────────────────
             (
                 "add".to_string(),
                 vec![],
@@ -69,6 +72,391 @@ impl HostFunctionSigs {
                     json!({ "type": ["string", "array", "object"] }),
                 )],
                 Some(json!({ "type": "number" })),
+            ),
+            // ── generic higher-order array functions ──────────────
+            // array.map<T, U>(fn: (T) -> U, arr: Array<T>) -> Array<U>
+            (
+                "array.map".to_string(),
+                vec![TypeParam::new("T"), TypeParam::new("U")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "var", "name": "U" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({
+                    "type": "array",
+                    "items": { "type": "var", "name": "U" }
+                })),
+            ),
+            // array.filter<T>(fn: (T) -> Boolean, arr: Array<T>) -> Array<T>
+            (
+                "array.filter".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "boolean" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({
+                    "type": "array",
+                    "items": { "type": "var", "name": "T" }
+                })),
+            ),
+            // array.reduce<T, U>(fn: (U, T) -> U, arr: Array<T>, init: U) -> U
+            (
+                "array.reduce".to_string(),
+                vec![TypeParam::new("T"), TypeParam::new("U")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [
+                                { "name": "acc", "schema": { "type": "var", "name": "U" } },
+                                { "name": "x", "schema": { "type": "var", "name": "T" } }
+                            ],
+                            "return": { "type": "var", "name": "U" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                    (
+                        "init".to_string(),
+                        json!({ "type": "var", "name": "U" }),
+                    ),
+                ],
+                Some(json!({ "type": "var", "name": "U" })),
+            ),
+            // array.flat_map<T, U>(fn: (T) -> Array<U>, arr: Array<T>) -> Array<U>
+            (
+                "array.flat_map".to_string(),
+                vec![TypeParam::new("T"), TypeParam::new("U")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "array", "items": { "type": "var", "name": "U" } }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({
+                    "type": "array",
+                    "items": { "type": "var", "name": "U" }
+                })),
+            ),
+            // array.find<T>(fn: (T) -> Boolean, arr: Array<T>) -> T
+            (
+                "array.find".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "boolean" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({ "type": "var", "name": "T" })),
+            ),
+            // array.some<T>(fn: (T) -> Boolean, arr: Array<T>) -> Boolean
+            (
+                "array.some".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "boolean" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({ "type": "boolean" })),
+            ),
+            // array.every<T>(fn: (T) -> Boolean, arr: Array<T>) -> Boolean
+            (
+                "array.every".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "boolean" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({ "type": "boolean" })),
+            ),
+            // array.group_by<T, K>(fn: (T) -> K, arr: Array<T>) -> Object
+            (
+                "array.group_by".to_string(),
+                vec![TypeParam::new("T"), TypeParam::new("K")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "var", "name": "K" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({ "type": "object" })),
+            ),
+            // array.partition<T>(fn: (T) -> Boolean, arr: Array<T>) -> Array<Array<T>>
+            (
+                "array.partition".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "boolean" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({
+                    "type": "array",
+                    "items": { "type": "array", "items": { "type": "var", "name": "T" } }
+                })),
+            ),
+            // array.sort_by<T>(fn: (T) -> Number, arr: Array<T>) -> Array<T>
+            (
+                "array.sort_by".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "number" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({
+                    "type": "array",
+                    "items": { "type": "var", "name": "T" }
+                })),
+            ),
+            // array.sort_by_desc<T>(fn: (T) -> Number, arr: Array<T>) -> Array<T>
+            (
+                "array.sort_by_desc".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "number" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({
+                    "type": "array",
+                    "items": { "type": "var", "name": "T" }
+                })),
+            ),
+            // array.compact<T>(arr: Array<T>) -> Array<T>
+            (
+                "array.compact".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({
+                    "type": "array",
+                    "items": { "type": "var", "name": "T" }
+                })),
+            ),
+            // array.pluck<T>(arr: Array<Object>, key: String) -> Array<T>
+            (
+                "array.pluck".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "arr".to_string(),
+                        json!({ "type": "array", "items": { "type": "object" } }),
+                    ),
+                    (
+                        "key".to_string(),
+                        json!({ "type": "string" }),
+                    ),
+                ],
+                Some(json!({
+                    "type": "array",
+                    "items": { "type": "var", "name": "T" }
+                })),
+            ),
+            // array.min_by<T>(fn: (T) -> Number, arr: Array<T>) -> T
+            (
+                "array.min_by".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "number" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({ "type": "var", "name": "T" })),
+            ),
+            // array.max_by<T>(fn: (T) -> Number, arr: Array<T>) -> T
+            (
+                "array.max_by".to_string(),
+                vec![TypeParam::new("T")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "number" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({ "type": "var", "name": "T" })),
+            ),
+            // array.count_by<T, K>(fn: (T) -> K, arr: Array<T>) -> Object
+            (
+                "array.count_by".to_string(),
+                vec![TypeParam::new("T"), TypeParam::new("K")],
+                vec![
+                    (
+                        "fn".to_string(),
+                        json!({
+                            "type": "function",
+                            "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+                            "return": { "type": "var", "name": "K" }
+                        }),
+                    ),
+                    (
+                        "arr".to_string(),
+                        json!({
+                            "type": "array",
+                            "items": { "type": "var", "name": "T" }
+                        }),
+                    ),
+                ],
+                Some(json!({ "type": "object" })),
             ),
         ])
     }

@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_vm::{Context, Error, Function, GenericFunction};
 
 use super::helpers::{
     arr, b, key_to_string, require_array, require_function_and_array, require_function_value,
@@ -140,6 +140,22 @@ impl Function for Map {
     }
 }
 
+impl GenericFunction for Map {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        // array.map delegates to the same logic regardless of type_args,
+        // but the GenericFunction impl allows the VM to dispatch here
+        // when type_args are present, enabling type-aware host extensions.
+        let (fn_val, array) = require_function_and_array(args)?;
+        let results = map_iter(ctx, &fn_val, array.iter())?;
+        Ok(arr(&results))
+    }
+}
+
 // ── filter ─────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy)]
@@ -156,6 +172,19 @@ impl Function for Filter {
     }
 }
 
+impl GenericFunction for Filter {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let (fn_val, array) = require_function_and_array(args)?;
+        let results = filter_iter(ctx, &fn_val, array.iter())?;
+        Ok(arr(&results))
+    }
+}
+
 // ── reduce ─────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy)]
@@ -164,6 +193,27 @@ impl Function for Reduce {
     fn call(
         &self,
         args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 3 {
+            return Err(Error::ArgumentCount {
+                expected: 3,
+                got: args.len(),
+            });
+        }
+        let fn_val = require_function_value(&args[0])?;
+        let array = require_array(&args[1])?;
+        let init = args[2].inner().clone();
+        let result = fold_iter(ctx, &fn_val, array.iter(), init)?;
+        Ok(NonFunctionValue::new(result))
+    }
+}
+
+impl GenericFunction for Reduce {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
@@ -204,6 +254,17 @@ impl Function for FlatMap {
     }
 }
 
+impl GenericFunction for FlatMap {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
+    }
+}
+
 // ── find ───────────────────────────────────────────────────────────
 
 #[derive(Clone, Copy)]
@@ -220,6 +281,17 @@ impl Function for Find {
             Some(v) => Ok(NonFunctionValue::new(v)),
             None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
         }
+    }
+}
+
+impl GenericFunction for Find {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
     }
 }
 
@@ -243,6 +315,17 @@ impl Function for SomeFn {
     }
 }
 
+impl GenericFunction for SomeFn {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct Every;
 impl Function for Every {
@@ -258,6 +341,17 @@ impl Function for Every {
             }
         }
         Ok(b(true))
+    }
+}
+
+impl GenericFunction for Every {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
     }
 }
 
@@ -287,6 +381,12 @@ impl Function for GroupBy {
     }
 }
 
+impl GenericFunction for GroupBy {
+    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
+    }
+}
+
 // ── partition ──────────────────────────────────────────────────────
 
 #[derive(Clone, Copy)]
@@ -311,6 +411,12 @@ impl Function for Partition {
             serde_json::Value::Array(matching),
             serde_json::Value::Array(rest),
         ]))
+    }
+}
+
+impl GenericFunction for Partition {
+    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
     }
 }
 
@@ -352,6 +458,12 @@ impl Function for SortBy {
     }
 }
 
+impl GenericFunction for SortBy {
+    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct SortByDesc;
 impl Function for SortByDesc {
@@ -361,6 +473,12 @@ impl Function for SortByDesc {
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
         sort_by_impl(args, ctx, true)
+    }
+}
+
+impl GenericFunction for SortByDesc {
+    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
     }
 }
 
@@ -379,6 +497,12 @@ impl Function for Compact {
         let result: Vec<serde_json::Value> =
             array.iter().filter(|v| !v.is_null()).cloned().collect();
         Ok(arr(&result))
+    }
+}
+
+impl GenericFunction for Compact {
+    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
     }
 }
 
@@ -413,6 +537,12 @@ impl Function for Pluck {
             })
             .collect();
         Ok(arr(&result))
+    }
+}
+
+impl GenericFunction for Pluck {
+    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
     }
 }
 
@@ -456,6 +586,12 @@ impl Function for MinBy {
     }
 }
 
+impl GenericFunction for MinBy {
+    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
+    }
+}
+
 #[derive(Clone, Copy)]
 pub struct MaxBy;
 impl Function for MaxBy {
@@ -465,6 +601,12 @@ impl Function for MaxBy {
         ctx: &mut Context,
     ) -> Result<NonFunctionValue, Error> {
         extremum_by_impl(args, ctx, true)
+    }
+}
+
+impl GenericFunction for MaxBy {
+    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
     }
 }
 
@@ -491,5 +633,11 @@ impl Function for CountBy {
             result.insert(k, serde_json::json!(v));
         }
         Ok(NonFunctionValue::new(serde_json::Value::Object(result)))
+    }
+}
+
+impl GenericFunction for CountBy {
+    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        self.call(args, ctx)
     }
 }

@@ -51,7 +51,25 @@ impl FunctionResolver for ExprEval {
             ));
         }
         self.depth.set(depth + 1);
-        let result = self.call_inner(name, args);
+        let result = self.call_inner(name, args, &[]);
+        self.depth.set(depth);
+        result
+    }
+
+    fn call_with_type_args(
+        &self,
+        name: &str,
+        args: &[serde_json::Value],
+        type_args: &[String],
+    ) -> Result<serde_json::Value, String> {
+        let depth = self.depth.get();
+        if depth >= MAX_DEPTH {
+            return Err(format!(
+                "maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"
+            ));
+        }
+        self.depth.set(depth + 1);
+        let result = self.call_inner(name, args, type_args);
         self.depth.set(depth);
         result
     }
@@ -62,6 +80,7 @@ impl ExprEval {
         &self,
         name: &str,
         args: &[serde_json::Value],
+        type_args: &[String],
     ) -> Result<serde_json::Value, String> {
         if name == APPLY_FUNCTION {
             return self.call_apply(args);
@@ -80,7 +99,11 @@ impl ExprEval {
             .iter()
             .map(|v| Expr::value(NonFunctionValue::new(v.clone())))
             .collect();
-        let expr = Expr::call(name, expr_args);
+        let expr = if type_args.is_empty() {
+            Expr::call(name, expr_args)
+        } else {
+            Expr::call_with_type_args(name, expr_args, type_args.to_vec())
+        };
         let result = vm.eval(&expr, &mut ctx).map_err(|e| e.to_string())?;
         Ok(result.into_inner())
     }

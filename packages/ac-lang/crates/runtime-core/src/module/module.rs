@@ -1,4 +1,4 @@
-use ac_vm::{Function, LazyFunction};
+use ac_vm::{Function, GenericFunction, LazyFunction};
 
 /// A named group of functions.
 ///
@@ -40,6 +40,16 @@ pub trait Module: Send + Sync {
     /// Returns `None` by default. Override to provide functions that
     /// need lazy (short-circuit) argument evaluation.
     fn lazy_function(&self, _name: &str) -> Option<&dyn LazyFunction> {
+        None
+    }
+
+    /// Resolve a function name to a [`GenericFunction`] that receives
+    /// resolved type arguments.
+    ///
+    /// Returns `None` by default. Override to provide generic functions
+    /// that need to inspect type arguments at runtime. The VM calls
+    /// this when a call carries non-empty `type_args`.
+    fn generic_function(&self, _name: &str) -> Option<&dyn GenericFunction> {
         None
     }
 }

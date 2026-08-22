@@ -10,6 +10,7 @@ fn make_call(name: &str, args: &[NonFunctionValue]) -> Expr<NonFunctionValue> {
     Expr::Call {
         name: name.to_string(),
         args: args.iter().map(|v| Expr::Value(v.clone())).collect(),
+        type_args: Vec::new(),
     }
 }
 

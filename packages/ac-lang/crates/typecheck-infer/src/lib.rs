@@ -414,5 +414,158 @@ pub fn infer_cached_detailed(
     infer_ast_detailed(&ast, env, functions, dialect)
 }
 
+/// Result of type inference with resolved type arguments.
+///
+/// Contains the inferred type and, for generic call sites, the resolved
+/// type argument strings (one per type parameter, in declaration order).
+/// Each string is the `Type::name()` of the concrete type bound to that
+/// parameter (e.g. `"string"`, `"number"`, `"array<number>"`).
+#[derive(Debug, Clone)]
+pub struct InferenceWithTypeArgs {
+    /// The inferred return type of the expression.
+    pub return_type: Type,
+    /// Resolved type argument strings for the top-level call, if it was
+    /// a generic function call. Empty for non-call expressions or
+    /// monomorphic calls.
+    pub type_args: Vec<String>,
+}
+
+/// Infer the type of an expression string, also resolving type arguments
+/// for the top-level call if it is a generic function call.
+///
+/// This is the bridge between the typechecker and the runtime: the
+/// resolved `type_args` can be attached to `Expr::Call` nodes so that
+/// `GenericFunction` host implementations can inspect them at runtime.
+pub fn infer_with_type_args(
+    expr: &str,
+    env: &TypeEnv,
+    functions: &FunctionTable,
+    dialect: &dyn Dialect,
+) -> InferenceWithTypeArgs {
+    let Some(ast) = parse_expr(expr, dialect) else {
+        return InferenceWithTypeArgs {
+            return_type: Type::Unknown,
+            type_args: Vec::new(),
+        };
+    };
+    infer_ast_with_type_args(&ast, env, functions, dialect)
+}
+
+/// Like [`infer_with_type_args`] but operates on a parsed [`ExprAst`].
+pub fn infer_ast_with_type_args(
+    ast: &ExprAst,
+    env: &TypeEnv,
+    functions: &FunctionTable,
+    dialect: &dyn Dialect,
+) -> InferenceWithTypeArgs {
+    match ast {
+        ExprAst::Call(name, args) => {
+            let arg_types: Vec<Type> = args
+                .iter()
+                .map(|a| infer_ast(a, env, functions, dialect))
+                .collect();
+
+            if let Some(fn_type) = functions.lookup(name) {
+                let (ret, type_args) =
+                    check_call_with_type_args(fn_type, &arg_types, None);
+                return InferenceWithTypeArgs {
+                    return_type: ret,
+                    type_args,
+                };
+            }
+
+            let ty = resolve_path_type(name, env, dialect);
+            if let Type::Function(fn_type) = ty {
+                let (ret, type_args) =
+                    check_call_with_type_args(&fn_type, &arg_types, None);
+                return InferenceWithTypeArgs {
+                    return_type: ret,
+                    type_args,
+                };
+            }
+
+            InferenceWithTypeArgs {
+                return_type: Type::Unknown,
+                type_args: Vec::new(),
+            }
+        }
+
+        _ => InferenceWithTypeArgs {
+            return_type: infer_ast(ast, env, functions, dialect),
+            type_args: Vec::new(),
+        },
+    }
+}
+
+/// Like [`check_call_with_expected`] but also returns resolved type
+/// argument strings for generic calls.
+///
+/// Returns `(return_type, type_args)` where `type_args` is a vector of
+/// `Type::name()` strings, one per type parameter in declaration order.
+/// For monomorphic calls, `type_args` is empty.
+pub fn check_call_with_type_args(
+    fn_type: &FunctionType,
+    arg_types: &[Type],
+    expected_return: Option<&Type>,
+) -> (Type, Vec<String>) {
+    if fn_type.params.len() != arg_types.len() {
+        return (Type::Unknown, Vec::new());
+    }
+
+    if fn_type.type_params.is_empty() {
+        for ((_, param_ty), arg_ty) in fn_type.params.iter().zip(arg_types) {
+            if !is_compatible(arg_ty, param_ty) {
+                return (Type::Unknown, Vec::new());
+            }
+        }
+        return ((*fn_type.return_type).clone(), Vec::new());
+    }
+
+    let mut subst = ac_typecheck_core::Substitution::new();
+    for ((_, param_ty), arg_ty) in fn_type.params.iter().zip(arg_types) {
+        if !unify(arg_ty, param_ty, &mut subst, &fn_type.type_params) {
+            return (Type::Unknown, Vec::new());
+        }
+    }
+
+    if let Some(expected) = expected_return {
+        if !unify(expected, &fn_type.return_type, &mut subst, &fn_type.type_params) {
+            // Graceful degradation — skip return-type binding.
+        }
+    }
+
+    for tp in &fn_type.type_params {
+        if !subst.contains_key(&tp.name) {
+            subst.insert(tp.name.clone(), Type::Unknown);
+        }
+    }
+
+    let registry = TraitRegistry::default_registry();
+    if !check_bounds(&subst, &fn_type.type_params, &registry) {
+        return (Type::Unknown, Vec::new());
+    }
+
+    let type_args: Vec<String> = fn_type
+        .type_params
+        .iter()
+        .map(|tp| {
+            subst
+                .get(&tp.name)
+                .map(|t| t.name())
+                .unwrap_or_else(|| "unknown".to_string())
+        })
+        .collect();
+
+    // If any type arg is "unknown", the typechecker couldn't fully resolve
+    // all type parameters. Return empty type_args so the VM falls back to
+    // regular Function::call instead of GenericFunction dispatch with
+    // incomplete type information.
+    if type_args.iter().any(|a| a == "unknown") {
+        return (substitute(&fn_type.return_type, &subst), Vec::new());
+    }
+
+    (substitute(&fn_type.return_type, &subst), type_args)
+}
+
 #[cfg(test)]
 mod lib_tests;

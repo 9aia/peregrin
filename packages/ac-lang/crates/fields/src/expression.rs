@@ -91,7 +91,11 @@ pub(crate) fn eval_expr_inner(
             }
         }
 
-        resolver.call(name_trimmed, &args).ok()
+        // Resolve type arguments for generic calls via the typechecker.
+        let type_args = resolver.type_args_for(expr);
+        resolver
+            .call_with_type_args(name_trimmed, &args, &type_args)
+            .ok()
     } else {
         // Path lookup: ns.key.subkey or shorthand key
         resolve_path(expr, namespaces, dialect.syntax().path_separator())

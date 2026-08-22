@@ -1,5 +1,5 @@
 use ac_runtime_core::Module;
-use ac_vm::Function;
+use ac_vm::{Function, GenericFunction};
 
 use super::basic_operations::{
     At, Concat, Contains, DeepFlatten, Fill, First, Flatten, IndexOf, Last, Length, Pop, Push,
@@ -75,6 +75,28 @@ impl Module for ArrayModule {
             "range" => Some(&Range),
             "zip" => Some(&Zip),
             "chunk" => Some(&Chunk),
+            "map" => Some(&Map),
+            "filter" => Some(&Filter),
+            "reduce" => Some(&Reduce),
+            "flat_map" => Some(&FlatMap),
+            "find" => Some(&Find),
+            "some" => Some(&SomeFn),
+            "every" => Some(&Every),
+            "group_by" => Some(&GroupBy),
+            "partition" => Some(&Partition),
+            "sort_by" => Some(&SortBy),
+            "sort_by_desc" => Some(&SortByDesc),
+            "compact" => Some(&Compact),
+            "pluck" => Some(&Pluck),
+            "min_by" => Some(&MinBy),
+            "max_by" => Some(&MaxBy),
+            "count_by" => Some(&CountBy),
+            _ => None,
+        }
+    }
+
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+        match name {
             "map" => Some(&Map),
             "filter" => Some(&Filter),
             "reduce" => Some(&Reduce),

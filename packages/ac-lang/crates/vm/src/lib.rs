@@ -41,6 +41,9 @@ mod continuation_tests;
 mod error_tests;
 
 #[cfg(test)]
+mod generic_tests;
+
+#[cfg(test)]
 mod handler_tests;
 
 #[cfg(test)]

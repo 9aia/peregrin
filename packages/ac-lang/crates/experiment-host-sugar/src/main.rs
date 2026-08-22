@@ -56,6 +56,8 @@ n: 5
         base_path: None,
         import_cache: std::cell::RefCell::new(HashMap::new()),
         resolver: Some(&fr),
+        type_env: None,
+        function_table: None,
     };
 
     println!("\n--- expression ---\n");
