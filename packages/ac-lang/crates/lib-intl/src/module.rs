@@ -58,16 +58,16 @@ impl IntlModule {
     pub fn new() -> Self {
         Self {
             provider: None,
-            f_format_number: FormatNumber,
-            f_select_plural: SelectPlural,
-            f_format_list: FormatList,
-            f_format_relative_time: FormatRelativeTime,
-            f_format_date: FormatDate,
-            f_format_duration: FormatDuration,
-            f_compare_strings: CompareStrings,
-            f_display_name: DisplayName,
-            f_segment: Segment,
-            f_supported_locales_of: SupportedLocalesOf,
+            f_format_number: FormatNumber::new(),
+            f_select_plural: SelectPlural::new(),
+            f_format_list: FormatList::new(),
+            f_format_relative_time: FormatRelativeTime::new(),
+            f_format_date: FormatDate::new(),
+            f_format_duration: FormatDuration::new(),
+            f_compare_strings: CompareStrings::new(),
+            f_display_name: DisplayName::new(),
+            f_segment: Segment::new(),
+            f_supported_locales_of: SupportedLocalesOf::new(),
         }
     }
 
@@ -81,16 +81,16 @@ impl IntlModule {
     pub fn with_provider(provider: IntlProvider) -> Self {
         Self {
             provider: Some(provider.clone()),
-            f_format_number: FormatNumber,
-            f_select_plural: SelectPlural,
-            f_format_list: FormatList,
-            f_format_relative_time: FormatRelativeTime,
-            f_format_date: FormatDate,
-            f_format_duration: FormatDuration,
-            f_compare_strings: CompareStrings,
-            f_display_name: DisplayName,
-            f_segment: Segment,
-            f_supported_locales_of: SupportedLocalesOf,
+            f_format_number: FormatNumber::with_provider(provider.clone()),
+            f_select_plural: SelectPlural::with_provider(provider.clone()),
+            f_format_list: FormatList::with_provider(provider.clone()),
+            f_format_relative_time: FormatRelativeTime::with_provider(provider.clone()),
+            f_format_date: FormatDate::with_provider(provider.clone()),
+            f_format_duration: FormatDuration::with_provider(provider.clone()),
+            f_compare_strings: CompareStrings::with_provider(provider.clone()),
+            f_display_name: DisplayName::with_provider(provider.clone()),
+            f_segment: Segment::with_provider(provider.clone()),
+            f_supported_locales_of: SupportedLocalesOf::with_provider(provider),
         }
     }
 

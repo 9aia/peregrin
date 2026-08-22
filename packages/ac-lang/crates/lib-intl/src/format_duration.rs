@@ -7,8 +7,9 @@ use icu::experimental::duration::{
 };
 use writeable::Writeable;
 
-use super::common::{opt_bool, opt_str, optional_locale, optional_object, require_object, s};
+use super::common::{make_provider, opt_bool, opt_str, optional_locale, optional_object, require_object, s};
 use super::error::IntlError;
+use super::provider::IntlProvider;
 
 /// `intl.format_duration(duration: object, locale?: string, opts?: object) → string`
 ///
@@ -24,14 +25,33 @@ use super::error::IntlError;
 /// - `intl.format_duration({hours: 1, minutes: 30})` → `"1 hour, 30 minutes"`
 /// - `intl.format_duration({seconds: 90}, "es")` → `"90 segundos"`
 /// - `intl.format_duration({hours: 2, minutes: 5}, "en", {style: "short"})` → `"2 hr, 5 min"`
-#[derive(Clone, Copy)]
-pub struct FormatDuration;
+#[derive(Clone)]
+pub struct FormatDuration {
+    provider: Option<IntlProvider>,
+}
+
+impl FormatDuration {
+    pub fn new() -> Self {
+        Self { provider: None }
+    }
+
+    pub fn with_provider(provider: IntlProvider) -> Self {
+        Self { provider: Some(provider) }
+    }
+}
+
+impl Default for FormatDuration {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Function for FormatDuration {
     fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let obj = require_object(args, 0)?;
         let locale = optional_locale(args, 1)?;
         let opts = optional_object(args, 2)?;
+        let dp = make_provider(&self.provider)?;
 
         let style = opt_str(opts, "style").unwrap_or("long");
 
@@ -58,8 +78,11 @@ impl Function for FormatDuration {
         let validated = ValidatedDurationFormatterOptions::validate(options)
             .map_err(|e| IntlError::Formatting { message: format!("invalid options: {e}") }.into_vm_error())?;
 
-        let formatter = DurationFormatter::try_new(locale.into(), validated)
-            .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+        let formatter = match dp.as_buffer_provider() {
+            Some(p) => DurationFormatter::try_new_with_buffer_provider(p, locale.into(), validated),
+            None => DurationFormatter::try_new(locale.into(), validated),
+        }
+        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
         let formatted = formatter.format(&duration);
         Ok(s(formatted.write_to_string().into_owned()))

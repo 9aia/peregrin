@@ -4,8 +4,9 @@ use icu::datetime::{DateTimeFormatter, fieldsets::{YMD, YMDT, T}};
 use icu::datetime::input::{Date, Time, DateTime};
 use writeable::Writeable;
 
-use super::common::{opt_str, optional_locale, optional_object, require_string, s};
+use super::common::{make_provider, opt_str, optional_locale, optional_object, require_string, s, DataProvider};
 use super::error::IntlError;
+use super::provider::IntlProvider;
 
 /// `intl.format_date(date: string, locale?: string, opts?: object) → string`
 ///
@@ -24,29 +25,48 @@ use super::error::IntlError;
 /// - `intl.format_date("2024-05-08", "de")` → `"8. Mai 2024"`
 /// - `intl.format_date("2024-05-08T14:30:00", "en", {type: "datetime"})` → `"May 8, 2024, 2:30:00 PM"`
 /// - `intl.format_date("14:30:00", "en", {type: "time"})` → `"2:30:00 PM"`
-#[derive(Clone, Copy)]
-pub struct FormatDate;
+#[derive(Clone)]
+pub struct FormatDate {
+    provider: Option<IntlProvider>,
+}
+
+impl FormatDate {
+    pub fn new() -> Self {
+        Self { provider: None }
+    }
+
+    pub fn with_provider(provider: IntlProvider) -> Self {
+        Self { provider: Some(provider) }
+    }
+}
+
+impl Default for FormatDate {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Function for FormatDate {
     fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let date_str = require_string(args, 0)?;
         let locale = optional_locale(args, 1)?;
         let opts = optional_object(args, 2)?;
+        let dp = make_provider(&self.provider)?;
 
         let style = opt_str(opts, "style").unwrap_or("medium");
         let date_type = opt_str(opts, "type").unwrap_or("date");
 
         let formatted = match date_type {
-            "datetime" => format_datetime(date_str, &locale, style)?,
-            "time" => format_time_only(date_str, &locale, style)?,
-            _ => format_date_only(date_str, &locale, style)?,
+            "datetime" => format_datetime(date_str, &locale, style, &dp)?,
+            "time" => format_time_only(date_str, &locale, style, &dp)?,
+            _ => format_date_only(date_str, &locale, style, &dp)?,
         };
 
         Ok(s(formatted))
     }
 }
 
-fn format_date_only(date_str: &str, locale: &icu::locale::Locale, style: &str) -> Result<String, Error> {
+fn format_date_only(date_str: &str, locale: &icu::locale::Locale, style: &str, dp: &DataProvider) -> Result<String, Error> {
     let (year, month, day) = parse_date(date_str)?;
     let date = Date::try_new_iso(year, month, day)
         .map_err(|e| IntlError::InvalidDate { input: e.to_string() }.into_vm_error())?;
@@ -57,14 +77,17 @@ fn format_date_only(date_str: &str, locale: &icu::locale::Locale, style: &str) -
         _ => YMD::medium(),
     };
 
-    let formatter = DateTimeFormatter::try_new(locale.into(), fieldset)
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    let formatter = match dp.as_buffer_provider() {
+        Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, locale.into(), fieldset),
+        None => DateTimeFormatter::try_new(locale.into(), fieldset),
+    }
+    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
     let formatted = formatter.format(&date);
     Ok(formatted.write_to_string().into_owned())
 }
 
-fn format_time_only(time_str: &str, locale: &icu::locale::Locale, style: &str) -> Result<String, Error> {
+fn format_time_only(time_str: &str, locale: &icu::locale::Locale, style: &str, dp: &DataProvider) -> Result<String, Error> {
     let (hour, minute, second) = parse_time_only(time_str)?;
     let time = Time::try_new(hour, minute, second, 0)
         .map_err(|e| IntlError::InvalidDate { input: e.to_string() }.into_vm_error())?;
@@ -75,14 +98,17 @@ fn format_time_only(time_str: &str, locale: &icu::locale::Locale, style: &str) -
         _ => T::hms(),
     };
 
-    let formatter = DateTimeFormatter::try_new(locale.into(), fieldset)
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    let formatter = match dp.as_buffer_provider() {
+        Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, locale.into(), fieldset),
+        None => DateTimeFormatter::try_new(locale.into(), fieldset),
+    }
+    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
     let formatted = formatter.format(&time);
     Ok(formatted.write_to_string().into_owned())
 }
 
-fn format_datetime(date_str: &str, locale: &icu::locale::Locale, style: &str) -> Result<String, Error> {
+fn format_datetime(date_str: &str, locale: &icu::locale::Locale, style: &str, dp: &DataProvider) -> Result<String, Error> {
     let (year, month, day, hour, minute, second) = parse_datetime(date_str)?;
     let date = Date::try_new_iso(year, month, day)
         .map_err(|e| IntlError::InvalidDate { input: e.to_string() }.into_vm_error())?;
@@ -96,8 +122,11 @@ fn format_datetime(date_str: &str, locale: &icu::locale::Locale, style: &str) ->
         _ => YMDT::medium(),
     };
 
-    let formatter = DateTimeFormatter::try_new(locale.into(), fieldset)
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    let formatter = match dp.as_buffer_provider() {
+        Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, locale.into(), fieldset),
+        None => DateTimeFormatter::try_new(locale.into(), fieldset),
+    }
+    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
     let formatted = formatter.format(&datetime);
     Ok(formatted.write_to_string().into_owned())

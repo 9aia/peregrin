@@ -2,8 +2,37 @@ use ac_runtime::NonFunctionValue;
 use ac_vm::Error;
 use fixed_decimal::{Decimal, FloatPrecision};
 use icu::locale::Locale;
+use icu_provider_blob::BlobDataProvider;
 
 use super::error::IntlError;
+use super::provider::IntlProvider;
+
+/// A data provider that is either compiled (static) or blob-backed (runtime).
+pub(super) enum DataProvider {
+    Compiled,
+    Blob(BlobDataProvider),
+}
+
+impl DataProvider {
+    pub fn as_buffer_provider(&self) -> Option<&BlobDataProvider> {
+        match self {
+            DataProvider::Blob(p) => Some(p),
+            _ => None,
+        }
+    }
+}
+
+/// Create a `DataProvider` from an optional `IntlProvider`.
+pub(super) fn make_provider(provider: &Option<IntlProvider>) -> Result<DataProvider, Error> {
+    match provider {
+        Some(p) => {
+            let bdp = p.as_blob_data_provider()
+                .map_err(|e| IntlError::DataProvider { message: e.to_string() }.into_vm_error())?;
+            Ok(DataProvider::Blob(bdp))
+        }
+        None => Ok(DataProvider::Compiled),
+    }
+}
 
 /// Require a number argument at `idx`.
 pub(super) fn require_number(args: &[NonFunctionValue], idx: usize) -> Result<f64, Error> {

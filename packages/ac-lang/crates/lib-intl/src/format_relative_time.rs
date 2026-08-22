@@ -3,8 +3,9 @@ use ac_vm::{Context, Error, Function};
 use icu::experimental::relativetime::{RelativeTimeFormatter, RelativeTimeFormatterOptions};
 use writeable::Writeable;
 
-use super::common::{decimal_from_f64, opt_str, optional_locale, optional_object, require_number, require_string, s};
+use super::common::{decimal_from_f64, make_provider, opt_str, optional_locale, optional_object, require_number, require_string, s, DataProvider};
 use super::error::IntlError;
+use super::provider::IntlProvider;
 
 /// `intl.format_relative_time(value: number, unit: string, locale?: string, opts?: object) → string`
 ///
@@ -22,8 +23,26 @@ use super::error::IntlError;
 /// - `intl.format_relative_time(-10, "second")` → `"10 seconds ago"`
 /// - `intl.format_relative_time(2, "day", "es", {numeric: "auto"})` → `"pasado mañana"`
 /// - `intl.format_relative_time(3, "year", "bn")` → `"৩ বছরে"`
-#[derive(Clone, Copy)]
-pub struct FormatRelativeTime;
+#[derive(Clone)]
+pub struct FormatRelativeTime {
+    provider: Option<IntlProvider>,
+}
+
+impl FormatRelativeTime {
+    pub fn new() -> Self {
+        Self { provider: None }
+    }
+
+    pub fn with_provider(provider: IntlProvider) -> Self {
+        Self { provider: Some(provider) }
+    }
+}
+
+impl Default for FormatRelativeTime {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Function for FormatRelativeTime {
     fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
@@ -31,6 +50,7 @@ impl Function for FormatRelativeTime {
         let unit = require_string(args, 1)?;
         let locale = optional_locale(args, 2)?;
         let opts = optional_object(args, 3)?;
+        let dp = make_provider(&self.provider)?;
 
         let style = opt_str(opts, "style").unwrap_or("long");
         let numeric = opt_str(opts, "numeric").unwrap_or("always");
@@ -41,7 +61,7 @@ impl Function for FormatRelativeTime {
             options.numeric = Numeric::Auto;
         }
 
-        let formatter = create_formatter(&locale, unit, style, options)?;
+        let formatter = create_formatter(&locale, unit, style, options, &dp)?;
         let decimal = decimal_from_f64(value);
         let formatted = formatter.format(decimal);
         Ok(s(formatted.write_to_string().into_owned()))
@@ -53,32 +73,106 @@ fn create_formatter(
     unit: &str,
     style: &str,
     options: RelativeTimeFormatterOptions,
+    dp: &DataProvider,
 ) -> Result<RelativeTimeFormatter, Error> {
+    let prefs = locale.into();
     let result = match (unit, style) {
-        ("second", "long") => RelativeTimeFormatter::try_new_long_second(locale.into(), options),
-        ("second", "short") => RelativeTimeFormatter::try_new_short_second(locale.into(), options),
-        ("second", "narrow") => RelativeTimeFormatter::try_new_narrow_second(locale.into(), options),
-        ("minute", "long") => RelativeTimeFormatter::try_new_long_minute(locale.into(), options),
-        ("minute", "short") => RelativeTimeFormatter::try_new_short_minute(locale.into(), options),
-        ("minute", "narrow") => RelativeTimeFormatter::try_new_narrow_minute(locale.into(), options),
-        ("hour", "long") => RelativeTimeFormatter::try_new_long_hour(locale.into(), options),
-        ("hour", "short") => RelativeTimeFormatter::try_new_short_hour(locale.into(), options),
-        ("hour", "narrow") => RelativeTimeFormatter::try_new_narrow_hour(locale.into(), options),
-        ("day", "long") => RelativeTimeFormatter::try_new_long_day(locale.into(), options),
-        ("day", "short") => RelativeTimeFormatter::try_new_short_day(locale.into(), options),
-        ("day", "narrow") => RelativeTimeFormatter::try_new_narrow_day(locale.into(), options),
-        ("week", "long") => RelativeTimeFormatter::try_new_long_week(locale.into(), options),
-        ("week", "short") => RelativeTimeFormatter::try_new_short_week(locale.into(), options),
-        ("week", "narrow") => RelativeTimeFormatter::try_new_narrow_week(locale.into(), options),
-        ("month", "long") => RelativeTimeFormatter::try_new_long_month(locale.into(), options),
-        ("month", "short") => RelativeTimeFormatter::try_new_short_month(locale.into(), options),
-        ("month", "narrow") => RelativeTimeFormatter::try_new_narrow_month(locale.into(), options),
-        ("quarter", "long") => RelativeTimeFormatter::try_new_long_quarter(locale.into(), options),
-        ("quarter", "short") => RelativeTimeFormatter::try_new_short_quarter(locale.into(), options),
-        ("quarter", "narrow") => RelativeTimeFormatter::try_new_narrow_quarter(locale.into(), options),
-        ("year", "long") => RelativeTimeFormatter::try_new_long_year(locale.into(), options),
-        ("year", "short") => RelativeTimeFormatter::try_new_short_year(locale.into(), options),
-        ("year", "narrow") => RelativeTimeFormatter::try_new_narrow_year(locale.into(), options),
+        ("second", "long") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_long_second_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_long_second(prefs, options),
+        },
+        ("second", "short") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_short_second_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_short_second(prefs, options),
+        },
+        ("second", "narrow") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_narrow_second_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_narrow_second(prefs, options),
+        },
+        ("minute", "long") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_long_minute_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_long_minute(prefs, options),
+        },
+        ("minute", "short") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_short_minute_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_short_minute(prefs, options),
+        },
+        ("minute", "narrow") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_narrow_minute_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_narrow_minute(prefs, options),
+        },
+        ("hour", "long") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_long_hour_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_long_hour(prefs, options),
+        },
+        ("hour", "short") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_short_hour_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_short_hour(prefs, options),
+        },
+        ("hour", "narrow") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_narrow_hour_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_narrow_hour(prefs, options),
+        },
+        ("day", "long") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_long_day_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_long_day(prefs, options),
+        },
+        ("day", "short") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_short_day_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_short_day(prefs, options),
+        },
+        ("day", "narrow") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_narrow_day_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_narrow_day(prefs, options),
+        },
+        ("week", "long") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_long_week_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_long_week(prefs, options),
+        },
+        ("week", "short") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_short_week_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_short_week(prefs, options),
+        },
+        ("week", "narrow") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_narrow_week_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_narrow_week(prefs, options),
+        },
+        ("month", "long") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_long_month_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_long_month(prefs, options),
+        },
+        ("month", "short") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_short_month_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_short_month(prefs, options),
+        },
+        ("month", "narrow") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_narrow_month_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_narrow_month(prefs, options),
+        },
+        ("quarter", "long") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_long_quarter_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_long_quarter(prefs, options),
+        },
+        ("quarter", "short") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_short_quarter_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_short_quarter(prefs, options),
+        },
+        ("quarter", "narrow") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_narrow_quarter_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_narrow_quarter(prefs, options),
+        },
+        ("year", "long") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_long_year_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_long_year(prefs, options),
+        },
+        ("year", "short") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_short_year_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_short_year(prefs, options),
+        },
+        ("year", "narrow") => match dp.as_buffer_provider() {
+            Some(p) => RelativeTimeFormatter::try_new_narrow_year_with_buffer_provider(p, prefs, options),
+            None => RelativeTimeFormatter::try_new_narrow_year(prefs, options),
+        },
         _ => return Err(IntlError::InvalidUnit { unit: unit.to_string() }.into_vm_error()),
     };
     result.map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())
