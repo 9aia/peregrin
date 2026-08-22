@@ -68,3 +68,24 @@ fn supported_locales_no_args_returns_all() {
     let has_en = a.iter().any(|v| v.as_str() == Some("en"));
     assert!(has_en);
 }
+
+// ── Blob provider tests ───────────────────────────────────────────
+
+fn call_supported_with_blob(args: &[NonFunctionValue]) -> Result<NonFunctionValue, ac_vm::Error> {
+    let module = IntlModule::with_blob_provider(vec![0u8; 10]);
+    let func = module.function("supported_locales_of").expect("function exists");
+    let mut ctx = Context::new();
+    func.call(args, &mut ctx)
+}
+
+#[test]
+fn supported_locales_with_invalid_blob_errors_not_hardcoded() {
+    let result = call_supported_with_blob(&[s("en")]);
+    assert!(result.is_err(), "invalid blob should error, not return hardcoded list");
+}
+
+#[test]
+fn supported_locales_no_args_with_invalid_blob_errors_not_hardcoded() {
+    let result = call_supported_with_blob(&[]);
+    assert!(result.is_err(), "invalid blob with no args should error, not return hardcoded list");
+}

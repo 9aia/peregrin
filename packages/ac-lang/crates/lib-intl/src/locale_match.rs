@@ -1,5 +1,7 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
+use icu::decimal::provider::DecimalSymbolsV1;
+use icu_provider::{DataMarker, IterableDynamicDataProvider};
 
 use super::common::require_string;
 use super::error::IntlError;
@@ -60,7 +62,11 @@ impl Function for GetCanonicalLocales {
 
 /// `intl.supported_locales_of(locales: string | string[]) → string[]`
 ///
-/// Filters the requested locales to those supported by the compiled CLDR data.
+/// Filters the requested locales to those supported by the available data.
+/// With the default compiled provider, uses a hardcoded list of supported languages.
+/// With a blob provider, queries the blob's actual locale inventory via
+/// `DecimalSymbolsV1` data identifiers — does not claim support for locales
+/// the blob doesn't contain.
 /// Uses best-fit matching (language subtag match).
 ///
 /// Examples:
@@ -98,7 +104,7 @@ const SUPPORTED_LANGUAGES: &[&str] = &[
     "vi", "zh",
 ];
 
-fn is_supported(locale: &str) -> bool {
+fn is_supported_compiled(locale: &str) -> bool {
     if let Ok(loc) = locale.parse::<icu::locale::Locale>() {
         let lang = loc.id.language.as_str();
         SUPPORTED_LANGUAGES.contains(&lang)
@@ -107,15 +113,34 @@ fn is_supported(locale: &str) -> bool {
     }
 }
 
+fn blob_supported_languages(provider: &super::provider::IntlProvider) -> Result<Vec<String>, Error> {
+    let bdp = provider.as_blob_data_provider()
+        .map_err(|e| IntlError::DataProvider { message: e.to_string() }.into_vm_error())?;
+    let ids = bdp.iter_ids_for_marker(DecimalSymbolsV1::INFO)
+        .map_err(|e| IntlError::DataProvider { message: e.to_string() }.into_vm_error())?;
+    let langs: Vec<String> = ids
+        .into_iter()
+        .map(|id| id.locale.to_string())
+        .filter(|l| l != "und")
+        .collect();
+    Ok(langs)
+}
+
 impl Function for SupportedLocalesOf {
     fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
-        if let Some(provider) = &self.provider {
-            let _ = provider.as_bytes();
-        }
+        let blob_langs = if let Some(provider) = &self.provider {
+            Some(blob_supported_languages(provider)?)
+        } else {
+            None
+        };
 
         let requested = if args.is_empty() {
-            let arr: Vec<serde_json::Value> = SUPPORTED_LANGUAGES
-                .iter()
+            let langs = match &blob_langs {
+                Some(l) => l.clone(),
+                None => SUPPORTED_LANGUAGES.iter().map(|s| s.to_string()).collect(),
+            };
+            let arr: Vec<serde_json::Value> = langs
+                .into_iter()
                 .map(|l| serde_json::json!(l))
                 .collect();
             return Ok(NonFunctionValue::new(serde_json::Value::Array(arr)));
@@ -133,6 +158,27 @@ impl Function for SupportedLocalesOf {
         } else {
             let single = require_string(args, 0)?;
             vec![single.to_string()]
+        };
+
+        let is_supported = |l: &str| -> bool {
+            match &blob_langs {
+                Some(langs) => {
+                    let parsed = l.parse::<icu::locale::Locale>().ok();
+                    match parsed {
+                        Some(loc) => {
+                            let lang = loc.id.language.as_str();
+                            langs.iter().any(|supported| {
+                                supported == l
+                                    || supported == lang
+                                    || supported.parse::<icu::locale::Locale>()
+                                        .is_ok_and(|s| s.id.language.as_str() == lang)
+                            })
+                        }
+                        None => langs.iter().any(|supported| supported == l),
+                    }
+                }
+                None => is_supported_compiled(l),
+            }
         };
 
         let filtered: Vec<serde_json::Value> = requested

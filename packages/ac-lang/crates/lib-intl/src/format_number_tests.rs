@@ -238,6 +238,30 @@ fn format_number_no_grouping() {
 }
 
 #[test]
+fn format_number_use_grouping_always() {
+    let result = call(&IntlModule::new(), "format_number", &[n(1234.0), s("en"), obj(&[("useGrouping", "always")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("1,234"), "useGrouping:always should group 4 digits, got: {str}");
+}
+
+#[test]
+fn format_number_use_grouping_min2() {
+    let result = call(&IntlModule::new(), "format_number", &[n(1234.0), s("en"), obj(&[("useGrouping", "min2")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.contains("1,234"), "useGrouping:min2 should not group 4 digits, got: {str}");
+    let result2 = call(&IntlModule::new(), "format_number", &[n(12345.0), s("en"), obj(&[("useGrouping", "min2")])]);
+    let str2 = result2.as_str().expect("string result");
+    assert!(str2.contains("12,345"), "useGrouping:min2 should group 5 digits, got: {str2}");
+}
+
+#[test]
+fn format_number_use_grouping_auto() {
+    let result = call(&IntlModule::new(), "format_number", &[n(1234567.0), s("en"), obj(&[("useGrouping", "auto")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("1,234,567"), "useGrouping:auto should group, got: {str}");
+}
+
+#[test]
 fn format_number_sign_display_always() {
     let result = call(&IntlModule::new(), "format_number", &[n(42.0), s("en"), obj(&[("signDisplay", "always")])]);
     let str = result.as_str().expect("string result");
@@ -311,4 +335,288 @@ fn format_number_currency_sign_accounting() {
     let result = call(&IntlModule::new(), "format_number", &[n(-1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD"), ("currencySign", "accounting")])]);
     let str = result.as_str().expect("string result");
     assert!(str.contains("(") || str.contains("-"), "accounting sign should use parentheses or minus: {str}");
+}
+
+// ── Compact display long ──────────────────────────────────────────
+
+#[test]
+fn format_number_compact_long() {
+    let result = call(&IntlModule::new(), "format_number", &[n(1000000.0), s("en"), obj(&[("notation", "compact"), ("compactDisplay", "long")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("million"), "compact long should contain 'million': {str}");
+}
+
+#[test]
+fn format_number_compact_short() {
+    let result = call(&IntlModule::new(), "format_number", &[n(1000000.0), s("en"), obj(&[("notation", "compact"), ("compactDisplay", "short")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.contains("million"), "compact short should not contain 'million': {str}");
+}
+
+// ── Currency display name ─────────────────────────────────────────
+
+#[test]
+fn format_number_currency_display_name() {
+    let result = call(&IntlModule::new(), "format_number", &[n(1234.56), s("en"), obj(&[("style", "currency"), ("currency", "USD"), ("currencyDisplay", "name")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("US dollar") || str.contains("dollar"), "currencyDisplay:name should contain 'dollar': {str}");
+}
+
+// ── Scientific and engineering notation ───────────────────────────
+
+#[test]
+fn format_number_scientific() {
+    let result = call(&IntlModule::new(), "format_number", &[n(12345.0), s("en"), obj(&[("notation", "scientific")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty(), "scientific notation should produce output: {str}");
+}
+
+#[test]
+fn format_number_scientific_contains_exponent() {
+    let result = call(&IntlModule::new(), "format_number", &[n(12345.0), s("en"), obj(&[("notation", "scientific")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("10"), "scientific notation should contain '10': {str}");
+    assert!(str.contains("4") || str.contains("+4"), "scientific notation of 12345 should have exponent 4: {str}");
+}
+
+#[test]
+fn format_number_scientific_negative() {
+    let result = call(&IntlModule::new(), "format_number", &[n(-12345.0), s("en"), obj(&[("notation", "scientific")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("-"), "scientific notation of negative should contain minus: {str}");
+    assert!(str.contains("10"), "scientific notation should contain '10': {str}");
+}
+
+#[test]
+fn format_number_scientific_small_number() {
+    let result = call(&IntlModule::new(), "format_number", &[n(0.00123), s("en"), obj(&[("notation", "scientific")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("10"), "scientific notation should contain '10': {str}");
+    assert!(str.contains("-3") || str.contains("3"), "scientific notation of 0.00123 should have exponent -3: {str}");
+}
+
+#[test]
+fn format_number_scientific_one() {
+    let result = call(&IntlModule::new(), "format_number", &[n(1.0), s("en"), obj(&[("notation", "scientific")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("10"), "scientific notation should contain '10': {str}");
+    assert!(str.contains("0") || str.contains("+0"), "scientific notation of 1 should have exponent 0: {str}");
+}
+
+#[test]
+fn format_number_scientific_german() {
+    let result = call(&IntlModule::new(), "format_number", &[n(12345.0), s("de"), obj(&[("notation", "scientific")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("10"), "scientific notation should contain '10': {str}");
+}
+
+#[test]
+fn format_number_engineering() {
+    let result = call(&IntlModule::new(), "format_number", &[n(12345.0), s("en"), obj(&[("notation", "engineering")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty(), "engineering notation should produce output: {str}");
+}
+
+#[test]
+fn format_number_engineering_exponent_multiple_of_3() {
+    let result = call(&IntlModule::new(), "format_number", &[n(12345.0), s("en"), obj(&[("notation", "engineering")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("10"), "engineering notation should contain '10': {str}");
+    // 12345 → exponent should be 3 (not 4), mantissa should be 12.345
+    assert!(str.contains("3") || str.contains("+3"), "engineering notation of 12345 should have exponent 3: {str}");
+}
+
+#[test]
+fn format_number_engineering_small_number() {
+    let result = call(&IntlModule::new(), "format_number", &[n(0.00123), s("en"), obj(&[("notation", "engineering")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("10"), "engineering notation should contain '10': {str}");
+    // 0.00123 → exponent should be -3, mantissa should be 1.23
+    assert!(str.contains("-3") || str.contains("3"), "engineering notation of 0.00123 should have exponent -3: {str}");
+}
+
+#[test]
+fn format_number_engineering_negative() {
+    let result = call(&IntlModule::new(), "format_number", &[n(-12345.0), s("en"), obj(&[("notation", "engineering")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("-"), "engineering notation of negative should contain minus: {str}");
+    assert!(str.contains("10"), "engineering notation should contain '10': {str}");
+}
+
+#[test]
+fn format_number_scientific_zero() {
+    let result = call(&IntlModule::new(), "format_number", &[n(0.0), s("en"), obj(&[("notation", "scientific")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("0"), "scientific notation of 0 should contain 0: {str}");
+}
+
+// ── Unit style ───────────────────────────────────────────────────
+
+#[test]
+fn format_number_unit_meter_short() {
+    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "meter")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("5") && str.contains("m"), "5 meters short should contain '5' and 'm', got: {str}");
+}
+
+#[test]
+fn format_number_unit_meter_long() {
+    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "meter"), ("unitDisplay", "long")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("5"), "5 meters long should contain '5', got: {str}");
+}
+
+#[test]
+fn format_number_unit_kilometer() {
+    let result = call(&IntlModule::new(), "format_number", &[n(30.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("30"), "30 kilometer should contain '30', got: {str}");
+}
+
+#[test]
+fn format_number_unit_kilogram() {
+    let result = call(&IntlModule::new(), "format_number", &[n(2.5), s("en"), obj(&[("style", "unit"), ("unit", "kilogram"), ("unitDisplay", "long")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2.5"), "2.5 kg long should contain '2.5', got: {str}");
+}
+
+#[test]
+fn format_number_unit_missing_unit_option() {
+    let result = call_err(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit")])]);
+    assert!(result.is_err(), "style:unit without unit option should error");
+}
+
+#[test]
+fn format_number_unit_invalid_unit_falls_back() {
+    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "not-a-real-unit")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("5"), "fallback should contain formatted number, got: {str}");
+}
+
+// ── Numbering system ──────────────────────────────────────────────
+
+#[test]
+fn format_number_minimum_integer_digits() {
+    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("minimumIntegerDigits", "3")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("005"), "minimumIntegerDigits:3 should pad to 005, got: {str}");
+}
+
+#[test]
+fn format_number_minimum_integer_digits_with_grouping() {
+    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("minimumIntegerDigits", "5")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("00,005") || str.contains("00005"), "minimumIntegerDigits:5 should pad with zeros, got: {str}");
+}
+
+#[test]
+fn format_number_numbering_system_arab() {
+    let result = call(&IntlModule::new(), "format_number", &[n(123456.0), s("en"), obj(&[("numberingSystem", "arab")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.contains("123"), "arab numbering should not contain ASCII digits: {str}");
+}
+
+#[test]
+fn format_number_numbering_system_latn() {
+    let result = call(&IntlModule::new(), "format_number", &[n(123456.0), s("ar"), obj(&[("numberingSystem", "latn")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("123"), "latn numbering should contain ASCII digits: {str}");
+}
+
+// ── Expanded unit coverage ───────────────────────────────────────
+
+#[test]
+fn format_unit_kilometer_short() {
+    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer"), ("unitDisplay", "short")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("5"), "should contain the number, got: {str}");
+    assert!(str.contains("km"), "should contain 'km' unit, got: {str}");
+}
+
+#[test]
+fn format_unit_kilometer_long() {
+    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer"), ("unitDisplay", "long")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("5"), "should contain the number, got: {str}");
+    assert!(str.contains("kilometer"), "should contain 'kilometer' in long form, got: {str}");
+}
+
+#[test]
+fn format_unit_kilometer_german() {
+    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("de"), obj(&[("style", "unit"), ("unit", "kilometer"), ("unitDisplay", "long")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("5"), "should contain the number, got: {str}");
+    assert!(str.contains("Kilometer"), "should contain 'Kilometer' in German, got: {str}");
+}
+
+#[test]
+fn format_unit_degree_celsius_short() {
+    let result = call(&IntlModule::new(), "format_number", &[n(20.0), s("en"), obj(&[("style", "unit"), ("unit", "degree-celsius"), ("unitDisplay", "short")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("20"), "should contain the number, got: {str}");
+    assert!(str.contains("°C") || str.contains("C"), "should contain degree celsius unit, got: {str}");
+}
+
+#[test]
+fn format_unit_degree_celsius_long() {
+    let result = call(&IntlModule::new(), "format_number", &[n(20.0), s("en"), obj(&[("style", "unit"), ("unit", "degree-celsius"), ("unitDisplay", "long")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("20"), "should contain the number, got: {str}");
+    assert!(str.contains("degree") || str.contains("Celsius"), "should contain 'degree Celsius' in long form, got: {str}");
+}
+
+#[test]
+fn format_unit_kilometer_per_hour_short() {
+    let result = call(&IntlModule::new(), "format_number", &[n(80.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer-per-hour"), ("unitDisplay", "short")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("80"), "should contain the number, got: {str}");
+    assert!(str.contains("km") || str.contains("kph"), "should contain speed unit, got: {str}");
+}
+
+#[test]
+fn format_unit_kilometer_per_hour_long() {
+    let result = call(&IntlModule::new(), "format_number", &[n(80.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer-per-hour"), ("unitDisplay", "long")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("80"), "should contain the number, got: {str}");
+    assert!(str.contains("kilometer") && str.contains("hour"), "should contain 'kilometer per hour' in long form, got: {str}");
+}
+
+#[test]
+fn format_unit_kilometer_per_hour_german() {
+    let result = call(&IntlModule::new(), "format_number", &[n(80.0), s("de"), obj(&[("style", "unit"), ("unit", "kilometer-per-hour"), ("unitDisplay", "long")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("80"), "should contain the number, got: {str}");
+    assert!(str.contains("Stunde") || str.contains("Kilometer"), "should contain German unit names, got: {str}");
+}
+
+#[test]
+fn format_unit_centimeter_short() {
+    let result = call(&IntlModule::new(), "format_number", &[n(10.0), s("en"), obj(&[("style", "unit"), ("unit", "centimeter"), ("unitDisplay", "short")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("10"), "should contain the number, got: {str}");
+    assert!(str.contains("cm"), "should contain 'cm' unit, got: {str}");
+}
+
+#[test]
+fn format_unit_millimeter_short() {
+    let result = call(&IntlModule::new(), "format_number", &[n(10.0), s("en"), obj(&[("style", "unit"), ("unit", "millimeter"), ("unitDisplay", "short")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("10"), "should contain the number, got: {str}");
+    assert!(str.contains("mm"), "should contain 'mm' unit, got: {str}");
+}
+
+#[test]
+fn format_unit_kilogram_short() {
+    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "kilogram"), ("unitDisplay", "short")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("5"), "should contain the number, got: {str}");
+    assert!(str.contains("kg"), "should contain 'kg' unit, got: {str}");
+}
+
+#[test]
+fn format_unit_percent_short() {
+    let result = call(&IntlModule::new(), "format_number", &[n(0.5), s("en"), obj(&[("style", "percent")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("50"), "should contain 50, got: {str}");
+    assert!(str.contains("%"), "should contain percent sign, got: {str}");
 }

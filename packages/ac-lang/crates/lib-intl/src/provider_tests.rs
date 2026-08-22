@@ -9,6 +9,27 @@ fn provider_from_blob() {
 }
 
 #[test]
+fn provider_clone_shares_blob() {
+    let provider = IntlProvider::from_blob(vec![42u8; 1024]);
+    let cloned = provider.clone();
+    let original_ptr = provider.blob_ptr();
+    let cloned_ptr = cloned.blob_ptr();
+    assert_eq!(
+        original_ptr, cloned_ptr,
+        "cloned IntlProvider should share the same blob allocation (Arc), not deep-copy"
+    );
+}
+
+#[test]
+fn provider_clone_is_cheap() {
+    let data = vec![0xab; 1_000_000];
+    let provider = IntlProvider::from_blob(data);
+    let _cloned = provider.clone();
+    assert_eq!(provider.as_bytes().len(), 1_000_000);
+    assert_eq!(provider.strong_count(), 2, "Arc refcount should be 2 after one clone");
+}
+
+#[test]
 fn module_new_has_no_provider() {
     let module = IntlModule::new();
     assert!(module.provider().is_none());

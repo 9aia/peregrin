@@ -265,6 +265,36 @@ fn blob_display_name_script() {
     assert_eq!(result.as_str(), Some("Latin"));
 }
 
+// ── display_name: currency (blob provider routing) ───────────────
+
+#[test]
+fn blob_display_name_currency_usd() {
+    let result = call(&module(), "display_name", &[s("USD"), s("currency"), s("en")]);
+    let s = result.as_str().expect("non-empty");
+    assert!(s.contains("US dollar") || s.contains("US Dollar"), "currency USD in en should contain 'US dollar', got: {s}");
+}
+
+#[test]
+fn blob_display_name_currency_eur() {
+    let result = call(&module(), "display_name", &[s("EUR"), s("currency"), s("en")]);
+    let s = result.as_str().expect("non-empty");
+    assert!(s.contains("Euro"), "currency EUR in en should contain 'Euro', got: {s}");
+}
+
+#[test]
+fn blob_display_name_currency_fallback_code() {
+    let result = call(&module(), "display_name", &[s("ZZZ"), s("currency"), s("en"), obj(&[("fallback", serde_json::json!("code"))])]);
+    let s = result.as_str().expect("non-empty");
+    assert_eq!(s, "ZZZ", "unknown currency with fallback:code should return code, got: {s}");
+}
+
+#[test]
+fn blob_compiled_parity_display_name_currency() {
+    let compiled = call(&IntlModule::new(), "display_name", &[s("USD"), s("currency"), s("en")]);
+    let blob_result = call(&module(), "display_name", &[s("USD"), s("currency"), s("en")]);
+    assert_eq!(compiled.as_str(), blob_result.as_str());
+}
+
 // ── format_relative_time ──────────────────────────────────────────
 
 #[test]
@@ -290,17 +320,24 @@ fn blob_format_relative_time_locale_es() {
 
 // ── format_duration ───────────────────────────────────────────────
 
-// ICU4X experimental duration formatter panics with buffer provider (todo!() in measure/category/mod.rs)
+// ICU4X experimental duration formatter panics with buffer provider (todo!() in measure/category/mod.rs).
+// We detect the buffer provider path and return a graceful error instead of panicking.
 #[test]
-#[ignore = "ICU4X experimental duration formatter does not support buffer provider yet"]
-fn blob_format_duration_hours_minutes() {
+fn blob_format_duration_returns_graceful_error() {
     let dur = obj(&[
         ("hours", serde_json::json!(1)),
         ("minutes", serde_json::json!(30)),
     ]);
-    let result = call(&module(), "format_duration", &[dur, s("en")]);
-    let s = result.as_str().expect("non-empty");
-    assert!(!s.is_empty(), "got: {s}");
+    let module = module();
+    let func = module.function("format_duration").expect("function exists");
+    let mut ctx = Context::new();
+    let result = func.call(&[dur, s("en")], &mut ctx);
+    assert!(result.is_err(), "expected graceful error, not panic");
+    let err = result.unwrap_err();
+    assert!(
+        err.to_string().contains("blob") || err.to_string().contains("buffer") || err.to_string().contains("provider"),
+        "error should mention the provider limitation, got: {err}"
+    );
 }
 
 #[test]
@@ -355,6 +392,55 @@ fn blob_compiled_parity_display_name() {
     let compiled = call(&IntlModule::new(), "display_name", &[s("US"), s("region"), s("en")]);
     let blob_result = call(&module(), "display_name", &[s("US"), s("region"), s("en")]);
     assert_eq!(compiled.as_str(), blob_result.as_str());
+}
+
+// ── supported_locales_of with blob provider ───────────────────────
+
+#[test]
+fn blob_supported_locales_of_returns_blob_locales() {
+    let result = call(&module(), "supported_locales_of", &[]);
+    let arr = result.as_array().expect("array result");
+    assert!(!arr.is_empty(), "blob provider should have some locales");
+    let has_en = arr.iter().any(|v| v.as_str() == Some("en"));
+    assert!(has_en, "test blob includes en, got: {:?}", arr);
+}
+
+#[test]
+fn blob_supported_locales_of_filters_to_blob() {
+    let result = call(&module(), "supported_locales_of", &[arr_str(&["en", "de", "ja"])]);
+    let arr = result.as_array().expect("array result");
+    let langs: Vec<&str> = arr.iter().filter_map(|v| v.as_str()).collect();
+    assert!(langs.contains(&"en"), "en should be supported by blob, got: {:?}", langs);
+}
+
+#[test]
+fn blob_supported_locales_of_rejects_unavailable() {
+    let result = call(&module(), "supported_locales_of", &[arr_str(&["xx", "yy"])]);
+    let arr = result.as_array().expect("array result");
+    assert!(arr.is_empty(), "unavailable locales should be filtered out, got: {:?}", arr);
+}
+
+#[test]
+fn blob_supported_locales_of_subset_of_compiled() {
+    let compiled = call(&IntlModule::new(), "supported_locales_of", &[]);
+    let blob_result = call(&module(), "supported_locales_of", &[]);
+    let compiled_arr = compiled.as_array().expect("array");
+    let blob_arr = blob_result.as_array().expect("array");
+    assert!(!blob_arr.is_empty(), "blob should have locales");
+    assert!(!compiled_arr.is_empty(), "compiled should have locales");
+    let compiled_langs: std::collections::HashSet<String> = compiled_arr
+        .iter()
+        .filter_map(|v| v.as_str().map(|s| s.split('-').next().unwrap_or(s).to_string()))
+        .collect();
+    for item in blob_arr {
+        let lang = item.as_str().expect("string").split('-').next().unwrap_or("").to_string();
+        if lang != "und" && !lang.is_empty() {
+            assert!(
+                compiled_langs.contains(&lang),
+                "blob locale language '{lang}' not in compiled supported languages"
+            );
+        }
+    }
 }
 
 // ── error handling with invalid blob ──────────────────────────────

@@ -3,8 +3,9 @@ use ac_vm::{Context, Error, Function};
 use icu::segmenter::{
     GraphemeClusterSegmenter, LineSegmenter, SentenceSegmenter, WordSegmenter,
 };
+use icu::segmenter::options::{LineBreakOptions, LineBreakStrictness};
 
-use super::common::{make_provider, optional_locale, optional_object, require_string};
+use super::common::{make_provider, opt_str, optional_locale, optional_object, require_string};
 use super::error::IntlError;
 use super::provider::IntlProvider;
 
@@ -17,9 +18,13 @@ use super::provider::IntlProvider;
 /// Returns an array of segment objects with `segment` (string), `index` (number),
 /// and `isWordLike` (boolean, only for word granularity).
 ///
+/// Options (for `granularity: "line"`):
+/// - `lineBreakStyle`: `"strict"`, `"normal"`, or `"loose"` (default: `"strict"`)
+///
 /// Examples:
 /// - `intl.segment("hello world", "word")` → `[{segment: "hello", index: 0, isWordLike: true}, ...]`
 /// - `intl.segment("こんにちは", "grapheme", "ja")` → 5 segments
+/// - `intl.segment("Hello World", "line", "ja", {lineBreakStyle: "loose"})` → line segments with loose breaking
 #[derive(Clone)]
 pub struct Segment {
     provider: Option<IntlProvider>,
@@ -45,8 +50,8 @@ impl Function for Segment {
     fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
         let text = require_string(args, 0)?;
         let granularity = require_string(args, 1)?;
-        let _locale = optional_locale(args, 2)?;
-        let _opts = optional_object(args, 3)?;
+        let locale = optional_locale(args, 2)?;
+        let opts = optional_object(args, 3)?;
         let dp = make_provider(&self.provider)?;
 
         let segments: Vec<serde_json::Value> = match granularity {
@@ -81,12 +86,21 @@ impl Function for Segment {
                 }
             }
             "line" => {
+                let mut line_opts = LineBreakOptions::default();
+                line_opts.content_locale = Some(&locale.id);
+                if let Some(style) = opt_str(opts, "lineBreakStyle") {
+                    line_opts.strictness = Some(match style {
+                        "strict" => LineBreakStrictness::Strict,
+                        "loose" => LineBreakStrictness::Loose,
+                        _ => LineBreakStrictness::Normal,
+                    });
+                }
                 if let Some(p) = dp.as_buffer_provider() {
-                    let segmenter = LineSegmenter::try_new_auto_with_buffer_provider(p, Default::default())
+                    let segmenter = LineSegmenter::try_new_auto_with_buffer_provider(p, line_opts)
                         .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
                     collect_segments(text, segmenter.as_borrowed().segment_str(text))
                 } else {
-                    let segmenter = LineSegmenter::new_auto(Default::default());
+                    let segmenter = LineSegmenter::new_auto(line_opts);
                     collect_segments(text, segmenter.segment_str(text))
                 }
             }

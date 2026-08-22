@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::Error;
-use fixed_decimal::{Decimal, FloatPrecision};
+use fixed_decimal::{Decimal, FloatPrecision, SignDisplay, SignedRoundingMode, UnsignedRoundingMode};
 use icu::locale::Locale;
 use icu_provider_blob::BlobDataProvider;
 
@@ -154,6 +154,16 @@ pub(super) fn s(value: impl Into<String>) -> NonFunctionValue {
     NonFunctionValue::new(value.into())
 }
 
+/// Apply a `numberingSystem` option to a locale by setting the Unicode `-u-nu-<value>` extension.
+pub(super) fn apply_numbering_system(locale: &mut Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
+    if let Some(nu) = opt_str(opts, "numberingSystem") {
+        use icu::locale::extensions::unicode::key;
+        if let Ok(value) = icu::locale::extensions::unicode::Value::try_from_str(nu) {
+            locale.extensions.unicode.keywords.set(key!("nu"), value);
+        }
+    }
+}
+
 /// Convert an f64 into an ICU4X `Decimal` using `FloatPrecision::RoundTrip`
 /// for exact round-trip representation (avoids `0.1 + 0.2` → `"0.30000000000000004"`).
 pub(super) fn decimal_from_f64(n: f64) -> Decimal {
@@ -162,4 +172,82 @@ pub(super) fn decimal_from_f64(n: f64) -> Decimal {
     }
     Decimal::try_from_f64(n, FloatPrecision::RoundTrip)
         .unwrap_or(Decimal::from(0_i64))
+}
+
+pub(super) fn parse_rounding_mode(opts: Option<&serde_json::Map<String, serde_json::Value>>) -> SignedRoundingMode {
+    match opt_str(opts, "roundingMode").unwrap_or("halfEven") {
+        "ceil" => SignedRoundingMode::Ceil,
+        "floor" => SignedRoundingMode::Floor,
+        "expand" => SignedRoundingMode::Unsigned(UnsignedRoundingMode::Expand),
+        "trunc" => SignedRoundingMode::Unsigned(UnsignedRoundingMode::Trunc),
+        "halfCeil" => SignedRoundingMode::HalfCeil,
+        "halfExpand" => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfExpand),
+        "halfFloor" => SignedRoundingMode::HalfFloor,
+        "halfTrunc" => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfTrunc),
+        _ => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfEven),
+    }
+}
+
+pub(super) fn apply_fraction_digits(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
+    let rounding_mode = parse_rounding_mode(opts);
+    if let Some(min) = opt_int(opts, "minimumFractionDigits")
+        && min > 0
+    {
+        decimal.pad_end(-i16::try_from(min).unwrap_or(0));
+    }
+    if let Some(max) = opt_int(opts, "maximumFractionDigits") {
+        let max = i16::try_from(max).unwrap_or(0);
+        if max >= 0 {
+            decimal.round_with_mode(-max, rounding_mode);
+            if let Some(min) = opt_int(opts, "minimumFractionDigits")
+                && min > 0
+            {
+                decimal.pad_end(-i16::try_from(min).unwrap_or(0));
+            }
+        }
+    }
+}
+
+pub(super) fn apply_significant_digits(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
+    if let Some(min_sig) = opt_int(opts, "minimumSignificantDigits") {
+        let min_sig = i16::try_from(min_sig).unwrap_or(0);
+        if min_sig > 0 {
+            decimal.pad_start(min_sig);
+        }
+    }
+    if let Some(max_sig) = opt_int(opts, "maximumSignificantDigits") {
+        let max_sig = i16::try_from(max_sig).unwrap_or(0);
+        if max_sig > 0 {
+            decimal.trim_start();
+            decimal.pad_start(max_sig);
+        }
+    }
+}
+
+pub(super) fn apply_sign_display(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
+    if let Some(sign_display) = opt_str(opts, "signDisplay") {
+        let sd = match sign_display {
+            "always" => SignDisplay::Always,
+            "never" => SignDisplay::Never,
+            "exceptZero" => SignDisplay::ExceptZero,
+            "negative" => SignDisplay::Negative,
+            _ => return,
+        };
+        decimal.apply_sign_display(sd);
+    }
+}
+
+pub(super) fn apply_digit_options(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
+    apply_minimum_integer_digits(decimal, opts);
+    apply_fraction_digits(decimal, opts);
+    apply_significant_digits(decimal, opts);
+    apply_sign_display(decimal, opts);
+}
+
+pub(super) fn apply_minimum_integer_digits(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
+    if let Some(min_int) = opt_int(opts, "minimumIntegerDigits")
+        && min_int > 0
+    {
+        decimal.pad_start(i16::try_from(min_int).unwrap_or(0));
+    }
 }

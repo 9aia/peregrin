@@ -22,6 +22,14 @@ fn s(v: &str) -> NonFunctionValue {
     NonFunctionValue::new(v.to_string())
 }
 
+fn obj(pairs: &[(&str, &str)]) -> NonFunctionValue {
+    let mut map = serde_json::Map::new();
+    for (k, v) in pairs {
+        map.insert(k.to_string(), serde_json::json!(v));
+    }
+    NonFunctionValue::new(serde_json::Value::Object(map))
+}
+
 fn get_segments(result: &NonFunctionValue) -> Vec<String> {
     let arr = result.as_array().expect("array result");
     arr.iter().map(|v| {
@@ -132,4 +140,40 @@ fn segment_line() {
     let result = call(&[s("Hello World Foo Bar"), s("line")]);
     let arr = result.as_array().expect("array result");
     assert!(!arr.is_empty());
+}
+
+#[test]
+fn segment_line_break_style_strict() {
+    let result = call(&[s("Hello World"), s("line"), s("ja"), obj(&[("lineBreakStyle", "strict")])]);
+    let arr = result.as_array().expect("array result");
+    assert!(!arr.is_empty());
+}
+
+#[test]
+fn segment_line_break_style_loose() {
+    let result = call(&[s("Hello World"), s("line"), s("ja"), obj(&[("lineBreakStyle", "loose")])]);
+    let arr = result.as_array().expect("array result");
+    assert!(!arr.is_empty());
+}
+
+#[test]
+fn segment_line_break_style_normal() {
+    let result = call(&[s("Hello World"), s("line"), s("ja"), obj(&[("lineBreakStyle", "normal")])]);
+    let arr = result.as_array().expect("array result");
+    assert!(!arr.is_empty());
+}
+
+#[test]
+fn segment_line_uses_ja_locale() {
+    let ja_strict = call(&[s("おっー"), s("line"), s("ja"), obj(&[("lineBreakStyle", "strict")])]);
+    let ja_normal = call(&[s("おっー"), s("line"), s("ja"), obj(&[("lineBreakStyle", "normal")])]);
+    let ja_segments = get_segments(&ja_normal);
+    let ja_strict_segments = get_segments(&ja_strict);
+    assert!(
+        ja_segments.len() >= ja_strict_segments.len(),
+        "ja locale with normal strictness should produce at least as many segments as strict. \
+        normal: {:?}, strict: {:?}",
+        ja_segments,
+        ja_strict_segments
+    );
 }

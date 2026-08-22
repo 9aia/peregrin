@@ -129,3 +129,157 @@ fn format_duration_negative() {
     let s = result.as_str().expect("string result");
     assert!(!s.is_empty());
 }
+
+// ── Per-unit style and display options ────────────────────────────
+
+fn obj_str(pairs: &[(&str, &str)]) -> NonFunctionValue {
+    let mut map = serde_json::Map::new();
+    for (k, v) in pairs {
+        map.insert(k.to_string(), serde_json::json!(v));
+    }
+    NonFunctionValue::new(serde_json::Value::Object(map))
+}
+
+fn obj_mixed(num_pairs: &[(&str, u64)], str_pairs: &[(&str, &str)]) -> NonFunctionValue {
+    let mut map = serde_json::Map::new();
+    for (k, v) in num_pairs {
+        map.insert(k.to_string(), serde_json::json!(v));
+    }
+    for (k, v) in str_pairs {
+        map.insert(k.to_string(), serde_json::json!(v));
+    }
+    NonFunctionValue::new(serde_json::Value::Object(map))
+}
+
+#[test]
+fn duration_per_unit_hours_style_long() {
+    let result = call(&[
+        obj(&[("hours", 2), ("minutes", 30)]),
+        s("en"),
+        obj_str(&[("hoursStyle", "long")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("hour"), "hoursStyle:long should contain 'hour': {str}");
+}
+
+#[test]
+fn duration_per_unit_minutes_style_short() {
+    let result = call(&[
+        obj(&[("hours", 2), ("minutes", 30)]),
+        s("en"),
+        obj_str(&[("minutesStyle", "short")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("min"), "minutesStyle:short should contain 'min': {str}");
+}
+
+#[test]
+fn duration_per_unit_seconds_style_narrow() {
+    let result = call(&[
+        obj(&[("seconds", 45)]),
+        s("en"),
+        obj_str(&[("secondsStyle", "narrow")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty(), "secondsStyle:narrow should produce output: {str}");
+}
+
+#[test]
+fn duration_per_unit_hours_display_always() {
+    let result = call(&[
+        obj(&[("hours", 0), ("minutes", 30)]),
+        s("en"),
+        obj_str(&[("hoursDisplay", "always")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty(), "hoursDisplay:always should produce output: {str}");
+}
+
+#[test]
+fn duration_per_unit_years_style_long() {
+    let result = call(&[
+        obj(&[("years", 1), ("months", 6)]),
+        s("en"),
+        obj_str(&[("yearsStyle", "long")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("year"), "yearsStyle:long should contain 'year': {str}");
+}
+
+#[test]
+fn duration_per_unit_days_style_short() {
+    let result = call(&[
+        obj(&[("days", 3), ("hours", 4)]),
+        s("en"),
+        obj_str(&[("daysStyle", "short")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("day") || str.contains("d"), "daysStyle:short should contain day abbreviation: {str}");
+}
+
+#[test]
+fn duration_per_unit_milliseconds_style_numeric() {
+    let result = call(&[
+        obj(&[("seconds", 1), ("milliseconds", 500)]),
+        s("en"),
+        obj_str(&[("millisecondsStyle", "numeric")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty(), "millisecondsStyle:numeric should produce output: {str}");
+}
+
+#[test]
+fn duration_per_unit_mixed_styles() {
+    let result = call(&[
+        obj(&[("hours", 2), ("minutes", 30), ("seconds", 45)]),
+        s("en"),
+        obj_str(&[("hoursStyle", "long"), ("minutesStyle", "short"), ("secondsStyle", "narrow")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("hour"), "should contain 'hour' from hoursStyle:long: {str}");
+    assert!(str.contains("min"), "should contain 'min' from minutesStyle:short: {str}");
+}
+
+#[test]
+fn duration_fractional_digits() {
+    let result = call(&[
+        obj(&[("seconds", 1), ("milliseconds", 500)]),
+        s("en"),
+        obj_str(&[("millisecondsStyle", "numeric"), ("fractionalDigits", "2")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty(), "fractionalDigits should produce output: {str}");
+}
+
+#[test]
+fn duration_per_unit_weeks_style() {
+    let result = call(&[
+        obj(&[("weeks", 2), ("days", 3)]),
+        s("en"),
+        obj_str(&[("weeksStyle", "long")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("week"), "weeksStyle:long should contain 'week': {str}");
+}
+
+#[test]
+fn duration_hours_numeric_style() {
+    let result = call(&[
+        obj(&[("hours", 2), ("minutes", 5)]),
+        s("en"),
+        obj_str(&[("hoursStyle", "numeric"), ("minutesStyle", "numeric")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty(), "numeric style should produce output: {str}");
+}
+
+#[test]
+fn duration_seconds_two_digit_style() {
+    let result = call(&[
+        obj(&[("minutes", 1), ("seconds", 5)]),
+        s("en"),
+        obj_str(&[("secondsStyle", "2-digit")]),
+    ]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty(), "2-digit style should produce output: {str}");
+}

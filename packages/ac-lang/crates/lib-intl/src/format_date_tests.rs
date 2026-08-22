@@ -170,6 +170,29 @@ fn format_date_hour_cycle_h12() {
     assert!(str.contains("2:30") || str.contains("PM"), "got: {str}");
 }
 
+// ── hour12 ───────────────────────────────────────────────────────
+
+#[test]
+fn format_date_hour12_true() {
+    let result = call(&[s("2024-05-08T14:30:00"), s("en"), obj(&[("type", "time"), ("hour12", "true")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2:30") || str.contains("PM"), "hour12:true should use 12-hour, got: {str}");
+}
+
+#[test]
+fn format_date_hour12_false() {
+    let result = call(&[s("2024-05-08T14:30:00"), s("en"), obj(&[("type", "time"), ("hour12", "false")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("14:30"), "hour12:false should use 24-hour, got: {str}");
+}
+
+#[test]
+fn format_date_hour_cycle_overrides_hour12() {
+    let result = call(&[s("2024-05-08T14:30:00"), s("en"), obj(&[("type", "time"), ("hour12", "false"), ("hourCycle", "h12")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2:30") || str.contains("PM"), "hourCycle should override hour12, got: {str}");
+}
+
 // ── calendar ─────────────────────────────────────────────────────
 
 #[test]
@@ -277,4 +300,119 @@ fn format_time_no_fractional_seconds_with_digits_option() {
     let result = call(&[s("14:30:00"), s("en"), obj(&[("type", "time"), ("fractionalSecondDigits", "3")])]);
     let str = result.as_str().expect("string result");
     assert!(str.contains("000"), "no fractional seconds with digits=3 should show .000, got: {str}");
+}
+
+// ── ECMA-402 field bag options ───────────────────────────────────
+
+#[test]
+fn field_bag_year_month_day() {
+    let result = call(&[s("2024-05-08"), s("en"), obj(&[("year", "numeric"), ("month", "long"), ("day", "numeric")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2024"), "should contain year, got: {str}");
+    assert!(str.contains("May"), "should contain month name, got: {str}");
+    assert!(str.contains("8"), "should contain day, got: {str}");
+}
+
+#[test]
+fn field_bag_weekday_only() {
+    let result = call(&[s("2024-05-08"), s("en"), obj(&[("weekday", "long")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("Wednesday"), "should contain weekday, got: {str}");
+}
+
+#[test]
+fn field_bag_time_fields() {
+    let result = call(&[s("2024-05-08T14:30:00"), s("en"), obj(&[("hour", "numeric"), ("minute", "2-digit")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty(), "should produce output, got: {str}");
+}
+
+#[test]
+fn field_bag_date_and_time() {
+    let result = call(&[s("2024-05-08T14:30:00"), s("en"), obj(&[("year", "numeric"), ("month", "short"), ("day", "numeric"), ("hour", "numeric"), ("minute", "2-digit")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2024"), "should contain year, got: {str}");
+    assert!(str.contains("May"), "should contain month, got: {str}");
+}
+
+#[test]
+fn field_bag_era() {
+    let result = call(&[s("2024-05-08"), s("en"), obj(&[("year", "numeric"), ("month", "long"), ("day", "numeric"), ("era", "long")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2024"), "should contain year, got: {str}");
+    assert!(str.contains("May"), "should contain month, got: {str}");
+}
+
+#[test]
+fn field_bag_month_day() {
+    let result = call(&[s("2024-05-08"), s("en"), obj(&[("month", "long"), ("day", "numeric")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("May"), "should contain month, got: {str}");
+    assert!(str.contains("8"), "should contain day, got: {str}");
+}
+
+#[test]
+fn field_bag_time_only_from_time_string() {
+    let result = call(&[s("14:30:00"), s("en"), obj(&[("hour", "numeric"), ("minute", "2-digit"), ("second", "2-digit")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty(), "should produce output, got: {str}");
+}
+
+#[test]
+fn field_bag_overrides_style_and_type() {
+    let result = call(&[s("2024-05-08"), s("en"), obj(&[("style", "short"), ("type", "time"), ("year", "long"), ("month", "long"), ("day", "numeric")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2024"), "field bag should override style+type, got: {str}");
+    assert!(str.contains("May"), "field bag with month:long should use long month, got: {str}");
+}
+
+// ── Timezone support ─────────────────────────────────────────────
+
+#[test]
+fn format_date_timezone_short_offset() {
+    let result = call(&[s("2024-05-08T14:30:00+05:30"), s("en"), obj(&[("hour", "numeric"), ("minute", "2-digit"), ("timeZoneName", "shortOffset")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("GMT") || str.contains("+5") || str.contains("+05"),
+        "shortOffset should contain offset info, got: {str}");
+}
+
+#[test]
+fn format_date_timezone_long_offset() {
+    let result = call(&[s("2024-05-08T14:30:00+05:30"), s("en"), obj(&[("hour", "numeric"), ("minute", "2-digit"), ("timeZoneName", "longOffset")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("GMT") || str.contains("+5") || str.contains("+05"),
+        "longOffset should contain offset info, got: {str}");
+}
+
+#[test]
+fn format_date_timezone_zulu() {
+    let result = call(&[s("2024-05-08T14:30:00Z"), s("en"), obj(&[("hour", "numeric"), ("minute", "2-digit"), ("timeZoneName", "shortOffset")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("GMT") || str.contains("Z") || str.contains("+00"),
+        "Z timezone with shortOffset should contain GMT or +00, got: {str}");
+}
+
+#[test]
+fn format_date_timezone_negative_offset() {
+    let result = call(&[s("2024-05-08T14:30:00-08:00"), s("en"), obj(&[("hour", "numeric"), ("minute", "2-digit"), ("timeZoneName", "shortOffset")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("GMT") || str.contains("-8") || str.contains("-08"),
+        "negative offset should contain -8 or -08, got: {str}");
+}
+
+#[test]
+fn format_date_timezone_with_date_fields() {
+    let result = call(&[s("2024-05-08T14:30:00+05:30"), s("en"), obj(&[("year", "numeric"), ("month", "long"), ("day", "numeric"), ("hour", "numeric"), ("minute", "2-digit"), ("timeZoneName", "shortOffset")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2024"), "should contain year, got: {str}");
+    assert!(str.contains("GMT") || str.contains("+5") || str.contains("+05"),
+        "should contain timezone offset, got: {str}");
+}
+
+#[test]
+fn format_date_timezone_no_offset_in_string() {
+    let result = call(&[s("2024-05-08T14:30:00"), s("en"), obj(&[("hour", "numeric"), ("minute", "2-digit"), ("timeZoneName", "shortOffset")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("GMT") || str.contains("+00"),
+        "no offset should default to UTC/GMT, got: {str}");
 }

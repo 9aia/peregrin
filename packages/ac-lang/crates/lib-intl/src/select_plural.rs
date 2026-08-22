@@ -2,7 +2,7 @@ use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 use icu::plurals::{PluralCategory, PluralRules, PluralRulesOptions, PluralRuleType};
 
-use super::common::{make_provider, opt_str, optional_locale, optional_object, require_number, s};
+use super::common::{apply_fraction_digits, apply_minimum_integer_digits, apply_significant_digits, decimal_from_f64, make_provider, opt_str, optional_locale, optional_object, require_number, s};
 use super::error::IntlError;
 use super::provider::IntlProvider;
 
@@ -12,6 +12,11 @@ use super::provider::IntlProvider;
 ///
 /// Options:
 /// - `type`: `"cardinal"` (default) or `"ordinal"`
+/// - `minimumIntegerDigits`: minimum integer digits
+/// - `minimumFractionDigits`: minimum fraction digits to display
+/// - `maximumFractionDigits`: maximum fraction digits to display
+/// - `minimumSignificantDigits`: minimum significant digits
+/// - `maximumSignificantDigits`: maximum significant digits
 ///
 /// Examples:
 /// - `intl.select_plural(1)` → `"one"`
@@ -19,6 +24,8 @@ use super::provider::IntlProvider;
 /// - `intl.select_plural(0, "ar")` → `"zero"`
 /// - `intl.select_plural(2, "en", {type: "ordinal"})` → `"two"`
 /// - `intl.select_plural(11, "en", {type: "ordinal"})` → `"other"`
+/// - `intl.select_plural(1.0, "en")` → `"other"` (trailing zero → not "one")
+/// - `intl.select_plural(1, "en", {minimumFractionDigits: 2})` → `"other"` (padded to 1.00)
 #[derive(Clone)]
 pub struct SelectPlural {
     provider: Option<IntlProvider>,
@@ -59,7 +66,12 @@ impl Function for SelectPlural {
         }
         .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
-        let category = rules.category_for(n as usize);
+        let mut decimal = decimal_from_f64(n);
+        apply_minimum_integer_digits(&mut decimal, opts);
+        apply_fraction_digits(&mut decimal, opts);
+        apply_significant_digits(&mut decimal, opts);
+
+        let category = rules.category_for(&decimal);
         let name = match category {
             PluralCategory::Zero => "zero",
             PluralCategory::One => "one",

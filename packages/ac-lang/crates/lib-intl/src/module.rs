@@ -3,15 +3,16 @@ use ac_vm::Function;
 
 use super::compare_strings::CompareStrings;
 use super::display_name::DisplayName;
-use super::format_date::FormatDate;
+use super::format_date::{FormatDate, FormatDateToParts};
 use super::format_duration::FormatDuration;
 use super::format_list::FormatList;
-use super::format_number::FormatNumber;
+use super::format_number::{FormatNumber, FormatNumberToParts};
 use super::format_relative_time::FormatRelativeTime;
 use super::provider::IntlProvider;
 use super::segment::Segment;
 use super::select_plural::SelectPlural;
 use super::locale_match::{GetCanonicalLocales, SupportedLocalesOf};
+use super::locale::LocaleInfo;
 
 /// The `intl` module — internationalization functions.
 ///
@@ -36,16 +37,19 @@ use super::locale_match::{GetCanonicalLocales, SupportedLocalesOf};
 pub struct IntlModule {
     provider: Option<IntlProvider>,
     f_format_number: FormatNumber,
+    f_format_number_to_parts: FormatNumberToParts,
     f_select_plural: SelectPlural,
     f_format_list: FormatList,
     f_format_relative_time: FormatRelativeTime,
     f_format_date: FormatDate,
+    f_format_date_to_parts: FormatDateToParts,
     f_format_duration: FormatDuration,
     f_compare_strings: CompareStrings,
     f_display_name: DisplayName,
     f_segment: Segment,
     f_supported_locales_of: SupportedLocalesOf,
     f_get_canonical_locales: GetCanonicalLocales,
+    f_locale: LocaleInfo,
 }
 
 impl Default for IntlModule {
@@ -60,16 +64,19 @@ impl IntlModule {
         Self {
             provider: None,
             f_format_number: FormatNumber::new(),
+            f_format_number_to_parts: FormatNumberToParts::new(),
             f_select_plural: SelectPlural::new(),
             f_format_list: FormatList::new(),
             f_format_relative_time: FormatRelativeTime::new(),
             f_format_date: FormatDate::new(),
+            f_format_date_to_parts: FormatDateToParts::new(),
             f_format_duration: FormatDuration::new(),
             f_compare_strings: CompareStrings::new(),
             f_display_name: DisplayName::new(),
             f_segment: Segment::new(),
             f_supported_locales_of: SupportedLocalesOf::new(),
             f_get_canonical_locales: GetCanonicalLocales,
+            f_locale: LocaleInfo,
         }
     }
 
@@ -84,16 +91,19 @@ impl IntlModule {
         Self {
             provider: Some(provider.clone()),
             f_format_number: FormatNumber::with_provider(provider.clone()),
+            f_format_number_to_parts: FormatNumberToParts::with_provider(provider.clone()),
             f_select_plural: SelectPlural::with_provider(provider.clone()),
             f_format_list: FormatList::with_provider(provider.clone()),
             f_format_relative_time: FormatRelativeTime::with_provider(provider.clone()),
             f_format_date: FormatDate::with_provider(provider.clone()),
+            f_format_date_to_parts: FormatDateToParts::with_provider(provider.clone()),
             f_format_duration: FormatDuration::with_provider(provider.clone()),
             f_compare_strings: CompareStrings::with_provider(provider.clone()),
             f_display_name: DisplayName::with_provider(provider.clone()),
             f_segment: Segment::with_provider(provider.clone()),
             f_supported_locales_of: SupportedLocalesOf::with_provider(provider),
             f_get_canonical_locales: GetCanonicalLocales,
+            f_locale: LocaleInfo,
         }
     }
 
@@ -118,16 +128,19 @@ impl Module for IntlModule {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "format_number" => Some(&self.f_format_number),
+            "format_number_to_parts" => Some(&self.f_format_number_to_parts),
             "select_plural" => Some(&self.f_select_plural),
             "format_list" => Some(&self.f_format_list),
             "format_relative_time" => Some(&self.f_format_relative_time),
             "format_date" => Some(&self.f_format_date),
+            "format_date_to_parts" => Some(&self.f_format_date_to_parts),
             "format_duration" => Some(&self.f_format_duration),
             "compare_strings" => Some(&self.f_compare_strings),
             "display_name" => Some(&self.f_display_name),
             "segment" => Some(&self.f_segment),
             "supported_locales_of" => Some(&self.f_supported_locales_of),
             "get_canonical_locales" => Some(&self.f_get_canonical_locales),
+            "locale" => Some(&self.f_locale),
             _ => None,
         }
     }

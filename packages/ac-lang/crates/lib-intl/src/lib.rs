@@ -54,12 +54,14 @@ mod format_date;
 mod format_duration;
 mod format_list;
 mod format_number;
+mod parts;
 mod format_relative_time;
 pub mod module;
 pub mod provider;
 mod segment;
 mod select_plural;
 mod locale_match;
+mod locale;
 
 pub use error::IntlError;
 pub use module::IntlModule;
@@ -72,11 +74,15 @@ mod display_name_tests;
 #[cfg(test)]
 mod format_date_tests;
 #[cfg(test)]
+mod format_date_to_parts_tests;
+#[cfg(test)]
 mod format_duration_tests;
 #[cfg(test)]
 mod format_list_tests;
 #[cfg(test)]
 mod format_number_tests;
+#[cfg(test)]
+mod format_number_to_parts_tests;
 #[cfg(test)]
 mod format_relative_time_tests;
 #[cfg(test)]
@@ -89,3 +95,5 @@ mod select_plural_tests;
 mod supported_locales_tests;
 #[cfg(test)]
 mod locale_match_tests;
+#[cfg(test)]
+mod locale_tests;
