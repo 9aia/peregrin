@@ -76,6 +76,21 @@ impl Eval for TestEval {
                 return Ok(val.clone());
             }
         }
+        if let Ok(n) = expr.parse::<f64>() {
+            return Ok(NonFunctionValue::new(n));
+        }
+        if expr == "true" {
+            return Ok(NonFunctionValue::new(true));
+        }
+        if expr == "false" {
+            return Ok(NonFunctionValue::new(false));
+        }
+        if expr.starts_with('"') && expr.ends_with('"') {
+            return Ok(NonFunctionValue::new(expr[1..expr.len() - 1].to_string()));
+        }
+        if expr == "null" {
+            return Ok(NonFunctionValue::new(serde_json::Value::Null));
+        }
         Err(Error::UnknownVariable(expr.to_string()))
     }
 }
@@ -648,4 +663,281 @@ fn tap_too_few_args_errors() {
 #[test]
 fn unknown_function_returns_none() {
     assert!(FnModule.function("nope").is_none());
+}
+
+// ── constantly ─────────────────────────────────────────────────────
+
+#[test]
+fn constantly_returns_function_that_ignores_input() {
+    let result = call_with_eval(
+        "pipe",
+        &[n(999.0), call("constantly", &[n(42.0)])],
+    );
+    assert_eq!(result.as_number(), Some(42.0));
+}
+
+#[test]
+fn constantly_with_string() {
+    let result = call_with_eval(
+        "pipe",
+        &[n(1.0), call("constantly", &[s("hello")])],
+    );
+    assert_eq!(result.as_str(), Some("hello"));
+}
+
+#[test]
+fn constantly_no_args_errors() {
+    let result = call_err("constantly", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── flip ───────────────────────────────────────────────────────────
+
+#[test]
+fn flip_swaps_two_args() {
+    let subtract = fn_value("add(a, mul(b, -1))", &["a", "b"]);
+    let flipped = call("flip", &[subtract]);
+    assert!(flipped.is_function());
+    let result = call_with_eval(
+        "apply",
+        &[flipped, NonFunctionValue::new(serde_json::json!([10, 3]))],
+    );
+    assert_eq!(result.as_number(), Some(-7.0));
+}
+
+#[test]
+fn flip_non_function_errors() {
+    let result = call_err("flip", &[n(42.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn flip_single_param_errors() {
+    let result = call_err("flip", &[fn_value("add(x, 1)", &["x"])]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn flip_no_args_errors() {
+    let result = call_err("flip", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── partial ────────────────────────────────────────────────────────
+
+#[test]
+fn partial_binds_first_arg() {
+    let add = fn_value("add(a, b)", &["a", "b"]);
+    let bound = call(
+        "partial",
+        &[add, NonFunctionValue::new(serde_json::json!([10]))],
+    );
+    assert!(bound.is_function());
+    let result = call_with_eval(
+        "apply",
+        &[bound, NonFunctionValue::new(serde_json::json!([5]))],
+    );
+    assert_eq!(result.as_number(), Some(15.0));
+}
+
+#[test]
+fn partial_binds_all_args() {
+    let add = fn_value("add(a, b)", &["a", "b"]);
+    let bound = call(
+        "partial",
+        &[add, NonFunctionValue::new(serde_json::json!([3, 4]))],
+    );
+    let result = call_with_eval(
+        "apply",
+        &[bound, NonFunctionValue::new(serde_json::json!([]))],
+    );
+    assert_eq!(result.as_number(), Some(7.0));
+}
+
+#[test]
+fn partial_no_bound_args_returns_original() {
+    let add = fn_value("add(a, b)", &["a", "b"]);
+    let bound = call(
+        "partial",
+        &[add, NonFunctionValue::new(serde_json::json!([]))],
+    );
+    let result = call_with_eval(
+        "apply",
+        &[bound, NonFunctionValue::new(serde_json::json!([3, 4]))],
+    );
+    assert_eq!(result.as_number(), Some(7.0));
+}
+
+#[test]
+fn partial_non_function_errors() {
+    let result = call_err(
+        "partial",
+        &[n(42.0), NonFunctionValue::new(serde_json::json!([1]))],
+    );
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn partial_non_array_bound_args_errors() {
+    let result = call_err(
+        "partial",
+        &[fn_value("add(a, b)", &["a", "b"]), n(42.0)],
+    );
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn partial_too_few_args_errors() {
+    let result = call_err("partial", &[fn_value("add(a, b)", &["a", "b"])]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── when ───────────────────────────────────────────────────────────
+
+#[test]
+fn when_applies_when_predicate_true() {
+    let result = call_with_eval(
+        "when",
+        &[
+            n(5.0),
+            fn_value("add(x, 0)", &["x"]),
+            fn_value("mul(x, 100)", &["x"]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(500.0));
+}
+
+#[test]
+fn when_returns_value_when_predicate_false() {
+    let result = call_with_eval(
+        "when",
+        &[
+            n(0.0),
+            fn_value("add(x, 0)", &["x"]),
+            fn_value("mul(x, 100)", &["x"]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(0.0));
+}
+
+#[test]
+fn when_non_function_predicate_errors() {
+    let result = call_err(
+        "when",
+        &[n(1.0), n(42.0), fn_value("add(x, 1)", &["x"])],
+    );
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn when_non_function_transform_errors() {
+    let result = call_err(
+        "when",
+        &[n(1.0), fn_value("x", &["x"]), n(42.0)],
+    );
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn when_too_few_args_errors() {
+    let result = call_err("when", &[n(1.0), fn_value("x", &["x"])]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── unless ─────────────────────────────────────────────────────────
+
+#[test]
+fn unless_applies_when_predicate_false() {
+    let result = call_with_eval(
+        "unless",
+        &[
+            n(0.0),
+            fn_value("add(x, 0)", &["x"]),
+            fn_value("add(x, 100)", &["x"]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(100.0));
+}
+
+#[test]
+fn unless_returns_value_when_predicate_true() {
+    let result = call_with_eval(
+        "unless",
+        &[
+            n(5.0),
+            fn_value("add(x, 0)", &["x"]),
+            fn_value("add(x, 100)", &["x"]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(5.0));
+}
+
+#[test]
+fn unless_too_few_args_errors() {
+    let result = call_err("unless", &[n(1.0), fn_value("x", &["x"])]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── converge ───────────────────────────────────────────────────────
+
+#[test]
+fn converge_two_branches() {
+    let result = call_with_eval(
+        "converge",
+        &[
+            n(10.0),
+            fn_value("add(a, b)", &["a", "b"]),
+            fn_value("mul(x, 2)", &["x"]),
+            fn_value("mul(x, 3)", &["x"]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(50.0));
+}
+
+#[test]
+fn converge_single_branch() {
+    let result = call_with_eval(
+        "converge",
+        &[
+            n(10.0),
+            fn_value("add(a, b)", &["a", "b"]),
+            fn_value("mul(x, 2)", &["x"]),
+        ],
+    );
+    assert_eq!(result.as_number(), Some(20.0));
+}
+
+#[test]
+fn converge_non_function_combiner_errors() {
+    let result = call_err(
+        "converge",
+        &[
+            n(10.0),
+            n(42.0),
+            fn_value("mul(x, 2)", &["x"]),
+        ],
+    );
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn converge_non_function_branch_errors() {
+    let result = call_err(
+        "converge",
+        &[
+            n(10.0),
+            fn_value("add(a, b)", &["a", "b"]),
+            n(42.0),
+        ],
+    );
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn converge_too_few_args_errors() {
+    let result = call_err(
+        "converge",
+        &[n(10.0), fn_value("add(a, b)", &["a", "b"])],
+    );
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
 }

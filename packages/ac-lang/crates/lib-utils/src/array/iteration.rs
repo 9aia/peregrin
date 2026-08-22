@@ -369,3 +369,152 @@ impl Function for FindLastIndex {
         Ok(num(idx.map(|i| (array.len() - 1 - i) as f64).unwrap_or(-1.0)))
     }
 }
+
+// ── windows / transpose ────────────────────────────────────────────
+
+#[derive(Clone, Copy)]
+pub struct Windows;
+impl Function for Windows {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let array = require_array(&args[0])?;
+        let size = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        if size < 1.0 {
+            return Err(Error::TypeMismatch {
+                expected: "positive number",
+                got: "non-positive number",
+            });
+        }
+        let size = size as usize;
+        if size > array.len() {
+            return Ok(arr(&[]));
+        }
+        let windows: Vec<serde_json::Value> = array
+            .windows(size)
+            .map(|w| serde_json::Value::Array(w.to_vec()))
+            .collect();
+        Ok(arr(&windows))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Transpose;
+impl Function for Transpose {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let array = require_array(args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?)?;
+        if array.is_empty() {
+            return Ok(arr(&[]));
+        }
+        let rows: Vec<&[serde_json::Value]> = array
+            .iter()
+            .map(|item| {
+                item.as_array().map(|a| a.as_slice()).unwrap_or(std::slice::from_ref(item))
+            })
+            .collect();
+        let max_cols = rows.iter().map(|r| r.len()).max().unwrap_or(0);
+        if max_cols == 0 {
+            return Ok(arr(&[]));
+        }
+        let mut transposed = Vec::with_capacity(max_cols);
+        for col in 0..max_cols {
+            let column: Vec<serde_json::Value> = rows
+                .iter()
+                .filter_map(|r| r.get(col).cloned())
+                .collect();
+            transposed.push(serde_json::Value::Array(column));
+        }
+        Ok(arr(&transposed))
+    }
+}
+
+// ── insert_at / remove_at ──────────────────────────────────────────
+
+#[derive(Clone, Copy)]
+pub struct InsertAt;
+impl Function for InsertAt {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 3 {
+            return Err(Error::ArgumentCount {
+                expected: 3,
+                got: args.len(),
+            });
+        }
+        let array = require_array(&args[0])?;
+        let index = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        if index < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        let index = (index as usize).min(array.len());
+        let value = args[2].inner().clone();
+        let mut result = Vec::with_capacity(array.len() + 1);
+        result.extend_from_slice(&array[..index]);
+        result.push(value);
+        result.extend_from_slice(&array[index..]);
+        Ok(arr(&result))
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct RemoveAt;
+impl Function for RemoveAt {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let array = require_array(&args[0])?;
+        let index = args[1].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })?;
+        if index < 0.0 {
+            return Err(Error::TypeMismatch {
+                expected: "non-negative number",
+                got: "negative number",
+            });
+        }
+        let index = index as usize;
+        if index >= array.len() {
+            return Ok(arr(array));
+        }
+        let mut result = Vec::with_capacity(array.len() - 1);
+        result.extend_from_slice(&array[..index]);
+        result.extend_from_slice(&array[index + 1..]);
+        Ok(arr(&result))
+    }
+}

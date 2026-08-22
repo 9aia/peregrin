@@ -84,6 +84,21 @@ impl Eval for TestEval {
                 return Ok(val.clone());
             }
         }
+        if let Ok(n) = expr.parse::<f64>() {
+            return Ok(NonFunctionValue::new(n));
+        }
+        if expr == "true" {
+            return Ok(NonFunctionValue::new(true));
+        }
+        if expr == "false" {
+            return Ok(NonFunctionValue::new(false));
+        }
+        if expr.starts_with('"') && expr.ends_with('"') {
+            return Ok(NonFunctionValue::new(expr[1..expr.len() - 1].to_string()));
+        }
+        if expr == "null" {
+            return Ok(NonFunctionValue::new(serde_json::Value::Null));
+        }
         Err(Error::UnknownVariable(expr.to_string()))
     }
 }

@@ -10,8 +10,8 @@ use super::higher_order::{
     Pluck, Range, Reduce, SomeFn, SortBy, SortByDesc, Zip,
 };
 use super::iteration::{
-    Dedupe, Drop, DropWhile, Enumerate, FindIndex, FindLast, FindLastIndex, Foldr, Intercalate,
-    Intersperse, Prepend, Scan, Take, TakeWhile, Unzip,
+    Dedupe, Drop, DropWhile, Enumerate, FindIndex, FindLast, FindLastIndex, Foldr, InsertAt,
+    Intercalate, Intersperse, Prepend, RemoveAt, Scan, Take, TakeWhile, Transpose, Unzip, Windows,
 };
 use super::numeric_aggregates::{Avg, Max, Mean, Median, Min, Product, Stddev, Sum};
 
@@ -71,6 +71,10 @@ impl Module for ArrayModule {
             "find_index" => Some(&FindIndex),
             "find_last" => Some(&FindLast),
             "find_last_index" => Some(&FindLastIndex),
+            "windows" => Some(&Windows),
+            "transpose" => Some(&Transpose),
+            "insert_at" => Some(&InsertAt),
+            "remove_at" => Some(&RemoveAt),
             // higher_order
             "range" => Some(&Range),
             "zip" => Some(&Zip),

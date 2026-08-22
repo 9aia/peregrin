@@ -1,3 +1,4 @@
+use ac_runtime::NonFunctionValue;
 use ac_vm::Error;
 
 use serde_json::json;
@@ -751,4 +752,293 @@ fn find_last_index_single_match() {
 fn find_last_index_non_function_errors() {
     let result = call_err_with_eval("find_last_index", &[arr(&[json!(1)]), n(1.0)]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+// ── windows ───────────────────────────────────────────────────────
+
+#[test]
+fn windows_basic() {
+    let result = call(
+        "windows",
+        &[arr(&[json!(1), json!(2), json!(3), json!(4)]), n(2.0)],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[0], json!([1, 2]));
+    assert_eq!(array[1], json!([2, 3]));
+    assert_eq!(array[2], json!([3, 4]));
+}
+
+#[test]
+fn windows_size_three() {
+    let result = call(
+        "windows",
+        &[arr(&[json!(1), json!(2), json!(3), json!(4), json!(5)]), n(3.0)],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[0], json!([1, 2, 3]));
+    assert_eq!(array[2], json!([3, 4, 5]));
+}
+
+#[test]
+fn windows_size_equals_length() {
+    let result = call("windows", &[arr(&[json!(1), json!(2)]), n(2.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 1);
+    assert_eq!(array[0], json!([1, 2]));
+}
+
+#[test]
+fn windows_size_greater_than_length() {
+    let result = call("windows", &[arr(&[json!(1), json!(2)]), n(5.0)]);
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+#[test]
+fn windows_empty_array() {
+    let result = call("windows", &[arr(&[]), n(2.0)]);
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+#[test]
+fn windows_zero_size_errors() {
+    let result = call_err("windows", &[arr(&[json!(1)]), n(0.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn windows_negative_size_errors() {
+    let result = call_err("windows", &[arr(&[json!(1)]), n(-1.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn windows_non_number_errors() {
+    let result = call_err("windows", &[arr(&[json!(1)]), s("x")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn windows_non_array_errors() {
+    let result = call_err("windows", &[n(1.0), n(2.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn windows_too_few_args_errors() {
+    let result = call_err("windows", &[arr(&[json!(1)])]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── transpose ─────────────────────────────────────────────────────
+
+#[test]
+fn transpose_basic() {
+    let result = call(
+        "transpose",
+        &[arr(&[json!([1, 2]), json!([3, 4])])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 2);
+    assert_eq!(array[0], json!([1, 3]));
+    assert_eq!(array[1], json!([2, 4]));
+}
+
+#[test]
+fn transpose_rectangular() {
+    let result = call(
+        "transpose",
+        &[arr(&[json!([1, 2, 3]), json!([4, 5, 6])])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[0], json!([1, 4]));
+    assert_eq!(array[1], json!([2, 5]));
+    assert_eq!(array[2], json!([3, 6]));
+}
+
+#[test]
+fn transpose_single_row() {
+    let result = call("transpose", &[arr(&[json!([1, 2, 3])])]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[0], json!([1]));
+    assert_eq!(array[1], json!([2]));
+    assert_eq!(array[2], json!([3]));
+}
+
+#[test]
+fn transpose_single_col() {
+    let result = call(
+        "transpose",
+        &[arr(&[json!([1]), json!([2]), json!([3])])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 1);
+    assert_eq!(array[0], json!([1, 2, 3]));
+}
+
+#[test]
+fn transpose_empty() {
+    let result = call("transpose", &[arr(&[])]);
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+#[test]
+fn transpose_ragged() {
+    let result = call(
+        "transpose",
+        &[arr(&[json!([1, 2, 3]), json!([4, 5])])],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array.len(), 3);
+    assert_eq!(array[0], json!([1, 4]));
+    assert_eq!(array[1], json!([2, 5]));
+    assert_eq!(array[2], json!([3]));
+}
+
+#[test]
+fn transpose_non_array_errors() {
+    let result = call_err("transpose", &[n(1.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn transpose_no_args_errors() {
+    let result = call_err("transpose", &[]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── insert_at ─────────────────────────────────────────────────────
+
+#[test]
+fn insert_at_beginning() {
+    let result = call(
+        "insert_at",
+        &[arr(&[json!(2), json!(3)]), n(0.0), NonFunctionValue::new(json!(1))],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array, &[json!(1), json!(2), json!(3)]);
+}
+
+#[test]
+fn insert_at_middle() {
+    let result = call(
+        "insert_at",
+        &[arr(&[json!(1), json!(3)]), n(1.0), NonFunctionValue::new(json!(2))],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array, &[json!(1), json!(2), json!(3)]);
+}
+
+#[test]
+fn insert_at_end() {
+    let result = call(
+        "insert_at",
+        &[arr(&[json!(1), json!(2)]), n(2.0), NonFunctionValue::new(json!(3))],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array, &[json!(1), json!(2), json!(3)]);
+}
+
+#[test]
+fn insert_at_index_beyond_length_appends() {
+    let result = call(
+        "insert_at",
+        &[arr(&[json!(1)]), n(10.0), NonFunctionValue::new(json!(2))],
+    );
+    let array = result.as_array().unwrap();
+    assert_eq!(array, &[json!(1), json!(2)]);
+}
+
+#[test]
+fn insert_at_empty_array() {
+    let result = call("insert_at", &[arr(&[]), n(0.0), NonFunctionValue::new(json!(1))]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array, &[json!(1)]);
+}
+
+#[test]
+fn insert_at_negative_index_errors() {
+    let result = call_err("insert_at", &[arr(&[json!(1)]), n(-1.0), NonFunctionValue::new(json!(2))]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn insert_at_non_number_index_errors() {
+    let result = call_err("insert_at", &[arr(&[json!(1)]), s("x"), NonFunctionValue::new(json!(2))]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn insert_at_non_array_errors() {
+    let result = call_err("insert_at", &[n(1.0), n(0.0), NonFunctionValue::new(json!(2))]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn insert_at_too_few_args_errors() {
+    let result = call_err("insert_at", &[arr(&[json!(1)]), n(0.0)]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
+}
+
+// ── remove_at ─────────────────────────────────────────────────────
+
+#[test]
+fn remove_at_beginning() {
+    let result = call("remove_at", &[arr(&[json!(1), json!(2), json!(3)]), n(0.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array, &[json!(2), json!(3)]);
+}
+
+#[test]
+fn remove_at_middle() {
+    let result = call("remove_at", &[arr(&[json!(1), json!(2), json!(3)]), n(1.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array, &[json!(1), json!(3)]);
+}
+
+#[test]
+fn remove_at_end() {
+    let result = call("remove_at", &[arr(&[json!(1), json!(2), json!(3)]), n(2.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array, &[json!(1), json!(2)]);
+}
+
+#[test]
+fn remove_at_index_beyond_length_returns_unchanged() {
+    let result = call("remove_at", &[arr(&[json!(1), json!(2)]), n(10.0)]);
+    let array = result.as_array().unwrap();
+    assert_eq!(array, &[json!(1), json!(2)]);
+}
+
+#[test]
+fn remove_at_single_element() {
+    let result = call("remove_at", &[arr(&[json!(1)]), n(0.0)]);
+    assert!(result.as_array().unwrap().is_empty());
+}
+
+#[test]
+fn remove_at_negative_index_errors() {
+    let result = call_err("remove_at", &[arr(&[json!(1)]), n(-1.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn remove_at_non_number_index_errors() {
+    let result = call_err("remove_at", &[arr(&[json!(1)]), s("x")]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn remove_at_non_array_errors() {
+    let result = call_err("remove_at", &[n(1.0), n(0.0)]);
+    assert!(matches!(result, Err(Error::TypeMismatch { .. })));
+}
+
+#[test]
+fn remove_at_too_few_args_errors() {
+    let result = call_err("remove_at", &[arr(&[json!(1)])]);
+    assert!(matches!(result, Err(Error::ArgumentCount { .. })));
 }

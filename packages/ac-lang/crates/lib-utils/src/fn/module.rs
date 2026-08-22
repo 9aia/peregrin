@@ -1,7 +1,10 @@
 use ac_runtime_core::Module;
 use ac_vm::Function;
 
-use crate::r#fn::combinators::{Apply, Choice, Compose, Fanout, Flow, Pipe, Tap};
+use crate::r#fn::combinators::{
+    Apply, Choice, Compose, Converge, Constantly, Fanout, Flip, Flow, Partial, Pipe, Tap, Unless,
+    When,
+};
 
 /// The `fn` module — function combinator utilities.
 ///
@@ -24,6 +27,12 @@ impl Module for FnModule {
             "choice" => Some(&Choice),
             "apply" => Some(&Apply),
             "tap" => Some(&Tap),
+            "constantly" => Some(&Constantly),
+            "flip" => Some(&Flip),
+            "partial" => Some(&Partial),
+            "when" => Some(&When),
+            "unless" => Some(&Unless),
+            "converge" => Some(&Converge),
             _ => None,
         }
     }

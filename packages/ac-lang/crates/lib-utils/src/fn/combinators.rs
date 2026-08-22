@@ -2,7 +2,7 @@ use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_vm::{Context, Error, Function};
 
 use crate::shared::{
-    arr, apply_fn, bind_all_params, is_truthy_fn, require_array, require_function_value,
+    arr, apply_fn, apply_fn2, bind_all_params, is_truthy_fn, require_array, require_function_value,
     require_functions,
 };
 
@@ -253,5 +253,195 @@ impl Function for Tap {
         let inner = value.clone().into_inner();
         let _ = apply_fn(ctx, &fn_val, &inner)?;
         Ok(value.clone())
+    }
+}
+
+// ── constantly ─────────────────────────────────────────────────────
+
+#[derive(Clone, Copy)]
+pub struct Constantly;
+impl Function for Constantly {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let value = args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?;
+        let captured = value.inner().clone();
+        let fn_val = FunctionValue {
+            params: vec![("_".to_string(), serde_json::Value::Null)],
+            return_schema: None,
+            body: serde_json::to_string(&captured).unwrap_or_else(|_| "null".to_string()),
+        };
+        Ok(NonFunctionValue::new_function(fn_val))
+    }
+}
+
+// ── flip ───────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy)]
+pub struct Flip;
+impl Function for Flip {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        let fn_val = require_function_value(args.first().ok_or(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        })?)?;
+        if fn_val.params.len() < 2 {
+            return Err(Error::TypeMismatch {
+                expected: "function with at least 2 parameters",
+                got: "function with fewer than 2 parameters",
+            });
+        }
+        let mut swapped_params = fn_val.params.clone();
+        swapped_params.swap(0, 1);
+        let flipped = FunctionValue {
+            params: swapped_params,
+            return_schema: None,
+            body: fn_val.body.clone(),
+        };
+        Ok(NonFunctionValue::new_function(flipped))
+    }
+}
+
+// ── partial ────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy)]
+pub struct Partial;
+impl Function for Partial {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let fn_val = require_function_value(&args[0])?;
+        let bound_args = require_array(&args[1])?;
+        let bound_count = bound_args.len().min(fn_val.params.len());
+        if bound_count == 0 {
+            return Ok(NonFunctionValue::new_function(fn_val));
+        }
+        let remaining_params: Vec<(String, serde_json::Value)> = fn_val.params[bound_count..]
+            .iter()
+            .map(|(name, schema)| (name.clone(), schema.clone()))
+            .collect();
+        let mut body = fn_val.body.clone();
+        for i in 0..bound_count {
+            let param_name = &fn_val.params[i].0;
+            let replacement = serde_json::to_string(&bound_args[i])
+                .unwrap_or_else(|_| "null".to_string());
+            body = substitute_param(&body, param_name, &replacement);
+        }
+        let partial_fn = FunctionValue {
+            params: remaining_params,
+            return_schema: None,
+            body,
+        };
+        Ok(NonFunctionValue::new_function(partial_fn))
+    }
+}
+
+// ── when / unless ──────────────────────────────────────────────────
+
+#[derive(Clone, Copy)]
+pub struct When;
+impl Function for When {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 3 {
+            return Err(Error::ArgumentCount {
+                expected: 3,
+                got: args.len(),
+            });
+        }
+        let value = &args[0];
+        let predicate = require_function_value(&args[1])?;
+        let transform = require_function_value(&args[2])?;
+        let inner = value.clone().into_inner();
+        if is_truthy_fn(ctx, &predicate, &inner)? {
+            Ok(apply_fn(ctx, &transform, &inner)?)
+        } else {
+            Ok(value.clone())
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+pub struct Unless;
+impl Function for Unless {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 3 {
+            return Err(Error::ArgumentCount {
+                expected: 3,
+                got: args.len(),
+            });
+        }
+        let value = &args[0];
+        let predicate = require_function_value(&args[1])?;
+        let transform = require_function_value(&args[2])?;
+        let inner = value.clone().into_inner();
+        if is_truthy_fn(ctx, &predicate, &inner)? {
+            Ok(value.clone())
+        } else {
+            Ok(apply_fn(ctx, &transform, &inner)?)
+        }
+    }
+}
+
+// ── converge ───────────────────────────────────────────────────────
+
+#[derive(Clone, Copy)]
+pub struct Converge;
+impl Function for Converge {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 3 {
+            return Err(Error::ArgumentCount {
+                expected: 3,
+                got: args.len(),
+            });
+        }
+        let value = &args[0];
+        let combiner = require_function_value(&args[1])?;
+        let branch_count = args.len() - 2;
+        let mut results = Vec::with_capacity(branch_count);
+        let inner = value.clone().into_inner();
+        for branch_arg in &args[2..] {
+            let branch_fn = require_function_value(branch_arg)?;
+            let result = apply_fn(ctx, &branch_fn, &inner)?;
+            results.push(result.into_inner());
+        }
+        let combined = if results.len() == 1 {
+            results.into_iter().next().unwrap()
+        } else {
+            let mut acc = results[0].clone();
+            for item in &results[1..] {
+                acc = apply_fn2(ctx, &combiner, &acc, item)?.into_inner();
+            }
+            acc
+        };
+        Ok(NonFunctionValue::new(combined))
     }
 }
