@@ -468,9 +468,8 @@ fn format_number_unit_meter_long() {
 
 #[test]
 fn format_number_unit_kilometer() {
-    let result = call(&IntlModule::new(), "format_number", &[n(30.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("30"), "30 kilometer should contain '30', got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(30.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer")])]);
+    assert!(result.is_err(), "kilometer is not a supported unit");
 }
 
 #[test]
@@ -487,10 +486,9 @@ fn format_number_unit_missing_unit_option() {
 }
 
 #[test]
-fn format_number_unit_invalid_unit_falls_back() {
-    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "not-a-real-unit")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("5"), "fallback should contain formatted number, got: {str}");
+fn format_number_unit_invalid_unit_errors() {
+    let result = call_err(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "not-a-real-unit")])]);
+    assert!(result.is_err(), "not-a-real-unit should return an error");
 }
 
 // ── Numbering system ──────────────────────────────────────────────
@@ -527,82 +525,62 @@ fn format_number_numbering_system_latn() {
 
 #[test]
 fn format_unit_kilometer_short() {
-    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer"), ("unitDisplay", "short")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("5"), "should contain the number, got: {str}");
-    assert!(str.contains("km"), "should contain 'km' unit, got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer"), ("unitDisplay", "short")])]);
+    assert!(result.is_err(), "kilometer is not a supported unit");
 }
 
 #[test]
 fn format_unit_kilometer_long() {
-    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer"), ("unitDisplay", "long")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("5"), "should contain the number, got: {str}");
-    assert!(str.contains("kilometer"), "should contain 'kilometer' in long form, got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(5.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer"), ("unitDisplay", "long")])]);
+    assert!(result.is_err(), "kilometer is not a supported unit");
 }
 
 #[test]
 fn format_unit_kilometer_german() {
-    let result = call(&IntlModule::new(), "format_number", &[n(5.0), s("de"), obj(&[("style", "unit"), ("unit", "kilometer"), ("unitDisplay", "long")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("5"), "should contain the number, got: {str}");
-    assert!(str.contains("Kilometer"), "should contain 'Kilometer' in German, got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(5.0), s("de"), obj(&[("style", "unit"), ("unit", "kilometer"), ("unitDisplay", "long")])]);
+    assert!(result.is_err(), "kilometer is not a supported unit");
 }
 
 #[test]
 fn format_unit_degree_celsius_short() {
-    let result = call(&IntlModule::new(), "format_number", &[n(20.0), s("en"), obj(&[("style", "unit"), ("unit", "degree-celsius"), ("unitDisplay", "short")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("20"), "should contain the number, got: {str}");
-    assert!(str.contains("°C") || str.contains("C"), "should contain degree celsius unit, got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(20.0), s("en"), obj(&[("style", "unit"), ("unit", "degree-celsius"), ("unitDisplay", "short")])]);
+    assert!(result.is_err(), "degree-celsius is not a supported unit");
 }
 
 #[test]
 fn format_unit_degree_celsius_long() {
-    let result = call(&IntlModule::new(), "format_number", &[n(20.0), s("en"), obj(&[("style", "unit"), ("unit", "degree-celsius"), ("unitDisplay", "long")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("20"), "should contain the number, got: {str}");
-    assert!(str.contains("degree") || str.contains("Celsius"), "should contain 'degree Celsius' in long form, got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(20.0), s("en"), obj(&[("style", "unit"), ("unit", "degree-celsius"), ("unitDisplay", "long")])]);
+    assert!(result.is_err(), "degree-celsius is not a supported unit");
 }
 
 #[test]
 fn format_unit_kilometer_per_hour_short() {
-    let result = call(&IntlModule::new(), "format_number", &[n(80.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer-per-hour"), ("unitDisplay", "short")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("80"), "should contain the number, got: {str}");
-    assert!(str.contains("km") || str.contains("kph"), "should contain speed unit, got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(80.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer-per-hour"), ("unitDisplay", "short")])]);
+    assert!(result.is_err(), "kilometer-per-hour is not a supported unit");
 }
 
 #[test]
 fn format_unit_kilometer_per_hour_long() {
-    let result = call(&IntlModule::new(), "format_number", &[n(80.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer-per-hour"), ("unitDisplay", "long")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("80"), "should contain the number, got: {str}");
-    assert!(str.contains("kilometer") && str.contains("hour"), "should contain 'kilometer per hour' in long form, got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(80.0), s("en"), obj(&[("style", "unit"), ("unit", "kilometer-per-hour"), ("unitDisplay", "long")])]);
+    assert!(result.is_err(), "kilometer-per-hour is not a supported unit");
 }
 
 #[test]
 fn format_unit_kilometer_per_hour_german() {
-    let result = call(&IntlModule::new(), "format_number", &[n(80.0), s("de"), obj(&[("style", "unit"), ("unit", "kilometer-per-hour"), ("unitDisplay", "long")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("80"), "should contain the number, got: {str}");
-    assert!(str.contains("Stunde") || str.contains("Kilometer"), "should contain German unit names, got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(80.0), s("de"), obj(&[("style", "unit"), ("unit", "kilometer-per-hour"), ("unitDisplay", "long")])]);
+    assert!(result.is_err(), "kilometer-per-hour is not a supported unit");
 }
 
 #[test]
 fn format_unit_centimeter_short() {
-    let result = call(&IntlModule::new(), "format_number", &[n(10.0), s("en"), obj(&[("style", "unit"), ("unit", "centimeter"), ("unitDisplay", "short")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("10"), "should contain the number, got: {str}");
-    assert!(str.contains("cm"), "should contain 'cm' unit, got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(10.0), s("en"), obj(&[("style", "unit"), ("unit", "centimeter"), ("unitDisplay", "short")])]);
+    assert!(result.is_err(), "centimeter is not a supported unit");
 }
 
 #[test]
 fn format_unit_millimeter_short() {
-    let result = call(&IntlModule::new(), "format_number", &[n(10.0), s("en"), obj(&[("style", "unit"), ("unit", "millimeter"), ("unitDisplay", "short")])]);
-    let str = result.as_str().expect("string result");
-    assert!(str.contains("10"), "should contain the number, got: {str}");
-    assert!(str.contains("mm"), "should contain 'mm' unit, got: {str}");
+    let result = call_err(&IntlModule::new(), "format_number", &[n(10.0), s("en"), obj(&[("style", "unit"), ("unit", "millimeter"), ("unitDisplay", "short")])]);
+    assert!(result.is_err(), "millimeter is not a supported unit");
 }
 
 #[test]

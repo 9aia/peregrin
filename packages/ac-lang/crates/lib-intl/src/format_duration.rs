@@ -189,9 +189,8 @@ fn apply_per_unit_options(options: &mut DurationFormatterOptions, opts: Option<&
     }
     options.nanosecond_visibility = parse_field_display(opts, "nanosecondsDisplay");
 
-    if let Some(n) = opt_int(opts, "fractionalDigits") {
-        if n >= 0 && n <= 9 {
+    if let Some(n) = opt_int(opts, "fractionalDigits")
+        && (0..=9).contains(&n) {
             options.fractional_digits = FractionalDigits::Fixed(n as u8);
         }
-    }
 }

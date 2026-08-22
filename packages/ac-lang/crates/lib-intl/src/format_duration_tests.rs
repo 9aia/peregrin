@@ -140,17 +140,6 @@ fn obj_str(pairs: &[(&str, &str)]) -> NonFunctionValue {
     NonFunctionValue::new(serde_json::Value::Object(map))
 }
 
-fn obj_mixed(num_pairs: &[(&str, u64)], str_pairs: &[(&str, &str)]) -> NonFunctionValue {
-    let mut map = serde_json::Map::new();
-    for (k, v) in num_pairs {
-        map.insert(k.to_string(), serde_json::json!(v));
-    }
-    for (k, v) in str_pairs {
-        map.insert(k.to_string(), serde_json::json!(v));
-    }
-    NonFunctionValue::new(serde_json::Value::Object(map))
-}
-
 #[test]
 fn duration_per_unit_hours_style_long() {
     let result = call(&[

@@ -106,8 +106,8 @@ impl Function for FormatNumber {
 
 fn build_formatter_options(opts: Option<&serde_json::Map<String, serde_json::Value>>) -> DecimalFormatterOptions {
     let mut options = DecimalFormatterOptions::default();
-    if let Some(o) = opts {
-        if let Some(v) = o.get("useGrouping") {
+    if let Some(o) = opts
+        && let Some(v) = o.get("useGrouping") {
             if let Some(b) = v.as_bool() {
                 options.grouping_strategy = if b {
                     Some(GroupingStrategy::Auto)
@@ -124,7 +124,6 @@ fn build_formatter_options(opts: Option<&serde_json::Map<String, serde_json::Val
                 };
             }
         }
-    }
     options
 }
 
@@ -265,7 +264,7 @@ fn format_currency(n: f64, locale: &icu::locale::Locale, currency: &str, display
 
 /// Format a number with a unit (e.g. "5 meters", "30 km/h").
 /// Uses ICU4X CategorizedFormatter with the available category constructors.
-fn format_unit(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, dp: &DataProvider) -> Result<String, Error> {
+fn format_unit(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, _dp: &DataProvider) -> Result<String, Error> {
     let unit_str = opt_str(opts, "unit")
         .ok_or_else(|| IntlError::InvalidArgument {
             message: "unit option required for unit style".into(),
@@ -305,10 +304,7 @@ fn format_unit(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::M
     }
 
     // Length units
-    match unit_str {
-        "meter" => try_unit!(Length::meter(), Length),
-        _ => {}
-    }
+    if unit_str == "meter" { try_unit!(Length::meter(), Length) }
     // Mass units
     match unit_str {
         "gram" => try_unit!(Mass::gram(), Mass),
@@ -316,10 +312,7 @@ fn format_unit(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::M
         _ => {}
     }
     // Area units
-    match unit_str {
-        "square-meter" => try_unit!(Area::square_meter(), Area),
-        _ => {}
-    }
+    if unit_str == "square-meter" { try_unit!(Area::square_meter(), Area) }
     // Volume units
     match unit_str {
         "liter" => try_unit!(Volume::liter(), Volume),
@@ -341,79 +334,7 @@ fn format_unit(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::M
         _ => {}
     }
 
-    // Fallback: format the number with a unit display name from lookup table
-    let formatter_opts = build_formatter_options(opts);
-    let formatter = match dp.as_buffer_provider() {
-        Some(p) => DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts),
-        None => DecimalFormatter::try_new(locale.into(), formatter_opts),
-    }
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
-    let formatted = formatter.format(&decimal);
-    let unit_display_name = unit_display_name(unit_str, unit_display, locale);
-    Ok(format!("{} {}", formatted.write_to_string(), unit_display_name))
-}
-
-/// Lookup a unit display name for units not covered by ICU4X CategorizedFormatter constructors.
-/// Falls back to the raw unit string if no mapping is found.
-fn unit_display_name(unit_str: &str, display: &str, locale: &icu::locale::Locale) -> String {
-    let lang = locale.id.language;
-    let is_long = display == "long";
-    let is_narrow = display == "narrow";
-
-    // (unit, lang, long?, short, narrow) — short and narrow are the same for most units
-    let entries: &[(&str, &str, &str, &str, &str)] = &[
-        // en
-        ("kilometer",              "en", "kilometers",              "km",            "km"),
-        ("kilometer-per-hour",     "en", "kilometers per hour",     "km/h",          "km/h"),
-        ("degree-celsius",         "en", "degrees Celsius",         "°C",            "°C"),
-        ("centimeter",             "en", "centimeters",             "cm",            "cm"),
-        ("millimeter",             "en", "millimeters",             "mm",            "mm"),
-        ("meter-per-second",       "en", "meters per second",       "m/s",           "m/s"),
-        ("mile",                   "en", "miles",                   "mi",            "mi"),
-        ("mile-per-hour",          "en", "miles per hour",          "mph",           "mph"),
-        ("foot",                   "en", "feet",                    "ft",            "ft"),
-        ("inch",                   "en", "inches",                  "in",            "in"),
-        ("yard",                   "en", "yards",                   "yd",            "yd"),
-        ("degree-fahrenheit",      "en", "degrees Fahrenheit",      "°F",            "°F"),
-        ("degree",                 "en", "degrees",                 "°",             "°"),
-        ("milligram",              "en", "milligrams",              "mg",            "mg"),
-        ("ton",                    "en", "tons",                    "t",             "t"),
-        ("tonne",                  "en", "tonnes",                  "t",             "t"),
-        ("milliliter",             "en", "milliliters",             "mL",            "mL"),
-        ("hectare",                "en", "hectares",                "ha",            "ha"),
-        ("acre",                   "en", "acres",                   "ac",            "ac"),
-        // de
-        ("kilometer",              "de", "Kilometer",               "km",            "km"),
-        ("kilometer-per-hour",     "de", "Kilometer pro Stunde",    "km/h",          "km/h"),
-        ("degree-celsius",         "de", "Grad Celsius",            "°C",            "°C"),
-        ("centimeter",             "de", "Zentimeter",              "cm",            "cm"),
-        ("millimeter",             "de", "Millimeter",              "mm",            "mm"),
-        // fr
-        ("kilometer",              "fr", "kilomètres",              "km",            "km"),
-        ("kilometer-per-hour",     "fr", "kilomètres par heure",    "km/h",          "km/h"),
-        ("degree-celsius",         "fr", "degrés Celsius",          "°C",            "°C"),
-        ("centimeter",             "fr", "centimètres",             "cm",            "cm"),
-        ("millimeter",             "fr", "millimètres",             "mm",            "mm"),
-        // ja
-        ("kilometer",              "ja", "キロメートル",              "km",            "km"),
-        ("kilometer-per-hour",     "ja", "キロメートル毎時",           "km/h",          "km/h"),
-        ("degree-celsius",         "ja", "摂氏度",                   "°C",            "°C"),
-        ("centimeter",             "ja", "センチメートル",             "cm",            "cm"),
-        ("millimeter",             "ja", "ミリメートル",              "mm",            "mm"),
-    ];
-
-    let lang_str = lang.as_str();
-    for (unit, lang_code, long, short, narrow) in entries {
-        if *unit == unit_str && *lang_code == lang_str {
-            return if is_long { long.to_string() }
-                   else if is_narrow { narrow.to_string() }
-                   else { short.to_string() };
-        }
-    }
-
-    // Final fallback: if the unit can be parsed by MeasureUnit::try_from_str, it's valid
-    // but we don't have a display name. Use the raw string.
-    unit_str.to_string()
+    Err(IntlError::InvalidUnit { unit: unit_str.to_string() }.into_vm_error())
 }
 
 // ── format_number_to_parts ───────────────────────────────────────
@@ -697,7 +618,7 @@ fn format_unit_to_parts(
     n: f64,
     locale: &icu::locale::Locale,
     opts: Option<&serde_json::Map<String, serde_json::Value>>,
-    dp: &DataProvider,
+    _dp: &DataProvider,
     sink: &mut PartsCollector,
 ) -> Result<(), Error> {
     let unit_str = opt_str(opts, "unit")
@@ -737,19 +658,13 @@ fn format_unit_to_parts(
         }};
     }
 
-    match unit_str {
-        "meter" => try_unit_parts!(Length::meter(), Length),
-        _ => {}
-    }
+    if unit_str == "meter" { try_unit_parts!(Length::meter(), Length) }
     match unit_str {
         "gram" => try_unit_parts!(Mass::gram(), Mass),
         "kilogram" => try_unit_parts!(Mass::kilogram(), Mass),
         _ => {}
     }
-    match unit_str {
-        "square-meter" => try_unit_parts!(Area::square_meter(), Area),
-        _ => {}
-    }
+    if unit_str == "square-meter" { try_unit_parts!(Area::square_meter(), Area) }
     match unit_str {
         "liter" => try_unit_parts!(Volume::liter(), Volume),
         "cubic-meter" => try_unit_parts!(Volume::cubic_meter(), Volume),
@@ -769,18 +684,5 @@ fn format_unit_to_parts(
         _ => {}
     }
 
-    // Fallback: format the number with a unit display name from lookup table
-    let formatter_opts = build_formatter_options(opts);
-    let formatter = match dp.as_buffer_provider() {
-        Some(p) => DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts),
-        None => DecimalFormatter::try_new(locale.into(), formatter_opts),
-    }
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
-    let formatted = formatter.format(&decimal);
-    formatted
-        .write_to_parts(sink)
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
-    use std::fmt::Write;
-    let display_name = unit_display_name(unit_str, unit_display, locale);
-    write!(sink, " {}", display_name).map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())
+    Err(IntlError::InvalidUnit { unit: unit_str.to_string() }.into_vm_error())
 }

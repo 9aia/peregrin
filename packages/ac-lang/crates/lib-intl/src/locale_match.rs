@@ -93,6 +93,12 @@ impl Default for SupportedLocalesOf {
     }
 }
 
+/// Languages known to be present in the compiled ICU4X CLDR data.
+///
+/// ICU4X compiled data does not expose a public locale inventory API, so this
+/// list is the practical fallback for `supported_locales_of` when no blob
+/// provider is configured. With a blob provider, the actual inventory is
+/// enumerated dynamically.
 const SUPPORTED_LANGUAGES: &[&str] = &[
     "af", "am", "ar", "az", "be", "bg", "bn", "bs", "ca", "cs",
     "cy", "da", "de", "el", "en", "es", "et", "eu", "fa", "fi",
