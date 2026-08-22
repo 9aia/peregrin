@@ -142,3 +142,17 @@ fn compare_case_first_upper() {
     let n = result.as_number().expect("number result");
     assert!(n != 0.0 || n == 0.0);
 }
+
+#[test]
+fn compare_ignore_punctuation() {
+    let result = call(&[s("hello"), s("hel-lo"), s("en"), obj_bool(&[("ignorePunctuation", true)])]);
+    let n = result.as_number().expect("number result");
+    assert_eq!(n, 0.0);
+}
+
+#[test]
+fn compare_ignore_punctuation_disabled() {
+    let result = call(&[s("hello"), s("hel-lo"), s("en")]);
+    let n = result.as_number().expect("number result");
+    assert_ne!(n, 0.0);
+}

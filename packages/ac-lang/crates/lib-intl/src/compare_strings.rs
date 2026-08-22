@@ -1,13 +1,14 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 use icu::collator::{Collator, CollatorPreferences,
-    options::{CollatorOptions, Strength, CaseLevel},
+    options::{AlternateHandling, CollatorOptions, MaxVariable, Strength, CaseLevel},
     preferences::{CollationCaseFirst, CollationNumericOrdering},
 };
 use std::cmp::Ordering;
 
-use super::common::{opt_bool, opt_str, optional_locale, optional_object, require_string};
+use super::common::{make_provider, opt_bool, opt_str, optional_locale, optional_object, require_string};
 use super::error::IntlError;
+use super::provider::IntlProvider;
 
 /// `intl.compare_strings(a: string, b: string, locale?: string, opts?: object) → number`
 ///
@@ -25,8 +26,26 @@ use super::error::IntlError;
 /// - `intl.compare_strings("a", "b")` → `-1`
 /// - `intl.compare_strings("é", "e", "en", {sensitivity: "base"})` → `0`
 /// - `intl.compare_strings("file10", "file2", "en", {numeric: true})` → `1`
-#[derive(Clone, Copy)]
-pub struct CompareStrings;
+#[derive(Clone)]
+pub struct CompareStrings {
+    provider: Option<IntlProvider>,
+}
+
+impl CompareStrings {
+    pub fn new() -> Self {
+        Self { provider: None }
+    }
+
+    pub fn with_provider(provider: IntlProvider) -> Self {
+        Self { provider: Some(provider) }
+    }
+}
+
+impl Default for CompareStrings {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Function for CompareStrings {
     fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
@@ -34,6 +53,7 @@ impl Function for CompareStrings {
         let b = require_string(args, 1)?;
         let locale = optional_locale(args, 2)?;
         let opts = optional_object(args, 3)?;
+        let dp = make_provider(&self.provider)?;
 
         let sensitivity = opt_str(opts, "sensitivity").unwrap_or("variant");
 
@@ -58,13 +78,27 @@ impl Function for CompareStrings {
             _ => None,
         };
 
-        let collator = Collator::try_new(prefs, options)
-            .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+        if let Some(true) = opt_bool(opts, "ignorePunctuation") {
+            options.alternate_handling = Some(AlternateHandling::Shifted);
+            options.max_variable = Some(MaxVariable::Punctuation);
+        }
 
-        let result: f64 = match collator.compare(a, b) {
-            Ordering::Less => -1.0,
-            Ordering::Equal => 0.0,
-            Ordering::Greater => 1.0,
+        let result: f64 = if let Some(p) = dp.as_buffer_provider() {
+            let collator = Collator::try_new_with_buffer_provider(p, prefs, options)
+                .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+            match collator.as_borrowed().compare(a, b) {
+                Ordering::Less => -1.0,
+                Ordering::Equal => 0.0,
+                Ordering::Greater => 1.0,
+            }
+        } else {
+            let collator = Collator::try_new(prefs, options)
+                .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+            match collator.compare(a, b) {
+                Ordering::Less => -1.0,
+                Ordering::Equal => 0.0,
+                Ordering::Greater => 1.0,
+            }
         };
 
         Ok(NonFunctionValue::new(result))

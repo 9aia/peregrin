@@ -1,20 +1,43 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 
-use super::common::s;
+use super::provider::IntlProvider;
 
 /// `intl.supported_locales_of() → array`
 ///
 /// Returns the list of locales supported by the compiled CLDR data.
-/// With a blob provider, returns locales available in the blob.
+/// With a blob provider, returns the common locale list (blob locale
+/// enumeration is not supported by ICU4X's BlobDataProvider).
 ///
 /// Example:
 /// - `intl.supported_locales_of()` → `["en", "de", "ja", "fr", ...]`
-#[derive(Clone, Copy)]
-pub struct SupportedLocalesOf;
+#[derive(Clone)]
+pub struct SupportedLocalesOf {
+    provider: Option<IntlProvider>,
+}
+
+impl SupportedLocalesOf {
+    pub fn new() -> Self {
+        Self { provider: None }
+    }
+
+    pub fn with_provider(provider: IntlProvider) -> Self {
+        Self { provider: Some(provider) }
+    }
+}
+
+impl Default for SupportedLocalesOf {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl Function for SupportedLocalesOf {
     fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        if self.provider.is_some() {
+            let _ = self.provider.as_ref().unwrap().as_bytes();
+        }
+
         let common = [
             "af", "am", "ar", "az", "be", "bg", "bn", "bs", "ca", "cs",
             "cy", "da", "de", "el", "en", "es", "et", "eu", "fa", "fi",
