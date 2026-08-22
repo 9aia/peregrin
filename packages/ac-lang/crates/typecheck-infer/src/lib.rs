@@ -287,13 +287,13 @@ pub fn check_call_detailed(
     }
 
     if fn_type.type_params.is_empty() {
-        for ((pname, param_ty), arg_ty) in fn_type.params.iter().zip(arg_types) {
+        for (i, ((pname, param_ty), arg_ty)) in fn_type.params.iter().zip(arg_types).enumerate() {
             if !is_compatible(arg_ty, param_ty) {
                 return Err(CallCheckError {
                     function: fn_name.to_string(),
                     kind: CallErrorKind::ArgType {
                         param: pname.clone(),
-                        index: fn_type.params.iter().position(|(n, _)| n == pname).unwrap_or(0),
+                        index: i,
                         expected: param_ty.clone(),
                         actual: arg_ty.clone(),
                     },
