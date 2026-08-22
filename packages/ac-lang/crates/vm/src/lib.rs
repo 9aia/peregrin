@@ -27,7 +27,7 @@ pub use context::Context;
 pub use continuation::{Continuation, EvalResult, Frame};
 pub use error::Error;
 pub use eval::{AsyncEval, Eval};
-pub use host::{AsyncFunction, Function, Host, LazyFunction};
+pub use host::{AsyncFunction, Function, GenericFunction, Host, LazyFunction};
 pub use operation::{Operation, OperationSig};
 pub use vm::Vm;
 

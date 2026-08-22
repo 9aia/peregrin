@@ -99,6 +99,7 @@ fn bench_infer_nested_calls(c: &mut Criterion) {
     functions.insert(
         "add",
         ac_typecheck_core::FunctionType {
+            type_params: vec![],
             params: vec![
                 ("a".to_string(), Type::Number),
                 ("b".to_string(), Type::Number),

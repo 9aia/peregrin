@@ -59,6 +59,7 @@ pub mod module;
 pub mod provider;
 mod segment;
 mod select_plural;
+mod supported_locales;
 
 pub use error::IntlError;
 pub use module::IntlModule;
@@ -84,3 +85,5 @@ mod provider_tests;
 mod segment_tests;
 #[cfg(test)]
 mod select_plural_tests;
+#[cfg(test)]
+mod supported_locales_tests;

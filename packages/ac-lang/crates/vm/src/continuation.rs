@@ -135,7 +135,7 @@ fn expr_to_json(expr: &RuntimeExpr) -> serde_json::Value {
             "type": "value",
             "value": value.clone().into_inner(),
         }),
-        Expr::Call { name, args } => serde_json::json!({
+        Expr::Call { name, args, .. } => serde_json::json!({
             "type": "call",
             "name": name,
             "args": args.iter().map(expr_to_json).collect::<Vec<_>>(),
@@ -177,7 +177,7 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error> {
                 .iter()
                 .map(expr_from_json)
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(Expr::Call { name, args })
+            Ok(Expr::Call { name, args, type_args: Vec::new() })
         }
         Some("handle") => {
             let body = obj
@@ -686,7 +686,7 @@ impl<H: Host> crate::Vm<H> {
         match expr {
             Expr::Value(value) => StepResult::Done(value.clone()),
 
-            Expr::Call { name, args } => {
+            Expr::Call { name, args, .. } => {
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host().lazy_function(name) {
@@ -779,7 +779,7 @@ impl<H: Host> crate::Vm<H> {
         match body {
             Expr::Value(value) => StepResult::Done(value.clone()),
 
-            Expr::Call { name, args } => {
+            Expr::Call { name, args, .. } => {
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host().lazy_function(name) {

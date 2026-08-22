@@ -1,0 +1,15 @@
+[package]
+name = "ac-host-resolver"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-module-resolver-core.workspace = true
+ac-runtime.workspace = true
+ac-vm.workspace = true
+serde_json = "1"
+
+[dev-dependencies]
+ac-ast.workspace = true
+ac-host.workspace = true
+ac-module-resolver-virtual.workspace = true

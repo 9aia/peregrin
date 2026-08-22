@@ -3,6 +3,7 @@ use ac_vm::{Context, Error, Function};
 use icu::plurals::{PluralCategory, PluralRules, PluralRulesOptions, PluralRuleType};
 
 use super::common::{opt_str, optional_locale, optional_object, require_number, s};
+use super::error::IntlError;
 
 /// `intl.select_plural(n: number, locale?: string, opts?: object) → string`
 ///
@@ -33,7 +34,7 @@ impl Function for SelectPlural {
 
         let options = PluralRulesOptions::default().with_type(rule_type);
         let rules = PluralRules::try_new(locale.into(), options)
-            .map_err(|e| Error::PrimitiveError(format!("formatting error: {e}")))?;
+            .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
         let category = rules.category_for(n as usize);
         let name = match category {

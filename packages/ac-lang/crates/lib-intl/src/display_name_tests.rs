@@ -94,3 +94,10 @@ fn vm_display_name() {
     let result = eval_expr(&expr);
     assert!(result.as_str().is_some());
 }
+
+#[test]
+fn display_name_variant() {
+    let result = call(&[s("fonupa"), s("variant"), s("en")]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty());
+}

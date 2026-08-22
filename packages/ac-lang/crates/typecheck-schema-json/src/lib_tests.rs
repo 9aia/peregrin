@@ -1,5 +1,5 @@
 use super::*;
-use ac_typecheck_core::Type;
+use ac_typecheck_core::{Type, TypeParam};
 use serde_json::json;
 
 #[test]
@@ -245,7 +245,7 @@ fn interprets_generic_function_with_type_params() {
     let ty = interpret_schema(&schema);
     match ty {
         Type::Function(fn_type) => {
-            assert_eq!(fn_type.type_params, vec!["T".to_string()]);
+            assert_eq!(fn_type.type_params, vec![TypeParam::new("T")]);
             assert_eq!(fn_type.params.len(), 1);
             assert_eq!(fn_type.params[0].0, "x");
             assert_eq!(fn_type.params[0].1, Type::Var("T".to_string()));
@@ -273,7 +273,7 @@ fn interprets_generic_function_with_multiple_type_params() {
     let ty = interpret_schema(&schema);
     match ty {
         Type::Function(fn_type) => {
-            assert_eq!(fn_type.type_params, vec!["T".to_string(), "U".to_string()]);
+            assert_eq!(fn_type.type_params, vec![TypeParam::new("T"), TypeParam::new("U")]);
             assert_eq!(fn_type.params.len(), 2);
 
             // arr: Array<T>

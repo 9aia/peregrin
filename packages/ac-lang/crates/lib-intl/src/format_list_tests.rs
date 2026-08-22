@@ -109,3 +109,18 @@ fn vm_format_list() {
     let result = eval_expr(&expr);
     assert!(result.as_str().is_some());
 }
+
+#[test]
+fn format_list_unit() {
+    let result = call(&IntlModule::new(), "format_list", &[arr(&["5", "7"]), s("en"), obj(&[("type", "unit")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty());
+    assert!(str.contains("5") && str.contains("7"));
+}
+
+#[test]
+fn format_list_unit_short() {
+    let result = call(&IntlModule::new(), "format_list", &[arr(&["5", "7"]), s("en"), obj(&[("type", "unit"), ("style", "short")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty());
+}

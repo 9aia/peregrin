@@ -114,3 +114,10 @@ fn vm_segment() {
     let result = eval_expr(&expr);
     assert!(result.as_array().is_some());
 }
+
+#[test]
+fn segment_line() {
+    let result = call(&[s("Hello World Foo Bar"), s("line")]);
+    let arr = result.as_array().expect("array result");
+    assert!(!arr.is_empty());
+}

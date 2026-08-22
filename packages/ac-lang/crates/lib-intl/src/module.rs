@@ -11,6 +11,7 @@ use super::format_relative_time::FormatRelativeTime;
 use super::provider::IntlProvider;
 use super::segment::Segment;
 use super::select_plural::SelectPlural;
+use super::supported_locales::SupportedLocalesOf;
 
 /// The `intl` module — internationalization functions.
 ///
@@ -22,7 +23,8 @@ use super::select_plural::SelectPlural;
 /// `intl.format_duration(duration, locale?, opts?)`,
 /// `intl.compare_strings(a, b, locale?, opts?)`,
 /// `intl.display_name(code, type, locale?, opts?)`,
-/// `intl.segment(text, granularity, locale?, opts?)` in AC expressions.
+/// `intl.segment(text, granularity, locale?, opts?)`,
+/// `intl.supported_locales_of()` in AC expressions.
 ///
 /// All functions accept an optional locale argument (BCP 47 tag).
 /// If omitted, defaults to English.
@@ -30,6 +32,7 @@ use super::select_plural::SelectPlural;
 /// By default, uses ICU4X compiled CLDR data (600+ locales).
 /// For smaller binaries, construct with [`IntlModule::with_provider`]
 /// to use a runtime-loaded data blob.
+#[derive(Clone)]
 pub struct IntlModule {
     provider: Option<IntlProvider>,
     f_format_number: FormatNumber,
@@ -41,6 +44,7 @@ pub struct IntlModule {
     f_compare_strings: CompareStrings,
     f_display_name: DisplayName,
     f_segment: Segment,
+    f_supported_locales_of: SupportedLocalesOf,
 }
 
 impl Default for IntlModule {
@@ -63,6 +67,7 @@ impl IntlModule {
             f_compare_strings: CompareStrings,
             f_display_name: DisplayName,
             f_segment: Segment,
+            f_supported_locales_of: SupportedLocalesOf,
         }
     }
 
@@ -85,6 +90,7 @@ impl IntlModule {
             f_compare_strings: CompareStrings,
             f_display_name: DisplayName,
             f_segment: Segment,
+            f_supported_locales_of: SupportedLocalesOf,
         }
     }
 
@@ -117,6 +123,7 @@ impl Module for IntlModule {
             "compare_strings" => Some(&self.f_compare_strings),
             "display_name" => Some(&self.f_display_name),
             "segment" => Some(&self.f_segment),
+            "supported_locales_of" => Some(&self.f_supported_locales_of),
             _ => None,
         }
     }

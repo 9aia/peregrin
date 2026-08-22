@@ -10,7 +10,7 @@ fn value_expr() {
 fn call_expr() {
     let expr = Expr::call("add", vec![Expr::value(1), Expr::value(2)]);
     match expr {
-        Expr::Call { name, args } => {
+        Expr::Call { name, args, .. } => {
             assert_eq!(name, "add");
             assert_eq!(args.len(), 2);
         }
@@ -187,11 +187,11 @@ fn deeply_nested_call_expr() {
         ],
     );
     match expr {
-        Expr::Call { name, args } => {
+        Expr::Call { name, args, .. } => {
             assert_eq!(name, "add");
             assert_eq!(args.len(), 2);
             match &args[0] {
-                Expr::Call { name, args } => {
+                Expr::Call { name, args, .. } => {
                     assert_eq!(name, "mul");
                     assert_eq!(args.len(), 2);
                 }
@@ -206,7 +206,7 @@ fn deeply_nested_call_expr() {
 fn call_with_empty_args() {
     let expr: Expr<i32> = Expr::call("now", vec![]);
     match expr {
-        Expr::Call { name, args } => {
+        Expr::Call { name, args, .. } => {
             assert_eq!(name, "now");
             assert!(args.is_empty());
         }

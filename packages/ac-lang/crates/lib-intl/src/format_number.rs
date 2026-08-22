@@ -1,7 +1,7 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 use fixed_decimal::SignDisplay;
-use icu::decimal::input::{Decimal, FloatPrecision, SignDisplay as InputSignDisplay};
+use icu::decimal::input::Decimal;
 use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
 use icu::decimal::options::{DecimalFormatterOptions, GroupingStrategy};
 use icu::experimental::dimension::currency::CurrencyType;
@@ -9,7 +9,7 @@ use icu::experimental::dimension::currency::formatter::CurrencyFormatter;
 use icu::experimental::dimension::percent::formatter::PercentFormatter;
 use writeable::Writeable;
 
-use super::common::{decimal_from_f64, opt_bool, opt_int, opt_num, opt_str, optional_locale, optional_object, require_number, s};
+use super::common::{decimal_from_f64, opt_bool, opt_int, opt_str, optional_locale, optional_object, require_number, s};
 use super::error::IntlError;
 
 /// `intl.format_number(n: number, locale?: string, opts?: object) → string`
@@ -87,17 +87,16 @@ fn apply_sign_display(decimal: &mut Decimal, opts: Option<&serde_json::Map<Strin
 fn apply_fraction_digits(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
     if let Some(min) = opt_int(opts, "minimumFractionDigits") {
         if min > 0 {
-            decimal.pad(-i16::try_from(min).unwrap_or(0));
+            decimal.pad_end(-i16::try_from(min).unwrap_or(0));
         }
     }
     if let Some(max) = opt_int(opts, "maximumFractionDigits") {
         let max = i16::try_from(max).unwrap_or(0);
         if max >= 0 {
             decimal.round(-max);
-            // Re-pad if min was set
             if let Some(min) = opt_int(opts, "minimumFractionDigits") {
                 if min > 0 {
-                    decimal.pad(-i16::try_from(min).unwrap_or(0));
+                    decimal.pad_end(-i16::try_from(min).unwrap_or(0));
                 }
             }
         }
@@ -106,15 +105,16 @@ fn apply_fraction_digits(decimal: &mut Decimal, opts: Option<&serde_json::Map<St
 
 fn apply_significant_digits(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
     if let Some(min_sig) = opt_int(opts, "minimumSignificantDigits") {
-        let min_sig = u16::try_from(min_sig).unwrap_or(0);
+        let min_sig = i16::try_from(min_sig).unwrap_or(0);
         if min_sig > 0 {
             decimal.pad_start(min_sig);
         }
     }
     if let Some(max_sig) = opt_int(opts, "maximumSignificantDigits") {
-        let max_sig = u16::try_from(max_sig).unwrap_or(0);
+        let max_sig = i16::try_from(max_sig).unwrap_or(0);
         if max_sig > 0 {
-            decimal.trim_start_to(max_sig);
+            decimal.trim_start();
+            decimal.pad_start(max_sig);
         }
     }
 }
@@ -159,6 +159,7 @@ fn format_percent(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json
 
     let mut decimal = decimal_from_f64(n);
     decimal.multiply_pow10(2);
+    decimal.trim_start();
     apply_fraction_digits(&mut decimal, opts);
     apply_sign_display(&mut decimal, opts);
     let formatted = formatter.format(&decimal);

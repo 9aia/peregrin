@@ -47,7 +47,7 @@ fn expr_to_json(expr: &RuntimeExpr) -> JsonValue {
             ("type".to_string(), JsonValue::String("value".to_string())),
             ("value".to_string(), value.inner().clone()),
         ])),
-        Expr::Call { name, args } => JsonValue::Object(serde_json::Map::from_iter([
+        Expr::Call { name, args, .. } => JsonValue::Object(serde_json::Map::from_iter([
             ("type".to_string(), JsonValue::String("call".to_string())),
             ("name".to_string(), JsonValue::String(name.clone())),
             (

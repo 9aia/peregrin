@@ -1,6 +1,6 @@
 use super::*;
 use ac_dialect_canonical::AC_DIALECT;
-use ac_typecheck_core::{FunctionType, Type, TypeEnv};
+use ac_typecheck_core::{FunctionType, Type, TypeEnv, TypeParam};
 
 #[test]
 fn parse_string_literal() {
@@ -442,7 +442,7 @@ fn infer_generic_identity() {
     funcs.insert(
         "identity",
         FunctionType {
-            type_params: vec!["T".to_string()],
+            type_params: vec![TypeParam::new("T")],
             params: vec![("x".to_string(), Type::Var("T".to_string()))],
             return_type: Box::new(Type::Var("T".to_string())),
         },
@@ -465,7 +465,7 @@ fn infer_generic_map() {
     funcs.insert(
         "map",
         FunctionType {
-            type_params: vec!["T".to_string(), "U".to_string()],
+            type_params: vec![TypeParam::new("T"), TypeParam::new("U")],
             params: vec![
                 ("arr".to_string(), Type::Array(Box::new(Type::Var("T".to_string())))),
                 ("fn".to_string(), Type::Function(FunctionType {
@@ -503,7 +503,7 @@ fn infer_generic_with_unknown_arg() {
     funcs.insert(
         "identity",
         FunctionType {
-            type_params: vec!["T".to_string()],
+            type_params: vec![TypeParam::new("T")],
             params: vec![("x".to_string(), Type::Var("T".to_string()))],
             return_type: Box::new(Type::Var("T".to_string())),
         },
@@ -523,7 +523,7 @@ fn infer_generic_type_mismatch() {
     funcs.insert(
         "first",
         FunctionType {
-            type_params: vec!["T".to_string()],
+            type_params: vec![TypeParam::new("T")],
             params: vec![
                 ("arr".to_string(), Type::Array(Box::new(Type::Var("T".to_string())))),
             ],
@@ -545,7 +545,7 @@ fn infer_generic_consistency_check() {
     funcs.insert(
         "apply_fn",
         FunctionType {
-            type_params: vec!["T".to_string()],
+            type_params: vec![TypeParam::new("T")],
             params: vec![
                 ("x".to_string(), Type::Var("T".to_string())),
                 ("f".to_string(), Type::Function(FunctionType {
@@ -625,7 +625,7 @@ fn detailed_monomorphic_arg_type_mismatch() {
 #[test]
 fn detailed_generic_unification_failure() {
     let fn_type = FunctionType {
-        type_params: vec!["T".to_string()],
+        type_params: vec![TypeParam::new("T")],
         params: vec![(
             "arr".to_string(),
             Type::Array(Box::new(Type::Var("T".to_string()))),
@@ -650,7 +650,7 @@ fn detailed_generic_unification_failure() {
 #[test]
 fn detailed_generic_success_returns_ok() {
     let fn_type = FunctionType {
-        type_params: vec!["T".to_string()],
+        type_params: vec![TypeParam::new("T")],
         params: vec![("x".to_string(), Type::Var("T".to_string()))],
         return_type: Box::new(Type::Var("T".to_string())),
     };
@@ -708,7 +708,7 @@ fn infer_detailed_collects_generic_unification_error() {
     funcs.insert(
         "first",
         FunctionType {
-            type_params: vec!["T".to_string()],
+            type_params: vec![TypeParam::new("T")],
             params: vec![(
                 "arr".to_string(),
                 Type::Array(Box::new(Type::Var("T".to_string()))),
@@ -733,7 +733,7 @@ fn infer_detailed_no_errors_on_valid_generic_call() {
     funcs.insert(
         "identity",
         FunctionType {
-            type_params: vec!["T".to_string()],
+            type_params: vec![TypeParam::new("T")],
             params: vec![("x".to_string(), Type::Var("T".to_string()))],
             return_type: Box::new(Type::Var("T".to_string())),
         },
@@ -766,4 +766,90 @@ fn infer_detailed_monomorphic_arg_count_error() {
     assert_eq!(ty, Type::Unknown);
     assert_eq!(errors.len(), 1);
     assert!(errors[0].message.contains("expected 1 argument(s), got 0"));
+}
+
+// ── return-type-driven inference tests ──────────────────────────
+
+#[test]
+fn return_type_driven_binds_unbound_type_var() {
+    let mut funcs = FunctionTable::new();
+    // make_array<T>() -> Array<T>  — T appears only in return type
+    funcs.insert(
+        "make_array",
+        FunctionType {
+            type_params: vec![TypeParam::new("T")],
+            params: vec![],
+            return_type: Box::new(Type::Array(Box::new(Type::Var("T".to_string())))),
+        },
+    );
+
+    let env = TypeEnv::new();
+    // Without expected type: T is unbound → Unknown
+    assert_eq!(
+        infer("make_array()", &env, &funcs, &AC_DIALECT),
+        Type::Array(Box::new(Type::Unknown))
+    );
+
+    // With expected type Array<String>: T binds to String
+    let ast = parse_expr("make_array()", &AC_DIALECT).unwrap();
+    let ty = infer_ast_with_expected(
+        &ast,
+        &env,
+        &funcs,
+        &AC_DIALECT,
+        Some(&Type::Array(Box::new(Type::String))),
+    );
+    assert_eq!(ty, Type::Array(Box::new(Type::String)));
+}
+
+#[test]
+fn return_type_driven_with_argument_binding() {
+    let mut funcs = FunctionTable::new();
+    // wrap<T>(x: T) -> Array<T>  — T appears in both param and return
+    funcs.insert(
+        "wrap",
+        FunctionType {
+            type_params: vec![TypeParam::new("T")],
+            params: vec![("x".to_string(), Type::Var("T".to_string()))],
+            return_type: Box::new(Type::Array(Box::new(Type::Var("T".to_string())))),
+        },
+    );
+
+    let env = TypeEnv::new();
+    // Argument binds T=String, expected type is consistent
+    let ast = parse_expr("wrap(\"hello\")", &AC_DIALECT).unwrap();
+    let ty = infer_ast_with_expected(
+        &ast,
+        &env,
+        &funcs,
+        &AC_DIALECT,
+        Some(&Type::Array(Box::new(Type::String))),
+    );
+    assert_eq!(ty, Type::Array(Box::new(Type::String)));
+}
+
+#[test]
+fn return_type_driven_mismatch_does_not_fail() {
+    let mut funcs = FunctionTable::new();
+    funcs.insert(
+        "make_array",
+        FunctionType {
+            type_params: vec![TypeParam::new("T")],
+            params: vec![],
+            return_type: Box::new(Type::Array(Box::new(Type::Var("T".to_string())))),
+        },
+    );
+
+    let env = TypeEnv::new();
+    // Expected type is String (not Array<...>) — return-type unification
+    // fails gracefully, result is Array<Unknown>
+    let ast = parse_expr("make_array()", &AC_DIALECT).unwrap();
+    let ty = infer_ast_with_expected(
+        &ast,
+        &env,
+        &funcs,
+        &AC_DIALECT,
+        Some(&Type::String),
+    );
+    assert_eq!(ty, Type::Array(Box::new(Type::Unknown)));
 }

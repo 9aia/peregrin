@@ -95,28 +95,30 @@ pub(super) fn opt_str<'a>(
     obj.and_then(|o| o.get(key)).and_then(|v| v.as_str())
 }
 
-/// Get a number field from an options object.
-pub(super) fn opt_num(
-    obj: Option<&serde_json::Map<String, serde_json::Value>>,
-    key: &str,
-) -> Option<f64> {
-    obj.and_then(|o| o.get(key)).and_then(|v| v.as_f64())
-}
-
 /// Get an integer field from an options object.
+/// Accepts both JSON numbers and numeric strings.
 pub(super) fn opt_int(
     obj: Option<&serde_json::Map<String, serde_json::Value>>,
     key: &str,
 ) -> Option<i64> {
-    obj.and_then(|o| o.get(key)).and_then(|v| v.as_i64())
+    obj.and_then(|o| o.get(key)).and_then(|v| {
+        v.as_i64().or_else(|| v.as_str().and_then(|s| s.parse().ok()))
+    })
 }
 
 /// Get a boolean field from an options object.
+/// Accepts both JSON booleans and string "true"/"false".
 pub(super) fn opt_bool(
     obj: Option<&serde_json::Map<String, serde_json::Value>>,
     key: &str,
 ) -> Option<bool> {
-    obj.and_then(|o| o.get(key)).and_then(|v| v.as_bool())
+    obj.and_then(|o| o.get(key)).and_then(|v| {
+        v.as_bool().or_else(|| v.as_str().and_then(|s| match s {
+            "true" => Some(true),
+            "false" => Some(false),
+            _ => None,
+        }))
+    })
 }
 
 pub(super) fn s(value: impl Into<String>) -> NonFunctionValue {
@@ -131,14 +133,4 @@ pub(super) fn decimal_from_f64(n: f64) -> Decimal {
     }
     Decimal::try_from_f64(n, FloatPrecision::RoundTrip)
         .unwrap_or(Decimal::from(0_i64))
-}
-
-/// Convert an f64 into a `fixed_decimal::Decimal` (the unsigned variant)
-/// using `FloatPrecision::RoundTrip`.
-pub(super) fn fixed_decimal_from_f64(n: f64) -> fixed_decimal::UnsignedDecimal {
-    if n == 0.0 || n.is_nan() || n.is_infinite() {
-        return fixed_decimal::UnsignedDecimal::from(0u32);
-    }
-    fixed_decimal::UnsignedDecimal::try_from_f64(n.abs(), FloatPrecision::RoundTrip)
-        .unwrap_or(fixed_decimal::UnsignedDecimal::from(0u32))
 }

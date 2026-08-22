@@ -26,6 +26,16 @@ pub enum Expr<V> {
 
         /// Arguments to pass to the function, in order.
         args: Vec<Expr<V>>,
+
+        /// Resolved type arguments for generic function calls.
+        ///
+        /// Populated by the typechecker during monomorphization. Empty for
+        /// monomorphic calls. Each entry is a string representation of the
+        /// concrete type (e.g. `"string"`, `"number"`, `"array<string>"`).
+        ///
+        /// Host functions can inspect this via the `GenericFunction` trait
+        /// to implement type-aware behavior at runtime.
+        type_args: Vec<String>,
     },
 
     /// A handler expression — intercepts operations performed in `body`.
@@ -79,6 +89,23 @@ impl<V> Expr<V> {
         Expr::Call {
             name: name.into(),
             args,
+            type_args: Vec::new(),
+        }
+    }
+
+    /// Creates a call expression with resolved type arguments.
+    ///
+    /// Used by the typechecker during monomorphization to attach
+    /// concrete type information to generic call sites.
+    pub fn call_with_type_args(
+        name: impl Into<String>,
+        args: Vec<Expr<V>>,
+        type_args: Vec<String>,
+    ) -> Self {
+        Expr::Call {
+            name: name.into(),
+            args,
+            type_args,
         }
     }
 

@@ -78,6 +78,7 @@ dependencies = [
  "ac-runtime",
  "ac-source",
  "ac-typecheck-core",
+ "ac-typecheck-infer",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
  "ac-typegen-core",
@@ -310,6 +311,19 @@ name = "ac-host-cache"
 version = "0.1.0"
 dependencies = [
  "ac-ast",
+ "ac-runtime",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-host-resolver"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-host",
+ "ac-module-resolver-core",
+ "ac-module-resolver-virtual",
  "ac-runtime",
  "ac-vm",
  "serde_json",

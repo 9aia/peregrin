@@ -119,3 +119,13 @@ fn vm_format_duration() {
     let result = eval_expr(&expr);
     assert!(result.as_str().is_some());
 }
+
+#[test]
+fn format_duration_negative() {
+    let mut map = serde_json::Map::new();
+    map.insert("seconds".to_string(), serde_json::json!(90));
+    map.insert("negative".to_string(), serde_json::json!(true));
+    let result = call(&[NonFunctionValue::new(serde_json::Value::Object(map))]);
+    let s = result.as_str().expect("string result");
+    assert!(!s.is_empty());
+}

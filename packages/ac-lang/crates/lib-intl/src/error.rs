@@ -33,14 +33,14 @@ impl fmt::Display for IntlError {
 
 impl std::error::Error for IntlError {}
 
-impl From<IntlError> for VmError {
-    fn from(err: IntlError) -> Self {
-        VmError::PrimitiveError(err.to_string())
+impl IntlError {
+    pub fn into_vm_error(self) -> VmError {
+        VmError::PrimitiveError(self.to_string())
     }
 }
 
-impl IntlError {
-    pub fn into_vm_error(self) -> VmError {
-        self.into()
+impl From<IntlError> for VmError {
+    fn from(err: IntlError) -> Self {
+        err.into_vm_error()
     }
 }

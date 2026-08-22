@@ -1,5 +1,51 @@
 use ac_compiler_core::{Compilation, Config, PassError};
+use ac_typecheck_core::{Type, TypeParam, Variance};
 use serde_json::Value as JsonValue;
+
+/// Parse a typeParams schema entry into a TypeParam.
+///
+/// Supports two forms:
+/// - String: `"T"` → `TypeParam::new("T")`
+/// - Object: `{ "name": "T", "bounds": [{ "type": "trait", "name": "Numeric" }], "variance": "covariant" }`
+fn parse_type_param(v: &JsonValue) -> Option<TypeParam> {
+    if let Some(s) = v.as_str() {
+        return Some(TypeParam::new(s));
+    }
+    let obj = v.as_object()?;
+    let name = obj.get("name")?.as_str()?.to_string();
+    let bounds = obj
+        .get("bounds")
+        .and_then(|v| v.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|b| {
+                    let btype = b.get("type")?.as_str()?;
+                    match btype {
+        "trait" => b.get("name")?.as_str().map(|n| Type::Trait(n.to_string())),
+        _ => None,
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let variance = obj
+        .get("variance")
+        .and_then(|v| v.as_str())
+        .and_then(|s| match s {
+            "covariant" | "out" => Some(Variance::Covariant),
+            "contravariant" | "in" => Some(Variance::Contravariant),
+            "invariant" => Some(Variance::Invariant),
+            "bivariant" => Some(Variance::Bivariant),
+            _ => None,
+        })
+        .unwrap_or(Variance::Invariant);
+    let tp = if bounds.is_empty() {
+        TypeParam::new(name)
+    } else {
+        TypeParam::with_bounds(name, bounds)
+    };
+    Some(tp.with_variance(variance))
+}
 
 /// Run the typecheck logic, populating `compilation.type_errors`.
 pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(), PassError> {
@@ -32,7 +78,7 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
                 .and_then(|v| v.as_array())
                 .map(|arr| {
                     arr.iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .filter_map(parse_type_param)
                         .collect::<Vec<_>>()
                 })
                 .unwrap_or_default();

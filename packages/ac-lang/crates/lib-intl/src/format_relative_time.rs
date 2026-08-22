@@ -42,8 +42,8 @@ impl Function for FormatRelativeTime {
         }
 
         let formatter = create_formatter(&locale, unit, style, options)?;
-        let decimal = super::common::decimal_from_f64(value);
-        let formatted = formatter.format(&decimal);
+        let decimal = decimal_from_f64(value);
+        let formatted = formatter.format(decimal);
         Ok(s(formatted.write_to_string().into_owned()))
     }
 }

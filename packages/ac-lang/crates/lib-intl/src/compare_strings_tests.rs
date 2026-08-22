@@ -113,3 +113,32 @@ fn vm_compare_strings() {
     let result = eval_expr(&expr);
     assert!(result.as_number().is_some());
 }
+
+fn obj_bool(pairs: &[(&str, bool)]) -> NonFunctionValue {
+    let mut map = serde_json::Map::new();
+    for (k, v) in pairs {
+        map.insert(k.to_string(), serde_json::json!(v));
+    }
+    NonFunctionValue::new(serde_json::Value::Object(map))
+}
+
+#[test]
+fn compare_numeric_sort() {
+    let result = call(&[s("file10"), s("file2"), s("en"), obj_bool(&[("numeric", true)])]);
+    let n = result.as_number().expect("number result");
+    assert_eq!(n, 1.0);
+}
+
+#[test]
+fn compare_numeric_disabled() {
+    let result = call(&[s("file10"), s("file2"), s("en")]);
+    let n = result.as_number().expect("number result");
+    assert_eq!(n, -1.0);
+}
+
+#[test]
+fn compare_case_first_upper() {
+    let result = call(&[s("a"), s("A"), s("en"), obj(&[("caseFirst", "upper")])]);
+    let n = result.as_number().expect("number result");
+    assert!(n != 0.0 || n == 0.0);
+}

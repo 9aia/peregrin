@@ -92,7 +92,7 @@ impl<H: Host> Vm<H> {
                 }
             }
 
-            Expr::Call { name, args } => {
+            Expr::Call { name, args, type_args } => {
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host.lazy_function(name) {
@@ -107,6 +107,14 @@ impl<H: Host> Vm<H> {
 
                 if let Some(operation) = self.host.operation(name) {
                     return operation.perform(&evaluated_args, ctx);
+                }
+
+                // If the call carries type arguments, try dispatching to
+                // a GenericFunction that can inspect them.
+                if !type_args.is_empty() {
+                    if let Some(generic) = self.host.generic_function(name) {
+                        return generic.call_with_types(&evaluated_args, type_args, ctx);
+                    }
                 }
 
                 let function = self
@@ -172,7 +180,7 @@ impl<H: Host> Vm<H> {
                 }
             }
 
-            Expr::Call { name, args } => {
+            Expr::Call { name, args, type_args } => {
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host.lazy_function(name) {
@@ -188,6 +196,14 @@ impl<H: Host> Vm<H> {
 
                 if let Some(operation) = self.host.operation(name) {
                     return operation.perform(&evaluated_args, ctx);
+                }
+
+                // If the call carries type arguments, try dispatching to
+                // a GenericFunction that can inspect them.
+                if !type_args.is_empty() {
+                    if let Some(generic) = self.host.generic_function(name) {
+                        return generic.call_with_types(&evaluated_args, type_args, ctx);
+                    }
                 }
 
                 if let Some(function) = self.host.function(name) {

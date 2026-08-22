@@ -206,3 +206,47 @@ fn vm_resolves_via_module_host() {
     let host = ModuleHost::new().with(IntlModule::new());
     assert!(host.function("intl.format_number").is_some());
 }
+
+// ── New formatting options ───────────────────────────────────────
+
+#[test]
+fn format_number_compact_large() {
+    let result = call(&IntlModule::new(), "format_number", &[n(1234567890.0), s("en"), obj(&[("notation", "compact")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty());
+}
+
+#[test]
+fn format_number_min_fraction_digits() {
+    let result = call(&IntlModule::new(), "format_number", &[n(12.3), s("en"), obj(&[("minimumFractionDigits", "2")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("12.30"));
+}
+
+#[test]
+fn format_number_max_fraction_digits() {
+    let result = call(&IntlModule::new(), "format_number", &[n(12.34567), s("en"), obj(&[("maximumFractionDigits", "2")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("12.35"));
+}
+
+#[test]
+fn format_number_no_grouping() {
+    let result = call(&IntlModule::new(), "format_number", &[n(1234567.0), s("en"), obj(&[("useGrouping", "false")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.contains(","));
+}
+
+#[test]
+fn format_number_sign_display_always() {
+    let result = call(&IntlModule::new(), "format_number", &[n(42.0), s("en"), obj(&[("signDisplay", "always")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("+"));
+}
+
+#[test]
+fn format_number_sign_display_never() {
+    let result = call(&IntlModule::new(), "format_number", &[n(-42.0), s("en"), obj(&[("signDisplay", "never")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.contains("-"));
+}

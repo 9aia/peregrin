@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use ac_typecheck_core::{FunctionType, Type};
+use ac_typecheck_core::{FunctionType, Type, TypeParam, Variance};
 use serde_json::Value as JsonValue;
 
 /// Convert a JSON Schema fragment into a [`Type`].
@@ -48,7 +48,45 @@ pub fn interpret_schema(schema: &JsonValue) -> Type {
                 .and_then(|v| v.as_array())
                 .map(|arr| {
                     arr.iter()
-                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .filter_map(|v| {
+                            if let Some(s) = v.as_str() {
+                                return Some(TypeParam::new(s));
+                            }
+                            let obj = v.as_object()?;
+                            let name = obj.get("name")?.as_str()?.to_string();
+                            let bounds = obj
+                                .get("bounds")
+                                .and_then(|v| v.as_array())
+                                .map(|arr| {
+                                    arr.iter()
+                                        .filter_map(|b| {
+                                            let btype = b.get("type")?.as_str()?;
+                                            match btype {
+                                                "trait" => b.get("name")?.as_str().map(|n| Type::Trait(n.to_string())),
+                                                _ => None,
+                                            }
+                                        })
+                                        .collect::<Vec<_>>()
+                                })
+                                .unwrap_or_default();
+                            let variance = obj
+                                .get("variance")
+                                .and_then(|v| v.as_str())
+                                .and_then(|s| match s {
+                                    "covariant" | "out" => Some(Variance::Covariant),
+                                    "contravariant" | "in" => Some(Variance::Contravariant),
+                                    "invariant" => Some(Variance::Invariant),
+                                    "bivariant" => Some(Variance::Bivariant),
+                                    _ => None,
+                                })
+                                .unwrap_or(Variance::Invariant);
+                            let tp = if bounds.is_empty() {
+                                TypeParam::new(name)
+                            } else {
+                                TypeParam::with_bounds(name, bounds)
+                            };
+                            Some(tp.with_variance(variance))
+                        })
                         .collect::<Vec<_>>()
                 })
                 .unwrap_or_default();
@@ -81,6 +119,25 @@ pub fn interpret_schema(schema: &JsonValue) -> Type {
                 .and_then(|v| v.as_str())
                 .map(|name| Type::Var(name.to_string()))
                 .unwrap_or(Type::Unknown)
+        }
+        "trait" => {
+            schema
+                .get("name")
+                .and_then(|v| v.as_str())
+                .map(|name| Type::Trait(name.to_string()))
+                .unwrap_or(Type::Unknown)
+        }
+        "app" => {
+            let ctor = schema
+                .get("ctor")
+                .map(interpret_schema)
+                .unwrap_or(Type::Unknown);
+            let args = schema
+                .get("args")
+                .and_then(|v| v.as_array())
+                .map(|arr| arr.iter().map(interpret_schema).collect::<Vec<_>>())
+                .unwrap_or_default();
+            Type::App(Box::new(ctor), args)
         }
         _ => Type::Unknown,
     }

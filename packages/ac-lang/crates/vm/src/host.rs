@@ -75,6 +75,17 @@ pub trait Host {
     fn lazy_function(&self, _name: &str) -> Option<&dyn LazyFunction> {
         None
     }
+
+    /// Resolve a function name to a [`GenericFunction`] that receives
+    /// resolved type arguments.
+    ///
+    /// Returns `None` by default. The VM checks this when a call carries
+    /// non-empty `type_args`. If a generic function is registered, it
+    /// receives the type arguments via [`GenericFunction::call_with_types`].
+    /// Otherwise, the VM falls back to [`Host::function`].
+    fn generic_function(&self, _name: &str) -> Option<&dyn GenericFunction> {
+        None
+    }
 }
 
 /// A callable function provided by the host.
@@ -103,6 +114,49 @@ pub trait Function {
     ///
     /// The result value, or an [`Error`] if execution failed.
     fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error>;
+}
+
+/// A generic function that receives resolved type arguments at runtime.
+///
+/// Extends [`Function`] with the ability to inspect the concrete types
+/// that a generic function was instantiated with. The typechecker
+/// populates `type_args` during monomorphization — each entry is a
+/// string representation of the concrete type (e.g. `"string"`,
+/// `"array<number>"`).
+///
+/// The VM checks [`Host::generic_function`] for calls that carry
+/// type arguments. If a generic function is registered, it receives
+/// the type arguments. Otherwise, the VM falls back to [`Function`].
+///
+/// # Example
+///
+/// ```ignore
+/// struct TypedIdentity;
+///
+/// impl GenericFunction for TypedIdentity {
+///     fn call_with_types(
+///         &self,
+///         args: &[NonFunctionValue],
+///         type_args: &[String],
+///         _ctx: &mut Context,
+///     ) -> Result<NonFunctionValue, Error> {
+///         // type_args[0] might be "string" or "number"
+///         Ok(args[0].clone())
+///     }
+/// }
+/// ```
+pub trait GenericFunction: Function {
+    /// Call this function with pre-evaluated arguments and resolved type arguments.
+    ///
+    /// - `args` — the evaluated argument values, in order.
+    /// - `type_args` — resolved concrete type names from the typechecker.
+    /// - `ctx` — the execution context.
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        type_args: &[String],
+        ctx: &mut Context,
+    ) -> Result<NonFunctionValue, Error>;
 }
 
 /// An async callable function provided by the host.

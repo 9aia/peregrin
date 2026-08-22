@@ -35,15 +35,17 @@ mod compat;
 mod env;
 mod error;
 mod interpreter;
+mod trait_registry;
 mod type_;
 mod unify;
 
-pub use compat::is_compatible;
+pub use compat::{is_compatible, variance_compatible};
 pub use env::TypeEnv;
 pub use error::{CallCheckError, CallErrorKind, TypeError, TypeResult};
 pub use interpreter::SchemaInterpreter;
-pub use type_::{FunctionType, Type};
-pub use unify::{Substitution, substitute, unify};
+pub use trait_registry::TraitRegistry;
+pub use type_::{FunctionType, Kind, Type, TypeParam, Variance};
+pub use unify::{Substitution, check_bounds, substitute, unify};
 
 #[cfg(test)]
 mod lib_tests;

@@ -26,8 +26,8 @@ pub use parser::{ExprAst, HandlerClauseAst, parse_expr};
 pub use table::{FunctionTable, HostFunctionSigs, RawFnSig};
 
 use ac_typecheck_core::{
-    CallCheckError, CallErrorKind, FunctionType, Type, TypeEnv, TypeError, is_compatible,
-    substitute, unify,
+    CallCheckError, CallErrorKind, FunctionType, TraitRegistry, Type, TypeEnv,
+    TypeError, is_compatible, check_bounds, substitute, unify,
 };
 
 /// The conventional name of the default namespace used for shorthand
@@ -85,6 +85,22 @@ pub fn infer_ast(
     functions: &FunctionTable,
     dialect: &dyn Dialect,
 ) -> Type {
+    infer_ast_with_expected(ast, env, functions, dialect, None)
+}
+
+/// Like [`infer_ast`] but accepts an optional expected type for the expression.
+///
+/// When the expression is a function call and the expected type is known,
+/// this enables return-type-driven inference: the expected type is passed
+/// to [`check_call_with_expected`] so that type variables appearing only in
+/// the return type can be bound from context.
+pub fn infer_ast_with_expected(
+    ast: &ExprAst,
+    env: &TypeEnv,
+    functions: &FunctionTable,
+    dialect: &dyn Dialect,
+    expected: Option<&Type>,
+) -> Type {
     match ast {
         ExprAst::Literal(ty) => ty.clone(),
 
@@ -98,13 +114,13 @@ pub fn infer_ast(
 
             // Try named function table first.
             if let Some(fn_type) = functions.lookup(name) {
-                return check_call(fn_type, &arg_types);
+                return check_call_with_expected(fn_type, &arg_types, expected);
             }
 
             // Try resolving as a path to a function-typed value.
             let ty = resolve_path_type(name, env, dialect);
             if let Type::Function(fn_type) = ty {
-                return check_call(&fn_type, &arg_types);
+                return check_call_with_expected(&fn_type, &arg_types, expected);
             }
 
             Type::Unknown
@@ -114,7 +130,7 @@ pub fn infer_ast(
             // The type of a handle expression is the type of its body.
             // Handler clauses may intercept operations but the overall
             // result type is determined by what the body produces.
-            infer_ast(body, env, functions, dialect)
+            infer_ast_with_expected(body, env, functions, dialect, expected)
         }
     }
 }
@@ -173,6 +189,25 @@ fn resolve_path_type(path: &str, env: &TypeEnv, dialect: &dyn Dialect) -> Type {
 /// types against parameter types to build a substitution, then applies it
 /// to the return type. If unification fails, returns [`Type::Unknown`].
 fn check_call(fn_type: &FunctionType, arg_types: &[Type]) -> Type {
+    check_call_with_expected(fn_type, arg_types, None)
+}
+
+/// Like [`check_call`] but also accepts an optional expected return type.
+///
+/// When `expected_return` is provided and the function is generic, the
+/// expected return type is unified against the declared return type
+/// *after* argument unification. This allows type variables that appear
+/// only in the return type (not in any parameter) to be bound from the
+/// context — this is **return-type-driven inference**.
+///
+/// For example, given `make_array<T>() -> Array<T>` called in a context
+/// expecting `Array<String>`, the expected type `Array<String>` is unified
+/// against `Array<T>`, binding `T = String`.
+pub fn check_call_with_expected(
+    fn_type: &FunctionType,
+    arg_types: &[Type],
+    expected_return: Option<&Type>,
+) -> Type {
     if fn_type.params.len() != arg_types.len() {
         return Type::Unknown;
     }
@@ -192,12 +227,30 @@ fn check_call(fn_type: &FunctionType, arg_types: &[Type]) -> Type {
             return Type::Unknown;
         }
     }
+
+    // Return-type-driven inference: unify expected return against declared
+    // return type to bind any type variables that only appear in return position.
+    if let Some(expected) = expected_return {
+        if !unify(expected, &fn_type.return_type, &mut subst, &fn_type.type_params) {
+            // If return-type unification fails, don't fail the whole call —
+            // the argument-driven inference may still be correct. Just skip
+            // the return-type binding.
+            // (This is a graceful degradation — the caller may have an
+            // imprecise expected type.)
+        }
+    }
+
     // Bind any unbound type params to Unknown (graceful degradation when
     // argument types were Unknown and didn't produce a binding).
     for tp in &fn_type.type_params {
-        if !subst.contains_key(tp) {
-            subst.insert(tp.clone(), Type::Unknown);
+        if !subst.contains_key(&tp.name) {
+            subst.insert(tp.name.clone(), Type::Unknown);
         }
+    }
+    // Check trait bounds using the default registry.
+    let registry = TraitRegistry::default_registry();
+    if !check_bounds(&subst, &fn_type.type_params, &registry) {
+        return Type::Unknown;
     }
     substitute(&fn_type.return_type, &subst)
 }
@@ -253,9 +306,22 @@ pub fn check_call_detailed(
         }
     }
     for tp in &fn_type.type_params {
-        if !subst.contains_key(tp) {
-            subst.insert(tp.clone(), Type::Unknown);
+        if !subst.contains_key(&tp.name) {
+            subst.insert(tp.name.clone(), Type::Unknown);
         }
+    }
+    // Check trait bounds using the default registry.
+    let registry = TraitRegistry::default_registry();
+    if !check_bounds(&subst, &fn_type.type_params, &registry) {
+        return Err(CallCheckError {
+            function: fn_name.to_string(),
+            kind: CallErrorKind::UnificationFailed {
+                param: fn_type.type_params.iter().map(|tp| tp.name.clone()).collect::<Vec<_>>().join(", "),
+                index: 0,
+                expected: Type::Unknown,
+                actual: Type::Unknown,
+            },
+        });
     }
     Ok(substitute(&fn_type.return_type, &subst))
 }

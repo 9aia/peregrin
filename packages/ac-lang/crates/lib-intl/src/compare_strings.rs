@@ -1,12 +1,12 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
-use icu::collator::{Collator, CollatorOptions, CollatorPreferences,
-    options::{Strength, CaseLevel},
+use icu::collator::{Collator, CollatorPreferences,
+    options::{CollatorOptions, Strength, CaseLevel},
     preferences::{CollationCaseFirst, CollationNumericOrdering},
 };
 use std::cmp::Ordering;
 
-use super::common::{opt_bool, opt_str, optional_locale, optional_object, require_string, s};
+use super::common::{opt_bool, opt_str, optional_locale, optional_object, require_string};
 use super::error::IntlError;
 
 /// `intl.compare_strings(a: string, b: string, locale?: string, opts?: object) → number`
@@ -45,7 +45,7 @@ impl Function for CompareStrings {
             _ => Strength::Tertiary,
         });
 
-        let mut prefs = CollatorPreferences::default();
+        let mut prefs = CollatorPreferences::from(&locale);
         prefs.case_first = match opt_str(opts, "caseFirst") {
             Some("upper") => Some(CollationCaseFirst::Upper),
             Some("lower") => Some(CollationCaseFirst::Lower),
@@ -61,12 +61,12 @@ impl Function for CompareStrings {
         let collator = Collator::try_new(prefs, options)
             .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
-        let result = match collator.compare(a, b) {
-            Ordering::Less => -1,
-            Ordering::Equal => 0,
-            Ordering::Greater => 1,
+        let result: f64 = match collator.compare(a, b) {
+            Ordering::Less => -1.0,
+            Ordering::Equal => 0.0,
+            Ordering::Greater => 1.0,
         };
 
-        Ok(s(result.to_string()))
+        Ok(NonFunctionValue::new(result))
     }
 }

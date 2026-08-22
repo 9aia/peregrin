@@ -111,3 +111,45 @@ fn vm_format_date() {
     let result = eval_expr(&expr);
     assert!(result.as_str().is_some());
 }
+
+#[test]
+fn format_date_time_only() {
+    let result = call(&[s("14:30:00"), s("en"), obj(&[("type", "time")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2:30") || str.contains("14:30"));
+}
+
+#[test]
+fn format_date_time_only_short() {
+    let result = call(&[s("14:30:00"), s("en"), obj(&[("type", "time"), ("style", "short")])]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty());
+}
+
+#[test]
+fn format_date_datetime_with_timezone() {
+    let result = call(&[s("2024-05-08T14:30:00+05:30"), s("en"), obj(&[("type", "datetime")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2024"));
+}
+
+#[test]
+fn format_date_datetime_with_z_timezone() {
+    let result = call(&[s("2024-05-08T14:30:00Z"), s("en"), obj(&[("type", "datetime")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2024"));
+}
+
+#[test]
+fn format_date_datetime_with_fractional_seconds() {
+    let result = call(&[s("2024-05-08T14:30:00.123456"), s("en"), obj(&[("type", "datetime")])]);
+    let str = result.as_str().expect("string result");
+    assert!(str.contains("2024"));
+}
+
+#[test]
+fn format_date_negative_year() {
+    let result = call(&[s("-0044-03-15"), s("en")]);
+    let str = result.as_str().expect("string result");
+    assert!(!str.is_empty());
+}

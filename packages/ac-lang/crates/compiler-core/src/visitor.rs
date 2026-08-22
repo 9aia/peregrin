@@ -103,9 +103,10 @@ fn fold_expr_inner<F: Folder + ?Sized>(
 ) -> Expr<NonFunctionValue> {
     match expr {
         Expr::Value(v) => Expr::Value(folder.fold_value(v)),
-        Expr::Call { name, args } => Expr::Call {
+        Expr::Call { name, args, type_args } => Expr::Call {
             name,
             args: args.into_iter().map(|a| folder.fold_expr(a)).collect(),
+            type_args,
         },
         Expr::Handle { body, handlers } => Expr::Handle {
             body: Box::new(folder.fold_expr(*body)),

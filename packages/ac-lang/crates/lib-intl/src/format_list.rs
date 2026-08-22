@@ -1,7 +1,6 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
-use icu::list::ListFormatter;
-use writeable::Writeable;
+use icu::list::{ListFormatter, options::{ListFormatterOptions, ListLength}};
 
 use super::common::{opt_str, optional_locale, optional_object, require_array, s};
 use super::error::IntlError;
@@ -30,17 +29,17 @@ impl Function for FormatList {
         let list_type = opt_str(opts, "type").unwrap_or("conjunction");
         let style = opt_str(opts, "style").unwrap_or("long");
 
-        let formatter = match (list_type, style) {
-            ("conjunction", "short") => ListFormatter::try_new_or_short(locale.into()),
-            ("conjunction", "narrow") => ListFormatter::try_new_or_narrow(locale.into()),
-            ("conjunction", _) => ListFormatter::try_new_or(locale.into()),
-            ("disjunction", "short") => ListFormatter::try_new_and_short(locale.into()),
-            ("disjunction", "narrow") => ListFormatter::try_new_and_narrow(locale.into()),
-            ("disjunction", _) => ListFormatter::try_new_and(locale.into()),
-            ("unit", "short") => ListFormatter::try_new_unit_short(locale.into()),
-            ("unit", "narrow") => ListFormatter::try_new_unit_narrow(locale.into()),
-            ("unit", _) => ListFormatter::try_new_unit(locale.into()),
-            _ => ListFormatter::try_new_or(locale.into()),
+        let length = match style {
+            "short" => ListLength::Short,
+            "narrow" => ListLength::Narrow,
+            _ => ListLength::Wide,
+        };
+        let options = ListFormatterOptions::default().with_length(length);
+
+        let formatter = match list_type {
+            "disjunction" => ListFormatter::try_new_or(locale.into(), options),
+            "unit" => ListFormatter::try_new_unit(locale.into(), options),
+            _ => ListFormatter::try_new_and(locale.into(), options),
         }
         .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
@@ -56,7 +55,7 @@ impl Function for FormatList {
             return Ok(s(strings[0]));
         }
 
-        let formatted = formatter.format_to_string(&strings);
+        let formatted = formatter.format_to_string(strings.into_iter());
         Ok(s(formatted))
     }
 }

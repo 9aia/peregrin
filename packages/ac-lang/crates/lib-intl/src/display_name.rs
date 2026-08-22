@@ -1,12 +1,13 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 use icu::locale::names::{
-    LanguageIdentifierDisplayName, RegionDisplayName, ScriptDisplayName,
+    LanguageIdentifierDisplayName, LanguageIdentifierDisplayNameOptions,
+    RegionDisplayName, ScriptDisplayName,
     VariantDisplayName,
 };
 use writeable::Writeable;
 
-use super::common::{opt_str, optional_locale, optional_object, require_string, s};
+use super::common::{optional_locale, optional_object, require_string, s};
 use super::error::IntlError;
 
 /// `intl.display_name(code: string, type: string, locale?: string, opts?: object) → string`
@@ -32,29 +33,33 @@ impl Function for DisplayName {
 
         let formatted = match name_type {
             "language" => {
-                let display = LanguageIdentifierDisplayName::try_new_light(locale.into())
-                    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
                 let lang_id = code.parse()
                     .map_err(|e| IntlError::InvalidArgument { message: format!("invalid language code: {e}") }.into_vm_error())?;
-                display.of(&lang_id).write_to_string().into_owned()
+                let display = LanguageIdentifierDisplayName::try_new_light(
+                    locale.into(),
+                    lang_id,
+                    LanguageIdentifierDisplayNameOptions::default(),
+                )
+                .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+                display.as_borrowed().write_to_string().into_owned()
             }
             "region" => {
-                let display = RegionDisplayName::new_light_with_fallback(locale.into());
                 let region = code.parse()
                     .map_err(|e| IntlError::InvalidArgument { message: format!("invalid region code: {e}") }.into_vm_error())?;
-                display.of(&region).write_to_string().into_owned()
+                let display = RegionDisplayName::new_light_with_fallback(locale.into(), region);
+                display.write_to_string().into_owned()
             }
             "script" => {
-                let display = ScriptDisplayName::new_light_with_fallback(locale.into());
                 let script = code.parse()
                     .map_err(|e| IntlError::InvalidArgument { message: format!("invalid script code: {e}") }.into_vm_error())?;
-                display.of(&script).write_to_string().into_owned()
+                let display = ScriptDisplayName::new_light_with_fallback(locale.into(), script);
+                display.write_to_string().into_owned()
             }
             "variant" => {
-                let display = VariantDisplayName::new_heavy_with_fallback(locale.into());
                 let variant = code.parse()
                     .map_err(|e| IntlError::InvalidArgument { message: format!("invalid variant code: {e}") }.into_vm_error())?;
-                display.of(&variant).write_to_string().into_owned()
+                let display = VariantDisplayName::new_heavy_with_fallback(locale.into(), variant);
+                display.write_to_string().into_owned()
             }
             _ => return Err(IntlError::InvalidType {
                 type_name: name_type.to_string(),

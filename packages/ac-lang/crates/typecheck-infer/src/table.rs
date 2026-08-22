@@ -1,14 +1,14 @@
 use std::collections::BTreeMap;
 
-use ac_typecheck_core::{FunctionType, SchemaInterpreter, Type};
+use ac_typecheck_core::{FunctionType, SchemaInterpreter, Type, TypeParam};
 use serde_json::Value as JsonValue;
 
 /// A raw function signature: `(name, type_params, params, return_schema)`.
 ///
-/// `type_params` is a list of type parameter names (e.g. `["T", "U"]`).
+/// `type_params` is a list of type parameter declarations (e.g. `[TypeParam::new("T")]`).
 /// `params` is a list of `(param_name, raw_schema)` pairs.
 /// `return_schema` is the raw return type schema, if declared.
-pub type RawFnSig = (String, Vec<String>, Vec<(String, JsonValue)>, Option<JsonValue>);
+pub type RawFnSig = (String, Vec<TypeParam>, Vec<(String, JsonValue)>, Option<JsonValue>);
 
 /// Host function signatures for typechecking.
 ///
