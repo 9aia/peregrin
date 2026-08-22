@@ -717,18 +717,20 @@ The type system provides static type checking of AC documents before runtime eva
 
 ### 9.1 Type representation
 
-| Variant     | Meaning                                                             |
-| ----------- | ------------------------------------------------------------------- |
-| `String`    | String type                                                         |
-| `Number`    | Number type (includes integers — no integer subtyping yet)          |
-| `Boolean`   | Boolean type                                                        |
-| `Null`      | Null type                                                           |
-| `Array(T)`  | Array with element type `T`                                         |
-| `Object`    | Object with named property types                                    |
-| `Function`  | Function type — type parameters, parameter names/types, return type |
-| `Var(name)` | Type variable (e.g. `T`, `U`) — used in generic function signatures |
-| `Unknown`   | Cannot be statically determined — compatible with everything        |
-| `Never`     | Impossible code path — compatible with everything                   |
+| Variant        | Meaning                                                                                   |
+| -------------- | ----------------------------------------------------------------------------------------- |
+| `String`       | String type                                                                               |
+| `Number`       | Number type (includes integers — no integer subtyping yet)                                |
+| `Boolean`      | Boolean type                                                                              |
+| `Null`         | Null type                                                                                 |
+| `Array(T)`     | Array with element type `T`                                                               |
+| `Object`       | Object with named property types                                                          |
+| `Function`     | Function type — type parameters, parameter names/types, return type                       |
+| `Var(name)`    | Type variable (e.g. `T`, `U`) — used in generic function signatures                       |
+| `Trait(name)`  | Named trait reference (e.g. `Numeric`, `Comparable`) — used in type parameter bounds      |
+| `App(F, args)` | Type application — applies a type constructor `F` to type arguments (higher-kinded types) |
+| `Unknown`      | Cannot be statically determined — compatible with everything                              |
+| `Never`        | Impossible code path — compatible with everything                                         |
 
 `Unknown` represents types that cannot be statically determined (e.g., an unresolvable path or unknown function). `Never` represents uninhabited code paths. Both are compatible with all other types.
 
@@ -742,10 +744,14 @@ The type environment maps field names to their declared types. It supports scope
 
 A schema interpreter converts a raw schema fragment into a type. The default interpreter maps JSON Schema `type` keywords to types: `string`, `number`/`integer`, `boolean`, `null`, `array` (with `items`), `object` (with `properties`), and `enum` (infers type from first enum value).
 
-For generic functions, the interpreter recognizes two AC-specific extensions:
+For generic functions, the interpreter recognizes several AC-specific extensions:
 
 - `{ "type": "var", "name": "T" }` → `Type::Var("T")` — a type variable.
-- `"typeParams": ["T", "U"]` on a function schema — declares type parameters.
+- `{ "type": "trait", "name": "Numeric" }` → `Type::Trait("Numeric")` — a trait reference (used in bounds).
+- `{ "type": "app", "ctor": {...}, "args": [{...}, ...] }` → `Type::App(ctor, args)` — a type application (higher-kinded types).
+- `"typeParams"` on a function schema — declares type parameters. Each entry can be:
+  - A string: `"T"` — simple type parameter, invariant, no bounds.
+  - An object: `{ "name": "T", "bounds": [{ "type": "trait", "name": "Numeric" }], "variance": "covariant" }` — type parameter with trait bounds and variance.
 
 ### 9.4 Expression type inference
 
@@ -776,13 +782,15 @@ Inference walks the AST:
 - Exact primitive matches are compatible.
 - `Array<T>` is compatible if item types are compatible.
 - `Object` is compatible if every expected property exists with a compatible type. Extra properties in `actual` are allowed.
-- `Function` is compatible if param count matches and all param/return types are compatible.
+- `Function` is compatible if param count matches, param types are contravariantly compatible (actual params accept everything expected params accept), and return types are covariantly compatible (actual return is compatible with expected return).
+- `Trait` is compatible with an identical `Trait` (same name).
+- `App(F, args)` is compatible if constructors are compatible and all type arguments are compatible.
 
 ### 9.6 Generics and unification
 
-Generic functions (parametric polymorphism) allow a single function signature to work with multiple types. Generics are a **typechecker-only feature** — no runtime or AST changes are involved.
+Generic functions (parametric polymorphism) allow a single function signature to work with multiple types. The typechecker resolves generic instantiations at compile time. Resolved type arguments can optionally flow to the runtime via `type_args` on call expressions (see [§9.6.6](#966-runtime-impact)).
 
-#### Declaring generic functions
+#### 9.6.1 Declaring generic functions
 
 A function schema with a `typeParams` array is generic. Type variables (`Var`) can appear in parameter types and the return type:
 
@@ -797,19 +805,105 @@ A function schema with a `typeParams` array is generic. Type variables (`Var`) c
 
 This declares `identity<T>(x: T) -> T`.
 
-#### Unification
+Type parameters can also be declared with **trait bounds** and **variance** using the object form:
+
+```json
+{
+  "type": "function",
+  "typeParams": [
+    { "name": "T", "bounds": [{ "type": "trait", "name": "Numeric" }], "variance": "invariant" }
+  ],
+  "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+  "return": { "type": "var", "name": "T" }
+}
+```
+
+This declares `sum<T: Numeric>(x: T) -> T` — the type argument must implement the `Numeric` trait.
+
+#### 9.6.2 Trait bounds
+
+Trait bounds constrain which concrete types a type parameter can bind to. The typechecker checks bounds **after** unification, using a `TraitRegistry` that maps trait names to implementing types.
+
+Built-in traits (in the default registry):
+
+| Trait          | Implementing types             |
+| -------------- | ------------------------------ |
+| `Numeric`      | `Number`                       |
+| `Textual`      | `String`                       |
+| `Boolean`      | `Boolean`                      |
+| `Nullable`     | `Null`                         |
+| `Comparable`   | `String`, `Number`, `Boolean`  |
+| `Serializable` | All types (everything is JSON) |
+
+Hosts can register custom traits via `TraitRegistry::register`.
+
+If a bound is violated (e.g., passing `String` to a parameter with `T: Numeric`), the call returns `Unknown`.
+
+#### 9.6.3 Variance
+
+Variance controls how subtyping flows through type parameter positions during unification consistency checks:
+
+| Variance        | Alias | Consistency check                                         |
+| --------------- | ----- | --------------------------------------------------------- |
+| `Invariant`     | —     | Exact match required (default)                            |
+| `Covariant`     | `out` | `is_compatible(actual, existing)` — actual can be subtype |
+| `Contravariant` | `in`  | `is_compatible(existing, actual)` — flipped               |
+| `Bivariant`     | —     | Always consistent                                         |
+
+When a type variable is rebound (encountered again after an initial binding), the variance determines whether the new binding is consistent with the existing one.
+
+#### 9.6.4 Unification
 
 When a generic function is called, the typechecker **unifies** each argument's inferred type against the corresponding parameter type, building a substitution map (type variable → concrete type). The substitution is then applied to the return type to determine the concrete result.
 
 Unification rules:
 
 - `Unknown` / `Never` in either position: compatible with anything (no binding created).
-- `Var(name)` in **pattern** (parameter type) and `name` is in `typeParams`: bind `name → actual` type. If already bound, check consistency (same type or `Unknown` upgrade).
+- `Var(name)` in **pattern** (parameter type) and `name` is in `typeParams`: bind `name → actual` type. If already bound, check consistency using the type parameter's variance.
 - `Var(name)` in **pattern** but not in `typeParams`: opaque — only matches the same `Var` or `Unknown`/`Never`.
 - `Var` in **actual** (argument type): only compatible with `Unknown`/`Never` or an identical `Var`.
+- `App(F, args)` vs `App(G, args2)`: unify constructors `F` vs `G` and each argument pair. If the pattern constructor is a type variable in scope, the actual type is decomposed to bind both the constructor and argument variables (HKT unification).
 - Concrete types: structural recursion into `Array`, `Object`, `Function`.
 
 If unification fails (e.g., `String` argument where `Array<T>` is expected), the call returns `Unknown`. If a type variable remains unbound (e.g., the argument was `Unknown`), it degrades to `Unknown` in the return type.
+
+#### 9.6.5 Return-type-driven inference
+
+When a call appears in a context where the expected return type is known (e.g., as an argument to another function), the typechecker can use that expected type to bind type variables that appear **only** in the return type.
+
+For example, given `make_array<T>() -> Array<T>` called in a context expecting `Array<String>`:
+
+- Without expected type: `T` is unbound → returns `Array<Unknown>`.
+- With expected type `Array<String>`: unifies `Array<String>` against `Array<T>` → `T = String` → returns `Array<String>`.
+
+This is graceful — if the expected type doesn't unify with the return type, the call still succeeds using argument-driven inference alone.
+
+#### 9.6.6 Runtime impact
+
+Resolved type arguments can flow from the typechecker to the runtime via `type_args` on `Expr::Call`. This enables:
+
+- **Type-aware host functions**: Hosts can implement the `GenericFunction` trait to receive resolved type arguments alongside values. The VM dispatches to `GenericFunction::call_with_types` when a call carries non-empty `type_args`.
+- **Monomorphization**: The compiler can specialize generic calls by attaching concrete type information to each call site.
+
+When no `GenericFunction` is registered for a name, the VM falls back to the regular `Function` trait — type arguments are silently ignored. This preserves backward compatibility.
+
+#### 9.6.7 Higher-kinded types
+
+Higher-kinded types (HKTs) allow type parameters that are themselves type constructors (e.g. `F<T>` where `F` is `Array`, `Object`, etc.).
+
+The `Type::App(ctor, args)` variant represents type application. A type variable in the constructor position can be bound to a concrete type constructor during unification. The typechecker decomposes concrete types (e.g. `Array<String>` → constructor `Array`, args `[String]`) to bind both the constructor variable and the argument variables.
+
+Schema syntax:
+
+```json
+{
+  "type": "app",
+  "ctor": { "type": "var", "name": "F" },
+  "args": [{ "type": "var", "name": "T" }]
+}
+```
+
+This represents `F<T>` — a type application of constructor `F` to argument `T`.
 
 #### Examples
 
@@ -832,13 +926,10 @@ If unification fails (e.g., `String` argument where `Array<T>` is expected), the
   - Unify `(Number) -> Number` with `(T) -> T` → `T = Number` — **inconsistent** with `T = String`.
   - Unification fails → returns `Unknown`.
 
-#### What's not included
+**Trait bounds** — `sum<T: Numeric>(a: T, b: T) -> T`:
 
-- No trait bounds or constraints on type parameters.
-- No variance (all type parameters are invariant).
-- No return-type-driven inference (type variables are bound only from argument positions).
-- No higher-kinded types.
-- No runtime impact — generics exist solely in the typechecker.
+- `sum(1, 2)` → `T = Number` → `Numeric` bound satisfied → returns `Number`.
+- `sum("a", "b")` → `T = String` → `Numeric` bound violated → returns `Unknown`.
 
 ### 9.7 Per-key type checking
 
