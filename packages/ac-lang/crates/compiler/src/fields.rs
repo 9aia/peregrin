@@ -127,6 +127,7 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
         host,
         namespaces: namespaces.clone(),
         depth: Cell::new(0),
+        call_chain: RefCell::new(Vec::new()),
         base_path: base_path.map(|p| p.to_path_buf()),
         import_cache: RefCell::new(HashMap::new()),
         resolver: Some(&file_resolver),

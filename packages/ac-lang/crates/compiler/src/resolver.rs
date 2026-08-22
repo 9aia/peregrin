@@ -30,12 +30,15 @@ use crate::expr_eval::ExprEval;
 /// for a function value (host sugar convention) and dispatches via
 /// `apply` if found. Otherwise dispatches to the VM.
 ///
-/// Includes a recursion depth limit to prevent infinite recursion
-/// in user-defined functions.
+/// Termination is enforced via call-chain cycle detection: if the same
+/// function name appears twice in the current call chain, recursion is
+/// stopped immediately with a descriptive error showing the cycle.
+/// A fallback depth limit catches non-cyclic deep recursion.
 pub struct VmResolver<'a> {
     pub host: DefaultHost,
     pub namespaces: ac_fields::Namespaces,
     pub depth: Cell<usize>,
+    pub call_chain: RefCell<Vec<String>>,
     pub base_path: Option<PathBuf>,
     pub import_cache: RefCell<HashMap<String, serde_json::Value>>,
     pub resolver: Option<&'a dyn ModuleResolver>,
@@ -47,7 +50,47 @@ pub struct VmResolver<'a> {
     pub function_table: Option<FunctionTable>,
 }
 
-const MAX_DEPTH: usize = 64;
+/// Fallback depth limit for non-cyclic deep recursion.
+const MAX_DEPTH: usize = 256;
+
+/// Maximum call chain length before assuming a cycle was missed.
+const MAX_CHAIN: usize = 128;
+
+impl<'a> VmResolver<'a> {
+    /// Check if `name` would create a cycle in the current call chain.
+    fn check_cycle(&self, name: &str) -> Result<(), String> {
+        let chain = self.call_chain.borrow();
+        if let Some(pos) = chain.iter().position(|n| n == name) {
+            let cycle: Vec<String> = chain[pos..]
+                .iter()
+                .cloned()
+                .chain(std::iter::once(name.to_string()))
+                .collect();
+            return Err(format!(
+                "infinite recursion detected: {}",
+                cycle.join(" → ")
+            ));
+        }
+        if chain.len() >= MAX_CHAIN {
+            return Err(format!(
+                "call chain too long ({MAX_CHAIN}) — possible infinite recursion"
+            ));
+        }
+        drop(chain);
+        Ok(())
+    }
+
+    fn enter_call(&self, name: &str) {
+        self.call_chain.borrow_mut().push(name.to_string());
+        let depth = self.depth.get();
+        self.depth.set(depth + 1);
+    }
+
+    fn exit_call(&self, prev_depth: usize) {
+        self.call_chain.borrow_mut().pop();
+        self.depth.set(prev_depth);
+    }
+}
 
 impl<'a> FunctionResolver for VmResolver<'a> {
     fn call(&self, name: &str, args: &[serde_json::Value]) -> Result<serde_json::Value, String> {
@@ -57,9 +100,10 @@ impl<'a> FunctionResolver for VmResolver<'a> {
                 "maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"
             ));
         }
-        self.depth.set(depth + 1);
+        self.check_cycle(name)?;
+        self.enter_call(name);
         let result = self.call_inner(name, args, &[]);
-        self.depth.set(depth);
+        self.exit_call(depth);
         result
     }
 
@@ -75,9 +119,10 @@ impl<'a> FunctionResolver for VmResolver<'a> {
                 "maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"
             ));
         }
-        self.depth.set(depth + 1);
+        self.check_cycle(name)?;
+        self.enter_call(name);
         let result = self.call_inner(name, args, type_args);
-        self.depth.set(depth);
+        self.exit_call(depth);
         result
     }
 

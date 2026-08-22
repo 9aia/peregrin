@@ -53,6 +53,7 @@ n: 5
         host: DefaultHost::default(),
         namespaces: ns.clone(),
         depth: Cell::new(0),
+        call_chain: std::cell::RefCell::new(Vec::new()),
         base_path: None,
         import_cache: std::cell::RefCell::new(HashMap::new()),
         resolver: Some(&fr),

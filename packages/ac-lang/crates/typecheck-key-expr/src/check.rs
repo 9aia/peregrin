@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
 use ac_dialect_canonical::AC_DIALECT;
-use ac_typecheck_core::{SchemaInterpreter, TypeEnv, TypeError, is_compatible};
-use ac_typecheck_infer::{FunctionTable, infer_cached_detailed};
+use ac_typecheck_core::{SchemaInterpreter, Type, TypeEnv, TypeError, is_compatible};
+use ac_typecheck_infer::{FunctionTable, ParseCache, infer_cached_detailed};
 use serde_json::Value as JsonValue;
 
 /// The AC key this crate handles.
@@ -49,10 +49,12 @@ pub fn check_field(
     Ok(())
 }
 
-/// Check a single field's `expr` with an AST cache.
+/// Check a single field's `expr` with an AST cache and a pre-interpreted
+/// declared type.
 ///
 /// Like [`check_field`] but reuses a parse cache across multiple calls
-/// to avoid re-parsing the same expression strings.
+/// and accepts the already-interpreted declared type, avoiding redundant
+/// schema interpretation.
 #[allow(clippy::result_large_err)]
 pub fn check_field_cached(
     field_name: &str,
@@ -60,7 +62,7 @@ pub fn check_field_cached(
     env: &TypeEnv,
     functions: &FunctionTable,
     interpreter: &dyn SchemaInterpreter,
-    cache: &mut HashMap<String, Option<ac_typecheck_infer::ExprAst>>,
+    cache: &mut ParseCache,
 ) -> Result<(), TypeError> {
     let Some(expr_str) = get_expr(schema) else {
         return Ok(());
@@ -92,10 +94,24 @@ pub fn check(
     interpreter: &dyn SchemaInterpreter,
 ) -> Vec<TypeError> {
     let mut errors = Vec::new();
-    let mut cache: HashMap<String, Option<ac_typecheck_infer::ExprAst>> = HashMap::new();
+    let mut parse_cache: ParseCache = HashMap::new();
+    let mut type_cache: HashMap<String, Type> = HashMap::new();
     for (name, schema) in schemas {
-        if let Err(e) = check_field_cached(name, schema, env, functions, interpreter, &mut cache) {
-            errors.push(e);
+        let Some(expr_str) = get_expr(schema) else {
+            continue;
+        };
+        let declared = type_cache
+            .entry(name.clone())
+            .or_insert_with(|| interpreter.interpret(schema))
+            .clone();
+        let (inferred, mut call_errors) =
+            infer_cached_detailed(&expr_str, env, functions, &mut parse_cache, &AC_DIALECT);
+        if !inferred.is_unknown() && !is_compatible(&inferred, &declared) {
+            errors.push(TypeError::mismatch(name, declared, inferred, ""));
+            continue;
+        }
+        if !call_errors.is_empty() {
+            errors.push(call_errors.remove(0));
         }
     }
     errors

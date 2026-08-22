@@ -19,11 +19,18 @@ mod parser;
 mod table;
 
 use std::collections::HashMap;
+use std::rc::Rc;
 
 use ac_dialect::Dialect;
 
 pub use parser::{ExprAst, HandlerClauseAst, parse_expr};
 pub use table::{FunctionTable, HostFunctionSigs, RawFnSig};
+
+/// A parse cache mapping expression strings to their parsed ASTs.
+///
+/// Uses [`Rc`] so that cache hits are cheap (refcount bump) instead of
+/// deep-cloning the entire AST tree.
+pub type ParseCache = HashMap<String, Option<Rc<ExprAst>>>;
 
 use ac_typecheck_core::{
     CallCheckError, CallErrorKind, FunctionType, TraitRegistry, Type, TypeEnv,
@@ -53,22 +60,22 @@ pub fn infer(expr: &str, env: &TypeEnv, functions: &FunctionTable, dialect: &dyn
 /// Infer the type of an expression string, with AST caching.
 ///
 /// Uses `cache` to avoid re-parsing the same expression string.
-/// The cache maps expression strings to their parsed [`ExprAst`].
-/// Pass the same `cache` across multiple `infer_cached` calls to
-/// eliminate redundant parsing.
+/// The cache maps expression strings to their parsed [`ExprAst`] (wrapped
+/// in [`Rc`] so cache hits are cheap). Pass the same `cache` across
+/// multiple `infer_cached` calls to eliminate redundant parsing.
 pub fn infer_cached(
     expr: &str,
     env: &TypeEnv,
     functions: &FunctionTable,
-    cache: &mut HashMap<String, Option<ExprAst>>,
+    cache: &mut ParseCache,
     dialect: &dyn Dialect,
 ) -> Type {
     let ast = match cache.get(expr) {
-        Some(Some(cached)) => Some(cached.clone()),
+        Some(Some(cached)) => Some(Rc::clone(cached)),
         Some(None) => None,
         None => {
-            let parsed = parse_expr(expr, dialect);
-            cache.insert(expr.to_string(), parsed.clone());
+            let parsed = parse_expr(expr, dialect).map(Rc::new);
+            cache.insert(expr.to_string(), parsed.as_ref().map(|p| Rc::clone(p)));
             parsed
         }
     };
@@ -155,17 +162,19 @@ fn walk_path(ty: &Type, parts: &[&str]) -> Type {
 /// Handles both qualified paths (`doc.name`) and shorthand (`name`
 /// resolves via the default namespace).
 fn resolve_path_type(path: &str, env: &TypeEnv, dialect: &dyn Dialect) -> Type {
-    let parts: Vec<&str> = path.split(dialect.syntax().path_separator()).collect();
-    if parts.is_empty() {
-        return Type::Unknown;
-    }
+    let sep = dialect.syntax().path_separator();
+    let (first, rest) = path.split_once(sep).unwrap_or((path, ""));
 
-    let first = parts[0];
-
+    // Try direct namespace lookup.
     if let Some(ty) = env.lookup(first).cloned() {
-        return walk_path(&ty, &parts[1..]);
+        if rest.is_empty() {
+            return ty;
+        }
+        let rest_parts: Vec<&str> = rest.split(sep).collect();
+        return walk_path(&ty, &rest_parts);
     }
 
+    // Try default namespace shorthand.
     if let Some(ty) = env.lookup(DEFAULT_NAMESPACE).and_then(|doc_ty| {
         if let Type::Object(props) = doc_ty {
             props.get(first).cloned()
@@ -173,7 +182,11 @@ fn resolve_path_type(path: &str, env: &TypeEnv, dialect: &dyn Dialect) -> Type {
             None
         }
     }) {
-        return walk_path(&ty, &parts[1..]);
+        if rest.is_empty() {
+            return ty;
+        }
+        let rest_parts: Vec<&str> = rest.split(sep).collect();
+        return walk_path(&ty, &rest_parts);
     }
 
     Type::Unknown
@@ -247,9 +260,8 @@ pub fn check_call_with_expected(
             subst.insert(tp.name.clone(), Type::Unknown);
         }
     }
-    // Check trait bounds using the default registry.
-    let registry = TraitRegistry::default_registry();
-    if !check_bounds(&subst, &fn_type.type_params, &registry) {
+    let registry = TraitRegistry::default_registry_ref();
+    if !check_bounds(&subst, &fn_type.type_params, registry) {
         return Type::Unknown;
     }
     substitute(&fn_type.return_type, &subst)
@@ -310,9 +322,8 @@ pub fn check_call_detailed(
             subst.insert(tp.name.clone(), Type::Unknown);
         }
     }
-    // Check trait bounds using the default registry.
-    let registry = TraitRegistry::default_registry();
-    if !check_bounds(&subst, &fn_type.type_params, &registry) {
+    let registry = TraitRegistry::default_registry_ref();
+    if !check_bounds(&subst, &fn_type.type_params, registry) {
         return Err(CallCheckError {
             function: fn_name.to_string(),
             kind: CallErrorKind::UnificationFailed {
@@ -396,15 +407,15 @@ pub fn infer_cached_detailed(
     expr: &str,
     env: &TypeEnv,
     functions: &FunctionTable,
-    cache: &mut HashMap<String, Option<ExprAst>>,
+    cache: &mut ParseCache,
     dialect: &dyn Dialect,
 ) -> (Type, Vec<TypeError>) {
     let ast = match cache.get(expr) {
-        Some(Some(cached)) => Some(cached.clone()),
+        Some(Some(cached)) => Some(Rc::clone(cached)),
         Some(None) => None,
         None => {
-            let parsed = parse_expr(expr, dialect);
-            cache.insert(expr.to_string(), parsed.clone());
+            let parsed = parse_expr(expr, dialect).map(Rc::new);
+            cache.insert(expr.to_string(), parsed.as_ref().map(|p| Rc::clone(p)));
             parsed
         }
     };
@@ -540,8 +551,8 @@ pub fn check_call_with_type_args(
         }
     }
 
-    let registry = TraitRegistry::default_registry();
-    if !check_bounds(&subst, &fn_type.type_params, &registry) {
+    let registry = TraitRegistry::default_registry_ref();
+    if !check_bounds(&subst, &fn_type.type_params, registry) {
         return (Type::Unknown, Vec::new());
     }
 

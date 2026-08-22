@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::sync::OnceLock;
 
 use crate::Type;
 
@@ -52,6 +53,15 @@ impl TraitRegistry {
         registry.register("Serializable", Type::Object(BTreeMap::new()));
 
         registry
+    }
+
+    /// Return a reference to the static default registry.
+    ///
+    /// Uses [`OnceLock`] to initialize the registry once and reuse it
+    /// across all calls, eliminating per-call allocation.
+    pub fn default_registry_ref() -> &'static TraitRegistry {
+        static DEFAULT: OnceLock<TraitRegistry> = OnceLock::new();
+        DEFAULT.get_or_init(Self::default_registry)
     }
 
     /// Register a type as implementing a trait.

@@ -312,6 +312,19 @@ pub fn mixed_exprs(n: usize) -> Vec<String> {
         .collect()
 }
 
+/// Generate `n` expressions that call generic functions (array.map, array.filter, etc.).
+/// These exercise the TraitRegistry + unification hot path.
+pub fn generic_call_exprs(n: usize) -> Vec<String> {
+    (0..n)
+        .map(|i| match i % 4 {
+            0 => format!("array.map(fn_{i}, arr_{i})"),
+            1 => format!("array.filter(fn_{i}, arr_{i})"),
+            2 => format!("array.reduce(fn_{i}, arr_{i}, init_{i})"),
+            _ => format!("array.flat_map(fn_{i}, arr_{i})"),
+        })
+        .collect()
+}
+
 // ---------------------------------------------------------------------------
 // Type generators (for compatibility benchmarks)
 // ---------------------------------------------------------------------------

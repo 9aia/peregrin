@@ -7,7 +7,7 @@
 //! This type is fully owned (`'static`) so it can be stored in a
 //! [`ac_vm::Context`] as a `Box<dyn Eval>`.
 
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 
 use ac_ast::Expr;
 use ac_dialect_canonical::AC_DIALECT;
@@ -16,7 +16,15 @@ use ac_host::DefaultHost;
 use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_vm::{Context, Error, Eval, Vm};
 
-const MAX_DEPTH: usize = 64;
+/// Fallback depth limit for non-cyclic deep recursion.
+///
+/// Cycle detection catches infinite recursion immediately. This limit
+/// is a safety net for very deep but non-cyclic call chains (e.g.,
+/// deeply nested data structures).
+const MAX_DEPTH: usize = 256;
+
+/// Maximum call chain length before assuming a cycle was missed.
+const MAX_CHAIN: usize = 128;
 
 /// An [`Eval`] implementation backed by the fields-layer expression evaluator.
 ///
@@ -25,10 +33,16 @@ const MAX_DEPTH: usize = 64;
 /// functions (`fp.map`, `fp.filter`, `fp.reduce`) in the VM.
 ///
 /// Does not support `import()` — only `apply()` and host primitives.
+///
+/// Termination is enforced via call-chain cycle detection: if the same
+/// function name appears twice in the current call chain, recursion is
+/// stopped immediately. A fallback depth limit catches non-cyclic
+/// deep recursion.
 pub struct ExprEval {
     host: DefaultHost,
     namespaces: Namespaces,
     depth: Cell<usize>,
+    call_chain: RefCell<Vec<String>>,
 }
 
 impl ExprEval {
@@ -38,7 +52,41 @@ impl ExprEval {
             host,
             namespaces,
             depth: Cell::new(0),
+            call_chain: RefCell::new(Vec::new()),
         }
+    }
+
+    /// Check if `name` would create a cycle in the current call chain.
+    /// Returns `Err` with a descriptive message if a cycle is detected.
+    fn check_cycle(&self, name: &str) -> Result<(), String> {
+        let chain = self.call_chain.borrow();
+        if let Some(pos) = chain.iter().position(|n| n == name) {
+            let cycle: Vec<String> = chain[pos..].iter().cloned().chain(std::iter::once(name.to_string())).collect();
+            return Err(format!(
+                "infinite recursion detected: {}",
+                cycle.join(" → ")
+            ));
+        }
+        if chain.len() >= MAX_CHAIN {
+            return Err(format!(
+                "call chain too long ({MAX_CHAIN}) — possible infinite recursion"
+            ));
+        }
+        drop(chain);
+        Ok(())
+    }
+
+    /// Push `name` onto the call chain and increment depth.
+    fn enter_call(&self, name: &str) {
+        self.call_chain.borrow_mut().push(name.to_string());
+        let depth = self.depth.get();
+        self.depth.set(depth + 1);
+    }
+
+    /// Pop the last entry from the call chain and restore depth.
+    fn exit_call(&self, prev_depth: usize) {
+        self.call_chain.borrow_mut().pop();
+        self.depth.set(prev_depth);
     }
 }
 
@@ -50,9 +98,10 @@ impl FunctionResolver for ExprEval {
                 "maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"
             ));
         }
-        self.depth.set(depth + 1);
+        self.check_cycle(name)?;
+        self.enter_call(name);
         let result = self.call_inner(name, args, &[]);
-        self.depth.set(depth);
+        self.exit_call(depth);
         result
     }
 
@@ -68,9 +117,10 @@ impl FunctionResolver for ExprEval {
                 "maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"
             ));
         }
-        self.depth.set(depth + 1);
+        self.check_cycle(name)?;
+        self.enter_call(name);
         let result = self.call_inner(name, args, type_args);
-        self.depth.set(depth);
+        self.exit_call(depth);
         result
     }
 }
@@ -159,5 +209,68 @@ impl Eval for ExprEval {
             })?;
 
         Ok(NonFunctionValue::new(result))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashMap;
+
+    #[test]
+    fn cycle_detection_catches_direct_recursion() {
+        let host = DefaultHost::default();
+        let namespaces = HashMap::new();
+        let eval = ExprEval::new(host, namespaces);
+
+        // Simulate calling "foo" then "foo" again — should detect cycle.
+        let depth = eval.depth.get();
+        eval.enter_call("foo");
+        assert!(eval.check_cycle("foo").is_err());
+        eval.exit_call(depth);
+    }
+
+    #[test]
+    fn cycle_detection_catches_mutual_recursion() {
+        let host = DefaultHost::default();
+        let namespaces = HashMap::new();
+        let eval = ExprEval::new(host, namespaces);
+
+        // Simulate: foo calls bar calls foo — cycle.
+        let depth0 = eval.depth.get();
+        eval.enter_call("foo");
+        eval.enter_call("bar");
+        let err = eval.check_cycle("foo").unwrap_err();
+        assert!(err.contains("infinite recursion"));
+        assert!(err.contains("foo"));
+        assert!(err.contains("bar"));
+        eval.exit_call(depth0);
+    }
+
+    #[test]
+    fn cycle_detection_allows_non_cyclic_calls() {
+        let host = DefaultHost::default();
+        let namespaces = HashMap::new();
+        let eval = ExprEval::new(host, namespaces);
+
+        // Simulate: foo calls bar calls baz — no cycle.
+        let depth0 = eval.depth.get();
+        eval.enter_call("foo");
+        eval.enter_call("bar");
+        assert!(eval.check_cycle("baz").is_ok());
+        eval.exit_call(depth0);
+    }
+
+    #[test]
+    fn cycle_detection_allows_reentry_after_exit() {
+        let host = DefaultHost::default();
+        let namespaces = HashMap::new();
+        let eval = ExprEval::new(host, namespaces);
+
+        // foo → exit → foo again is fine (not recursive).
+        let depth0 = eval.depth.get();
+        eval.enter_call("foo");
+        eval.exit_call(depth0);
+        assert!(eval.check_cycle("foo").is_ok());
     }
 }

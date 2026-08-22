@@ -6,7 +6,7 @@
 use ac_bench::*;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_typecheck_core::{Type, TypeEnv};
-use ac_typecheck_infer::{FunctionTable, infer, infer_cached, parse_expr};
+use ac_typecheck_infer::{FunctionTable, ParseCache, infer, infer_cached, parse_expr};
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 
 /// `parse_expr` on literal expressions.
@@ -73,7 +73,7 @@ fn bench_infer_cached(c: &mut Criterion) {
             &(exprs, repeats),
             |b, (exprs, repeats)| {
                 b.iter(|| {
-                    let mut cache = std::collections::HashMap::new();
+                    let mut cache: ParseCache = std::collections::HashMap::new();
                     for _ in 0..*repeats {
                         for e in exprs {
                             black_box(infer_cached(
@@ -124,6 +124,32 @@ fn bench_infer_nested_calls(c: &mut Criterion) {
     group.finish();
 }
 
+/// `infer` on generic function calls — measures TraitRegistry + unification hot path.
+fn bench_infer_generic_calls(c: &mut Criterion) {
+    let env = TypeEnv::new();
+    let functions = FunctionTable::from_signatures(
+        &ac_typecheck_infer::HostFunctionSigs::default_host().0,
+        &ac_typecheck_schema_json::JsonSchemaInterpreter,
+    );
+    let mut group = c.benchmark_group("infer/generic_calls");
+    for n in [10, 50, 100, 500] {
+        let exprs = generic_call_exprs(n);
+        group.bench_with_input(BenchmarkId::from_parameter(n), &exprs, |b, exprs| {
+            b.iter(|| {
+                for e in exprs {
+                    black_box(infer(
+                        black_box(e),
+                        black_box(&env),
+                        black_box(&functions),
+                        &AC_DIALECT,
+                    ));
+                }
+            });
+        });
+    }
+    group.finish();
+}
+
 criterion_group!(
     infer_benches,
     bench_parse_literals,
@@ -131,5 +157,6 @@ criterion_group!(
     bench_infer_batch,
     bench_infer_cached,
     bench_infer_nested_calls,
+    bench_infer_generic_calls,
 );
 criterion_main!(infer_benches);
