@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use ac_dialect_canonical::AC_DIALECT;
 use ac_typecheck_core::{SchemaInterpreter, TypeEnv, TypeError, is_compatible};
-use ac_typecheck_infer::{FunctionTable, infer_cached};
+use ac_typecheck_infer::{FunctionTable, infer_cached_detailed};
 use serde_json::Value as JsonValue;
 
 /// The AC key this crate handles.
@@ -35,14 +35,15 @@ pub fn check_field(
 
     let declared = interpreter.interpret(schema);
     let mut cache = HashMap::new();
-    let inferred = infer_cached(&expr_str, env, functions, &mut cache, &AC_DIALECT);
+    let (inferred, mut call_errors) =
+        infer_cached_detailed(&expr_str, env, functions, &mut cache, &AC_DIALECT);
 
-    if inferred.is_unknown() {
-        return Ok(());
+    if !inferred.is_unknown() && !is_compatible(&inferred, &declared) {
+        return Err(TypeError::mismatch(field_name, declared, inferred, ""));
     }
 
-    if !is_compatible(&inferred, &declared) {
-        return Err(TypeError::mismatch(field_name, declared, inferred, ""));
+    if !call_errors.is_empty() {
+        return Err(call_errors.remove(0));
     }
 
     Ok(())
@@ -66,14 +67,15 @@ pub fn check_field_cached(
     };
 
     let declared = interpreter.interpret(schema);
-    let inferred = infer_cached(&expr_str, env, functions, cache, &AC_DIALECT);
+    let (inferred, mut call_errors) =
+        infer_cached_detailed(&expr_str, env, functions, cache, &AC_DIALECT);
 
-    if inferred.is_unknown() {
-        return Ok(());
+    if !inferred.is_unknown() && !is_compatible(&inferred, &declared) {
+        return Err(TypeError::mismatch(field_name, declared, inferred, ""));
     }
 
-    if !is_compatible(&inferred, &declared) {
-        return Err(TypeError::mismatch(field_name, declared, inferred, ""));
+    if !call_errors.is_empty() {
+        return Err(call_errors.remove(0));
     }
 
     Ok(())

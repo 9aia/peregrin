@@ -88,6 +88,7 @@ The field name `functions` is just a regular name — not a reserved keyword. Us
 - **Dynamic import** — compute the import path at runtime: `expr: "import(concat(arg, env.ENV))"` (see [LANG.md](../../docs/LANG.md) §8.3)
 - **Function libraries** — `import()` a document with function values in its data; the functions are accessible via path resolution (e.g. `lib.functions.my_fn(arg)`)
 - **Control flow** — `if`, `and`, `or` as lazy host functions; `map`, `filter`, `reduce` as regular host functions
+- **Generic functions** — `typeParams` + `{ "type": "var", "name": "T" }` in function schemas enable parametric polymorphism, typechecked via unification — no runtime impact, no new keywords (see [LANG.md](../../docs/LANG.md) §9.6)
 - **Error handling** — operations signal via `handle` expressions; handlers intercept, resume, or discard
 - **Async I/O** — `AsyncFunction` trait for non-blocking network/timer operations via `eval_async`
 - **Cross-machine resumability** — `eval_resumable` + serializable `Continuation` + `CacheHost` for server→client migration

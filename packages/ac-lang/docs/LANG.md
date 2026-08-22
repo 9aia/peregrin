@@ -717,19 +717,22 @@ The type system provides static type checking of AC documents before runtime eva
 
 ### 9.1 Type representation
 
-| Variant    | Meaning                                                      |
-| ---------- | ------------------------------------------------------------ |
-| `String`   | String type                                                  |
-| `Number`   | Number type (includes integers — no integer subtyping yet)   |
-| `Boolean`  | Boolean type                                                 |
-| `Null`     | Null type                                                    |
-| `Array(T)` | Array with element type `T`                                  |
-| `Object`   | Object with named property types                             |
-| `Function` | Function type — parameter names/types and return type        |
-| `Unknown`  | Cannot be statically determined — compatible with everything |
-| `Never`    | Impossible code path — compatible with everything            |
+| Variant     | Meaning                                                             |
+| ----------- | ------------------------------------------------------------------- |
+| `String`    | String type                                                         |
+| `Number`    | Number type (includes integers — no integer subtyping yet)          |
+| `Boolean`   | Boolean type                                                        |
+| `Null`      | Null type                                                           |
+| `Array(T)`  | Array with element type `T`                                         |
+| `Object`    | Object with named property types                                    |
+| `Function`  | Function type — type parameters, parameter names/types, return type |
+| `Var(name)` | Type variable (e.g. `T`, `U`) — used in generic function signatures |
+| `Unknown`   | Cannot be statically determined — compatible with everything        |
+| `Never`     | Impossible code path — compatible with everything                   |
 
 `Unknown` represents types that cannot be statically determined (e.g., an unresolvable path or unknown function). `Never` represents uninhabited code paths. Both are compatible with all other types.
+
+`Var` represents a type variable used in generic function signatures. Outside of unification (during generic call instantiation), `Var` is not compatible with concrete types. See [§9.6](#96-generics-and-unification).
 
 ### 9.2 Type environment
 
@@ -738,6 +741,11 @@ The type environment maps field names to their declared types. It supports scope
 ### 9.3 Schema interpreter
 
 A schema interpreter converts a raw schema fragment into a type. The default interpreter maps JSON Schema `type` keywords to types: `string`, `number`/`integer`, `boolean`, `null`, `array` (with `items`), `object` (with `properties`), and `enum` (infers type from first enum value).
+
+For generic functions, the interpreter recognizes two AC-specific extensions:
+
+- `{ "type": "var", "name": "T" }` → `Type::Var("T")` — a type variable.
+- `"typeParams": ["T", "U"]` on a function schema — declares type parameters.
 
 ### 9.4 Expression type inference
 
@@ -756,7 +764,7 @@ Inference walks the AST:
 
 - **Literal** → the literal's type.
 - **Path** → looks up the first segment in the type environment; if not found, tries the default namespace shorthand. Walks remaining segments into object types.
-- **Call** → looks up the function in the function table, infers argument types, checks compatibility with param types, and returns the function's return type. Returns `Unknown` if the function is not found or argument counts mismatch.
+- **Call** → looks up the function in the function table, infers argument types, checks compatibility with param types, and returns the function's return type. For generic functions, unifies argument types against parameter types to instantiate the return type (see [§9.6](#96-generics-and-unification)). Returns `Unknown` if the function is not found, argument counts mismatch, or unification fails.
 
 ### 9.5 Type compatibility
 
@@ -764,12 +772,75 @@ Inference walks the AST:
 
 - `Unknown` is compatible with anything (both directions).
 - `Never` is compatible with anything (both directions).
+- `Var` is compatible with an identical `Var` (same name). `Var` is not compatible with concrete types outside unification.
 - Exact primitive matches are compatible.
 - `Array<T>` is compatible if item types are compatible.
 - `Object` is compatible if every expected property exists with a compatible type. Extra properties in `actual` are allowed.
 - `Function` is compatible if param count matches and all param/return types are compatible.
 
-### 9.6 Per-key type checking
+### 9.6 Generics and unification
+
+Generic functions (parametric polymorphism) allow a single function signature to work with multiple types. Generics are a **typechecker-only feature** — no runtime or AST changes are involved.
+
+#### Declaring generic functions
+
+A function schema with a `typeParams` array is generic. Type variables (`Var`) can appear in parameter types and the return type:
+
+```json
+{
+  "type": "function",
+  "typeParams": ["T"],
+  "params": [{ "name": "x", "schema": { "type": "var", "name": "T" } }],
+  "return": { "type": "var", "name": "T" }
+}
+```
+
+This declares `identity<T>(x: T) -> T`.
+
+#### Unification
+
+When a generic function is called, the typechecker **unifies** each argument's inferred type against the corresponding parameter type, building a substitution map (type variable → concrete type). The substitution is then applied to the return type to determine the concrete result.
+
+Unification rules:
+
+- `Unknown` / `Never` in either position: compatible with anything (no binding created).
+- `Var(name)` in **pattern** (parameter type) and `name` is in `typeParams`: bind `name → actual` type. If already bound, check consistency (same type or `Unknown` upgrade).
+- `Var(name)` in **pattern** but not in `typeParams`: opaque — only matches the same `Var` or `Unknown`/`Never`.
+- `Var` in **actual** (argument type): only compatible with `Unknown`/`Never` or an identical `Var`.
+- Concrete types: structural recursion into `Array`, `Object`, `Function`.
+
+If unification fails (e.g., `String` argument where `Array<T>` is expected), the call returns `Unknown`. If a type variable remains unbound (e.g., the argument was `Unknown`), it degrades to `Unknown` in the return type.
+
+#### Examples
+
+**Identity** — `identity<T>(x: T) -> T`:
+
+- `identity("hello")` → unifies `String` with `T` → `T = String` → returns `String`.
+- `identity(42)` → unifies `Number` with `T` → `T = Number` → returns `Number`.
+
+**Map** — `map<T, U>(arr: Array<T>, fn: (T) -> U) -> Array<U>`:
+
+- `map(strs, to_len)` where `strs: Array<String>` and `to_len: (String) -> Number`:
+  - Unify `Array<String>` with `Array<T>` → `T = String`.
+  - Unify `(String) -> Number` with `(T) -> U` → `T = String` (consistent), `U = Number`.
+  - Return type `Array<U>` → `Array<Number>`.
+
+**Consistency check** — `apply_fn<T>(x: T, f: (T) -> T) -> T`:
+
+- `apply_fn(str_val, num_fn)` where `str_val: String` and `num_fn: (Number) -> Number`:
+  - Unify `String` with `T` → `T = String`.
+  - Unify `(Number) -> Number` with `(T) -> T` → `T = Number` — **inconsistent** with `T = String`.
+  - Unification fails → returns `Unknown`.
+
+#### What's not included
+
+- No trait bounds or constraints on type parameters.
+- No variance (all type parameters are invariant).
+- No return-type-driven inference (type variables are bound only from argument positions).
+- No higher-kinded types.
+- No runtime impact — generics exist solely in the typechecker.
+
+### 9.7 Per-key type checking
 
 Each AC-specific key has its own type check:
 
@@ -782,7 +853,7 @@ Each AC-specific key has its own type check:
 | `mutable`     | Immutable fields (`mutable: false`) must not be overridden         |
 | `import()`    | Imported field types must be compatible with parent scope          |
 
-### 9.7 Type errors
+### 9.8 Type errors
 
 A type error carries:
 

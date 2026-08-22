@@ -5,6 +5,9 @@ use crate::Type;
 /// Rules:
 /// - `Unknown` is compatible with anything (and vice versa).
 /// - `Never` is compatible with anything (it's uninhabited).
+/// - `Var` is compatible with `Unknown`/`Never` (graceful degradation)
+///   and with an identical `Var` (same name). Outside unification,
+///   `Var` is **not** compatible with concrete types.
 /// - Exact matches are compatible.
 /// - `Number` accepts `Number` (no integer subtyping yet).
 /// - `Array<T>` is compatible if item types are compatible.
@@ -15,6 +18,8 @@ pub fn is_compatible(actual: &Type, expected: &Type) -> bool {
     match (actual, expected) {
         (_, Type::Unknown) | (Type::Unknown, _) => true,
         (_, Type::Never) | (Type::Never, _) => true,
+
+        (Type::Var(a), Type::Var(e)) => a == e,
 
         (Type::String, Type::String) => true,
         (Type::Number, Type::Number) => true,

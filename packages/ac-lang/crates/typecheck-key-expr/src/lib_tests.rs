@@ -30,6 +30,7 @@ fn make_env() -> (TypeEnv, FunctionTable) {
     funcs.insert(
         "mul",
         FunctionType {
+            type_params: vec![],
             params: vec![
                 ("x".to_string(), Type::Number),
                 ("y".to_string(), Type::Number),

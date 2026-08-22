@@ -85,3 +85,82 @@ impl std::error::Error for TypeError {}
 
 /// Result type for typechecking — collects multiple errors.
 pub type TypeResult<T> = Result<T, Vec<TypeError>>;
+
+/// A type error detected during function call checking.
+///
+/// Produced when argument types don't match a function's parameter types,
+/// including generic unification failures.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CallCheckError {
+    /// The function name being called.
+    pub function: String,
+    /// What went wrong.
+    pub kind: CallErrorKind,
+}
+
+/// The kind of call checking error.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CallErrorKind {
+    /// Wrong number of arguments.
+    ArgCount { expected: usize, got: usize },
+    /// Argument type incompatible with parameter type (monomorphic).
+    ArgType {
+        param: String,
+        index: usize,
+        expected: Type,
+        actual: Type,
+    },
+    /// Generic unification failed — a type variable couldn't be bound
+    /// consistently.
+    UnificationFailed {
+        param: String,
+        index: usize,
+        expected: Type,
+        actual: Type,
+    },
+}
+
+impl CallCheckError {
+    /// Build a `TypeError` from this call error.
+    pub fn to_type_error(&self) -> TypeError {
+        let msg = match &self.kind {
+            CallErrorKind::ArgCount { expected, got } => {
+                format!(
+                    "call to '{}': expected {} argument(s), got {}",
+                    self.function, expected, got
+                )
+            }
+            CallErrorKind::ArgType {
+                param,
+                index,
+                expected,
+                actual,
+            } => {
+                format!(
+                    "call to '{}': argument {} ('{}'): expected {}, got {}",
+                    self.function,
+                    index + 1,
+                    param,
+                    expected.name(),
+                    actual.name()
+                )
+            }
+            CallErrorKind::UnificationFailed {
+                param,
+                index,
+                expected,
+                actual,
+            } => {
+                format!(
+                    "call to '{}': argument {} ('{}'): type mismatch in generic parameter — expected {}, got {}",
+                    self.function,
+                    index + 1,
+                    param,
+                    expected.name(),
+                    actual.name()
+                )
+            }
+        };
+        TypeError::custom(self.function.clone(), msg, "")
+    }
+}

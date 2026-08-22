@@ -23,9 +23,12 @@ use std::collections::HashMap;
 use ac_dialect::Dialect;
 
 pub use parser::{ExprAst, HandlerClauseAst, parse_expr};
-pub use table::{FunctionTable, RawFnSig};
+pub use table::{FunctionTable, HostFunctionSigs, RawFnSig};
 
-use ac_typecheck_core::{FunctionType, Type, TypeEnv, is_compatible};
+use ac_typecheck_core::{
+    CallCheckError, CallErrorKind, FunctionType, Type, TypeEnv, TypeError, is_compatible,
+    substitute, unify,
+};
 
 /// The conventional name of the default namespace used for shorthand
 /// path resolution in type inference (bare `name` → `DEFAULT_NAMESPACE.name`).
@@ -162,18 +165,187 @@ fn resolve_path_type(path: &str, env: &TypeEnv, dialect: &dyn Dialect) -> Type {
 
 /// Check call arguments against a function type, returning the return type
 /// or [`Type::Unknown`] if args don't match.
+///
+/// For monomorphic functions (`type_params` empty), this is a structural
+/// compatibility check — same as before.
+///
+/// For generic functions (`type_params` non-empty), this unifies argument
+/// types against parameter types to build a substitution, then applies it
+/// to the return type. If unification fails, returns [`Type::Unknown`].
 fn check_call(fn_type: &FunctionType, arg_types: &[Type]) -> Type {
     if fn_type.params.len() != arg_types.len() {
         return Type::Unknown;
     }
 
+    if fn_type.type_params.is_empty() {
+        for ((_, param_ty), arg_ty) in fn_type.params.iter().zip(arg_types) {
+            if !is_compatible(arg_ty, param_ty) {
+                return Type::Unknown;
+            }
+        }
+        return (*fn_type.return_type).clone();
+    }
+
+    let mut subst = ac_typecheck_core::Substitution::new();
     for ((_, param_ty), arg_ty) in fn_type.params.iter().zip(arg_types) {
-        if !is_compatible(arg_ty, param_ty) {
+        if !unify(arg_ty, param_ty, &mut subst, &fn_type.type_params) {
             return Type::Unknown;
         }
     }
+    // Bind any unbound type params to Unknown (graceful degradation when
+    // argument types were Unknown and didn't produce a binding).
+    for tp in &fn_type.type_params {
+        if !subst.contains_key(tp) {
+            subst.insert(tp.clone(), Type::Unknown);
+        }
+    }
+    substitute(&fn_type.return_type, &subst)
+}
 
-    (*fn_type.return_type).clone()
+/// Like [`check_call`] but returns detailed error information on mismatch.
+///
+/// Returns `Ok(Type)` on success, or `Err(CallCheckError)` with a description
+/// of what went wrong (wrong arg count, type mismatch, or unification failure).
+pub fn check_call_detailed(
+    fn_name: &str,
+    fn_type: &FunctionType,
+    arg_types: &[Type],
+) -> Result<Type, CallCheckError> {
+    if fn_type.params.len() != arg_types.len() {
+        return Err(CallCheckError {
+            function: fn_name.to_string(),
+            kind: CallErrorKind::ArgCount {
+                expected: fn_type.params.len(),
+                got: arg_types.len(),
+            },
+        });
+    }
+
+    if fn_type.type_params.is_empty() {
+        for ((pname, param_ty), arg_ty) in fn_type.params.iter().zip(arg_types) {
+            if !is_compatible(arg_ty, param_ty) {
+                return Err(CallCheckError {
+                    function: fn_name.to_string(),
+                    kind: CallErrorKind::ArgType {
+                        param: pname.clone(),
+                        index: fn_type.params.iter().position(|(n, _)| n == pname).unwrap_or(0),
+                        expected: param_ty.clone(),
+                        actual: arg_ty.clone(),
+                    },
+                });
+            }
+        }
+        return Ok((*fn_type.return_type).clone());
+    }
+
+    let mut subst = ac_typecheck_core::Substitution::new();
+    for (i, ((pname, param_ty), arg_ty)) in fn_type.params.iter().zip(arg_types).enumerate() {
+        if !unify(arg_ty, param_ty, &mut subst, &fn_type.type_params) {
+            return Err(CallCheckError {
+                function: fn_name.to_string(),
+                kind: CallErrorKind::UnificationFailed {
+                    param: pname.clone(),
+                    index: i,
+                    expected: param_ty.clone(),
+                    actual: arg_ty.clone(),
+                },
+            });
+        }
+    }
+    for tp in &fn_type.type_params {
+        if !subst.contains_key(tp) {
+            subst.insert(tp.clone(), Type::Unknown);
+        }
+    }
+    Ok(substitute(&fn_type.return_type, &subst))
+}
+
+/// Like [`infer_ast`] but also collects type errors from function calls.
+///
+/// Returns `(Type, Vec<TypeError>)` — the inferred type and any call errors
+/// found in the expression tree. The inferred type may still be `Unknown`
+/// even when errors are present (e.g., a nested call failed but the outer
+/// expression continues).
+pub fn infer_ast_detailed(
+    ast: &ExprAst,
+    env: &TypeEnv,
+    functions: &FunctionTable,
+    dialect: &dyn Dialect,
+) -> (Type, Vec<TypeError>) {
+    let mut errors = Vec::new();
+    let ty = infer_ast_inner_detailed(ast, env, functions, dialect, &mut errors);
+    (ty, errors)
+}
+
+fn infer_ast_inner_detailed(
+    ast: &ExprAst,
+    env: &TypeEnv,
+    functions: &FunctionTable,
+    dialect: &dyn Dialect,
+    errors: &mut Vec<TypeError>,
+) -> Type {
+    match ast {
+        ExprAst::Literal(ty) => ty.clone(),
+
+        ExprAst::Path(path) => resolve_path_type(path, env, dialect),
+
+        ExprAst::Call(name, args) => {
+            let arg_types: Vec<Type> = args
+                .iter()
+                .map(|a| infer_ast_inner_detailed(a, env, functions, dialect, errors))
+                .collect();
+
+            if let Some(fn_type) = functions.lookup(name) {
+                return match check_call_detailed(name, fn_type, &arg_types) {
+                    Ok(ty) => ty,
+                    Err(e) => {
+                        errors.push(e.to_type_error());
+                        Type::Unknown
+                    }
+                };
+            }
+
+            let ty = resolve_path_type(name, env, dialect);
+            if let Type::Function(fn_type) = ty {
+                return match check_call_detailed(name, &fn_type, &arg_types) {
+                    Ok(ty) => ty,
+                    Err(e) => {
+                        errors.push(e.to_type_error());
+                        Type::Unknown
+                    }
+                };
+            }
+
+            Type::Unknown
+        }
+
+        ExprAst::Handle { body, .. } => {
+            infer_ast_inner_detailed(body, env, functions, dialect, errors)
+        }
+    }
+}
+
+/// Like [`infer_cached`] but also collects type errors from function calls.
+pub fn infer_cached_detailed(
+    expr: &str,
+    env: &TypeEnv,
+    functions: &FunctionTable,
+    cache: &mut HashMap<String, Option<ExprAst>>,
+    dialect: &dyn Dialect,
+) -> (Type, Vec<TypeError>) {
+    let ast = match cache.get(expr) {
+        Some(Some(cached)) => Some(cached.clone()),
+        Some(None) => None,
+        None => {
+            let parsed = parse_expr(expr, dialect);
+            cache.insert(expr.to_string(), parsed.clone());
+            parsed
+        }
+    };
+    let Some(ast) = ast else {
+        return (Type::Unknown, Vec::new());
+    };
+    infer_ast_detailed(&ast, env, functions, dialect)
 }
 
 #[cfg(test)]

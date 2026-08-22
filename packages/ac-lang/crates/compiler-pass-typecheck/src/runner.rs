@@ -1,4 +1,5 @@
 use ac_compiler_core::{Compilation, Config, PassError};
+use serde_json::Value as JsonValue;
 
 /// Run the typecheck logic, populating `compilation.type_errors`.
 pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(), PassError> {
@@ -17,8 +18,52 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
         }
     }
 
-    let fn_sigs: Vec<ac_typecheck_infer::RawFnSig> = Vec::new();
-    let function_table = ac_typecheck_infer::FunctionTable::from_signatures(&fn_sigs, interpreter);
+    let fn_sigs: Vec<ac_typecheck_infer::RawFnSig> = extracted
+        .schemas
+        .iter()
+        .filter_map(|(name, raw)| {
+            let type_name = raw.get("type").and_then(|v| v.as_str())?;
+            if type_name != "function" {
+                return None;
+            }
+
+            let type_params = raw
+                .get("typeParams")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+
+            let params = raw
+                .get("params")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|p| {
+                            let pname = p.get("name")?.as_str()?.to_string();
+                            let pschema = p.get("schema").cloned().unwrap_or(JsonValue::Null);
+                            Some((pname, pschema))
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+
+            let return_schema = raw.get("return").cloned();
+
+            Some((name.clone(), type_params, params, return_schema))
+        })
+        .collect();
+
+    // Merge host function signatures from Config extension (if provided).
+    let mut all_sigs = fn_sigs;
+    if let Some(host_sigs) = config.extension::<ac_typecheck_infer::HostFunctionSigs>() {
+        all_sigs.extend(host_sigs.0.iter().cloned());
+    }
+
+    let function_table = ac_typecheck_infer::FunctionTable::from_signatures(&all_sigs, interpreter);
 
     let inheritable_schemas: Vec<(String, serde_json::Value)> = extracted
         .schemas

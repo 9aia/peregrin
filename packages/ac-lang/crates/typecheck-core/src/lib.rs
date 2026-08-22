@@ -36,12 +36,14 @@ mod env;
 mod error;
 mod interpreter;
 mod type_;
+mod unify;
 
 pub use compat::is_compatible;
 pub use env::TypeEnv;
-pub use error::{TypeError, TypeResult};
+pub use error::{CallCheckError, CallErrorKind, TypeError, TypeResult};
 pub use interpreter::SchemaInterpreter;
 pub use type_::{FunctionType, Type};
+pub use unify::{Substitution, substitute, unify};
 
 #[cfg(test)]
 mod lib_tests;

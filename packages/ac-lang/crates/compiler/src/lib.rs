@@ -55,6 +55,7 @@ pub fn default_cli_config() -> Config {
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
         extensions: Default::default(),
     }
+    .with_extension(ac_typecheck_infer::HostFunctionSigs::default_host())
 }
 
 /// Typecheck-only config — no backend needed.
@@ -70,6 +71,7 @@ pub fn typecheck_only_config() -> Config {
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
         extensions: Default::default(),
     }
+    .with_extension(ac_typecheck_infer::HostFunctionSigs::default_host())
 }
 
 /// Full typegen pipeline: parse → extract → resolve → generate.

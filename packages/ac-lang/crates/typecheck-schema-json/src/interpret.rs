@@ -4,6 +4,10 @@ use ac_typecheck_core::{FunctionType, Type};
 use serde_json::Value as JsonValue;
 
 /// Convert a JSON Schema fragment into a [`Type`].
+///
+/// In addition to standard JSON Schema `type` keywords, this interpreter
+/// recognizes an AC-specific extension: `{ "type": "var", "name": "T" }`
+/// produces `Type::Var("T")`, used in generic function signatures.
 pub fn interpret_schema(schema: &JsonValue) -> Type {
     let Some(type_name) = schema.get("type").and_then(|v| v.as_str()) else {
         if let Some(enum_vals) = schema.get("enum").and_then(|v| v.as_array())
@@ -39,6 +43,15 @@ pub fn interpret_schema(schema: &JsonValue) -> Type {
             Type::Object(props)
         }
         "function" => {
+            let type_params = schema
+                .get("typeParams")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
             let params = schema
                 .get("params")
                 .and_then(|v| v.as_array())
@@ -57,9 +70,17 @@ pub fn interpret_schema(schema: &JsonValue) -> Type {
                 .map(interpret_schema)
                 .unwrap_or(Type::Unknown);
             Type::Function(FunctionType {
+                type_params,
                 params,
                 return_type: Box::new(return_type),
             })
+        }
+        "var" => {
+            schema
+                .get("name")
+                .and_then(|v| v.as_str())
+                .map(|name| Type::Var(name.to_string()))
+                .unwrap_or(Type::Unknown)
         }
         _ => Type::Unknown,
     }
@@ -104,6 +125,7 @@ pub fn infer_json_type(value: &JsonValue) -> Type {
                     .map(interpret_schema)
                     .unwrap_or(Type::Unknown);
                 Type::Function(FunctionType {
+                    type_params: Vec::new(),
                     params,
                     return_type: Box::new(return_type),
                 })
@@ -133,6 +155,7 @@ pub fn interpret_function(
     };
 
     FunctionType {
+        type_params: Vec::new(),
         params: param_types,
         return_type,
     }

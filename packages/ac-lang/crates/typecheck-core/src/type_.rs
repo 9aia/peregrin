@@ -9,6 +9,10 @@ use std::collections::BTreeMap;
 /// `Unknown` is compatible with everything — it represents types that
 /// cannot be statically determined. `Never` represents impossible code
 /// paths (e.g., a function that always errors).
+///
+/// `Var` represents a type variable used in generic function signatures.
+/// Outside of unification (during generic call instantiation), `Var` is
+/// not compatible with concrete types. See [`crate::unify`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Type {
     String,
@@ -18,13 +22,21 @@ pub enum Type {
     Array(Box<Type>),
     Object(BTreeMap<String, Type>),
     Function(FunctionType),
+    /// A type variable (e.g. `T`, `U`) used in generic function signatures.
+    Var(String),
     Unknown,
     Never,
 }
 
-/// A function type — parameter names, parameter types, and return type.
+/// A function type — type parameters, parameter names/types, and return type.
+///
+/// `type_params` is empty for monomorphic functions. When non-empty, the
+/// function is generic and the typechecker unifies argument types against
+/// parameter types to instantiate the return type.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionType {
+    /// Type parameter names (e.g. `["T", "U"]`). Empty for monomorphic functions.
+    pub type_params: Vec<String>,
     /// `(param_name, param_type)` pairs, in declaration order.
     pub params: Vec<(String, Type)>,
     /// The return type.
@@ -57,6 +69,7 @@ impl Type {
                     .join(", ");
                 format!("fn({params}) -> {}", f.return_type.name())
             }
+            Type::Var(name) => name.clone(),
             Type::Unknown => "unknown".to_string(),
             Type::Never => "never".to_string(),
         }
