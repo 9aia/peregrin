@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::collections::HashMap;
 
 use crate::Type;
 
@@ -9,7 +9,7 @@ use crate::Type;
 /// Lookups walk the chain from child to parent.
 pub struct TypeEnv {
     /// Field name → type in this scope.
-    bindings: BTreeMap<String, Type>,
+    bindings: HashMap<String, Type>,
     /// Parent scope, if any.
     parent: Option<Box<TypeEnv>>,
 }
@@ -18,7 +18,7 @@ impl TypeEnv {
     /// Create an empty environment with no parent.
     pub fn new() -> Self {
         TypeEnv {
-            bindings: BTreeMap::new(),
+            bindings: HashMap::new(),
             parent: None,
         }
     }
@@ -26,7 +26,7 @@ impl TypeEnv {
     /// Create a child scope that inherits from `parent`.
     pub fn child(parent: TypeEnv) -> Self {
         TypeEnv {
-            bindings: BTreeMap::new(),
+            bindings: HashMap::new(),
             parent: Some(Box::new(parent)),
         }
     }
@@ -66,8 +66,8 @@ impl TypeEnv {
     ///
     /// **Warning**: This eagerly clones the entire scope chain. Prefer
     /// [`all_bindings_iter`] when you only need to iterate.
-    pub fn all_bindings(&self) -> BTreeMap<String, Type> {
-        let mut result = BTreeMap::new();
+    pub fn all_bindings(&self) -> HashMap<String, Type> {
+        let mut result = HashMap::new();
         if let Some(ref parent) = self.parent {
             result.extend(parent.all_bindings());
         }
