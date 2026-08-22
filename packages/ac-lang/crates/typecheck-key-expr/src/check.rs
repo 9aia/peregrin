@@ -28,15 +28,15 @@ pub fn check_field(
     env: &TypeEnv,
     functions: &FunctionTable,
     interpreter: &dyn SchemaInterpreter,
+    cache: &mut ParseCache,
 ) -> Result<(), TypeError> {
     let Some(expr_str) = get_expr(schema) else {
         return Ok(());
     };
 
     let declared = interpreter.interpret(schema);
-    let mut cache = HashMap::new();
     let (inferred, mut call_errors) =
-        infer_cached_detailed(&expr_str, env, functions, &mut cache, &AC_DIALECT);
+        infer_cached_detailed(&expr_str, env, functions, cache, &AC_DIALECT);
 
     if !inferred.is_unknown() && !is_compatible(&inferred, &declared) {
         return Err(TypeError::mismatch(field_name, declared, inferred, ""));

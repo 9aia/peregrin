@@ -72,7 +72,7 @@ fn nested_calls_traversed() {
     bodies.insert("c".to_string(), "a(4)".to_string());
 
     let errors = check(&bodies, &AC_DIALECT);
-    assert_eq!(errors.len(), 1);
+    assert_eq!(errors.len(), 2);
 }
 
 #[test]

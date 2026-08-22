@@ -48,12 +48,11 @@ pub fn unify(
         (Type::Var(a), Type::Var(e)) => a == e,
 
         // Pattern is a type variable in scope → bind or check consistency.
-        (actual, Type::Var(name)) if type_params.iter().any(|tp| &tp.name == name) => {
-            let variance = type_params
-                .iter()
-                .find(|tp| &tp.name == name)
-                .map(|tp| tp.variance)
-                .unwrap_or(Variance::Invariant);
+        (actual, Type::Var(name)) => {
+            let Some(tp) = type_params.iter().find(|tp| &tp.name == name) else {
+                return false;
+            };
+            let variance = tp.variance;
             match subst.get(name) {
                 None => {
                     subst.insert(name.clone(), actual.clone());
