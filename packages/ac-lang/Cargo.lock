@@ -5,6 +5,21 @@ version = 4
 [[package]]
 name = "ac-ast"
 version = "0.1.0"
+dependencies = [
+ "ac-ast-canonical",
+ "ac-ast-common",
+]
+
+[[package]]
+name = "ac-ast-canonical"
+version = "0.1.0"
+dependencies = [
+ "ac-ast-common",
+]
+
+[[package]]
+name = "ac-ast-common"
+version = "0.1.0"
 
 [[package]]
 name = "ac-bench"
@@ -19,6 +34,8 @@ dependencies = [
  "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend",
+ "ac-lexer",
+ "ac-lexer-canonical",
  "ac-module-resolver-virtual",
  "ac-runtime",
  "ac-typecheck-core",
@@ -343,6 +360,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-host-sandbox"
+version = "0.1.0"
+dependencies = [
+ "ac-host",
+ "ac-lib-crypto",
+ "ac-lib-datetime",
+ "ac-lib-intl",
+ "ac-lib-kv",
+ "ac-lib-kv-hashmap",
+ "ac-lib-utils",
+ "ac-runtime-core",
+ "ac-vm",
+]
+
+[[package]]
 name = "ac-host-type"
 version = "0.1.0"
 dependencies = [
@@ -396,6 +428,7 @@ dependencies = [
  "ac-frontend-toml",
  "ac-frontend-yaml",
  "ac-host",
+ "ac-host-sandbox",
  "ac-lib-crypto",
  "ac-lib-datetime",
  "ac-lib-intl",
@@ -420,6 +453,29 @@ dependencies = [
  "ac-typegen-core",
  "ac-vm",
  "serde_json",
+]
+
+[[package]]
+name = "ac-lexer"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
+name = "ac-lexer-canonical"
+version = "0.1.0"
+dependencies = [
+ "ac-dialect",
+ "ac-lexer",
+ "ac-lexer-common",
+]
+
+[[package]]
+name = "ac-lexer-common"
+version = "0.1.0"
+dependencies = [
+ "ac-lexer",
 ]
 
 [[package]]
@@ -625,6 +681,38 @@ dependencies = [
  "ac-module-resolver-core",
  "ac-runtime",
  "serde_json",
+]
+
+[[package]]
+name = "ac-parser"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-lexer",
+ "ac-runtime",
+ "thiserror",
+]
+
+[[package]]
+name = "ac-parser-canonical"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-lexer",
+ "ac-lexer-canonical",
+ "ac-parser",
+ "ac-parser-common",
+ "ac-runtime",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-parser-common"
+version = "0.1.0"
+dependencies = [
+ "ac-ast-common",
+ "ac-lexer",
+ "thiserror",
 ]
 
 [[package]]

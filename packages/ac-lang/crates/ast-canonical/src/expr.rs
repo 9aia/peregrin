@@ -1,13 +1,17 @@
+use ac_ast_common::ExprFactory;
+
 /// An expression in the language.
 ///
 /// Expressions form a tree that the VM evaluates to produce a
-/// value. Three kinds:
+/// value. Five kinds:
 ///
 /// - [`Expr::Value`] — a literal value.
 /// - [`Expr::Call`] — an invocation of a host-provided function.
 /// - [`Expr::Handle`] — a handler expression that intercepts operations.
+/// - [`Expr::Array`] — an array literal with element expressions.
+/// - [`Expr::Object`] — an object literal with key-value expression pairs.
 ///
-/// `Expr` is generic over the value type `V`, keeping `ac-ast`
+/// `Expr` is generic over the value type `V`, keeping `ac-ast-canonical`
 /// dependency-free. The concrete value type (`NonFunctionValue`) is
 /// chosen by the consumer — typically the VM.
 ///
@@ -55,6 +59,18 @@ pub enum Expr<V> {
         /// Handler clauses, checked in order.
         handlers: Vec<HandlerClause<V>>,
     },
+
+    /// An array literal — `[expr, expr, ...]`.
+    ///
+    /// Each element is an expression that is evaluated and collected
+    /// into a JSON array at runtime.
+    Array(Vec<Expr<V>>),
+
+    /// An object literal — `{key: expr, key: expr, ...}`.
+    ///
+    /// Keys are string literals; values are expressions that are
+    /// evaluated and collected into a JSON object at runtime.
+    Object(Vec<(String, Expr<V>)>),
 }
 
 /// A single handler clause in a [`Expr::Handle`] expression.
@@ -115,5 +131,43 @@ impl<V> Expr<V> {
             body: Box::new(body),
             handlers,
         }
+    }
+
+    /// Creates an array literal expression.
+    pub fn array(elements: Vec<Expr<V>>) -> Self {
+        Expr::Array(elements)
+    }
+
+    /// Creates an object literal expression.
+    pub fn object(entries: Vec<(String, Expr<V>)>) -> Self {
+        Expr::Object(entries)
+    }
+}
+
+/// The canonical AC expression factory.
+///
+/// Implements `ExprFactory<Expr<V>, V>` so lexers, parsers, and embedded
+/// consumers can build `Expr` trees through the generic factory interface.
+#[derive(Debug, Default, Clone, Copy)]
+pub struct CanonicalExprFactory;
+
+impl<V> ExprFactory<Expr<V>, V> for CanonicalExprFactory {
+    fn value(&self, value: V) -> Expr<V> {
+        Expr::value(value)
+    }
+
+    fn call<S>(&self, name: S, args: Vec<Expr<V>>) -> Expr<V>
+    where
+        S: Into<String>,
+    {
+        Expr::call(name, args)
+    }
+
+    fn array(&self, elements: Vec<Expr<V>>) -> Expr<V> {
+        Expr::array(elements)
+    }
+
+    fn object(&self, entries: Vec<(String, Expr<V>)>) -> Expr<V> {
+        Expr::object(entries)
     }
 }

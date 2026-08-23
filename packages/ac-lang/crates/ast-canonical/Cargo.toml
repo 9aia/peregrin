@@ -1,0 +1,7 @@
+[package]
+name = "ac-ast-canonical"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-ast-common.workspace = true

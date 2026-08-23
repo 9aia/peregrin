@@ -1,30 +1,13 @@
 //! # ac-ast
 //!
-//! The language model — the kernel of the AC language.
-//!
-//! This crate describes things. It contains the representation of
-//! expressions and fields. It is generic over the value type `V` —
-//! the concrete value representation (`NonFunctionValue`) lives in
-//! `ac-runtime`, not here. This keeps the kernel dependency-free.
-//!
-//! ## Architectural rule
-//!
-//! > **`core` describes things. `vm` executes things. `schema`
-//! > gives values meaning. `host` gives execution capabilities
-//! > meaning. Formats translate external representations.**
-//!
-//! Keep this crate dependency-free and minimal. The type system
-//! lives here, so changes to this crate ripple outward — the
-//! smaller it is, the more stable the language.
+//! A thin facade over `ac-ast-common` and `ac-ast-canonical`.
+//! This preserves the existing public API while the implementation
+//! lives in the more focused domain crates.
 
-mod expr;
-mod field;
-
-pub use expr::{Expr, HandlerClause};
-pub use field::Field;
-
-#[cfg(test)]
-mod expr_tests;
-
-#[cfg(test)]
-mod field_tests;
+pub use ac_ast_canonical::{
+    CanonicalExprFactory, CanonicalStmtFactory, CanonicalTypeFactory, Expr, Field, HandlerClause,
+    Stmt, Type,
+};
+pub use ac_ast_common::{
+    Attrs, Both, ExprFactory, Node, NodeMetadata, Span, StmtFactory, TypeFactory,
+};

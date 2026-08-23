@@ -8,6 +8,8 @@ members = [
   "crates/dialect",
   "crates/dialect-canonical",
   "crates/ast",
+  "crates/ast-canonical",
+  "crates/ast-common",
   "crates/runtime",
   "crates/runtime-core",
   "crates/lib-utils",
@@ -69,6 +71,13 @@ members = [
   "crates/codebase",
   "crates/integration-tests",
   "crates/host-type",
+  "crates/host-sandbox",
+  "crates/lexer",
+  "crates/lexer-canonical",
+  "crates/lexer-common",
+  "crates/parser",
+  "crates/parser-canonical",
+  "crates/parser-common",
 ]
 resolver = "3"
 
@@ -80,6 +89,8 @@ edition = "2024"
 ac-dialect = { path = "crates/dialect" }
 ac-dialect-canonical = { path = "crates/dialect-canonical" }
 ac-ast = { path = "crates/ast" }
+ac-ast-canonical = { path = "crates/ast-canonical" }
+ac-ast-common = { path = "crates/ast-common" }
 ac-runtime = { path = "crates/runtime" }
 ac-runtime-core = { path = "crates/runtime-core" }
 ac-lib-utils = { path = "crates/lib-utils" }
@@ -139,6 +150,13 @@ ac-store = { path = "crates/store" }
 ac-codebase = { path = "crates/codebase" }
 ac-integration-tests = { path = "crates/integration-tests" }
 ac-host-type = { path = "crates/host-type" }
+ac-host-sandbox = { path = "crates/host-sandbox" }
+ac-lexer = { path = "crates/lexer" }
+ac-lexer-canonical = { path = "crates/lexer-canonical" }
+ac-lexer-common = { path = "crates/lexer-common" }
+ac-parser = { path = "crates/parser" }
+ac-parser-canonical = { path = "crates/parser-canonical" }
+ac-parser-common = { path = "crates/parser-common" }
 rand = "0.9"
 hex = "0.4"
 md-5 = "0.10"
@@ -258,6 +276,7 @@ ac-lib-platform = { workspace = true, optional = true }
 ac-lib-platform-std = { workspace = true, optional = true }
 ac-store = { workspace = true, optional = true }
 ac-codebase = { workspace = true, optional = true }
+ac-host-sandbox = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json = "1"
