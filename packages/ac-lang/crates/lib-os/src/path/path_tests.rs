@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime::{CanonicalContext, Context};
+use ac_runtime::CanonicalContext;
 use ac_runtime_modules::Module;
 
 use super::path::PathModule;

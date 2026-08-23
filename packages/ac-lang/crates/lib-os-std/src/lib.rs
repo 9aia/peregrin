@@ -34,6 +34,11 @@ mod socket;
 mod time;
 mod tmp;
 
+#[cfg(test)]
+mod sig_tests;
+#[cfg(test)]
+mod socket_tests;
+
 pub use cmd::StdCmd;
 pub use env::StdEnv;
 pub use fs::StdFs;
