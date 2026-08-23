@@ -10,14 +10,21 @@ use super::provider::IntlProvider;
 /// A data provider that is either compiled (static) or blob-backed (runtime).
 pub(super) enum DataProvider {
     Compiled,
-    Blob(BlobDataProvider),
+    Blob(usize, BlobDataProvider),
 }
 
 impl DataProvider {
     pub fn as_buffer_provider(&self) -> Option<&BlobDataProvider> {
         match self {
-            DataProvider::Blob(p) => Some(p),
+            DataProvider::Blob(_, p) => Some(p),
             _ => None,
+        }
+    }
+
+    pub fn provider_id(&self) -> usize {
+        match self {
+            DataProvider::Compiled => 0,
+            DataProvider::Blob(id, _) => *id,
         }
     }
 }
@@ -26,9 +33,10 @@ impl DataProvider {
 pub(super) fn make_provider(provider: &Option<IntlProvider>) -> Result<DataProvider, Error> {
     match provider {
         Some(p) => {
+            let id = p.blob_ptr() as usize;
             let bdp = p.as_blob_data_provider()
                 .map_err(|e| IntlError::DataProvider { message: e.to_string() }.into_vm_error())?;
-            Ok(DataProvider::Blob(bdp))
+            Ok(DataProvider::Blob(id, bdp))
         }
         None => Ok(DataProvider::Compiled),
     }

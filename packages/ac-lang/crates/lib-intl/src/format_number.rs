@@ -21,7 +21,7 @@ use super::parts::PartsCollector;
 use super::provider::IntlProvider;
 
 thread_local! {
-    static DECIMAL_FORMATTERS: RefCell<HashMap<(String, String), Rc<DecimalFormatter>>> = RefCell::new(HashMap::new());
+    static DECIMAL_FORMATTERS: RefCell<HashMap<(usize, String, String), Rc<DecimalFormatter>>> = RefCell::new(HashMap::new());
 }
 
 /// `intl.format_number(n: number, locale?: string, opts?: object) → string`
@@ -141,20 +141,17 @@ fn decimal_formatter(
     dp: &DataProvider,
 ) -> Result<Rc<DecimalFormatter>, Error> {
     let formatter_opts = build_formatter_options(opts);
-    if let Some(p) = dp.as_buffer_provider() {
-        let f = DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts)
-            .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
-        return Ok(Rc::new(f));
-    }
-
-    let key = (locale.to_string(), format!("{:?}", formatter_opts));
+    let key = (dp.provider_id(), locale.to_string(), format!("{:?}", formatter_opts));
     DECIMAL_FORMATTERS.with(|cache| -> Result<Rc<DecimalFormatter>, Error> {
         let mut cache = cache.borrow_mut();
         if let Some(f) = cache.get(&key) {
             Ok(Rc::clone(f))
         } else {
-            let f = DecimalFormatter::try_new(locale.into(), formatter_opts)
-                .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+            let f = match dp.as_buffer_provider() {
+                Some(p) => DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts),
+                None => DecimalFormatter::try_new(locale.into(), formatter_opts),
+            }
+            .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
             let f = Rc::new(f);
             cache.insert(key, Rc::clone(&f));
             Ok(f)
