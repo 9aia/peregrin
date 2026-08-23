@@ -347,33 +347,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "ac-host-cache"
-version = "0.1.0"
-dependencies = [
- "ac-ast",
- "ac-ast-canonical",
- "ac-runtime",
- "ac-runtime-canonical",
- "ac-runtime-values",
- "serde_json",
-]
-
-[[package]]
-name = "ac-host-resolver"
-version = "0.1.0"
-dependencies = [
- "ac-ast",
- "ac-ast-canonical",
- "ac-module-resolver-core",
- "ac-module-resolver-virtual",
- "ac-runtime",
- "ac-runtime-canonical",
- "ac-runtime-example-1",
- "ac-runtime-values",
- "serde_json",
-]
-
-[[package]]
 name = "ac-integration-tests"
 version = "0.1.0"
 dependencies = [
@@ -383,7 +356,6 @@ dependencies = [
  "ac-compiler-canonical",
  "ac-dialect-canonical",
  "ac-fields",
- "ac-host-cache",
  "ac-lib-utils",
  "ac-runtime",
  "ac-runtime-canonical",
@@ -414,11 +386,13 @@ dependencies = [
  "ac-frontend-yaml",
  "ac-lib-crypto",
  "ac-lib-datetime",
+ "ac-lib-http",
+ "ac-lib-http-std",
  "ac-lib-intl",
  "ac-lib-kv",
  "ac-lib-kv-hashmap",
- "ac-lib-platform",
- "ac-lib-platform-std",
+ "ac-lib-os",
+ "ac-lib-os-std",
  "ac-lib-rand",
  "ac-lib-utils",
  "ac-module-resolver-core",
@@ -498,6 +472,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-lib-http"
+version = "0.1.0"
+dependencies = [
+ "ac-runtime",
+ "ac-runtime-modules",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-lib-http-std"
+version = "0.1.0"
+dependencies = [
+ "ac-lib-http",
+ "ureq",
+]
+
+[[package]]
 name = "ac-lib-intl"
 version = "0.1.0"
 dependencies = [
@@ -537,22 +528,19 @@ dependencies = [
 ]
 
 [[package]]
-name = "ac-lib-platform"
+name = "ac-lib-os"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
  "ac-runtime-modules",
- "ac-runtime-values",
  "serde_json",
 ]
 
 [[package]]
-name = "ac-lib-platform-std"
+name = "ac-lib-os-std"
 version = "0.1.0"
 dependencies = [
- "ac-lib-platform",
- "serde_json",
- "ureq",
+ "ac-lib-os",
 ]
 
 [[package]]
@@ -741,7 +729,12 @@ dependencies = [
 name = "ac-runtime-common"
 version = "0.1.0"
 dependencies = [
+ "ac-ast-canonical",
+ "ac-module-resolver-core",
+ "ac-module-resolver-virtual",
  "ac-runtime",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
  "serde_json",
 ]
 

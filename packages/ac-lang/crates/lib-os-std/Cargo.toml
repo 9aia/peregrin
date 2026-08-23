@@ -1,0 +1,7 @@
+[package]
+name = "ac-lib-os-std"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-lib-os.workspace = true

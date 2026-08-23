@@ -22,8 +22,10 @@ members = [
   "crates/lib-rand",
   "crates/lib-kv",
   "crates/lib-kv-hashmap",
-  "crates/lib-platform",
-  "crates/lib-platform-std",
+  "crates/lib-os",
+  "crates/lib-os-std",
+  "crates/lib-http",
+  "crates/lib-http-std",
   "crates/vm",
   "crates/vm-common",
   "crates/vm-canonical",
@@ -55,8 +57,6 @@ members = [
   "crates/typecheck-schema-json",
   "crates/frontend",
   "crates/host",
-  "crates/host-cache",
-  "crates/host-resolver",
   "crates/compiler-common",
   "crates/compiler-canonical",
   "crates/compiler-pass-parse",
@@ -106,8 +106,10 @@ ac-lib-crypto = { path = "crates/lib-crypto" }
 ac-lib-rand = { path = "crates/lib-rand" }
 ac-lib-kv = { path = "crates/lib-kv" }
 ac-lib-kv-hashmap = { path = "crates/lib-kv-hashmap" }
-ac-lib-platform = { path = "crates/lib-platform" }
-ac-lib-platform-std = { path = "crates/lib-platform-std" }
+ac-lib-os = { path = "crates/lib-os" }
+ac-lib-os-std = { path = "crates/lib-os-std" }
+ac-lib-http = { path = "crates/lib-http" }
+ac-lib-http-std = { path = "crates/lib-http-std" }
 ac-runtime = { path = "crates/vm" }
 ac-runtime-common = { path = "crates/vm-common" }
 ac-runtime-canonical = { path = "crates/vm-canonical" }
@@ -119,8 +121,6 @@ ac-fields = { path = "crates/fields" }
 ac-cli = { path = "crates/cli" }
 ac-frontend = { path = "crates/frontend" }
 ac-runtime-example-1 = { path = "crates/host" }
-ac-host-cache = { path = "crates/host-cache" }
-ac-host-resolver = { path = "crates/host-resolver" }
 ac-compiler-common = { path = "crates/compiler-common" }
 ac-compiler-canonical = { path = "crates/compiler-canonical" }
 ac-compiler-pass-parse = { path = "crates/compiler-pass-parse" }
@@ -199,8 +199,10 @@ default = [
   "lib-rand",
   "lib-kv",
   "lib-kv-hashmap",
-  "lib-platform",
-  "lib-platform-std",
+  "lib-os",
+  "lib-os-std",
+  "lib-http",
+  "lib-http-std",
   "store",
   "codebase",
 ]
@@ -239,8 +241,10 @@ lib-crypto = ["dep:ac-lib-crypto", "vm", "dep:ac-runtime-modules"]
 lib-rand = ["dep:ac-lib-rand", "vm", "dep:ac-runtime-modules"]
 lib-kv = ["dep:ac-lib-kv", "vm", "dep:ac-runtime-modules"]
 lib-kv-hashmap = ["dep:ac-lib-kv-hashmap", "lib-kv"]
-lib-platform = ["dep:ac-lib-platform", "vm", "dep:ac-runtime-modules"]
-lib-platform-std = ["dep:ac-lib-platform-std", "lib-platform"]
+lib-os = ["dep:ac-lib-os", "vm", "dep:ac-runtime-modules"]
+lib-os-std = ["dep:ac-lib-os-std", "lib-os"]
+lib-http = ["dep:ac-lib-http", "vm", "dep:ac-runtime-modules"]
+lib-http-std = ["dep:ac-lib-http-std", "lib-http"]
 store = ["dep:ac-store"]
 codebase = ["dep:ac-codebase", "store"]
 
@@ -278,8 +282,10 @@ ac-lib-crypto = { workspace = true, optional = true }
 ac-lib-rand = { workspace = true, optional = true }
 ac-lib-kv = { workspace = true, optional = true }
 ac-lib-kv-hashmap = { workspace = true, optional = true }
-ac-lib-platform = { workspace = true, optional = true }
-ac-lib-platform-std = { workspace = true, optional = true }
+ac-lib-os = { workspace = true, optional = true }
+ac-lib-os-std = { workspace = true, optional = true }
+ac-lib-http = { workspace = true, optional = true }
+ac-lib-http-std = { workspace = true, optional = true }
 ac-store = { workspace = true, optional = true }
 ac-codebase = { workspace = true, optional = true }
 ac-runtime-sandbox = { workspace = true, optional = true }

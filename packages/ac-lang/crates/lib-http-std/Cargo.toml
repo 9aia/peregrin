@@ -1,0 +1,8 @@
+[package]
+name = "ac-lib-http-std"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-lib-http.workspace = true
+ureq = "2"

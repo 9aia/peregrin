@@ -24,8 +24,9 @@
 //! ## What's excluded
 //!
 //! - [`ac-lib-rand`] — non-deterministic RNG
-//! - [`ac-lib-platform`] / [`ac-lib-platform-std`] — filesystem, env, HTTP,
+//! - [`ac-lib-os`] / [`ac-lib-os-std`] — filesystem, env,
 //!   process spawning, system clock
+//! - [`ac-lib-http`] / [`ac-lib-http-std`] — HTTP client
 //!
 //! ## Usage
 //!
