@@ -5,7 +5,7 @@
 //! 2. Runtime dispatches to GenericFunction via type_args on Expr::Call
 //! 3. Host module (lib-utils ArrayModule) responds to generic dispatch
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, Namespaces};
 use ac_host::DefaultHost;
@@ -408,7 +408,7 @@ fn e2e_typechecker_resolves_type_args_for_array_map() {
 
 #[test]
 fn e2e_vm_evaluates_generic_map_with_type_args() {
-    use ac_ast::Expr;
+    use ac_ast_canonical::Expr;
     use ac_runtime::NonFunctionValue;
 
     let host = build_host();
@@ -457,7 +457,7 @@ fn e2e_vm_evaluates_generic_map_with_type_args() {
 
 #[test]
 fn e2e_vm_evaluates_generic_filter_with_type_args() {
-    use ac_ast::Expr;
+    use ac_ast_canonical::Expr;
     use ac_runtime::NonFunctionValue;
 
     let host = build_host();
@@ -504,7 +504,7 @@ fn e2e_vm_evaluates_generic_filter_with_type_args() {
 
 #[test]
 fn e2e_vm_evaluates_generic_reduce_with_type_args() {
-    use ac_ast::Expr;
+    use ac_ast_canonical::Expr;
     use ac_runtime::NonFunctionValue;
 
     let host = build_host();
@@ -555,7 +555,7 @@ fn e2e_vm_evaluates_generic_reduce_with_type_args() {
 
 #[test]
 fn e2e_unknown_type_args_fall_back_gracefully() {
-    use ac_ast::Expr;
+    use ac_ast_canonical::Expr;
     use ac_runtime::NonFunctionValue;
 
     let host = build_host();

@@ -8,7 +8,7 @@
 
 use std::path::PathBuf;
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function, Host, Vm};
 

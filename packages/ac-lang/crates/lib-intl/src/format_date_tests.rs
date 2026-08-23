@@ -94,7 +94,7 @@ fn format_date_japanese_locale() {
     assert!(!s.is_empty());
 }
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_runtime_core::ModuleHost;
 use ac_vm::Vm;
 

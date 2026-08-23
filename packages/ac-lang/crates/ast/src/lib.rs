@@ -1,13 +1,22 @@
 //! # ac-ast
 //!
-//! A thin facade over `ac-ast-common` and `ac-ast-canonical`.
-//! This preserves the existing public API while the implementation
-//! lives in the more focused domain crates.
+//! Base AST machinery for the AC language.
+//!
+//! This crate defines the generic building blocks: a pluggable `Node` type,
+//! a `NodeMetadata` trait, and factory traits for expressions, statements,
+//! and types. Concrete canonical AST nodes live in `ac-ast-canonical`.
 
-pub use ac_ast_canonical::{
-    CanonicalExprFactory, CanonicalStmtFactory, CanonicalTypeFactory, Expr, Field, HandlerClause,
-    Stmt, Type,
-};
-pub use ac_ast_common::{
-    Attrs, Both, ExprFactory, Node, NodeMetadata, Span, StmtFactory, TypeFactory,
-};
+pub mod expr;
+pub mod metadata;
+pub mod node;
+pub mod stmt;
+pub mod type_;
+
+pub use expr::ExprFactory;
+pub use metadata::{Attrs, Both, NodeMetadata, Span};
+pub use node::Node;
+pub use stmt::StmtFactory;
+pub use type_::TypeFactory;
+
+#[cfg(test)]
+mod tests;

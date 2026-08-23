@@ -1,9 +1,11 @@
 use crate::AsyncEval;
 use crate::Error;
 use crate::Eval;
+use crate::RuntimeContext;
 use ac_runtime::NonFunctionValue;
 use indexmap::IndexMap;
 use serde_json::Value as JsonValue;
+use std::cell::Cell;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
@@ -26,6 +28,9 @@ pub struct Context {
     scopes: Vec<IndexMap<String, NonFunctionValue>>,
     eval: Option<Box<dyn Eval>>,
     async_eval: Option<Box<dyn AsyncEval>>,
+    max_depth: Option<usize>,
+    max_calls: Option<usize>,
+    call_count: Cell<usize>,
 }
 
 impl Context {
@@ -35,6 +40,9 @@ impl Context {
             scopes: vec![IndexMap::new()],
             eval: None,
             async_eval: None,
+            max_depth: None,
+            max_calls: None,
+            call_count: Cell::new(0),
         }
     }
 
@@ -147,6 +155,69 @@ impl Context {
         self.scopes.len()
     }
 
+    /// Sets the maximum scope depth allowed during evaluation.
+    ///
+    /// When set, the VM returns [`Error::ResourceLimit`] if a call
+    /// would push the scope depth beyond this limit. This prevents
+    /// runaway recursion in untrusted code.
+    pub fn set_max_depth(&mut self, max: usize) {
+        self.max_depth = Some(max);
+    }
+
+    /// Sets the maximum number of function calls allowed during evaluation.
+    ///
+    /// When set, the VM returns [`Error::ResourceLimit`] after the
+    /// call count exceeds this limit.
+    pub fn set_max_calls(&mut self, max: usize) {
+        self.max_calls = Some(max);
+    }
+
+    /// Returns the configured max scope depth, if any.
+    pub fn max_depth(&self) -> Option<usize> {
+        self.max_depth
+    }
+
+    /// Returns the configured max call count, if any.
+    pub fn max_calls(&self) -> Option<usize> {
+        self.max_calls
+    }
+
+    /// Returns the number of calls made so far in this context.
+    pub fn call_count(&self) -> usize {
+        self.call_count.get()
+    }
+
+    /// Increments the call counter. Called by the VM on each `Call`.
+    ///
+    /// Returns `Err(Error::ResourceLimit)` if the limit is exceeded.
+    pub fn increment_call_count(&self) -> Result<(), Error> {
+        let count = self.call_count.get() + 1;
+        self.call_count.set(count);
+        if let Some(max) = self.max_calls {
+            if count > max {
+                return Err(Error::ResourceLimit(format!(
+                    "call limit exceeded: {max}"
+                )));
+            }
+        }
+        Ok(())
+    }
+
+    /// Checks whether the current scope depth is within the limit.
+    ///
+    /// Called by the VM before pushing a new scope for a function call.
+    /// Returns `Err(Error::ResourceLimit)` if the limit would be exceeded.
+    pub fn check_depth(&self) -> Result<(), Error> {
+        if let Some(max) = self.max_depth {
+            if self.scopes.len() >= max {
+                return Err(Error::ResourceLimit(format!(
+                    "depth limit exceeded: {max}"
+                )));
+            }
+        }
+        Ok(())
+    }
+
     /// Defines a variable in the current (topmost) scope.
     ///
     /// If a variable with the same name exists in the current
@@ -188,5 +259,91 @@ impl Context {
 impl Default for Context {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl RuntimeContext for Context {
+    fn define(&mut self, name: &str, value: NonFunctionValue) {
+        self.define(name, value);
+    }
+
+    fn get(&self, name: &str) -> Result<NonFunctionValue, Error> {
+        self.get(name)
+    }
+
+    fn push_scope(&mut self) {
+        self.push_scope();
+    }
+
+    fn pop_scope(&mut self) -> Option<IndexMap<String, NonFunctionValue>> {
+        self.pop_scope()
+    }
+
+    fn depth(&self) -> usize {
+        self.depth()
+    }
+
+    fn call_count(&self) -> usize {
+        self.call_count()
+    }
+
+    fn increment_call_count(&self) -> Result<(), Error> {
+        self.increment_call_count()
+    }
+
+    fn check_depth(&self) -> Result<(), Error> {
+        self.check_depth()
+    }
+
+    fn has_eval(&self) -> bool {
+        self.has_eval()
+    }
+
+    fn has_async_eval(&self) -> bool {
+        self.has_async_eval()
+    }
+
+    fn set_eval(&mut self, eval: Box<dyn Eval>) {
+        self.set_eval(eval);
+    }
+
+    fn set_async_eval(&mut self, eval: Box<dyn AsyncEval>) {
+        self.set_async_eval(eval);
+    }
+
+    fn eval_expr(
+        &self,
+        expr: &str,
+        vars: &[(String, NonFunctionValue)],
+    ) -> Result<NonFunctionValue, Error> {
+        self.eval_expr(expr, vars)
+    }
+
+    fn eval_expr_async<'a>(
+        &'a self,
+        expr: &'a str,
+        vars: &'a [(String, NonFunctionValue)],
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
+        self.eval_expr_async(expr, vars)
+    }
+
+    fn set_max_depth(&mut self, max: usize) {
+        self.set_max_depth(max);
+    }
+
+    fn set_max_calls(&mut self, max: usize) {
+        self.set_max_calls(max);
+    }
+
+    fn max_depth(&self) -> Option<usize> {
+        self.max_depth()
+    }
+
+    fn max_calls(&self) -> Option<usize> {
+        self.max_calls()
+    }
+
+    fn collect_vars(&self) -> Vec<(String, NonFunctionValue)> {
+        self.collect_vars()
     }
 }

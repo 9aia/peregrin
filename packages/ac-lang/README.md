@@ -1,12 +1,12 @@
 # ac-lang
 
-A small, embeddable scripting language runtime where **schemas define types**, **frontends parse formats**, and **the host provides all functions**. The core is agnostic of all three. Designed for embedding across diverse host environments — game engines, browsers, servers, CLI tools — where the same program can run under different hosts with different capabilities.
+A small, embeddable, **runtime-agnostic** general-purpose language. The kernel is deliberately minimal — literals, path lookups, function calls, and handle expressions — and the host provides all functions, control flow, and capabilities. The same program can run in a browser, a game engine, a server, a CLI tool, at the type level, or on embedded hardware — each host decides what its programs can do.
 
-The language kernel is deliberately small — literals, path lookups, function calls, and handle expressions. General-purpose computation is emergent: a host that provides `if`, `map`, `filter`, `reduce`, `match` can reach arbitrary expressiveness without the language baking in control flow. The scope boundary is in what the _language_ defines, not in what a _host_ can provide.
+The language defines no runtime, no type system, no format, and no standard library. **Schemas define types**, **frontends parse formats**, and **the host provides all functions** — the core is agnostic of all three. General-purpose computation is emergent: a host that provides `if`, `map`, `filter`, `reduce`, `match` can reach arbitrary expressiveness without the language baking in control flow. The scope boundary is in what the _language_ defines, not in what a _host_ can provide.
 
 ## Properties
 
-- **Embeddable.** Zero-dependency AST. VM generic over a `Host` trait. The Lua/Rhai embedding model, not the Python/Unison model.
+- **Runtime-agnostic.** The language specification is independent of any runtime, host, or execution target. Programs can run in browsers, game engines, servers, CLI tools, type-level contexts, embedded hardware, or GPUs — the host determines the execution model.
 - **Sandboxing-compatible.** The host controls all functions, namespaces, and side effects. No built-in I/O, no standard library, no implicit access. Sandboxing is a host policy, not a language feature.
 - **Closure-free.** Function values are plain JSON objects with `params` and a `body` string — they capture no environment. All bindings are explicit parameters. This makes functions serializable, cacheable, and content-addressable.
 - **Serializable.** All values are JSON-serializable (`NonFunctionValue = serde_json::Value`). Function values serialize like any other object. Documents, definitions, and evaluation results can be persisted, transmitted, and restored without loss.
@@ -15,8 +15,10 @@ The language kernel is deliberately small — literals, path lookups, function c
 - **Lazy evaluation.** The `LazyFunction` trait enables short-circuit evaluation (`if`, `and`, `or`) without baking control flow into the kernel.
 - **Content-addressable (optional).** Definitions can be identified by SHA-256 hash of their canonical JSON for deduplication, reproducible builds, and cross-machine sharing. Content addressing is a storage layer — documents evaluate correctly without it.
 - **Format-agnostic.** Documents can be written in YAML, JSON, TOML, or any format that maps to JSON-compatible values.
+- **Embeddable.** Zero-dependency AST. VM generic over a `Host` trait. The Lua/Rhai embedding model, not the Python/Unison model.
 - **Schema-agnostic.** The `Schema<V>` trait is abstract. JSON Schema by default; any schema language can implement it.
 - **Module-organized.** The `Module` trait groups host functions by namespace (`fs.read`, `math.abs`, `http.get`). A `ModuleHost` composes modules into a single host.
+- **Tree-shakeable.** The `ac-lang` facade is split into Cargo features for each subsystem. Disable default features and enable only the ones your host needs; unused crates and code are not compiled or linked.
 
 See [design-principles.md](./docs/explanations/design-principles.md) for the full list.
 
@@ -421,4 +423,4 @@ pub trait Schema<V> {
 
 Swapping JSON Schema for another validator (Cue, custom rules, etc.) doesn't touch the core, VM, or frontends.
 
-All values are JSON-serializable — `NonFunctionValue = serde_json::Value` and schemas define types. The language is general-purpose, but its generality is emergent: the kernel provides evaluation, the host provides control flow and all other capabilities.
+All values are JSON-serializable — `NonFunctionValue = serde_json::Value` and schemas define types. The language is general-purpose and runtime-agnostic: the kernel provides evaluation, the host provides control flow and all other capabilities, and the execution target (browser, server, embedded, GPU, etc.) is a host decision, not a language constraint.

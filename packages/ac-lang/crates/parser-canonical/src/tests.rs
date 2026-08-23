@@ -1,4 +1,4 @@
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_lexer::Lexer;
 use ac_lexer_canonical::CanonicalLexer;
 use ac_parser::{ParseError, Parser};

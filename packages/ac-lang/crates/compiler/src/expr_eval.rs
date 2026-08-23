@@ -9,7 +9,7 @@
 
 use std::cell::{Cell, RefCell};
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, APPLY_FUNCTION, FunctionResolver, Namespaces};
 use ac_host::DefaultHost;

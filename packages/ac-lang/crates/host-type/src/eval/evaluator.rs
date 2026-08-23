@@ -3,7 +3,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{APPLY_FUNCTION, DEFAULT_NAMESPACE, Namespaces, eval_expression};

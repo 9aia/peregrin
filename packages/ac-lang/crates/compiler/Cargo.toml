@@ -11,6 +11,7 @@ ac-compiler-pass-resolve.workspace = true
 ac-compiler-pass-typecheck.workspace = true
 ac-compiler-pass-generate.workspace = true
 ac-ast.workspace = true
+ac-ast-canonical.workspace = true
 ac-dialect.workspace = true
 ac-dialect-canonical.workspace = true
 ac-runtime.workspace = true

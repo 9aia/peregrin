@@ -16,6 +16,7 @@ fixed_decimal = { version = "0.7", features = ["ryu"] }
 
 [dev-dependencies]
 ac-ast.workspace = true
+ac-ast-canonical.workspace = true
 ac-host.workspace = true
 ac-runtime-core.workspace = true
 ac-runtime.workspace = true

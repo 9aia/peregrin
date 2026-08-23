@@ -6,7 +6,7 @@
 //! - Canonical JSON: canonicalization is idempotent.
 //! - Continuation roundtrips: any valid continuation survives serialization.
 
-use ac_ast::{Expr, HandlerClause};
+use ac_ast_canonical::{Expr, HandlerClause};
 use ac_runtime::NonFunctionValue;
 use ac_store::DefinitionHash;
 use ac_store::canonicalize_json;

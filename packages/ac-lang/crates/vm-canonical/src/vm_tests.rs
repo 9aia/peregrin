@@ -1,9 +1,10 @@
+use crate::RuntimeContext;
 use super::*;
-use crate::context::Context;
-use crate::error::Error;
-use crate::host::{AsyncFunction, Function, Host};
-use ac_ast::Expr;
-use ac_runtime::NonFunctionValue;
+use crate::Context;
+use crate::Error;
+use crate::{AsyncFunction, Function, Host};
+use crate::Expr;
+use crate::NonFunctionValue;
 use std::future::Future;
 use std::pin::Pin;
 use std::task::{Context as TaskContext, Poll, RawWaker, RawWakerVTable, Waker};
@@ -30,7 +31,7 @@ fn block_on<F: Future>(future: F) -> F::Output {
 #[derive(Clone)]
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -104,7 +105,7 @@ impl AsyncFunction for AsyncFetch {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut Context,
+        _ctx: &'a mut (dyn RuntimeContext + 'a),
     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async {
             let input = args.first().and_then(|v| v.as_str()).unwrap_or("");
@@ -119,7 +120,7 @@ impl AsyncFunction for AsyncAdd {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut Context,
+        _ctx: &'a mut (dyn RuntimeContext + 'a),
     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async {
             let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
@@ -134,7 +135,7 @@ impl AsyncFunction for YieldOnce {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut Context,
+        _ctx: &'a mut (dyn RuntimeContext + 'a),
     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async {
             let val = args.first().cloned().unwrap_or(NonFunctionValue::new(0));
@@ -316,7 +317,7 @@ fn vm_eval_deeply_nested_calls() {
 fn vm_eval_call_with_no_args() {
     struct GetAnswer;
     impl Function for GetAnswer {
-        fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
             Ok(NonFunctionValue::new(42))
         }
     }
@@ -398,7 +399,7 @@ impl crate::Operation for PingOp {
             return_schema: None,
         }
     }
-    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "ping".to_string(),
             args: vec![],
@@ -436,7 +437,7 @@ impl Default for PingHost {
 
 #[test]
 fn vm_eval_handle_intercepts_via_eval() {
-    use ac_ast::HandlerClause;
+    use crate::HandlerClause;
     let expr = Expr::handle(
         Expr::call("ping", vec![]),
         vec![HandlerClause {
@@ -454,7 +455,7 @@ fn vm_eval_handle_intercepts_via_eval() {
 
 #[test]
 fn vm_eval_handle_resume_via_eval() {
-    use ac_ast::HandlerClause;
+    use crate::HandlerClause;
     // handle(add(ping(), 10)) — handler resumes k with 42 → add(42, 10) = 52
     let expr = Expr::handle(
         Expr::call(
@@ -479,7 +480,7 @@ fn vm_eval_handle_resume_via_eval() {
 
 #[test]
 fn vm_eval_handle_no_match_propagates_as_operation_error() {
-    use ac_ast::HandlerClause;
+    use crate::HandlerClause;
     let expr = Expr::handle(
         Expr::call("ping", vec![]),
         vec![HandlerClause {
@@ -497,7 +498,7 @@ fn vm_eval_handle_no_match_propagates_as_operation_error() {
 
 #[test]
 fn vm_eval_handle_pure_body_returns_body_value() {
-    use ac_ast::HandlerClause;
+    use crate::HandlerClause;
     let expr = Expr::handle(
         Expr::value(NonFunctionValue::new(99)),
         vec![HandlerClause {
@@ -517,7 +518,7 @@ fn vm_eval_handle_pure_body_returns_body_value() {
 
 #[test]
 fn vm_eval_async_handle_intercepts() {
-    use ac_ast::HandlerClause;
+    use crate::HandlerClause;
     let expr = Expr::handle(
         Expr::call("ping", vec![]),
         vec![HandlerClause {

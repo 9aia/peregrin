@@ -9,3 +9,4 @@ ac-runtime.workspace = true
 
 [dev-dependencies]
 ac-ast.workspace = true
+ac-ast-canonical.workspace = true

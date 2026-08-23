@@ -238,7 +238,7 @@ fn argument_count_on_missing_args() {
 
 // ── lazy evaluation tests ─────────────────────────────────────────
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_runtime_core::ModuleHost;
 use ac_vm::{Host, Vm};
 

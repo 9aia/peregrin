@@ -24,8 +24,8 @@
 //! the continuation and yields. If `perform` returns `Ok(value)`, the
 //! operation completed without signaling (e.g. a no-op or cached result).
 
-use crate::Context;
 use crate::Error;
+use crate::RuntimeContext;
 use ac_runtime::NonFunctionValue;
 
 /// The signature of an operation — its name and parameter types.
@@ -65,7 +65,7 @@ pub struct OperationSig {
 ///         }
 ///     }
 ///
-///     fn perform(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+///     fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
 ///         // Signal: yield to the caller with operation name + args
 ///         Err(Error::Operation {
 ///             name: "fetch".to_string(),
@@ -82,5 +82,5 @@ pub trait Operation {
     ///
     /// Return `Err(Error::Operation { name, args })` to signal.
     /// Return `Ok(value)` to complete without signaling (e.g. cached).
-    fn perform(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error>;
+    fn perform(&self, args: &[NonFunctionValue], ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>;
 }

@@ -1,5 +1,7 @@
 use std::collections::BTreeMap;
 
+use serde_json::Value as JsonValue;
+
 /// A static type in the AC type system.
 ///
 /// Types are derived from schema fragments via a [`SchemaInterpreter`].
@@ -201,5 +203,101 @@ impl Type {
     /// Returns `true` if this type is `Unknown`.
     pub fn is_unknown(&self) -> bool {
         matches!(self, Type::Unknown)
+    }
+
+    /// Encode this type as a JSON value.
+    ///
+    /// The encoding is a tagged union: `{"kind": "string"}`,
+    /// `{"kind": "array", "item": <type>}`, etc.
+    pub fn to_json(&self) -> JsonValue {
+        match self {
+            Type::String => serde_json::json!({"kind": "string"}),
+            Type::Number => serde_json::json!({"kind": "number"}),
+            Type::Boolean => serde_json::json!({"kind": "boolean"}),
+            Type::Null => serde_json::json!({"kind": "null"}),
+            Type::Unknown => serde_json::json!({"kind": "unknown"}),
+            Type::Never => serde_json::json!({"kind": "never"}),
+            Type::Var(name) => serde_json::json!({"kind": "var", "name": name}),
+            Type::Trait(name) => serde_json::json!({"kind": "trait", "name": name}),
+            Type::Array(item) => serde_json::json!({"kind": "array", "item": item.to_json()}),
+            Type::Object(props) => {
+                let mut map = serde_json::Map::new();
+                for (k, v) in props {
+                    map.insert(k.clone(), v.to_json());
+                }
+                serde_json::json!({"kind": "object", "properties": JsonValue::Object(map)})
+            }
+            Type::Function(f) => {
+                let params: Vec<JsonValue> = f
+                    .params
+                    .iter()
+                    .map(|(name, ty)| serde_json::json!([name, ty.to_json()]))
+                    .collect();
+                serde_json::json!({
+                    "kind": "function",
+                    "params": params,
+                    "return": f.return_type.to_json()
+                })
+            }
+            Type::App(ctor, args) => {
+                let args_json: Vec<JsonValue> = args.iter().map(|a| a.to_json()).collect();
+                serde_json::json!({
+                    "kind": "app",
+                    "constructor": ctor.to_json(),
+                    "args": args_json
+                })
+            }
+        }
+    }
+
+    /// Decode a type from a JSON value produced by [`to_json`].
+    pub fn from_json(value: &JsonValue) -> Option<Self> {
+        let obj = value.as_object()?;
+        let kind = obj.get("kind")?.as_str()?;
+        match kind {
+            "string" => Some(Type::String),
+            "number" => Some(Type::Number),
+            "boolean" => Some(Type::Boolean),
+            "null" => Some(Type::Null),
+            "unknown" => Some(Type::Unknown),
+            "never" => Some(Type::Never),
+            "var" => Some(Type::Var(obj.get("name")?.as_str()?.to_string())),
+            "trait" => Some(Type::Trait(obj.get("name")?.as_str()?.to_string())),
+            "array" => Some(Type::Array(Box::new(Type::from_json(obj.get("item")?)?))),
+            "object" => {
+                let props = obj.get("properties")?.as_object()?;
+                let mut map = BTreeMap::new();
+                for (k, v) in props {
+                    map.insert(k.clone(), Type::from_json(v)?);
+                }
+                Some(Type::Object(map))
+            }
+            "function" => {
+                let params = obj.get("params")?.as_array()?;
+                let mut param_list = Vec::new();
+                for p in params {
+                    let arr = p.as_array()?;
+                    let name = arr.get(0)?.as_str()?.to_string();
+                    let ty = Type::from_json(arr.get(1)?)?;
+                    param_list.push((name, ty));
+                }
+                let return_type = Box::new(Type::from_json(obj.get("return")?)?);
+                Some(Type::Function(FunctionType {
+                    type_params: Vec::new(),
+                    params: param_list,
+                    return_type,
+                }))
+            }
+            "app" => {
+                let ctor = Box::new(Type::from_json(obj.get("constructor")?)?);
+                let args = obj.get("args")?.as_array()?;
+                let mut arg_list = Vec::new();
+                for a in args {
+                    arg_list.push(Type::from_json(a)?);
+                }
+                Some(Type::App(ctor, arg_list))
+            }
+            _ => None,
+        }
     }
 }

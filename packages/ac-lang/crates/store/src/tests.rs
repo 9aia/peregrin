@@ -1,7 +1,7 @@
 use ac_runtime::FunctionValue;
 use serde_json::json;
 
-use ac_ast::{Expr, HandlerClause};
+use ac_ast_canonical::{Expr, HandlerClause};
 use ac_runtime::NonFunctionValue;
 
 use crate::canonical::canonicalize_json;

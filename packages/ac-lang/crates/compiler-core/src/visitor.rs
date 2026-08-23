@@ -9,7 +9,7 @@
 //! Both have default implementations that recurse, so passes override
 //! only the nodes they care about.
 
-use ac_ast::{Expr, Field};
+use ac_ast_canonical::{Expr, Field};
 use ac_fields::ExtractedFields;
 use ac_runtime::NonFunctionValue;
 
@@ -47,6 +47,16 @@ pub fn walk_expr<V: Visitor + ?Sized>(visitor: &mut V, expr: &Expr<NonFunctionVa
             visitor.visit_expr(body);
             for clause in handlers {
                 visitor.visit_expr(&clause.body);
+            }
+        }
+        Expr::Array(elements) => {
+            for elem in elements {
+                visitor.visit_expr(elem);
+            }
+        }
+        Expr::Object(entries) => {
+            for (_, expr) in entries {
+                visitor.visit_expr(expr);
             }
         }
     }
@@ -112,7 +122,7 @@ fn fold_expr_inner<F: Folder + ?Sized>(
             body: Box::new(folder.fold_expr(*body)),
             handlers: handlers
                 .into_iter()
-                .map(|c| ac_ast::HandlerClause {
+                .map(|c| ac_ast_canonical::HandlerClause {
                     op_name: c.op_name,
                     params: c.params,
                     continuation_name: c.continuation_name,
@@ -120,6 +130,15 @@ fn fold_expr_inner<F: Folder + ?Sized>(
                 })
                 .collect(),
         },
+        Expr::Array(elements) => Expr::Array(
+            elements.into_iter().map(|e| folder.fold_expr(e)).collect(),
+        ),
+        Expr::Object(entries) => Expr::Object(
+            entries
+                .into_iter()
+                .map(|(k, v)| (k, folder.fold_expr(v)))
+                .collect(),
+        ),
     }
 }
 

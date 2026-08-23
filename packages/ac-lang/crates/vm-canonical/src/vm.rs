@@ -1,8 +1,5 @@
-use crate::Context;
-use crate::Error;
-use crate::Host;
-use ac_ast::Expr;
-use ac_runtime::NonFunctionValue;
+use crate::{Error, Expr, Host, NonFunctionValue, RuntimeContext, VirtualMachine};
+use serde_json::Value as JsonValue;
 
 type RuntimeExpr = Expr<NonFunctionValue>;
 
@@ -31,14 +28,14 @@ type RuntimeExpr = Expr<NonFunctionValue>;
 /// ```
 ///
 /// The VM doesn't know what any of those functions mean.
-pub struct Vm<H: Host> {
+pub struct CanonicalVm<H: Host> {
     host: H,
 }
 
-impl<H: Host> Vm<H> {
+impl<H: Host> CanonicalVm<H> {
     /// Creates a new VM with the given host.
     pub fn new(host: H) -> Self {
-        Vm { host }
+        CanonicalVm { host }
     }
 
     /// Returns a reference to the host.
@@ -58,7 +55,7 @@ impl<H: Host> Vm<H> {
     /// The function decides which arguments to evaluate (short-circuit).
     /// Otherwise, the VM eagerly evaluates all arguments and dispatches
     /// to [`Host::function`] or [`Host::operation`].
-    pub fn eval(&self, expr: &RuntimeExpr, ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    pub fn eval(&self, expr: &RuntimeExpr, ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
 
@@ -93,10 +90,13 @@ impl<H: Host> Vm<H> {
             }
 
             Expr::Call { name, args, type_args } => {
+                ctx.increment_call_count()?;
+                ctx.check_depth()?;
+
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host.lazy_function(name) {
-                    let mut evaluate = |sub: &RuntimeExpr, c: &mut Context| self.eval(sub, c);
+                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn RuntimeContext| self.eval(sub, c);
                     return lazy.call(args, ctx, &mut evaluate);
                 }
 
@@ -133,12 +133,29 @@ impl<H: Host> Vm<H> {
 
                 Err(Error::UnknownFunction(name.clone()))
             }
+
+            Expr::Array(elements) => {
+                let mut values = Vec::with_capacity(elements.len());
+                for elem in elements {
+                    values.push(self.eval(elem, ctx)?.into_inner());
+                }
+                Ok(NonFunctionValue::new(JsonValue::Array(values)))
+            }
+
+            Expr::Object(entries) => {
+                let mut map = serde_json::Map::with_capacity(entries.len());
+                for (key, expr) in entries {
+                    let value = self.eval(expr, ctx)?.into_inner();
+                    map.insert(key.clone(), value);
+                }
+                Ok(NonFunctionValue::new(JsonValue::Object(map)))
+            }
         }
     }
 
     /// Evaluates an expression asynchronously.
     ///
-    /// Like [`eval`](Vm::eval), but supports async host functions.
+    /// Like [`eval`](CanonicalVm::eval), but supports async host functions.
     /// The VM checks [`Host::function`] first (sync), then falls back
     /// to [`Host::async_function`] (async). This means a host can
     /// provide both sync and async functions, and the VM will use
@@ -154,12 +171,12 @@ impl<H: Host> Vm<H> {
     /// returns `Err(Error::Yield(value))`. The caller receives
     /// `Err(Error::Yield(value))` and can inspect the yielded value.
     ///
-    /// Like [`eval`](Vm::eval), this checks [`Host::lazy_function`]
+    /// Like [`eval`](CanonicalVm::eval), this checks [`Host::lazy_function`]
     /// first for short-circuit evaluation.
     pub async fn eval_async(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut Context,
+        ctx: &mut dyn RuntimeContext,
     ) -> Result<NonFunctionValue, Error> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
@@ -190,10 +207,13 @@ impl<H: Host> Vm<H> {
             }
 
             Expr::Call { name, args, type_args } => {
+                ctx.increment_call_count()?;
+                ctx.check_depth()?;
+
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host.lazy_function(name) {
-                    let mut eval_sync = |sub: &RuntimeExpr, c: &mut Context| self.eval(sub, c);
+                    let mut eval_sync = |sub: &RuntimeExpr, c: &mut dyn RuntimeContext| self.eval(sub, c);
                     return lazy.call(args, ctx, &mut eval_sync);
                 }
 
@@ -235,6 +255,41 @@ impl<H: Host> Vm<H> {
 
                 Err(Error::UnknownFunction(name.clone()))
             }
+
+            Expr::Array(elements) => {
+                let mut values = Vec::with_capacity(elements.len());
+                for elem in elements {
+                    values.push(Box::pin(self.eval_async(elem, ctx)).await?.into_inner());
+                }
+                Ok(NonFunctionValue::new(JsonValue::Array(values)))
+            }
+
+            Expr::Object(entries) => {
+                let mut map = serde_json::Map::with_capacity(entries.len());
+                for (key, expr) in entries {
+                    let value = Box::pin(self.eval_async(expr, ctx)).await?.into_inner();
+                    map.insert(key.clone(), value);
+                }
+                Ok(NonFunctionValue::new(JsonValue::Object(map)))
+            }
         }
+    }
+}
+
+impl<H: Host> VirtualMachine for CanonicalVm<H> {
+    fn eval(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn RuntimeContext,
+    ) -> Result<NonFunctionValue, Error> {
+        Self::eval(self, expr, ctx)
+    }
+
+    fn eval_async(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn RuntimeContext,
+    ) -> impl std::future::Future<Output = Result<NonFunctionValue, Error>> {
+        Self::eval_async(self, expr, ctx)
     }
 }

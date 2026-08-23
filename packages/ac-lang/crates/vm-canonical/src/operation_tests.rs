@@ -1,10 +1,11 @@
-use crate::context::Context;
-use crate::continuation::{Continuation, EvalResult};
-use crate::error::Error;
-use crate::host::{Function, Host};
-use crate::operation::{Operation, OperationSig};
-use ac_ast::Expr;
-use ac_runtime::NonFunctionValue;
+use crate::RuntimeContext;
+use crate::Context;
+use crate::{Continuation, EvalResult};
+use crate::Error;
+use crate::{Function, Host};
+use crate::{Operation, OperationSig};
+use crate::Expr;
+use crate::NonFunctionValue;
 
 // ── test operations ──────────────────────────────────────────────
 
@@ -20,7 +21,7 @@ impl Operation for FetchOp {
         }
     }
 
-    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
             args: args.to_vec(),
@@ -32,7 +33,7 @@ impl Operation for FetchOp {
 struct Add;
 
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -50,7 +51,7 @@ impl Operation for CachingFetch {
         }
     }
 
-    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
         let url = args.first().and_then(|v| v.as_str()).unwrap_or("");
         if url == "cached" {
             Ok(NonFunctionValue::new("cached-result"))
@@ -150,7 +151,7 @@ fn operation_perform_signals() {
 
 #[test]
 fn vm_eval_operation_signals_with_structured_data() {
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let expr = Expr::call(
         "fetch",
@@ -172,7 +173,7 @@ fn vm_eval_operation_signals_with_structured_data() {
 fn vm_eval_operation_takes_precedence_over_function() {
     struct DualFetch;
     impl Function for DualFetch {
-        fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+        fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
             Ok(NonFunctionValue::new("from-function"))
         }
     }
@@ -187,7 +188,7 @@ fn vm_eval_operation_takes_precedence_over_function() {
         fn perform(
             &self,
             _args: &[NonFunctionValue],
-            _ctx: &mut Context,
+            _ctx: &mut dyn RuntimeContext,
         ) -> Result<NonFunctionValue, Error> {
             Err(Error::Operation {
                 name: "fetch".to_string(),
@@ -214,7 +215,7 @@ fn vm_eval_operation_takes_precedence_over_function() {
         }
     }
 
-    let mut vm = crate::Vm::new(DualHost { fetch: DualFetch });
+    let vm = crate::Vm::new(DualHost { fetch: DualFetch });
     let mut ctx = Context::new();
     let expr = Expr::call("fetch", vec![]);
     let result = vm.eval(&expr, &mut ctx);
@@ -226,7 +227,7 @@ fn vm_eval_operation_takes_precedence_over_function() {
 
 #[test]
 fn resumable_eval_operation_yields_structured_value() {
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let expr = Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]);
     let result = vm.eval_resumable(&expr, &mut ctx, None);
@@ -260,7 +261,7 @@ fn resumable_eval_operation_resume_with_caching_host() {
     );
 
     // Server: fetch operation signals
-    let mut server_vm = crate::Vm::new(OpHost::default());
+    let server_vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = server_vm.eval_resumable(&expr, &mut ctx, None);
     let (_yielded, continuation) = match result {
@@ -280,7 +281,7 @@ fn resumable_eval_operation_resume_with_caching_host() {
 
     // Client: resume with caching host — but "data" is not cached,
     // so it signals again. Use "cached" instead.
-    let mut client_vm = crate::Vm::new(CachingHost::default());
+    let client_vm = crate::Vm::new(CachingHost::default());
     let result = client_vm.eval_resumable(&expr, &mut ctx, Some(restored));
     // "data" is not "cached", so it yields again
     match result {
@@ -296,7 +297,7 @@ fn resumable_eval_operation_completes_when_cached() {
     // fetch("cached") — CachingFetch returns Ok for "cached"
     let expr = Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("cached"))]);
 
-    let mut vm = crate::Vm::new(CachingHost::default());
+    let vm = crate::Vm::new(CachingHost::default());
     let mut ctx = Context::new();
     let result = vm.eval_resumable(&expr, &mut ctx, None);
 
@@ -321,7 +322,7 @@ fn resumable_eval_operation_in_nested_call() {
         ],
     );
 
-    let mut vm = crate::Vm::new(CachingHost::default());
+    let vm = crate::Vm::new(CachingHost::default());
     let mut ctx = Context::new();
     let result = vm.eval_resumable(&expr, &mut ctx, None);
 

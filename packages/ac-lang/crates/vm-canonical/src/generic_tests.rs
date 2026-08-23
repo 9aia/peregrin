@@ -1,9 +1,10 @@
-use crate::context::Context;
-use crate::error::Error;
-use crate::host::{Function, GenericFunction, Host};
-use crate::vm::Vm;
-use ac_ast::Expr;
-use ac_runtime::NonFunctionValue;
+use crate::RuntimeContext;
+use crate::Context;
+use crate::Error;
+use crate::{Function, GenericFunction, Host};
+use crate::Vm;
+use crate::Expr;
+use crate::NonFunctionValue;
 
 // ── test host with a generic identity function ─────────────────────
 
@@ -14,7 +15,7 @@ impl Function for TypedIdentity {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn RuntimeContext,
     ) -> Result<NonFunctionValue, Error> {
         Ok(args.first().cloned().unwrap_or_default())
     }
@@ -25,7 +26,7 @@ impl GenericFunction for TypedIdentity {
         &self,
         args: &[NonFunctionValue],
         type_args: &[String],
-        _ctx: &mut Context,
+        _ctx: &mut dyn RuntimeContext,
     ) -> Result<NonFunctionValue, Error> {
         // Return a string describing the type args to prove dispatch worked.
         let type_str = type_args.join(", ");
@@ -139,7 +140,7 @@ impl Function for TypedArrayify {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn RuntimeContext,
     ) -> Result<NonFunctionValue, Error> {
         // Default: wrap in array
         Ok(NonFunctionValue::new(serde_json::json!([args
@@ -154,7 +155,7 @@ impl GenericFunction for TypedArrayify {
         &self,
         args: &[NonFunctionValue],
         type_args: &[String],
-        _ctx: &mut Context,
+        _ctx: &mut dyn RuntimeContext,
     ) -> Result<NonFunctionValue, Error> {
         let val = args.first().map(|v| v.inner().clone()).unwrap_or(serde_json::Value::Null);
 

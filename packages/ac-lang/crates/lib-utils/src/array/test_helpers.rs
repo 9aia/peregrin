@@ -45,7 +45,7 @@ pub(super) fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
 
 // ── TestEval infrastructure ────────────────────────────────────────
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_host::DefaultHost;
 use ac_vm::Vm;
 

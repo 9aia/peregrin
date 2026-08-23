@@ -15,4 +15,5 @@ base64.workspace = true
 
 [dev-dependencies]
 ac-ast.workspace = true
+ac-ast-canonical.workspace = true
 ac-host.workspace = true

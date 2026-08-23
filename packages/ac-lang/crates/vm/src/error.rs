@@ -51,6 +51,14 @@ pub enum Error {
         /// The evaluated arguments passed to the operation.
         args: Vec<ac_runtime::NonFunctionValue>,
     },
+
+    /// A resource limit was exceeded during evaluation.
+    ///
+    /// Enforced by the VM when the [`Context`](crate::Context) has limits
+    /// configured (max scope depth, max call count). Hosts that run
+    /// untrusted code — such as a sandbox host — set these limits to
+    /// prevent runaway recursion or excessive computation.
+    ResourceLimit(String),
 }
 
 impl std::fmt::Display for Error {
@@ -76,6 +84,9 @@ impl std::fmt::Display for Error {
             }
             Error::Operation { name, args } => {
                 write!(f, "operation {name} signaled with {} args", args.len())
+            }
+            Error::ResourceLimit(msg) => {
+                write!(f, "resource limit exceeded: {msg}")
             }
         }
     }

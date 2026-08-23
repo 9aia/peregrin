@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use ac_ast::{Expr, HandlerClause};
+use ac_ast_canonical::{Expr, HandlerClause};
 use ac_dialect::Dialect;
 use ac_runtime::NonFunctionValue;
 use serde_json::{Number, Value as JsonValue};

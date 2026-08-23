@@ -60,7 +60,7 @@ fn unknown_function_returns_none() {
 
 // ── VM integration ───────────────────────────────────────────────
 
-fn eval_expr(expr: &ac_ast::Expr<NonFunctionValue>) -> NonFunctionValue {
+fn eval_expr(expr: &ac_ast_canonical::Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(RandModule);
     let vm = Vm::new(host);
     let mut ctx = Context::new();
@@ -69,7 +69,7 @@ fn eval_expr(expr: &ac_ast::Expr<NonFunctionValue>) -> NonFunctionValue {
 
 #[test]
 fn vm_int() {
-    let expr = ac_ast::Expr::call("rand.int", vec![ac_ast::Expr::value(n(1.0)), ac_ast::Expr::value(n(10.0))]);
+    let expr = ac_ast_canonical::Expr::call("rand.int", vec![ac_ast_canonical::Expr::value(n(1.0)), ac_ast_canonical::Expr::value(n(10.0))]);
     let result = eval_expr(&expr);
     let val = extract_num(&result) as i64;
     assert!((1..=10).contains(&val));
@@ -77,7 +77,7 @@ fn vm_int() {
 
 #[test]
 fn vm_int_single_arg() {
-    let expr = ac_ast::Expr::call("rand.int", vec![ac_ast::Expr::value(n(10.0))]);
+    let expr = ac_ast_canonical::Expr::call("rand.int", vec![ac_ast_canonical::Expr::value(n(10.0))]);
     let result = eval_expr(&expr);
     let val = extract_num(&result) as i64;
     assert!((0..=10).contains(&val));
@@ -85,7 +85,7 @@ fn vm_int_single_arg() {
 
 #[test]
 fn vm_uuid() {
-    let expr = ac_ast::Expr::call("rand.uuid", vec![]);
+    let expr = ac_ast_canonical::Expr::call("rand.uuid", vec![]);
     let result = eval_expr(&expr);
     let uuid = extract_str(&result);
     assert_eq!(uuid.len(), 36);
@@ -93,35 +93,35 @@ fn vm_uuid() {
 
 #[test]
 fn vm_gauss() {
-    let expr = ac_ast::Expr::call("rand.gauss", vec![ac_ast::Expr::value(n(0.0)), ac_ast::Expr::value(n(1.0))]);
+    let expr = ac_ast_canonical::Expr::call("rand.gauss", vec![ac_ast_canonical::Expr::value(n(0.0)), ac_ast_canonical::Expr::value(n(1.0))]);
     let result = eval_expr(&expr);
     assert!(extract_num(&result).is_finite());
 }
 
 #[test]
 fn vm_perlin_1d() {
-    let expr = ac_ast::Expr::call("rand.perlin_1d", vec![ac_ast::Expr::value(n(0.5))]);
+    let expr = ac_ast_canonical::Expr::call("rand.perlin_1d", vec![ac_ast_canonical::Expr::value(n(0.5))]);
     let result = eval_expr(&expr);
     assert!(extract_num(&result).is_finite());
 }
 
 #[test]
 fn vm_perlin_2d() {
-    let expr = ac_ast::Expr::call("rand.perlin_2d", vec![ac_ast::Expr::value(n(0.5)), ac_ast::Expr::value(n(0.5))]);
+    let expr = ac_ast_canonical::Expr::call("rand.perlin_2d", vec![ac_ast_canonical::Expr::value(n(0.5)), ac_ast_canonical::Expr::value(n(0.5))]);
     let result = eval_expr(&expr);
     assert!(extract_num(&result).is_finite());
 }
 
 #[test]
 fn vm_perlin_3d() {
-    let expr = ac_ast::Expr::call("rand.perlin_3d", vec![ac_ast::Expr::value(n(0.1)), ac_ast::Expr::value(n(0.2)), ac_ast::Expr::value(n(0.3))]);
+    let expr = ac_ast_canonical::Expr::call("rand.perlin_3d", vec![ac_ast_canonical::Expr::value(n(0.1)), ac_ast_canonical::Expr::value(n(0.2)), ac_ast_canonical::Expr::value(n(0.3))]);
     let result = eval_expr(&expr);
     assert!(extract_num(&result).is_finite());
 }
 
 #[test]
 fn vm_seeded_int() {
-    let expr = ac_ast::Expr::call("rand.seeded_int", vec![ac_ast::Expr::value(n(42.0)), ac_ast::Expr::value(n(1.0)), ac_ast::Expr::value(n(100.0))]);
+    let expr = ac_ast_canonical::Expr::call("rand.seeded_int", vec![ac_ast_canonical::Expr::value(n(42.0)), ac_ast_canonical::Expr::value(n(1.0)), ac_ast_canonical::Expr::value(n(100.0))]);
     let result = eval_expr(&expr);
     let val = extract_num(&result) as i64;
     assert!((1..=100).contains(&val));
@@ -129,7 +129,7 @@ fn vm_seeded_int() {
 
 #[test]
 fn vm_seeded_shuffle() {
-    let expr = ac_ast::Expr::call("rand.seeded_shuffle", vec![ac_ast::Expr::value(n(42.0)), ac_ast::Expr::value(arr(&[serde_json::json!(1), serde_json::json!(2), serde_json::json!(3)]))]);
+    let expr = ac_ast_canonical::Expr::call("rand.seeded_shuffle", vec![ac_ast_canonical::Expr::value(n(42.0)), ac_ast_canonical::Expr::value(arr(&[serde_json::json!(1), serde_json::json!(2), serde_json::json!(3)]))]);
     let result = eval_expr(&expr);
     assert_eq!(extract_array(&result).len(), 3);
 }

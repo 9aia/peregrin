@@ -5,11 +5,13 @@
 
 ## 1. Overview
 
-AC is a small, embeddable scripting language for self-describing documents and general-purpose computation. A document can declare its own structure (`$:`), compute values (`expr:`), interpolate (`${...}`), load external documents, perform I/O via host-provided operations, and suspend/resume evaluation across machines — all validated by a schema system. Functions emerge from data: an object with a `body` field stored in any field is callable via the `apply` host primitive.
+AC is a small, embeddable, **runtime-agnostic** general-purpose language. The kernel is deliberately minimal — literals, path lookups, function calls, and handle expressions — and the host provides all functions, control flow, and capabilities. The same program can run in a browser, a game engine, a server, a CLI tool, at the type level, or on embedded hardware — each host decides what its programs can do.
+
+The language defines no runtime, no type system, no format, and no standard library. **Schemas define types**, **frontends parse formats**, and **the host provides all functions** — the core is agnostic of all three. A document can declare its own structure (`$:`), compute values (`expr:`), interpolate (`${...}`), load external documents, perform I/O via host-provided operations, and suspend/resume evaluation across machines — all validated by a schema system. Functions emerge from data: an object with a `body` field stored in any field is callable via the `apply` host primitive.
 
 The language kernel is deliberately small — literals, path lookups, function calls, and handle expressions. General-purpose computation is emergent: a host that provides `if`, `map`, `filter`, `reduce`, `match` can reach arbitrary expressiveness without the language baking in control flow. The scope boundary is in what the _language_ defines, not in what a _host_ can provide.
 
-The language is designed for embedding across diverse host environments — game engines, browsers, servers, CLI tools — where the same program can run under different hosts with different capabilities. Serializable continuations enable cross-machine resumability: evaluation can start on a server, yield on an operation, and resume on a client with a different host.
+The language is designed for embedding across diverse host environments — game engines, browsers, servers, CLI tools, type-level contexts, embedded hardware, GPUs — where the same program can run under different hosts with different capabilities. Serializable continuations enable cross-machine resumability: evaluation can start on a server, yield on an operation, and resume on a client with a different host.
 
 The language is designed to be portable: the specification is independent of any particular runtime or host language. See [RUNTIME.md](./RUNTIME.md) for the reference runtime implementation and [DIALECT.md](./DIALECT.md) for the dialect interface that abstracts the canonical syntax in implementations.
 
@@ -21,6 +23,7 @@ See [design-principles.md](./explanations/design-principles.md).
 
 The language design yields several emergent properties:
 
+- **Runtime-agnostic.** The language specification is independent of any runtime, host, or execution target. Programs can run in browsers, game engines, servers, CLI tools, type-level contexts, embedded hardware, or GPUs — the host determines the execution model.
 - **Embeddable.** The AST has zero dependencies. The VM is generic over a `Host` trait — the host provides all functions, the VM evaluates expressions and returns values. This is the Lua/Rhai embedding model, not the Python/Unison model. No runtime owns the codebase, no toolchain must be shipped, no garbage collector is imposed on the host.
 - **Sandboxing-compatible.** The host controls all functions, namespaces, and side effects. The language defines no built-in I/O, no standard library, no implicit access to the filesystem, network, or environment. Sandboxing is a host policy decision — a host that provides only pure functions is automatically sandboxed.
 - **Closure-free.** Function values are plain JSON objects with `params` and a `body` string. They capture no environment — all bindings are explicit parameters. This makes functions serializable, cacheable, and content-addressable. A function value can be stored in a file, sent over a network, or hashed, and it will evaluate identically anywhere.

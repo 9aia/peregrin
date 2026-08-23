@@ -4,7 +4,7 @@
 //!
 //! Defines the [`Parser`] trait and [`ParseError`] — the interface for
 //! turning a token stream (from [`Lexer`](ac_lexer::Lexer)) into an
-//! [`Expr`](ac_ast::Expr) AST. The canonical implementation lives in
+//! [`Expr`](ac_ast_canonical::Expr) AST. The canonical implementation lives in
 //! `ac-parser-canonical`.
 //!
 //! ## Architectural rule
@@ -20,7 +20,7 @@ mod error;
 
 pub use error::ParseError;
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_lexer::{LexError, Lexer, Token, TokenKind};
 use ac_runtime::NonFunctionValue;
 

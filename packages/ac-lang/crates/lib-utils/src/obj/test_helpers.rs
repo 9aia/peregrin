@@ -50,7 +50,7 @@ pub(super) fn obj(pairs: &[(&str, serde_json::Value)]) -> NonFunctionValue {
 
 // ── eval infrastructure for higher-order functions ─────────────────
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_host::DefaultHost;
 use ac_vm::Vm;
 

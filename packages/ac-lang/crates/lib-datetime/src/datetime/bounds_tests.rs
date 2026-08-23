@@ -158,7 +158,7 @@ fn end_of_month_invalid_date_errors() {
 
 // ── VM integration ───────────────────────────────────────────────
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_runtime_core::ModuleHost;
 use ac_vm::{Host, Vm};
 

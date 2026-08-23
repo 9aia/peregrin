@@ -55,6 +55,7 @@ impl PassError {
     }
 
     /// Convert to a human-readable string (for backwards compatibility).
+    #[allow(clippy::inherent_to_string_shadow_display)]
     pub fn to_string(&self) -> String {
         self.diagnostics
             .iter()

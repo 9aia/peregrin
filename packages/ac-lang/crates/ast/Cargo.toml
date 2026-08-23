@@ -2,7 +2,3 @@
 name = "ac-ast"
 version.workspace = true
 edition.workspace = true
-
-[dependencies]
-ac-ast-common.workspace = true
-ac-ast-canonical.workspace = true

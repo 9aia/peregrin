@@ -1,4 +1,4 @@
-use ac_ast::{Expr, HandlerClause};
+use ac_ast_canonical::{Expr, HandlerClause};
 use ac_lexer::{DefaultLexError, Token};
 use ac_lexer_canonical::CanonicalKind;
 use ac_parser::{ParseError as AcParseError, Parser as ParserTrait};

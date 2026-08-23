@@ -5,7 +5,7 @@ use crate::shared;
 
 // ── test eval infrastructure ───────────────────────────────────────
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_host::DefaultHost;
 use ac_vm::Vm;
 

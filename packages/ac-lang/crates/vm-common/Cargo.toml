@@ -1,0 +1,7 @@
+[package]
+name = "ac-vm-common"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-vm.workspace = true

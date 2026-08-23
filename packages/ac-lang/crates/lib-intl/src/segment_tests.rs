@@ -117,7 +117,7 @@ fn segment_grapheme_unicode() {
     assert_eq!(segments[3], "é");
 }
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_runtime_core::ModuleHost;
 use ac_vm::Vm;
 

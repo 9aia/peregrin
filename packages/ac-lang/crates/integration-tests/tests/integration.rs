@@ -4,7 +4,7 @@
 //! through VM evaluation with handlers, operations, content-addressed
 //! storage, and continuation serialization.
 
-use ac_ast::{Expr, HandlerClause};
+use ac_ast_canonical::{Expr, HandlerClause};
 use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_store::{DefinitionHash, DefinitionStore, EvalCache, NameRegistry};
 use ac_vm::{

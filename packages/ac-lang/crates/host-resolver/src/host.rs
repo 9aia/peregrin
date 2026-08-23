@@ -22,7 +22,7 @@ use crate::import_function::ImportFunction;
 /// use ac_host_resolver::ResolverHost;
 /// use ac_module_resolver_virtual::VirtualResolver;
 /// use ac_vm::{Vm, Context};
-/// use ac_ast::Expr;
+/// use ac_ast_canonical::Expr;
 ///
 /// let mut resolver = VirtualResolver::new();
 /// resolver.add("config.yml", serde_json::json!({

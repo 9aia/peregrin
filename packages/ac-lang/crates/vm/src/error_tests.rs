@@ -95,6 +95,14 @@ fn error_operation_with_empty_args_display() {
 }
 
 #[test]
+fn error_display_resource_limit() {
+    let err = Error::ResourceLimit("depth limit exceeded: 100".to_string());
+    let s = err.to_string();
+    assert!(s.contains("resource limit exceeded"));
+    assert!(s.contains("depth limit exceeded: 100"));
+}
+
+#[test]
 fn error_all_variants_are_cloneable() {
     let variants: Vec<Error> = vec![
         Error::UnknownFunction("f".to_string()),
@@ -113,6 +121,7 @@ fn error_all_variants_are_cloneable() {
             name: "op".to_string(),
             args: vec![],
         },
+        Error::ResourceLimit("depth limit exceeded: 100".to_string()),
     ];
     for v in &variants {
         let _ = v.clone();

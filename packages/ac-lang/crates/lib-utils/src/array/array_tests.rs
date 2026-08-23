@@ -542,7 +542,7 @@ fn argument_count_on_missing_args() {
 
 // ── callback test infrastructure ───────────────────────────────────
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_host::DefaultHost;
 use ac_vm::Vm;
 

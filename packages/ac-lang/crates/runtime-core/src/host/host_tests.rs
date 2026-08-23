@@ -4,7 +4,7 @@ use ac_vm::{Context, Host, Vm};
 use crate::host::ModuleHost;
 use crate::module::module_stub::StubModule;
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 
 fn make_call(name: &str, args: &[NonFunctionValue]) -> Expr<NonFunctionValue> {
     Expr::Call {

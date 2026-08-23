@@ -102,7 +102,7 @@ fn format_duration_all_fields() {
     assert!(!s.is_empty());
 }
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_runtime_core::ModuleHost;
 use ac_vm::Vm;
 

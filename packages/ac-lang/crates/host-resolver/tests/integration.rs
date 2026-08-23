@@ -1,4 +1,4 @@
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_host::DefaultHost;
 use ac_host_resolver::ResolverHost;
 use ac_module_resolver_core::ModuleResolver;

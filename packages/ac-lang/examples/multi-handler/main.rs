@@ -6,7 +6,7 @@
 //!
 //! Run: `cargo run --example multi-handler`
 
-use ac_ast::{Expr, HandlerClause};
+use ac_ast_canonical::{Expr, HandlerClause};
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function, Host, Operation, OperationSig, Vm};
 

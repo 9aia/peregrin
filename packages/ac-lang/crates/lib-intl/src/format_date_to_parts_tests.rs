@@ -177,7 +177,7 @@ fn date_to_parts_matches_format_date_datetime() {
 
 // ── VM integration ───────────────────────────────────────────────
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_runtime_core::ModuleHost;
 use ac_vm::{Host, Vm};
 

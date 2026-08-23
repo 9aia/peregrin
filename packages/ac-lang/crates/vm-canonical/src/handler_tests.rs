@@ -1,10 +1,11 @@
-use crate::context::Context;
-use crate::continuation::{Continuation, EvalResult};
-use crate::error::Error;
-use crate::host::{Function, Host};
-use crate::operation::{Operation, OperationSig};
-use ac_ast::{Expr, HandlerClause};
-use ac_runtime::NonFunctionValue;
+use crate::RuntimeContext;
+use crate::Context;
+use crate::{Continuation, EvalResult};
+use crate::Error;
+use crate::{Function, Host};
+use crate::{Operation, OperationSig};
+use crate::{Expr, HandlerClause};
+use crate::NonFunctionValue;
 
 // ── test operations and functions ────────────────────────────────
 
@@ -20,7 +21,7 @@ impl Operation for FetchOp {
         }
     }
 
-    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
             args: args.to_vec(),
@@ -32,7 +33,7 @@ impl Operation for FetchOp {
 struct Add;
 
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -42,7 +43,7 @@ impl Function for Add {
 struct Concat;
 
 impl Function for Concat {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
         let s: String = args
             .iter()
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -101,7 +102,7 @@ fn handler_intercepts_operation() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_str(), Some("intercepted"));
@@ -131,7 +132,7 @@ fn handler_binds_operation_args() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_str(), Some("handler-result"));
@@ -159,7 +160,7 @@ fn handler_resume_continuation() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(52.0));
@@ -179,7 +180,7 @@ fn handler_no_match_propagates() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx);
     assert!(matches!(result, Err(Error::Operation { ref name, .. }) if name == "fetch"));
@@ -199,7 +200,7 @@ fn handler_body_is_pure_value() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(42.0));
@@ -219,7 +220,7 @@ fn resumable_handler_intercepts_operation() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval_resumable(&expr, &mut ctx, None);
 
@@ -251,7 +252,7 @@ fn resumable_handler_resume_continuation() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval_resumable(&expr, &mut ctx, None);
 
@@ -275,7 +276,7 @@ fn resumable_handler_no_match_yields() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval_resumable(&expr, &mut ctx, None);
 
@@ -308,7 +309,7 @@ fn handle_expr_serialization_roundtrip() {
     // Serialize via continuation (expr_to_json is internal, but we
     // can test by creating a continuation with a handle expr in pending)
     let cont = Continuation {
-        frames: vec![crate::continuation::Frame {
+        frames: vec![crate::Frame {
             name: "wrapper".to_string(),
             evaluated: vec![],
             pending: vec![expr],
@@ -344,7 +345,7 @@ fn handler_multiple_clauses_last_match_wins() {
         ],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_str(), Some("second"));
@@ -371,7 +372,7 @@ fn handler_multiple_clauses_different_ops() {
         ],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_str(), Some("fetch-handled"));
@@ -400,7 +401,7 @@ fn handler_does_not_resume_continuation() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     // Handler returned 999, which replaces fetch's result.
@@ -424,7 +425,7 @@ fn handler_operation_completes_without_signaling() {
         fn perform(
             &self,
             _args: &[NonFunctionValue],
-            _ctx: &mut Context,
+            _ctx: &mut dyn RuntimeContext,
         ) -> Result<NonFunctionValue, Error> {
             Ok(NonFunctionValue::new("cached-value"))
         }
@@ -467,7 +468,7 @@ fn handler_operation_completes_without_signaling() {
         }],
     );
 
-    let mut vm = crate::Vm::new(CachedHost::default());
+    let vm = crate::Vm::new(CachedHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     // Operation completed without signaling — handler not called
@@ -504,7 +505,7 @@ fn handler_resume_with_transformed_value() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(43.0));
@@ -533,7 +534,7 @@ fn nested_handlers_outer_takes_precedence() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_str(), Some("outer"));
@@ -561,7 +562,7 @@ fn nested_handlers_outer_catches_unhandled_op() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_str(), Some("fetch-handled"));
@@ -588,7 +589,7 @@ fn handler_in_resumable_eval_with_continuation_serialization() {
         }],
     );
 
-    let mut vm = crate::Vm::new(OpHost::default());
+    let vm = crate::Vm::new(OpHost::default());
     let mut ctx = Context::new();
     let result = vm.eval_resumable(&expr, &mut ctx, None);
 

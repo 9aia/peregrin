@@ -6,6 +6,11 @@
 //! and schema validation in a single module tree. It is the
 //! recommended entry point for most users.
 //!
+//! It is also tree-shakeable: each subsystem lives behind a Cargo
+//! feature, so you only compile and link the capabilities you enable.
+//! Use `default-features = false` and opt in to the features your host
+//! needs.
+//!
 //! ## Crate structure
 //!
 //! | Crate | Role |
@@ -102,20 +107,23 @@ pub use ac_vm as vm;
 /// use ac_lang::prelude::*;
 /// ```
 pub mod prelude {
-    pub use ac_ast::{Expr, Field};
+    pub use ac_ast_canonical::{Expr, Field};
     pub use ac_dialect::{Schema, ValidationError};
     pub use ac_runtime::{Frontend, HostValue, NonFunctionValue};
     pub use ac_source::{SourceLocation, SourceMap};
 
     #[cfg(feature = "compiler")]
     pub use ac_compiler::{
-        Compilation, Config, Diagnostic, DiagnosticSink, Folder, Pass, PassCategory, PassError,
-        PassGroup, PassMetadata, Pipeline, Severity, Source, Visitor,
+        CheckedDoc, Compilation, Config, Diagnostic, DiagnosticSink, DriverDiagnostic,
+        DriverError, DriverPipeline, DriverSeverity, ExtractedDoc, Folder, OptPass, OptPassError,
+        Outcome, Pass, PassCategory, PassError, PassGroup, PassManager, PassMetadata, PassRun,
+        ParsedDoc, Pipeline, Report, ResolvedDoc, Session, Severity, Source, Stage, Then,
+        TypecheckResult, Visitor,
     };
     #[cfg(feature = "compiler")]
     pub use ac_compiler::{
-        default_cli_config, full_pipeline, typecheck_only_config, typecheck_pipeline,
-        typegen_pipeline,
+        default_cli_config, full_driver, full_pipeline, typecheck_driver, typecheck_only_config,
+        typecheck_pipeline, typegen_driver, typegen_pipeline,
     };
     #[cfg(feature = "dialect-canonical")]
     pub use ac_dialect_canonical::JsonSchema;

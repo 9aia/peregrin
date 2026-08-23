@@ -96,7 +96,7 @@ fn compare_swedish_a_ring() {
     assert!(n >= 0.0);
 }
 
-use ac_ast::Expr;
+use ac_ast_canonical::Expr;
 use ac_runtime_core::ModuleHost;
 use ac_vm::Vm;
 

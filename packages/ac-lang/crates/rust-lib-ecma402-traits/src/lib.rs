@@ -16,7 +16,7 @@
 //! failure mode.
 //!
 //! ```rust
-//! use ecma402_traits::plural_rules::{PluralRules, PluralRulesOptions, PluralRuleType, PluralCategory};
+//! use crate::plural_rules::{PluralRules, PluralRulesOptions, PluralRuleType, PluralCategory};
 //!
 //! #[derive(Debug)]
 //! struct SimpleRules;

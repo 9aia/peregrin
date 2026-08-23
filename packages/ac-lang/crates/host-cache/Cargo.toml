@@ -10,3 +10,4 @@ serde_json = "1"
 
 [dev-dependencies]
 ac-ast.workspace = true
+ac-ast-canonical.workspace = true

@@ -1,4 +1,4 @@
-use ac_ast::{Expr, HandlerClause};
+use ac_ast_canonical::{Expr, HandlerClause};
 use ac_runtime::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
@@ -61,6 +61,30 @@ fn expr_to_json(expr: &RuntimeExpr) -> JsonValue {
             (
                 "handlers".to_string(),
                 JsonValue::Array(handlers.iter().map(handler_clause_to_json).collect()),
+            ),
+        ])),
+        Expr::Array(elements) => JsonValue::Object(serde_json::Map::from_iter([
+            ("type".to_string(), JsonValue::String("array".to_string())),
+            (
+                "elements".to_string(),
+                JsonValue::Array(elements.iter().map(expr_to_json).collect()),
+            ),
+        ])),
+        Expr::Object(entries) => JsonValue::Object(serde_json::Map::from_iter([
+            ("type".to_string(), JsonValue::String("object".to_string())),
+            (
+                "entries".to_string(),
+                JsonValue::Array(
+                    entries
+                        .iter()
+                        .map(|(k, v)| {
+                            JsonValue::Array(vec![
+                                JsonValue::String(k.clone()),
+                                expr_to_json(v),
+                            ])
+                        })
+                        .collect(),
+                ),
             ),
         ])),
     }

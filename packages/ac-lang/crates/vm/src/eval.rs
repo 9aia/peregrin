@@ -52,8 +52,8 @@ pub trait Eval {
 /// functions (e.g. `fp.map` with an async predicate) to evaluate
 /// expression strings that may themselves contain async calls.
 ///
-/// The async VM ([`Vm::eval_async`](crate::Vm::eval_async)) uses this
-/// when set on a [`Context`](crate::Context) via
+/// The async VM ([`VirtualMachine::eval_async`](crate::VirtualMachine::eval_async))
+/// uses this when set on a [`Context`](crate::Context) via
 /// [`Context::set_async_eval`](crate::Context::set_async_eval).
 pub trait AsyncEval {
     /// Evaluate an expression string with the given variable bindings.
