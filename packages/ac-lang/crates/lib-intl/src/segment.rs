@@ -3,7 +3,7 @@ use ac_vm::{Context, Error, Function};
 use icu::segmenter::{
     GraphemeClusterSegmenter, LineSegmenter, SentenceSegmenter, WordSegmenter,
 };
-use icu::segmenter::options::{LineBreakOptions, LineBreakStrictness};
+use icu::segmenter::options::{LineBreakOptions, LineBreakStrictness, LineBreakWordOption};
 
 use super::common::{make_provider, opt_str, optional_locale, optional_object, require_string};
 use super::error::IntlError;
@@ -19,7 +19,8 @@ use super::provider::IntlProvider;
 /// and `isWordLike` (boolean, only for word granularity).
 ///
 /// Options (for `granularity: "line"`):
-/// - `lineBreakStyle`: `"strict"`, `"normal"`, or `"loose"` (default: `"strict"`)
+/// - `lineBreakStyle`: `"strict"`, `"normal"`, `"loose"`, or `"anywhere"` (default: ICU4X default)
+/// - `lineBreakWord`: `"normal"`, `"break-all"`, or `"keep-all"` (default: `"normal"`)
 ///
 /// Examples:
 /// - `intl.segment("hello world", "word")` → `[{segment: "hello", index: 0, isWordLike: true}, ...]`
@@ -92,7 +93,15 @@ impl Function for Segment {
                     line_opts.strictness = Some(match style {
                         "strict" => LineBreakStrictness::Strict,
                         "loose" => LineBreakStrictness::Loose,
+                        "anywhere" => LineBreakStrictness::Anywhere,
                         _ => LineBreakStrictness::Normal,
+                    });
+                }
+                if let Some(word) = opt_str(opts, "lineBreakWord") {
+                    line_opts.word_option = Some(match word {
+                        "break-all" => LineBreakWordOption::BreakAll,
+                        "keep-all" => LineBreakWordOption::KeepAll,
+                        _ => LineBreakWordOption::Normal,
                     });
                 }
                 if let Some(p) = dp.as_buffer_provider() {

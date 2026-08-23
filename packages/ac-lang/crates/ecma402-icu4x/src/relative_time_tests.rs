@@ -1,4 +1,5 @@
 use ecma402_traits::number_format::NumberFormatPartType;
+use ecma402_traits::plural_rules::PluralCategory;
 use ecma402_traits::relative_time::{
     RelativeTimeFormat as _, RelativeTimeNumeric, RelativeTimeStyle, RelativeTimeUnit,
 };
@@ -90,4 +91,68 @@ fn format_to_parts_auto() {
     assert_eq!(parts.len(), 1);
     assert_eq!(parts[0].part_type, NumberFormatPartType::Literal);
     assert_eq!(parts[0].value, "today");
+}
+
+#[test]
+fn english_second_singular() {
+    let formatter = RelativeTimeFormat::new("en", Options::new(RelativeTimeUnit::Second)).unwrap();
+    assert_eq!(formatter.format(1.0).unwrap(), "in 1 second");
+    assert_eq!(formatter.format(-1.0).unwrap(), "1 second ago");
+}
+
+#[test]
+fn english_second_plural() {
+    let formatter = RelativeTimeFormat::new("en", Options::new(RelativeTimeUnit::Second)).unwrap();
+    assert_eq!(formatter.format(2.0).unwrap(), "in 2 seconds");
+    assert_eq!(formatter.format(-2.0).unwrap(), "2 seconds ago");
+}
+
+#[test]
+fn german_second_singular() {
+    let formatter = RelativeTimeFormat::new("de", Options::new(RelativeTimeUnit::Second)).unwrap();
+    assert_eq!(formatter.format(1.0).unwrap(), "in 1 Sekunde");
+}
+
+#[test]
+fn select_plural_english() {
+    let formatter = RelativeTimeFormat::new("en", Options::new(RelativeTimeUnit::Second)).unwrap();
+    assert_eq!(formatter.select_plural(1.0).unwrap(), PluralCategory::One);
+    assert_eq!(formatter.select_plural(2.0).unwrap(), PluralCategory::Other);
+}
+
+#[test]
+fn select_plural_polish() {
+    let formatter = RelativeTimeFormat::new("pl", Options::new(RelativeTimeUnit::Second)).unwrap();
+    assert_eq!(formatter.select_plural(1.0).unwrap(), PluralCategory::One);
+    assert_eq!(formatter.select_plural(2.0).unwrap(), PluralCategory::Few);
+    assert_eq!(formatter.select_plural(5.0).unwrap(), PluralCategory::Many);
+}
+
+#[test]
+fn select_plural_russian() {
+    let formatter = RelativeTimeFormat::new("ru", Options::new(RelativeTimeUnit::Second)).unwrap();
+    assert_eq!(formatter.select_plural(1.0).unwrap(), PluralCategory::One);
+    assert_eq!(formatter.select_plural(2.0).unwrap(), PluralCategory::Few);
+    assert_eq!(formatter.select_plural(5.0).unwrap(), PluralCategory::Many);
+}
+
+#[test]
+fn select_plural_arabic() {
+    let formatter = RelativeTimeFormat::new("ar", Options::new(RelativeTimeUnit::Second)).unwrap();
+    assert_eq!(formatter.select_plural(0.0).unwrap(), PluralCategory::Zero);
+    assert_eq!(formatter.select_plural(1.0).unwrap(), PluralCategory::One);
+    assert_eq!(formatter.select_plural(2.0).unwrap(), PluralCategory::Two);
+    assert_eq!(formatter.select_plural(3.0).unwrap(), PluralCategory::Few);
+    assert_eq!(formatter.select_plural(11.0).unwrap(), PluralCategory::Many);
+    assert_eq!(formatter.select_plural(100.0).unwrap(), PluralCategory::Other);
+}
+
+#[test]
+fn select_plural_bengali_japanese() {
+    let bn = RelativeTimeFormat::new("bn", Options::new(RelativeTimeUnit::Second)).unwrap();
+    assert_eq!(bn.select_plural(1.0).unwrap(), PluralCategory::One);
+    assert_eq!(bn.select_plural(2.0).unwrap(), PluralCategory::Other);
+
+    let ja = RelativeTimeFormat::new("ja", Options::new(RelativeTimeUnit::Second)).unwrap();
+    assert_eq!(ja.select_plural(1.0).unwrap(), PluralCategory::Other);
 }

@@ -1,21 +1,23 @@
 use std::fmt;
 
 use ecma402_traits::segmenter::{
-    Granularity, LineBreakStyle, Segment as SegmentOutput, Segmenter as SegmenterTrait,
+    Granularity, LineBreakStyle, LineBreakWord, Segment as SegmentOutput, Segmenter as SegmenterTrait,
 };
 use icu::locale::Locale;
 use icu::segmenter::{
     GraphemeClusterSegmenter, LineSegmenter, SentenceSegmenter, WordSegmenter,
-    options::{LineBreakOptions, LineBreakStrictness},
+    options::{LineBreakOptions, LineBreakStrictness, LineBreakWordOption},
 };
 use icu_provider::DataError;
 use icu_provider_blob::BlobDataProvider;
 
 pub use ecma402_traits::segmenter::{Segment, SegmenterOptions as Options};
 
+type BreakFn = Box<dyn Fn(&str) -> Vec<usize>>;
+
 /// ICU4X-backed ECMA-402 `Intl.Segmenter`.
 pub struct Segmenter {
-    break_fn: Box<dyn Fn(&str) -> Vec<usize>>,
+    break_fn: BreakFn,
     is_word: bool,
 }
 
@@ -48,13 +50,19 @@ impl Segmenter {
         Locale::try_from_str(locale).map_err(|_| Error::InvalidLocale(locale.to_string()))
     }
 
-    fn line_options(style: LineBreakStyle, locale: &Locale) -> LineBreakOptions<'_> {
+    fn line_options(style: LineBreakStyle, word: LineBreakWord, locale: &Locale) -> LineBreakOptions<'_> {
         let mut opts = LineBreakOptions::default();
         opts.content_locale = Some(&locale.id);
         opts.strictness = Some(match style {
             LineBreakStyle::Strict => LineBreakStrictness::Strict,
+            LineBreakStyle::Normal => LineBreakStrictness::Normal,
             LineBreakStyle::Loose => LineBreakStrictness::Loose,
-            _ => LineBreakStrictness::Normal,
+            LineBreakStyle::Anywhere => LineBreakStrictness::Anywhere,
+        });
+        opts.word_option = Some(match word {
+            LineBreakWord::Normal => LineBreakWordOption::Normal,
+            LineBreakWord::BreakAll => LineBreakWordOption::BreakAll,
+            LineBreakWord::KeepAll => LineBreakWordOption::KeepAll,
         });
         opts
     }
@@ -63,10 +71,10 @@ impl Segmenter {
         options: &Options,
         locale: &Locale,
         provider: Option<&BlobDataProvider>,
-    ) -> Result<(Box<dyn Fn(&str) -> Vec<usize>>, bool), Error> {
+    ) -> Result<(BreakFn, bool), Error> {
         let is_word = options.granularity == Granularity::Word;
 
-        let break_fn: Box<dyn Fn(&str) -> Vec<usize>> = match options.granularity {
+        let break_fn: BreakFn = match options.granularity {
             Granularity::Grapheme => match provider {
                 Some(p) => {
                     let seg = GraphemeClusterSegmenter::try_new_with_buffer_provider(p)?;
@@ -100,7 +108,7 @@ impl Segmenter {
                 }
             },
             Granularity::Line => {
-                let line_opts = Self::line_options(options.line_break_style, locale);
+                let line_opts = Self::line_options(options.line_break_style, options.line_break_word, locale);
                 match provider {
                     Some(p) => {
                         let seg = LineSegmenter::try_new_auto_with_buffer_provider(p, line_opts)?;

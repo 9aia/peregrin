@@ -21,6 +21,20 @@ pub enum LineBreakStyle {
     Normal,
     /// Loose line breaking.
     Loose,
+    /// Break anywhere, disregarding any prohibition against line breaks.
+    Anywhere,
+}
+
+/// Line-break word handling.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
+pub enum LineBreakWord {
+    /// Customary word-breaking rules.
+    #[default]
+    Normal,
+    /// Breaking is allowed within "words".
+    BreakAll,
+    /// Breaking is forbidden within "words".
+    KeepAll,
 }
 
 /// Options used to construct a `Segmenter` instance.
@@ -30,6 +44,8 @@ pub struct SegmenterOptions {
     pub granularity: Granularity,
     /// Line break style, relevant when `granularity` is `Line`.
     pub line_break_style: LineBreakStyle,
+    /// Line break word handling, relevant when `granularity` is `Line`.
+    pub line_break_word: LineBreakWord,
 }
 
 /// A single segment.

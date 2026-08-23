@@ -211,6 +211,53 @@ fn day_period_is_not_rendered() -> Result<(), Error> {
 }
 
 #[test]
+fn style_time_zone_name() -> Result<(), Error> {
+    let options = DateTimeFormatOptions {
+        date_type: DateType::DateTime,
+        date_style: Some(DateTimeStyle::Long),
+        time_style: Some(DateTimeStyle::Long),
+        time_zone_name: Some(TimeZoneNameStyle::Short),
+        time_zone: Some("America/New_York".to_string()),
+        ..Default::default()
+    };
+    let dtf = DateTimeFormat::new("en-US", options)?;
+    let s = dtf.format("2024-03-15T12:00:00-04:00")?;
+    assert!(!s.is_empty());
+    assert!(s.contains("EDT") || s.contains("GMT-4") || s.contains("ET"));
+    Ok(())
+}
+
+#[test]
+fn fractional_second_digits_style() -> Result<(), Error> {
+    let options = DateTimeFormatOptions {
+        date_type: DateType::Time,
+        time_style: Some(DateTimeStyle::Medium),
+        fractional_second_digits: Some(2),
+        ..Default::default()
+    };
+    let dtf = DateTimeFormat::new("en-US", options)?;
+    let s = dtf.format("14:30:45.123")?;
+    assert!(s.contains(".12"));
+    Ok(())
+}
+
+#[test]
+fn fractional_second_digits_field_bag() -> Result<(), Error> {
+    let options = DateTimeFormatOptions {
+        date_type: DateType::Time,
+        hour: Some(field("numeric")),
+        minute: Some(field("numeric")),
+        second: Some(field("numeric")),
+        fractional_second_digits: Some(2),
+        ..Default::default()
+    };
+    let dtf = DateTimeFormat::new("en-US", options)?;
+    let s = dtf.format("14:30:45.123")?;
+    assert!(s.contains(".12"));
+    Ok(())
+}
+
+#[test]
 fn invalid_locale() {
     let result = DateTimeFormat::new("not a locale", DateTimeFormatOptions::default());
     assert!(matches!(result, Err(Error::InvalidLocale(_))));

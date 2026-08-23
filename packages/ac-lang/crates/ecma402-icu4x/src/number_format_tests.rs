@@ -1,6 +1,6 @@
 use super::{Error, NumberFormat, NumberFormatOptions};
 use ecma402_traits::number_format::{
-    CompactDisplay, CurrencyDisplay, Notation, NumberFormat as NumberFormatTrait,
+    CompactDisplay, CurrencyDisplay, CurrencySign, Notation, NumberFormat as NumberFormatTrait,
     NumberFormatPartType, NumberFormatStyle, RoundingMode, SignDisplay, UnitDisplay, UseGrouping,
 };
 
@@ -142,7 +142,7 @@ fn scientific_to_parts() -> Result<(), Error> {
     assert!(
         parts
             .iter()
-            .any(|p| p.part_type == NumberFormatPartType::Literal && p.value == "×10")
+            .any(|p| p.part_type == NumberFormatPartType::ExponentSeparator && p.value == "×10")
     );
     assert!(
         parts
@@ -224,5 +224,56 @@ fn parts_maintain_value_types() -> Result<(), Error> {
     );
     let combined: String = parts.iter().map(|p| p.value.as_str()).collect();
     assert!(combined.contains("-"));
+    Ok(())
+}
+
+#[test]
+fn rounding_mode_floor() -> Result<(), Error> {
+    let mut options = NumberFormatOptions::default();
+    options.maximum_fraction_digits = Some(2);
+    options.rounding_mode = RoundingMode::Floor;
+    let nf = NumberFormat::new("en", options)?;
+    let s = nf.format(1.239)?;
+    assert!(s.ends_with(".23"), "expected floor rounding: {s}");
+    Ok(())
+}
+
+#[test]
+fn currency_accounting_usd() -> Result<(), Error> {
+    let mut options = NumberFormatOptions::default();
+    options.style = NumberFormatStyle::Currency;
+    options.currency = Some("USD".to_string());
+    options.currency_sign = CurrencySign::Accounting;
+    let nf = NumberFormat::new("en", options)?;
+    let s = nf.format(-1234.5)?;
+    assert!(s.starts_with('(') && s.contains('$'), "expected accounting: {s}");
+    Ok(())
+}
+
+#[test]
+fn unit_fallback_celsius() -> Result<(), Error> {
+    let mut options = NumberFormatOptions::default();
+    options.style = NumberFormatStyle::Unit;
+    options.unit = Some("celsius".to_string());
+    options.unit_display = UnitDisplay::Short;
+    let nf = NumberFormat::new("en", options)?;
+    let s = nf.format(20.0)?;
+    assert!(s.contains("celsius"), "expected fallback unit label: {s}");
+    Ok(())
+}
+
+#[test]
+fn compact_to_parts_has_compact_part() -> Result<(), Error> {
+    let mut options = NumberFormatOptions::default();
+    options.notation = Notation::Compact;
+    options.compact_display = CompactDisplay::Short;
+    let nf = NumberFormat::new("en", options)?;
+    let parts = nf.format_to_parts(12345.0)?;
+    assert!(
+        parts
+            .iter()
+            .any(|p| p.part_type == NumberFormatPartType::Compact),
+        "expected compact part: {parts:?}"
+    );
     Ok(())
 }

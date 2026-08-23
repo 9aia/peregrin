@@ -2,6 +2,7 @@ use std::fmt;
 
 use ecma402_traits::number_format::NumberFormatOptions;
 use ecma402_traits::number_format::NumberFormat as _;
+use ecma402_traits::plural_rules::{PluralCategory, PluralRules as _};
 use ecma402_traits::relative_time::{
     RelativeTimeFormat as RelativeTimeFormatTrait, RelativeTimeFormatPart, RelativeTimeNumeric,
     RelativeTimeStyle, RelativeTimeUnit,
@@ -15,6 +16,7 @@ use icu_provider_blob::BlobDataProvider;
 use writeable::Writeable;
 
 use crate::number_format::NumberFormat;
+use crate::plural_rules::{Options as PluralRulesOptions, PluralRules};
 use icu4x_extra::relative_time::split_parts;
 
 pub use ecma402_traits::relative_time::RelativeTimeOptions as Options;
@@ -23,6 +25,7 @@ pub use ecma402_traits::relative_time::RelativeTimeOptions as Options;
 pub struct RelativeTimeFormat<'a> {
     formatter: RelativeTimeFormatter,
     number_format: NumberFormat<'a>,
+    plural_rules: PluralRules,
 }
 
 /// Errors that can occur when constructing or using a `RelativeTimeFormat`.
@@ -57,6 +60,15 @@ impl From<crate::number_format::Error> for Error {
             crate::number_format::Error::Data(de) => Self::Data(de),
             crate::number_format::Error::InvalidLocale(s) => Self::InvalidLocale(s),
             _ => Self::Formatting(e.to_string()),
+        }
+    }
+}
+
+impl From<crate::plural_rules::Error> for Error {
+    fn from(e: crate::plural_rules::Error) -> Self {
+        match e {
+            crate::plural_rules::Error::Data(de) => Self::Data(de),
+            crate::plural_rules::Error::InvalidLocale(s) => Self::InvalidLocale(s),
         }
     }
 }
@@ -199,9 +211,11 @@ impl<'a> RelativeTimeFormat<'a> {
         let formatter = Self::make_formatter(&locale, &options, None)?;
         let locale_tag = locale.to_string();
         let number_format = NumberFormat::new(&locale_tag, NumberFormatOptions::default())?;
+        let plural_rules = PluralRules::new(&locale_tag, PluralRulesOptions::default())?;
         Ok(RelativeTimeFormat {
             formatter,
             number_format,
+            plural_rules,
         })
     }
 
@@ -216,10 +230,18 @@ impl<'a> RelativeTimeFormat<'a> {
         let locale_tag = locale.to_string();
         let number_format =
             NumberFormat::with_blob(&locale_tag, NumberFormatOptions::default(), provider)?;
+        let plural_rules =
+            PluralRules::with_blob(&locale_tag, PluralRulesOptions::default(), provider)?;
         Ok(Self {
             formatter,
             number_format,
+            plural_rules,
         })
+    }
+
+    /// Select the CLDR cardinal plural category for `value` in this locale.
+    pub fn select_plural(&self, value: f64) -> Result<PluralCategory, Error> {
+        self.plural_rules.select(value).map_err(Error::from)
     }
 }
 

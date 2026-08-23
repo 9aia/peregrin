@@ -118,10 +118,6 @@ impl<'a> DateTimeFormat<'a> {
         parse_time_precision(&self.options)
     }
 
-    fn subsecond_digits(&self) -> Option<SubsecondDigits> {
-        parse_subsecond_digits(&self.options)
-    }
-
     fn format_value(&self, value: &str) -> Result<String, Error> {
         let parsed = parse_input(value, &self.options)?;
         let mut sink = PartsCollector::new();
@@ -170,14 +166,14 @@ fn parse_locale(locale: &str) -> Result<Locale, Error> {
 }
 
 fn apply_numbering_system(locale: &mut Locale, options: &DateTimeFormatOptions) {
-    if let Some(nu) = &options.numbering_system {
-        if let Ok(value) = icu::locale::extensions::unicode::Value::try_from_str(nu) {
-            locale
-                .extensions
-                .unicode
-                .keywords
-                .set(icu::locale::extensions::unicode::key!("nu"), value);
-        }
+    if let Some(nu) = &options.numbering_system
+        && let Ok(value) = icu::locale::extensions::unicode::Value::try_from_str(nu)
+    {
+        locale
+            .extensions
+            .unicode
+            .keywords
+            .set(icu::locale::extensions::unicode::key!("nu"), value);
     }
 }
 
@@ -230,7 +226,7 @@ fn parse_input(value: &str, _options: &DateTimeFormatOptions) -> Result<Parsed, 
         return Ok(Parsed {
             date,
             time,
-            offset: None,
+            offset: parse_timezone_offset(s),
         });
     }
 
@@ -243,10 +239,10 @@ fn is_numeric_timestamp(s: &str) -> bool {
         return false;
     }
     let mut chars = s.chars().peekable();
-    if let Some(&c) = chars.peek() {
-        if c == '-' || c == '+' {
-            chars.next();
-        }
+    if let Some(&c) = chars.peek()
+        && (c == '-' || c == '+')
+    {
+        chars.next();
     }
     let mut has_dot = false;
     let mut has_digit = false;
@@ -388,22 +384,25 @@ fn parse_nanos_from_str(s: &str) -> u32 {
 
 fn parse_timezone_offset(s: &str) -> Option<UtcOffset> {
     let s = s.trim();
-    if !s.contains('T') {
+    if s.is_empty() {
         return None;
     }
-    let time_part = s.split_once('T').map(|(_, t)| t).unwrap_or(s);
-    let after_dot = time_part
-        .find('.')
-        .map(|i| &time_part[i..])
-        .unwrap_or(time_part);
-    let after_frac = after_dot.split(['+', 'Z', 'z']).next().unwrap_or(after_dot);
-    let end_of_frac = after_frac.len();
-    let time_start = s.len() - time_part.len();
-    let pos = time_start + end_of_frac;
-    if pos >= s.len() {
+    // The offset follows the time-of-day component, which is the whole string
+    // for a standalone time or the part after 'T' for a date-time.
+    let time_part = if let Some((_, t)) = s.split_once('T') {
+        t
+    } else if s.contains(':') {
+        s
+    } else {
+        return None;
+    };
+    let offset_start = time_part
+        .find(['+', '-', 'Z', 'z'])
+        .unwrap_or(time_part.len());
+    if offset_start == time_part.len() {
         return None;
     }
-    let candidate = &s[pos..];
+    let candidate = &time_part[offset_start..];
     if candidate.starts_with('+')
         || candidate.starts_with('-')
         || candidate.starts_with('Z')
@@ -420,6 +419,14 @@ fn parse_length(style: DateTimeStyle) -> Length {
         DateTimeStyle::Full | DateTimeStyle::Long => Length::Long,
         DateTimeStyle::Short => Length::Short,
         DateTimeStyle::Medium => Length::Medium,
+    }
+}
+
+fn date_fields_for_style(style: DateTimeStyle) -> DateFields {
+    match style {
+        // ECMA-402 "full" includes the weekday; the other date styles do not.
+        DateTimeStyle::Full => DateFields::YMDE,
+        _ => DateFields::YMD,
     }
 }
 
@@ -482,6 +489,9 @@ fn build_prefs(
 }
 
 fn has_field_bag(options: &DateTimeFormatOptions) -> bool {
+    // time_zone_name and fractional_second_digits are treated as modifiers
+    // that can ride along with date_style/time_style. day_period is included
+    // here because ICU4X FieldSetBuilder does not expose it for rendering.
     options.year.is_some()
         || options.month.is_some()
         || options.day.is_some()
@@ -490,7 +500,6 @@ fn has_field_bag(options: &DateTimeFormatOptions) -> bool {
         || options.minute.is_some()
         || options.second.is_some()
         || options.era.is_some()
-        || options.time_zone_name.is_some()
         || options.day_period.is_some()
 }
 
@@ -641,22 +650,51 @@ fn format_time_only_to_parts(
         DateTimeStyle::Medium => T::medium(),
     }
     .with_time_precision(time_precision);
-    let fieldset = if let Some(sd) = dtf.subsecond_digits() {
-        T::hmss(sd)
+
+    if let Some(zs) = determine_zone_style(&dtf.options) {
+        let mut builder = FieldSetBuilder::new();
+        builder.length = Some(parse_length(dtf.time_style()));
+        builder.time_precision = Some(time_precision);
+        builder.zone_style = Some(zs);
+        let composite = builder
+            .build_composite()
+            .map_err(|e| Error::Formatting(e.to_string()))?;
+
+        let formatter = match dtf.provider.as_buffer_provider() {
+            Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, dtf.prefs(), composite),
+            None => DateTimeFormatter::try_new(dtf.prefs(), composite),
+        }
+        .map_err(|e| Error::Formatting(e.to_string()))?;
+
+        let offset = parsed.offset.unwrap_or(UtcOffset::zero());
+        let tz = parse_time_zone_id(&dtf.options);
+        let zone = tz
+            .with_offset(Some(offset))
+            .at_date_time(DateTime {
+                date: parsed.date,
+                time: parsed.time,
+            });
+        let zoned = ZonedDateTime {
+            date: parsed.date,
+            time: parsed.time,
+            zone,
+        };
+        let formatted = formatter.format(&zoned);
+        formatted
+            .write_to_parts(sink)
+            .map_err(|e| Error::Formatting(e.to_string()))
     } else {
-        fieldset
-    };
+        let formatter = match dtf.provider.as_buffer_provider() {
+            Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, dtf.prefs(), fieldset),
+            None => DateTimeFormatter::try_new(dtf.prefs(), fieldset),
+        }
+        .map_err(|e| Error::Formatting(e.to_string()))?;
 
-    let formatter = match dtf.provider.as_buffer_provider() {
-        Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, dtf.prefs(), fieldset),
-        None => DateTimeFormatter::try_new(dtf.prefs(), fieldset),
+        let formatted = formatter.format(&parsed.time);
+        formatted
+            .write_to_parts(sink)
+            .map_err(|e| Error::Formatting(e.to_string()))
     }
-    .map_err(|e| Error::Formatting(e.to_string()))?;
-
-    let formatted = formatter.format(&parsed.time);
-    formatted
-        .write_to_parts(sink)
-        .map_err(|e| Error::Formatting(e.to_string()))
 }
 
 fn format_datetime_to_parts(
@@ -682,16 +720,44 @@ fn format_datetime_to_parts(
     }
     .with_time_precision(time_precision);
 
-    let formatter = match dtf.provider.as_buffer_provider() {
-        Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, dtf.prefs(), fieldset),
-        None => DateTimeFormatter::try_new(dtf.prefs(), fieldset),
-    }
-    .map_err(|e| Error::Formatting(e.to_string()))?;
+    if let Some(zs) = determine_zone_style(&dtf.options) {
+        let mut builder = FieldSetBuilder::new();
+        builder.length = Some(parse_length(dtf.date_style()));
+        builder.date_fields = Some(date_fields_for_style(dtf.date_style()));
+        builder.time_precision = Some(time_precision);
+        builder.zone_style = Some(zs);
+        let composite = builder
+            .build_composite()
+            .map_err(|e| Error::Formatting(e.to_string()))?;
 
-    let formatted = formatter.format(&datetime);
-    formatted
-        .write_to_parts(sink)
-        .map_err(|e| Error::Formatting(e.to_string()))
+        let formatter = match dtf.provider.as_buffer_provider() {
+            Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, dtf.prefs(), composite),
+            None => DateTimeFormatter::try_new(dtf.prefs(), composite),
+        }
+        .map_err(|e| Error::Formatting(e.to_string()))?;
+
+        let offset = parsed.offset.unwrap_or(UtcOffset::zero());
+        let tz = parse_time_zone_id(&dtf.options);
+        let zone = tz
+            .with_offset(Some(offset))
+            .at_date_time(DateTime { date, time });
+        let zoned = ZonedDateTime { date, time, zone };
+        let formatted = formatter.format(&zoned);
+        formatted
+            .write_to_parts(sink)
+            .map_err(|e| Error::Formatting(e.to_string()))
+    } else {
+        let formatter = match dtf.provider.as_buffer_provider() {
+            Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, dtf.prefs(), fieldset),
+            None => DateTimeFormatter::try_new(dtf.prefs(), fieldset),
+        }
+        .map_err(|e| Error::Formatting(e.to_string()))?;
+
+        let formatted = formatter.format(&datetime);
+        formatted
+            .write_to_parts(sink)
+            .map_err(|e| Error::Formatting(e.to_string()))
+    }
 }
 
 fn format_with_field_bag_to_parts(

@@ -10,7 +10,7 @@ use fixed_decimal::{
     Decimal, FloatPrecision, SignDisplay as FixedSignDisplay, SignedRoundingMode,
     UnsignedRoundingMode,
 };
-use icu::decimal::options::{DecimalFormatterOptions, GroupingStrategy};
+use icu::decimal::options::{CompactDecimalFormatterOptions, DecimalFormatterOptions, GroupingStrategy};
 use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
 use icu::experimental::dimension::currency::CurrencyType;
 use icu::experimental::dimension::currency::formatter::CurrencyFormatter;
@@ -168,16 +168,18 @@ impl<'a> NumberFormat<'a> {
     }
 
     fn format_compact(&self, n: f64) -> Result<String, Error> {
+        let compact_opts: CompactDecimalFormatterOptions =
+            build_formatter_options(&self.options).into();
         let formatter = if self.options.compact_display == CompactDisplay::Long {
             match self.provider.as_buffer_provider() {
                 Some(p) => CompactDecimalFormatter::try_new_long_with_buffer_provider(
                     p,
                     self.locale.clone().into(),
-                    Default::default(),
+                    compact_opts,
                 ),
                 None => CompactDecimalFormatter::try_new_long(
                     self.locale.clone().into(),
-                    Default::default(),
+                    compact_opts,
                 ),
             }
         } else {
@@ -185,11 +187,11 @@ impl<'a> NumberFormat<'a> {
                 Some(p) => CompactDecimalFormatter::try_new_short_with_buffer_provider(
                     p,
                     self.locale.clone().into(),
-                    Default::default(),
+                    compact_opts,
                 ),
                 None => CompactDecimalFormatter::try_new_short(
                     self.locale.clone().into(),
-                    Default::default(),
+                    compact_opts,
                 ),
             }
         }
@@ -206,9 +208,11 @@ impl<'a> NumberFormat<'a> {
             return self.format_standard(n);
         }
         let mut decimal = decimal_from_f64(n);
-        apply_sign_display(&mut decimal, &self.options);
         let exponent = decimal.nonzero_magnitude_start() as i32;
         decimal.multiply_pow10(-exponent as i16);
+        apply_fraction_digits(&mut decimal, &self.options);
+        apply_significant_digits(&mut decimal, &self.options);
+        apply_sign_display(&mut decimal, &self.options);
         let mantissa_str = self.format_prepared_decimal(&decimal)?;
         let exp_str = self.format_exponent(exponent)?;
         Ok(format!("{mantissa_str}×10{exp_str}"))
@@ -219,10 +223,12 @@ impl<'a> NumberFormat<'a> {
             return self.format_standard(n);
         }
         let mut decimal = decimal_from_f64(n);
-        apply_sign_display(&mut decimal, &self.options);
         let raw_exp = decimal.nonzero_magnitude_start() as i32;
         let exponent = (raw_exp / 3) * 3;
         decimal.multiply_pow10(-exponent as i16);
+        apply_fraction_digits(&mut decimal, &self.options);
+        apply_significant_digits(&mut decimal, &self.options);
+        apply_sign_display(&mut decimal, &self.options);
         let mantissa_str = self.format_prepared_decimal(&decimal)?;
         let exp_str = self.format_exponent(exponent)?;
         Ok(format!("{mantissa_str}×10{exp_str}"))
@@ -242,8 +248,7 @@ impl<'a> NumberFormat<'a> {
         let mut decimal = decimal_from_f64(n);
         decimal.multiply_pow10(2);
         decimal.trim_start();
-        apply_fraction_digits(&mut decimal, &self.options);
-        apply_sign_display(&mut decimal, &self.options);
+        apply_digit_options(&mut decimal, &self.options);
         let formatted = formatter.format(&decimal);
         Ok(formatted.write_to_string().into_owned())
     }
@@ -343,7 +348,7 @@ impl<'a> NumberFormat<'a> {
         unit_opts.width = width;
 
         let mut decimal = decimal_from_f64(n);
-        apply_sign_display(&mut decimal, &self.options);
+        apply_digit_options(&mut decimal, &self.options);
 
         let id: &'static str = Box::leak(unit_str.to_string().into_boxed_str());
         let prefs: CategorizedUnitsFormatterPreferences = self.locale.clone().into();
@@ -369,7 +374,12 @@ impl<'a> NumberFormat<'a> {
         try_unit!(Volume::cubic_meter(), Volume);
         try_unit!(Duration::second(), Duration);
 
-        Err(Error::InvalidUnit(unit_str.to_string()))
+        let number = self.format_prepared_decimal(&decimal)?;
+        let separator = match self.options.unit_display {
+            UnitDisplay::Narrow => "",
+            _ => " ",
+        };
+        Ok(format!("{number}{separator}{unit_str}"))
     }
 
     fn format_standard_to_parts(&self, n: f64, sink: &mut PartsCollector) -> Result<(), Error> {
@@ -379,16 +389,18 @@ impl<'a> NumberFormat<'a> {
     }
 
     fn format_compact_to_parts(&self, n: f64, sink: &mut PartsCollector) -> Result<(), Error> {
+        let compact_opts: CompactDecimalFormatterOptions =
+            build_formatter_options(&self.options).into();
         let formatter = if self.options.compact_display == CompactDisplay::Long {
             match self.provider.as_buffer_provider() {
                 Some(p) => CompactDecimalFormatter::try_new_long_with_buffer_provider(
                     p,
                     self.locale.clone().into(),
-                    Default::default(),
+                    compact_opts,
                 ),
                 None => CompactDecimalFormatter::try_new_long(
                     self.locale.clone().into(),
-                    Default::default(),
+                    compact_opts,
                 ),
             }
         } else {
@@ -396,11 +408,11 @@ impl<'a> NumberFormat<'a> {
                 Some(p) => CompactDecimalFormatter::try_new_short_with_buffer_provider(
                     p,
                     self.locale.clone().into(),
-                    Default::default(),
+                    compact_opts,
                 ),
                 None => CompactDecimalFormatter::try_new_short(
                     self.locale.clone().into(),
-                    Default::default(),
+                    compact_opts,
                 ),
             }
         }
@@ -409,9 +421,14 @@ impl<'a> NumberFormat<'a> {
         let mut decimal = decimal_from_f64(n);
         apply_sign_display(&mut decimal, &self.options);
         let formatted = formatter.format(&decimal);
-        formatted
-            .write_to_parts(sink)
-            .map_err(|e| Error::Formatting(e.to_string()))
+        sink.with_part(
+            Part {
+                category: "decimal",
+                value: "compact",
+            },
+            |w| formatted.write_to_parts(w),
+        )
+        .map_err(|e| Error::Formatting(e.to_string()))
     }
 
     fn format_scientific_to_parts(&self, n: f64, sink: &mut PartsCollector) -> Result<(), Error> {
@@ -419,15 +436,17 @@ impl<'a> NumberFormat<'a> {
             return self.format_standard_to_parts(n, sink);
         }
         let mut decimal = decimal_from_f64(n);
-        apply_sign_display(&mut decimal, &self.options);
         let exponent = decimal.nonzero_magnitude_start() as i32;
         decimal.multiply_pow10(-exponent as i16);
+        apply_fraction_digits(&mut decimal, &self.options);
+        apply_significant_digits(&mut decimal, &self.options);
+        apply_sign_display(&mut decimal, &self.options);
         self.format_prepared_decimal_to_parts(&decimal, sink)?;
 
         sink.with_part(
             Part {
                 category: "decimal",
-                value: "literal",
+                value: "exponentSeparator",
             },
             |w| w.write_str("×10"),
         )
@@ -441,16 +460,18 @@ impl<'a> NumberFormat<'a> {
             return self.format_standard_to_parts(n, sink);
         }
         let mut decimal = decimal_from_f64(n);
-        apply_sign_display(&mut decimal, &self.options);
         let raw_exp = decimal.nonzero_magnitude_start() as i32;
         let exponent = (raw_exp / 3) * 3;
         decimal.multiply_pow10(-exponent as i16);
+        apply_fraction_digits(&mut decimal, &self.options);
+        apply_significant_digits(&mut decimal, &self.options);
+        apply_sign_display(&mut decimal, &self.options);
         self.format_prepared_decimal_to_parts(&decimal, sink)?;
 
         sink.with_part(
             Part {
                 category: "decimal",
-                value: "literal",
+                value: "exponentSeparator",
             },
             |w| w.write_str("×10"),
         )
@@ -473,8 +494,7 @@ impl<'a> NumberFormat<'a> {
         let mut decimal = decimal_from_f64(n);
         decimal.multiply_pow10(2);
         decimal.trim_start();
-        apply_fraction_digits(&mut decimal, &self.options);
-        apply_sign_display(&mut decimal, &self.options);
+        apply_digit_options(&mut decimal, &self.options);
         let formatted = formatter.format(&decimal);
         formatted
             .write_to_parts(sink)
@@ -578,7 +598,7 @@ impl<'a> NumberFormat<'a> {
         unit_opts.width = width;
 
         let mut decimal = decimal_from_f64(n);
-        apply_sign_display(&mut decimal, &self.options);
+        apply_digit_options(&mut decimal, &self.options);
 
         let id: &'static str = Box::leak(unit_str.to_string().into_boxed_str());
         let prefs: CategorizedUnitsFormatterPreferences = self.locale.clone().into();
@@ -606,7 +626,25 @@ impl<'a> NumberFormat<'a> {
         try_unit_parts!(Volume::cubic_meter(), Volume);
         try_unit_parts!(Duration::second(), Duration);
 
-        Err(Error::InvalidUnit(unit_str.to_string()))
+        self.format_prepared_decimal_to_parts(&decimal, sink)?;
+        if self.options.unit_display != UnitDisplay::Narrow {
+            sink.with_part(
+                Part {
+                    category: "decimal",
+                    value: "literal",
+                },
+                |w| w.write_str(" "),
+            )
+            .map_err(|e| Error::Formatting(e.to_string()))?;
+        }
+        sink.with_part(
+            Part {
+                category: "decimal",
+                value: "unit",
+            },
+            |w| w.write_str(unit_str),
+        )
+        .map_err(|e| Error::Formatting(e.to_string()))
     }
 }
 
@@ -663,18 +701,15 @@ fn parse_locale(locale: &str) -> Result<Locale, Error> {
 }
 
 fn apply_numbering_system(locale: &mut Locale, options: &NumberFormatOptions) {
-    if let Some(numbering_system) = &options.numbering_system {
-        if !numbering_system.is_empty() {
-            if let Ok(value) =
-                icu::locale::extensions::unicode::Value::try_from_str(numbering_system)
-            {
-                locale
-                    .extensions
-                    .unicode
-                    .keywords
-                    .set(icu::locale::extensions::unicode::key!("nu"), value);
-            }
-        }
+    if let Some(numbering_system) = &options.numbering_system
+        && !numbering_system.is_empty()
+        && let Ok(value) = icu::locale::extensions::unicode::Value::try_from_str(numbering_system)
+    {
+        locale
+            .extensions
+            .unicode
+            .keywords
+            .set(icu::locale::extensions::unicode::key!("nu"), value);
     }
 }
 
@@ -712,10 +747,10 @@ fn parse_rounding_mode(options: &NumberFormatOptions) -> SignedRoundingMode {
 }
 
 fn apply_minimum_integer_digits(decimal: &mut Decimal, options: &NumberFormatOptions) {
-    if let Some(n) = options.minimum_integer_digits {
-        if n > 0 {
-            decimal.pad_start(i16::try_from(n).unwrap_or(0));
-        }
+    if let Some(n) = options.minimum_integer_digits
+        && n > 0
+    {
+        decimal.pad_start(i16::try_from(n).unwrap_or(0));
     }
 }
 
@@ -734,14 +769,20 @@ fn apply_fraction_digits(decimal: &mut Decimal, options: &NumberFormatOptions) {
 }
 
 fn apply_significant_digits(decimal: &mut Decimal, options: &NumberFormatOptions) {
-    if let Some(min) = options.minimum_significant_digits {
-        if min > 0 {
-            decimal.pad_start(i16::try_from(min).unwrap_or(0));
-        }
+    let rounding_mode = parse_rounding_mode(options);
+    if let Some(max) = options.maximum_significant_digits
+        && max > 0
+    {
+        let magnitude = decimal.nonzero_magnitude_start();
+        let position = magnitude - (i16::try_from(max).unwrap_or(0) - 1);
+        decimal.round_with_mode(position, rounding_mode);
     }
-    if let Some(max) = options.maximum_significant_digits {
-        decimal.trim_start();
-        decimal.pad_start(i16::try_from(max).unwrap_or(0));
+    if let Some(min) = options.minimum_significant_digits
+        && min > 0
+    {
+        let magnitude = decimal.nonzero_magnitude_start();
+        let position = magnitude - (i16::try_from(min).unwrap_or(0) - 1);
+        decimal.pad_end(position);
     }
 }
 

@@ -1,4 +1,4 @@
-use ecma402_traits::segmenter::{Granularity, LineBreakStyle, Segmenter as _};
+use ecma402_traits::segmenter::{Granularity, LineBreakStyle, LineBreakWord, Segmenter as _};
 
 use super::{Options, Segmenter};
 
@@ -9,6 +9,7 @@ fn grapheme() {
         Options {
             granularity: Granularity::Grapheme,
             line_break_style: LineBreakStyle::Strict,
+            line_break_word: LineBreakWord::Normal,
         },
     )
     .unwrap();
@@ -32,6 +33,7 @@ fn word() {
         Options {
             granularity: Granularity::Word,
             line_break_style: LineBreakStyle::Strict,
+            line_break_word: LineBreakWord::Normal,
         },
     )
     .unwrap();
@@ -51,6 +53,7 @@ fn sentence() {
         Options {
             granularity: Granularity::Sentence,
             line_break_style: LineBreakStyle::Strict,
+            line_break_word: LineBreakWord::Normal,
         },
     )
     .unwrap();
@@ -68,6 +71,7 @@ fn line_strict() {
         Options {
             granularity: Granularity::Line,
             line_break_style: LineBreakStyle::Strict,
+            line_break_word: LineBreakWord::Normal,
         },
     )
     .unwrap();
@@ -85,6 +89,7 @@ fn line_normal() {
         Options {
             granularity: Granularity::Line,
             line_break_style: LineBreakStyle::Normal,
+            line_break_word: LineBreakWord::Normal,
         },
     )
     .unwrap();
@@ -102,6 +107,7 @@ fn line_loose() {
         Options {
             granularity: Granularity::Line,
             line_break_style: LineBreakStyle::Loose,
+            line_break_word: LineBreakWord::Normal,
         },
     )
     .unwrap();
@@ -126,6 +132,7 @@ fn empty_string() {
             Options {
                 granularity,
                 line_break_style,
+                line_break_word: LineBreakWord::Normal,
             },
         )
         .unwrap();
@@ -135,5 +142,59 @@ fn empty_string() {
             "{:?} should produce no segments",
             granularity
         );
+    }
+}
+
+#[test]
+fn line_break_word_break_all() {
+    let segmenter = Segmenter::new(
+        "en",
+        Options {
+            granularity: Granularity::Line,
+            line_break_style: LineBreakStyle::Normal,
+            line_break_word: LineBreakWord::BreakAll,
+        },
+    )
+    .unwrap();
+    let segments = segmenter.segment("HelloWorld").unwrap();
+    assert!(!segments.is_empty());
+    for segment in &segments {
+        assert_eq!(segment.is_word_like, None);
+    }
+}
+
+#[test]
+fn line_break_word_keep_all() {
+    let segmenter = Segmenter::new(
+        "en",
+        Options {
+            granularity: Granularity::Line,
+            line_break_style: LineBreakStyle::Normal,
+            line_break_word: LineBreakWord::KeepAll,
+        },
+    )
+    .unwrap();
+    let segments = segmenter.segment("Hello world").unwrap();
+    assert!(!segments.is_empty());
+    for segment in &segments {
+        assert_eq!(segment.is_word_like, None);
+    }
+}
+
+#[test]
+fn line_anywhere() {
+    let segmenter = Segmenter::new(
+        "en",
+        Options {
+            granularity: Granularity::Line,
+            line_break_style: LineBreakStyle::Anywhere,
+            line_break_word: LineBreakWord::Normal,
+        },
+    )
+    .unwrap();
+    let segments = segmenter.segment("Hello world").unwrap();
+    assert!(!segments.is_empty());
+    for segment in &segments {
+        assert_eq!(segment.is_word_like, None);
     }
 }
