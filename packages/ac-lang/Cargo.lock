@@ -1247,28 +1247,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7b7e7f9ee4b331a8737c5bd91b266130f67db7d86db26dc756dbb8e8313aa0ac"
 
 [[package]]
-name = "ecma402-icu4x"
-version = "0.1.0"
-dependencies = [
- "ecma402-traits",
- "fixed_decimal",
- "icu",
- "icu4x-extra",
- "icu_decimal_data",
- "icu_locale_fallback",
- "icu_provider",
- "icu_provider_blob",
- "serde",
- "serde_json",
- "writeable",
- "zerovec",
-]
-
-[[package]]
-name = "ecma402-traits"
-version = "0.1.0"
-
-[[package]]
 name = "either"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1562,13 +1540,6 @@ dependencies = [
  "icu_provider",
  "icu_segmenter",
  "icu_time",
-]
-
-[[package]]
-name = "icu4x-extra"
-version = "0.1.0"
-dependencies = [
- "ecma402-traits",
 ]
 
 [[package]]
@@ -2643,6 +2614,35 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rust-lib-ecma402-icu4x"
+version = "0.1.0"
+dependencies = [
+ "fixed_decimal",
+ "icu",
+ "icu_decimal_data",
+ "icu_locale_fallback",
+ "icu_provider",
+ "icu_provider_blob",
+ "rust-lib-ecma402-traits",
+ "rust-lib-icu4x-extra",
+ "serde",
+ "serde_json",
+ "writeable",
+ "zerovec",
+]
+
+[[package]]
+name = "rust-lib-ecma402-traits"
+version = "0.1.0"
+
+[[package]]
+name = "rust-lib-icu4x-extra"
+version = "0.1.0"
+dependencies = [
+ "rust-lib-ecma402-traits",
 ]
 
 [[package]]

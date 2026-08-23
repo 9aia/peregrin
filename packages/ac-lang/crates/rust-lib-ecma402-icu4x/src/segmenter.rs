@@ -1,7 +1,8 @@
 use std::fmt;
 
 use ecma402_traits::segmenter::{
-    Granularity, LineBreakStyle, LineBreakWord, Segment as SegmentOutput, Segmenter as SegmenterTrait,
+    Granularity, LineBreakStyle, LineBreakWord, Segment as SegmentOutput,
+    Segmenter as SegmenterTrait,
 };
 use icu::locale::Locale;
 use icu::segmenter::{
@@ -50,7 +51,11 @@ impl Segmenter {
         Locale::try_from_str(locale).map_err(|_| Error::InvalidLocale(locale.to_string()))
     }
 
-    fn line_options(style: LineBreakStyle, word: LineBreakWord, locale: &Locale) -> LineBreakOptions<'_> {
+    fn line_options(
+        style: LineBreakStyle,
+        word: LineBreakWord,
+        locale: &Locale,
+    ) -> LineBreakOptions<'_> {
         let mut opts = LineBreakOptions::default();
         opts.content_locale = Some(&locale.id);
         opts.strictness = Some(match style {
@@ -108,7 +113,8 @@ impl Segmenter {
                 }
             },
             Granularity::Line => {
-                let line_opts = Self::line_options(options.line_break_style, options.line_break_word, locale);
+                let line_opts =
+                    Self::line_options(options.line_break_style, options.line_break_word, locale);
                 match provider {
                     Some(p) => {
                         let seg = LineSegmenter::try_new_auto_with_buffer_provider(p, line_opts)?;

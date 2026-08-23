@@ -1,7 +1,7 @@
 use std::fmt;
 
-use ecma402_traits::number_format::NumberFormatOptions;
 use ecma402_traits::number_format::NumberFormat as _;
+use ecma402_traits::number_format::NumberFormatOptions;
 use ecma402_traits::plural_rules::{PluralCategory, PluralRules as _};
 use ecma402_traits::relative_time::{
     RelativeTimeFormat as RelativeTimeFormatTrait, RelativeTimeFormatPart, RelativeTimeNumeric,

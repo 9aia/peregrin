@@ -10,7 +10,9 @@ use fixed_decimal::{
     Decimal, FloatPrecision, SignDisplay as FixedSignDisplay, SignedRoundingMode,
     UnsignedRoundingMode,
 };
-use icu::decimal::options::{CompactDecimalFormatterOptions, DecimalFormatterOptions, GroupingStrategy};
+use icu::decimal::options::{
+    CompactDecimalFormatterOptions, DecimalFormatterOptions, GroupingStrategy,
+};
 use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
 use icu::experimental::dimension::currency::CurrencyType;
 use icu::experimental::dimension::currency::formatter::CurrencyFormatter;
@@ -177,10 +179,9 @@ impl<'a> NumberFormat<'a> {
                     self.locale.clone().into(),
                     compact_opts,
                 ),
-                None => CompactDecimalFormatter::try_new_long(
-                    self.locale.clone().into(),
-                    compact_opts,
-                ),
+                None => {
+                    CompactDecimalFormatter::try_new_long(self.locale.clone().into(), compact_opts)
+                }
             }
         } else {
             match self.provider.as_buffer_provider() {
@@ -189,10 +190,9 @@ impl<'a> NumberFormat<'a> {
                     self.locale.clone().into(),
                     compact_opts,
                 ),
-                None => CompactDecimalFormatter::try_new_short(
-                    self.locale.clone().into(),
-                    compact_opts,
-                ),
+                None => {
+                    CompactDecimalFormatter::try_new_short(self.locale.clone().into(), compact_opts)
+                }
             }
         }
         .map_err(Error::Data)?;
@@ -398,10 +398,9 @@ impl<'a> NumberFormat<'a> {
                     self.locale.clone().into(),
                     compact_opts,
                 ),
-                None => CompactDecimalFormatter::try_new_long(
-                    self.locale.clone().into(),
-                    compact_opts,
-                ),
+                None => {
+                    CompactDecimalFormatter::try_new_long(self.locale.clone().into(), compact_opts)
+                }
             }
         } else {
             match self.provider.as_buffer_provider() {
@@ -410,10 +409,9 @@ impl<'a> NumberFormat<'a> {
                     self.locale.clone().into(),
                     compact_opts,
                 ),
-                None => CompactDecimalFormatter::try_new_short(
-                    self.locale.clone().into(),
-                    compact_opts,
-                ),
+                None => {
+                    CompactDecimalFormatter::try_new_short(self.locale.clone().into(), compact_opts)
+                }
             }
         }
         .map_err(Error::Data)?;

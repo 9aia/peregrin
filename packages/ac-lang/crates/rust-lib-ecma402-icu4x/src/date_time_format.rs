@@ -668,12 +668,10 @@ fn format_time_only_to_parts(
 
         let offset = parsed.offset.unwrap_or(UtcOffset::zero());
         let tz = parse_time_zone_id(&dtf.options);
-        let zone = tz
-            .with_offset(Some(offset))
-            .at_date_time(DateTime {
-                date: parsed.date,
-                time: parsed.time,
-            });
+        let zone = tz.with_offset(Some(offset)).at_date_time(DateTime {
+            date: parsed.date,
+            time: parsed.time,
+        });
         let zoned = ZonedDateTime {
             date: parsed.date,
             time: parsed.time,

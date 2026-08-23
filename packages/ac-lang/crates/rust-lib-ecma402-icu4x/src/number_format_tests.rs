@@ -246,7 +246,10 @@ fn currency_accounting_usd() -> Result<(), Error> {
     options.currency_sign = CurrencySign::Accounting;
     let nf = NumberFormat::new("en", options)?;
     let s = nf.format(-1234.5)?;
-    assert!(s.starts_with('(') && s.contains('$'), "expected accounting: {s}");
+    assert!(
+        s.starts_with('(') && s.contains('$'),
+        "expected accounting: {s}"
+    );
     Ok(())
 }
 

@@ -1,11 +1,11 @@
 [package]
-name = "ecma402-icu4x"
+name = "rust-lib-ecma402-icu4x"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-ecma402-traits = { path = "../ecma402-traits" }
-icu4x-extra = { path = "../icu4x-extra" }
+ecma402-traits = { package = "rust-lib-ecma402-traits", path = "../rust-lib-ecma402-traits" }
+icu4x-extra = { package = "rust-lib-icu4x-extra", path = "../rust-lib-icu4x-extra" }
 icu = { version = "2", features = ["unstable", "serde"] }
 icu_decimal_data = "2"
 icu_locale_fallback = { version = "2", features = ["compiled_data"] }

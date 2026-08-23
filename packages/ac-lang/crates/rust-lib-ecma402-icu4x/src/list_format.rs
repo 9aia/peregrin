@@ -1,6 +1,8 @@
 use std::fmt;
 
-use ecma402_traits::list_format::{ListFormat as ListFormatTrait, ListFormatPart, ListStyle, ListType};
+use ecma402_traits::list_format::{
+    ListFormat as ListFormatTrait, ListFormatPart, ListStyle, ListType,
+};
 use icu::list::{
     ListFormatter,
     options::{ListFormatterOptions, ListLength},

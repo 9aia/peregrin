@@ -1,0 +1,77 @@
+name: Rust
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/ac-lang/**"
+      - ".github/workflows/rust.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "packages/ac-lang/**"
+
+env:
+  CARGO_TERM_COLOR: always
+
+defaults:
+  run:
+    working-directory: packages/ac-lang
+
+jobs:
+  fmt:
+    name: Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/ac-lang
+      - run: cargo fmt --check -p rust-lib-ecma402-icu4x -p rust-lib-ecma402-traits
+
+  clippy:
+    name: Clippy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/ac-lang
+      - run: cargo clippy -p rust-lib-ecma402-icu4x -p rust-lib-ecma402-traits -- -D warnings
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: [rust-lib-ecma402-icu4x, rust-lib-ecma402-traits]
+        # TODO: replace with compiled_data/blob once those Cargo features exist.
+        # For now, default vs --all-features still catches missing feature gates.
+        cargo-flags: ["", "--all-features"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/ac-lang
+      - run: cargo test -p ${{ matrix.package }} ${{ matrix.cargo-flags }}
+
+  doc:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: packages/ac-lang
+      - run: cargo doc -p rust-lib-ecma402-icu4x -p rust-lib-ecma402-traits --no-deps
+        env:
+          RUSTDOCFLAGS: "-D warnings"

@@ -144,7 +144,10 @@ fn select_plural_arabic() {
     assert_eq!(formatter.select_plural(2.0).unwrap(), PluralCategory::Two);
     assert_eq!(formatter.select_plural(3.0).unwrap(), PluralCategory::Few);
     assert_eq!(formatter.select_plural(11.0).unwrap(), PluralCategory::Many);
-    assert_eq!(formatter.select_plural(100.0).unwrap(), PluralCategory::Other);
+    assert_eq!(
+        formatter.select_plural(100.0).unwrap(),
+        PluralCategory::Other
+    );
 }
 
 #[test]

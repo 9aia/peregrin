@@ -15,9 +15,11 @@ use icu_provider_blob::BlobDataProvider;
 
 pub use ecma402_traits::collator::CollatorOptions as Options;
 
+type Comparator = Box<dyn Fn(&str, &str) -> Ordering>;
+
 /// ICU4X-backed ECMA-402 `Intl.Collator`.
 pub struct Collator {
-    compare_fn: Box<dyn Fn(&str, &str) -> Ordering>,
+    compare_fn: Comparator,
 }
 
 /// Errors that can occur when constructing or using a `Collator`.

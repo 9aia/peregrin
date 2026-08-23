@@ -1,7 +1,0 @@
-[package]
-name = "icu4x-extra"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-ecma402-traits = { path = "../ecma402-traits" }
