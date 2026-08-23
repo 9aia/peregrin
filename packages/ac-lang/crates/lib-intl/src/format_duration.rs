@@ -1,3 +1,7 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 use icu::experimental::duration::{
@@ -15,6 +19,10 @@ use writeable::Writeable;
 use super::common::{make_provider, opt_bool, opt_int, opt_str, optional_locale, optional_object, require_object, s};
 use super::error::IntlError;
 use super::provider::IntlProvider;
+
+thread_local! {
+    static DURATION_FORMATTERS: RefCell<HashMap<(String, String), Rc<DurationFormatter>>> = RefCell::new(HashMap::new());
+}
 
 /// `intl.format_duration(duration: object, locale?: string, opts?: object) → string`
 ///
@@ -91,13 +99,25 @@ impl Function for FormatDuration {
         let validated = ValidatedDurationFormatterOptions::validate(options)
             .map_err(|e| IntlError::Formatting { message: format!("invalid options: {e}") }.into_vm_error())?;
 
-        let formatter = match dp.as_buffer_provider() {
-            Some(_) => return Err(IntlError::Formatting {
+        if dp.as_buffer_provider().is_some() {
+            return Err(IntlError::Formatting {
                 message: "format_duration does not support blob data provider yet (ICU4X experimental limitation)".to_string(),
-            }.into_vm_error()),
-            None => DurationFormatter::try_new(locale.into(), validated),
+            }.into_vm_error());
         }
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+
+        let key = (locale.to_string(), format!("{:?}", options));
+        let formatter = DURATION_FORMATTERS.with(|cache| -> Result<Rc<DurationFormatter>, Error> {
+            let mut cache = cache.borrow_mut();
+            if let Some(f) = cache.get(&key) {
+                Ok(Rc::clone(f))
+            } else {
+                let f = DurationFormatter::try_new(locale.into(), validated)
+                    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+                let f = Rc::new(f);
+                cache.insert(key, Rc::clone(&f));
+                Ok(f)
+            }
+        })?;
 
         let formatted = formatter.format(&duration);
         Ok(s(formatted.write_to_string().into_owned()))

@@ -1,3 +1,7 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::rc::Rc;
+
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
@@ -15,6 +19,10 @@ use super::common::{apply_digit_options, apply_fraction_digits, apply_numbering_
 use super::error::IntlError;
 use super::parts::PartsCollector;
 use super::provider::IntlProvider;
+
+thread_local! {
+    static DECIMAL_FORMATTERS: RefCell<HashMap<(String, String), Rc<DecimalFormatter>>> = RefCell::new(HashMap::new());
+}
 
 /// `intl.format_number(n: number, locale?: string, opts?: object) → string`
 ///
@@ -127,13 +135,35 @@ fn build_formatter_options(opts: Option<&serde_json::Map<String, serde_json::Val
     options
 }
 
-fn format_standard(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, dp: &DataProvider) -> Result<String, Error> {
+fn decimal_formatter(
+    locale: &icu::locale::Locale,
+    opts: Option<&serde_json::Map<String, serde_json::Value>>,
+    dp: &DataProvider,
+) -> Result<Rc<DecimalFormatter>, Error> {
     let formatter_opts = build_formatter_options(opts);
-    let formatter = match dp.as_buffer_provider() {
-        Some(p) => DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts),
-        None => DecimalFormatter::try_new(locale.into(), formatter_opts),
+    if let Some(p) = dp.as_buffer_provider() {
+        let f = DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts)
+            .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+        return Ok(Rc::new(f));
     }
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+
+    let key = (locale.to_string(), format!("{:?}", formatter_opts));
+    DECIMAL_FORMATTERS.with(|cache| -> Result<Rc<DecimalFormatter>, Error> {
+        let mut cache = cache.borrow_mut();
+        if let Some(f) = cache.get(&key) {
+            Ok(Rc::clone(f))
+        } else {
+            let f = DecimalFormatter::try_new(locale.into(), formatter_opts)
+                .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+            let f = Rc::new(f);
+            cache.insert(key, Rc::clone(&f));
+            Ok(f)
+        }
+    })
+}
+
+fn format_standard(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, dp: &DataProvider) -> Result<String, Error> {
+    let formatter = decimal_formatter(locale, opts, dp)?;
 
     let mut decimal = decimal_from_f64(n);
     apply_digit_options(&mut decimal, opts);
@@ -167,12 +197,7 @@ fn format_decimal_with_options(
     opts: Option<&serde_json::Map<String, serde_json::Value>>,
     dp: &DataProvider,
 ) -> Result<String, Error> {
-    let formatter_opts = build_formatter_options(opts);
-    let formatter = match dp.as_buffer_provider() {
-        Some(p) => DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts),
-        None => DecimalFormatter::try_new(locale.into(), formatter_opts),
-    }
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    let formatter = decimal_formatter(locale, opts, dp)?;
     let formatted = formatter.format(decimal);
     Ok(formatted.write_to_string().into_owned())
 }
@@ -205,12 +230,7 @@ fn format_engineering(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_
 }
 
 fn format_exponent(exponent: i32, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, dp: &DataProvider) -> Result<String, Error> {
-    let formatter_opts = build_formatter_options(opts);
-    let formatter = match dp.as_buffer_provider() {
-        Some(p) => DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts),
-        None => DecimalFormatter::try_new(locale.into(), formatter_opts),
-    }
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    let formatter = decimal_formatter(locale, opts, dp)?;
     let mut decimal = fixed_decimal::Decimal::from(exponent);
     decimal.apply_sign_display(fixed_decimal::SignDisplay::ExceptZero);
     Ok(formatter.format(&decimal).write_to_string().into_owned())
@@ -411,12 +431,7 @@ fn format_decimal_to_parts(
     dp: &DataProvider,
     sink: &mut PartsCollector,
 ) -> Result<(), Error> {
-    let formatter_opts = build_formatter_options(opts);
-    let formatter = match dp.as_buffer_provider() {
-        Some(p) => DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts),
-        None => DecimalFormatter::try_new(locale.into(), formatter_opts),
-    }
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    let formatter = decimal_formatter(locale, opts, dp)?;
     let formatted = formatter.format(decimal);
     formatted
         .write_to_parts(sink)
@@ -430,12 +445,7 @@ fn format_standard_to_parts(
     dp: &DataProvider,
     sink: &mut PartsCollector,
 ) -> Result<(), Error> {
-    let formatter_opts = build_formatter_options(opts);
-    let formatter = match dp.as_buffer_provider() {
-        Some(p) => DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts),
-        None => DecimalFormatter::try_new(locale.into(), formatter_opts),
-    }
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    let formatter = decimal_formatter(locale, opts, dp)?;
 
     let mut decimal = decimal_from_f64(n);
     apply_digit_options(&mut decimal, opts);
@@ -536,12 +546,7 @@ fn format_exponent_to_parts(
     dp: &DataProvider,
     sink: &mut PartsCollector,
 ) -> Result<(), Error> {
-    let formatter_opts = build_formatter_options(opts);
-    let formatter = match dp.as_buffer_provider() {
-        Some(p) => DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts),
-        None => DecimalFormatter::try_new(locale.into(), formatter_opts),
-    }
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    let formatter = decimal_formatter(locale, opts, dp)?;
     let mut decimal = fixed_decimal::Decimal::from(exponent);
     decimal.apply_sign_display(fixed_decimal::SignDisplay::ExceptZero);
     let formatted = formatter.format(&decimal);
