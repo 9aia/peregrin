@@ -68,7 +68,7 @@ members = [
   "crates/store",
   "crates/codebase",
   "crates/integration-tests",
-  "crates/type-host",
+  "crates/host-type",
 ]
 resolver = "3"
 
@@ -85,9 +85,9 @@ ac-runtime-core = { path = "crates/runtime-core" }
 ac-lib-utils = { path = "crates/lib-utils" }
 ac-lib-datetime = { path = "crates/lib-datetime" }
 ac-lib-intl = { path = "crates/lib-intl" }
-ecma402-traits = { path = "crates/ecma402-traits" }
-ecma402-icu4x = { path = "crates/ecma402-icu4x" }
-icu4x-extra = { path = "crates/icu4x-extra" }
+ecma402-traits = { package = "rust-lib-ecma402-traits", path = "crates/rust-lib-ecma402-traits" }
+ecma402-icu4x = { package = "rust-lib-ecma402-icu4x", path = "crates/rust-lib-ecma402-icu4x" }
+icu4x-extra = { package = "rust-lib-icu4x-extra", path = "crates/rust-lib-icu4x-extra" }
 ac-lib-crypto = { path = "crates/lib-crypto" }
 ac-lib-rand = { path = "crates/lib-rand" }
 ac-lib-kv = { path = "crates/lib-kv" }
@@ -138,7 +138,7 @@ ac-meta = { path = "crates/meta" }
 ac-store = { path = "crates/store" }
 ac-codebase = { path = "crates/codebase" }
 ac-integration-tests = { path = "crates/integration-tests" }
-ac-type-host = { path = "crates/type-host" }
+ac-host-type = { path = "crates/host-type" }
 rand = "0.9"
 hex = "0.4"
 md-5 = "0.10"

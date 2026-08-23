@@ -343,6 +343,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-host-type"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-dialect",
+ "ac-dialect-canonical",
+ "ac-fields",
+ "ac-host",
+ "ac-lib-utils",
+ "ac-runtime",
+ "ac-runtime-core",
+ "ac-typecheck-core",
+ "ac-vm",
+ "serde_json",
+]
+
+[[package]]
 name = "ac-integration-tests"
 version = "0.1.0"
 dependencies = [
@@ -643,23 +660,6 @@ dependencies = [
  "hex",
  "serde_json",
  "sha2",
-]
-
-[[package]]
-name = "ac-type-host"
-version = "0.1.0"
-dependencies = [
- "ac-ast",
- "ac-dialect",
- "ac-dialect-canonical",
- "ac-fields",
- "ac-host",
- "ac-lib-utils",
- "ac-runtime",
- "ac-runtime-core",
- "ac-typecheck-core",
- "ac-vm",
- "serde_json",
 ]
 
 [[package]]
@@ -1258,6 +1258,8 @@ dependencies = [
  "icu_locale_fallback",
  "icu_provider",
  "icu_provider_blob",
+ "serde",
+ "serde_json",
  "writeable",
  "zerovec",
 ]
