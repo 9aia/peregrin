@@ -204,7 +204,7 @@ default = [
   "codebase",
 ]
 
-vm = ["dep:ac-vm"]
+vm = ["ac-vm", "ac-vm-canonical"]
 host = ["dep:ac-host", "vm"]
 json = ["dep:ac-frontend-json"]
 yaml = ["dep:ac-frontend-yaml"]
@@ -254,6 +254,7 @@ ac-source.workspace = true
 ac-dialect-canonical = { workspace = true, optional = true }
 ac-runtime-core = { workspace = true, optional = true }
 ac-vm = { workspace = true, optional = true }
+ac-vm-canonical = { workspace = true, optional = true }
 ac-host = { workspace = true, optional = true }
 ac-frontend-json = { workspace = true, optional = true }
 ac-frontend-yaml = { workspace = true, optional = true }

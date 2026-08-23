@@ -7,11 +7,11 @@ use indexmap::IndexMap;
 
 /// The execution context for a VM evaluation.
 ///
-/// A `RuntimeContext` maintains a stack of variable scopes, resource limits,
+/// A `Context` maintains a stack of variable scopes, resource limits,
 /// and optional expression-evaluation callbacks. It is the only thing the
 /// VM knows about the execution environment; concrete context types can
 /// implement this trait with different backing stores or policies.
-pub trait RuntimeContext {
+pub trait Context {
     /// Defines a variable in the current (topmost) scope.
     fn define(&mut self, name: &str, value: NonFunctionValue);
 
@@ -83,20 +83,20 @@ pub trait RuntimeContext {
 /// An abstract virtual-machine evaluator.
 ///
 /// Implementors transform an [`Expr`] tree into a runtime value inside a
-/// [`RuntimeContext`]. The canonical tree-walking implementation is
+/// [`Context`]. The canonical tree-walking implementation is
 /// `ac_vm_canonical::CanonicalVm`.
 pub trait VirtualMachine {
     /// Evaluates an expression synchronously.
     fn eval(
         &self,
         expr: &Expr<NonFunctionValue>,
-        ctx: &mut dyn RuntimeContext,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error>;
 
     /// Evaluates an expression asynchronously.
     fn eval_async(
         &self,
         expr: &Expr<NonFunctionValue>,
-        ctx: &mut dyn RuntimeContext,
+        ctx: &mut dyn Context,
     ) -> impl std::future::Future<Output = Result<NonFunctionValue, Error>>;
 }

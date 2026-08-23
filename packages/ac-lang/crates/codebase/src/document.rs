@@ -9,8 +9,7 @@ pub struct DocumentEntry {
     /// The content hash of the definition.
     pub hash: DefinitionHash,
     /// The function definition itself.
-    pub function: FunctionValue,
-}
+    pub function: FunctionValue}
 
 /// A document — a collection of named definitions.
 ///
@@ -32,8 +31,7 @@ pub struct Document {
     /// Named definitions in this document.
     pub entries: Vec<DocumentEntry>,
     /// Hashes of imported documents.
-    pub imports: Vec<DefinitionHash>,
-}
+    pub imports: Vec<DefinitionHash>}
 
 impl Document {
     /// Creates an empty document.
@@ -53,8 +51,7 @@ impl Document {
         self.entries.push(DocumentEntry {
             name: name.into(),
             hash,
-            function,
-        });
+            function});
         self
     }
 
@@ -96,8 +93,7 @@ impl Document {
             .map(|e| {
                 serde_json::json!({
                     "name": e.name,
-                    "hash": e.hash.as_str(),
-                })
+                    "hash": e.hash.as_str()})
             })
             .collect::<Vec<_>>();
         entries.sort_by(|a, b| {
@@ -116,8 +112,7 @@ impl Document {
         serde_json::json!({
             "title": self.title,
             "entries": entries,
-            "imports": imports,
-        })
+            "imports": imports})
     }
 
     /// Computes the content hash of this document.

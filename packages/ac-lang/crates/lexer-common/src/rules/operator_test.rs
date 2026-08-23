@@ -8,8 +8,7 @@ const RULE: OperatorRule = OperatorRule;
 fn operator_rule_matches_factory_operator() {
     let factory = MockFactory::new().with_operator_kind(|t| match t.as_str() {
         "+" => Some(MockKind::Operator(t)),
-        _ => None,
-    });
+        _ => None});
     let config: LexerConfig<MockKind, DefaultLexError> = LexerConfig::new(factory);
     let mut chars = "+ rest".char_indices().peekable();
     let token = RULE.try_lex(&mut chars, &config).unwrap().unwrap();

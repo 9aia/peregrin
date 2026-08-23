@@ -186,8 +186,7 @@ fn pass_manager_runs_optimization_passes() {
     use ac_compiler::{OptPass, Outcome, PassManager};
 
     struct SquaredFieldsCount {
-        count: usize,
-    }
+        count: usize}
     impl OptPass<Vec<String>> for SquaredFieldsCount {
         fn name(&self) -> &'static str {
             "count-squared"

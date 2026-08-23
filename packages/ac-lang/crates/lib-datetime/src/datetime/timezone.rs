@@ -10,7 +10,7 @@ impl Function for ToTimezone {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, offset_str) = require_two_strings(args)?;
         let dt = parse_iso(input)?;
@@ -34,7 +34,7 @@ impl Function for ToUtc {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;

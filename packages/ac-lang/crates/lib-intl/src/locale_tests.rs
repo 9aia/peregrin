@@ -1,20 +1,20 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
-use ac_vm::{Context, Error};
+use ac_vm::{CanonicalContext, Context, Error};
 
 use super::module::IntlModule;
 
 fn call(args: &[NonFunctionValue]) -> NonFunctionValue {
     let module = IntlModule::new();
     let func = module.function("locale").expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_err(args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let module = IntlModule::new();
     let func = module.function("locale").expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 

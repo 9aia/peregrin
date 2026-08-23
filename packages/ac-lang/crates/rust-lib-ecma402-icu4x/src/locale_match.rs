@@ -1,8 +1,7 @@
 use std::fmt;
 
 use ecma402_traits::locale_match::{
-    CanonicalLocales as CanonicalLocalesTrait, SupportedLocalesOf as SupportedLocalesOfTrait,
-};
+    CanonicalLocales as CanonicalLocalesTrait, SupportedLocalesOf as SupportedLocalesOfTrait};
 use icu::decimal::provider::DecimalSymbolsV1;
 use icu::locale::Locale;
 use icu_provider::{DataError, DataMarker, IterableDataProvider, IterableDynamicDataProvider};
@@ -34,22 +33,19 @@ pub struct GetCanonicalLocales;
 
 /// ICU4X-backed ECMA-402 `Intl.supportedLocalesOf`.
 pub struct SupportedLocalesOf<'p> {
-    provider: Option<&'p BlobDataProvider>,
-}
+    provider: Option<&'p BlobDataProvider>}
 
 /// Errors that can occur when matching locales.
 #[derive(Debug)]
 pub enum Error {
     InvalidLocale(String),
-    Data(DataError),
-}
+    Data(DataError)}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidLocale(s) => write!(f, "invalid locale: {s}"),
-            Self::Data(e) => write!(f, "data provider error: {e}"),
-        }
+            Self::Data(e) => write!(f, "data provider error: {e}")}
     }
 }
 
@@ -92,8 +88,7 @@ impl<'p> SupportedLocalesOf<'p> {
     /// Create a `SupportedLocalesOf` using an ICU4X blob data provider.
     pub fn with_blob(provider: &'p BlobDataProvider) -> Self {
         Self {
-            provider: Some(provider),
-        }
+            provider: Some(provider)}
     }
 
     /// Return all locales supported by the backing data.
@@ -107,8 +102,7 @@ impl<'p> SupportedLocalesOf<'p> {
                     .filter(|l| l != "und")
                     .collect())
             }
-            None => compiled_supported_locales(),
-        }
+            None => compiled_supported_locales()}
     }
 }
 

@@ -7,16 +7,24 @@
 //! on `ac-vm` and only contains generic machinery — no concrete
 //! evaluator and no built-in function semantics.
 
+pub mod adapter;
 pub mod builder;
 pub mod combinator;
+pub mod machine;
 pub mod mock;
+pub mod middleware;
 pub mod prelude;
 pub mod sandbox;
 
+pub use adapter::{
+    catch, catch_operation, identity, logged, map_args, map_result, memoize, partial, pipe,
+    r#const, r#if, timed, Catch, CatchOp, Const, Identity, If, Logged, MapArgs, MapResult, Memoize,
+    Partial, Pipe, Timed};
 pub use builder::{
     fn_async, fn_function, fn_generic, fn_lazy, fn_operation, FnAsync, FnFunction, FnGeneric,
-    FnLazy, FnOperation,
-};
+    FnLazy, FnOperation};
 pub use combinator::{ChainHost, FilterHost, SpyHost};
+pub use machine::{ContextBuilder, Machine};
 pub use mock::{CaptureFn, MockHost, NoopHost};
+pub use middleware::{AllowHost, DenyHost, HostEvent, HostEventKind, LoggingHost, MapHost};
 pub use sandbox::{with_limits, with_max_calls, with_max_depth};

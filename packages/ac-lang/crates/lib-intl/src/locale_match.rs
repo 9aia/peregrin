@@ -23,19 +23,17 @@ impl Default for GetCanonicalLocales {
 }
 
 impl Function for GetCanonicalLocales {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let locales = if args.is_empty() {
             return Err(IntlError::InvalidArgument {
-                message: "at least one locale required".into(),
-            }
+                message: "at least one locale required".into()}
             .into_vm_error());
         } else if let Some(arr) = args[0].as_array() {
             arr.iter()
                 .map(|v| {
                     v.as_str()
                         .ok_or_else(|| IntlError::InvalidArgument {
-                            message: "locale must be a string".into(),
-                        }
+                            message: "locale must be a string".into()}
                         .into_vm_error())
                         .map(|s| s.to_string())
                 })
@@ -74,8 +72,7 @@ impl Function for GetCanonicalLocales {
 /// - `intl.supported_locales_of(["de", "xxx"])` → `["de"]`
 #[derive(Clone)]
 pub struct SupportedLocalesOf {
-    provider: Option<super::provider::IntlProvider>,
-}
+    provider: Option<super::provider::IntlProvider>}
 
 impl SupportedLocalesOf {
     pub fn new() -> Self {
@@ -133,7 +130,7 @@ fn blob_supported_languages(provider: &super::provider::IntlProvider) -> Result<
 }
 
 impl Function for SupportedLocalesOf {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let blob_langs = if let Some(provider) = &self.provider {
             Some(blob_supported_languages(provider)?)
         } else {
@@ -143,8 +140,7 @@ impl Function for SupportedLocalesOf {
         let requested = if args.is_empty() {
             let langs = match &blob_langs {
                 Some(l) => l.clone(),
-                None => SUPPORTED_LANGUAGES.iter().map(|s| s.to_string()).collect(),
-            };
+                None => SUPPORTED_LANGUAGES.iter().map(|s| s.to_string()).collect()};
             let arr: Vec<serde_json::Value> = langs
                 .into_iter()
                 .map(|l| serde_json::json!(l))
@@ -155,8 +151,7 @@ impl Function for SupportedLocalesOf {
                 .map(|v| {
                     v.as_str()
                         .ok_or_else(|| IntlError::InvalidArgument {
-                            message: "locale must be a string".into(),
-                        }
+                            message: "locale must be a string".into()}
                         .into_vm_error())
                         .map(|s| s.to_string())
                 })
@@ -180,11 +175,9 @@ impl Function for SupportedLocalesOf {
                                         .is_ok_and(|s| s.id.language.as_str() == lang)
                             })
                         }
-                        None => langs.iter().any(|supported| supported == l),
-                    }
+                        None => langs.iter().any(|supported| supported == l)}
                 }
-                None => is_supported_compiled(l),
-            }
+                None => is_supported_compiled(l)}
         };
 
         let filtered: Vec<serde_json::Value> = requested

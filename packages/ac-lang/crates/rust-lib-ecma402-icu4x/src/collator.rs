@@ -5,10 +5,8 @@ use ecma402_traits::collator::{CaseFirst, Collator as CollatorTrait, Sensitivity
 use icu::collator::{
     Collator as IcuCollator, CollatorPreferences,
     options::{
-        AlternateHandling, CaseLevel, CollatorOptions as IcuCollatorOptions, MaxVariable, Strength,
-    },
-    preferences::{CollationCaseFirst, CollationNumericOrdering, CollationType},
-};
+        AlternateHandling, CaseLevel, CollatorOptions as IcuCollatorOptions, MaxVariable, Strength},
+    preferences::{CollationCaseFirst, CollationNumericOrdering, CollationType}};
 use icu::locale::Locale;
 use icu_provider::DataError;
 use icu_provider_blob::BlobDataProvider;
@@ -19,22 +17,19 @@ type Comparator = Box<dyn Fn(&str, &str) -> Ordering>;
 
 /// ICU4X-backed ECMA-402 `Intl.Collator`.
 pub struct Collator {
-    compare_fn: Comparator,
-}
+    compare_fn: Comparator}
 
 /// Errors that can occur when constructing or using a `Collator`.
 #[derive(Debug)]
 pub enum Error {
     InvalidLocale(String),
-    Data(DataError),
-}
+    Data(DataError)}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidLocale(s) => write!(f, "invalid locale: {s}"),
-            Self::Data(e) => write!(f, "data provider error: {e}"),
-        }
+            Self::Data(e) => write!(f, "data provider error: {e}")}
     }
 }
 
@@ -60,8 +55,7 @@ impl Collator {
                 icu_options.case_level = Some(CaseLevel::On);
                 Strength::Primary
             }
-            _ => Strength::Tertiary,
-        });
+            _ => Strength::Tertiary});
 
         if options.ignore_punctuation {
             icu_options.alternate_handling = Some(AlternateHandling::Shifted);
@@ -78,8 +72,7 @@ impl Collator {
             CaseFirst::Upper => Some(CollationCaseFirst::Upper),
             CaseFirst::Lower => Some(CollationCaseFirst::Lower),
             CaseFirst::False => Some(CollationCaseFirst::False),
-            _ => None,
-        };
+            _ => None};
 
         if let Some(numeric) = options.numeric {
             prefs.numeric_ordering = Some(if numeric {
@@ -97,8 +90,7 @@ impl Collator {
                 "stroke" => Some(CollationType::Stroke),
                 "trad" => Some(CollationType::Trad),
                 "pinyin" => Some(CollationType::Pinyin),
-                _ => None,
-            };
+                _ => None};
         }
 
         prefs
@@ -112,8 +104,7 @@ impl Collator {
 
         let collator = IcuCollator::try_new(prefs, icu_options)?;
         Ok(Self {
-            compare_fn: Box::new(move |a, b| collator.compare(a, b)),
-        })
+            compare_fn: Box::new(move |a, b| collator.compare(a, b))})
     }
 
     /// Create a new `Collator` using an ICU4X blob data provider.
@@ -128,8 +119,7 @@ impl Collator {
 
         let collator = IcuCollator::try_new_with_buffer_provider(provider, prefs, icu_options)?;
         Ok(Self {
-            compare_fn: Box::new(move |a, b| collator.as_borrowed().compare(a, b)),
-        })
+            compare_fn: Box::new(move |a, b| collator.as_borrowed().compare(a, b))})
     }
 }
 

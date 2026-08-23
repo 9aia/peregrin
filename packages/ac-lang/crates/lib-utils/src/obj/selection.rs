@@ -11,13 +11,12 @@ impl Function for Pick {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let obj = require_object(&args[0])?;
         let keys = require_array(&args[1])?;
@@ -41,13 +40,12 @@ impl Function for Omit {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let obj = require_object(&args[0])?;
         let keys = require_array(&args[1])?;

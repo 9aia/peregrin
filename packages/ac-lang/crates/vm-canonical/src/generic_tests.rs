@@ -1,4 +1,4 @@
-use crate::RuntimeContext;
+use crate::CanonicalContext;
 use crate::Context;
 use crate::Error;
 use crate::{Function, GenericFunction, Host};
@@ -15,7 +15,7 @@ impl Function for TypedIdentity {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn RuntimeContext,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         Ok(args.first().cloned().unwrap_or_default())
     }
@@ -26,7 +26,7 @@ impl GenericFunction for TypedIdentity {
         &self,
         args: &[NonFunctionValue],
         type_args: &[String],
-        _ctx: &mut dyn RuntimeContext,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         // Return a string describing the type args to prove dispatch worked.
         let type_str = type_args.join(", ");
@@ -43,30 +43,26 @@ impl GenericFunction for TypedIdentity {
 
 #[derive(Clone)]
 struct GenericHost {
-    identity: TypedIdentity,
-}
+    identity: TypedIdentity}
 
 impl Host for GenericHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "identity" => Some(&self.identity),
-            _ => None,
-        }
+            _ => None}
     }
 
     fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
         match name {
             "identity" => Some(&self.identity),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
 impl Default for GenericHost {
     fn default() -> Self {
         GenericHost {
-            identity: TypedIdentity,
-        }
+            identity: TypedIdentity}
     }
 }
 
@@ -75,7 +71,7 @@ impl Default for GenericHost {
 #[test]
 fn generic_function_dispatch_with_type_args() {
     let vm = Vm::new(GenericHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call_with_type_args(
         "identity",
@@ -90,7 +86,7 @@ fn generic_function_dispatch_with_type_args() {
 #[test]
 fn generic_function_dispatch_with_multiple_type_args() {
     let vm = Vm::new(GenericHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call_with_type_args(
         "identity",
@@ -105,7 +101,7 @@ fn generic_function_dispatch_with_multiple_type_args() {
 #[test]
 fn generic_function_falls_back_to_function_when_no_type_args() {
     let vm = Vm::new(GenericHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     // No type_args → should use regular Function::call, not GenericFunction.
     let expr = Expr::call("identity", vec![Expr::value(NonFunctionValue::new("hello"))]);
@@ -118,7 +114,7 @@ fn generic_function_falls_back_to_function_when_no_type_args() {
 fn generic_function_falls_back_to_function_when_not_registered() {
     // Host has generic_function but returns None for unknown name.
     let vm = Vm::new(GenericHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     // "unknown" is not registered as a function or generic function.
     let expr = Expr::call_with_type_args(
@@ -140,7 +136,7 @@ impl Function for TypedArrayify {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn RuntimeContext,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         // Default: wrap in array
         Ok(NonFunctionValue::new(serde_json::json!([args
@@ -155,7 +151,7 @@ impl GenericFunction for TypedArrayify {
         &self,
         args: &[NonFunctionValue],
         type_args: &[String],
-        _ctx: &mut dyn RuntimeContext,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let val = args.first().map(|v| v.inner().clone()).unwrap_or(serde_json::Value::Null);
 
@@ -163,8 +159,7 @@ impl GenericFunction for TypedArrayify {
         if type_args.first().is_some_and(|t| t == "string") {
             let s = match &val {
                 serde_json::Value::String(s) => s.clone(),
-                other => other.to_string(),
-            };
+                other => other.to_string()};
             return Ok(NonFunctionValue::new(s));
         }
 
@@ -180,22 +175,20 @@ impl Host for ArrayifyHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "arrayify" => Some(&TypedArrayify),
-            _ => None,
-        }
+            _ => None}
     }
 
     fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
         match name {
             "arrayify" => Some(&TypedArrayify),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
 #[test]
 fn generic_function_type_args_affect_behavior() {
     let vm = Vm::new(ArrayifyHost);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     // With type_args=["string"], should stringify the input.
     let expr = Expr::call_with_type_args(
@@ -211,7 +204,7 @@ fn generic_function_type_args_affect_behavior() {
 #[test]
 fn generic_function_without_type_args_uses_default_behavior() {
     let vm = Vm::new(ArrayifyHost);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     // Without type_args, should wrap in array (default Function behavior).
     let expr = Expr::call("arrayify", vec![Expr::value(NonFunctionValue::new(42.0))]);

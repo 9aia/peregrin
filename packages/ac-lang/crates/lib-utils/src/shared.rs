@@ -10,8 +10,7 @@ use ac_vm::{Context, Error};
 pub(crate) fn require_array(arg: &NonFunctionValue) -> Result<&[serde_json::Value], Error> {
     arg.as_array().ok_or(Error::TypeMismatch {
         expected: "array",
-        got: "non-array",
-    })
+        got: "non-array"})
 }
 
 pub(crate) fn require_object(
@@ -19,8 +18,7 @@ pub(crate) fn require_object(
 ) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
     arg.as_object().ok_or(Error::TypeMismatch {
         expected: "object",
-        got: "non-object",
-    })
+        got: "non-object"})
 }
 
 pub(crate) fn require_string(arg: &NonFunctionValue) -> Result<String, Error> {
@@ -28,15 +26,13 @@ pub(crate) fn require_string(arg: &NonFunctionValue) -> Result<String, Error> {
         .map(|s| s.to_string())
         .ok_or(Error::TypeMismatch {
             expected: "string",
-            got: "non-string",
-        })
+            got: "non-string"})
 }
 
 pub(crate) fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error> {
     arg.as_function().ok_or(Error::TypeMismatch {
         expected: "function value",
-        got: "non-function",
-    })
+        got: "non-function"})
 }
 
 // ── argument count requirements ────────────────────────────────────
@@ -44,8 +40,7 @@ pub(crate) fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionV
 pub(crate) fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0,
-    })
+        got: 0})
 }
 
 pub(crate) fn require_two_args(
@@ -54,8 +49,7 @@ pub(crate) fn require_two_args(
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len(),
-        });
+            got: args.len()});
     }
     Ok((&args[0], &args[1]))
 }
@@ -66,8 +60,7 @@ pub(crate) fn require_three_args(
     if args.len() < 3 {
         return Err(Error::ArgumentCount {
             expected: 3,
-            got: args.len(),
-        });
+            got: args.len()});
     }
     Ok((&args[0], &args[1], &args[2]))
 }
@@ -75,8 +68,7 @@ pub(crate) fn require_three_args(
 pub(crate) fn require_one_array(args: &[NonFunctionValue]) -> Result<&[serde_json::Value], Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0,
-    })?;
+        got: 0})?;
     require_array(arg)
 }
 
@@ -86,8 +78,7 @@ pub(crate) fn require_two_arrays(
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len(),
-        });
+            got: args.len()});
     }
     let a = require_array(&args[0])?;
     let b = require_array(&args[1])?;
@@ -100,8 +91,7 @@ pub(crate) fn require_function_and_array(
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len(),
-        });
+            got: args.len()});
     }
     let fn_val = require_function_value(&args[0])?;
     let array = require_array(&args[1])?;
@@ -112,8 +102,7 @@ pub(crate) fn require_functions(args: &[NonFunctionValue]) -> Result<Vec<Functio
     if args.is_empty() {
         return Err(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        });
+            got: 0});
     }
     args.iter().map(require_function_value).collect()
 }
@@ -234,8 +223,7 @@ pub(crate) fn value_to_string(value: &serde_json::Value) -> String {
         }
         serde_json::Value::Bool(b) => b.to_string(),
         serde_json::Value::Null => "null".to_string(),
-        _ => serde_json::to_string(value).unwrap_or_else(|_| "unknown".to_string()),
-    }
+        _ => serde_json::to_string(value).unwrap_or_else(|_| "unknown".to_string())}
 }
 
 // ════════════════════════════════════════════════════════════════════
@@ -244,7 +232,7 @@ pub(crate) fn value_to_string(value: &serde_json::Value) -> String {
 
 /// Apply a single-param function to a value: bind_param + eval_expr.
 pub(crate) fn apply_fn(
-    ctx: &mut Context,
+    ctx: &mut dyn Context,
     fn_val: &FunctionValue,
     value: &serde_json::Value,
 ) -> Result<NonFunctionValue, Error> {
@@ -254,7 +242,7 @@ pub(crate) fn apply_fn(
 
 /// Apply a two-param function to two values: bind_two_params + eval_expr.
 pub(crate) fn apply_fn2(
-    ctx: &mut Context,
+    ctx: &mut dyn Context,
     fn_val: &FunctionValue,
     a: &serde_json::Value,
     b: &serde_json::Value,
@@ -265,7 +253,7 @@ pub(crate) fn apply_fn2(
 
 /// Apply a predicate function and check if the result is truthy.
 pub(crate) fn is_truthy_fn(
-    ctx: &mut Context,
+    ctx: &mut dyn Context,
     fn_val: &FunctionValue,
     value: &serde_json::Value,
 ) -> Result<bool, Error> {
@@ -276,7 +264,7 @@ pub(crate) fn is_truthy_fn(
 /// Map a function over an iterator, collecting results.
 /// Works with any iterator yielding `&serde_json::Value`.
 pub(crate) fn map_iter<'a, I>(
-    ctx: &mut Context,
+    ctx: &mut dyn Context,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Vec<serde_json::Value>, Error>
@@ -293,7 +281,7 @@ where
 
 /// Filter an iterator by a predicate function, collecting matching items.
 pub(crate) fn filter_iter<'a, I>(
-    ctx: &mut Context,
+    ctx: &mut dyn Context,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Vec<serde_json::Value>, Error>
@@ -311,7 +299,7 @@ where
 
 /// Fold an iterator with a two-param function and an initial accumulator.
 pub(crate) fn fold_iter<'a, I>(
-    ctx: &mut Context,
+    ctx: &mut dyn Context,
     fn_val: &FunctionValue,
     iter: I,
     init: serde_json::Value,
@@ -330,7 +318,7 @@ where
 /// Find the first element matching a predicate.
 /// Returns `None` if no match.
 pub(crate) fn find_first<'a, I>(
-    ctx: &mut Context,
+    ctx: &mut dyn Context,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Option<serde_json::Value>, Error>
@@ -348,7 +336,7 @@ where
 /// Find the index of the first element matching a predicate.
 /// Returns `None` if no match.
 pub(crate) fn find_index<'a, I>(
-    ctx: &mut Context,
+    ctx: &mut dyn Context,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Option<usize>, Error>
@@ -366,7 +354,7 @@ where
 /// Find the first matching element from a reverse iterator.
 /// Returns `None` if no match.
 pub(crate) fn find_first_rev<'a, I>(
-    ctx: &mut Context,
+    ctx: &mut dyn Context,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Option<serde_json::Value>, Error>
@@ -380,7 +368,7 @@ where
 /// The index is relative to the reversed iteration order.
 /// Returns `None` if no match.
 pub(crate) fn find_index_rev<'a, I>(
-    ctx: &mut Context,
+    ctx: &mut dyn Context,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Option<usize>, Error>

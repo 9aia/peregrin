@@ -5,8 +5,7 @@
 
 use crate::{
     CommentFactory, CommentTokenKind, DefaultLexError, KindFactory, LexError, LexRule, Lexer,
-    LexerConfig, Span, Token, TokenKind,
-};
+    LexerConfig, Span, Token, TokenKind};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -21,8 +20,7 @@ pub enum TestKind {
     Comment(String),
     Delim(char),
     Custom(String),
-    Eof,
-}
+    Eof}
 
 impl fmt::Display for TestKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -37,8 +35,7 @@ impl fmt::Display for TestKind {
             TestKind::Comment(s) => write!(f, "comment({s:?})"),
             TestKind::Delim(c) => write!(f, "delim({c})"),
             TestKind::Custom(s) => write!(f, "custom({s})"),
-            TestKind::Eof => write!(f, "eof"),
-        }
+            TestKind::Eof => write!(f, "eof")}
     }
 }
 
@@ -86,8 +83,7 @@ impl<E: LexError> LexRule<TestKind, E> for BangRule {
                 let (pos, _) = chars.next().unwrap();
                 Some(Ok(Token::new(TestKind::Null, Span::at(pos))))
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     fn name(&self) -> &'static str { "bang" }
@@ -100,8 +96,7 @@ impl<E: LexError> LexRule<TestKind, E> for BangRule {
 // --- Local mock lexer ---
 
 pub struct MockLexer<E: LexError = DefaultLexError> {
-    tokens: Result<Vec<Token<TestKind>>, E>,
-}
+    tokens: Result<Vec<Token<TestKind>>, E>}
 
 impl<E: LexError> MockLexer<E> {
     pub fn ok(tokens: Vec<Token<TestKind>>) -> Self {

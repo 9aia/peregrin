@@ -9,8 +9,7 @@ pub enum NumberFormatStyle {
     /// Percent formatting.
     Percent,
     /// Unit formatting.
-    Unit,
-}
+    Unit}
 
 impl NumberFormatStyle {
     /// Returns the ECMA-402 `style` string (`"decimal"`, `"currency"`, etc.).
@@ -19,8 +18,7 @@ impl NumberFormatStyle {
             Self::Decimal => "decimal",
             Self::Currency => "currency",
             Self::Percent => "percent",
-            Self::Unit => "unit",
-        }
+            Self::Unit => "unit"}
     }
 }
 
@@ -35,8 +33,7 @@ pub enum CurrencyDisplay {
     /// Use the ISO 4217 currency code.
     Code,
     /// Use a localized currency name.
-    Name,
-}
+    Name}
 
 impl CurrencyDisplay {
     /// Returns the ECMA-402 `currencyDisplay` string.
@@ -45,8 +42,7 @@ impl CurrencyDisplay {
             Self::Symbol => "symbol",
             Self::NarrowSymbol => "narrowSymbol",
             Self::Code => "code",
-            Self::Name => "name",
-        }
+            Self::Name => "name"}
     }
 }
 
@@ -57,16 +53,14 @@ pub enum CurrencySign {
     #[default]
     Standard,
     /// Accounting-style sign display.
-    Accounting,
-}
+    Accounting}
 
 impl CurrencySign {
     /// Returns the ECMA-402 `currencySign` string.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Standard => "standard",
-            Self::Accounting => "accounting",
-        }
+            Self::Accounting => "accounting"}
     }
 }
 
@@ -81,8 +75,7 @@ pub enum Notation {
     /// Engineering notation.
     Engineering,
     /// Compact notation.
-    Compact,
-}
+    Compact}
 
 impl Notation {
     /// Returns the ECMA-402 `notation` string.
@@ -91,8 +84,7 @@ impl Notation {
             Self::Standard => "standard",
             Self::Scientific => "scientific",
             Self::Engineering => "engineering",
-            Self::Compact => "compact",
-        }
+            Self::Compact => "compact"}
     }
 }
 
@@ -103,16 +95,14 @@ pub enum CompactDisplay {
     #[default]
     Short,
     /// Long form, e.g. `"10 thousand"`.
-    Long,
-}
+    Long}
 
 impl CompactDisplay {
     /// Returns the ECMA-402 `compactDisplay` string.
     pub fn as_str(&self) -> &'static str {
         match self {
             Self::Short => "short",
-            Self::Long => "long",
-        }
+            Self::Long => "long"}
     }
 }
 
@@ -131,8 +121,7 @@ pub enum UseGrouping {
     /// Use grouping only when there are at least 2 digits before the decimal.
     Min2,
     /// Never use grouping separators.
-    Never,
-}
+    Never}
 
 impl UseGrouping {
     /// Returns the ECMA-402 `useGrouping` string.
@@ -143,8 +132,7 @@ impl UseGrouping {
             Self::Auto => "auto",
             Self::Always => "always",
             Self::Min2 => "min2",
-            Self::Never => "never",
-        }
+            Self::Never => "never"}
     }
 }
 
@@ -157,8 +145,7 @@ pub enum UnitDisplay {
     /// Narrow form.
     Narrow,
     /// Long form.
-    Long,
-}
+    Long}
 
 impl UnitDisplay {
     /// Returns the ECMA-402 `unitDisplay` string.
@@ -166,8 +153,7 @@ impl UnitDisplay {
         match self {
             Self::Short => "short",
             Self::Narrow => "narrow",
-            Self::Long => "long",
-        }
+            Self::Long => "long"}
     }
 }
 
@@ -184,8 +170,7 @@ pub enum SignDisplay {
     /// Show the sign for negative numbers, including negative zero.
     Negative,
     /// Never show the sign.
-    Never,
-}
+    Never}
 
 impl SignDisplay {
     /// Returns the ECMA-402 `signDisplay` string.
@@ -195,8 +180,7 @@ impl SignDisplay {
             Self::Always => "always",
             Self::ExceptZero => "exceptZero",
             Self::Negative => "negative",
-            Self::Never => "never",
-        }
+            Self::Never => "never"}
     }
 }
 
@@ -221,8 +205,7 @@ pub enum RoundingMode {
     HalfTrunc,
     /// Round halves to the nearest even number (default).
     #[default]
-    HalfEven,
-}
+    HalfEven}
 
 impl RoundingMode {
     /// Returns the ECMA-402 `roundingMode` string.
@@ -236,8 +219,7 @@ impl RoundingMode {
             Self::HalfFloor => "halfFloor",
             Self::HalfExpand => "halfExpand",
             Self::HalfTrunc => "halfTrunc",
-            Self::HalfEven => "halfEven",
-        }
+            Self::HalfEven => "halfEven"}
     }
 }
 
@@ -279,8 +261,7 @@ pub enum NumberFormatPartType {
     /// Any literal text, including prefixes and suffixes.
     Literal,
     /// An unrecognized part type produced by the backend.
-    Other(String),
-}
+    Other(String)}
 
 impl NumberFormatPartType {
     /// Returns the ECMA-402 `NumberFormat` part type string.
@@ -303,8 +284,7 @@ impl NumberFormatPartType {
             Self::Compact => "compact",
             Self::Unit => "unit",
             Self::Literal => "literal",
-            Self::Other(s) => s.as_str(),
-        }
+            Self::Other(s) => s.as_str()}
     }
 }
 
@@ -328,8 +308,7 @@ impl From<&str> for NumberFormatPartType {
             "compact" => Self::Compact,
             "unit" => Self::Unit,
             "literal" => Self::Literal,
-            _ => Self::Other(value.to_string()),
-        }
+            _ => Self::Other(value.to_string())}
     }
 }
 
@@ -339,8 +318,7 @@ pub struct NumberFormatPart {
     /// The part type.
     pub part_type: NumberFormatPartType,
     /// The formatted text for this part.
-    pub value: String,
-}
+    pub value: String}
 
 /// Options used to construct a `NumberFormat` instance.
 ///
@@ -382,8 +360,7 @@ pub struct NumberFormatOptions {
     /// Rounding mode.
     pub rounding_mode: RoundingMode,
     /// Numbering system override.
-    pub numbering_system: Option<String>,
-}
+    pub numbering_system: Option<String>}
 
 impl Default for NumberFormatOptions {
     fn default() -> Self {
@@ -404,8 +381,7 @@ impl Default for NumberFormatOptions {
             unit_display: UnitDisplay::default(),
             sign_display: SignDisplay::default(),
             rounding_mode: RoundingMode::default(),
-            numbering_system: None,
-        }
+            numbering_system: None}
     }
 }
 

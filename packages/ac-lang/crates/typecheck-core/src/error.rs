@@ -17,8 +17,7 @@ pub struct TypeError {
     /// Source location (line:column) of the offending value, if known.
     /// Populated by the engine after typechecking, using the original
     /// source text.
-    pub location: Option<SourceLocation>,
-}
+    pub location: Option<SourceLocation>}
 
 impl TypeError {
     /// Create a type mismatch error.
@@ -40,8 +39,7 @@ impl TypeError {
             expected: Some(expected),
             actual: Some(actual),
             path,
-            location: None,
-        }
+            location: None}
     }
 
     /// Create a generic error with a custom message.
@@ -56,8 +54,7 @@ impl TypeError {
             actual: None,
             message: message.into(),
             path: path.into(),
-            location: None,
-        }
+            location: None}
     }
 
     /// Format the error for display.
@@ -95,8 +92,7 @@ pub struct CallCheckError {
     /// The function name being called.
     pub function: String,
     /// What went wrong.
-    pub kind: CallErrorKind,
-}
+    pub kind: CallErrorKind}
 
 /// The kind of call checking error.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -108,17 +104,14 @@ pub enum CallErrorKind {
         param: String,
         index: usize,
         expected: Type,
-        actual: Type,
-    },
+        actual: Type},
     /// Generic unification failed — a type variable couldn't be bound
     /// consistently.
     UnificationFailed {
         param: String,
         index: usize,
         expected: Type,
-        actual: Type,
-    },
-}
+        actual: Type}}
 
 impl CallCheckError {
     /// Build a `TypeError` from this call error.
@@ -134,8 +127,7 @@ impl CallCheckError {
                 param,
                 index,
                 expected,
-                actual,
-            } => {
+                actual} => {
                 format!(
                     "call to '{}': argument {} ('{}'): expected {}, got {}",
                     self.function,
@@ -149,8 +141,7 @@ impl CallCheckError {
                 param,
                 index,
                 expected,
-                actual,
-            } => {
+                actual} => {
                 format!(
                     "call to '{}': argument {} ('{}'): type mismatch in generic parameter — expected {}, got {}",
                     self.function,

@@ -3,7 +3,7 @@
 //! Caching host decorator for cross-machine resumability.
 //!
 //! When a VM evaluation yields (via `Error::Yield`), the caller
-//! captures a [`Continuation`][ac_vm::Continuation] and the yielded
+//! captures a [`Continuation`][ac_vm_canonical::Continuation] and the yielded
 //! value. To resume on another machine, the new host needs to
 //! return results for calls that were already made — without
 //! re-executing them.
@@ -33,7 +33,7 @@
 //! ```ignore
 //! use ac_host::DefaultHost;
 //! use ac_host_cache::{CacheHost, CallCache};
-//! use ac_vm::{Vm, Context, EvalResult, Continuation};
+//! use ac_vm_canonical::{Vm, Context, EvalResult, Continuation};
 //! use ac_runtime::NonFunctionValue;
 //!
 //! // Server: wrap DefaultHost, register fetch for caching, evaluate

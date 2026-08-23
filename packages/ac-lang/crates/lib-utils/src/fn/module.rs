@@ -3,8 +3,7 @@ use ac_vm::Function;
 
 use crate::r#fn::combinators::{
     Apply, Choice, Compose, Converge, Constantly, Fanout, Flip, Flow, Partial, Pipe, Tap, Unless,
-    When,
-};
+    When};
 
 /// The `fn` module — function combinator utilities.
 ///
@@ -33,7 +32,6 @@ impl Module for FnModule {
             "when" => Some(&When),
             "unless" => Some(&Unless),
             "converge" => Some(&Converge),
-            _ => None,
-        }
+            _ => None}
     }
 }

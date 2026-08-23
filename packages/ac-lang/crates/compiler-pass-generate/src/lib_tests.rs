@@ -12,8 +12,7 @@ fn test_config() -> Config {
         backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
-        extensions: Default::default(),
-    }
+        extensions: Default::default()}
 }
 
 fn full_pipeline(yaml: &str) -> Compilation {
@@ -68,8 +67,7 @@ fn generate_pass_without_backend_returns_error() {
         backend: None,
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
-        extensions: Default::default(),
-    };
+        extensions: Default::default()};
     // Need to manually set typegen_ctx since we can't run ResolvePass without the right deps
     compilation.typegen_ctx = Some(ac_typegen_core::TypegenContext::from_schemas(&[]));
     let result = GeneratePass.run(&mut compilation, &config_no_backend);

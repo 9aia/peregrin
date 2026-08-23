@@ -37,8 +37,7 @@ pub use visitor::{Folder, Visitor, walk_expr, walk_extracted, walk_field, fold_e
 pub use driver::{
     CheckedDoc, DriverDiagnostic, DriverError, DriverPipeline, DriverSeverity, ExtractedDoc,
     OptPass, OptPassError, Outcome, ParsedDoc, PassManager, PassRun, Report, ResolvedDoc,
-    Session, Stage, Then, TypecheckResult,
-};
+    Session, Stage, Then, TypecheckResult};
 
 #[cfg(test)]
 mod compilation_tests;

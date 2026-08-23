@@ -11,8 +11,7 @@ pub struct CallKey {
     /// The function name.
     pub function: String,
     /// Arguments serialized as a JSON array string.
-    pub args_json: String,
-}
+    pub args_json: String}
 
 impl CallKey {
     /// Creates a cache key from a function name and evaluated arguments.
@@ -26,8 +25,7 @@ impl CallKey {
         .unwrap_or_else(|_| "[]".to_string());
         CallKey {
             function: function.to_string(),
-            args_json,
-        }
+            args_json}
     }
 }
 
@@ -54,15 +52,13 @@ pub fn call_key(function: &str, args: &[NonFunctionValue]) -> CallKey {
 /// JSON results.
 #[derive(Debug, Clone, Default)]
 pub struct CallCache {
-    entries: HashMap<CallKey, NonFunctionValue>,
-}
+    entries: HashMap<CallKey, NonFunctionValue>}
 
 impl CallCache {
     /// Creates an empty cache.
     pub fn new() -> Self {
         CallCache {
-            entries: HashMap::new(),
-        }
+            entries: HashMap::new()}
     }
 
     /// Creates a cache from a pre-populated map.
@@ -119,8 +115,7 @@ impl CallCache {
                 if let Some((function, args_json)) = composite_key.split_once('|') {
                     let key = CallKey {
                         function: function.to_string(),
-                        args_json: args_json.to_string(),
-                    };
+                        args_json: args_json.to_string()};
                     entries.insert(key, NonFunctionValue::new(result.clone()));
                 }
             }

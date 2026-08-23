@@ -613,8 +613,7 @@ fn custom_rule_handles_comments() {
                 }
                 Some(Ok(Token::new(CanonicalKind::Comment("# comment".into()), Span::new(start, end))))
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     let config = canonical_config().insert_rule(0, FnRule::new("hash_comment", comment_rule));
@@ -680,8 +679,7 @@ fn rule_ordering_matters() {
                     .unwrap_or_else(|| CanonicalKind::Identifier(text));
                 Some(Ok(Token::new(kind, Span::new(start, end))))
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     let config = canonical_config().insert_rule(0, FnRule::new("dollar_ident", custom_ident_rule));
@@ -757,8 +755,7 @@ fn custom_rule_emits_extension_token() {
                     Span::new(start, end),
                 )))
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     let config = canonical_config().insert_rule(0, FnRule::new("regex", regex_rule));

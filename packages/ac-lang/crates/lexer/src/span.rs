@@ -9,8 +9,7 @@ pub struct Span {
     /// Start byte offset (inclusive).
     pub start: usize,
     /// End byte offset (exclusive).
-    pub end: usize,
-}
+    pub end: usize}
 
 impl Span {
     /// Creates a span from `[start, end)`.

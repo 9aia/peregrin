@@ -19,15 +19,13 @@ fn into_http_response(resp: ureq::Response) -> Result<HttpResponse, PlatformErro
     let url = resp.get_url().to_string();
     let headers = extract_headers(&resp);
     let body = resp.into_string().map_err(|e| PlatformError::Network {
-        message: e.to_string(),
-    })?;
+        message: e.to_string()})?;
     Ok(HttpResponse {
         status,
         status_text,
         body,
         headers,
-        url,
-    })
+        url})
 }
 
 fn build_request(req: &HttpRequest) -> ureq::Request {
@@ -38,8 +36,7 @@ fn build_request(req: &HttpRequest) -> ureq::Request {
         HttpMethod::Patch => ureq::request("PATCH", &req.url),
         HttpMethod::Delete => ureq::delete(&req.url),
         HttpMethod::Head => ureq::head(&req.url),
-        HttpMethod::Options => ureq::request("OPTIONS", &req.url),
-    };
+        HttpMethod::Options => ureq::request("OPTIONS", &req.url)};
 
     for (name, value) in &req.headers {
         builder = builder.set(name, value);
@@ -58,13 +55,11 @@ impl HttpClient for StdHttpClient {
 
         let response = match &req.body {
             Some(body) => builder.send_string(body),
-            None => builder.call(),
-        };
+            None => builder.call()};
 
         response
             .map_err(|e| PlatformError::Network {
-                message: e.to_string(),
-            })
+                message: e.to_string()})
             .and_then(into_http_response)
     }
 }

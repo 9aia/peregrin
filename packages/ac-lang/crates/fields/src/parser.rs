@@ -128,8 +128,7 @@ fn parse_handle(s: &str, paren_pos: usize, dialect: &dyn Dialect, namespaces: &N
                 op_name: parsed.op_name,
                 params: parsed.params,
                 continuation_name: parsed.continuation_name,
-                body,
-            })
+                body})
         })
         .collect();
 

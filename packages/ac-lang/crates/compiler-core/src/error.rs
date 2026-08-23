@@ -15,24 +15,21 @@ pub struct PassError {
     /// Name of the pass that produced this error.
     pub pass: &'static str,
     /// Diagnostics describing the error.
-    pub diagnostics: Vec<Diagnostic>,
-}
+    pub diagnostics: Vec<Diagnostic>}
 
 impl PassError {
     /// Create a single-error `PassError` from a message.
     pub fn new(pass: &'static str, message: impl Into<String>) -> Self {
         PassError {
             pass,
-            diagnostics: vec![Diagnostic::error(message)],
-        }
+            diagnostics: vec![Diagnostic::error(message)]}
     }
 
     /// Create a `PassError` from a diagnostic.
     pub fn from_diagnostic(pass: &'static str, diagnostic: Diagnostic) -> Self {
         PassError {
             pass,
-            diagnostics: vec![diagnostic],
-        }
+            diagnostics: vec![diagnostic]}
     }
 
     /// Create a `PassError` from multiple diagnostics.

@@ -51,8 +51,7 @@ pub trait Parser<K: TokenKind, E: LexError>: Send + Sync {
         lexer: &dyn Lexer<K, E>,
     ) -> Result<Expr<NonFunctionValue>, ParseError> {
         let tokens = lexer.lex(input).map_err(|e| ParseError::LexError {
-            message: e.to_string(),
-        })?;
+            message: e.to_string()})?;
         self.parse(tokens)
     }
 }

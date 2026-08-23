@@ -31,7 +31,6 @@ impl Stage<Config> for ParseStage {
         Ok(ParsedDoc {
             value,
             source_map,
-            base_path,
-        })
+            base_path})
     }
 }

@@ -3,8 +3,7 @@ use ac_vm::{Context, Error, Function};
 
 use super::helpers::{
     arr, num, require_array, require_function_value,
-    array_unary_fn,
-};
+    array_unary_fn};
 use crate::shared::{apply_fn, apply_fn2, find_index, is_truthy_fn};
 
 // ── take / drop ────────────────────────────────────────────────────
@@ -15,24 +14,21 @@ impl Function for Take {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let n = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if n < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         let n = (n as usize).min(array.len());
         Ok(arr(&array[..n]))
@@ -45,24 +41,21 @@ impl Function for Drop {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let n = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if n < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         let n = (n as usize).min(array.len());
         Ok(arr(&array[n..]))
@@ -105,13 +98,12 @@ impl Function for Intersperse {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let sep = args[1].inner().clone();
@@ -132,13 +124,12 @@ impl Function for Intercalate {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let sep = require_array(&args[1])?;
@@ -175,13 +166,12 @@ impl Function for Prepend {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let mut result = Vec::with_capacity(array.len() + 1);
@@ -199,13 +189,12 @@ impl Function for TakeWhile {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -227,13 +216,12 @@ impl Function for DropWhile {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -257,13 +245,12 @@ impl Function for Scan {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -284,13 +271,12 @@ impl Function for Foldr {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -310,13 +296,12 @@ impl Function for FindIndex {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -331,21 +316,19 @@ impl Function for FindLast {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
         let result = crate::shared::find_first_rev(ctx, &fn_val, array.iter().rev())?;
         match result {
             Some(v) => Ok(NonFunctionValue::new(v)),
-            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
-        }
+            None => Ok(NonFunctionValue::new(serde_json::Value::Null))}
     }
 }
 
@@ -355,13 +338,12 @@ impl Function for FindLastIndex {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -378,24 +360,21 @@ impl Function for Windows {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let size = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if size < 1.0 {
             return Err(Error::TypeMismatch {
                 expected: "positive number",
-                got: "non-positive number",
-            });
+                got: "non-positive number"});
         }
         let size = size as usize;
         if size > array.len() {
@@ -415,12 +394,11 @@ impl Function for Transpose {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let array = require_array(args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?)?;
+            got: 0})?)?;
         if array.is_empty() {
             return Ok(arr(&[]));
         }
@@ -454,24 +432,21 @@ impl Function for InsertAt {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let index = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if index < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         let index = (index as usize).min(array.len());
         let value = args[2].inner().clone();
@@ -489,24 +464,21 @@ impl Function for RemoveAt {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let array = require_array(&args[0])?;
         let index = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if index < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         let index = index as usize;
         if index >= array.len() {

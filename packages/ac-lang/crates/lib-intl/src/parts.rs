@@ -12,8 +12,7 @@ use writeable::{Part, PartsWrite};
 pub(super) struct PartsCollector {
     parts: Vec<(String, Part)>,
     buf: String,
-    current_part: Part,
-}
+    current_part: Part}
 
 impl PartsCollector {
     pub fn new() -> Self {
@@ -22,9 +21,7 @@ impl PartsCollector {
             buf: String::new(),
             current_part: Part {
                 category: "",
-                value: "literal",
-            },
-        }
+                value: "literal"}}
     }
 
     fn flush(&mut self) {

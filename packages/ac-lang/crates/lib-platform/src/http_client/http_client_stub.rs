@@ -9,8 +9,7 @@ use crate::http_client::{HttpClient, HttpRequest, HttpResponse};
 /// An HTTP client that returns canned responses by URL.
 #[derive(Default)]
 pub struct StubHttpClient {
-    responses: Mutex<HashMap<String, HttpResponse>>,
-}
+    responses: Mutex<HashMap<String, HttpResponse>>}
 
 impl StubHttpClient {
     pub fn new() -> Self {
@@ -21,8 +20,7 @@ impl StubHttpClient {
         let mut responses = HashMap::new();
         responses.insert(url.into(), response);
         StubHttpClient {
-            responses: Mutex::new(responses),
-        }
+            responses: Mutex::new(responses)}
     }
 }
 
@@ -34,7 +32,6 @@ impl HttpClient for StubHttpClient {
             .get(&req.url)
             .cloned()
             .ok_or(PlatformError::Network {
-                message: format!("no canned response for {}", req.url),
-            })
+                message: format!("no canned response for {}", req.url)})
     }
 }

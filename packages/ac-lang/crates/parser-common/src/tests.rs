@@ -10,16 +10,14 @@ use proptest::prelude::*;
 enum MyKind {
     Number(f64),
     Plus,
-    Eof,
-}
+    Eof}
 
 impl std::fmt::Display for MyKind {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MyKind::Number(n) => write!(f, "number({n})"),
             MyKind::Plus => write!(f, "+"),
-            MyKind::Eof => write!(f, "<eof>"),
-        }
+            MyKind::Eof => write!(f, "<eof>")}
     }
 }
 
@@ -59,9 +57,7 @@ enum NodeKind {
     Binary {
         op: String,
         left: Box<AstNode<NodeKind, (), AstSpan>>,
-        right: Box<AstNode<NodeKind, (), AstSpan>>,
-    },
-}
+        right: Box<AstNode<NodeKind, (), AstSpan>>}}
 
 type Node = AstNode<NodeKind, (), AstSpan>;
 
@@ -75,10 +71,8 @@ fn arithmetic_grammar() -> SimpleGrammar<MyKind, Node, DefaultParseError> {
                         kind: NodeKind::Number(*n),
                         metadata: AstSpan {
                             start: token.span.start,
-                            end: token.span.end,
-                        },
-                        _value: PhantomData,
-                    })
+                            end: token.span.end},
+                        _value: PhantomData})
                 } else {
                     Err(DefaultParseError::unexpected_token(
                         token.span,
@@ -95,14 +89,11 @@ fn arithmetic_grammar() -> SimpleGrammar<MyKind, Node, DefaultParseError> {
                     kind: NodeKind::Binary {
                         op: "+".into(),
                         left: Box::new(left),
-                        right: Box::new(right),
-                    },
+                        right: Box::new(right)},
                     metadata: AstSpan {
                         start: token.span.start,
-                        end: token.span.end,
-                    },
-                    _value: PhantomData,
-                })
+                        end: token.span.end},
+                    _value: PhantomData})
             }),
         )
         .eof(MyKind::Eof)

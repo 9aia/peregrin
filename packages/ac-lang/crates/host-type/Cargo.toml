@@ -10,6 +10,7 @@ ac-ast-canonical.workspace = true
 ac-runtime.workspace = true
 ac-runtime-core.workspace = true
 ac-vm.workspace = true
+ac-vm-canonical.workspace = true
 ac-host.workspace = true
 ac-typecheck-core.workspace = true
 ac-dialect.workspace = true

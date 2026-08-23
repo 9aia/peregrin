@@ -33,7 +33,6 @@ impl Module for CryptoModule {
             "base64_decode" => Some(&Base64Decode),
             "hex_encode" => Some(&HexEncode),
             "hex_decode" => Some(&HexDecode),
-            _ => None,
-        }
+            _ => None}
     }
 }

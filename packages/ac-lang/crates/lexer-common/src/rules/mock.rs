@@ -46,8 +46,7 @@ impl<E: LexError> LexRule<MockKind, E> for BangRule {
                 let (pos, _) = chars.next().unwrap();
                 Some(Ok(Token::new(MockKind::Null, Span::at(pos))))
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     fn name(&self) -> &'static str {
@@ -73,8 +72,7 @@ impl<E: LexError> LexRule<MockKind, E> for HashRule {
                     Span::at(start),
                 )))
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     fn name(&self) -> &'static str {
@@ -100,8 +98,7 @@ impl<E: LexError> LexRule<MockKind, E> for AtRule {
                     Span::at(start),
                 )))
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     fn name(&self) -> &'static str {

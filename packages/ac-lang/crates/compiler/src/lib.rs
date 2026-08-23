@@ -36,8 +36,7 @@ pub use ac_compiler_core::{
     DriverPipeline, DriverSeverity, ExtractedDoc, Folder, OptPass, OptPassError, Outcome,
     Pass, PassCategory, PassError, PassGroup, PassManager, PassMetadata, PassRun, ParsedDoc,
     Pipeline, Report, ResolvedDoc, Session, Severity, Source, Stage, Then, TypecheckResult,
-    Visitor,
-};
+    Visitor};
 pub use resolver::{CompilerHost, Import};
 
 /// Default configuration for CLI usage:
@@ -54,8 +53,7 @@ pub fn default_cli_config() -> Config {
         backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
-        extensions: Default::default(),
-    }
+        extensions: Default::default()}
     .with_extension(ac_typecheck_infer::HostFunctionSigs::default_host())
 }
 
@@ -70,8 +68,7 @@ pub fn typecheck_only_config() -> Config {
         backend: None,
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
-        extensions: Default::default(),
-    }
+        extensions: Default::default()}
     .with_extension(ac_typecheck_infer::HostFunctionSigs::default_host())
 }
 

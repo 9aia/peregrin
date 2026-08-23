@@ -20,8 +20,7 @@ fn disjunction() {
         "en",
         Options {
             list_type: ListType::Disjunction,
-            style: ListStyle::default(),
-        },
+            style: ListStyle::default()},
     )
     .unwrap();
     assert_eq!(formatter.format(&["a", "b", "c"]).unwrap(), "a, b, or c");
@@ -33,8 +32,7 @@ fn unit() {
         "en",
         Options {
             list_type: ListType::Unit,
-            style: ListStyle::default(),
-        },
+            style: ListStyle::default()},
     )
     .unwrap();
     let formatted = formatter.format(&["5", "7"]).unwrap();

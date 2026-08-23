@@ -15,14 +15,13 @@ use ac_runtime_core::ModuleHost;
 use ac_typecheck_core::{SchemaInterpreter, Type};
 use ac_typecheck_infer::{FunctionTable, HostFunctionSigs};
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
-use ac_vm::{Context, Error, Eval, Vm};
+use ac_vm_canonical::{CanonicalContext, Context, Error, Eval, Vm};
 use serde_json::json;
 
 /// Minimal [`Eval`] implementation for integration tests.
 struct TestEval {
     host: DefaultHost,
-    namespaces: Namespaces,
-}
+    namespaces: Namespaces}
 
 impl TestEval {
     fn new(host: DefaultHost, namespaces: Namespaces) -> Self {
@@ -80,8 +79,7 @@ fn typecheck_resolves_type_args_for_array_map() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::Number)],
-            return_type: Box::new(Type::Number),
-        }),
+            return_type: Box::new(Type::Number)}),
         Type::Array(Box::new(Type::Number)),
     ];
 
@@ -107,8 +105,7 @@ fn typecheck_resolves_type_args_for_array_filter() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::String)],
-            return_type: Box::new(Type::Boolean),
-        }),
+            return_type: Box::new(Type::Boolean)}),
         Type::Array(Box::new(Type::String)),
     ];
 
@@ -136,8 +133,7 @@ fn typecheck_resolves_type_args_for_array_reduce() {
                 ("acc".to_string(), Type::Number),
                 ("x".to_string(), Type::String),
             ],
-            return_type: Box::new(Type::Number),
-        }),
+            return_type: Box::new(Type::Number)}),
         Type::Array(Box::new(Type::String)),
         Type::Number,
     ];
@@ -158,7 +154,7 @@ fn typecheck_resolves_type_args_for_array_reduce() {
 fn vm_dispatches_array_map_with_type_args() {
     let host = build_host();
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     // Define a user function value: { body: "mul(x, 2)", params: [{name: "x"}] }
     let double_fn = json!({
@@ -208,7 +204,7 @@ fn vm_dispatches_array_map_with_type_args() {
 fn vm_dispatches_array_filter_with_type_args() {
     let host = build_host();
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     // array.filter(identity_fn, [true, false, true]) with type_args=["boolean"]
     let expr = Expr::call_with_type_args(
@@ -242,7 +238,7 @@ fn vm_dispatches_array_filter_with_type_args() {
 fn vm_array_map_without_type_args_uses_regular_function() {
     let host = build_host();
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     // Without type_args, should still work via regular Function dispatch.
     let expr = Expr::call(
@@ -303,8 +299,7 @@ fn full_pipeline_generic_type_args_resolution() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::String)],
-            return_type: Box::new(Type::Number),
-        }),
+            return_type: Box::new(Type::Number)}),
         Type::Array(Box::new(Type::String)),
     ];
 
@@ -319,7 +314,7 @@ fn full_pipeline_generic_type_args_resolution() {
     // that the VM will dispatch to GenericFunction.
     let host = build_host();
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call_with_type_args(
         "array.map",
@@ -424,8 +419,8 @@ fn e2e_vm_evaluates_generic_map_with_type_args() {
         &ac_dialect_canonical::AC_DIALECT,
     );
 
-    let vm = ac_vm::Vm::new(host);
-    let mut ctx = ac_vm::Context::new();
+    let vm = ac_vm_canonical::Vm::new(host);
+    let mut ctx = ac_vm::CanonicalContext::new();
 
     // Set up eval callback for higher-order function body evaluation
     let eval = Box::new(TestEval::new(
@@ -472,8 +467,8 @@ fn e2e_vm_evaluates_generic_filter_with_type_args() {
         &ac_dialect_canonical::AC_DIALECT,
     );
 
-    let vm = ac_vm::Vm::new(host);
-    let mut ctx = ac_vm::Context::new();
+    let vm = ac_vm_canonical::Vm::new(host);
+    let mut ctx = ac_vm::CanonicalContext::new();
 
     let eval = Box::new(TestEval::new(
         ac_host::DefaultHost::default(),
@@ -519,8 +514,8 @@ fn e2e_vm_evaluates_generic_reduce_with_type_args() {
         &ac_dialect_canonical::AC_DIALECT,
     );
 
-    let vm = ac_vm::Vm::new(host);
-    let mut ctx = ac_vm::Context::new();
+    let vm = ac_vm_canonical::Vm::new(host);
+    let mut ctx = ac_vm::CanonicalContext::new();
 
     let eval = Box::new(TestEval::new(
         ac_host::DefaultHost::default(),
@@ -574,8 +569,8 @@ fn e2e_unknown_type_args_fall_back_gracefully() {
     assert!(result.type_args.is_empty(), "unknown types should produce empty type_args");
 
     // VM should still evaluate the call (falls back to Function::call)
-    let vm = ac_vm::Vm::new(host);
-    let mut ctx = ac_vm::Context::new();
+    let vm = ac_vm_canonical::Vm::new(host);
+    let mut ctx = ac_vm::CanonicalContext::new();
 
     let eval = Box::new(TestEval::new(
         ac_host::DefaultHost::default(),

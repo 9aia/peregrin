@@ -94,8 +94,7 @@ pub trait Folder {
     fn fold_field(&mut self, field: Field<NonFunctionValue>) -> Field<NonFunctionValue> {
         Field {
             name: field.name,
-            value: self.fold_value(field.value),
-        }
+            value: self.fold_value(field.value)}
     }
 }
 
@@ -116,8 +115,7 @@ fn fold_expr_inner<F: Folder + ?Sized>(
         Expr::Call { name, args, type_args } => Expr::Call {
             name,
             args: args.into_iter().map(|a| folder.fold_expr(a)).collect(),
-            type_args,
-        },
+            type_args},
         Expr::Handle { body, handlers } => Expr::Handle {
             body: Box::new(folder.fold_expr(*body)),
             handlers: handlers
@@ -126,10 +124,8 @@ fn fold_expr_inner<F: Folder + ?Sized>(
                     op_name: c.op_name,
                     params: c.params,
                     continuation_name: c.continuation_name,
-                    body: folder.fold_expr(c.body),
-                })
-                .collect(),
-        },
+                    body: folder.fold_expr(c.body)})
+                .collect()},
         Expr::Array(elements) => Expr::Array(
             elements.into_iter().map(|e| folder.fold_expr(e)).collect(),
         ),
@@ -138,8 +134,7 @@ fn fold_expr_inner<F: Folder + ?Sized>(
                 .into_iter()
                 .map(|(k, v)| (k, folder.fold_expr(v)))
                 .collect(),
-        ),
-    }
+        )}
 }
 
 /// Fold a field.

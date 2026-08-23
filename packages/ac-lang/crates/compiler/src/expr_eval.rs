@@ -14,7 +14,7 @@ use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, APPLY_FUNCTION, FunctionResolver, Namespaces};
 use ac_host::DefaultHost;
 use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_vm::{Context, Error, Eval, Vm};
+use ac_vm_canonical::{CanonicalContext, Context, Error, Eval, Vm};
 
 /// Fallback depth limit for non-cyclic deep recursion.
 ///
@@ -42,8 +42,7 @@ pub struct ExprEval {
     host: DefaultHost,
     namespaces: Namespaces,
     depth: Cell<usize>,
-    call_chain: RefCell<Vec<String>>,
-}
+    call_chain: RefCell<Vec<String>>}
 
 impl ExprEval {
     /// Creates a new evaluator with the given host and namespaces.
@@ -52,8 +51,7 @@ impl ExprEval {
             host,
             namespaces,
             depth: Cell::new(0),
-            call_chain: RefCell::new(Vec::new()),
-        }
+            call_chain: RefCell::new(Vec::new())}
     }
 
     /// Check if `name` would create a cycle in the current call chain.
@@ -144,7 +142,7 @@ impl ExprEval {
         }
 
         let vm = Vm::new(self.host.clone());
-        let mut ctx = Context::new();
+        let mut ctx = CanonicalContext::new();
         let expr_args: Vec<Expr<NonFunctionValue>> = args
             .iter()
             .map(|v| Expr::value(NonFunctionValue::new(v.clone())))

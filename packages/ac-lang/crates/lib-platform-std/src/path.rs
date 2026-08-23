@@ -10,8 +10,7 @@ impl Path for StdPath {
     fn join(&self, parts: &[&str]) -> Result<String, PlatformError> {
         if parts.is_empty() {
             return Err(PlatformError::InvalidArgument {
-                message: "join requires at least one path".into(),
-            });
+                message: "join requires at least one path".into()});
         }
         let mut path = std::path::PathBuf::from(parts[0]);
         for part in &parts[1..] {
@@ -23,16 +22,14 @@ impl Path for StdPath {
     fn resolve(&self, parts: &[&str]) -> Result<String, PlatformError> {
         if parts.is_empty() {
             return Err(PlatformError::InvalidArgument {
-                message: "resolve requires at least one path".into(),
-            });
+                message: "resolve requires at least one path".into()});
         }
         let mut path = std::path::PathBuf::from(parts[0]);
         for part in &parts[1..] {
             path.push(part);
         }
         let canonical = path.canonicalize().map_err(|e| PlatformError::Io {
-            message: e.to_string(),
-        })?;
+            message: e.to_string()})?;
         Ok(canonical.to_string_lossy().into_owned())
     }
 

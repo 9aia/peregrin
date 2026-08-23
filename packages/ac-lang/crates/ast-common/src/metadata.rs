@@ -13,8 +13,7 @@ impl NodeMetadata for () {}
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct Span {
     pub start: usize,
-    pub end: usize,
-}
+    pub end: usize}
 
 impl NodeMetadata for Span {}
 
@@ -31,7 +30,6 @@ impl<A: Clone + Default + Debug> NodeMetadata for Attrs<A> {}
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Both<M1: NodeMetadata, M2: NodeMetadata> {
     pub first: M1,
-    pub second: M2,
-}
+    pub second: M2}
 
 impl<M1: NodeMetadata, M2: NodeMetadata> NodeMetadata for Both<M1, M2> {}

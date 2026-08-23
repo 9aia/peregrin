@@ -47,7 +47,6 @@ impl Module for ObjModule {
             "update_path" => Some(&UpdatePath),
             "size" => Some(&Size),
             "clone_deep" => Some(&CloneDeep),
-            _ => None,
-        }
+            _ => None}
     }
 }

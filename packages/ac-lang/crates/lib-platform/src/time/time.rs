@@ -21,16 +21,14 @@ pub trait Time: Send + Sync {
 /// Module adapter for [`Time`] — exposes `time.*` functions.
 pub struct TimeModule {
     now: NowFn,
-    epoch: EpochFn,
-}
+    epoch: EpochFn}
 
 impl TimeModule {
     pub fn new(time: impl Time + 'static) -> Self {
         let time = Arc::new(time);
         TimeModule {
             now: NowFn { time: time.clone() },
-            epoch: EpochFn { time },
-        }
+            epoch: EpochFn { time }}
     }
 }
 
@@ -43,17 +41,15 @@ impl Module for TimeModule {
         match name {
             "now" => Some(&self.now),
             "epoch" => Some(&self.epoch),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
 struct NowFn {
-    time: Arc<dyn Time>,
-}
+    time: Arc<dyn Time>}
 
 impl Function for NowFn {
-    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         self.time
             .now_millis()
             .map(|ms| NonFunctionValue::new(serde_json::json!(ms)))
@@ -62,11 +58,10 @@ impl Function for NowFn {
 }
 
 struct EpochFn {
-    time: Arc<dyn Time>,
-}
+    time: Arc<dyn Time>}
 
 impl Function for EpochFn {
-    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         self.time
             .now_seconds()
             .map(|s| NonFunctionValue::new(serde_json::json!(s)))

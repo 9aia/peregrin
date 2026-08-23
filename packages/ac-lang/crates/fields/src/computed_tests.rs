@@ -98,8 +98,7 @@ fn compute_fields_with_arg_string() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "greeting".to_string(),
         expr: "concat(arg, \"!\")".to_string(),
-        arg: Some(ArgSpec::Untyped),
-    }];
+        arg: Some(ArgSpec::Untyped)}];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
@@ -115,8 +114,7 @@ fn compute_fields_with_arg_number() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "doubled".to_string(),
         expr: "mul(arg, 2)".to_string(),
-        arg: Some(ArgSpec::Untyped),
-    }];
+        arg: Some(ArgSpec::Untyped)}];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
@@ -134,8 +132,7 @@ fn compute_fields_with_arg_object_path() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "endpoint".to_string(),
         expr: "arg.host".to_string(),
-        arg: Some(ArgSpec::Untyped),
-    }];
+        arg: Some(ArgSpec::Untyped)}];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
@@ -153,8 +150,7 @@ fn compute_fields_with_arg_array_index() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "first_item".to_string(),
         expr: "arg.0".to_string(),
-        arg: Some(ArgSpec::Untyped),
-    }];
+        arg: Some(ArgSpec::Untyped)}];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
@@ -170,8 +166,7 @@ fn compute_fields_with_arg_typed_valid() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "doubled".to_string(),
         expr: "mul(arg, 2)".to_string(),
-        arg: Some(ArgSpec::Typed(serde_json::json!({"type": "number"}))),
-    }];
+        arg: Some(ArgSpec::Typed(serde_json::json!({"type": "number"})))}];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
@@ -187,8 +182,7 @@ fn compute_fields_with_arg_typed_invalid() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "doubled".to_string(),
         expr: "mul(arg, 2)".to_string(),
-        arg: Some(ArgSpec::Typed(serde_json::json!({"type": "number"}))),
-    }];
+        arg: Some(ArgSpec::Typed(serde_json::json!({"type": "number"})))}];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
@@ -227,8 +221,7 @@ fn compute_fields_arg_without_declaration() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "greeting".to_string(),
         expr: "concat(arg, \"!\")".to_string(),
-        arg: None,
-    }];
+        arg: None}];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());

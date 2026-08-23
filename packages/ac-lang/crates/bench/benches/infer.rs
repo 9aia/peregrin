@@ -104,8 +104,7 @@ fn bench_infer_nested_calls(c: &mut Criterion) {
                 ("a".to_string(), Type::Number),
                 ("b".to_string(), Type::Number),
             ],
-            return_type: Box::new(Type::Number),
-        },
+            return_type: Box::new(Type::Number)},
     );
     let mut group = c.benchmark_group("infer/infer_nested_call");
     for depth in [1, 3, 5, 10, 20] {

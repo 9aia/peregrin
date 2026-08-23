@@ -86,16 +86,14 @@ pub trait Pass {
 pub struct PassGroup {
     passes: Vec<Box<dyn Pass>>,
     metadata: PassMetadata,
-    stop_on_error: bool,
-}
+    stop_on_error: bool}
 
 impl PassGroup {
     pub fn new(name: &'static str, passes: Vec<Box<dyn Pass>>) -> Self {
         PassGroup {
             passes,
             metadata: PassMetadata::new(name),
-            stop_on_error: true,
-        }
+            stop_on_error: true}
     }
 
     pub fn with_category(mut self, category: PassCategory) -> Self {
@@ -141,8 +139,7 @@ pub struct Pipeline {
     pub(crate) passes: Vec<Box<dyn Pass>>,
     stop_on_error: bool,
     auto_validate: bool,
-    instrumented: bool,
-}
+    instrumented: bool}
 
 impl Pipeline {
     pub fn new(config: Config) -> Self {
@@ -151,8 +148,7 @@ impl Pipeline {
             passes: Vec::new(),
             stop_on_error: true,
             auto_validate: true,
-            instrumented: false,
-        }
+            instrumented: false}
     }
 
     /// Add a pass to the end of the pipeline.

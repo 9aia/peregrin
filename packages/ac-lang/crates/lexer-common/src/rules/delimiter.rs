@@ -26,8 +26,7 @@ where
                     None
                 }
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     fn name(&self) -> &'static str {

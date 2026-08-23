@@ -16,8 +16,7 @@ pub fn run(args: TypegenArgs) -> i32 {
         input_path: &args.input,
         output_format: &args.output_format,
         output_dir: &args.output_dir,
-        stdout: args.stdout,
-    };
+        stdout: args.stdout};
 
     match ac_compiler::typegen::run(&engine_input) {
         Ok(ac_compiler::typegen::TypegenResult::Stdout(json)) => {

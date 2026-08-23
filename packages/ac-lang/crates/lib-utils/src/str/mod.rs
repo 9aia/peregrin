@@ -6,15 +6,13 @@ mod transform;
 
 pub use basic::{
     Bytes, Concat, Equals, IsAlpha, IsAlphanumeric, IsEmpty, IsNumeric, Length, Lower, Reverse,
-    Trim, TrimEnd, TrimMatches, TrimStart, Upper,
-};
+    Trim, TrimEnd, TrimMatches, TrimStart, Upper};
 pub use case::{CamelCase, Capitalize, KebabCase, PascalCase, SnakeCase, TitleCase};
 pub use search::{Contains, Count, EndsWith, Find, Levenshtein, RFind, Similarity, StartsWith};
 pub use transform::{
     CharAt, EscapeHtml, EscapeUrl, Join, Lines, PadLeft, PadRight, Repeat, Replace, ReplaceFirst,
     Slice, Slugify, Split, SplitAt, SplitWhitespace, StripPrefix, StripSuffix, Truncate,
-    UnescapeHtml, UnescapeUrl, WordWrap,
-};
+    UnescapeHtml, UnescapeUrl, WordWrap};
 
 use ac_runtime_core::Module;
 use ac_vm::Function;
@@ -87,8 +85,7 @@ impl Module for StrModule {
             "camel_case" => Some(&CamelCase),
             "pascal_case" => Some(&PascalCase),
             "kebab_case" => Some(&KebabCase),
-            _ => None,
-        }
+            _ => None}
     }
 }
 

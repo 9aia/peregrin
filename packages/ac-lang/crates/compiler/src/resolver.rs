@@ -24,8 +24,7 @@ use serde_json::Value as JsonValue;
 pub struct CompilerHost {
     default: DefaultHost,
     import: Import,
-    data_functions: HashMap<String, DataFunction>,
-}
+    data_functions: HashMap<String, DataFunction>}
 
 impl CompilerHost {
     /// Creates a new host from a default host, import resolver, base path,
@@ -49,8 +48,7 @@ impl CompilerHost {
         CompilerHost {
             default,
             import,
-            data_functions,
-        }
+            data_functions}
     }
 }
 
@@ -72,16 +70,14 @@ impl Host for CompilerHost {
 struct DataFunction {
     params: Vec<String>,
     body: String,
-    return_schema: Option<JsonValue>,
-}
+    return_schema: Option<JsonValue>}
 
 impl DataFunction {
     fn from(value: &FunctionValue) -> Self {
         DataFunction {
             params: value.params.iter().map(|(n, _)| n.clone()).collect(),
             body: value.body.clone(),
-            return_schema: value.return_schema.clone(),
-        }
+            return_schema: value.return_schema.clone()}
     }
 }
 
@@ -89,7 +85,7 @@ impl Function for DataFunction {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let vars: Vec<(String, NonFunctionValue)> = self
             .params
@@ -118,8 +114,7 @@ impl Function for DataFunction {
 pub struct Import {
     base_path: Option<PathBuf>,
     import_cache: Rc<RefCell<HashMap<String, JsonValue>>>,
-    resolver: Rc<Box<dyn ModuleResolver>>,
-}
+    resolver: Rc<Box<dyn ModuleResolver>>}
 
 impl Import {
     /// Creates a new `import` host function.
@@ -131,16 +126,14 @@ impl Import {
         Import {
             base_path,
             import_cache,
-            resolver,
-        }
+            resolver}
     }
 
     /// Helper to build a cache key for an import path.
     pub fn cache_key(&self, path: &str) -> String {
         match &self.base_path {
             Some(base) => base.join(path).to_string_lossy().to_string(),
-            None => path.to_string(),
-        }
+            None => path.to_string()}
     }
 }
 
@@ -148,7 +141,7 @@ impl Function for Import {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let path = args
             .first()

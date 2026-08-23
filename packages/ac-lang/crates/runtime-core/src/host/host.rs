@@ -34,15 +34,13 @@ use crate::module::Module;
 /// The VM sees only the `Host` interface — it does not know about modules.
 #[derive(Clone)]
 pub struct ModuleHost {
-    modules: Vec<Rc<dyn Module>>,
-}
+    modules: Vec<Rc<dyn Module>>}
 
 impl ModuleHost {
     /// Creates a new empty host.
     pub fn new() -> Self {
         ModuleHost {
-            modules: Vec::new(),
-        }
+            modules: Vec::new()}
     }
 
     /// Registers a module.

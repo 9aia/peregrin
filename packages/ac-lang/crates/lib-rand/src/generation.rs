@@ -30,7 +30,7 @@ use crate::error::RandError;
 pub struct String_;
 
 impl Function for String_ {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let length = require_int(args, 0)?;
         if length < 0 {
             return Err(RandError::InvalidStringLength { length }.into());
@@ -41,18 +41,15 @@ impl Function for String_ {
             2 => {
                 let val = args.get(1).ok_or(Error::ArgumentCount {
                     expected: 2,
-                    got: 1,
-                })?;
+                    got: 1})?;
                 val.as_str().ok_or(Error::TypeMismatch {
                     expected: "string",
-                    got: "non-string",
-                })?
+                    got: "non-string"})?
             }
             n => {
                 return Err(Error::ArgumentCount {
                     expected: 2,
-                    got: n,
-                })
+                    got: n})
             }
         };
 
@@ -65,8 +62,7 @@ impl Function for String_ {
             "upper" => b"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
             _ => {
                 return Err(RandError::InvalidCharset {
-                    name: charset_name.to_string(),
-                }
+                    name: charset_name.to_string()}
                 .into())
             }
         };
@@ -94,7 +90,7 @@ impl Function for String_ {
 pub struct Bytes;
 
 impl Function for Bytes {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let length = require_int(args, 0)?;
         if length < 0 {
             return Err(RandError::InvalidByteLength { length }.into());
@@ -121,7 +117,7 @@ impl Function for Bytes {
 pub struct Uuid;
 
 impl Function for Uuid {
-    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let mut rng = rand::rng();
         let mut bytes = [0u8; 16];
         rng.fill(&mut bytes);

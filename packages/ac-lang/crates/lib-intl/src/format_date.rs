@@ -50,8 +50,7 @@ use super::provider::IntlProvider;
 /// - `intl.format_date("14:30:00", "en", {type: "time"})` → `"2:30:00 PM"`
 #[derive(Clone)]
 pub struct FormatDate {
-    provider: Option<IntlProvider>,
-}
+    provider: Option<IntlProvider>}
 
 impl FormatDate {
     pub fn new() -> Self {
@@ -70,7 +69,7 @@ impl Default for FormatDate {
 }
 
 impl Function for FormatDate {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let date_str = require_string(args, 0)?;
         let mut locale = optional_locale(args, 1)?;
         let opts = optional_object(args, 2)?;
@@ -87,8 +86,7 @@ impl Function for FormatDate {
             match date_type {
                 "datetime" => format_datetime(date_str, &locale, style, opts, &dp)?,
                 "time" => format_time_only(date_str, &locale, style, opts, &dp)?,
-                _ => format_date_only(date_str, &locale, style, opts, &dp)?,
-            }
+                _ => format_date_only(date_str, &locale, style, opts, &dp)?}
         };
 
         Ok(s(formatted))
@@ -105,8 +103,7 @@ impl Function for FormatDate {
 /// `"hour"`, `"minute"`, `"second"`, `"literal"`).
 #[derive(Clone)]
 pub struct FormatDateToParts {
-    provider: Option<IntlProvider>,
-}
+    provider: Option<IntlProvider>}
 
 impl FormatDateToParts {
     pub fn new() -> Self {
@@ -125,7 +122,7 @@ impl Default for FormatDateToParts {
 }
 
 impl Function for FormatDateToParts {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let date_str = require_string(args, 0)?;
         let mut locale = optional_locale(args, 1)?;
         let opts = optional_object(args, 2)?;
@@ -143,8 +140,7 @@ impl Function for FormatDateToParts {
             match date_type {
                 "datetime" => format_datetime_to_parts(date_str, &locale, style, opts, &dp, &mut collector)?,
                 "time" => format_time_only_to_parts(date_str, &locale, style, opts, &dp, &mut collector)?,
-                _ => format_date_only_to_parts(date_str, &locale, style, opts, &dp, &mut collector)?,
-            }
+                _ => format_date_only_to_parts(date_str, &locale, style, opts, &dp, &mut collector)?}
         }
 
         Ok(collector.into_value())
@@ -168,8 +164,7 @@ fn parse_length(style: &str) -> Length {
     match style {
         "full" | "long" => Length::Long,
         "short" => Length::Short,
-        _ => Length::Medium,
-    }
+        _ => Length::Medium}
 }
 
 fn determine_date_fields(opts: Option<&serde_json::Map<String, serde_json::Value>>) -> Option<DateFields> {
@@ -191,8 +186,7 @@ fn determine_date_fields(opts: Option<&serde_json::Map<String, serde_json::Value
         (true, true, false, _) => Some(DateFields::YM),
         (true, false, _, _) => Some(DateFields::Y),
         (false, false, false, true) => Some(DateFields::E),
-        _ => None,
-    }
+        _ => None}
 }
 
 fn determine_time_precision(opts: Option<&serde_json::Map<String, serde_json::Value>>) -> Option<TimePrecision> {
@@ -220,8 +214,7 @@ fn determine_year_style(opts: Option<&serde_json::Map<String, serde_json::Value>
         (Some(_), Some("narrow" | "short" | "long")) => Some(YearStyle::WithEra),
         (Some(_), _) => Some(YearStyle::Full),
         (None, Some("narrow" | "short" | "long")) => Some(YearStyle::WithEra),
-        _ => None,
-    }
+        _ => None}
 }
 
 fn determine_zone_style(opts: Option<&serde_json::Map<String, serde_json::Value>>) -> Option<ZoneStyle> {
@@ -233,8 +226,7 @@ fn determine_zone_style(opts: Option<&serde_json::Map<String, serde_json::Value>
         "longOffset" => Some(ZoneStyle::LocalizedOffsetLong),
         "shortGeneric" => Some(ZoneStyle::GenericShort),
         "longGeneric" => Some(ZoneStyle::GenericLong),
-        _ => Some(ZoneStyle::SpecificShort),
-    }
+        _ => Some(ZoneStyle::SpecificShort)}
 }
 
 fn format_with_field_bag(
@@ -286,8 +278,7 @@ fn format_with_field_bag_to_parts(
 
         let formatter = match dp.as_buffer_provider() {
             Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, prefs, composite),
-            None => DateTimeFormatter::try_new(prefs, composite),
-        }
+            None => DateTimeFormatter::try_new(prefs, composite)}
         .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
         let offset = parse_timezone_offset(date_str).unwrap_or(UtcOffset::zero());
@@ -309,8 +300,7 @@ fn format_with_field_bag_to_parts(
 
         let formatter = match dp.as_buffer_provider() {
             Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, prefs, composite),
-            None => DateTimeFormatter::try_new(prefs, composite),
-        }
+            None => DateTimeFormatter::try_new(prefs, composite)}
         .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
         let datetime = DateTime { date, time };
@@ -363,8 +353,7 @@ fn build_prefs(locale: &icu::locale::Locale, opts: Option<&serde_json::Map<Strin
             "h12" => Some(HourCycle::H12),
             "h23" => Some(HourCycle::H23),
             "h24" => Some(HourCycle::Clock24),
-            _ => None,
-        };
+            _ => None};
     } else if let Some(hour12) = opt_bool(opts, "hour12") {
         prefs.hour_cycle = if hour12 {
             Some(HourCycle::H12)
@@ -390,8 +379,7 @@ fn build_prefs(locale: &icu::locale::Locale, opts: Option<&serde_json::Map<Strin
             "japanese" => Some(CalendarAlgorithm::Japanese),
             "persian" => Some(CalendarAlgorithm::Persian),
             "roc" => Some(CalendarAlgorithm::Roc),
-            _ => None,
-        };
+            _ => None};
     }
     prefs
 }
@@ -401,8 +389,7 @@ fn parse_subsecond_digits(opts: Option<&serde_json::Map<String, serde_json::Valu
         Some(1) => Some(SubsecondDigits::S1),
         Some(2) => Some(SubsecondDigits::S2),
         Some(3) => Some(SubsecondDigits::S3),
-        _ => None,
-    }
+        _ => None}
 }
 
 fn parse_time_precision(opts: Option<&serde_json::Map<String, serde_json::Value>>) -> Option<TimePrecision> {
@@ -432,14 +419,12 @@ fn format_date_only(date_str: &str, locale: &icu::locale::Locale, style: &str, o
     let fieldset = match style {
         "full" | "long" => YMD::long(),
         "short" => YMD::short(),
-        _ => YMD::medium(),
-    };
+        _ => YMD::medium()};
 
     let prefs = build_prefs(locale, opts);
     let formatter = match dp.as_buffer_provider() {
         Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, prefs, fieldset),
-        None => DateTimeFormatter::try_new(prefs, fieldset),
-    }
+        None => DateTimeFormatter::try_new(prefs, fieldset)}
     .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
     let formatted = formatter.format(&date);
@@ -461,14 +446,12 @@ fn format_date_only_to_parts(
     let fieldset = match style {
         "full" | "long" => YMD::long(),
         "short" => YMD::short(),
-        _ => YMD::medium(),
-    };
+        _ => YMD::medium()};
 
     let prefs = build_prefs(locale, opts);
     let formatter = match dp.as_buffer_provider() {
         Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, prefs, fieldset),
-        None => DateTimeFormatter::try_new(prefs, fieldset),
-    }
+        None => DateTimeFormatter::try_new(prefs, fieldset)}
     .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
     let formatted = formatter.format(&date);
@@ -486,8 +469,7 @@ fn format_time_only(time_str: &str, locale: &icu::locale::Locale, style: &str, o
     let fieldset = match style {
         "full" | "long" => T::hms(),
         "short" => T::hm(),
-        _ => T::hms(),
-    };
+        _ => T::hms()};
     let fieldset = if let Some(sd) = parse_subsecond_digits(opts) {
         T::hmss(sd)
     } else {
@@ -497,8 +479,7 @@ fn format_time_only(time_str: &str, locale: &icu::locale::Locale, style: &str, o
     let prefs = build_prefs(locale, opts);
     let formatter = match dp.as_buffer_provider() {
         Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, prefs, fieldset),
-        None => DateTimeFormatter::try_new(prefs, fieldset),
-    }
+        None => DateTimeFormatter::try_new(prefs, fieldset)}
     .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
     let formatted = formatter.format(&time);
@@ -521,8 +502,7 @@ fn format_time_only_to_parts(
     let fieldset = match style {
         "full" | "long" => T::hms(),
         "short" => T::hm(),
-        _ => T::hms(),
-    };
+        _ => T::hms()};
     let fieldset = if let Some(sd) = parse_subsecond_digits(opts) {
         T::hmss(sd)
     } else {
@@ -532,8 +512,7 @@ fn format_time_only_to_parts(
     let prefs = build_prefs(locale, opts);
     let formatter = match dp.as_buffer_provider() {
         Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, prefs, fieldset),
-        None => DateTimeFormatter::try_new(prefs, fieldset),
-    }
+        None => DateTimeFormatter::try_new(prefs, fieldset)}
     .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
     let formatted = formatter.format(&time);
@@ -554,8 +533,7 @@ fn format_datetime(date_str: &str, locale: &icu::locale::Locale, style: &str, op
     let fieldset = match style {
         "full" | "long" => YMDT::long(),
         "short" => YMDT::short(),
-        _ => YMDT::medium(),
-    };
+        _ => YMDT::medium()};
     let fieldset = if let Some(tp) = parse_time_precision(opts) {
         fieldset.with_time_precision(tp)
     } else {
@@ -564,8 +542,7 @@ fn format_datetime(date_str: &str, locale: &icu::locale::Locale, style: &str, op
     let prefs = build_prefs(locale, opts);
     let formatter = match dp.as_buffer_provider() {
         Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, prefs, fieldset),
-        None => DateTimeFormatter::try_new(prefs, fieldset),
-    }
+        None => DateTimeFormatter::try_new(prefs, fieldset)}
     .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
     let formatted = formatter.format(&datetime);
@@ -591,8 +568,7 @@ fn format_datetime_to_parts(
     let fieldset = match style {
         "full" | "long" => YMDT::long(),
         "short" => YMDT::short(),
-        _ => YMDT::medium(),
-    };
+        _ => YMDT::medium()};
     let fieldset = if let Some(tp) = parse_time_precision(opts) {
         fieldset.with_time_precision(tp)
     } else {
@@ -601,8 +577,7 @@ fn format_datetime_to_parts(
     let prefs = build_prefs(locale, opts);
     let formatter = match dp.as_buffer_provider() {
         Some(p) => DateTimeFormatter::try_new_with_buffer_provider(p, prefs, fieldset),
-        None => DateTimeFormatter::try_new(prefs, fieldset),
-    }
+        None => DateTimeFormatter::try_new(prefs, fieldset)}
     .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
     let formatted = formatter.format(&datetime);

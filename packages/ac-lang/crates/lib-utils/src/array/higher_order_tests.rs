@@ -1,18 +1,18 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
-use ac_vm::{Context, Error, Eval};
+use ac_vm::{CanonicalContext, Context, Error, Eval};
 
 use super::module::ArrayModule;
 
 fn call(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = ArrayModule.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_err(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let func = ArrayModule.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 
@@ -35,15 +35,14 @@ fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
         .collect();
     NonFunctionValue::new(serde_json::json!({
         "params": params_json,
-        "body": body,
-    }))
+        "body": body}))
 }
 
 // ── TestEval infrastructure ────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
 use ac_host::DefaultHost;
-use ac_vm::Vm;
+use ac_vm_canonical::Vm;
 
 struct TestEval;
 impl Eval for TestEval {
@@ -71,7 +70,7 @@ impl Eval for TestEval {
                 args.push(Expr::Value(arg_val));
             }
             let vm = Vm::new(DefaultHost::default());
-            let mut ctx = Context::new();
+            let mut ctx = CanonicalContext::new();
             let call_expr = Expr::call(name.trim(), args);
             return vm.eval(&call_expr, &mut ctx);
         }
@@ -102,8 +101,7 @@ fn split_args(s: &str) -> Vec<String> {
                 result.push(current.trim().to_string());
                 current.clear();
             }
-            _ => current.push(ch),
-        }
+            _ => current.push(ch)}
     }
     if !current.trim().is_empty() {
         result.push(current.trim().to_string());
@@ -147,14 +145,14 @@ fn eval_arg(arg: &str, vars: &[(String, NonFunctionValue)]) -> Result<NonFunctio
 
 fn call_with_eval(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = ArrayModule.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.set_eval(Box::new(TestEval));
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_err_with_eval(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let func = ArrayModule.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.set_eval(Box::new(TestEval));
     func.call(args, &mut ctx)
 }

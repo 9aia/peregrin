@@ -6,15 +6,13 @@ use ac_vm::Error as VmError;
 #[derive(Debug, Clone)]
 pub enum KvError {
     KeyNotFound { key: String },
-    Backend { message: String },
-}
+    Backend { message: String }}
 
 impl fmt::Display for KvError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::KeyNotFound { key } => write!(f, "key not found: {key}"),
-            Self::Backend { message } => write!(f, "kv backend error: {message}"),
-        }
+            Self::Backend { message } => write!(f, "kv backend error: {message}")}
     }
 }
 

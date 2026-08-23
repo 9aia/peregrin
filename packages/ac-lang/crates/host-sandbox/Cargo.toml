@@ -7,6 +7,7 @@ edition.workspace = true
 ac-host.workspace = true
 ac-runtime-core.workspace = true
 ac-vm.workspace = true
+ac-vm-canonical.workspace = true
 ac-lib-utils.workspace = true
 ac-lib-crypto.workspace = true
 ac-lib-datetime.workspace = true

@@ -85,8 +85,7 @@ impl ExprParser for StubDialect {
         match s.trim() {
             "true" => Some(true),
             "false" => Some(false),
-            _ => None,
-        }
+            _ => None}
     }
 
     fn is_null_literal(&self, s: &str) -> bool {

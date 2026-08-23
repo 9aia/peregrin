@@ -5,8 +5,7 @@ use super::MockKind;
 
 /// A mock lexer that returns a predefined token list or error.
 pub struct MockLexer<E: LexError = DefaultLexError> {
-    tokens: Result<Vec<Token<MockKind>>, E>,
-}
+    tokens: Result<Vec<Token<MockKind>>, E>}
 
 impl<E: LexError> MockLexer<E> {
     pub fn ok(tokens: Vec<Token<MockKind>>) -> Self {

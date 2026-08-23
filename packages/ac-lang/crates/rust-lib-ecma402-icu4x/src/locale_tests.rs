@@ -22,8 +22,7 @@ fn parse_all_overrides() {
         region: Some("CA".to_string()),
         calendar: Some("buddhist".to_string()),
         numbering_system: Some("latn".to_string()),
-        hour_cycle: Some(HourCycle::H23),
-    };
+        hour_cycle: Some(HourCycle::H23)};
     let info = Locale::parse("en", overrides).unwrap();
     assert_eq!(info.language, "fr");
     assert_eq!(info.script, Some("Latn".to_string()));

@@ -6,7 +6,7 @@ use super::bool::BoolModule;
 
 fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
@@ -16,7 +16,7 @@ fn call_err(
     args: &[NonFunctionValue],
 ) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 
@@ -211,28 +211,26 @@ fn unknown_function_returns_none() {
 #[test]
 fn type_mismatch_on_non_bool() {
     let func = BoolModule.function("not").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[n(42.0)], &mut ctx);
     assert_eq!(
         result,
         Err(Error::TypeMismatch {
             expected: "boolean",
-            got: "non-boolean",
-        })
+            got: "non-boolean"})
     );
 }
 
 #[test]
 fn argument_count_on_missing_args() {
     let func = BoolModule.function("not").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[], &mut ctx);
     assert_eq!(
         result,
         Err(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })
+            got: 0})
     );
 }
 
@@ -240,19 +238,19 @@ fn argument_count_on_missing_args() {
 
 use ac_ast_canonical::Expr;
 use ac_runtime_core::ModuleHost;
-use ac_vm::{Host, Vm};
+use ac_vm_canonical::{CanonicalContext, Host, Vm};
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(BoolModule);
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     vm.eval(expr, &mut ctx).expect("eval succeeds")
 }
 
 fn eval_expr_result(expr: &Expr<NonFunctionValue>) -> Result<NonFunctionValue, Error> {
     let host = ModuleHost::new().with(BoolModule);
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     vm.eval(expr, &mut ctx)
 }
 

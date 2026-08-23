@@ -9,5 +9,4 @@ pub enum YamlError {
 
     /// Conversion to the core value model failed.
     #[error("yaml conversion error: {0}")]
-    Convert(String),
-}
+    Convert(String)}

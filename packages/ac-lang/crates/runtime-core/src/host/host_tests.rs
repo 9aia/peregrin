@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Host, Vm};
+use ac_vm_canonical::{CanonicalContext, Context, Host, Vm};
 
 use crate::host::ModuleHost;
 use crate::module::module_stub::StubModule;
@@ -10,8 +10,7 @@ fn make_call(name: &str, args: &[NonFunctionValue]) -> Expr<NonFunctionValue> {
     Expr::Call {
         name: name.to_string(),
         args: args.iter().map(|v| Expr::Value(v.clone())).collect(),
-        type_args: Vec::new(),
-    }
+        type_args: Vec::new()}
 }
 
 #[test]
@@ -54,7 +53,7 @@ fn module_count() {
 #[test]
 fn vm_evaluates_qualified_call() {
     let vm = Vm::new(ModuleHost::new().with(StubModule));
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = make_call("stub.echo", &[NonFunctionValue::new("hello")]);
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -64,7 +63,7 @@ fn vm_evaluates_qualified_call() {
 #[test]
 fn vm_evaluates_unqualified_call() {
     let vm = Vm::new(ModuleHost::new().with(StubModule));
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = make_call("echo", &[NonFunctionValue::new(42)]);
     let result = vm.eval(&expr, &mut ctx).unwrap();

@@ -6,16 +6,14 @@ use ac_runtime_core::ModuleHost;
 use ac_vm::{Function, Host};
 
 use super::functions::{
-    AppArgsCompatible, FuncParamsCompatible, ObjEvery, PairSecond, TypeKind, TypeName, ZipAll,
-};
+    AppArgsCompatible, FuncParamsCompatible, ObjEvery, PairSecond, TypeKind, TypeName, ZipAll};
 
 /// A host that provides type-checking helper functions alongside
 /// the standard `lib-utils` modules and default `var`/`resolve`.
 #[derive(Clone)]
 pub struct TypeHost {
     inner: ModuleHost,
-    default: DefaultHost,
-}
+    default: DefaultHost}
 
 impl TypeHost {
     pub fn new() -> Self {
@@ -28,8 +26,7 @@ impl TypeHost {
             .with(TypeHelpersModule);
         TypeHost {
             inner,
-            default: DefaultHost::default(),
-        }
+            default: DefaultHost::default()}
     }
 }
 
@@ -73,7 +70,6 @@ impl ac_runtime_core::Module for TypeHelpersModule {
             "obj_every" => Some(&ObjEvery),
             "func_params_compatible" => Some(&FuncParamsCompatible),
             "app_args_compatible" => Some(&AppArgsCompatible),
-            _ => None,
-        }
+            _ => None}
     }
 }

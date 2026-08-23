@@ -1,4 +1,4 @@
-use crate::{Error, Expr, Host, NonFunctionValue, RuntimeContext, VirtualMachine};
+use crate::{Error, Expr, Host, NonFunctionValue, Context, VirtualMachine};
 use serde_json::Value as JsonValue;
 
 type RuntimeExpr = Expr<NonFunctionValue>;
@@ -29,8 +29,7 @@ type RuntimeExpr = Expr<NonFunctionValue>;
 ///
 /// The VM doesn't know what any of those functions mean.
 pub struct CanonicalVm<H: Host> {
-    host: H,
-}
+    host: H}
 
 impl<H: Host> CanonicalVm<H> {
     /// Creates a new VM with the given host.
@@ -55,7 +54,7 @@ impl<H: Host> CanonicalVm<H> {
     /// The function decides which arguments to evaluate (short-circuit).
     /// Otherwise, the VM eagerly evaluates all arguments and dispatches
     /// to [`Host::function`] or [`Host::operation`].
-    pub fn eval(&self, expr: &RuntimeExpr, ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
+    pub fn eval(&self, expr: &RuntimeExpr, ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
 
@@ -82,11 +81,9 @@ impl<H: Host> CanonicalVm<H> {
                             .unwrap_or_default();
                         Err(Error::Operation {
                             name: name.to_string(),
-                            args,
-                        })
+                            args})
                     }
-                    crate::EvalResult::Error(err) => Err(err),
-                }
+                    crate::EvalResult::Error(err) => Err(err)}
             }
 
             Expr::Call { name, args, type_args } => {
@@ -96,7 +93,7 @@ impl<H: Host> CanonicalVm<H> {
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host.lazy_function(name) {
-                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn RuntimeContext| self.eval(sub, c);
+                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context| self.eval(sub, c);
                     return lazy.call(args, ctx, &mut evaluate);
                 }
 
@@ -176,7 +173,7 @@ impl<H: Host> CanonicalVm<H> {
     pub async fn eval_async(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut dyn RuntimeContext,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
@@ -199,11 +196,9 @@ impl<H: Host> CanonicalVm<H> {
                             .unwrap_or_default();
                         Err(Error::Operation {
                             name: name.to_string(),
-                            args,
-                        })
+                            args})
                     }
-                    crate::EvalResult::Error(err) => Err(err),
-                }
+                    crate::EvalResult::Error(err) => Err(err)}
             }
 
             Expr::Call { name, args, type_args } => {
@@ -213,7 +208,7 @@ impl<H: Host> CanonicalVm<H> {
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host.lazy_function(name) {
-                    let mut eval_sync = |sub: &RuntimeExpr, c: &mut dyn RuntimeContext| self.eval(sub, c);
+                    let mut eval_sync = |sub: &RuntimeExpr, c: &mut dyn Context| self.eval(sub, c);
                     return lazy.call(args, ctx, &mut eval_sync);
                 }
 
@@ -280,7 +275,7 @@ impl<H: Host> VirtualMachine for CanonicalVm<H> {
     fn eval(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut dyn RuntimeContext,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         Self::eval(self, expr, ctx)
     }
@@ -288,7 +283,7 @@ impl<H: Host> VirtualMachine for CanonicalVm<H> {
     fn eval_async(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut dyn RuntimeContext,
+        ctx: &mut dyn Context,
     ) -> impl std::future::Future<Output = Result<NonFunctionValue, Error>> {
         Self::eval_async(self, expr, ctx)
     }

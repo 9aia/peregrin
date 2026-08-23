@@ -29,8 +29,7 @@ pub struct GitResolver<C: ModuleCache = NoCache> {
     cache_dir: PathBuf,
     module_cache: C,
     repo_cache: Mutex<HashMap<String, PathBuf>>,
-    fetcher: GitFetcher,
-}
+    fetcher: GitFetcher}
 
 impl GitResolver<NoCache> {
     /// Create a resolver with a specific cache directory, no module cache,
@@ -40,8 +39,7 @@ impl GitResolver<NoCache> {
             cache_dir: cache_dir.clone(),
             module_cache: NoCache,
             repo_cache: Mutex::new(HashMap::new()),
-            fetcher: GitFetcher::new(cache_dir, DEFAULT_DEPTH),
-        }
+            fetcher: GitFetcher::new(cache_dir, DEFAULT_DEPTH)}
     }
 
     /// Create a resolver using the system temp directory and no module cache.
@@ -58,8 +56,7 @@ impl<C: ModuleCache> GitResolver<C> {
             cache_dir: cache_dir.clone(),
             module_cache,
             repo_cache: Mutex::new(HashMap::new()),
-            fetcher: GitFetcher::new(cache_dir, DEFAULT_DEPTH),
-        }
+            fetcher: GitFetcher::new(cache_dir, DEFAULT_DEPTH)}
     }
 
     /// Create a resolver using the system temp directory and a module cache.
@@ -91,8 +88,7 @@ impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
                 GitTarget {
                     repo_url: base_target.repo_url,
                     reference: base_target.reference,
-                    path: combined_path,
-                }
+                    path: combined_path}
             } else {
                 return None;
             }
@@ -137,8 +133,7 @@ impl<C: ModuleCache> ModuleResolver for GitResolver<C> {
             schemas: extracted.schemas,
             merge: extracted.merge,
             data: extracted.data.inner().clone(),
-            base_path: Some(base_path),
-        };
+            base_path: Some(base_path)};
 
         self.module_cache.insert(&module_key, module.clone());
         Some(module)

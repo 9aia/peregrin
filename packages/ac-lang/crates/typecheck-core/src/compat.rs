@@ -59,8 +59,7 @@ pub fn is_compatible(actual: &Type, expected: &Type) -> bool {
                 && is_compatible(&a_fn.return_type, &e_fn.return_type)
         }
 
-        _ => false,
-    }
+        _ => false}
 }
 
 /// Check if `actual` is compatible with `expected` under a variance annotation.
@@ -83,6 +82,5 @@ pub fn variance_compatible(actual: &Type, expected: &Type, variance: Variance) -
         Variance::Covariant => is_compatible(actual, expected),
         Variance::Contravariant => is_compatible(expected, actual),
         Variance::Invariant => actual == expected,
-        Variance::Bivariant => true,
-    }
+        Variance::Bivariant => true}
 }

@@ -3,8 +3,7 @@ use ac_vm::{Context, Error, Function};
 
 use super::common::{
     obj_value, require_function_value, require_object, require_string,
-    require_three_args, set_path_recursive, update_path_recursive,
-};
+    require_three_args, set_path_recursive, update_path_recursive};
 use crate::shared::apply_fn;
 
 // ── set ───────────────────────────────────────────────────────────
@@ -15,7 +14,7 @@ impl Function for Set {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, key_arg, value_arg) = require_three_args(args)?;
         let obj = require_object(obj_arg)?;
@@ -34,7 +33,7 @@ impl Function for Update {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, key_arg, fn_arg) = require_three_args(args)?;
         let obj = require_object(obj_arg)?;
@@ -56,7 +55,7 @@ impl Function for SetPath {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, path_arg, value_arg) = require_three_args(args)?;
         let path = require_string(path_arg)?;
@@ -78,7 +77,7 @@ impl Function for UpdatePath {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, path_arg, fn_arg) = require_three_args(args)?;
         let path = require_string(path_arg)?;

@@ -21,28 +21,24 @@ pub enum DefaultParseError {
     UnexpectedToken { span: Span, expected: String },
 
     #[error("parse error at {span}: {message}")]
-    Message { span: Span, message: String },
-}
+    Message { span: Span, message: String }}
 
 impl ParseError for DefaultParseError {
     fn unexpected_eof<S: Into<String>>(span: Span, expected: S) -> Self {
         Self::UnexpectedEof {
             span,
-            expected: expected.into(),
-        }
+            expected: expected.into()}
     }
 
     fn unexpected_token<S: Into<String>>(span: Span, expected: S) -> Self {
         Self::UnexpectedToken {
             span,
-            expected: expected.into(),
-        }
+            expected: expected.into()}
     }
 
     fn message<S: Into<String>>(span: Span, message: S) -> Self {
         Self::Message {
             span,
-            message: message.into(),
-        }
+            message: message.into()}
     }
 }

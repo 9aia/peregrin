@@ -8,8 +8,7 @@ use super::numbers::{Bool, Float, Int};
 use super::sampling::{Choice, Pick, Sample, Shuffle, WeightedPick};
 use super::seeded::{
     SeededBool, SeededChoice, SeededFloat, SeededGauss, SeededInt, SeededPick,
-    SeededSample, SeededShuffle, SeededString,
-};
+    SeededSample, SeededShuffle, SeededString};
 
 /// The `rand` module — random number generation and sampling.
 ///
@@ -72,7 +71,6 @@ impl Module for RandModule {
             "seeded_shuffle" => Some(&SeededShuffle),
             "seeded_string" => Some(&SeededString),
             "seeded_gauss" => Some(&SeededGauss),
-            _ => None,
-        }
+            _ => None}
     }
 }

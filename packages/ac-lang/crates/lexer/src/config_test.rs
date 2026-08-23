@@ -1,6 +1,5 @@
 use crate::{
-    DefaultLexError, FnRule, LexRule, LexerConfig, Token,
-};
+    DefaultLexError, FnRule, LexRule, LexerConfig, Token};
 use crate::rule::test_utils::{BangRule, TestKind, cfg};
 
 #[test]

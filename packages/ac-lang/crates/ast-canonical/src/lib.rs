@@ -5,8 +5,7 @@
 //! consumers only need one dependency.
 
 pub use ac_ast_common::{
-    Attrs, Both, ExprFactory, Node, NodeMetadata, Span, StmtFactory, TypeFactory,
-};
+    Attrs, Both, ExprFactory, Node, NodeMetadata, Span, StmtFactory, TypeFactory};
 
 mod expr;
 mod field;

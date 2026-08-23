@@ -48,7 +48,6 @@ impl Stage<Config> for ResolveStage {
             extracted: doc.extracted,
             typegen_ctx: ctx,
             source_map: doc.source_map,
-            base_path: doc.base_path,
-        })
+            base_path: doc.base_path})
     }
 }

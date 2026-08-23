@@ -12,7 +12,7 @@ macro_rules! component_fn {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut Context,
+                _ctx: &mut dyn Context,
             ) -> Result<NonFunctionValue, Error> {
                 let input = require_one_string(args)?;
                 let dt = parse_iso(input)?;
@@ -35,7 +35,7 @@ impl Function for Weekday {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -52,7 +52,7 @@ impl Function for DayOfYear {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -66,7 +66,7 @@ impl Function for WeekOfYear {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -80,7 +80,7 @@ impl Function for Quarter {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -96,7 +96,7 @@ impl Function for IsLeapYear {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -112,7 +112,7 @@ impl Function for IsWeekend {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;

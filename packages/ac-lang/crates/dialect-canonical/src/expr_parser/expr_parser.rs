@@ -77,8 +77,7 @@ impl ExprParser for AcDialect {
         match s.trim() {
             "true" => Some(true),
             "false" => Some(false),
-            _ => None,
-        }
+            _ => None}
     }
 
     fn is_null_literal(&self, s: &str) -> bool {
@@ -224,8 +223,7 @@ impl ExprParser for AcDialect {
             op_name,
             params,
             continuation_name,
-            body,
-        })
+            body})
     }
 }
 

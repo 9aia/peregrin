@@ -20,8 +20,7 @@ fn typecheck_config() -> Config {
         backend: None,
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
-        extensions: Default::default(),
-    }
+        extensions: Default::default()}
 }
 
 fn run_pipeline(yaml: &str) {

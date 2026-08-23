@@ -138,8 +138,7 @@ fn bool_eventually_returns_both() {
         match result.as_bool() {
             Some(true) => got_true = true,
             Some(false) => got_false = true,
-            None => panic!("expected boolean"),
-        }
+            None => panic!("expected boolean")}
     }
     assert!(got_true && got_false, "expected both true and false in 200 tries");
 }

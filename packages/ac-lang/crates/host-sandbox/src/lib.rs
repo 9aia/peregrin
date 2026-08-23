@@ -31,7 +31,7 @@
 //!
 //! ```ignore
 //! use ac_host_sandbox::{SandboxHost, SandboxLimits};
-//! use ac_vm::Vm;
+//! use ac_vm_canonical::Vm;
 //!
 //! let host = SandboxHost::new(SandboxLimits::default());
 //! let ctx = host.new_context();
@@ -59,10 +59,9 @@ use ac_lib_kv::KeyValueStoreModule;
 use ac_lib_kv_hashmap::HashKeyValueStore;
 use ac_lib_utils::{
     ArrayModule, BoolModule, FnModule, MathModule, ObjModule, SetModule, StrModule,
-    TypeModule,
-};
+    TypeModule};
 use ac_runtime_core::ModuleHost;
-use ac_vm::{Context, Function, GenericFunction, Host, LazyFunction};
+use ac_vm::{CanonicalContext, Context, Function, GenericFunction, Host, LazyFunction};
 
 /// Resource limits for sandboxed evaluation.
 ///
@@ -82,15 +81,13 @@ pub struct SandboxLimits {
     /// `None` means no limit. Each `Call` expression increments the
     /// counter; exceeding the limit returns
     /// [`Error::ResourceLimit`](ac_vm::Error::ResourceLimit).
-    pub max_calls: Option<usize>,
-}
+    pub max_calls: Option<usize>}
 
 impl Default for SandboxLimits {
     fn default() -> Self {
         SandboxLimits {
             max_depth: Some(256),
-            max_calls: Some(100_000),
-        }
+            max_calls: Some(100_000)}
     }
 }
 
@@ -104,8 +101,7 @@ impl Default for SandboxLimits {
 pub struct SandboxHost {
     default: DefaultHost,
     modules: ModuleHost,
-    limits: SandboxLimits,
-}
+    limits: SandboxLimits}
 
 impl SandboxHost {
     /// Creates a new sandbox host with the given limits and all pure
@@ -128,8 +124,7 @@ impl SandboxHost {
         SandboxHost {
             default: DefaultHost::default(),
             modules,
-            limits,
-        }
+            limits}
     }
 
     /// Creates a [`Context`] with the sandbox limits applied.
@@ -137,8 +132,8 @@ impl SandboxHost {
     /// The VM will enforce `max_depth` and `max_calls` during evaluation,
     /// returning [`Error::ResourceLimit`](ac_vm::Error::ResourceLimit) if
     /// either limit is exceeded.
-    pub fn new_context(&self) -> Context {
-        let mut ctx = Context::new();
+    pub fn new_context(&self) -> CanonicalContext {
+        let mut ctx = CanonicalContext::new();
         if let Some(max) = self.limits.max_depth {
             ctx.set_max_depth(max);
         }

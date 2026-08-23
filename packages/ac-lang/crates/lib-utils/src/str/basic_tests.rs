@@ -1,18 +1,18 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
-use ac_vm::{Context, Error};
+use ac_vm::{CanonicalContext, Context, Error};
 
 use super::StrModule;
 
 fn call(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = StrModule.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_err(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let func = StrModule.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 
@@ -571,8 +571,7 @@ fn type_mismatch_on_non_string() {
         result,
         Err(Error::TypeMismatch {
             expected: "string",
-            got: "non-string",
-        })
+            got: "non-string"})
     );
 }
 
@@ -583,7 +582,6 @@ fn argument_count_on_missing_args() {
         result,
         Err(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })
+            got: 0})
     );
 }

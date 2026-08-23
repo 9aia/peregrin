@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
-use ac_vm::{Context, Error, Eval};
+use ac_vm::{CanonicalContext, Context, Error, Eval};
 
 use serde_json::json;
 
@@ -8,7 +8,7 @@ use super::module::ArrayModule;
 
 fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
@@ -18,7 +18,7 @@ fn call_err(
     args: &[NonFunctionValue],
 ) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 
@@ -381,7 +381,7 @@ fn at_out_of_bounds_returns_null() {
 #[test]
 fn at_negative_errors() {
     let func = ArrayModule.function("at").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[arr(&[json!(1)]), n(-1.0)], &mut ctx);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
@@ -424,7 +424,7 @@ fn fill_zero() {
 #[test]
 fn fill_negative_errors() {
     let func = ArrayModule.function("fill").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[n(-1.0), n(0.0)], &mut ctx);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
@@ -456,7 +456,7 @@ fn deep_flatten_no_nested() {
 #[test]
 fn slice_negative_errors() {
     let func = ArrayModule.function("slice").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[arr(&[json!(1)]), n(-1.0), n(1.0)], &mut ctx);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
@@ -515,28 +515,26 @@ fn unknown_function_returns_none() {
 #[test]
 fn type_mismatch_on_non_array() {
     let func = ArrayModule.function("length").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[s("not an array")], &mut ctx);
     assert_eq!(
         result,
         Err(Error::TypeMismatch {
             expected: "array",
-            got: "non-array",
-        })
+            got: "non-array"})
     );
 }
 
 #[test]
 fn argument_count_on_missing_args() {
     let func = ArrayModule.function("length").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[], &mut ctx);
     assert_eq!(
         result,
         Err(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })
+            got: 0})
     );
 }
 
@@ -544,7 +542,7 @@ fn argument_count_on_missing_args() {
 
 use ac_ast_canonical::Expr;
 use ac_host::DefaultHost;
-use ac_vm::Vm;
+use ac_vm_canonical::Vm;
 
 struct TestEval;
 impl Eval for TestEval {
@@ -572,7 +570,7 @@ impl Eval for TestEval {
                 args.push(Expr::Value(arg_val));
             }
             let vm = Vm::new(DefaultHost::default());
-            let mut ctx = Context::new();
+            let mut ctx = CanonicalContext::new();
             let call_expr = Expr::call(name.trim(), args);
             return vm.eval(&call_expr, &mut ctx);
         }
@@ -603,8 +601,7 @@ fn split_args(s: &str) -> Vec<String> {
                 result.push(current.trim().to_string());
                 current.clear();
             }
-            _ => current.push(ch),
-        }
+            _ => current.push(ch)}
     }
     if !current.trim().is_empty() {
         result.push(current.trim().to_string());
@@ -648,7 +645,7 @@ fn eval_arg(arg: &str, vars: &[(String, NonFunctionValue)]) -> Result<NonFunctio
 
 fn call_with_eval(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.set_eval(Box::new(TestEval));
     func.call(args, &mut ctx).expect("call succeeds")
 }
@@ -659,7 +656,7 @@ fn call_err_with_eval(
     args: &[NonFunctionValue],
 ) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.set_eval(Box::new(TestEval));
     func.call(args, &mut ctx)
 }
@@ -671,8 +668,7 @@ fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
         .collect();
     NonFunctionValue::new(serde_json::json!({
         "params": params_json,
-        "body": body,
-    }))
+        "body": body}))
 }
 
 // ── take ───────────────────────────────────────────────────────────

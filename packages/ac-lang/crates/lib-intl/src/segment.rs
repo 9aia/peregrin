@@ -1,8 +1,7 @@
 use ac_runtime::NonFunctionValue;
 use ac_vm::{Context, Error, Function};
 use icu::segmenter::{
-    GraphemeClusterSegmenter, LineSegmenter, SentenceSegmenter, WordSegmenter,
-};
+    GraphemeClusterSegmenter, LineSegmenter, SentenceSegmenter, WordSegmenter};
 use icu::segmenter::options::{LineBreakOptions, LineBreakStrictness, LineBreakWordOption};
 
 use super::common::{make_provider, opt_str, optional_locale, optional_object, require_string};
@@ -28,8 +27,7 @@ use super::provider::IntlProvider;
 /// - `intl.segment("Hello World", "line", "ja", {lineBreakStyle: "loose"})` → line segments with loose breaking
 #[derive(Clone)]
 pub struct Segment {
-    provider: Option<IntlProvider>,
-}
+    provider: Option<IntlProvider>}
 
 impl Segment {
     pub fn new() -> Self {
@@ -48,7 +46,7 @@ impl Default for Segment {
 }
 
 impl Function for Segment {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let text = require_string(args, 0)?;
         let granularity = require_string(args, 1)?;
         let locale = optional_locale(args, 2)?;
@@ -94,15 +92,13 @@ impl Function for Segment {
                         "strict" => LineBreakStrictness::Strict,
                         "loose" => LineBreakStrictness::Loose,
                         "anywhere" => LineBreakStrictness::Anywhere,
-                        _ => LineBreakStrictness::Normal,
-                    });
+                        _ => LineBreakStrictness::Normal});
                 }
                 if let Some(word) = opt_str(opts, "lineBreakWord") {
                     line_opts.word_option = Some(match word {
                         "break-all" => LineBreakWordOption::BreakAll,
                         "keep-all" => LineBreakWordOption::KeepAll,
-                        _ => LineBreakWordOption::Normal,
-                    });
+                        _ => LineBreakWordOption::Normal});
                 }
                 if let Some(p) = dp.as_buffer_provider() {
                     let segmenter = LineSegmenter::try_new_auto_with_buffer_provider(p, line_opts)
@@ -115,9 +111,7 @@ impl Function for Segment {
             }
             _ => return Err(IntlError::InvalidType {
                 type_name: granularity.to_string(),
-                valid: "grapheme, word, sentence, line".into(),
-            }.into_vm_error()),
-        };
+                valid: "grapheme, word, sentence, line".into()}.into_vm_error())};
 
         Ok(NonFunctionValue::new(serde_json::Value::Array(segments)))
     }
@@ -131,16 +125,14 @@ fn collect_segments<I: Iterator<Item = usize>>(text: &str, breakpoints: I) -> Ve
             let segment = &text[start..breakpoint];
             result.push(serde_json::json!({
                 "segment": segment,
-                "index": start,
-            }));
+                "index": start}));
         }
         start = breakpoint;
     }
     if start < text.len() {
         result.push(serde_json::json!({
             "segment": &text[start..],
-            "index": start,
-        }));
+            "index": start}));
     }
     result
 }
@@ -155,8 +147,7 @@ fn collect_word_segments<I: Iterator<Item = usize>>(text: &str, breakpoints: I) 
             result.push(serde_json::json!({
                 "segment": segment,
                 "index": start,
-                "isWordLike": is_word_like,
-            }));
+                "isWordLike": is_word_like}));
         }
         start = word_break;
     }
@@ -166,8 +157,7 @@ fn collect_word_segments<I: Iterator<Item = usize>>(text: &str, breakpoints: I) 
         result.push(serde_json::json!({
             "segment": segment,
             "index": start,
-            "isWordLike": is_word_like,
-        }));
+            "isWordLike": is_word_like}));
     }
     result
 }

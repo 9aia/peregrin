@@ -19,13 +19,11 @@ pub fn split_parts(formatted: &str, number_parts: &[NumberFormatPart]) -> Vec<Re
                 if !literal.is_empty() {
                     result.push(RelativeTimeFormatPart {
                         part_type: NumberFormatPartType::Literal,
-                        value: literal.to_string(),
-                    });
+                        value: literal.to_string()});
                 }
                 result.push(RelativeTimeFormatPart {
                     part_type: np.part_type.clone(),
-                    value: np.value.clone(),
-                });
+                    value: np.value.clone()});
                 remaining = &remaining[pos + np.value.len()..];
             }
             None => {
@@ -39,8 +37,7 @@ pub fn split_parts(formatted: &str, number_parts: &[NumberFormatPart]) -> Vec<Re
     if !remaining.is_empty() {
         result.push(RelativeTimeFormatPart {
             part_type: NumberFormatPartType::Literal,
-            value: remaining.to_string(),
-        });
+            value: remaining.to_string()});
     }
 
     result

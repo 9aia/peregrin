@@ -6,14 +6,12 @@ use crate::resolved_module::ResolvedModule;
 
 /// A simple in-memory cache for testing.
 pub struct TestCache {
-    map: Mutex<HashMap<String, ResolvedModule>>,
-}
+    map: Mutex<HashMap<String, ResolvedModule>>}
 
 impl TestCache {
     pub fn new() -> Self {
         TestCache {
-            map: Mutex::new(HashMap::new()),
-        }
+            map: Mutex::new(HashMap::new())}
     }
 }
 

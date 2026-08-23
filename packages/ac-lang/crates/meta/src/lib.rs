@@ -17,10 +17,10 @@
 //!
 //! ```ignore
 //! use ac_meta::MetaHost;
-//! use ac_vm::{Vm, Context};
+//! use ac_vm_canonical::{CanonicalContext, Vm, Context};
 //!
 //! let vm = Vm::new(MetaHost::default());
-//! let mut ctx = Context::new();
+//! let mut ctx = CanonicalContext::new();
 //! // eval("add(1, 2)") → 3
 //! ```
 
@@ -28,8 +28,7 @@ mod functions;
 mod host;
 
 pub use functions::{
-    AstArgs, AstIsCall, AstName, AstToString, Eval, IsFunction, Keys, Parse, TypeOf,
-};
+    AstArgs, AstIsCall, AstName, AstToString, Eval, IsFunction, Keys, Parse, TypeOf};
 pub use host::MetaHost;
 
 #[cfg(test)]

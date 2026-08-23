@@ -11,15 +11,14 @@ impl Function for Get {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, key_arg) = require_two_args(args)?;
         let obj = require_object(obj_arg)?;
         let key = require_string(key_arg)?;
         match obj.get(&key) {
             Some(v) => Ok(NonFunctionValue::new(v.clone())),
-            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
-        }
+            None => Ok(NonFunctionValue::new(serde_json::Value::Null))}
     }
 }
 
@@ -31,15 +30,14 @@ impl Function for GetOr {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, key_arg, default_arg) = super::common::require_three_args(args)?;
         let obj = require_object(obj_arg)?;
         let key = require_string(key_arg)?;
         match obj.get(&key) {
             Some(serde_json::Value::Null) | None => Ok(default_arg.clone()),
-            Some(v) => Ok(NonFunctionValue::new(v.clone())),
-        }
+            Some(v) => Ok(NonFunctionValue::new(v.clone()))}
     }
 }
 
@@ -51,7 +49,7 @@ impl Function for HasKey {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, key_arg) = require_two_args(args)?;
         let obj = require_object(obj_arg)?;
@@ -68,18 +66,16 @@ impl Function for DeepGet {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let path = args[1].as_str().ok_or(Error::TypeMismatch {
             expected: "string",
-            got: "non-string",
-        })?;
+            got: "non-string"})?;
         let mut current = args[0].inner().clone();
         for segment in path.split('.') {
             if segment.is_empty() {
@@ -96,8 +92,7 @@ impl Function for DeepGet {
                         serde_json::Value::Null
                     }
                 }
-                _ => serde_json::Value::Null,
-            };
+                _ => serde_json::Value::Null};
             if current.is_null() {
                 break;
             }
@@ -114,7 +109,7 @@ impl Function for PathOr {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (value_arg, path_arg, default_arg) = super::common::require_three_args(args)?;
         let path = require_string(path_arg)?;
@@ -134,8 +129,7 @@ impl Function for PathOr {
                         serde_json::Value::Null
                     }
                 }
-                _ => serde_json::Value::Null,
-            };
+                _ => serde_json::Value::Null};
             if current.is_null() {
                 break;
             }

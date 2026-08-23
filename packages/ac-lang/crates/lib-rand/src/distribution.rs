@@ -20,21 +20,19 @@ use crate::error::RandError;
 pub struct Gauss;
 
 impl Function for Gauss {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let mean = require_number(args, 0)?;
         let stddev = require_number(args, 1)?;
         if !stddev.is_finite() || !mean.is_finite() {
             return Err(RandError::InvalidRange {
                 min: mean,
-                max: stddev,
-            }
+                max: stddev}
             .into());
         }
         if stddev < 0.0 {
             return Err(RandError::InvalidRange {
                 min: mean,
-                max: stddev,
-            }
+                max: stddev}
             .into());
         }
 
@@ -60,13 +58,12 @@ impl Function for Gauss {
 pub struct Exponential;
 
 impl Function for Exponential {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let lambda = require_number(args, 0)?;
         if !lambda.is_finite() || lambda <= 0.0 {
             return Err(RandError::InvalidRange {
                 min: lambda,
-                max: lambda,
-            }
+                max: lambda}
             .into());
         }
 
@@ -90,13 +87,12 @@ impl Function for Exponential {
 pub struct Poisson;
 
 impl Function for Poisson {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let lambda = require_number(args, 0)?;
         if !lambda.is_finite() || lambda < 0.0 {
             return Err(RandError::InvalidRange {
                 min: lambda,
-                max: lambda,
-            }
+                max: lambda}
             .into());
         }
 
@@ -135,29 +131,26 @@ impl Function for Poisson {
 pub struct Binomial;
 
 impl Function for Binomial {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let n_trials = require_number(args, 0)?;
         let p = require_number(args, 1)?;
 
         if !n_trials.is_finite() || !p.is_finite() {
             return Err(RandError::InvalidRange {
                 min: n_trials,
-                max: p,
-            }
+                max: p}
             .into());
         }
         if n_trials < 0.0 {
             return Err(RandError::InvalidRange {
                 min: n_trials,
-                max: p,
-            }
+                max: p}
             .into());
         }
         if !(0.0..=1.0).contains(&p) {
             return Err(RandError::InvalidRange {
                 min: p,
-                max: p,
-            }
+                max: p}
             .into());
         }
 

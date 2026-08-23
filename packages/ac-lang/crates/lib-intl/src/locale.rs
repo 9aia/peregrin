@@ -44,7 +44,7 @@ impl Default for LocaleInfo {
 }
 
 impl Function for LocaleInfo {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let tag = require_string(args, 0)?;
         let opts = optional_object(args, 1)?;
 

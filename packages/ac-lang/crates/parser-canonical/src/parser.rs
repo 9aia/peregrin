@@ -13,9 +13,7 @@ fn to_ac_parse_error(e: DefaultParseError) -> AcParseError {
         DefaultParseError::UnexpectedToken { span, expected } => AcParseError::UnexpectedToken { span, expected },
         DefaultParseError::Message { span, message } => AcParseError::UnexpectedToken {
             span,
-            expected: message,
-        },
-    }
+            expected: message}}
 }
 
 /// The canonical AC expression parser.
@@ -93,8 +91,7 @@ impl CanonicalGrammar {
             }
             Some(CanonicalKind::Eof) => Err(DefaultParseError::unexpected_eof(context.peek_span(), "an expression")),
             Some(_) => Err(DefaultParseError::unexpected_token(context.peek_span(), "an expression")),
-            None => Err(DefaultParseError::unexpected_eof(context.peek_span(), "an expression")),
-        }
+            None => Err(DefaultParseError::unexpected_eof(context.peek_span(), "an expression"))}
     }
 
     fn parse_call(&self, name: String, context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
@@ -254,7 +251,6 @@ impl CanonicalGrammar {
             op_name,
             params,
             continuation_name,
-            body,
-        })
+            body})
     }
 }

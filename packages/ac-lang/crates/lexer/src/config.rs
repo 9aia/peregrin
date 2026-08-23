@@ -33,8 +33,7 @@ pub struct LexerConfig<K: TokenKind, E: LexError> {
     keywords: Vec<(String, K)>,
     delimiters: Vec<(char, K)>,
     factory: K::Factory,
-    rules: Vec<Box<dyn LexRule<K, E>>>,
-}
+    rules: Vec<Box<dyn LexRule<K, E>>>}
 
 impl<K: TokenKind, E: LexError> Clone for LexerConfig<K, E> {
     fn clone(&self) -> Self {
@@ -42,8 +41,7 @@ impl<K: TokenKind, E: LexError> Clone for LexerConfig<K, E> {
             keywords: self.keywords.clone(),
             delimiters: self.delimiters.clone(),
             factory: self.factory.clone(),
-            rules: self.rules.iter().map(|r| r.clone_box()).collect(),
-        }
+            rules: self.rules.iter().map(|r| r.clone_box()).collect()}
     }
 }
 
@@ -54,8 +52,7 @@ impl<K: TokenKind, E: LexError> LexerConfig<K, E> {
             keywords: Vec::new(),
             delimiters: Vec::new(),
             factory,
-            rules: Vec::new(),
-        }
+            rules: Vec::new()}
     }
 
     /// Returns the kind factory.

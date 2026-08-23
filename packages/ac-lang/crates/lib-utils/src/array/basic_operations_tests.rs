@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
-use ac_vm::{Context, Error};
+use ac_vm::{CanonicalContext, Context, Error};
 
 use serde_json::json;
 
@@ -197,7 +197,7 @@ fn at_out_of_bounds_returns_null() {
 #[test]
 fn at_negative_errors() {
     let func = ArrayModule.function("at").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[arr(&[json!(1)]), n(-1.0)], &mut ctx);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
@@ -236,7 +236,7 @@ fn fill_zero() {
 #[test]
 fn fill_negative_errors() {
     let func = ArrayModule.function("fill").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[n(-1.0), n(0.0)], &mut ctx);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
@@ -263,7 +263,7 @@ fn deep_flatten_no_nested() {
 #[test]
 fn slice_negative_errors() {
     let func = ArrayModule.function("slice").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[arr(&[json!(1)]), n(-1.0), n(1.0)], &mut ctx);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
@@ -318,27 +318,25 @@ fn unknown_function_returns_none() {
 #[test]
 fn type_mismatch_on_non_array() {
     let func = ArrayModule.function("length").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result: Result<NonFunctionValue, Error> = func.call(&[s("not an array")], &mut ctx);
     assert_eq!(
         result,
         Err(Error::TypeMismatch {
             expected: "array",
-            got: "non-array",
-        })
+            got: "non-array"})
     );
 }
 
 #[test]
 fn argument_count_on_missing_args() {
     let func = ArrayModule.function("length").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[], &mut ctx);
     assert_eq!(
         result,
         Err(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })
+            got: 0})
     );
 }

@@ -39,8 +39,7 @@ pub enum Expr<V> {
         ///
         /// Host functions can inspect this via the `GenericFunction` trait
         /// to implement type-aware behavior at runtime.
-        type_args: Vec<String>,
-    },
+        type_args: Vec<String>},
 
     /// A handler expression — intercepts operations performed in `body`.
     ///
@@ -57,8 +56,7 @@ pub enum Expr<V> {
         body: Box<Expr<V>>,
 
         /// Handler clauses, checked in order.
-        handlers: Vec<HandlerClause<V>>,
-    },
+        handlers: Vec<HandlerClause<V>>},
 
     /// An array literal — `[expr, expr, ...]`.
     ///
@@ -70,8 +68,7 @@ pub enum Expr<V> {
     ///
     /// Keys are string literals; values are expressions that are
     /// evaluated and collected into a JSON object at runtime.
-    Object(Vec<(String, Expr<V>)>),
-}
+    Object(Vec<(String, Expr<V>)>)}
 
 /// A single handler clause in a [`Expr::Handle`] expression.
 ///
@@ -91,8 +88,7 @@ pub struct HandlerClause<V> {
     pub continuation_name: String,
 
     /// The handler body expression.
-    pub body: Expr<V>,
-}
+    pub body: Expr<V>}
 
 impl<V> Expr<V> {
     /// Creates a value expression.
@@ -105,8 +101,7 @@ impl<V> Expr<V> {
         Expr::Call {
             name: name.into(),
             args,
-            type_args: Vec::new(),
-        }
+            type_args: Vec::new()}
     }
 
     /// Creates a call expression with resolved type arguments.
@@ -121,16 +116,14 @@ impl<V> Expr<V> {
         Expr::Call {
             name: name.into(),
             args,
-            type_args,
-        }
+            type_args}
     }
 
     /// Creates a handle expression.
     pub fn handle(body: Expr<V>, handlers: Vec<HandlerClause<V>>) -> Self {
         Expr::Handle {
             body: Box::new(body),
-            handlers,
-        }
+            handlers}
     }
 
     /// Creates an array literal expression.

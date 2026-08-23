@@ -36,8 +36,7 @@ fn test_config() -> Config {
         backend: None,
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
-        extensions: Default::default(),
-    }
+        extensions: Default::default()}
 }
 
 fn test_config_with_backend() -> Config {
@@ -48,8 +47,7 @@ fn test_config_with_backend() -> Config {
         backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
-        extensions: Default::default(),
-    }
+        extensions: Default::default()}
 }
 
 #[test]
@@ -96,8 +94,7 @@ fn pipeline_run_failing_pass_propagates_error() {
     let result = pipeline.run(source);
     match result {
         Err(e) => assert!(e.to_string().contains("intentional failure")),
-        Ok(_) => panic!("expected error"),
-    }
+        Ok(_) => panic!("expected error")}
 }
 
 #[test]
@@ -109,8 +106,7 @@ fn pipeline_run_failing_pass_stops_subsequent_passes() {
     let result = pipeline.run(source);
     match result {
         Err(e) => assert!(e.to_string().contains("intentional failure")),
-        Ok(_) => panic!("expected error"),
-    }
+        Ok(_) => panic!("expected error")}
 }
 
 #[test]

@@ -22,8 +22,7 @@ fn error_display_primitive_error() {
 fn error_display_type_mismatch() {
     let err = Error::TypeMismatch {
         expected: "string",
-        got: "number",
-    };
+        got: "number"};
     assert_eq!(
         err.to_string(),
         "type mismatch: expected string, got number"
@@ -34,8 +33,7 @@ fn error_display_type_mismatch() {
 fn error_display_argument_count() {
     let err = Error::ArgumentCount {
         expected: 2,
-        got: 1,
-    };
+        got: 1};
     assert_eq!(
         err.to_string(),
         "argument count mismatch: expected 2, got 1"
@@ -66,8 +64,7 @@ fn error_yield_clone_eq() {
 fn error_display_operation() {
     let err = Error::Operation {
         name: "fetch".to_string(),
-        args: vec![ac_runtime::NonFunctionValue::new("url")],
-    };
+        args: vec![ac_runtime::NonFunctionValue::new("url")]};
     let s = err.to_string();
     assert!(s.contains("fetch"));
     assert!(s.contains("operation"));
@@ -77,8 +74,7 @@ fn error_display_operation() {
 fn error_operation_clone_eq() {
     let err = Error::Operation {
         name: "fetch".to_string(),
-        args: vec![ac_runtime::NonFunctionValue::new(42)],
-    };
+        args: vec![ac_runtime::NonFunctionValue::new(42)]};
     let cloned = err.clone();
     assert_eq!(err, cloned);
 }
@@ -87,8 +83,7 @@ fn error_operation_clone_eq() {
 fn error_operation_with_empty_args_display() {
     let err = Error::Operation {
         name: "ping".to_string(),
-        args: vec![],
-    };
+        args: vec![]};
     let s = err.to_string();
     assert!(s.contains("ping"));
     assert!(s.contains("0 args"));
@@ -110,17 +105,14 @@ fn error_all_variants_are_cloneable() {
         Error::PrimitiveError("boom".to_string()),
         Error::TypeMismatch {
             expected: "int",
-            got: "str",
-        },
+            got: "str"},
         Error::ArgumentCount {
             expected: 1,
-            got: 2,
-        },
+            got: 2},
         Error::Yield(ac_runtime::NonFunctionValue::new(0)),
         Error::Operation {
             name: "op".to_string(),
-            args: vec![],
-        },
+            args: vec![]},
         Error::ResourceLimit("depth limit exceeded: 100".to_string()),
     ];
     for v in &variants {

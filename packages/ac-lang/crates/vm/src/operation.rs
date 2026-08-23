@@ -25,7 +25,7 @@
 //! operation completed without signaling (e.g. a no-op or cached result).
 
 use crate::Error;
-use crate::RuntimeContext;
+use crate::Context;
 use ac_runtime::NonFunctionValue;
 
 /// The signature of an operation — its name and parameter types.
@@ -39,8 +39,7 @@ pub struct OperationSig {
     /// `(param_name, raw_schema)` pairs, in declaration order.
     pub params: Vec<(String, serde_json::Value)>,
     /// Raw schema value for the return type, if declared.
-    pub return_schema: Option<serde_json::Value>,
-}
+    pub return_schema: Option<serde_json::Value>}
 
 /// A typed operation that signals instead of completing.
 ///
@@ -65,7 +64,7 @@ pub struct OperationSig {
 ///         }
 ///     }
 ///
-///     fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
+///     fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
 ///         // Signal: yield to the caller with operation name + args
 ///         Err(Error::Operation {
 ///             name: "fetch".to_string(),
@@ -82,5 +81,5 @@ pub trait Operation {
     ///
     /// Return `Err(Error::Operation { name, args })` to signal.
     /// Return `Ok(value)` to complete without signaling (e.g. cached).
-    fn perform(&self, args: &[NonFunctionValue], ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>;
+    fn perform(&self, args: &[NonFunctionValue], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error>;
 }

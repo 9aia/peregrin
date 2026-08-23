@@ -5,15 +5,13 @@ pub enum PluralRuleType {
     #[default]
     Cardinal,
     /// Ordinal numbers, e.g. `"1st"`.
-    Ordinal,
-}
+    Ordinal}
 
 /// Options used to construct a `PluralRules` instance.
 #[derive(Debug, Clone, Default)]
 pub struct PluralRulesOptions {
     /// Cardinal or ordinal selection.
-    pub rule_type: PluralRuleType,
-}
+    pub rule_type: PluralRuleType}
 
 /// A CLDR plural category.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -29,8 +27,7 @@ pub enum PluralCategory {
     /// Plural category for many items.
     Many,
     /// Catch-all plural category.
-    Other,
-}
+    Other}
 
 impl PluralCategory {
     /// Returns the category name used by ECMA-402 (`"zero"`, `"one"`, etc.).
@@ -41,8 +38,7 @@ impl PluralCategory {
             Self::Two => "two",
             Self::Few => "few",
             Self::Many => "many",
-            Self::Other => "other",
-        }
+            Self::Other => "other"}
     }
 }
 

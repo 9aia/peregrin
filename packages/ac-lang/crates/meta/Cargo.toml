@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 ac-vm.workspace = true
+ac-vm-canonical.workspace = true
 ac-runtime.workspace = true
 ac-dialect.workspace = true
 ac-dialect-canonical.workspace = true

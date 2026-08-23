@@ -20,15 +20,13 @@ use std::collections::HashMap;
 /// assert_eq!(map.resolve_path("unknown"), None);
 /// ```
 pub struct SourceMap {
-    map: HashMap<String, SourceLocation>,
-}
+    map: HashMap<String, SourceLocation>}
 
 impl SourceMap {
     /// Creates an empty `SourceMap`.
     pub fn new() -> Self {
         SourceMap {
-            map: HashMap::new(),
-        }
+            map: HashMap::new()}
     }
 
     /// Inserts a path → location mapping.

@@ -1,18 +1,18 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
-use ac_vm::{Context, Error};
+use ac_vm::{CanonicalContext, Context, Error};
 
 use super::module::TypeModule;
 
 fn call(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = TypeModule.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_err(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let func = TypeModule.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 

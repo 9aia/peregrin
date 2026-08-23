@@ -10,8 +10,7 @@ pub struct MockFactory {
     ident_fn: Arc<dyn Fn(String) -> MockKind + Send + Sync>,
     comment_fn: Arc<dyn Fn(String) -> MockKind + Send + Sync>,
     keyword_fn: Arc<dyn Fn(String) -> Option<MockKind> + Send + Sync>,
-    operator_fn: Arc<dyn Fn(String) -> Option<MockKind> + Send + Sync>,
-}
+    operator_fn: Arc<dyn Fn(String) -> Option<MockKind> + Send + Sync>}
 
 impl Default for MockFactory {
     fn default() -> Self {
@@ -27,8 +26,7 @@ impl MockFactory {
             ident_fn: Arc::new(|t| MockKind::Ident(t)),
             comment_fn: Arc::new(|t| MockKind::Comment(t)),
             keyword_fn: Arc::new(|_| None),
-            operator_fn: Arc::new(|_| None),
-        }
+            operator_fn: Arc::new(|_| None)}
     }
 
     pub fn with_string_kind<F>(self, f: F) -> Self
@@ -76,8 +74,7 @@ impl Clone for MockFactory {
             ident_fn: Arc::clone(&self.ident_fn),
             comment_fn: Arc::clone(&self.comment_fn),
             keyword_fn: Arc::clone(&self.keyword_fn),
-            operator_fn: Arc::clone(&self.operator_fn),
-        }
+            operator_fn: Arc::clone(&self.operator_fn)}
     }
 }
 

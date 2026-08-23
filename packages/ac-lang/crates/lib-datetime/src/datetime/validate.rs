@@ -9,7 +9,7 @@ impl Function for IsValid {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let valid = super::common::parse_iso(input).is_ok();

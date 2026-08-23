@@ -1,9 +1,8 @@
-use ecma402_icu4x::number_format::NumberFormat;
+use rust_lib_ecma402_icu4x::number_format::NumberFormat;
 use ecma402_traits::number_format::{
     CompactDisplay, CurrencyDisplay, CurrencySign, Notation, NumberFormat as _,
     NumberFormatOptions, NumberFormatPart, NumberFormatStyle, RoundingMode, SignDisplay,
-    UnitDisplay, UseGrouping,
-};
+    UnitDisplay, UseGrouping};
 use serde::Deserialize;
 use std::fs;
 
@@ -14,30 +13,26 @@ const FIXTURE: &str = concat!(
 
 #[derive(Deserialize, Debug)]
 struct Fixture {
-    cases: Vec<FixtureCase>,
-}
+    cases: Vec<FixtureCase>}
 
 #[derive(Deserialize, Debug)]
 struct FixtureCase {
     id: String,
     locale: String,
     options: serde_json::Value,
-    outputs: Vec<FixtureOutput>,
-}
+    outputs: Vec<FixtureOutput>}
 
 #[derive(Deserialize, Debug)]
 struct FixtureOutput {
     input: serde_json::Value,
     formatted: String,
-    parts: Vec<ExpectedPart>,
-}
+    parts: Vec<ExpectedPart>}
 
 #[derive(Deserialize, Debug, PartialEq)]
 struct ExpectedPart {
     #[serde(rename = "type")]
     part_type: String,
-    value: String,
-}
+    value: String}
 
 fn resolve_input(value: serde_json::Value) -> f64 {
     match value {
@@ -46,10 +41,8 @@ fn resolve_input(value: serde_json::Value) -> f64 {
             "NaN" => f64::NAN,
             "Infinity" => f64::INFINITY,
             "-Infinity" => f64::NEG_INFINITY,
-            _ => panic!("unknown input literal: {s}"),
-        },
-        _ => panic!("unsupported input: {value}"),
-    }
+            _ => panic!("unknown input literal: {s}")},
+        _ => panic!("unsupported input: {value}")}
 }
 
 fn parse_style(value: &str) -> NumberFormatStyle {
@@ -58,8 +51,7 @@ fn parse_style(value: &str) -> NumberFormatStyle {
         "currency" => NumberFormatStyle::Currency,
         "percent" => NumberFormatStyle::Percent,
         "unit" => NumberFormatStyle::Unit,
-        _ => panic!("unknown style: {value}"),
-    }
+        _ => panic!("unknown style: {value}")}
 }
 
 fn parse_currency_display(value: &str) -> CurrencyDisplay {
@@ -68,16 +60,14 @@ fn parse_currency_display(value: &str) -> CurrencyDisplay {
         "narrowSymbol" => CurrencyDisplay::NarrowSymbol,
         "code" => CurrencyDisplay::Code,
         "name" => CurrencyDisplay::Name,
-        _ => panic!("unknown currencyDisplay: {value}"),
-    }
+        _ => panic!("unknown currencyDisplay: {value}")}
 }
 
 fn parse_currency_sign(value: &str) -> CurrencySign {
     match value {
         "standard" => CurrencySign::Standard,
         "accounting" => CurrencySign::Accounting,
-        _ => panic!("unknown currencySign: {value}"),
-    }
+        _ => panic!("unknown currencySign: {value}")}
 }
 
 fn parse_notation(value: &str) -> Notation {
@@ -86,16 +76,14 @@ fn parse_notation(value: &str) -> Notation {
         "scientific" => Notation::Scientific,
         "engineering" => Notation::Engineering,
         "compact" => Notation::Compact,
-        _ => panic!("unknown notation: {value}"),
-    }
+        _ => panic!("unknown notation: {value}")}
 }
 
 fn parse_compact_display(value: &str) -> CompactDisplay {
     match value {
         "short" => CompactDisplay::Short,
         "long" => CompactDisplay::Long,
-        _ => panic!("unknown compactDisplay: {value}"),
-    }
+        _ => panic!("unknown compactDisplay: {value}")}
 }
 
 fn parse_use_grouping(value: &str) -> UseGrouping {
@@ -106,8 +94,7 @@ fn parse_use_grouping(value: &str) -> UseGrouping {
         "always" => UseGrouping::Always,
         "min2" => UseGrouping::Min2,
         "never" => UseGrouping::Never,
-        _ => panic!("unknown useGrouping: {value}"),
-    }
+        _ => panic!("unknown useGrouping: {value}")}
 }
 
 fn parse_unit_display(value: &str) -> UnitDisplay {
@@ -115,8 +102,7 @@ fn parse_unit_display(value: &str) -> UnitDisplay {
         "short" => UnitDisplay::Short,
         "narrow" => UnitDisplay::Narrow,
         "long" => UnitDisplay::Long,
-        _ => panic!("unknown unitDisplay: {value}"),
-    }
+        _ => panic!("unknown unitDisplay: {value}")}
 }
 
 fn parse_sign_display(value: &str) -> SignDisplay {
@@ -126,8 +112,7 @@ fn parse_sign_display(value: &str) -> SignDisplay {
         "exceptZero" => SignDisplay::ExceptZero,
         "negative" => SignDisplay::Negative,
         "never" => SignDisplay::Never,
-        _ => panic!("unknown signDisplay: {value}"),
-    }
+        _ => panic!("unknown signDisplay: {value}")}
 }
 
 fn parse_rounding_mode(value: &str) -> RoundingMode {
@@ -141,8 +126,7 @@ fn parse_rounding_mode(value: &str) -> RoundingMode {
         "halfExpand" => RoundingMode::HalfExpand,
         "halfTrunc" => RoundingMode::HalfTrunc,
         "halfEven" => RoundingMode::HalfEven,
-        _ => panic!("unknown roundingMode: {value}"),
-    }
+        _ => panic!("unknown roundingMode: {value}")}
 }
 
 fn parse_options(raw: &serde_json::Value) -> NumberFormatOptions {
@@ -217,8 +201,7 @@ fn actual_to_expected(parts: &[NumberFormatPart]) -> Vec<ExpectedPart> {
         .iter()
         .map(|p| ExpectedPart {
             part_type: p.part_type.as_str().to_string(),
-            value: p.value.clone(),
-        })
+            value: p.value.clone()})
         .collect()
 }
 

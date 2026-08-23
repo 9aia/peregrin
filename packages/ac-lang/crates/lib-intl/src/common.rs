@@ -10,22 +10,19 @@ use super::provider::IntlProvider;
 /// A data provider that is either compiled (static) or blob-backed (runtime).
 pub(super) enum DataProvider {
     Compiled,
-    Blob(usize, BlobDataProvider),
-}
+    Blob(usize, BlobDataProvider)}
 
 impl DataProvider {
     pub fn as_buffer_provider(&self) -> Option<&BlobDataProvider> {
         match self {
             DataProvider::Blob(_, p) => Some(p),
-            _ => None,
-        }
+            _ => None}
     }
 
     pub fn provider_id(&self) -> usize {
         match self {
             DataProvider::Compiled => 0,
-            DataProvider::Blob(id, _) => *id,
-        }
+            DataProvider::Blob(id, _) => *id}
     }
 }
 
@@ -38,56 +35,47 @@ pub(super) fn make_provider(provider: &Option<IntlProvider>) -> Result<DataProvi
                 .map_err(|e| IntlError::DataProvider { message: e.to_string() }.into_vm_error())?;
             Ok(DataProvider::Blob(id, bdp))
         }
-        None => Ok(DataProvider::Compiled),
-    }
+        None => Ok(DataProvider::Compiled)}
 }
 
 /// Require a number argument at `idx`.
 pub(super) fn require_number(args: &[NonFunctionValue], idx: usize) -> Result<f64, Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
-        got: args.len(),
-    })?;
+        got: args.len()})?;
     arg.as_number().ok_or(Error::TypeMismatch {
         expected: "number",
-        got: "non-number",
-    })
+        got: "non-number"})
 }
 
 /// Require a string argument at `idx`.
 pub(super) fn require_string(args: &[NonFunctionValue], idx: usize) -> Result<&str, Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
-        got: args.len(),
-    })?;
+        got: args.len()})?;
     arg.as_str().ok_or(Error::TypeMismatch {
         expected: "string",
-        got: "non-string",
-    })
+        got: "non-string"})
 }
 
 /// Require an array argument at `idx`.
 pub(super) fn require_array(args: &[NonFunctionValue], idx: usize) -> Result<&[serde_json::Value], Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
-        got: args.len(),
-    })?;
+        got: args.len()})?;
     arg.as_array().ok_or(Error::TypeMismatch {
         expected: "array",
-        got: "non-array",
-    })
+        got: "non-array"})
 }
 
 /// Require an object argument at `idx`.
 pub(super) fn require_object(args: &[NonFunctionValue], idx: usize) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
-        got: args.len(),
-    })?;
+        got: args.len()})?;
     arg.as_object().ok_or(Error::TypeMismatch {
         expected: "object",
-        got: "non-object",
-    })
+        got: "non-object"})
 }
 
 /// Extract an optional locale argument at the given index.
@@ -97,8 +85,7 @@ pub(super) fn optional_locale(args: &[NonFunctionValue], idx: usize) -> Result<L
         Some(arg) => {
             let s = arg.as_str().ok_or(Error::TypeMismatch {
                 expected: "string",
-                got: "non-string",
-            })?;
+                got: "non-string"})?;
             Locale::try_from_str(s).map_err(|_| {
                 IntlError::InvalidLocale { input: s.to_string() }.into_vm_error()
             })
@@ -116,12 +103,10 @@ pub(super) fn optional_object(
         Some(arg) => {
             let obj = arg.as_object().ok_or(Error::TypeMismatch {
                 expected: "object",
-                got: "non-object",
-            })?;
+                got: "non-object"})?;
             Ok(Some(obj))
         }
-        None => Ok(None),
-    }
+        None => Ok(None)}
 }
 
 /// Get a string field from an options object.
@@ -153,8 +138,7 @@ pub(super) fn opt_bool(
         v.as_bool().or_else(|| v.as_str().and_then(|s| match s {
             "true" => Some(true),
             "false" => Some(false),
-            _ => None,
-        }))
+            _ => None}))
     })
 }
 
@@ -192,8 +176,7 @@ pub(super) fn parse_rounding_mode(opts: Option<&serde_json::Map<String, serde_js
         "halfExpand" => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfExpand),
         "halfFloor" => SignedRoundingMode::HalfFloor,
         "halfTrunc" => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfTrunc),
-        _ => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfEven),
-    }
+        _ => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfEven)}
 }
 
 pub(super) fn apply_fraction_digits(decimal: &mut Decimal, opts: Option<&serde_json::Map<String, serde_json::Value>>) {
@@ -239,8 +222,7 @@ pub(super) fn apply_sign_display(decimal: &mut Decimal, opts: Option<&serde_json
             "never" => SignDisplay::Never,
             "exceptZero" => SignDisplay::ExceptZero,
             "negative" => SignDisplay::Negative,
-            _ => return,
-        };
+            _ => return};
         decimal.apply_sign_display(sd);
     }
 }

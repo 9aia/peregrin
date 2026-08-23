@@ -27,6 +27,5 @@ pub fn frontend_for(format: &str) -> Result<Box<dyn Frontend<Error = String>>, S
         "yaml" | "yml" => Ok(Box::new(YamlFrontend)),
         "json" => Ok(Box::new(JsonFrontend)),
         "toml" => Ok(Box::new(TomlFrontend)),
-        other => Err(format!("unknown format: {other}")),
-    }
+        other => Err(format!("unknown format: {other}"))}
 }

@@ -105,6 +105,7 @@ dependencies = [
  "ac-typegen-import",
  "ac-typegen-key-set-special",
  "ac-vm",
+ "ac-vm-canonical",
  "serde_json",
 ]
 
@@ -286,6 +287,7 @@ dependencies = [
  "ac-host",
  "ac-runtime",
  "ac-vm",
+ "ac-vm-canonical",
  "serde_json",
 ]
 
@@ -349,6 +351,7 @@ dependencies = [
  "ac-ast-canonical",
  "ac-runtime",
  "ac-vm",
+ "ac-vm-canonical",
  "serde_json",
 ]
 
@@ -363,6 +366,7 @@ dependencies = [
  "ac-module-resolver-virtual",
  "ac-runtime",
  "ac-vm",
+ "ac-vm-canonical",
  "serde_json",
 ]
 
@@ -379,6 +383,7 @@ dependencies = [
  "ac-lib-utils",
  "ac-runtime-core",
  "ac-vm",
+ "ac-vm-canonical",
 ]
 
 [[package]]
@@ -396,6 +401,7 @@ dependencies = [
  "ac-runtime-core",
  "ac-typecheck-core",
  "ac-vm",
+ "ac-vm-canonical",
  "serde_json",
 ]
 
@@ -419,6 +425,7 @@ dependencies = [
  "ac-typecheck-infer",
  "ac-typecheck-schema-json",
  "ac-vm",
+ "ac-vm-canonical",
  "serde_json",
 ]
 
@@ -462,6 +469,7 @@ dependencies = [
  "ac-typegen-backend-json-schema",
  "ac-typegen-core",
  "ac-vm",
+ "ac-vm-canonical",
  "serde_json",
 ]
 
@@ -498,6 +506,7 @@ dependencies = [
  "ac-runtime",
  "ac-runtime-core",
  "ac-vm",
+ "ac-vm-canonical",
  "base64",
  "hex",
  "md-5",
@@ -515,6 +524,7 @@ dependencies = [
  "ac-runtime",
  "ac-runtime-core",
  "ac-vm",
+ "ac-vm-canonical",
  "chrono",
  "serde_json",
 ]
@@ -529,6 +539,7 @@ dependencies = [
  "ac-runtime",
  "ac-runtime-core",
  "ac-vm",
+ "ac-vm-canonical",
  "fixed_decimal",
  "icu",
  "icu_provider",
@@ -586,6 +597,7 @@ dependencies = [
  "ac-runtime",
  "ac-runtime-core",
  "ac-vm",
+ "ac-vm-canonical",
  "rand",
  "serde_json",
 ]
@@ -600,6 +612,7 @@ dependencies = [
  "ac-runtime",
  "ac-runtime-core",
  "ac-vm",
+ "ac-vm-canonical",
  "serde_json",
 ]
 
@@ -614,6 +627,7 @@ dependencies = [
  "ac-host",
  "ac-runtime",
  "ac-vm",
+ "ac-vm-canonical",
  "serde_json",
 ]
 
@@ -750,6 +764,7 @@ dependencies = [
  "ac-ast-canonical",
  "ac-runtime",
  "ac-vm",
+ "ac-vm-canonical",
 ]
 
 [[package]]
@@ -937,6 +952,7 @@ name = "ac-vm-common"
 version = "0.1.0"
 dependencies = [
  "ac-vm",
+ "serde_json",
 ]
 
 [[package]]

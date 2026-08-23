@@ -8,14 +8,12 @@ use ac_module_resolver_core::{ModuleCache, ResolvedModule};
 /// Thread-safe — suitable for both single-threaded and multi-threaded
 /// pipeline usage (e.g. parallel type checking with rayon).
 pub struct MemoryModuleCache {
-    map: Mutex<HashMap<String, ResolvedModule>>,
-}
+    map: Mutex<HashMap<String, ResolvedModule>>}
 
 impl MemoryModuleCache {
     pub fn new() -> Self {
         MemoryModuleCache {
-            map: Mutex::new(HashMap::new()),
-        }
+            map: Mutex::new(HashMap::new())}
     }
 }
 

@@ -332,8 +332,7 @@ pub struct Token<K: TokenKind> {
     pub kind: K,
 
     /// Where this token appears in the source text.
-    pub span: Span,
-}
+    pub span: Span}
 
 impl<K: TokenKind> Token<K> {
     /// Creates a token at the given span.

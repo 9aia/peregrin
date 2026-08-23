@@ -25,8 +25,7 @@ pub struct PathModule {
     resolve: ResolveFn,
     basename: BasenameFn,
     dirname: DirnameFn,
-    extname: ExtnameFn,
-}
+    extname: ExtnameFn}
 
 impl PathModule {
     pub fn new(path: impl Path + 'static) -> Self {
@@ -36,8 +35,7 @@ impl PathModule {
             resolve: ResolveFn { path: path.clone() },
             basename: BasenameFn { path: path.clone() },
             dirname: DirnameFn { path: path.clone() },
-            extname: ExtnameFn { path },
-        }
+            extname: ExtnameFn { path }}
     }
 }
 
@@ -53,8 +51,7 @@ impl Module for PathModule {
             "basename" => Some(&self.basename),
             "dirname" => Some(&self.dirname),
             "extname" => Some(&self.extname),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -62,15 +59,13 @@ fn collect_string_args(args: &[NonFunctionValue]) -> Result<Vec<&str>, Error> {
     if args.is_empty() {
         return Err(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        });
+            got: 0});
     }
     args.iter()
         .map(|v| {
             v.as_str().ok_or(Error::TypeMismatch {
                 expected: "string",
-                got: "non-string",
-            })
+                got: "non-string"})
         })
         .collect()
 }
@@ -78,20 +73,17 @@ fn collect_string_args(args: &[NonFunctionValue]) -> Result<Vec<&str>, Error> {
 fn require_one_string(args: &[NonFunctionValue]) -> Result<&str, Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0,
-    })?;
+        got: 0})?;
     arg.as_str().ok_or(Error::TypeMismatch {
         expected: "string",
-        got: "non-string",
-    })
+        got: "non-string"})
 }
 
 struct JoinFn {
-    path: Arc<dyn Path>,
-}
+    path: Arc<dyn Path>}
 
 impl Function for JoinFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let parts = collect_string_args(args)?;
         self.path
             .join(&parts)
@@ -101,11 +93,10 @@ impl Function for JoinFn {
 }
 
 struct ResolveFn {
-    path: Arc<dyn Path>,
-}
+    path: Arc<dyn Path>}
 
 impl Function for ResolveFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let parts = collect_string_args(args)?;
         self.path
             .resolve(&parts)
@@ -115,11 +106,10 @@ impl Function for ResolveFn {
 }
 
 struct BasenameFn {
-    path: Arc<dyn Path>,
-}
+    path: Arc<dyn Path>}
 
 impl Function for BasenameFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let path = require_one_string(args)?;
         self.path
             .basename(path)
@@ -129,11 +119,10 @@ impl Function for BasenameFn {
 }
 
 struct DirnameFn {
-    path: Arc<dyn Path>,
-}
+    path: Arc<dyn Path>}
 
 impl Function for DirnameFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let path = require_one_string(args)?;
         self.path
             .dirname(path)
@@ -143,11 +132,10 @@ impl Function for DirnameFn {
 }
 
 struct ExtnameFn {
-    path: Arc<dyn Path>,
-}
+    path: Arc<dyn Path>}
 
 impl Function for ExtnameFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let path = require_one_string(args)?;
         self.path
             .extname(path)

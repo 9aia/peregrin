@@ -1,6 +1,4 @@
-use ac_vm::{
-    AsyncFunction, Function, GenericFunction, Host, LazyFunction, Operation,
-};
+use ac_vm::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, Operation};
 
 /// A host that queries a list of child hosts in order and returns the
 /// first match found.
@@ -57,16 +55,14 @@ impl Host for ChainHost {
 /// predicate. Useful for forbidding specific functions in a sandbox.
 pub struct FilterHost {
     inner: Box<dyn Host>,
-    predicate: Box<dyn Fn(&str) -> bool + 'static>,
-}
+    predicate: Box<dyn Fn(&str) -> bool + 'static>}
 
 impl FilterHost {
     /// Creates a host that forwards only names allowed by `predicate`.
     pub fn new(inner: Box<dyn Host>, predicate: impl Fn(&str) -> bool + 'static) -> Self {
         FilterHost {
             inner,
-            predicate: Box::new(predicate),
-        }
+            predicate: Box::new(predicate)}
     }
 
     /// Creates a host that blocks the given names.
@@ -117,16 +113,14 @@ impl Host for FilterHost {
 /// A host that wraps another host and logs every lookup.
 pub struct SpyHost {
     inner: Box<dyn Host>,
-    lookups: std::cell::RefCell<Vec<String>>,
-}
+    lookups: std::cell::RefCell<Vec<String>>}
 
 impl SpyHost {
     /// Creates a host that records every name it is asked to resolve.
     pub fn new(inner: Box<dyn Host>) -> Self {
         SpyHost {
             inner,
-            lookups: std::cell::RefCell::new(Vec::new()),
-        }
+            lookups: std::cell::RefCell::new(Vec::new())}
     }
 
     /// Returns the recorded lookups.

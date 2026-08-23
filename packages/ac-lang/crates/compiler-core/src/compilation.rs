@@ -31,16 +31,14 @@ pub struct Source {
     /// Format name (`yaml`, `json`, `toml`).
     pub format: String,
     /// File path of the input, if known. Used for relative import resolution.
-    pub path: Option<PathBuf>,
-}
+    pub path: Option<PathBuf>}
 
 impl Source {
     pub fn new(input: impl Into<String>, format: impl Into<String>) -> Self {
         Source {
             input: input.into(),
             format: format.into(),
-            path: None,
-        }
+            path: None}
     }
 
     pub fn with_path(mut self, path: impl Into<PathBuf>) -> Self {
@@ -82,8 +80,7 @@ pub struct Compilation {
     pub diagnostics: DiagnosticSink,
     /// Extensible typed storage — passes can store arbitrary `T: 'static`
     /// without modifying this struct.
-    store: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
-}
+    store: HashMap<TypeId, Box<dyn Any + Send + Sync>>}
 
 impl Compilation {
     pub fn new(source: Source) -> Self {
@@ -96,8 +93,7 @@ impl Compilation {
             output: None,
             source_map: SourceMap::new(),
             diagnostics: DiagnosticSink::new(),
-            store: HashMap::new(),
-        }
+            store: HashMap::new()}
     }
 
     /// Convenience: borrow the parsed value, if present.

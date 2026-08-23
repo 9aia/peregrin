@@ -5,9 +5,7 @@ enum MockKind {
     Value(i32),
     Call {
         name: String,
-        args: Vec<Node<MockKind, i32>>,
-    },
-}
+        args: Vec<Node<MockKind, i32>>}}
 
 #[test]
 fn node_with_no_metadata_is_zero_cost() {
@@ -29,8 +27,7 @@ fn node_can_carry_composed_metadata() {
     let attrs = Attrs("annotation".to_string());
     let meta = Both {
         first: span,
-        second: attrs,
-    };
+        second: attrs};
 
     let node: Node<MockKind, i32, Both<Span, Attrs<String>>> =
         Node::new(MockKind::Value(42)).with_metadata(meta);
@@ -46,16 +43,13 @@ fn node_map_kind_preserves_metadata() {
     let mapped = node.map_kind(|k| match k {
         MockKind::Value(v) => MockKind::Call {
             name: "wrapped".to_string(),
-            args: vec![Node::new(MockKind::Value(v))],
-        },
-        other => other,
-    });
+            args: vec![Node::new(MockKind::Value(v))]},
+        other => other});
 
     assert_eq!(mapped.metadata, Span { start: 1, end: 2 });
     match mapped.kind {
         MockKind::Call { name, .. } => assert_eq!(name, "wrapped"),
-        _ => panic!("expected Call"),
-    }
+        _ => panic!("expected Call")}
 }
 
 #[test]

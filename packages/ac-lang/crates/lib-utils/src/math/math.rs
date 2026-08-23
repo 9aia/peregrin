@@ -66,24 +66,21 @@ impl Module for MathModule {
             "atanh" => Some(&Atanh),
             "factorial" => Some(&Factorial),
             "floor_div" => Some(&FloorDiv),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
 fn require_number(arg: &NonFunctionValue) -> Result<f64, Error> {
     arg.as_number().ok_or(Error::TypeMismatch {
         expected: "number",
-        got: "non-number",
-    })
+        got: "non-number"})
 }
 
 fn require_two_numbers(args: &[NonFunctionValue]) -> Result<(f64, f64), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len(),
-        });
+            got: args.len()});
     }
     let a = require_number(&args[0])?;
     let b = require_number(&args[1])?;
@@ -106,12 +103,11 @@ macro_rules! unary_fn {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut Context,
+                _ctx: &mut dyn Context,
             ) -> Result<NonFunctionValue, Error> {
                 let arg = args.first().ok_or(Error::ArgumentCount {
                     expected: 1,
-                    got: 0,
-                })?;
+                    got: 0})?;
                 let x = require_number(arg)?;
                 Ok(num($body(x)))
             }
@@ -127,12 +123,11 @@ macro_rules! bool_unary_fn {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut Context,
+                _ctx: &mut dyn Context,
             ) -> Result<NonFunctionValue, Error> {
                 let arg = args.first().ok_or(Error::ArgumentCount {
                     expected: 1,
-                    got: 0,
-                })?;
+                    got: 0})?;
                 let x = require_number(arg)?;
                 Ok(b($body(x)))
             }
@@ -179,21 +174,19 @@ impl Function for RoundTo {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let value = require_number(&args[0])?;
         let decimals = require_number(&args[1])?;
         if decimals < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         let multiplier = 10f64.powi(decimals as i32);
         Ok(num((value * multiplier).round() / multiplier))
@@ -206,7 +199,7 @@ impl Function for Min {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         Ok(num(a.min(b)))
@@ -219,7 +212,7 @@ impl Function for Max {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         Ok(num(a.max(b)))
@@ -232,7 +225,7 @@ impl Function for Pow {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (base, exp) = require_two_numbers(args)?;
         Ok(num(base.powf(exp)))
@@ -245,13 +238,12 @@ impl Function for Clamp {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let value = require_number(&args[0])?;
         let min = require_number(&args[1])?;
@@ -266,7 +258,7 @@ impl Function for Atan2 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (y, x) = require_two_numbers(args)?;
         Ok(num(y.atan2(x)))
@@ -279,7 +271,7 @@ impl Function for Hypot {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         Ok(num(a.hypot(b)))
@@ -292,7 +284,7 @@ impl Function for Mod {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         Ok(num(a.rem_euclid(b)))
@@ -305,7 +297,7 @@ impl Function for Pi {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         Ok(num(std::f64::consts::PI))
     }
@@ -317,7 +309,7 @@ impl Function for E {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         Ok(num(std::f64::consts::E))
     }
@@ -329,7 +321,7 @@ impl Function for Nan {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         Ok(num(f64::NAN))
     }
@@ -341,7 +333,7 @@ impl Function for Infinity {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         Ok(num(f64::INFINITY))
     }
@@ -353,7 +345,7 @@ impl Function for Tau {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         Ok(num(std::f64::consts::TAU))
     }
@@ -365,13 +357,12 @@ impl Function for Lerp {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let start = require_number(&args[0])?;
         let end = require_number(&args[1])?;
@@ -386,13 +377,12 @@ impl Function for MapRange {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 5 {
             return Err(Error::ArgumentCount {
                 expected: 5,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let value = require_number(&args[0])?;
         let in_min = require_number(&args[1])?;
@@ -415,14 +405,13 @@ impl Function for Gcd {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         if a < 0.0 || b < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         Ok(num(gcd_u64(a as u64, b as u64) as f64))
     }
@@ -434,14 +423,13 @@ impl Function for Lcm {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         if a < 0.0 || b < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         let a_u = a as u64;
         let b_u = b as u64;
@@ -458,24 +446,21 @@ impl Function for Factorial {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?;
+            got: 0})?;
         let x = require_number(arg)?;
         if x < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         if x.fract() != 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "integer",
-                got: "non-integer",
-            });
+                got: "non-integer"});
         }
         let n = x as u64;
         let mut result: f64 = 1.0;
@@ -492,14 +477,13 @@ impl Function for FloorDiv {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_numbers(args)?;
         if b == 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-zero divisor",
-                got: "zero",
-            });
+                got: "zero"});
         }
         Ok(num((a / b).floor()))
     }

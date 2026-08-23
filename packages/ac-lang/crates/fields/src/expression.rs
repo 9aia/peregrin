@@ -1,6 +1,6 @@
 use ac_dialect::Dialect;
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Eval, Error, Host, Vm};
+use ac_vm_canonical::{CanonicalContext, Context, Eval, Error, Host, Vm};
 use serde_json::Value as JsonValue;
 
 use crate::parser::parse_expr_to_tree;
@@ -26,7 +26,7 @@ pub fn eval_expression<H: Host + Clone + 'static>(
     }
 
     let tree = parse_expr_to_tree(expr, dialect, namespaces)?;
-    let mut ctx = Context::from_namespaces(namespaces);
+    let mut ctx = CanonicalContext::from_namespaces(namespaces);
     let eval = VmEval::new(host.clone(), namespaces.clone(), dialect);
     ctx.set_eval(Box::new(eval.clone()));
     let vm = Vm::new(host.clone());
@@ -65,16 +65,14 @@ pub fn eval_body<H: Host + Clone + 'static>(
 struct VmEval<H: Host + Clone + 'static> {
     host: H,
     namespaces: Namespaces,
-    dialect: &'static dyn Dialect,
-}
+    dialect: &'static dyn Dialect}
 
 impl<H: Host + Clone + 'static> VmEval<H> {
     fn new(host: H, namespaces: Namespaces, dialect: &'static dyn Dialect) -> Self {
         VmEval {
             host,
             namespaces,
-            dialect,
-        }
+            dialect}
     }
 }
 
@@ -95,7 +93,7 @@ impl<H: Host + Clone + 'static> Eval for VmEval<H> {
             }
         }
 
-        let mut ctx = Context::from_namespaces(&self.namespaces);
+        let mut ctx = CanonicalContext::from_namespaces(&self.namespaces);
         ctx.define(DEFAULT_NAMESPACE, NonFunctionValue::new(doc));
         for (name, value) in vars {
             ctx.define(name.clone(), value.clone());

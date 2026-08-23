@@ -22,8 +22,7 @@ fn parse_type_param(v: &JsonValue) -> Option<TypeParam> {
                     let btype = b.get("type")?.as_str()?;
                     match btype {
         "trait" => b.get("name")?.as_str().map(|n| Type::Trait(n.to_string())),
-        _ => None,
-                    }
+        _ => None}
                 })
                 .collect::<Vec<_>>()
         })
@@ -36,8 +35,7 @@ fn parse_type_param(v: &JsonValue) -> Option<TypeParam> {
             "contravariant" | "in" => Some(Variance::Contravariant),
             "invariant" => Some(Variance::Invariant),
             "bivariant" => Some(Variance::Bivariant),
-            _ => None,
-        })
+            _ => None})
         .unwrap_or(Variance::Invariant);
     let tp = if bounds.is_empty() {
         TypeParam::new(name)

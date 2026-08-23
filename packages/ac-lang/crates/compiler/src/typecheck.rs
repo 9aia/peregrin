@@ -10,8 +10,7 @@ use crate::{PassError, Source};
 
 /// Report from a typecheck run.
 pub struct TypecheckReport {
-    pub errors: Vec<TypeError>,
-}
+    pub errors: Vec<TypeError>}
 
 impl TypecheckReport {
     pub fn is_valid(&self) -> bool {
@@ -29,6 +28,5 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Typech
     let compilation = pipeline.run(source)?;
 
     Ok(TypecheckReport {
-        errors: compilation.type_errors,
-    })
+        errors: compilation.type_errors})
 }

@@ -27,30 +27,23 @@ pub struct KeyValueStoreModule {
     remove: RemoveFn,
     clear: ClearFn,
     has: HasFn,
-    size: SizeFn,
-}
+    size: SizeFn}
 
 impl KeyValueStoreModule {
     pub fn new(store: impl KeyValueStore + 'static) -> Self {
         let store = Arc::new(store);
         KeyValueStoreModule {
             get: GetFn {
-                store: store.clone(),
-            },
+                store: store.clone()},
             set: SetFn {
-                store: store.clone(),
-            },
+                store: store.clone()},
             remove: RemoveFn {
-                store: store.clone(),
-            },
+                store: store.clone()},
             clear: ClearFn {
-                store: store.clone(),
-            },
+                store: store.clone()},
             has: HasFn {
-                store: store.clone(),
-            },
-            size: SizeFn { store },
-        }
+                store: store.clone()},
+            size: SizeFn { store }}
     }
 }
 
@@ -67,61 +60,52 @@ impl Module for KeyValueStoreModule {
             "clear" => Some(&self.clear),
             "has" => Some(&self.has),
             "size" => Some(&self.size),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
 fn require_one_string(args: &[NonFunctionValue]) -> Result<&str, Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0,
-    })?;
+        got: 0})?;
     arg.as_str().ok_or(Error::TypeMismatch {
         expected: "string",
-        got: "non-string",
-    })
+        got: "non-string"})
 }
 
 fn require_two_strings(args: &[NonFunctionValue]) -> Result<(&str, &str), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len(),
-        });
+            got: args.len()});
     }
     let key = args[0].as_str().ok_or(Error::TypeMismatch {
         expected: "string",
-        got: "non-string",
-    })?;
+        got: "non-string"})?;
     let value = args[1].as_str().ok_or(Error::TypeMismatch {
         expected: "string",
-        got: "non-string",
-    })?;
+        got: "non-string"})?;
     Ok((key, value))
 }
 
 struct GetFn {
-    store: Arc<dyn KeyValueStore>,
-}
+    store: Arc<dyn KeyValueStore>}
 
 impl Function for GetFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         let value = self.store.get(key)?;
         Ok(match value {
             Some(v) => NonFunctionValue::new(v),
-            None => NonFunctionValue::default(),
-        })
+            None => NonFunctionValue::default()})
     }
 }
 
 struct SetFn {
-    store: Arc<dyn KeyValueStore>,
-}
+    store: Arc<dyn KeyValueStore>}
 
 impl Function for SetFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let (key, value) = require_two_strings(args)?;
         self.store.set(key, value)?;
         Ok(NonFunctionValue::default())
@@ -129,11 +113,10 @@ impl Function for SetFn {
 }
 
 struct RemoveFn {
-    store: Arc<dyn KeyValueStore>,
-}
+    store: Arc<dyn KeyValueStore>}
 
 impl Function for RemoveFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         self.store.remove(key)?;
         Ok(NonFunctionValue::default())
@@ -141,22 +124,20 @@ impl Function for RemoveFn {
 }
 
 struct ClearFn {
-    store: Arc<dyn KeyValueStore>,
-}
+    store: Arc<dyn KeyValueStore>}
 
 impl Function for ClearFn {
-    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         self.store.clear()?;
         Ok(NonFunctionValue::default())
     }
 }
 
 struct HasFn {
-    store: Arc<dyn KeyValueStore>,
-}
+    store: Arc<dyn KeyValueStore>}
 
 impl Function for HasFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         self.store
             .has(key)
@@ -166,11 +147,10 @@ impl Function for HasFn {
 }
 
 struct SizeFn {
-    store: Arc<dyn KeyValueStore>,
-}
+    store: Arc<dyn KeyValueStore>}
 
 impl Function for SizeFn {
-    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         self.store
             .size()
             .map(|n| NonFunctionValue::new(serde_json::json!(n)))

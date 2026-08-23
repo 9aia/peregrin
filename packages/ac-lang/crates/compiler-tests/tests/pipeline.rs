@@ -91,8 +91,7 @@ fn typegen_pipeline_invalid_format_returns_error() {
     let result = pipeline.run(source);
     match &result {
         Err(e) => assert!(e.to_string().contains("unknown format")),
-        Ok(_) => panic!("expected error"),
-    }
+        Ok(_) => panic!("expected error")}
 }
 
 #[test]
@@ -102,8 +101,7 @@ fn typegen_pipeline_no_fields_returns_error() {
     let result = pipeline.run(source);
     match &result {
         Err(e) => assert!(e.to_string().contains("no `$:` section")),
-        Ok(_) => panic!("expected error"),
-    }
+        Ok(_) => panic!("expected error")}
 }
 
 // --- Typecheck pipeline preset ---

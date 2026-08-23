@@ -1,12 +1,12 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime_core::Module;
-use ac_vm::{Context, Error};
+use ac_vm::{CanonicalContext, Context, Error};
 
 use super::math::MathModule;
 
 fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
@@ -16,7 +16,7 @@ fn call_err(
     args: &[NonFunctionValue],
 ) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 
@@ -290,7 +290,7 @@ fn round_to_three_decimals() {
 #[test]
 fn round_to_negative_errors() {
     let func = MathModule.function("round_to").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[n(1.5), n(-1.0)], &mut ctx);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
@@ -303,28 +303,26 @@ fn unknown_function_returns_none() {
 #[test]
 fn type_mismatch_on_non_number() {
     let func = MathModule.function("abs").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[NonFunctionValue::new("not a number")], &mut ctx);
     assert_eq!(
         result,
         Err(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })
+            got: "non-number"})
     );
 }
 
 #[test]
 fn argument_count_on_missing_args() {
     let func = MathModule.function("abs").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[], &mut ctx);
     assert_eq!(
         result,
         Err(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })
+            got: 0})
     );
 }
 

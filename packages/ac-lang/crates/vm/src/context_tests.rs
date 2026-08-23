@@ -1,3 +1,4 @@
+use crate::CanonicalContext;
 use super::*;
 use ac_runtime::NonFunctionValue;
 use std::future::Future;
@@ -5,7 +6,7 @@ use std::pin::Pin;
 
 #[test]
 fn context_define_and_get() {
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.define("x", NonFunctionValue::new(42));
     let val = ctx.get("x").unwrap();
     assert_eq!(val.as_number(), Some(42.0));
@@ -13,13 +14,13 @@ fn context_define_and_get() {
 
 #[test]
 fn context_unknown_variable() {
-    let ctx = Context::new();
+    let ctx = CanonicalContext::new();
     assert!(ctx.get("nonexistent").is_err());
 }
 
 #[test]
 fn context_scope_push_pop() {
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.define("x", NonFunctionValue::new(1));
     ctx.push_scope();
     ctx.define("x", NonFunctionValue::new(2));
@@ -30,13 +31,13 @@ fn context_scope_push_pop() {
 
 #[test]
 fn context_cannot_pop_global() {
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     assert!(ctx.pop_scope().is_none());
 }
 
 #[test]
 fn context_depth() {
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     assert_eq!(ctx.depth(), 1);
     ctx.push_scope();
     assert_eq!(ctx.depth(), 2);
@@ -46,19 +47,19 @@ fn context_depth() {
 
 #[test]
 fn context_default() {
-    let ctx = Context::default();
+    let ctx = CanonicalContext::default();
     assert_eq!(ctx.depth(), 1);
 }
 
 #[test]
 fn context_has_eval_false_by_default() {
-    let ctx = Context::new();
+    let ctx = CanonicalContext::new();
     assert!(!ctx.has_eval());
 }
 
 #[test]
 fn context_eval_expr_errors_without_callback() {
-    let ctx = Context::new();
+    let ctx = CanonicalContext::new();
     let result = ctx.eval_expr("x", &[]);
     assert!(result.is_err());
 }
@@ -80,7 +81,7 @@ fn context_eval_expr_with_callback() {
         }
     }
 
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.set_eval(Box::new(DoubleEval));
     assert!(ctx.has_eval());
     let result = ctx.eval_expr("x", &[(String::from("x"), NonFunctionValue::new(21))]);
@@ -89,13 +90,13 @@ fn context_eval_expr_with_callback() {
 
 #[test]
 fn context_has_async_eval_false_by_default() {
-    let ctx = Context::new();
+    let ctx = CanonicalContext::new();
     assert!(!ctx.has_async_eval());
 }
 
 #[test]
 fn context_eval_expr_async_errors_without_callback() {
-    let ctx = Context::new();
+    let ctx = CanonicalContext::new();
     let fut = ctx.eval_expr_async("x", &[]);
     let waker = noop_waker();
     let mut cx = std::task::Context::from_waker(&waker);
@@ -126,7 +127,7 @@ fn context_eval_expr_async_with_callback() {
         }
     }
 
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.set_async_eval(Box::new(DoubleAsyncEval));
     assert!(ctx.has_async_eval());
 
@@ -146,7 +147,7 @@ fn context_eval_expr_async_with_callback() {
 
 #[test]
 fn context_collect_vars() {
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.define("x", NonFunctionValue::new(1));
     ctx.define("y", NonFunctionValue::new(2));
     ctx.push_scope();

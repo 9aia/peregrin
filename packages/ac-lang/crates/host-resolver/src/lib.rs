@@ -23,7 +23,7 @@
 //! use ac_host::DefaultHost;
 //! use ac_host_resolver::ResolverHost;
 //! use ac_module_resolver_virtual::VirtualResolver;
-//! use ac_vm::{Vm, Context};
+//! use ac_vm_canonical::{CanonicalContext, Vm, Context};
 //! use ac_ast_canonical::Expr;
 //!
 //! let mut resolver = VirtualResolver::new();
@@ -37,7 +37,7 @@
 //!     Box::new(resolver),
 //! );
 //! let vm = Vm::new(host);
-//! let mut ctx = Context::new();
+//! let mut ctx = CanonicalContext::new();
 //!
 //! let expr = Expr::call("import", vec![Expr::value("config.yml")]);
 //! let result = vm.eval(&expr, &mut ctx).unwrap();

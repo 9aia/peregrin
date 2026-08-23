@@ -16,8 +16,7 @@ pub enum PassCategory {
     /// Produces final output (e.g., code generation).
     Generate,
     /// User-defined category.
-    Custom,
-}
+    Custom}
 
 /// Metadata describing a pass's inputs, outputs, and category.
 #[derive(Clone, Debug, Default)]
@@ -29,8 +28,7 @@ pub struct PassMetadata {
     /// IR stage names this pass writes (e.g., `["extracted"]`).
     pub produces: &'static [&'static str],
     /// What kind of pass this is.
-    pub category: PassCategory,
-}
+    pub category: PassCategory}
 
 impl PassMetadata {
     pub fn new(name: &'static str) -> Self {

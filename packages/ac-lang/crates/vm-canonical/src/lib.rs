@@ -6,11 +6,7 @@
 //! tree and host-function dispatch. The core contracts are defined in
 //! `ac-vm` and re-exported here for convenience.
 
-pub use ac_vm::{
-    AsyncEval, AsyncFunction, Context, Error, Eval, Expr, Function, GenericFunction,
-    HandlerClause, Host, HostRef, LazyFunction, NonFunctionValue, Operation, OperationSig,
-    RuntimeContext, VirtualMachine,
-};
+pub use ac_vm::{AsyncEval, AsyncFunction, CanonicalContext, Context, Error, Eval, Expr, Function, GenericFunction, HandlerClause, Host, HostRef, LazyFunction, NonFunctionValue, Operation, OperationSig, VirtualMachine};
 
 mod continuation;
 mod vm;

@@ -32,7 +32,6 @@ impl Stage<Config> for ExtractStage {
         Ok(ExtractedDoc {
             extracted,
             source_map: parsed.source_map,
-            base_path: parsed.base_path,
-        })
+            base_path: parsed.base_path})
     }
 }

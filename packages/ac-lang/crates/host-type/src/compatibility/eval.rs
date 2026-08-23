@@ -44,6 +44,5 @@ pub fn eval_is_compatible_ac_lang(actual: &JsonValue, expected: &JsonValue) -> R
 
     result.as_bool().ok_or(Error::TypeMismatch {
         expected: "boolean",
-        got: "non-boolean",
-    })
+        got: "non-boolean"})
 }

@@ -12,8 +12,7 @@ pub enum IntlError {
     InvalidUnit { unit: String },
     InvalidType { type_name: String, valid: String },
     Formatting { message: String },
-    DataProvider { message: String },
-}
+    DataProvider { message: String }}
 
 impl fmt::Display for IntlError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -26,8 +25,7 @@ impl fmt::Display for IntlError {
             Self::InvalidUnit { unit } => write!(f, "invalid unit: {unit}"),
             Self::InvalidType { type_name, valid } => write!(f, "invalid type: {type_name} (expected: {valid})"),
             Self::Formatting { message } => write!(f, "formatting error: {message}"),
-            Self::DataProvider { message } => write!(f, "data provider error: {message}"),
-        }
+            Self::DataProvider { message } => write!(f, "data provider error: {message}")}
     }
 }
 

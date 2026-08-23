@@ -10,10 +10,8 @@ use icu::experimental::duration::{
         DurationFormatterOptions, BaseStyle, FieldDisplay, FractionalDigits,
         YearStyle, MonthStyle, WeekStyle, DayStyle,
         HourStyle, MinuteStyle, SecondStyle,
-        MilliSecondStyle, MicroSecondStyle, NanoSecondStyle,
-    },
-    ValidatedDurationFormatterOptions,
-};
+        MilliSecondStyle, MicroSecondStyle, NanoSecondStyle},
+    ValidatedDurationFormatterOptions};
 use writeable::Writeable;
 
 use super::common::{make_provider, opt_bool, opt_int, opt_str, optional_locale, optional_object, require_object, s};
@@ -47,8 +45,7 @@ thread_local! {
 /// - `intl.format_duration({hours: 2}, "en", {hoursStyle: "long"})` → `"2 hours"`
 #[derive(Clone)]
 pub struct FormatDuration {
-    provider: Option<IntlProvider>,
-}
+    provider: Option<IntlProvider>}
 
 impl FormatDuration {
     pub fn new() -> Self {
@@ -67,7 +64,7 @@ impl Default for FormatDuration {
 }
 
 impl Function for FormatDuration {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let obj = require_object(args, 0)?;
         let locale = optional_locale(args, 1)?;
         let opts = optional_object(args, 2)?;
@@ -89,8 +86,7 @@ impl Function for FormatDuration {
             "short" => BaseStyle::Short,
             "narrow" => BaseStyle::Narrow,
             "digital" => BaseStyle::Digital,
-            _ => BaseStyle::Long,
-        };
+            _ => BaseStyle::Long};
 
         let mut options = DurationFormatterOptions::default();
         options.base = base;
@@ -101,8 +97,7 @@ impl Function for FormatDuration {
 
         if dp.as_buffer_provider().is_some() {
             return Err(IntlError::Formatting {
-                message: "format_duration does not support blob data provider yet (ICU4X experimental limitation)".to_string(),
-            }.into_vm_error());
+                message: "format_duration does not support blob data provider yet (ICU4X experimental limitation)".to_string()}.into_vm_error());
         }
 
         let key = (locale.to_string(), format!("{:?}", options));
@@ -146,16 +141,14 @@ fn build_duration(obj: &serde_json::Map<String, serde_json::Value>) -> Duration 
         seconds: get("seconds"),
         milliseconds: get("milliseconds"),
         microseconds: get("microseconds"),
-        nanoseconds: get("nanoseconds"),
-    }
+        nanoseconds: get("nanoseconds")}
 }
 
 fn parse_field_display(opts: Option<&serde_json::Map<String, serde_json::Value>>, key: &str) -> Option<FieldDisplay> {
     match opt_str(opts, key) {
         Some("always") => Some(FieldDisplay::Always),
         Some("auto") => Some(FieldDisplay::Auto),
-        _ => None,
-    }
+        _ => None}
 }
 
 fn apply_per_unit_options(options: &mut DurationFormatterOptions, opts: Option<&serde_json::Map<String, serde_json::Value>>) {

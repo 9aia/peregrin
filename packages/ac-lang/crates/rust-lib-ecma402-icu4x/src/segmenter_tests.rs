@@ -9,8 +9,7 @@ fn grapheme() {
         Options {
             granularity: Granularity::Grapheme,
             line_break_style: LineBreakStyle::Strict,
-            line_break_word: LineBreakWord::Normal,
-        },
+            line_break_word: LineBreakWord::Normal},
     )
     .unwrap();
     let segments = segmenter.segment("abc").unwrap();
@@ -33,8 +32,7 @@ fn word() {
         Options {
             granularity: Granularity::Word,
             line_break_style: LineBreakStyle::Strict,
-            line_break_word: LineBreakWord::Normal,
-        },
+            line_break_word: LineBreakWord::Normal},
     )
     .unwrap();
     let segments = segmenter.segment("Hello, world!").unwrap();
@@ -53,8 +51,7 @@ fn sentence() {
         Options {
             granularity: Granularity::Sentence,
             line_break_style: LineBreakStyle::Strict,
-            line_break_word: LineBreakWord::Normal,
-        },
+            line_break_word: LineBreakWord::Normal},
     )
     .unwrap();
     let segments = segmenter.segment("One. Two!").unwrap();
@@ -71,8 +68,7 @@ fn line_strict() {
         Options {
             granularity: Granularity::Line,
             line_break_style: LineBreakStyle::Strict,
-            line_break_word: LineBreakWord::Normal,
-        },
+            line_break_word: LineBreakWord::Normal},
     )
     .unwrap();
     let segments = segmenter.segment("Hello world").unwrap();
@@ -89,8 +85,7 @@ fn line_normal() {
         Options {
             granularity: Granularity::Line,
             line_break_style: LineBreakStyle::Normal,
-            line_break_word: LineBreakWord::Normal,
-        },
+            line_break_word: LineBreakWord::Normal},
     )
     .unwrap();
     let segments = segmenter.segment("Hello world").unwrap();
@@ -107,8 +102,7 @@ fn line_loose() {
         Options {
             granularity: Granularity::Line,
             line_break_style: LineBreakStyle::Loose,
-            line_break_word: LineBreakWord::Normal,
-        },
+            line_break_word: LineBreakWord::Normal},
     )
     .unwrap();
     let segments = segmenter.segment("Hello world").unwrap();
@@ -132,8 +126,7 @@ fn empty_string() {
             Options {
                 granularity,
                 line_break_style,
-                line_break_word: LineBreakWord::Normal,
-            },
+                line_break_word: LineBreakWord::Normal},
         )
         .unwrap();
         let segments = segmenter.segment("").unwrap();
@@ -152,8 +145,7 @@ fn line_break_word_break_all() {
         Options {
             granularity: Granularity::Line,
             line_break_style: LineBreakStyle::Normal,
-            line_break_word: LineBreakWord::BreakAll,
-        },
+            line_break_word: LineBreakWord::BreakAll},
     )
     .unwrap();
     let segments = segmenter.segment("HelloWorld").unwrap();
@@ -170,8 +162,7 @@ fn line_break_word_keep_all() {
         Options {
             granularity: Granularity::Line,
             line_break_style: LineBreakStyle::Normal,
-            line_break_word: LineBreakWord::KeepAll,
-        },
+            line_break_word: LineBreakWord::KeepAll},
     )
     .unwrap();
     let segments = segmenter.segment("Hello world").unwrap();
@@ -188,8 +179,7 @@ fn line_anywhere() {
         Options {
             granularity: Granularity::Line,
             line_break_style: LineBreakStyle::Anywhere,
-            line_break_word: LineBreakWord::Normal,
-        },
+            line_break_word: LineBreakWord::Normal},
     )
     .unwrap();
     let segments = segmenter.segment("Hello world").unwrap();

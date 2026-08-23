@@ -9,15 +9,13 @@ pub use ac_host::DefaultHost;
 #[derive(Clone)]
 pub struct MathHost {
     default: DefaultHost,
-    double: Double,
-}
+    double: Double}
 
 impl MathHost {
     pub fn new() -> Self {
         MathHost {
             default: DefaultHost::default(),
-            double: Double,
-        }
+            double: Double}
     }
 }
 
@@ -42,7 +40,7 @@ impl Function for Double {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let x = args
             .first()

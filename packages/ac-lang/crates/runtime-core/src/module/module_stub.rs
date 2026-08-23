@@ -17,8 +17,7 @@ impl Module for StubModule {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "echo" => Some(&Echo),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -27,7 +26,7 @@ impl Module for StubModule {
 struct Echo;
 
 impl Function for Echo {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         Ok(args.first().cloned().unwrap_or_default())
     }
 }

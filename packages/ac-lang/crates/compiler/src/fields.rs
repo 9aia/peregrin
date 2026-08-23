@@ -22,8 +22,7 @@ pub struct FieldsReport {
     /// Validation error messages.
     pub errors: Vec<String>,
     /// Undeclared field names found in the data.
-    pub undeclared: Vec<String>,
-}
+    pub undeclared: Vec<String>}
 
 impl FieldsReport {
     pub fn error_count(&self) -> usize {
@@ -127,8 +126,7 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
         let field_rv = NonFunctionValue::new(field_value.clone());
         match schema.validate(&field_rv) {
             Ok(()) => ok.push(name.clone()),
-            Err(e) => errors.push(format!("{name}: INVALID — {e}")),
-        }
+            Err(e) => errors.push(format!("{name}: INVALID — {e}"))}
     }
 
     let declared: Vec<&str> = schemas.iter().map(|(n, _)| n.as_str()).collect();
@@ -145,6 +143,5 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Fields
         field_types,
         ok,
         errors,
-        undeclared,
-    })
+        undeclared})
 }

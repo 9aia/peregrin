@@ -4,15 +4,13 @@ use ac_vm::Error;
 pub(super) fn require_string(arg: &NonFunctionValue) -> Result<&str, Error> {
     arg.as_str().ok_or(Error::TypeMismatch {
         expected: "string",
-        got: "non-string",
-    })
+        got: "non-string"})
 }
 
 pub(super) fn require_one_string(args: &[NonFunctionValue]) -> Result<&str, Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0,
-    })?;
+        got: 0})?;
     require_string(arg)
 }
 
@@ -20,8 +18,7 @@ pub(super) fn require_two_strings(args: &[NonFunctionValue]) -> Result<(&str, &s
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len(),
-        });
+            got: args.len()});
     }
     let a = require_string(&args[0])?;
     let b = require_string(&args[1])?;
@@ -48,7 +45,7 @@ macro_rules! string_unary_fn {
             fn call(
                 &self,
                 args: &[ac_runtime::NonFunctionValue],
-                _ctx: &mut ac_vm::Context,
+                _ctx: &mut dyn ac_vm::Context,
             ) -> Result<ac_runtime::NonFunctionValue, ac_vm::Error> {
                 let input = $crate::r#str::common::require_one_string(args)?;
                 Ok($crate::r#str::common::s($body(input)))
@@ -66,7 +63,7 @@ macro_rules! string_predicate_fn {
             fn call(
                 &self,
                 args: &[ac_runtime::NonFunctionValue],
-                _ctx: &mut ac_vm::Context,
+                _ctx: &mut dyn ac_vm::Context,
             ) -> Result<ac_runtime::NonFunctionValue, ac_vm::Error> {
                 let (input, pattern) = $crate::r#str::common::require_two_strings(args)?;
                 Ok($crate::r#str::common::b($body(input, pattern)))

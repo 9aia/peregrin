@@ -12,7 +12,7 @@ macro_rules! bound_fn {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut Context,
+                _ctx: &mut dyn Context,
             ) -> Result<NonFunctionValue, Error> {
                 let input = require_one_string(args)?;
                 let dt = parse_iso(input)?;

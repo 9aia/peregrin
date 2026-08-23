@@ -15,5 +15,4 @@ pub struct ResolvedModule {
     /// The document's data values (for data-driven import resolution).
     pub data: JsonValue,
     /// Base path for resolving nested imports from this module.
-    pub base_path: Option<PathBuf>,
-}
+    pub base_path: Option<PathBuf>}

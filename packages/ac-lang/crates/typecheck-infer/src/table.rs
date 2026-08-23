@@ -468,15 +468,13 @@ impl HostFunctionSigs {
 /// Built from raw function signatures using a [`SchemaInterpreter`]
 /// to convert raw schema values into [`Type`]s.
 pub struct FunctionTable {
-    functions: BTreeMap<String, FunctionType>,
-}
+    functions: BTreeMap<String, FunctionType>}
 
 impl FunctionTable {
     /// Create an empty table.
     pub fn new() -> Self {
         FunctionTable {
-            functions: BTreeMap::new(),
-        }
+            functions: BTreeMap::new()}
     }
 
     /// Build a table from raw function signatures.
@@ -495,16 +493,14 @@ impl FunctionTable {
 
             let return_type = match return_schema {
                 Some(schema) => Box::new(interpreter.interpret(schema)),
-                None => Box::new(Type::Unknown),
-            };
+                None => Box::new(Type::Unknown)};
 
             table.functions.insert(
                 name.clone(),
                 FunctionType {
                     type_params: type_params.clone(),
                     params: param_types,
-                    return_type,
-                },
+                    return_type},
             );
         }
         table

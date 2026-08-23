@@ -13,8 +13,7 @@ pub enum PlatformError {
     AlreadyExists { path: String },
     Network { message: String },
     InvalidArgument { message: String },
-    Io { message: String },
-}
+    Io { message: String }}
 
 impl fmt::Display for PlatformError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -24,8 +23,7 @@ impl fmt::Display for PlatformError {
             Self::AlreadyExists { path } => write!(f, "already exists: {path}"),
             Self::Network { message } => write!(f, "network error: {message}"),
             Self::InvalidArgument { message } => write!(f, "invalid argument: {message}"),
-            Self::Io { message } => write!(f, "io error: {message}"),
-        }
+            Self::Io { message } => write!(f, "io error: {message}")}
     }
 }
 

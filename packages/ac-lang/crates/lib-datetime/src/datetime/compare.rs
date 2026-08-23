@@ -9,7 +9,7 @@ impl Function for Compare {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a_str, b_str) = require_two_strings(args)?;
         let dt_a = parse_iso(a_str)?;
@@ -18,8 +18,7 @@ impl Function for Compare {
         let val = match result {
             std::cmp::Ordering::Less => -1.0,
             std::cmp::Ordering::Equal => 0.0,
-            std::cmp::Ordering::Greater => 1.0,
-        };
+            std::cmp::Ordering::Greater => 1.0};
         Ok(n(val))
     }
 }
@@ -30,7 +29,7 @@ impl Function for IsBefore {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a_str, b_str) = require_two_strings(args)?;
         let dt_a = parse_iso(a_str)?;
@@ -45,7 +44,7 @@ impl Function for IsAfter {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a_str, b_str) = require_two_strings(args)?;
         let dt_a = parse_iso(a_str)?;
@@ -60,7 +59,7 @@ impl Function for IsEqual {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a_str, b_str) = require_two_strings(args)?;
         let dt_a = parse_iso(a_str)?;
@@ -75,7 +74,7 @@ impl Function for IsBetween {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (target, start, end) = require_three_strings(args)?;
         let dt_target = parse_iso(target)?;
@@ -91,7 +90,7 @@ impl Function for IsBetweenInclusive {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (target, start, end) = require_three_strings(args)?;
         let dt_target = parse_iso(target)?;

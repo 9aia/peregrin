@@ -13,13 +13,11 @@ mod validate;
 pub use arithmetic::{AddDays, AddHours, AddMinutes, AddMonths, AddSeconds, AddWeeks, AddYears};
 pub use bounds::{
     EndOfDay, EndOfHour, EndOfMonth, EndOfYear, StartOfDay, StartOfHour, StartOfMonth,
-    StartOfYear,
-};
+    StartOfYear};
 pub use compare::{Compare, IsAfter, IsBefore, IsBetween, IsBetweenInclusive, IsEqual};
 pub use components::{
     Day, DayOfYear, Hour, IsLeapYear, IsWeekend, Minute, Month, Quarter, Second, WeekOfYear,
-    Weekday, Year,
-};
+    Weekday, Year};
 pub use construct::FromComponents;
 pub use convert::{FromUnix, ToUnix};
 pub use duration::{DurationBetween, DurationDays, DurationHours, DurationMinutes, DurationSeconds};
@@ -103,8 +101,7 @@ impl Module for DateTimeModule {
             "from_components" => Some(&FromComponents),
             // validate
             "is_valid" => Some(&IsValid),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
