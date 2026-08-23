@@ -1,6 +1,6 @@
 //! # ac-host-cache
 //!
-//! Caching host for cross-machine resumability.
+//! Caching host decorator for cross-machine resumability.
 //!
 //! When a VM evaluation yields (via `Error::Yield`), the caller
 //! captures a [`Continuation`][ac_vm::Continuation] and the yielded
@@ -13,21 +13,31 @@
 //! - [`CallCache`] — a serializable cache mapping `(function, args)`
 //!   keys to result values. Can be serialized to JSON and sent
 //!   across machines.
-//! - [`CacheHost`] — a [`Host`][ac_vm::Host] implementation that
-//!   checks the cache before dispatching to registered functions.
-//!   Uncached calls fall through to the function; cached calls
-//!   return instantly.
+//! - [`CacheHost`] — a decorator [`Host`][ac_vm::Host] that wraps an
+//!   inner host and caches results for registered functions.
+//!   Unregistered function lookups delegate to the inner host.
+//!
+//! ## Example: composition with `DefaultHost`
+//!
+//! ```ignore
+//! use ac_host::DefaultHost;
+//! use ac_host_cache::{CacheHost, CallCache};
+//!
+//! let mut host = CacheHost::new(DefaultHost::default());
+//! host.register("fetch", Box::new(FetchFunction)); // cached
+//! // add, mul, etc. delegate to DefaultHost (uncached)
+//! ```
 //!
 //! ## Example: server → client migration
 //!
 //! ```ignore
+//! use ac_host::DefaultHost;
 //! use ac_host_cache::{CacheHost, CallCache};
 //! use ac_vm::{Vm, Context, EvalResult, Continuation};
 //! use ac_runtime::NonFunctionValue;
 //!
-//! // Server: register functions, evaluate, hit a yield
-//! let mut host = CacheHost::new();
-//! host.register("add", Box::new(AddFunction));
+//! // Server: wrap DefaultHost, register fetch for caching, evaluate
+//! let mut host = CacheHost::new(DefaultHost::default());
 //! host.register("fetch", Box::new(FetchFunction)); // yields
 //! let vm = Vm::new(host);
 //! let result = vm.eval_resumable(&expr, &mut ctx, None);
@@ -42,8 +52,7 @@
 //!
 //! // Client: restore cache, resume
 //! let cache = CallCache::from_json(&received_cache_json);
-//! let mut host = CacheHost::with_cache(cache);
-//! host.register("add", Box::new(AddFunction));
+//! let mut host = CacheHost::with_cache(DefaultHost::default(), cache);
 //! host.register("fetch", Box::new(ClientFetchFunction));
 //! let vm = Vm::new(host);
 //! let cont = Continuation::from_json(&received_cont_json).unwrap();

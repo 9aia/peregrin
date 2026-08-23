@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function, Host};
+use ac_vm::{AsyncFunction, Context, Error, Function, GenericFunction, Host, LazyFunction, Operation};
 
 use crate::cache::{CallCache, CallKey};
 
@@ -36,13 +36,17 @@ impl Function for CachedFunction {
     }
 }
 
-/// A host that caches function call results.
+/// A decorator [`Host`] that caches function call results.
 ///
-/// Functions are registered with [`register`](Self::register). Each
-/// call is checked against the [`CallCache`] before dispatching. On
-/// a cache hit, the cached result is returned without calling the
-/// inner function. On a miss, the inner function is called and the
-/// result is recorded.
+/// Wraps an inner host. Functions registered with
+/// [`register`](Self::register) are checked against the
+/// [`CallCache`] before dispatching — on a cache hit, the cached
+/// result is returned without calling the inner function. On a miss,
+/// the inner function is called and the result is recorded.
+///
+/// Function names not registered via `register` delegate to the
+/// inner host without caching. This lets you compose hosts while
+/// selectively caching only the functions that need it.
 ///
 /// The cache is serializable via [`cache`](Self::cache) and
 /// [`CallCache::to_json`], enabling migration across machines.
@@ -54,39 +58,56 @@ impl Function for CachedFunction {
 /// The caller is expected to populate the cache with the yielded
 /// result before resuming (e.g. by calling
 /// [`cache_mut`](Self::cache_mut).`insert(...)`).
-pub struct CacheHost {
-    functions: HashMap<String, CachedFunction>,
+///
+/// # Example: composition with `DefaultHost`
+///
+/// ```ignore
+/// use ac_host::DefaultHost;
+/// use ac_host_cache::CacheHost;
+///
+/// let host = CacheHost::new(DefaultHost::default());
+/// // add, mul, etc. delegate to DefaultHost (uncached)
+/// // register expensive functions for caching:
+/// // host.register("fetch", Box::new(FetchFunction));
+/// ```
+pub struct CacheHost<H: Host> {
+    inner: H,
+    registered: HashMap<String, CachedFunction>,
     cache: Arc<Mutex<CallCache>>,
 }
 
-impl CacheHost {
-    /// Creates a new `CacheHost` with an empty cache.
-    pub fn new() -> Self {
+impl<H: Host> CacheHost<H> {
+    /// Creates a new `CacheHost` wrapping `inner` with an empty cache.
+    pub fn new(inner: H) -> Self {
         CacheHost {
-            functions: HashMap::new(),
+            inner,
+            registered: HashMap::new(),
             cache: Arc::new(Mutex::new(CallCache::new())),
         }
     }
 
-    /// Creates a new `CacheHost` with a pre-populated cache.
+    /// Creates a new `CacheHost` wrapping `inner` with a pre-populated
+    /// cache.
     ///
     /// Use this on the client side when resuming a yielded
     /// evaluation. The cache should contain results for all calls
     /// that were completed before the yield.
-    pub fn with_cache(cache: CallCache) -> Self {
+    pub fn with_cache(inner: H, cache: CallCache) -> Self {
         CacheHost {
-            functions: HashMap::new(),
+            inner,
+            registered: HashMap::new(),
             cache: Arc::new(Mutex::new(cache)),
         }
     }
 
-    /// Registers a function under the given name.
+    /// Registers a function under the given name for caching.
     ///
     /// All calls to this function will be checked against the cache
-    /// before dispatching.
+    /// before dispatching. Function names not registered delegate to
+    /// the inner host without caching.
     pub fn register(&mut self, name: impl Into<String>, function: Box<dyn Function>) {
         let name = name.into();
-        self.functions.insert(
+        self.registered.insert(
             name.clone(),
             CachedFunction {
                 inner: function,
@@ -96,7 +117,12 @@ impl CacheHost {
         );
     }
 
-    /// Returns a reference to the call cache.
+    /// Returns a reference to the inner host.
+    pub fn inner(&self) -> &H {
+        &self.inner
+    }
+
+    /// Returns a clone of the call cache.
     pub fn cache(&self) -> CallCache {
         self.cache.lock().unwrap().clone()
     }
@@ -107,22 +133,42 @@ impl CacheHost {
     }
 }
 
-impl Default for CacheHost {
+impl<H: Host + Default> Default for CacheHost<H> {
     fn default() -> Self {
-        Self::new()
+        Self::new(H::default())
     }
 }
 
-impl Host for CacheHost {
+impl<H: Host> Host for CacheHost<H> {
     fn function(&self, name: &str) -> Option<&dyn Function> {
-        self.functions.get(name).map(|f| f as &dyn Function)
+        if let Some(f) = self.registered.get(name) {
+            return Some(f as &dyn Function);
+        }
+        self.inner.function(name)
+    }
+
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+        self.inner.async_function(name)
+    }
+
+    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+        self.inner.operation(name)
+    }
+
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+        self.inner.lazy_function(name)
+    }
+
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+        self.inner.generic_function(name)
     }
 }
 
-impl Clone for CacheHost {
+impl<H: Host + Clone> Clone for CacheHost<H> {
     fn clone(&self) -> Self {
         CacheHost {
-            functions: HashMap::new(),
+            inner: self.inner.clone(),
+            registered: HashMap::new(),
             cache: self.cache.clone(),
         }
     }

@@ -1,8 +1,15 @@
 use ac_ast::Expr;
 use ac_host_cache::{CacheHost, CallCache};
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, EvalResult, Function, Vm};
+use ac_vm::{Context, Error, EvalResult, Function, Host, Vm};
 use std::sync::atomic::{AtomicUsize, Ordering};
+
+struct EmptyHost;
+impl Host for EmptyHost {
+    fn function(&self, _name: &str) -> Option<&dyn Function> {
+        None
+    }
+}
 
 // ── test functions ───────────────────────────────────────────────
 
@@ -100,7 +107,7 @@ fn cache_empty_serialization() {
 
 #[test]
 fn cache_host_caches_successful_calls() {
-    let mut host = CacheHost::new();
+    let mut host = CacheHost::new(EmptyHost);
     let fetch = CountingFetch {
         calls: AtomicUsize::new(0),
     };
@@ -126,7 +133,7 @@ fn cache_host_caches_successful_calls() {
 
 #[test]
 fn cache_host_does_not_cache_yields() {
-    let mut host = CacheHost::new();
+    let mut host = CacheHost::new(EmptyHost);
     host.register("fetch", Box::new(YieldingFetch));
     host.register("add", Box::new(Add));
 
@@ -156,7 +163,7 @@ fn end_to_end_server_to_client_migration() {
     );
 
     // ── Server ───────────────────────────────────────────────────
-    let mut server_host = CacheHost::new();
+    let mut server_host = CacheHost::new(EmptyHost);
     server_host.register("add", Box::new(Add));
     server_host.register("fetch", Box::new(YieldingFetch));
 
@@ -179,7 +186,7 @@ fn end_to_end_server_to_client_migration() {
 
     // ── Client ───────────────────────────────────────────────────
     let cache = CallCache::from_json(&cache_json);
-    let mut client_host = CacheHost::with_cache(cache);
+    let mut client_host = CacheHost::with_cache(EmptyHost, cache);
 
     // Pre-populate the cache with the fetch result (simulating
     // the client knowing the result of the yielded call)
