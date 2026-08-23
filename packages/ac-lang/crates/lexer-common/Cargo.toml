@@ -1,0 +1,7 @@
+[package]
+name = "ac-lexer-common"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-lexer.workspace = true

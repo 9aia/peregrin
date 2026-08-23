@@ -9,6 +9,8 @@ ac-compiler-core.workspace = true
 ac-dialect.workspace = true
 ac-dialect-canonical.workspace = true
 ac-compiler.workspace = true
+ac-lexer.workspace = true
+ac-lexer-canonical.workspace = true
 ac-compiler-pass-parse.workspace = true
 ac-compiler-pass-extract.workspace = true
 ac-compiler-pass-typecheck.workspace = true
@@ -51,4 +53,8 @@ harness = false
 
 [[bench]]
 name = "core"
+harness = false
+
+[[bench]]
+name = "lexer"
 harness = false
