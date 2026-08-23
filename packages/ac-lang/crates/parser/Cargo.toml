@@ -1,0 +1,10 @@
+[package]
+name = "ac-parser"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-lexer.workspace = true
+ac-ast.workspace = true
+ac-runtime.workspace = true
+thiserror.workspace = true

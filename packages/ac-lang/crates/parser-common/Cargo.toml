@@ -1,0 +1,12 @@
+[package]
+name = "ac-parser-common"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-lexer.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+ac-ast-common.workspace = true
+proptest = "1"
