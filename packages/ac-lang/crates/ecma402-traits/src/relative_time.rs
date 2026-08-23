@@ -1,3 +1,5 @@
+use crate::number_format::NumberFormatPartType;
+
 /// Unit of time for relative formatting.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RelativeTimeUnit {
@@ -64,6 +66,19 @@ impl RelativeTimeOptions {
     }
 }
 
+/// A single part of a formatted relative time, as returned by `format_to_parts`.
+///
+/// The numeric portion reuses `NumberFormatPartType` to align with the ECMA-402
+/// PartitionRelativeTimePattern algorithm, which produces number parts followed
+/// by `literal` parts.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelativeTimeFormatPart {
+    /// The part type.
+    pub part_type: NumberFormatPartType,
+    /// The formatted text for this part.
+    pub value: String,
+}
+
 /// ECMA-402 `Intl.RelativeTimeFormat` behavior, backend-agnostic.
 pub trait RelativeTimeFormat {
     /// Error type returned when formatting fails.
@@ -71,4 +86,7 @@ pub trait RelativeTimeFormat {
 
     /// Format `value` as a relative-time string.
     fn format(&self, value: f64) -> Result<String, Self::Error>;
+
+    /// Format `value` and return the structured parts.
+    fn format_to_parts(&self, value: f64) -> Result<Vec<RelativeTimeFormatPart>, Self::Error>;
 }

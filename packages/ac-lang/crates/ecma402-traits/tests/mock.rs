@@ -15,7 +15,7 @@ use ecma402_traits::locale::{Locale, LocaleInfo, LocaleOverrides};
 use ecma402_traits::locale_match::{CanonicalLocales, SupportedLocalesOf};
 use ecma402_traits::number_format::{NumberFormat, NumberFormatPart, NumberFormatPartType};
 use ecma402_traits::plural_rules::{PluralCategory, PluralRules};
-use ecma402_traits::relative_time::RelativeTimeFormat;
+use ecma402_traits::relative_time::{RelativeTimeFormat, RelativeTimeFormatPart};
 use ecma402_traits::segmenter::{Segment, Segmenter};
 
 #[derive(Debug)]
@@ -253,6 +253,27 @@ impl RelativeTimeFormat for MockRelativeTimeFormat {
 
     fn format(&self, value: f64) -> Result<String, Self::Error> {
         Ok(format!("{value}"))
+    }
+
+    fn format_to_parts(&self, value: f64) -> Result<Vec<RelativeTimeFormatPart>, Self::Error> {
+        let text = format!("{value}");
+        let pos = text.find('.').unwrap_or(text.len());
+        let mut parts = Vec::new();
+        parts.push(RelativeTimeFormatPart {
+            part_type: NumberFormatPartType::Integer,
+            value: text[..pos].to_string(),
+        });
+        if pos < text.len() {
+            parts.push(RelativeTimeFormatPart {
+                part_type: NumberFormatPartType::Decimal,
+                value: ".".to_string(),
+            });
+            parts.push(RelativeTimeFormatPart {
+                part_type: NumberFormatPartType::Fraction,
+                value: text[pos + 1..].to_string(),
+            });
+        }
+        Ok(parts)
     }
 }
 

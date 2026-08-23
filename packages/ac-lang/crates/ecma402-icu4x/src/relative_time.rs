@@ -1,8 +1,10 @@
 use std::fmt;
 
+use ecma402_traits::number_format::NumberFormatOptions;
+use ecma402_traits::number_format::NumberFormat as _;
 use ecma402_traits::relative_time::{
-    RelativeTimeFormat as RelativeTimeFormatTrait, RelativeTimeNumeric, RelativeTimeStyle,
-    RelativeTimeUnit,
+    RelativeTimeFormat as RelativeTimeFormatTrait, RelativeTimeFormatPart, RelativeTimeNumeric,
+    RelativeTimeStyle, RelativeTimeUnit,
 };
 use fixed_decimal::{Decimal, FloatPrecision};
 use icu::experimental::relativetime::options::Numeric;
@@ -12,11 +14,15 @@ use icu_provider::DataError;
 use icu_provider_blob::BlobDataProvider;
 use writeable::Writeable;
 
+use crate::number_format::NumberFormat;
+use icu4x_extra::relative_time::split_parts;
+
 pub use ecma402_traits::relative_time::RelativeTimeOptions as Options;
 
 /// ICU4X-backed ECMA-402 `Intl.RelativeTimeFormat`.
-pub struct RelativeTimeFormat {
+pub struct RelativeTimeFormat<'a> {
     formatter: RelativeTimeFormatter,
+    number_format: NumberFormat<'a>,
 }
 
 /// Errors that can occur when constructing or using a `RelativeTimeFormat`.
@@ -24,6 +30,7 @@ pub struct RelativeTimeFormat {
 pub enum Error {
     InvalidLocale(String),
     Data(DataError),
+    Formatting(String),
 }
 
 impl fmt::Display for Error {
@@ -31,6 +38,7 @@ impl fmt::Display for Error {
         match self {
             Self::InvalidLocale(s) => write!(f, "invalid locale: {s}"),
             Self::Data(e) => write!(f, "data provider error: {e}"),
+            Self::Formatting(s) => write!(f, "formatting error: {s}"),
         }
     }
 }
@@ -43,7 +51,17 @@ impl From<DataError> for Error {
     }
 }
 
-impl RelativeTimeFormat {
+impl From<crate::number_format::Error> for Error {
+    fn from(e: crate::number_format::Error) -> Self {
+        match e {
+            crate::number_format::Error::Data(de) => Self::Data(de),
+            crate::number_format::Error::InvalidLocale(s) => Self::InvalidLocale(s),
+            _ => Self::Formatting(e.to_string()),
+        }
+    }
+}
+
+impl<'a> RelativeTimeFormat<'a> {
     fn parse_locale(locale: &str) -> Result<Locale, Error> {
         Locale::try_from_str(locale).map_err(|_| Error::InvalidLocale(locale.to_string()))
     }
@@ -176,25 +194,36 @@ impl RelativeTimeFormat {
     }
 
     /// Create a new `RelativeTimeFormat` for the given BCP 47 locale tag using compiled CLDR data.
-    pub fn new(locale: &str, options: Options) -> Result<Self, Error> {
+    pub fn new(locale: &str, options: Options) -> Result<RelativeTimeFormat<'static>, Error> {
         let locale: Locale = Self::parse_locale(locale)?;
         let formatter = Self::make_formatter(&locale, &options, None)?;
-        Ok(Self { formatter })
+        let locale_tag = locale.to_string();
+        let number_format = NumberFormat::new(&locale_tag, NumberFormatOptions::default())?;
+        Ok(RelativeTimeFormat {
+            formatter,
+            number_format,
+        })
     }
 
     /// Create a new `RelativeTimeFormat` using an ICU4X blob data provider.
     pub fn with_blob(
         locale: &str,
         options: Options,
-        provider: &BlobDataProvider,
+        provider: &'a BlobDataProvider,
     ) -> Result<Self, Error> {
         let locale: Locale = Self::parse_locale(locale)?;
         let formatter = Self::make_formatter(&locale, &options, Some(provider))?;
-        Ok(Self { formatter })
+        let locale_tag = locale.to_string();
+        let number_format =
+            NumberFormat::with_blob(&locale_tag, NumberFormatOptions::default(), provider)?;
+        Ok(Self {
+            formatter,
+            number_format,
+        })
     }
 }
 
-impl RelativeTimeFormatTrait for RelativeTimeFormat {
+impl<'a> RelativeTimeFormatTrait for RelativeTimeFormat<'a> {
     type Error = Error;
 
     fn format(&self, value: f64) -> Result<String, Self::Error> {
@@ -206,5 +235,11 @@ impl RelativeTimeFormatTrait for RelativeTimeFormat {
 
         let formatted = self.formatter.format(decimal);
         Ok(formatted.write_to_string().into_owned())
+    }
+
+    fn format_to_parts(&self, value: f64) -> Result<Vec<RelativeTimeFormatPart>, Self::Error> {
+        let formatted = self.format(value)?;
+        let number_parts = self.number_format.format_to_parts(value)?;
+        Ok(split_parts(&formatted, &number_parts))
     }
 }
