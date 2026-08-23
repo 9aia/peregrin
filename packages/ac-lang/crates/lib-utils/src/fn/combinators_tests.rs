@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error, Eval};
+use ac_runtime_modules::Module;
 
 use super::module::FnModule;
 
@@ -37,8 +37,8 @@ fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
 // ── TestEval infrastructure ────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_example_1::DefaultHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_example_1::DefaultHost;
 
 struct TestEval;
 impl Eval for TestEval {
@@ -112,7 +112,8 @@ fn split_args(s: &str) -> Vec<String> {
                 result.push(current.trim().to_string());
                 current.clear();
             }
-            _ => current.push(ch)}
+            _ => current.push(ch),
+        }
     }
     if !current.trim().is_empty() {
         result.push(current.trim().to_string());
@@ -667,19 +668,13 @@ fn unknown_function_returns_none() {
 
 #[test]
 fn constantly_returns_function_that_ignores_input() {
-    let result = call_with_eval(
-        "pipe",
-        &[n(999.0), call("constantly", &[n(42.0)])],
-    );
+    let result = call_with_eval("pipe", &[n(999.0), call("constantly", &[n(42.0)])]);
     assert_eq!(result.as_number(), Some(42.0));
 }
 
 #[test]
 fn constantly_with_string() {
-    let result = call_with_eval(
-        "pipe",
-        &[n(1.0), call("constantly", &[s("hello")])],
-    );
+    let result = call_with_eval("pipe", &[n(1.0), call("constantly", &[s("hello")])]);
     assert_eq!(result.as_str(), Some("hello"));
 }
 
@@ -777,10 +772,7 @@ fn partial_non_function_errors() {
 
 #[test]
 fn partial_non_array_bound_args_errors() {
-    let result = call_err(
-        "partial",
-        &[fn_value("add(a, b)", &["a", "b"]), n(42.0)],
-    );
+    let result = call_err("partial", &[fn_value("add(a, b)", &["a", "b"]), n(42.0)]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
@@ -820,19 +812,13 @@ fn when_returns_value_when_predicate_false() {
 
 #[test]
 fn when_non_function_predicate_errors() {
-    let result = call_err(
-        "when",
-        &[n(1.0), n(42.0), fn_value("add(x, 1)", &["x"])],
-    );
+    let result = call_err("when", &[n(1.0), n(42.0), fn_value("add(x, 1)", &["x"])]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
 #[test]
 fn when_non_function_transform_errors() {
-    let result = call_err(
-        "when",
-        &[n(1.0), fn_value("x", &["x"]), n(42.0)],
-    );
+    let result = call_err("when", &[n(1.0), fn_value("x", &["x"]), n(42.0)]);
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
@@ -909,11 +895,7 @@ fn converge_single_branch() {
 fn converge_non_function_combiner_errors() {
     let result = call_err(
         "converge",
-        &[
-            n(10.0),
-            n(42.0),
-            fn_value("mul(x, 2)", &["x"]),
-        ],
+        &[n(10.0), n(42.0), fn_value("mul(x, 2)", &["x"])],
     );
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
@@ -922,20 +904,13 @@ fn converge_non_function_combiner_errors() {
 fn converge_non_function_branch_errors() {
     let result = call_err(
         "converge",
-        &[
-            n(10.0),
-            fn_value("add(a, b)", &["a", "b"]),
-            n(42.0),
-        ],
+        &[n(10.0), fn_value("add(a, b)", &["a", "b"]), n(42.0)],
     );
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
 #[test]
 fn converge_too_few_args_errors() {
-    let result = call_err(
-        "converge",
-        &[n(10.0), fn_value("add(a, b)", &["a", "b"])],
-    );
+    let result = call_err("converge", &[n(10.0), fn_value("add(a, b)", &["a", "b"])]);
     assert!(matches!(result, Err(Error::ArgumentCount { .. })));
 }

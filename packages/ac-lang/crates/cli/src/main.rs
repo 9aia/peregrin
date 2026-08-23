@@ -21,6 +21,7 @@ fn main() {
         Command::Validate(args) => commands::validate::run(args),
         Command::Fields(args) => commands::fields::run(args),
         Command::Typegen(args) => commands::typegen::run(args),
-        Command::Typecheck(args) => commands::typecheck::run(args)};
+        Command::Typecheck(args) => commands::typecheck::run(args),
+    };
     std::process::exit(code);
 }

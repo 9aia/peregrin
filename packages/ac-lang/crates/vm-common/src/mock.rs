@@ -1,4 +1,6 @@
-use ac_runtime::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, NonFunctionValue, Operation};
+use ac_runtime::{
+    AsyncFunction, Function, GenericFunction, Host, LazyFunction, NonFunctionValue, Operation,
+};
 use std::collections::HashMap;
 
 /// A host that resolves nothing.
@@ -34,7 +36,8 @@ pub struct MockHost {
     async_functions: HashMap<String, Box<dyn AsyncFunction>>,
     operations: HashMap<String, Box<dyn Operation>>,
     lazy_functions: HashMap<String, Box<dyn LazyFunction>>,
-    generic_functions: HashMap<String, Box<dyn GenericFunction>>}
+    generic_functions: HashMap<String, Box<dyn GenericFunction>>,
+}
 
 impl MockHost {
     /// Creates an empty mock host.
@@ -98,14 +101,16 @@ impl Host for MockHost {
 /// A function that records every call it receives.
 pub struct CaptureFn<F> {
     inner: F,
-    calls: std::cell::RefCell<Vec<Vec<NonFunctionValue>>>}
+    calls: std::cell::RefCell<Vec<Vec<NonFunctionValue>>>,
+}
 
 impl<F> CaptureFn<F> {
     /// Wraps a function, capturing each set of arguments.
     pub fn new(inner: F) -> Self {
         CaptureFn {
             inner,
-            calls: std::cell::RefCell::new(Vec::new())}
+            calls: std::cell::RefCell::new(Vec::new()),
+        }
     }
 
     /// Returns the captured argument lists.
@@ -116,7 +121,10 @@ impl<F> CaptureFn<F> {
 
 impl<F> Function for CaptureFn<F>
 where
-    F: Fn(&[NonFunctionValue], &mut dyn ac_runtime::Context) -> Result<NonFunctionValue, ac_runtime::Error>
+    F: Fn(
+            &[NonFunctionValue],
+            &mut dyn ac_runtime::Context,
+        ) -> Result<NonFunctionValue, ac_runtime::Error>
         + 'static,
 {
     fn call(

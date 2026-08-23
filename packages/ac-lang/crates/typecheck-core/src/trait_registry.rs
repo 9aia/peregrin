@@ -21,13 +21,15 @@ use crate::Type;
 /// Hosts can register custom traits via [`TraitRegistry::register`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TraitRegistry {
-    traits: BTreeMap<String, Vec<Type>>}
+    traits: BTreeMap<String, Vec<Type>>,
+}
 
 impl TraitRegistry {
     /// Create an empty registry.
     pub fn new() -> Self {
         TraitRegistry {
-            traits: BTreeMap::new()}
+            traits: BTreeMap::new(),
+        }
     }
 
     /// Create a registry with built-in traits.
@@ -64,10 +66,7 @@ impl TraitRegistry {
 
     /// Register a type as implementing a trait.
     pub fn register(&mut self, trait_name: impl Into<String>, ty: Type) {
-        self.traits
-            .entry(trait_name.into())
-            .or_default()
-            .push(ty);
+        self.traits.entry(trait_name.into()).or_default().push(ty);
     }
 
     /// Check if a type implements a named trait.
@@ -92,7 +91,8 @@ impl TraitRegistry {
                         implementors.contains(&Type::Object(BTreeMap::new()))
                             && props.values().all(|v| self.implements(trait_name, v))
                     }
-                    _ => false}
+                    _ => false,
+                }
             }
         }
     }
@@ -105,7 +105,8 @@ impl TraitRegistry {
         bounds.iter().all(|bound| match bound {
             Type::Trait(trait_name) => self.implements(trait_name, ty),
             Type::Unknown | Type::Never => true,
-            other => other == ty})
+            other => other == ty,
+        })
     }
 }
 

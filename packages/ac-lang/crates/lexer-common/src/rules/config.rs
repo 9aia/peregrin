@@ -1,8 +1,8 @@
 //! Config builders for tests.
 
-use ac_lexer::{DefaultLexError, LexerConfig};
-use crate::tokens::{MockFactory, MockKind};
 use super::{DelimiterRule, IdentRule, NumberRule, StringRule};
+use crate::tokens::{MockFactory, MockKind};
+use ac_lexer::{DefaultLexError, LexerConfig};
 
 /// Returns an empty `LexerConfig<MockKind, DefaultLexError>` with just the
 /// factory — no rules, no keywords, no delimiters. Use this when tests need

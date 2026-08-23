@@ -11,7 +11,8 @@ fn make_func(body: &str) -> FunctionValue {
     FunctionValue {
         params: vec![],
         return_schema: None,
-        body: body.to_string()}
+        body: body.to_string(),
+    }
 }
 
 #[test]

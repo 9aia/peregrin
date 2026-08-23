@@ -9,11 +9,17 @@ use serde_json::json;
 
 fn to_ac_parse_error(e: DefaultParseError) -> AcParseError {
     match e {
-        DefaultParseError::UnexpectedEof { span, expected } => AcParseError::UnexpectedEof { span, expected },
-        DefaultParseError::UnexpectedToken { span, expected } => AcParseError::UnexpectedToken { span, expected },
+        DefaultParseError::UnexpectedEof { span, expected } => {
+            AcParseError::UnexpectedEof { span, expected }
+        }
+        DefaultParseError::UnexpectedToken { span, expected } => {
+            AcParseError::UnexpectedToken { span, expected }
+        }
         DefaultParseError::Message { span, message } => AcParseError::UnexpectedToken {
             span,
-            expected: message}}
+            expected: message,
+        },
+    }
 }
 
 /// The canonical AC expression parser.
@@ -24,7 +30,10 @@ fn to_ac_parse_error(e: DefaultParseError) -> AcParseError {
 pub struct CanonicalParser;
 
 impl ParserTrait<CanonicalKind, DefaultLexError> for CanonicalParser {
-    fn parse(&self, tokens: Vec<Token<CanonicalKind>>) -> Result<Expr<NonFunctionValue>, AcParseError> {
+    fn parse(
+        &self,
+        tokens: Vec<Token<CanonicalKind>>,
+    ) -> Result<Expr<NonFunctionValue>, AcParseError> {
         Parser::new(CanonicalGrammar)
             .parse(tokens, "")
             .map_err(to_ac_parse_error)
@@ -36,7 +45,11 @@ impl ParserTrait<CanonicalKind, DefaultLexError> for CanonicalParser {
 struct CanonicalGrammar;
 
 impl Grammar<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError> for CanonicalGrammar {
-    fn rule_for(&self, _kind: &CanonicalKind) -> Option<ac_parser_common::Rule<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>> {
+    fn rule_for(
+        &self,
+        _kind: &CanonicalKind,
+    ) -> Option<ac_parser_common::Rule<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>>
+    {
         None
     }
 
@@ -44,14 +57,20 @@ impl Grammar<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError> for Canon
         Some(CanonicalKind::Eof)
     }
 
-    fn parse_root(&self, context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
+    fn parse_root(
+        &self,
+        context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>,
+    ) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
         let expr = self.parse_expr(context)?;
         Ok(expr)
     }
 }
 
 impl CanonicalGrammar {
-    fn parse_expr(&self, context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
+    fn parse_expr(
+        &self,
+        context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>,
+    ) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
         match context.peek_kind() {
             Some(CanonicalKind::String(s)) => {
                 context.advance()?;
@@ -74,7 +93,10 @@ impl CanonicalGrammar {
                 if context.peek_kind() == Some(CanonicalKind::CallOpen) {
                     self.parse_call(name, context)
                 } else {
-                    Err(DefaultParseError::unexpected_token(context.peek_span(), "`(` to start a call"))
+                    Err(DefaultParseError::unexpected_token(
+                        context.peek_span(),
+                        "`(` to start a call",
+                    ))
                 }
             }
             Some(CanonicalKind::Handle) => {
@@ -89,12 +111,26 @@ impl CanonicalGrammar {
                 context.advance()?;
                 self.parse_object(context)
             }
-            Some(CanonicalKind::Eof) => Err(DefaultParseError::unexpected_eof(context.peek_span(), "an expression")),
-            Some(_) => Err(DefaultParseError::unexpected_token(context.peek_span(), "an expression")),
-            None => Err(DefaultParseError::unexpected_eof(context.peek_span(), "an expression"))}
+            Some(CanonicalKind::Eof) => Err(DefaultParseError::unexpected_eof(
+                context.peek_span(),
+                "an expression",
+            )),
+            Some(_) => Err(DefaultParseError::unexpected_token(
+                context.peek_span(),
+                "an expression",
+            )),
+            None => Err(DefaultParseError::unexpected_eof(
+                context.peek_span(),
+                "an expression",
+            )),
+        }
     }
 
-    fn parse_call(&self, name: String, context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
+    fn parse_call(
+        &self,
+        name: String,
+        context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>,
+    ) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
         context.expect(CanonicalKind::CallOpen, "`(`")?;
 
         let mut args = Vec::new();
@@ -110,7 +146,10 @@ impl CanonicalGrammar {
         Ok(Expr::call(name, args))
     }
 
-    fn parse_array(&self, context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
+    fn parse_array(
+        &self,
+        context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>,
+    ) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
         let mut elements = Vec::new();
         if context.peek_kind() != Some(CanonicalKind::BracketClose) {
             elements.push(self.parse_expr(context)?);
@@ -123,7 +162,10 @@ impl CanonicalGrammar {
         Ok(Expr::array(elements))
     }
 
-    fn parse_object(&self, context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
+    fn parse_object(
+        &self,
+        context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>,
+    ) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
         let mut entries = Vec::new();
         if context.peek_kind() != Some(CanonicalKind::BlockClose) {
             entries.push(self.parse_object_entry(context)?);
@@ -136,7 +178,10 @@ impl CanonicalGrammar {
         Ok(Expr::object(entries))
     }
 
-    fn parse_object_entry(&self, context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>) -> Result<(String, Expr<NonFunctionValue>), DefaultParseError> {
+    fn parse_object_entry(
+        &self,
+        context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>,
+    ) -> Result<(String, Expr<NonFunctionValue>), DefaultParseError> {
         let key = match context.peek_kind() {
             Some(CanonicalKind::String(s)) => {
                 context.advance()?;
@@ -147,10 +192,16 @@ impl CanonicalGrammar {
                 name
             }
             Some(_) => {
-                return Err(DefaultParseError::unexpected_token(context.peek_span(), "object key (string or identifier)"));
+                return Err(DefaultParseError::unexpected_token(
+                    context.peek_span(),
+                    "object key (string or identifier)",
+                ));
             }
             None => {
-                return Err(DefaultParseError::unexpected_eof(context.peek_span(), "object key (string or identifier)"));
+                return Err(DefaultParseError::unexpected_eof(
+                    context.peek_span(),
+                    "object key (string or identifier)",
+                ));
             }
         };
 
@@ -159,7 +210,10 @@ impl CanonicalGrammar {
         Ok((key, value))
     }
 
-    fn parse_handle(&self, context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
+    fn parse_handle(
+        &self,
+        context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>,
+    ) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
         context.expect(CanonicalKind::CallOpen, "`(` after `handle`")?;
 
         let mut handlers = Vec::new();
@@ -180,17 +234,26 @@ impl CanonicalGrammar {
         Ok(Expr::handle(body, handlers))
     }
 
-    fn parse_handler_clause(&self, context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>) -> Result<HandlerClause<NonFunctionValue>, DefaultParseError> {
+    fn parse_handler_clause(
+        &self,
+        context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>,
+    ) -> Result<HandlerClause<NonFunctionValue>, DefaultParseError> {
         let op_name = match context.peek_kind() {
             Some(CanonicalKind::String(s)) => {
                 context.advance()?;
                 s
             }
             Some(_) => {
-                return Err(DefaultParseError::unexpected_token(context.peek_span(), "operation name string"));
+                return Err(DefaultParseError::unexpected_token(
+                    context.peek_span(),
+                    "operation name string",
+                ));
             }
             None => {
-                return Err(DefaultParseError::unexpected_eof(context.peek_span(), "operation name string"));
+                return Err(DefaultParseError::unexpected_eof(
+                    context.peek_span(),
+                    "operation name string",
+                ));
             }
         };
 
@@ -204,10 +267,16 @@ impl CanonicalGrammar {
                     params.push(name);
                 }
                 Some(_) => {
-                    return Err(DefaultParseError::unexpected_token(context.peek_span(), "parameter name"));
+                    return Err(DefaultParseError::unexpected_token(
+                        context.peek_span(),
+                        "parameter name",
+                    ));
                 }
                 None => {
-                    return Err(DefaultParseError::unexpected_eof(context.peek_span(), "parameter name"));
+                    return Err(DefaultParseError::unexpected_eof(
+                        context.peek_span(),
+                        "parameter name",
+                    ));
                 }
             }
             while context.peek_kind() == Some(CanonicalKind::Comma) {
@@ -218,10 +287,16 @@ impl CanonicalGrammar {
                         params.push(name);
                     }
                     Some(_) => {
-                        return Err(DefaultParseError::unexpected_token(context.peek_span(), "parameter name"));
+                        return Err(DefaultParseError::unexpected_token(
+                            context.peek_span(),
+                            "parameter name",
+                        ));
                     }
                     None => {
-                        return Err(DefaultParseError::unexpected_eof(context.peek_span(), "parameter name"));
+                        return Err(DefaultParseError::unexpected_eof(
+                            context.peek_span(),
+                            "parameter name",
+                        ));
                     }
                 }
             }
@@ -236,10 +311,16 @@ impl CanonicalGrammar {
                 name
             }
             Some(_) => {
-                return Err(DefaultParseError::unexpected_token(context.peek_span(), "continuation name"));
+                return Err(DefaultParseError::unexpected_token(
+                    context.peek_span(),
+                    "continuation name",
+                ));
             }
             None => {
-                return Err(DefaultParseError::unexpected_eof(context.peek_span(), "continuation name"));
+                return Err(DefaultParseError::unexpected_eof(
+                    context.peek_span(),
+                    "continuation name",
+                ));
             }
         };
 
@@ -251,6 +332,7 @@ impl CanonicalGrammar {
             op_name,
             params,
             continuation_name,
-            body})
+            body,
+        })
     }
 }

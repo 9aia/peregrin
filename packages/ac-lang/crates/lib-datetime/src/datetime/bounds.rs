@@ -56,9 +56,7 @@ bound_fn!(EndOfMonth, |dt: &chrono::DateTime<Utc>| {
         chrono::NaiveDate::from_ymd_opt(dt.year(), dt.month() + 1, 1)
     };
     let last_day = next_month.unwrap() - Duration::days(1);
-    let naive = last_day
-        .and_hms_opt(23, 59, 59)
-        .unwrap();
+    let naive = last_day.and_hms_opt(23, 59, 59).unwrap();
     chrono::TimeZone::from_utc_datetime(&Utc, &naive)
 });
 

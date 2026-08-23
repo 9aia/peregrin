@@ -1,7 +1,7 @@
 //! [`DelimiterRule`] — matches single-character delimiters from config.
 
-use ac_lexer::{LexError, LexerConfig, Span, Token, TokenKind};
 use ac_lexer::LexRule;
+use ac_lexer::{LexError, LexerConfig, Span, Token, TokenKind};
 
 /// Matches single-character delimiters from the config's delimiter set.
 #[derive(Clone, Default)]
@@ -26,7 +26,8 @@ where
                     None
                 }
             }
-            _ => None}
+            _ => None,
+        }
     }
 
     fn name(&self) -> &'static str {

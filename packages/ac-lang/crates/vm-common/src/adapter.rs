@@ -8,14 +8,16 @@ use serde_json;
 /// Caches results of a function by the JSON representation of its args.
 pub struct Memoize<F> {
     inner: F,
-    cache: RefCell<HashMap<String, NonFunctionValue>>}
+    cache: RefCell<HashMap<String, NonFunctionValue>>,
+}
 
 impl<F> Memoize<F> {
     /// Wraps a function with a per-args cache.
     pub fn new(inner: F) -> Self {
         Memoize {
             inner,
-            cache: RefCell::new(HashMap::new())}
+            cache: RefCell::new(HashMap::new()),
+        }
     }
 }
 
@@ -60,7 +62,8 @@ where
 /// Transforms arguments before passing them to the inner function.
 pub struct MapArgs<F, T> {
     inner: F,
-    transform: T}
+    transform: T,
+}
 
 impl<F, T> MapArgs<F, T> {
     /// Wraps a function, applying a transform to its arguments.
@@ -96,7 +99,8 @@ where
 /// Transforms the result of a function.
 pub struct MapResult<F, T> {
     inner: F,
-    transform: T}
+    transform: T,
+}
 
 impl<F, T> MapResult<F, T> {
     /// Wraps a function, applying a transform to its result.
@@ -131,7 +135,8 @@ where
 /// Catches errors from a function and runs a handler to recover.
 pub struct Catch<F, H> {
     inner: F,
-    handler: H}
+    handler: H,
+}
 
 impl<F, H> Catch<F, H> {
     /// Wraps a function with an error handler.
@@ -166,7 +171,8 @@ where
 /// Pipes the result of one function into a second function.
 pub struct Pipe<F, G> {
     first: F,
-    second: G}
+    second: G,
+}
 
 impl<F, G> Pipe<F, G> {
     /// Pipes `first` into `second`.
@@ -203,7 +209,8 @@ where
 /// Logs arguments and results of a function.
 pub struct Logged<F, L> {
     inner: F,
-    logger: L}
+    logger: L,
+}
 
 impl<F, L> Logged<F, L> {
     /// Wraps a function with a logger.
@@ -241,7 +248,8 @@ where
 pub struct Timed<F, L> {
     inner: F,
     label: String,
-    logger: L}
+    logger: L,
+}
 
 impl<F, L> Timed<F, L> {
     /// Wraps a function with a timer.
@@ -249,7 +257,8 @@ impl<F, L> Timed<F, L> {
         Timed {
             inner,
             label: label.into(),
-            logger}
+            logger,
+        }
     }
 }
 
@@ -272,11 +281,7 @@ where
 }
 
 /// Creates a function that times its calls.
-pub fn timed<F, L>(
-    inner: F,
-    label: impl Into<String>,
-    logger: L,
-) -> Box<dyn Function>
+pub fn timed<F, L>(inner: F, label: impl Into<String>, logger: L) -> Box<dyn Function>
 where
     F: Function + 'static,
     L: Fn(&str, &std::time::Duration, &Result<NonFunctionValue, Error>) + 'static,
@@ -287,7 +292,8 @@ where
 /// Catches operation errors and recovers with a handler.
 pub struct CatchOp<O, H> {
     inner: O,
-    handler: H}
+    handler: H,
+}
 
 impl<O, H> CatchOp<O, H> {
     /// Wraps an operation with an error handler.
@@ -441,11 +447,7 @@ where
 }
 
 /// Creates a conditional function.
-pub fn r#if<C, T, E>(
-    condition: C,
-    then_branch: T,
-    else_branch: E,
-) -> Box<dyn Function>
+pub fn r#if<C, T, E>(condition: C, then_branch: T, else_branch: E) -> Box<dyn Function>
 where
     C: Function + 'static,
     T: Function + 'static,

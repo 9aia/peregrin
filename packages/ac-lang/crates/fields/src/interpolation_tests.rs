@@ -116,7 +116,13 @@ fn interpolate_scoped_inheritance() {
     });
 
     let inheritable = vec!["permission_mode".to_string()];
-    let result = interpolate_scoped(&value, &ns, &inheritable, &DefaultHost::default(), &AC_DIALECT);
+    let result = interpolate_scoped(
+        &value,
+        &ns,
+        &inheritable,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
 
     assert_eq!(result["config"]["message"], "read-only");
     assert_eq!(result["config"]["server"]["message"], "read-write");

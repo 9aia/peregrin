@@ -10,7 +10,8 @@ impl SchemaInterpreter for JsonInterpreter {
             Some("string") => Type::String,
             Some("number") | Some("integer") => Type::Number,
             Some("boolean") => Type::Boolean,
-            _ => Type::Unknown}
+            _ => Type::Unknown,
+        }
     }
 }
 

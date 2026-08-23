@@ -9,13 +9,15 @@ pub use ac_runtime_example_1::DefaultHost;
 #[derive(Clone)]
 pub struct MathHost {
     default: DefaultHost,
-    double: Double}
+    double: Double,
+}
 
 impl MathHost {
     pub fn new() -> Self {
         MathHost {
             default: DefaultHost::default(),
-            double: Double}
+            double: Double,
+        }
     }
 }
 
@@ -45,7 +47,10 @@ impl Function for Double {
         let x = args
             .first()
             .and_then(|v| v.as_number())
-            .ok_or(Error::ArgumentCount { expected: 1, got: 0 })?;
+            .ok_or(Error::ArgumentCount {
+                expected: 1,
+                got: 0,
+            })?;
         Ok(NonFunctionValue::new(x * 2.0))
     }
 }

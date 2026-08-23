@@ -11,7 +11,8 @@ pub enum Sensitivity {
     /// Distinguish accented forms, but ignore case and variant.
     Accent,
     /// Distinguish case, but ignore accent and variant differences.
-    Case}
+    Case,
+}
 
 /// Case-first ordering preference.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -24,7 +25,8 @@ pub enum CaseFirst {
     /// Sort lowercase before uppercase.
     Lower,
     /// Do not change case ordering.
-    False}
+    False,
+}
 
 /// Intended use for the collator.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -33,7 +35,8 @@ pub enum Usage {
     #[default]
     Sort,
     /// Searching for matches.
-    Search}
+    Search,
+}
 
 /// Options used to construct a `Collator` instance.
 #[derive(Debug, Clone, Default)]
@@ -49,7 +52,8 @@ pub struct CollatorOptions {
     /// Whether the collator is for sorting or searching.
     pub usage: Usage,
     /// Requested Unicode collation identifier, if any.
-    pub collation: Option<String>}
+    pub collation: Option<String>,
+}
 
 /// ECMA-402 `Intl.Collator` behavior, backend-agnostic.
 pub trait Collator {

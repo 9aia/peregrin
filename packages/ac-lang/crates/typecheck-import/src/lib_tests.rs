@@ -4,12 +4,14 @@ use ac_typecheck_schema_json::JsonSchemaInterpreter;
 use serde_json::{Value as JsonValue, json};
 
 struct StaticResolver {
-    modules: std::collections::HashMap<String, JsonValue>}
+    modules: std::collections::HashMap<String, JsonValue>,
+}
 
 impl StaticResolver {
     fn new() -> Self {
         StaticResolver {
-            modules: std::collections::HashMap::new()}
+            modules: std::collections::HashMap::new(),
+        }
     }
 
     fn add_module(&mut self, path: &str, schemas: Vec<(String, JsonValue)>, merge: Vec<String>) {
@@ -59,7 +61,8 @@ impl ModuleResolver for StaticResolver {
             schemas,
             merge,
             data,
-            base_path: None})
+            base_path: None,
+        })
     }
 }
 

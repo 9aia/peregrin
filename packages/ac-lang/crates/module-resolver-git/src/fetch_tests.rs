@@ -12,7 +12,8 @@ fn cache_path_is_deterministic() {
     let target = GitTarget {
         repo_url: "https://github.com/org/repo.git".to_string(),
         reference: "main".to_string(),
-        path: "schemas/base.yml".to_string()};
+        path: "schemas/base.yml".to_string(),
+    };
 
     let path_a = fetcher.cache_path(&target);
     let path_b = fetcher.cache_path(&target);
@@ -25,11 +26,13 @@ fn cache_path_differs_for_different_refs() {
     let target_a = GitTarget {
         repo_url: "https://github.com/org/repo.git".to_string(),
         reference: "main".to_string(),
-        path: "schemas/base.yml".to_string()};
+        path: "schemas/base.yml".to_string(),
+    };
     let target_b = GitTarget {
         repo_url: "https://github.com/org/repo.git".to_string(),
         reference: "dev".to_string(),
-        path: "schemas/base.yml".to_string()};
+        path: "schemas/base.yml".to_string(),
+    };
 
     assert_ne!(fetcher.cache_path(&target_a), fetcher.cache_path(&target_b));
 }
@@ -40,11 +43,13 @@ fn cache_path_differs_for_different_repos() {
     let target_a = GitTarget {
         repo_url: "https://github.com/org/repo.git".to_string(),
         reference: "main".to_string(),
-        path: "schemas/base.yml".to_string()};
+        path: "schemas/base.yml".to_string(),
+    };
     let target_b = GitTarget {
         repo_url: "https://github.com/org/other.git".to_string(),
         reference: "main".to_string(),
-        path: "schemas/base.yml".to_string()};
+        path: "schemas/base.yml".to_string(),
+    };
 
     assert_ne!(fetcher.cache_path(&target_a), fetcher.cache_path(&target_b));
 }

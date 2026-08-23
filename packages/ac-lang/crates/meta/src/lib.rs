@@ -28,7 +28,8 @@ mod functions;
 mod host;
 
 pub use functions::{
-    AstArgs, AstIsCall, AstName, AstToString, Eval, IsFunction, Keys, Parse, TypeOf};
+    AstArgs, AstIsCall, AstName, AstToString, Eval, IsFunction, Keys, Parse, TypeOf,
+};
 pub use host::MetaHost;
 
 #[cfg(test)]

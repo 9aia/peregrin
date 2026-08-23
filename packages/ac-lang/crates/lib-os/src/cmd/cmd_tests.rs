@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
 
 use super::cmd::{CmdModule, CmdOutput};
 use super::cmd_stub::StubCmd;
@@ -28,7 +28,8 @@ fn run() {
         CmdOutput {
             exit_code: 0,
             stdout: "hello".into(),
-            stderr: "".into()},
+            stderr: "".into(),
+        },
     );
     let module = CmdModule::new(cmd);
     let result = call(&module, "run", &[s("echo"), s("hello")]);
@@ -45,7 +46,8 @@ fn run_with_args() {
         CmdOutput {
             exit_code: 0,
             stdout: "file1\nfile2".into(),
-            stderr: "".into()},
+            stderr: "".into(),
+        },
     );
     let module = CmdModule::new(cmd);
     let result = call(&module, "run", &[s("ls"), s("-la"), s("/tmp")]);
@@ -60,7 +62,8 @@ fn run_nonzero_exit() {
         CmdOutput {
             exit_code: 1,
             stdout: "".into(),
-            stderr: "error".into()},
+            stderr: "error".into(),
+        },
     );
     let module = CmdModule::new(cmd);
     let result = call(&module, "run", &[s("false")]);
@@ -77,7 +80,8 @@ fn run_not_found() {
     let err = func.call(&[s("nope")], &mut ctx).unwrap_err();
     match err {
         ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("not found")),
-        other => panic!("expected PrimitiveError, got {other:?}")}
+        other => panic!("expected PrimitiveError, got {other:?}"),
+    }
 }
 
 #[test]
@@ -96,6 +100,7 @@ fn missing_program_arg() {
         err,
         ac_runtime::Error::ArgumentCount {
             expected: 1,
-            got: 0}
+            got: 0
+        }
     );
 }

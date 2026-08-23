@@ -6,15 +6,22 @@
 
 use ac_ast_canonical::{Expr, HandlerClause};
 use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_runtime_canonical::{
+    CanonicalContext, Context, Continuation, Error, EvalResult, Function, Host, Operation,
+    OperationSig, Vm,
+};
 use ac_store::{DefinitionHash, DefinitionStore, EvalCache, NameRegistry};
-use ac_runtime_canonical::{CanonicalContext, Context, Continuation, Error, EvalResult, Function, Host, Operation, OperationSig, Vm};
 
 // ── test infrastructure ───────────────────────────────────────────
 
 #[derive(Clone)]
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -23,7 +30,11 @@ impl Function for Add {
 #[derive(Clone)]
 struct Mul;
 impl Function for Mul {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let product: f64 = args.iter().filter_map(|v| v.as_number()).product();
         Ok(NonFunctionValue::new(product))
     }
@@ -32,7 +43,11 @@ impl Function for Mul {
 #[derive(Clone)]
 struct Concat;
 impl Function for Concat {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let s: String = args
             .iter()
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -49,12 +64,18 @@ impl Operation for FetchOp {
         OperationSig {
             name: "fetch".to_string(),
             params: vec![("url".to_string(), serde_json::json!({"type": "string"}))],
-            return_schema: Some(serde_json::json!({"type": "string"}))}
+            return_schema: Some(serde_json::json!({"type": "string"})),
+        }
     }
-    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn perform(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
-            args: args.to_vec()})
+            args: args.to_vec(),
+        })
     }
 }
 
@@ -65,12 +86,18 @@ impl Operation for LogOp {
         OperationSig {
             name: "log".to_string(),
             params: vec![("msg".to_string(), serde_json::json!({"type": "string"}))],
-            return_schema: None}
+            return_schema: None,
+        }
     }
-    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn perform(
+        &self,
+        _args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "log".to_string(),
-            args: vec![]})
+            args: vec![],
+        })
     }
 }
 
@@ -80,7 +107,8 @@ struct FullHost {
     mul: Mul,
     concat: Concat,
     fetch: FetchOp,
-    log: LogOp}
+    log: LogOp,
+}
 
 impl Default for FullHost {
     fn default() -> Self {
@@ -89,7 +117,8 @@ impl Default for FullHost {
             mul: Mul,
             concat: Concat,
             fetch: FetchOp,
-            log: LogOp}
+            log: LogOp,
+        }
     }
 }
 
@@ -99,13 +128,15 @@ impl Host for FullHost {
             "add" => Some(&self.add),
             "mul" => Some(&self.mul),
             "concat" => Some(&self.concat),
-            _ => None}
+            _ => None,
+        }
     }
     fn operation(&self, name: &str) -> Option<&dyn Operation> {
         match name {
             "fetch" => Some(&self.fetch),
             "log" => Some(&self.log),
-            _ => None}
+            _ => None,
+        }
     }
 }
 
@@ -127,7 +158,8 @@ fn full_pipeline_handler_intercepts_fetch_and_resumes() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))])}],
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
+        }],
     );
 
     let vm = Vm::new(FullHost::default());
@@ -161,12 +193,14 @@ fn full_pipeline_multi_op_handler() {
                 op_name: "fetch".to_string(),
                 params: vec!["url".to_string()],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))])},
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
+            },
             HandlerClause {
                 op_name: "log".to_string(),
                 params: vec!["msg".to_string()],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(1.0))])},
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(1.0))]),
+            },
         ],
     );
 
@@ -185,7 +219,8 @@ fn full_pipeline_handler_returns_constant_without_resume() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("cached-result"))}],
+            body: Expr::value(NonFunctionValue::new("cached-result")),
+        }],
     );
 
     let vm = Vm::new(FullHost::default());
@@ -212,13 +247,15 @@ fn full_pipeline_nested_handlers_different_ops() {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(10.0))])}],
+                body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(10.0))]),
+            }],
         ),
         vec![HandlerClause {
             op_name: "log".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(5.0))])}],
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(5.0))]),
+        }],
     );
 
     let vm = Vm::new(FullHost::default());
@@ -250,8 +287,10 @@ fn continuation_serialize_deserialize_resume() {
     let (_yielded, cont) = match result {
         EvalResult::Yielded {
             value,
-            continuation} => (value, continuation),
-        other => panic!("expected Yielded, got {other:?}")};
+            continuation,
+        } => (value, continuation),
+        other => panic!("expected Yielded, got {other:?}"),
+    };
 
     // Serialize continuation to JSON
     let json = cont.to_json();
@@ -266,7 +305,8 @@ fn continuation_serialize_deserialize_resume() {
             OperationSig {
                 name: "fetch".to_string(),
                 params: vec![],
-                return_schema: None}
+                return_schema: None,
+            }
         }
         fn perform(
             &self,
@@ -280,24 +320,28 @@ fn continuation_serialize_deserialize_resume() {
     #[derive(Clone)]
     struct CachingHost {
         add: Add,
-        fetch: CachingFetch}
+        fetch: CachingFetch,
+    }
     impl Host for CachingHost {
         fn function(&self, name: &str) -> Option<&dyn Function> {
             match name {
                 "add" => Some(&self.add),
-                _ => None}
+                _ => None,
+            }
         }
         fn operation(&self, name: &str) -> Option<&dyn Operation> {
             match name {
                 "fetch" => Some(&self.fetch),
-                _ => None}
+                _ => None,
+            }
         }
     }
     impl Default for CachingHost {
         fn default() -> Self {
             CachingHost {
                 add: Add,
-                fetch: CachingFetch}
+                fetch: CachingFetch,
+            }
         }
     }
 
@@ -305,7 +349,8 @@ fn continuation_serialize_deserialize_resume() {
     let result = client_vm.eval_resumable(&expr, &mut ctx, Some(restored));
     match result {
         EvalResult::Done(v) => assert_eq!(v.as_number(), Some(52.0)),
-        other => panic!("expected Done, got {other:?}")}
+        other => panic!("expected Done, got {other:?}"),
+    }
 }
 
 // ── tests: VM + content-addressed store ───────────────────────────
@@ -320,7 +365,8 @@ fn store_and_eval_integration() {
     let double = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
         return_schema: Some(serde_json::json!({"type": "number"})),
-        body: "mul(x, 2)".to_string()};
+        body: "mul(x, 2)".to_string(),
+    };
 
     let hash = store.insert(double.clone());
     registry.register("double", hash.clone());
@@ -378,7 +424,8 @@ fn handler_with_resumable_eval_and_continuation_roundtrip() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))])}],
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
+        }],
     );
 
     let vm = Vm::new(FullHost::default());
@@ -388,7 +435,8 @@ fn handler_with_resumable_eval_and_continuation_roundtrip() {
     let result = vm.eval_resumable(&expr, &mut ctx, None);
     match result {
         EvalResult::Done(v) => assert_eq!(v.as_number(), Some(52.0)),
-        other => panic!("expected Done, got {other:?}")}
+        other => panic!("expected Done, got {other:?}"),
+    }
 }
 
 // ── tests: string operations with handlers ────────────────────────
@@ -409,7 +457,8 @@ fn string_pipeline_with_handler() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("World"))])}],
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("World"))]),
+        }],
     );
 
     let vm = Vm::new(FullHost::default());
@@ -432,7 +481,8 @@ fn codebase_store_integration() {
     let base_func = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
         return_schema: None,
-        body: "add(x, 1)".to_string()};
+        body: "add(x, 1)".to_string(),
+    };
     let base_hash = def_store.insert(base_func.clone());
     registry.register("increment", base_hash.clone());
 

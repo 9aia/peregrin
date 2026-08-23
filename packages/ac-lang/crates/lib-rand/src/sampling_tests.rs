@@ -25,7 +25,10 @@ fn pick_empty_array_errors() {
 #[test]
 fn pick_no_args_errors() {
     let result = call_err("pick", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.choice ─────────────────────────────────────────────────
@@ -76,7 +79,10 @@ fn choice_negative_count_errors() {
 #[test]
 fn choice_no_args_errors() {
     let result = call_err("choice", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.sample ──────────────────────────────────────────────────
@@ -185,7 +191,11 @@ fn weighted_pick_returns_element() {
         serde_json::json!("b"),
         serde_json::json!("c"),
     ]);
-    let weights = arr(&[serde_json::json!(1), serde_json::json!(1), serde_json::json!(1)]);
+    let weights = arr(&[
+        serde_json::json!(1),
+        serde_json::json!(1),
+        serde_json::json!(1),
+    ]);
     for _ in 0..100 {
         let result = call("weighted_pick", &[items.clone(), weights.clone()]);
         let val = result.as_str().expect("expected string");

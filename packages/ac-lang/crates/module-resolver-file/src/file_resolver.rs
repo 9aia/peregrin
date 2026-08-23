@@ -15,7 +15,8 @@ use ac_module_resolver_noop::NoCache;
 /// [`FileResolver::with_cache`] to memoize resolved modules by
 /// canonical path.
 pub struct FileResolver<C: ModuleCache = NoCache> {
-    cache: C}
+    cache: C,
+}
 
 impl FileResolver<NoCache> {
     /// Create a resolver with no caching.
@@ -41,7 +42,8 @@ impl<C: ModuleCache> ModuleResolver for FileResolver<C> {
     fn resolve(&self, path: &str, base: Option<&Path>) -> Option<ResolvedModule> {
         let resolved = match base {
             Some(base) => base.join(path),
-            None => PathBuf::from(path)};
+            None => PathBuf::from(path),
+        };
 
         let canonical = resolved.canonicalize().unwrap_or(resolved.clone());
         let cache_key = canonical.to_string_lossy().to_string();
@@ -65,7 +67,8 @@ impl<C: ModuleCache> ModuleResolver for FileResolver<C> {
             schemas: extracted.schemas,
             merge: extracted.merge,
             data: extracted.data.inner().clone(),
-            base_path: resolved.parent().map(|p| p.to_path_buf())};
+            base_path: resolved.parent().map(|p| p.to_path_buf()),
+        };
 
         self.cache.insert(&cache_key, module.clone());
         Some(module)

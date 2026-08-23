@@ -1,5 +1,5 @@
-use ac_runtime::NonFunctionValue;
 use ac_runtime::Error;
+use ac_runtime::NonFunctionValue;
 
 use crate::error::CryptoError;
 
@@ -7,12 +7,14 @@ use crate::error::CryptoError;
 pub(super) fn require_string(args: &[NonFunctionValue], idx: usize) -> Result<String, Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
-        got: args.len()})?;
+        got: args.len(),
+    })?;
     arg.as_str()
         .map(|s| s.to_string())
         .ok_or(Error::TypeMismatch {
             expected: "string",
-            got: "non-string"})
+            got: "non-string",
+        })
 }
 
 /// Extract bytes from an argument that is either a string (UTF-8) or an
@@ -20,7 +22,8 @@ pub(super) fn require_string(args: &[NonFunctionValue], idx: usize) -> Result<St
 pub(super) fn extract_bytes(args: &[NonFunctionValue], idx: usize) -> Result<Vec<u8>, Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
-        got: args.len()})?;
+        got: args.len(),
+    })?;
 
     if let Some(s) = arg.as_str() {
         return Ok(s.as_bytes().to_vec());
@@ -31,7 +34,8 @@ pub(super) fn extract_bytes(args: &[NonFunctionValue], idx: usize) -> Result<Vec
         for item in arr.iter() {
             let n = item.as_f64().ok_or(Error::TypeMismatch {
                 expected: "number",
-                got: "non-number"})?;
+                got: "non-number",
+            })?;
             if !n.is_finite() || n < 0.0 || n > 255.0 {
                 return Err(CryptoError::InvalidByteValue { value: n }.into());
             }
@@ -42,7 +46,8 @@ pub(super) fn extract_bytes(args: &[NonFunctionValue], idx: usize) -> Result<Vec
 
     Err(Error::TypeMismatch {
         expected: "string or array of numbers",
-        got: "non-string non-array"})
+        got: "non-string non-array",
+    })
 }
 
 pub(super) fn s(value: impl Into<String>) -> NonFunctionValue {
@@ -50,9 +55,6 @@ pub(super) fn s(value: impl Into<String>) -> NonFunctionValue {
 }
 
 pub(super) fn byte_array(bytes: &[u8]) -> NonFunctionValue {
-    let arr: Vec<serde_json::Value> = bytes
-        .iter()
-        .map(|b| serde_json::json!(b))
-        .collect();
+    let arr: Vec<serde_json::Value> = bytes.iter().map(|b| serde_json::json!(b)).collect();
     NonFunctionValue::new(serde_json::Value::Array(arr))
 }

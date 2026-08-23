@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use ac_runtime::{Function, GenericFunction, Host, LazyFunction};
+use ac_runtime::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, Operation};
 
 use crate::module::Module;
 
@@ -34,13 +34,15 @@ use crate::module::Module;
 /// The VM sees only the `Host` interface — it does not know about modules.
 #[derive(Clone)]
 pub struct ModuleHost {
-    modules: Vec<Rc<dyn Module>>}
+    modules: Vec<Rc<dyn Module>>,
+}
 
 impl ModuleHost {
     /// Creates a new empty host.
     pub fn new() -> Self {
         ModuleHost {
-            modules: Vec::new()}
+            modules: Vec::new(),
+        }
     }
 
     /// Registers a module.
@@ -92,6 +94,28 @@ impl Host for ModuleHost {
                 .and_then(|m| m.generic_function(func_name))
         } else {
             self.modules.iter().find_map(|m| m.generic_function(name))
+        }
+    }
+
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+        if let Some((module_name, func_name)) = name.split_once('.') {
+            self.modules
+                .iter()
+                .find(|m| m.name() == module_name)
+                .and_then(|m| m.async_function(func_name))
+        } else {
+            self.modules.iter().find_map(|m| m.async_function(name))
+        }
+    }
+
+    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+        if let Some((module_name, func_name)) = name.split_once('.') {
+            self.modules
+                .iter()
+                .find(|m| m.name() == module_name)
+                .and_then(|m| m.operation(func_name))
+        } else {
+            self.modules.iter().find_map(|m| m.operation(name))
         }
     }
 }

@@ -1,7 +1,8 @@
 use ecma402_traits::number_format::NumberFormatPartType;
 use ecma402_traits::plural_rules::PluralCategory;
 use ecma402_traits::relative_time::{
-    RelativeTimeFormat as _, RelativeTimeNumeric, RelativeTimeStyle, RelativeTimeUnit};
+    RelativeTimeFormat as _, RelativeTimeNumeric, RelativeTimeStyle, RelativeTimeUnit,
+};
 
 use super::relative_time::{Options, RelativeTimeFormat};
 
@@ -24,7 +25,8 @@ fn short_style() {
         Options {
             unit: RelativeTimeUnit::Second,
             style: RelativeTimeStyle::Short,
-            numeric: RelativeTimeNumeric::default()},
+            numeric: RelativeTimeNumeric::default(),
+        },
     )
     .unwrap();
     assert_eq!(formatter.format(5.0).unwrap(), "in 5 sec.");
@@ -37,7 +39,8 @@ fn numeric_auto() {
         Options {
             unit: RelativeTimeUnit::Day,
             style: RelativeTimeStyle::default(),
-            numeric: RelativeTimeNumeric::Auto},
+            numeric: RelativeTimeNumeric::Auto,
+        },
     )
     .unwrap();
     assert_eq!(formatter.format(0.0).unwrap(), "today");
@@ -80,7 +83,8 @@ fn format_to_parts_auto() {
         Options {
             unit: RelativeTimeUnit::Day,
             style: RelativeTimeStyle::default(),
-            numeric: RelativeTimeNumeric::Auto},
+            numeric: RelativeTimeNumeric::Auto,
+        },
     )
     .unwrap();
     let parts = formatter.format_to_parts(0.0).unwrap();

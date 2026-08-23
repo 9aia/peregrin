@@ -1,7 +1,7 @@
 //! [`KeywordRule`] — matches identifiers the factory recognizes as keywords.
 
-use ac_lexer::{IdentFactory, KeywordFactory, LexError, LexerConfig, Token, TokenKind};
 use ac_lexer::LexRule;
+use ac_lexer::{IdentFactory, KeywordFactory, LexError, LexerConfig, Token, TokenKind};
 
 /// Matches identifiers that the factory's [`KeywordFactory::keyword_kind`] maps
 /// to a keyword kind. Non-keyword identifiers are left for other rules.
@@ -28,7 +28,8 @@ where
                     Ok(Token::new(kind, span))
                 })
             }
-            _ => None}
+            _ => None,
+        }
     }
 
     fn name(&self) -> &'static str {

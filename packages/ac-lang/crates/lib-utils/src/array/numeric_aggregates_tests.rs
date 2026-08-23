@@ -193,7 +193,11 @@ fn median_empty() {
 #[test]
 fn median_unsorted() {
     assert_eq!(
-        call("median", &[arr(&[json!(5), json!(1), json!(3), json!(2), json!(4)])]).as_number(),
+        call(
+            "median",
+            &[arr(&[json!(5), json!(1), json!(3), json!(2), json!(4)])]
+        )
+        .as_number(),
         Some(3.0)
     );
 }

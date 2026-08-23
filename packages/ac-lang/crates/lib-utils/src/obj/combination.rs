@@ -16,7 +16,8 @@ impl Function for Merge {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let a = require_object(&args[0])?;
         let b = require_object(&args[1])?;
@@ -41,7 +42,8 @@ impl Function for DeepMerge {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let a = require_object(&args[0])?;
         let b = require_object(&args[1])?;
@@ -69,15 +71,18 @@ impl Function for FromEntries {
         for entry in entries {
             let pair = entry.as_array().ok_or(Error::TypeMismatch {
                 expected: "array pair [key, value]",
-                got: "non-array"})?;
+                got: "non-array",
+            })?;
             if pair.len() < 2 {
                 return Err(Error::TypeMismatch {
                     expected: "pair with at least 2 elements",
-                    got: "short pair"});
+                    got: "short pair",
+                });
             }
             let key = pair[0].as_str().ok_or(Error::TypeMismatch {
                 expected: "string key",
-                got: "non-string"})?;
+                got: "non-string",
+            })?;
             result.insert(key.to_string(), pair[1].clone());
         }
         Ok(obj_value(result))

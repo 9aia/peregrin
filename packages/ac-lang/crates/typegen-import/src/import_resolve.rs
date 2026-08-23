@@ -42,7 +42,8 @@ pub fn resolve_imports(
         let path = match &kind {
             ImportKind::Static(p) => Some(p.clone()),
             ImportKind::DataDriven => extract_data_path(data, field_name),
-            ImportKind::None => None};
+            ImportKind::None => None,
+        };
 
         let Some(path) = path else { continue };
 

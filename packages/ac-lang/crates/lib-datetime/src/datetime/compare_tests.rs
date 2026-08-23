@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{Context, Error};
+use ac_runtime_modules::Module;
 
 use super::DateTimeModule;
 
@@ -243,7 +243,11 @@ fn is_between_inclusive_true() {
         call(
             &DateTimeModule,
             "is_between_inclusive",
-            &[s("2021-06-15T10:00:00Z"), s("2021-06-01T00:00:00Z"), s("2021-06-30T00:00:00Z")]
+            &[
+                s("2021-06-15T10:00:00Z"),
+                s("2021-06-01T00:00:00Z"),
+                s("2021-06-30T00:00:00Z")
+            ]
         )
         .as_bool(),
         Some(true)
@@ -256,7 +260,11 @@ fn is_between_inclusive_equal_start() {
         call(
             &DateTimeModule,
             "is_between_inclusive",
-            &[s("2021-06-01T00:00:00Z"), s("2021-06-01T00:00:00Z"), s("2021-06-30T00:00:00Z")]
+            &[
+                s("2021-06-01T00:00:00Z"),
+                s("2021-06-01T00:00:00Z"),
+                s("2021-06-30T00:00:00Z")
+            ]
         )
         .as_bool(),
         Some(true)
@@ -269,7 +277,11 @@ fn is_between_inclusive_equal_end() {
         call(
             &DateTimeModule,
             "is_between_inclusive",
-            &[s("2021-06-30T00:00:00Z"), s("2021-06-01T00:00:00Z"), s("2021-06-30T00:00:00Z")]
+            &[
+                s("2021-06-30T00:00:00Z"),
+                s("2021-06-01T00:00:00Z"),
+                s("2021-06-30T00:00:00Z")
+            ]
         )
         .as_bool(),
         Some(true)
@@ -282,7 +294,11 @@ fn is_between_inclusive_false_before() {
         call(
             &DateTimeModule,
             "is_between_inclusive",
-            &[s("2021-05-15T00:00:00Z"), s("2021-06-01T00:00:00Z"), s("2021-06-30T00:00:00Z")]
+            &[
+                s("2021-05-15T00:00:00Z"),
+                s("2021-06-01T00:00:00Z"),
+                s("2021-06-30T00:00:00Z")
+            ]
         )
         .as_bool(),
         Some(false)
@@ -295,7 +311,11 @@ fn is_between_inclusive_false_after() {
         call(
             &DateTimeModule,
             "is_between_inclusive",
-            &[s("2021-07-15T00:00:00Z"), s("2021-06-01T00:00:00Z"), s("2021-06-30T00:00:00Z")]
+            &[
+                s("2021-07-15T00:00:00Z"),
+                s("2021-06-01T00:00:00Z"),
+                s("2021-06-30T00:00:00Z")
+            ]
         )
         .as_bool(),
         Some(false)
@@ -311,8 +331,8 @@ fn is_between_inclusive_no_args_errors() {
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::{CanonicalContext, Host, Vm};
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(DateTimeModule);

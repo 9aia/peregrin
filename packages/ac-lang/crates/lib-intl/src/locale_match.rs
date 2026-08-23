@@ -23,18 +23,26 @@ impl Default for GetCanonicalLocales {
 }
 
 impl Function for GetCanonicalLocales {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let locales = if args.is_empty() {
             return Err(IntlError::InvalidArgument {
-                message: "at least one locale required".into()}
+                message: "at least one locale required".into(),
+            }
             .into_vm_error());
         } else if let Some(arr) = args[0].as_array() {
             arr.iter()
                 .map(|v| {
                     v.as_str()
-                        .ok_or_else(|| IntlError::InvalidArgument {
-                            message: "locale must be a string".into()}
-                        .into_vm_error())
+                        .ok_or_else(|| {
+                            IntlError::InvalidArgument {
+                                message: "locale must be a string".into(),
+                            }
+                            .into_vm_error()
+                        })
                         .map(|s| s.to_string())
                 })
                 .collect::<Result<Vec<_>, Error>>()?
@@ -72,7 +80,8 @@ impl Function for GetCanonicalLocales {
 /// - `intl.supported_locales_of(["de", "xxx"])` → `["de"]`
 #[derive(Clone)]
 pub struct SupportedLocalesOf {
-    provider: Option<super::provider::IntlProvider>}
+    provider: Option<super::provider::IntlProvider>,
+}
 
 impl SupportedLocalesOf {
     pub fn new() -> Self {
@@ -80,7 +89,9 @@ impl SupportedLocalesOf {
     }
 
     pub fn with_provider(provider: super::provider::IntlProvider) -> Self {
-        Self { provider: Some(provider) }
+        Self {
+            provider: Some(provider),
+        }
     }
 }
 
@@ -97,14 +108,11 @@ impl Default for SupportedLocalesOf {
 /// provider is configured. With a blob provider, the actual inventory is
 /// enumerated dynamically.
 const SUPPORTED_LANGUAGES: &[&str] = &[
-    "af", "am", "ar", "az", "be", "bg", "bn", "bs", "ca", "cs",
-    "cy", "da", "de", "el", "en", "es", "et", "eu", "fa", "fi",
-    "fil", "fr", "ga", "gl", "gu", "he", "hi", "hr", "hu", "hy",
-    "id", "is", "it", "ja", "ka", "kk", "km", "kn", "ko", "ky",
-    "lo", "lt", "lv", "mk", "ml", "mn", "mr", "ms", "my", "nb",
-    "ne", "nl", "pl", "pt", "ro", "ru", "si", "sk", "sl", "sq",
-    "sr", "sv", "sw", "ta", "te", "th", "tr", "uk", "ur", "uz",
-    "vi", "zh",
+    "af", "am", "ar", "az", "be", "bg", "bn", "bs", "ca", "cs", "cy", "da", "de", "el", "en", "es",
+    "et", "eu", "fa", "fi", "fil", "fr", "ga", "gl", "gu", "he", "hi", "hr", "hu", "hy", "id",
+    "is", "it", "ja", "ka", "kk", "km", "kn", "ko", "ky", "lo", "lt", "lv", "mk", "ml", "mn", "mr",
+    "ms", "my", "nb", "ne", "nl", "pl", "pt", "ro", "ru", "si", "sk", "sl", "sq", "sr", "sv", "sw",
+    "ta", "te", "th", "tr", "uk", "ur", "uz", "vi", "zh",
 ];
 
 fn is_supported_compiled(locale: &str) -> bool {
@@ -116,11 +124,23 @@ fn is_supported_compiled(locale: &str) -> bool {
     }
 }
 
-fn blob_supported_languages(provider: &super::provider::IntlProvider) -> Result<Vec<String>, Error> {
-    let bdp = provider.as_blob_data_provider()
-        .map_err(|e| IntlError::DataProvider { message: e.to_string() }.into_vm_error())?;
-    let ids = bdp.iter_ids_for_marker(DecimalSymbolsV1::INFO)
-        .map_err(|e| IntlError::DataProvider { message: e.to_string() }.into_vm_error())?;
+fn blob_supported_languages(
+    provider: &super::provider::IntlProvider,
+) -> Result<Vec<String>, Error> {
+    let bdp = provider.as_blob_data_provider().map_err(|e| {
+        IntlError::DataProvider {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })?;
+    let ids = bdp
+        .iter_ids_for_marker(DecimalSymbolsV1::INFO)
+        .map_err(|e| {
+            IntlError::DataProvider {
+                message: e.to_string(),
+            }
+            .into_vm_error()
+        })?;
     let langs: Vec<String> = ids
         .into_iter()
         .map(|id| id.locale.to_string())
@@ -130,7 +150,11 @@ fn blob_supported_languages(provider: &super::provider::IntlProvider) -> Result<
 }
 
 impl Function for SupportedLocalesOf {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let blob_langs = if let Some(provider) = &self.provider {
             Some(blob_supported_languages(provider)?)
         } else {
@@ -140,19 +164,21 @@ impl Function for SupportedLocalesOf {
         let requested = if args.is_empty() {
             let langs = match &blob_langs {
                 Some(l) => l.clone(),
-                None => SUPPORTED_LANGUAGES.iter().map(|s| s.to_string()).collect()};
-            let arr: Vec<serde_json::Value> = langs
-                .into_iter()
-                .map(|l| serde_json::json!(l))
-                .collect();
+                None => SUPPORTED_LANGUAGES.iter().map(|s| s.to_string()).collect(),
+            };
+            let arr: Vec<serde_json::Value> =
+                langs.into_iter().map(|l| serde_json::json!(l)).collect();
             return Ok(NonFunctionValue::new(serde_json::Value::Array(arr)));
         } else if let Some(arr) = args[0].as_array() {
             arr.iter()
                 .map(|v| {
                     v.as_str()
-                        .ok_or_else(|| IntlError::InvalidArgument {
-                            message: "locale must be a string".into()}
-                        .into_vm_error())
+                        .ok_or_else(|| {
+                            IntlError::InvalidArgument {
+                                message: "locale must be a string".into(),
+                            }
+                            .into_vm_error()
+                        })
                         .map(|s| s.to_string())
                 })
                 .collect::<Result<Vec<_>, Error>>()?
@@ -171,13 +197,16 @@ impl Function for SupportedLocalesOf {
                             langs.iter().any(|supported| {
                                 supported == l
                                     || supported == lang
-                                    || supported.parse::<icu::locale::Locale>()
+                                    || supported
+                                        .parse::<icu::locale::Locale>()
                                         .is_ok_and(|s| s.id.language.as_str() == lang)
                             })
                         }
-                        None => langs.iter().any(|supported| supported == l)}
+                        None => langs.iter().any(|supported| supported == l),
+                    }
                 }
-                None => is_supported_compiled(l)}
+                None => is_supported_compiled(l),
+            }
         };
 
         let filtered: Vec<serde_json::Value> = requested

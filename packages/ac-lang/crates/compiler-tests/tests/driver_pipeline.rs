@@ -4,7 +4,9 @@
 //! which enforces at compile time that phases connect correctly.
 
 use ac_compiler::{DriverError, DriverPipeline, ExtractedDoc, Session, Source, Stage};
-use ac_compiler_canonical::{default_cli_config, full_pipeline, typecheck_only_config, typecheck_pipeline, typegen_pipeline};
+use ac_compiler_canonical::{
+    default_cli_config, full_pipeline, typecheck_only_config, typecheck_pipeline, typegen_pipeline,
+};
 use ac_compiler_pass_extract::ExtractStage;
 use ac_compiler_pass_generate::GenerateFromResolvedStage;
 use ac_compiler_pass_parse::ParseStage;
@@ -182,11 +184,12 @@ host: example.com
 
 #[test]
 fn pass_manager_runs_optimization_passes() {
-    use pass_lang::{Pass as OptPass, PassError as OptPassError, PassManager};
     use pass_lang::Outcome;
+    use pass_lang::{Pass as OptPass, PassError as OptPassError, PassManager};
 
     struct SquaredFieldsCount {
-        count: usize}
+        count: usize,
+    }
     impl OptPass<Vec<String>> for SquaredFieldsCount {
         fn name(&self) -> &'static str {
             "count-squared"

@@ -57,16 +57,14 @@ impl<H: Host> LegoVm<H> {
             }
         }
 
-        Err(Error::PrimitiveError("no handler for expression".to_string()))
+        Err(Error::PrimitiveError(
+            "no handler for expression".to_string(),
+        ))
     }
 }
 
 impl<H: Host> VirtualMachine for LegoVm<H> {
-    fn eval(
-        &self,
-        expr: &RuntimeExpr,
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+    fn eval(&self, expr: &RuntimeExpr, ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         Self::eval(self, expr, ctx)
     }
 

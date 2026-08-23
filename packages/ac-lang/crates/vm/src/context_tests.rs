@@ -1,5 +1,5 @@
-use crate::CanonicalContext;
 use super::*;
+use crate::CanonicalContext;
 use ac_runtime_values::NonFunctionValue;
 use std::future::Future;
 use std::pin::Pin;

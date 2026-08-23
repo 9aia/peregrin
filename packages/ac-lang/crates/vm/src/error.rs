@@ -19,7 +19,8 @@ pub enum Error {
     /// diagnostics.
     TypeMismatch {
         expected: &'static str,
-        got: &'static str},
+        got: &'static str,
+    },
 
     /// The argument count did not match what the primitive expected.
     ArgumentCount { expected: usize, got: usize },
@@ -48,7 +49,8 @@ pub enum Error {
         /// The operation name (e.g. `"fetch"`).
         name: String,
         /// The evaluated arguments passed to the operation.
-        args: Vec<ac_runtime_values::NonFunctionValue>},
+        args: Vec<ac_runtime_values::NonFunctionValue>,
+    },
 
     /// A resource limit was exceeded during evaluation.
     ///
@@ -56,7 +58,8 @@ pub enum Error {
     /// configured (max scope depth, max call count). Hosts that run
     /// untrusted code — such as a sandbox host — set these limits to
     /// prevent runaway recursion or excessive computation.
-    ResourceLimit(String)}
+    ResourceLimit(String),
+}
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

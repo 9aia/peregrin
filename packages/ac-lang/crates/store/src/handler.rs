@@ -78,15 +78,13 @@ fn expr_to_json(expr: &RuntimeExpr) -> JsonValue {
                     entries
                         .iter()
                         .map(|(k, v)| {
-                            JsonValue::Array(vec![
-                                JsonValue::String(k.clone()),
-                                expr_to_json(v),
-                            ])
+                            JsonValue::Array(vec![JsonValue::String(k.clone()), expr_to_json(v)])
                         })
                         .collect(),
                 ),
             ),
-        ]))}
+        ])),
+    }
 }
 
 /// Compute the content hash of a handler clause.

@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-pub(super) use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error, Eval};
+pub(super) use ac_runtime_modules::Module;
 
 pub(super) use super::module::ObjModule;
 
@@ -51,8 +51,8 @@ pub(super) fn obj(pairs: &[(&str, serde_json::Value)]) -> NonFunctionValue {
 // ── eval infrastructure for higher-order functions ─────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_example_1::DefaultHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_example_1::DefaultHost;
 
 struct TestEval;
 impl Eval for TestEval {
@@ -111,7 +111,8 @@ fn split_args(s: &str) -> Vec<String> {
                 result.push(current.trim().to_string());
                 current.clear();
             }
-            _ => current.push(ch)}
+            _ => current.push(ch),
+        }
     }
     if !current.trim().is_empty() {
         result.push(current.trim().to_string());
@@ -184,4 +185,3 @@ pub(super) fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
         "params": params_json,
         "body": body}))
 }
-

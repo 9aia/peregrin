@@ -1,15 +1,18 @@
+use crate::CanonicalParser;
 use ac_ast_canonical::Expr;
 use ac_lexer::Lexer;
 use ac_lexer_canonical::CanonicalLexer;
 use ac_parser::{ParseError, Parser};
-use crate::CanonicalParser;
 use ac_runtime::NonFunctionValue;
 
 use serde_json::json;
 
 fn parse(input: &str) -> Result<Expr<NonFunctionValue>, ParseError> {
-    let tokens = CanonicalLexer::default().lex(input).map_err(|e| ParseError::LexError {
-        message: e.to_string()})?;
+    let tokens = CanonicalLexer::default()
+        .lex(input)
+        .map_err(|e| ParseError::LexError {
+            message: e.to_string(),
+        })?;
     CanonicalParser.parse(tokens)
 }
 
@@ -42,10 +45,13 @@ fn parse_simple_call() {
     let expr = parse("add(1, 2)").unwrap();
     assert_eq!(
         expr,
-        Expr::call("add", vec![
-            Expr::Value(NonFunctionValue::new(json!(1.0))),
-            Expr::Value(NonFunctionValue::new(json!(2.0))),
-        ])
+        Expr::call(
+            "add",
+            vec![
+                Expr::Value(NonFunctionValue::new(json!(1.0))),
+                Expr::Value(NonFunctionValue::new(json!(2.0))),
+            ]
+        )
     );
 }
 
@@ -54,13 +60,19 @@ fn parse_nested_call() {
     let expr = parse("add(mul(2, 3), 4)").unwrap();
     assert_eq!(
         expr,
-        Expr::call("add", vec![
-            Expr::call("mul", vec![
-                Expr::Value(NonFunctionValue::new(json!(2.0))),
-                Expr::Value(NonFunctionValue::new(json!(3.0))),
-            ]),
-            Expr::Value(NonFunctionValue::new(json!(4.0))),
-        ])
+        Expr::call(
+            "add",
+            vec![
+                Expr::call(
+                    "mul",
+                    vec![
+                        Expr::Value(NonFunctionValue::new(json!(2.0))),
+                        Expr::Value(NonFunctionValue::new(json!(3.0))),
+                    ]
+                ),
+                Expr::Value(NonFunctionValue::new(json!(4.0))),
+            ]
+        )
     );
 }
 
@@ -69,9 +81,10 @@ fn parse_namespaced_call() {
     let expr = parse("math.sqrt(16)").unwrap();
     assert_eq!(
         expr,
-        Expr::call("math.sqrt", vec![
-            Expr::Value(NonFunctionValue::new(json!(16.0))),
-        ])
+        Expr::call(
+            "math.sqrt",
+            vec![Expr::Value(NonFunctionValue::new(json!(16.0))),]
+        )
     );
 }
 
@@ -93,7 +106,8 @@ fn parse_handle_expression() {
             // body is the handler clause's body
             let _ = body;
         }
-        other => panic!("expected Handle, got {other:?}")}
+        other => panic!("expected Handle, got {other:?}"),
+    }
 }
 
 #[test]
@@ -155,14 +169,20 @@ fn parse_array_with_calls() {
     assert_eq!(
         expr,
         Expr::array(vec![
-            Expr::call("add", vec![
-                Expr::Value(NonFunctionValue::new(json!(1.0))),
-                Expr::Value(NonFunctionValue::new(json!(2.0))),
-            ]),
-            Expr::call("mul", vec![
-                Expr::Value(NonFunctionValue::new(json!(3.0))),
-                Expr::Value(NonFunctionValue::new(json!(4.0))),
-            ]),
+            Expr::call(
+                "add",
+                vec![
+                    Expr::Value(NonFunctionValue::new(json!(1.0))),
+                    Expr::Value(NonFunctionValue::new(json!(2.0))),
+                ]
+            ),
+            Expr::call(
+                "mul",
+                vec![
+                    Expr::Value(NonFunctionValue::new(json!(3.0))),
+                    Expr::Value(NonFunctionValue::new(json!(4.0))),
+                ]
+            ),
         ])
     );
 }
@@ -216,9 +236,10 @@ fn parse_object_with_string_keys() {
     let expr = parse(r#"{"key": "value"}"#).unwrap();
     assert_eq!(
         expr,
-        Expr::object(vec![
-            ("key".into(), Expr::Value(NonFunctionValue::new(json!("value")))),
-        ])
+        Expr::object(vec![(
+            "key".into(),
+            Expr::Value(NonFunctionValue::new(json!("value")))
+        ),])
     );
 }
 
@@ -227,12 +248,16 @@ fn parse_object_with_call_values() {
     let expr = parse("{result: add(1, 2)}").unwrap();
     assert_eq!(
         expr,
-        Expr::object(vec![
-            ("result".into(), Expr::call("add", vec![
-                Expr::Value(NonFunctionValue::new(json!(1.0))),
-                Expr::Value(NonFunctionValue::new(json!(2.0))),
-            ])),
-        ])
+        Expr::object(vec![(
+            "result".into(),
+            Expr::call(
+                "add",
+                vec![
+                    Expr::Value(NonFunctionValue::new(json!(1.0))),
+                    Expr::Value(NonFunctionValue::new(json!(2.0))),
+                ]
+            )
+        ),])
     );
 }
 
@@ -241,11 +266,13 @@ fn parse_nested_object() {
     let expr = parse("{outer: {inner: 42}}").unwrap();
     assert_eq!(
         expr,
-        Expr::object(vec![
-            ("outer".into(), Expr::object(vec![
-                ("inner".into(), Expr::Value(NonFunctionValue::new(json!(42.0)))),
-            ])),
-        ])
+        Expr::object(vec![(
+            "outer".into(),
+            Expr::object(vec![(
+                "inner".into(),
+                Expr::Value(NonFunctionValue::new(json!(42.0)))
+            ),])
+        ),])
     );
 }
 
@@ -255,8 +282,14 @@ fn parse_object_in_array() {
     assert_eq!(
         expr,
         Expr::array(vec![
-            Expr::object(vec![("a".into(), Expr::Value(NonFunctionValue::new(json!(1.0))))]),
-            Expr::object(vec![("b".into(), Expr::Value(NonFunctionValue::new(json!(2.0))))]),
+            Expr::object(vec![(
+                "a".into(),
+                Expr::Value(NonFunctionValue::new(json!(1.0)))
+            )]),
+            Expr::object(vec![(
+                "b".into(),
+                Expr::Value(NonFunctionValue::new(json!(2.0)))
+            )]),
         ])
     );
 }

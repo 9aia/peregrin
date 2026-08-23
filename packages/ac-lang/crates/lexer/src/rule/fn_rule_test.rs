@@ -1,6 +1,6 @@
-use crate::{DefaultLexError, LexerConfig, Span, Token};
-use crate::rule::{FnRule, LexRule};
 use super::test_utils::{TestKind, cfg};
+use crate::rule::{FnRule, LexRule};
+use crate::{DefaultLexError, LexerConfig, Span, Token};
 
 fn hash_rule(
     chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
@@ -14,7 +14,8 @@ fn hash_rule(
                 Span::at(start),
             )))
         }
-        _ => None}
+        _ => None,
+    }
 }
 
 #[test]

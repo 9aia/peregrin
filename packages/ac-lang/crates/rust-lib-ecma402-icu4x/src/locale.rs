@@ -4,7 +4,8 @@ use ecma402_traits::locale::{HourCycle, Locale as LocaleTrait, LocaleInfo, Local
 use icu::locale::{
     Locale as IcuLocale,
     extensions::unicode::{Key, Value},
-    subtags::{Language, Region, Script}};
+    subtags::{Language, Region, Script},
+};
 
 /// ICU4X-backed ECMA-402 `Intl.Locale`.
 pub struct Locale;
@@ -13,7 +14,8 @@ pub struct Locale;
 #[derive(Debug)]
 pub enum Error {
     InvalidLocale(String),
-    InvalidSubtag { subtag: String, message: String }}
+    InvalidSubtag { subtag: String, message: String },
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -39,21 +41,24 @@ impl LocaleTrait for Locale {
         if let Some(lang) = overrides.language {
             let parsed = lang.parse::<Language>().map_err(|e| Error::InvalidSubtag {
                 subtag: lang,
-                message: e.to_string()})?;
+                message: e.to_string(),
+            })?;
             locale.id.language = parsed;
         }
 
         if let Some(script) = overrides.script {
             let parsed = script.parse::<Script>().map_err(|e| Error::InvalidSubtag {
                 subtag: script,
-                message: e.to_string()})?;
+                message: e.to_string(),
+            })?;
             locale.id.script = Some(parsed);
         }
 
         if let Some(region) = overrides.region {
             let parsed = region.parse::<Region>().map_err(|e| Error::InvalidSubtag {
                 subtag: region,
-                message: e.to_string()})?;
+                message: e.to_string(),
+            })?;
             locale.id.region = Some(parsed);
         }
 
@@ -64,10 +69,12 @@ impl LocaleTrait for Locale {
             if let Some(value) = opt_val {
                 let key = opt_key.parse::<Key>().map_err(|e| Error::InvalidSubtag {
                     subtag: opt_key.to_string(),
-                    message: e.to_string()})?;
+                    message: e.to_string(),
+                })?;
                 let val = Value::try_from_str(value).map_err(|e| Error::InvalidSubtag {
                     subtag: value.to_string(),
-                    message: e.to_string()})?;
+                    message: e.to_string(),
+                })?;
                 locale.extensions.unicode.keywords.set(key, val);
             }
         }
@@ -75,11 +82,13 @@ impl LocaleTrait for Locale {
         if let Some(hc) = overrides.hour_cycle {
             let key = "hc".parse::<Key>().map_err(|e| Error::InvalidSubtag {
                 subtag: "hc".to_string(),
-                message: e.to_string()})?;
+                message: e.to_string(),
+            })?;
             let value = hc.as_str();
             let val = Value::try_from_str(value).map_err(|e| Error::InvalidSubtag {
                 subtag: value.to_string(),
-                message: e.to_string()})?;
+                message: e.to_string(),
+            })?;
             locale.extensions.unicode.keywords.set(key, val);
         }
 
@@ -119,7 +128,8 @@ impl LocaleTrait for Locale {
             region,
             calendar,
             numbering_system,
-            hour_cycle})
+            hour_cycle,
+        })
     }
 }
 

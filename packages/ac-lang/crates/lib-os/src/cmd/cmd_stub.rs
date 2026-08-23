@@ -9,7 +9,8 @@ use crate::error::OsError;
 /// A command executor that returns canned outputs by program name.
 #[derive(Default)]
 pub struct StubCmd {
-    outputs: Mutex<HashMap<String, CmdOutput>>}
+    outputs: Mutex<HashMap<String, CmdOutput>>,
+}
 
 impl StubCmd {
     pub fn new() -> Self {
@@ -20,7 +21,8 @@ impl StubCmd {
         let mut outputs = HashMap::new();
         outputs.insert(program.into(), output);
         StubCmd {
-            outputs: Mutex::new(outputs)}
+            outputs: Mutex::new(outputs),
+        }
     }
 }
 
@@ -32,6 +34,7 @@ impl Cmd for StubCmd {
             .get(program)
             .cloned()
             .ok_or(OsError::NotFound {
-                path: format!("command: {program}")})
+                path: format!("command: {program}"),
+            })
     }
 }

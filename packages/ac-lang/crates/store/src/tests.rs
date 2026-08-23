@@ -17,7 +17,8 @@ fn hash_is_deterministic() {
     let func = FunctionValue {
         params: vec![("x".to_string(), json!({"type": "number"}))],
         return_schema: None,
-        body: "add(x, 1)".to_string()};
+        body: "add(x, 1)".to_string(),
+    };
     let h1 = DefinitionHash::from_json(&func.to_json());
     let h2 = DefinitionHash::from_json(&func.to_json());
     assert_eq!(h1, h2);
@@ -28,11 +29,13 @@ fn hash_differs_for_different_bodies() {
     let f1 = FunctionValue {
         params: vec![],
         return_schema: None,
-        body: "add(1, 2)".to_string()};
+        body: "add(1, 2)".to_string(),
+    };
     let f2 = FunctionValue {
         params: vec![],
         return_schema: None,
-        body: "add(1, 3)".to_string()};
+        body: "add(1, 3)".to_string(),
+    };
     let h1 = DefinitionHash::from_json(&f1.to_json());
     let h2 = DefinitionHash::from_json(&f2.to_json());
     assert_ne!(h1, h2);
@@ -53,7 +56,8 @@ fn hash_display_and_from_str() {
     let func = FunctionValue {
         params: vec![],
         return_schema: None,
-        body: "42".to_string()};
+        body: "42".to_string(),
+    };
     let hash = DefinitionHash::from_json(&func.to_json());
     let hex_str = hash.to_string();
     assert_eq!(hex_str.len(), 64);
@@ -105,7 +109,8 @@ fn store_insert_and_get() {
     let func = FunctionValue {
         params: vec![("x".to_string(), json!({"type": "number"}))],
         return_schema: None,
-        body: "add(x, 1)".to_string()};
+        body: "add(x, 1)".to_string(),
+    };
     let hash = store.insert(func.clone());
     assert!(store.contains(&hash));
     let retrieved = store.get(&hash).unwrap();
@@ -118,7 +123,8 @@ fn store_deduplicates_identical_definitions() {
     let func = FunctionValue {
         params: vec![],
         return_schema: None,
-        body: "42".to_string()};
+        body: "42".to_string(),
+    };
     let h1 = store.insert(func.clone());
     let h2 = store.insert(func);
     assert_eq!(h1, h2);
@@ -131,11 +137,13 @@ fn store_serialization_roundtrip() {
     let f1 = FunctionValue {
         params: vec![("x".to_string(), json!({"type": "number"}))],
         return_schema: None,
-        body: "add(x, 1)".to_string()};
+        body: "add(x, 1)".to_string(),
+    };
     let f2 = FunctionValue {
         params: vec![],
         return_schema: Some(json!({"type": "number"})),
-        body: "42".to_string()};
+        body: "42".to_string(),
+    };
     store.insert(f1);
     store.insert(f2);
 
@@ -189,7 +197,8 @@ fn store_and_registry_integration() {
     let func = FunctionValue {
         params: vec![("x".to_string(), json!({"type": "number"}))],
         return_schema: None,
-        body: "add(x, x)".to_string()};
+        body: "add(x, x)".to_string(),
+    };
 
     let hash = store.insert(func);
     registry.register("double", hash.clone());
@@ -208,7 +217,8 @@ fn handler_clause_hash_is_deterministic() {
         op_name: "fetch".to_string(),
         params: vec!["url".to_string()],
         continuation_name: "k".to_string(),
-        body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("cached"))])};
+        body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("cached"))]),
+    };
     let h1 = hash_handler_clause(&clause);
     let h2 = hash_handler_clause(&clause);
     assert_eq!(h1, h2);
@@ -220,12 +230,14 @@ fn handler_clause_hash_differs_for_different_ops() {
         op_name: "fetch".to_string(),
         params: vec![],
         continuation_name: "k".to_string(),
-        body: Expr::value(NonFunctionValue::new(42))};
+        body: Expr::value(NonFunctionValue::new(42)),
+    };
     let c2 = HandlerClause {
         op_name: "read_file".to_string(),
         params: vec![],
         continuation_name: "k".to_string(),
-        body: Expr::value(NonFunctionValue::new(42))};
+        body: Expr::value(NonFunctionValue::new(42)),
+    };
     assert_ne!(hash_handler_clause(&c1), hash_handler_clause(&c2));
 }
 
@@ -235,12 +247,14 @@ fn handler_clause_hash_differs_for_different_bodies() {
         op_name: "fetch".to_string(),
         params: vec![],
         continuation_name: "k".to_string(),
-        body: Expr::value(NonFunctionValue::new(42))};
+        body: Expr::value(NonFunctionValue::new(42)),
+    };
     let c2 = HandlerClause {
         op_name: "fetch".to_string(),
         params: vec![],
         continuation_name: "k".to_string(),
-        body: Expr::value(NonFunctionValue::new(99))};
+        body: Expr::value(NonFunctionValue::new(99)),
+    };
     assert_ne!(hash_handler_clause(&c1), hash_handler_clause(&c2));
 }
 
@@ -276,7 +290,8 @@ fn expr_hash_handle_is_deterministic() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("result"))}],
+            body: Expr::value(NonFunctionValue::new("result")),
+        }],
     );
     let h1 = hash_expr(&expr);
     let h2 = hash_expr(&expr);
@@ -307,7 +322,11 @@ fn eval_cache_insert_and_get() {
 fn eval_cache_miss_for_different_args() {
     let mut cache = EvalCache::new();
     let hash = DefinitionHash::from_hex("a".repeat(64));
-    cache.insert(&hash, &[NonFunctionValue::new(1)], NonFunctionValue::new(42));
+    cache.insert(
+        &hash,
+        &[NonFunctionValue::new(1)],
+        NonFunctionValue::new(42),
+    );
 
     assert!(cache.get(&hash, &[NonFunctionValue::new(2)]).is_none());
 }
@@ -328,7 +347,11 @@ fn eval_cache_serialization_roundtrip() {
     let h1 = DefinitionHash::from_hex("a".repeat(64));
     let h2 = DefinitionHash::from_hex("b".repeat(64));
     cache.insert(&h1, &[NonFunctionValue::new(1)], NonFunctionValue::new(42));
-    cache.insert(&h2, &[NonFunctionValue::new("x")], NonFunctionValue::new("result"));
+    cache.insert(
+        &h2,
+        &[NonFunctionValue::new("x")],
+        NonFunctionValue::new("result"),
+    );
 
     let json = cache.to_json();
     let restored = EvalCache::from_json(&json);
@@ -386,7 +409,8 @@ fn store_multiple_different_definitions() {
         .map(|i| FunctionValue {
             params: vec![],
             return_schema: None,
-            body: format!("add({i}, 1)")})
+            body: format!("add({i}, 1)"),
+        })
         .collect();
 
     let mut hashes = Vec::new();
@@ -466,11 +490,13 @@ fn hash_differs_for_different_param_names() {
     let f1 = FunctionValue {
         params: vec![("x".to_string(), json!({"type": "number"}))],
         return_schema: None,
-        body: "add(x, 1)".to_string()};
+        body: "add(x, 1)".to_string(),
+    };
     let f2 = FunctionValue {
         params: vec![("y".to_string(), json!({"type": "number"}))],
         return_schema: None,
-        body: "add(y, 1)".to_string()};
+        body: "add(y, 1)".to_string(),
+    };
     let h1 = DefinitionHash::from_json(&f1.to_json());
     let h2 = DefinitionHash::from_json(&f2.to_json());
     assert_ne!(h1, h2);
@@ -481,11 +507,13 @@ fn hash_differs_for_different_return_schema() {
     let f1 = FunctionValue {
         params: vec![],
         return_schema: Some(json!({"type": "number"})),
-        body: "42".to_string()};
+        body: "42".to_string(),
+    };
     let f2 = FunctionValue {
         params: vec![],
         return_schema: Some(json!({"type": "string"})),
-        body: "42".to_string()};
+        body: "42".to_string(),
+    };
     let h1 = DefinitionHash::from_json(&f1.to_json());
     let h2 = DefinitionHash::from_json(&f2.to_json());
     assert_ne!(h1, h2);
@@ -496,11 +524,13 @@ fn hash_differs_with_and_without_return_schema() {
     let f1 = FunctionValue {
         params: vec![],
         return_schema: Some(json!({"type": "number"})),
-        body: "42".to_string()};
+        body: "42".to_string(),
+    };
     let f2 = FunctionValue {
         params: vec![],
         return_schema: None,
-        body: "42".to_string()};
+        body: "42".to_string(),
+    };
     let h1 = DefinitionHash::from_json(&f1.to_json());
     let h2 = DefinitionHash::from_json(&f2.to_json());
     assert_ne!(h1, h2);
@@ -540,12 +570,14 @@ fn handler_clause_hash_differs_for_different_params() {
         op_name: "fetch".to_string(),
         params: vec!["url".to_string()],
         continuation_name: "k".to_string(),
-        body: Expr::value(NonFunctionValue::new(42))};
+        body: Expr::value(NonFunctionValue::new(42)),
+    };
     let c2 = HandlerClause {
         op_name: "fetch".to_string(),
         params: vec!["path".to_string()],
         continuation_name: "k".to_string(),
-        body: Expr::value(NonFunctionValue::new(42))};
+        body: Expr::value(NonFunctionValue::new(42)),
+    };
     assert_ne!(hash_handler_clause(&c1), hash_handler_clause(&c2));
 }
 
@@ -555,12 +587,14 @@ fn handler_clause_hash_differs_for_different_continuation_name() {
         op_name: "fetch".to_string(),
         params: vec![],
         continuation_name: "k".to_string(),
-        body: Expr::value(NonFunctionValue::new(42))};
+        body: Expr::value(NonFunctionValue::new(42)),
+    };
     let c2 = HandlerClause {
         op_name: "fetch".to_string(),
         params: vec![],
         continuation_name: "resume".to_string(),
-        body: Expr::value(NonFunctionValue::new(42))};
+        body: Expr::value(NonFunctionValue::new(42)),
+    };
     assert_ne!(hash_handler_clause(&c1), hash_handler_clause(&c2));
 }
 
@@ -592,7 +626,8 @@ fn expr_hash_handle_differs_for_different_handlers() {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("a"))}],
+            body: Expr::value(NonFunctionValue::new("a")),
+        }],
     );
     let e2 = Expr::handle(
         Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("data"))]),
@@ -600,7 +635,8 @@ fn expr_hash_handle_differs_for_different_handlers() {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("b"))}],
+            body: Expr::value(NonFunctionValue::new("b")),
+        }],
     );
     assert_ne!(hash_expr(&e1), hash_expr(&e2));
 }

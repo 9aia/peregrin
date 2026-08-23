@@ -11,7 +11,8 @@ fn resolved_module_construction() {
         schemas: vec![("base".to_string(), json!({"type": "object"}))],
         merge: vec!["base".to_string()],
         data: json!({"version": 1}),
-        base_path: Some(PathBuf::from("/schemas"))};
+        base_path: Some(PathBuf::from("/schemas")),
+    };
 
     assert_eq!(module.schemas.len(), 1);
     assert_eq!(module.merge, vec!["base".to_string()]);
@@ -25,7 +26,8 @@ fn resolved_module_clone() {
         schemas: vec![("base".to_string(), json!({"type": "object"}))],
         merge: vec![],
         data: json!(null),
-        base_path: None};
+        base_path: None,
+    };
     let cloned = module.clone();
     assert_eq!(module.schemas.len(), cloned.schemas.len());
 }

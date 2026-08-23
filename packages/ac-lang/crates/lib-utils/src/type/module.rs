@@ -1,9 +1,10 @@
-use ac_runtime_modules::Module;
 use ac_runtime::Function;
+use ac_runtime_modules::Module;
 
 use crate::r#type::coercion::{ToBool, ToNumber, ToString};
 use crate::r#type::predicates::{
-    IsArray, IsBool, IsEmpty, IsNull, IsNumber, IsObject, IsString, IsTruthy, TypeOf};
+    IsArray, IsBool, IsEmpty, IsNull, IsNumber, IsObject, IsString, IsTruthy, TypeOf,
+};
 use crate::r#type::utilities::{Coalesce, Default, Identity};
 
 /// The `type` module — type coercion and predicate functions.
@@ -46,6 +47,7 @@ impl Module for TypeModule {
             "identity" => Some(&Identity),
             "default" => Some(&Default),
             "coalesce" => Some(&Coalesce),
-            _ => None}
+            _ => None,
+        }
     }
 }

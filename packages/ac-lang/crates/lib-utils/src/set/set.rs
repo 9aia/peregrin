@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
+use ac_runtime::{Context, Error, Function};
 use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_runtime_modules::Module;
-use ac_runtime::{Context, Error, Function};
 
 /// The `set` module — set-theoretic operations on arrays.
 ///
@@ -28,7 +28,8 @@ impl Module for SetModule {
             "symmetric_difference" => Some(&SymmetricDifference),
             "without" => Some(&Without),
             "unique_by" => Some(&UniqueBy),
-            _ => None}
+            _ => None,
+        }
     }
 }
 
@@ -37,13 +38,15 @@ impl Module for SetModule {
 fn require_array(arg: &NonFunctionValue) -> Result<&[serde_json::Value], Error> {
     arg.as_array().ok_or(Error::TypeMismatch {
         expected: "array",
-        got: "non-array"})
+        got: "non-array",
+    })
 }
 
 fn require_one_array(args: &[NonFunctionValue]) -> Result<&[serde_json::Value], Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0})?;
+        got: 0,
+    })?;
     require_array(arg)
 }
 
@@ -53,7 +56,8 @@ fn require_two_arrays(
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len()});
+            got: args.len(),
+        });
     }
     let a = require_array(&args[0])?;
     let b = require_array(&args[1])?;
@@ -67,7 +71,8 @@ fn arr(items: &[serde_json::Value]) -> NonFunctionValue {
 fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error> {
     arg.as_function().ok_or(Error::TypeMismatch {
         expected: "function value",
-        got: "non-function"})
+        got: "non-function",
+    })
 }
 
 fn bind_param(
@@ -91,7 +96,8 @@ fn value_key(value: &serde_json::Value) -> String {
         serde_json::Value::Bool(b) => format!("b:{b}"),
         serde_json::Value::Number(n) => format!("n:{n}"),
         serde_json::Value::String(s) => format!("s:{s}"),
-        other => serde_json::to_string(other).unwrap_or_else(|_| "?".to_string())}
+        other => serde_json::to_string(other).unwrap_or_else(|_| "?".to_string()),
+    }
 }
 
 /// Deduplicate a slice while preserving first-occurrence order.
@@ -237,7 +243,8 @@ impl Function for Without {
         if args.is_empty() {
             return Err(Error::ArgumentCount {
                 expected: 1,
-                got: 0});
+                got: 0,
+            });
         }
         let array = require_array(&args[0])?;
         let excludes: HashSet<String> = args[1..].iter().map(|v| value_key(v.inner())).collect();
@@ -266,7 +273,8 @@ impl Function for UniqueBy {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;

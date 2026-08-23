@@ -44,7 +44,8 @@ struct Section {
     /// Dotted path of the section (e.g. "server" or "server.ssl")
     path: String,
     /// Byte offset of the section header line start
-    line_start: usize}
+    line_start: usize,
+}
 
 /// Finds all `[section]` and `[[section]]` headers in the TOML text.
 fn find_sections(source: &str, lines: &LineIndex) -> Vec<Section> {

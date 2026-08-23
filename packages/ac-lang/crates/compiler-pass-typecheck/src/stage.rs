@@ -1,8 +1,9 @@
 //! driver-lang Stage implementations for the typecheck phase.
 
-use ac_compiler::driver::{
-    CheckedDoc, DriverError, ExtractedDoc, ResolvedDoc, Session, Stage, TypecheckResult};
 use ac_compiler::Config;
+use ac_compiler::driver::{
+    CheckedDoc, DriverError, ExtractedDoc, ResolvedDoc, Session, Stage, TypecheckResult,
+};
 use ac_typecheck_core::{Type, TypeParam, Variance};
 use serde_json::Value as JsonValue;
 
@@ -22,7 +23,8 @@ fn parse_type_param(v: &JsonValue) -> Option<TypeParam> {
                     let btype = b.get("type")?.as_str()?;
                     match btype {
                         "trait" => b.get("name")?.as_str().map(|n| Type::Trait(n.to_string())),
-                        _ => None}
+                        _ => None,
+                    }
                 })
                 .collect::<Vec<_>>()
         })
@@ -35,7 +37,8 @@ fn parse_type_param(v: &JsonValue) -> Option<TypeParam> {
             "contravariant" | "in" => Some(Variance::Contravariant),
             "invariant" => Some(Variance::Invariant),
             "bivariant" => Some(Variance::Bivariant),
-            _ => None})
+            _ => None,
+        })
         .unwrap_or(Variance::Invariant);
     let tp = if bounds.is_empty() {
         TypeParam::new(name)
@@ -158,7 +161,9 @@ impl Stage<Config> for TypecheckStage {
                                 },
                                 || {
                                     let bodies =
-                                        ac_typecheck_key_termination::extract_function_bodies(&data);
+                                        ac_typecheck_key_termination::extract_function_bodies(
+                                            &data,
+                                        );
                                     ac_typecheck_key_termination::check(
                                         &bodies,
                                         &ac_dialect_canonical::AC_DIALECT,
@@ -203,7 +208,8 @@ impl Stage<Config> for TypecheckStage {
             extracted: doc.extracted,
             typegen_ctx: doc.typegen_ctx,
             type_errors: local_errors,
-            source_map: doc.source_map})
+            source_map: doc.source_map,
+        })
     }
 }
 
@@ -320,7 +326,9 @@ impl Stage<Config> for TypecheckOnlyStage {
                                 },
                                 || {
                                     let bodies =
-                                        ac_typecheck_key_termination::extract_function_bodies(&data);
+                                        ac_typecheck_key_termination::extract_function_bodies(
+                                            &data,
+                                        );
                                     ac_typecheck_key_termination::check(
                                         &bodies,
                                         &ac_dialect_canonical::AC_DIALECT,
@@ -364,6 +372,7 @@ impl Stage<Config> for TypecheckOnlyStage {
         Ok(TypecheckResult {
             extracted: doc.extracted,
             type_errors: local_errors,
-            source_map: doc.source_map})
+            source_map: doc.source_map,
+        })
     }
 }

@@ -17,7 +17,8 @@ pub enum Type {
     Object(Vec<(String, Type)>),
 
     /// A function from parameter types to a return type.
-    Function { params: Vec<Type>, ret: Box<Type> }}
+    Function { params: Vec<Type>, ret: Box<Type> },
+}
 
 impl Type {
     /// Creates a primitive type.
@@ -39,7 +40,8 @@ impl Type {
     pub fn function(params: Vec<Type>, ret: Type) -> Self {
         Type::Function {
             params,
-            ret: Box::new(ret)}
+            ret: Box::new(ret),
+        }
     }
 }
 

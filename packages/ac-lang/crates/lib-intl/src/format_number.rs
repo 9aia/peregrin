@@ -4,18 +4,24 @@ use std::rc::Rc;
 
 use ac_runtime::NonFunctionValue;
 use ac_runtime::{Context, Error, Function};
-use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
 use icu::decimal::options::{DecimalFormatterOptions, GroupingStrategy};
+use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
 use icu::experimental::dimension::currency::CurrencyType;
 use icu::experimental::dimension::currency::formatter::CurrencyFormatter;
 use icu::experimental::dimension::currency::options::{CurrencyFormatterOptions, CurrencyUsage};
 use icu::experimental::dimension::percent::formatter::PercentFormatter;
-use icu::experimental::dimension::units::categorized_formatter::{CategorizedFormatter, CategorizedUnitsFormatterPreferences};
+use icu::experimental::dimension::units::categorized_formatter::{
+    CategorizedFormatter, CategorizedUnitsFormatterPreferences,
+};
 use icu::experimental::dimension::units::options::{UnitsFormatterOptions, Width};
 use icu::experimental::measure::category::{Area, Duration, Length, Mass, Volume};
 use writeable::Writeable;
 
-use super::common::{apply_digit_options, apply_fraction_digits, apply_numbering_system, apply_sign_display, decimal_from_f64, make_provider, opt_str, optional_locale, optional_object, require_number, s, DataProvider};
+use super::common::{
+    DataProvider, apply_digit_options, apply_fraction_digits, apply_numbering_system,
+    apply_sign_display, decimal_from_f64, make_provider, opt_str, optional_locale, optional_object,
+    require_number, s,
+};
 use super::error::IntlError;
 use super::parts::PartsCollector;
 use super::provider::IntlProvider;
@@ -56,7 +62,8 @@ thread_local! {
 /// - `intl.format_number(1000000, "en", {notation: "compact"})` → `"1M"`
 #[derive(Clone)]
 pub struct FormatNumber {
-    provider: Option<IntlProvider>}
+    provider: Option<IntlProvider>,
+}
 
 impl FormatNumber {
     pub fn new() -> Self {
@@ -64,7 +71,9 @@ impl FormatNumber {
     }
 
     pub fn with_provider(provider: IntlProvider) -> Self {
-        Self { provider: Some(provider) }
+        Self {
+            provider: Some(provider),
+        }
     }
 }
 
@@ -75,7 +84,11 @@ impl Default for FormatNumber {
 }
 
 impl Function for FormatNumber {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let n = require_number(args, 0)?;
         let mut locale = optional_locale(args, 1)?;
         let opts = optional_object(args, 2)?;
@@ -89,9 +102,12 @@ impl Function for FormatNumber {
             "percent" => format_percent(n, &locale, opts, &dp)?,
             "unit" => format_unit(n, &locale, opts, &dp)?,
             "currency" => {
-                let currency = opt_str(opts, "currency")
-                    .ok_or_else(|| IntlError::InvalidArgument {
-                        message: "currency option required for currency style".into()}.into_vm_error())?;
+                let currency = opt_str(opts, "currency").ok_or_else(|| {
+                    IntlError::InvalidArgument {
+                        message: "currency option required for currency style".into(),
+                    }
+                    .into_vm_error()
+                })?;
                 let display = opt_str(opts, "currencyDisplay").unwrap_or("symbol");
                 format_currency(n, &locale, currency, display, opts, &dp)?
             }
@@ -102,31 +118,37 @@ impl Function for FormatNumber {
                 }
                 "scientific" => format_scientific(n, &locale, opts, &dp)?,
                 "engineering" => format_engineering(n, &locale, opts, &dp)?,
-                _ => format_standard(n, &locale, opts, &dp)?}};
+                _ => format_standard(n, &locale, opts, &dp)?,
+            },
+        };
 
         Ok(s(formatted))
     }
 }
 
-fn build_formatter_options(opts: Option<&serde_json::Map<String, serde_json::Value>>) -> DecimalFormatterOptions {
+fn build_formatter_options(
+    opts: Option<&serde_json::Map<String, serde_json::Value>>,
+) -> DecimalFormatterOptions {
     let mut options = DecimalFormatterOptions::default();
     if let Some(o) = opts
-        && let Some(v) = o.get("useGrouping") {
-            if let Some(b) = v.as_bool() {
-                options.grouping_strategy = if b {
-                    Some(GroupingStrategy::Auto)
-                } else {
-                    Some(GroupingStrategy::Never)
-                };
-            } else if let Some(s) = v.as_str() {
-                options.grouping_strategy = match s {
-                    "min2" => Some(GroupingStrategy::Min2),
-                    "auto" => Some(GroupingStrategy::Auto),
-                    "always" => Some(GroupingStrategy::Always),
-                    "false" | "never" => Some(GroupingStrategy::Never),
-                    _ => Some(GroupingStrategy::Auto)};
-            }
+        && let Some(v) = o.get("useGrouping")
+    {
+        if let Some(b) = v.as_bool() {
+            options.grouping_strategy = if b {
+                Some(GroupingStrategy::Auto)
+            } else {
+                Some(GroupingStrategy::Never)
+            };
+        } else if let Some(s) = v.as_str() {
+            options.grouping_strategy = match s {
+                "min2" => Some(GroupingStrategy::Min2),
+                "auto" => Some(GroupingStrategy::Auto),
+                "always" => Some(GroupingStrategy::Always),
+                "false" | "never" => Some(GroupingStrategy::Never),
+                _ => Some(GroupingStrategy::Auto),
+            };
         }
+    }
     options
 }
 
@@ -136,16 +158,28 @@ fn decimal_formatter(
     dp: &DataProvider,
 ) -> Result<Rc<DecimalFormatter>, Error> {
     let formatter_opts = build_formatter_options(opts);
-    let key = (dp.provider_id(), locale.to_string(), format!("{:?}", formatter_opts));
+    let key = (
+        dp.provider_id(),
+        locale.to_string(),
+        format!("{:?}", formatter_opts),
+    );
     DECIMAL_FORMATTERS.with(|cache| -> Result<Rc<DecimalFormatter>, Error> {
         let mut cache = cache.borrow_mut();
         if let Some(f) = cache.get(&key) {
             Ok(Rc::clone(f))
         } else {
             let f = match dp.as_buffer_provider() {
-                Some(p) => DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts),
-                None => DecimalFormatter::try_new(locale.into(), formatter_opts)}
-            .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+                Some(p) => {
+                    DecimalFormatter::try_new_with_buffer_provider(p, locale.into(), formatter_opts)
+                }
+                None => DecimalFormatter::try_new(locale.into(), formatter_opts),
+            }
+            .map_err(|e| {
+                IntlError::Formatting {
+                    message: e.to_string(),
+                }
+                .into_vm_error()
+            })?;
             let f = Rc::new(f);
             cache.insert(key, Rc::clone(&f));
             Ok(f)
@@ -153,7 +187,12 @@ fn decimal_formatter(
     })
 }
 
-fn format_standard(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, dp: &DataProvider) -> Result<String, Error> {
+fn format_standard(
+    n: f64,
+    locale: &icu::locale::Locale,
+    opts: Option<&serde_json::Map<String, serde_json::Value>>,
+    dp: &DataProvider,
+) -> Result<String, Error> {
     let formatter = decimal_formatter(locale, opts, dp)?;
 
     let mut decimal = decimal_from_f64(n);
@@ -162,17 +201,38 @@ fn format_standard(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_jso
     Ok(formatted.write_to_string().into_owned())
 }
 
-fn format_compact(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, compact_display: &str, dp: &DataProvider) -> Result<String, Error> {
+fn format_compact(
+    n: f64,
+    locale: &icu::locale::Locale,
+    opts: Option<&serde_json::Map<String, serde_json::Value>>,
+    compact_display: &str,
+    dp: &DataProvider,
+) -> Result<String, Error> {
     let formatter = if compact_display == "long" {
         match dp.as_buffer_provider() {
-            Some(p) => CompactDecimalFormatter::try_new_long_with_buffer_provider(p, locale.into(), Default::default()),
-            None => CompactDecimalFormatter::try_new_long(locale.into(), Default::default())}
+            Some(p) => CompactDecimalFormatter::try_new_long_with_buffer_provider(
+                p,
+                locale.into(),
+                Default::default(),
+            ),
+            None => CompactDecimalFormatter::try_new_long(locale.into(), Default::default()),
+        }
     } else {
         match dp.as_buffer_provider() {
-            Some(p) => CompactDecimalFormatter::try_new_short_with_buffer_provider(p, locale.into(), Default::default()),
-            None => CompactDecimalFormatter::try_new_short(locale.into(), Default::default())}
+            Some(p) => CompactDecimalFormatter::try_new_short_with_buffer_provider(
+                p,
+                locale.into(),
+                Default::default(),
+            ),
+            None => CompactDecimalFormatter::try_new_short(locale.into(), Default::default()),
+        }
     }
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    .map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })?;
 
     let mut decimal = decimal_from_f64(n);
     apply_sign_display(&mut decimal, opts);
@@ -191,7 +251,12 @@ fn format_decimal_with_options(
     Ok(formatted.write_to_string().into_owned())
 }
 
-fn format_scientific(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, dp: &DataProvider) -> Result<String, Error> {
+fn format_scientific(
+    n: f64,
+    locale: &icu::locale::Locale,
+    opts: Option<&serde_json::Map<String, serde_json::Value>>,
+    dp: &DataProvider,
+) -> Result<String, Error> {
     if n == 0.0 || n.is_nan() || n.is_infinite() {
         return format_standard(n, locale, opts, dp);
     }
@@ -204,7 +269,12 @@ fn format_scientific(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_j
     Ok(format!("{mantissa_str}×10{exp_str}"))
 }
 
-fn format_engineering(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, dp: &DataProvider) -> Result<String, Error> {
+fn format_engineering(
+    n: f64,
+    locale: &icu::locale::Locale,
+    opts: Option<&serde_json::Map<String, serde_json::Value>>,
+    dp: &DataProvider,
+) -> Result<String, Error> {
     if n == 0.0 || n.is_nan() || n.is_infinite() {
         return format_standard(n, locale, opts, dp);
     }
@@ -218,18 +288,36 @@ fn format_engineering(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_
     Ok(format!("{mantissa_str}×10{exp_str}"))
 }
 
-fn format_exponent(exponent: i32, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, dp: &DataProvider) -> Result<String, Error> {
+fn format_exponent(
+    exponent: i32,
+    locale: &icu::locale::Locale,
+    opts: Option<&serde_json::Map<String, serde_json::Value>>,
+    dp: &DataProvider,
+) -> Result<String, Error> {
     let formatter = decimal_formatter(locale, opts, dp)?;
     let mut decimal = fixed_decimal::Decimal::from(exponent);
     decimal.apply_sign_display(fixed_decimal::SignDisplay::ExceptZero);
     Ok(formatter.format(&decimal).write_to_string().into_owned())
 }
 
-fn format_percent(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, dp: &DataProvider) -> Result<String, Error> {
+fn format_percent(
+    n: f64,
+    locale: &icu::locale::Locale,
+    opts: Option<&serde_json::Map<String, serde_json::Value>>,
+    dp: &DataProvider,
+) -> Result<String, Error> {
     let formatter = match dp.as_buffer_provider() {
-        Some(p) => PercentFormatter::try_new_with_buffer_provider(p, locale.into(), Default::default()),
-        None => PercentFormatter::try_new(locale.into(), Default::default())}
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+        Some(p) => {
+            PercentFormatter::try_new_with_buffer_provider(p, locale.into(), Default::default())
+        }
+        None => PercentFormatter::try_new(locale.into(), Default::default()),
+    }
+    .map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })?;
 
     let mut decimal = decimal_from_f64(n);
     decimal.multiply_pow10(2);
@@ -240,26 +328,65 @@ fn format_percent(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json
     Ok(formatted.write_to_string().into_owned())
 }
 
-fn format_currency(n: f64, locale: &icu::locale::Locale, currency: &str, display: &str, opts: Option<&serde_json::Map<String, serde_json::Value>>, dp: &DataProvider) -> Result<String, Error> {
-    let currency_code = CurrencyType::try_from_str(currency)
-        .map_err(|_| IntlError::InvalidCurrency { code: currency.to_string() }.into_vm_error())?;
+fn format_currency(
+    n: f64,
+    locale: &icu::locale::Locale,
+    currency: &str,
+    display: &str,
+    opts: Option<&serde_json::Map<String, serde_json::Value>>,
+    dp: &DataProvider,
+) -> Result<String, Error> {
+    let currency_code = CurrencyType::try_from_str(currency).map_err(|_| {
+        IntlError::InvalidCurrency {
+            code: currency.to_string(),
+        }
+        .into_vm_error()
+    })?;
 
     let usage = match opt_str(opts, "currencySign") {
         Some("accounting") => CurrencyUsage::Accounting,
-        _ => CurrencyUsage::Standard};
+        _ => CurrencyUsage::Standard,
+    };
     let mut currency_opts = CurrencyFormatterOptions::default();
     currency_opts.usage = usage;
 
     let formatter = match (display, dp.as_buffer_provider()) {
-        ("code", Some(p)) => CurrencyFormatter::try_new_code_with_buffer_provider(p, locale.into(), currency_code, currency_opts),
-        ("code", None) => CurrencyFormatter::try_new_code(locale.into(), currency_code, currency_opts),
-        ("name", Some(p)) => CurrencyFormatter::try_new_name_with_buffer_provider(p, locale.into(), currency_code),
+        ("code", Some(p)) => CurrencyFormatter::try_new_code_with_buffer_provider(
+            p,
+            locale.into(),
+            currency_code,
+            currency_opts,
+        ),
+        ("code", None) => {
+            CurrencyFormatter::try_new_code(locale.into(), currency_code, currency_opts)
+        }
+        ("name", Some(p)) => {
+            CurrencyFormatter::try_new_name_with_buffer_provider(p, locale.into(), currency_code)
+        }
         ("name", None) => CurrencyFormatter::try_new_name(locale.into(), currency_code),
-        ("narrowSymbol", Some(p)) => CurrencyFormatter::try_new_symbol_narrow_with_buffer_provider(p, locale.into(), currency_code, currency_opts),
-        ("narrowSymbol", None) => CurrencyFormatter::try_new_symbol_narrow(locale.into(), currency_code, currency_opts),
-        (_, Some(p)) => CurrencyFormatter::try_new_symbol_with_buffer_provider(p, locale.into(), currency_code, currency_opts),
-        (_, None) => CurrencyFormatter::try_new_symbol(locale.into(), currency_code, currency_opts)}
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+        ("narrowSymbol", Some(p)) => CurrencyFormatter::try_new_symbol_narrow_with_buffer_provider(
+            p,
+            locale.into(),
+            currency_code,
+            currency_opts,
+        ),
+        ("narrowSymbol", None) => {
+            CurrencyFormatter::try_new_symbol_narrow(locale.into(), currency_code, currency_opts)
+        }
+        (_, Some(p)) => CurrencyFormatter::try_new_symbol_with_buffer_provider(
+            p,
+            locale.into(),
+            currency_code,
+            currency_opts,
+        ),
+        (_, None) => CurrencyFormatter::try_new_symbol(locale.into(), currency_code, currency_opts),
+    }
+    .map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })?;
 
     let mut decimal = decimal_from_f64(n);
     apply_fraction_digits(&mut decimal, opts);
@@ -270,16 +397,25 @@ fn format_currency(n: f64, locale: &icu::locale::Locale, currency: &str, display
 
 /// Format a number with a unit (e.g. "5 meters", "30 km/h").
 /// Uses ICU4X CategorizedFormatter with the available category constructors.
-fn format_unit(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::Map<String, serde_json::Value>>, _dp: &DataProvider) -> Result<String, Error> {
-    let unit_str = opt_str(opts, "unit")
-        .ok_or_else(|| IntlError::InvalidArgument {
-            message: "unit option required for unit style".into()}.into_vm_error())?;
+fn format_unit(
+    n: f64,
+    locale: &icu::locale::Locale,
+    opts: Option<&serde_json::Map<String, serde_json::Value>>,
+    _dp: &DataProvider,
+) -> Result<String, Error> {
+    let unit_str = opt_str(opts, "unit").ok_or_else(|| {
+        IntlError::InvalidArgument {
+            message: "unit option required for unit style".into(),
+        }
+        .into_vm_error()
+    })?;
 
     let unit_display = opt_str(opts, "unitDisplay").unwrap_or("short");
     let width = match unit_display {
         "long" => Width::Long,
         "narrow" => Width::Narrow,
-        _ => Width::Short};
+        _ => Width::Short,
+    };
     let mut unit_opts = UnitsFormatterOptions::default();
     unit_opts.width = width;
 
@@ -308,7 +444,9 @@ fn format_unit(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::M
     }
 
     // Length units
-    if unit_str == "meter" { try_unit!(Length::meter(), Length) }
+    if unit_str == "meter" {
+        try_unit!(Length::meter(), Length)
+    }
     // Mass units
     match unit_str {
         "gram" => try_unit!(Mass::gram(), Mass),
@@ -316,7 +454,9 @@ fn format_unit(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::M
         _ => {}
     }
     // Area units
-    if unit_str == "square-meter" { try_unit!(Area::square_meter(), Area) }
+    if unit_str == "square-meter" {
+        try_unit!(Area::square_meter(), Area)
+    }
     // Volume units
     match unit_str {
         "liter" => try_unit!(Volume::liter(), Volume),
@@ -338,7 +478,10 @@ fn format_unit(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::M
         _ => {}
     }
 
-    Err(IntlError::InvalidUnit { unit: unit_str.to_string() }.into_vm_error())
+    Err(IntlError::InvalidUnit {
+        unit: unit_str.to_string(),
+    }
+    .into_vm_error())
 }
 
 // ── format_number_to_parts ───────────────────────────────────────
@@ -351,7 +494,8 @@ fn format_unit(n: f64, locale: &icu::locale::Locale, opts: Option<&serde_json::M
 /// `"fraction"`, `"minusSign"`, `"plusSign"`).
 #[derive(Clone)]
 pub struct FormatNumberToParts {
-    provider: Option<IntlProvider>}
+    provider: Option<IntlProvider>,
+}
 
 impl FormatNumberToParts {
     pub fn new() -> Self {
@@ -359,7 +503,9 @@ impl FormatNumberToParts {
     }
 
     pub fn with_provider(provider: IntlProvider) -> Self {
-        Self { provider: Some(provider) }
+        Self {
+            provider: Some(provider),
+        }
     }
 }
 
@@ -370,7 +516,11 @@ impl Default for FormatNumberToParts {
 }
 
 impl Function for FormatNumberToParts {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let n = require_number(args, 0)?;
         let mut locale = optional_locale(args, 1)?;
         let opts = optional_object(args, 2)?;
@@ -385,20 +535,34 @@ impl Function for FormatNumberToParts {
             "percent" => format_percent_to_parts(n, &locale, opts, &dp, &mut collector)?,
             "unit" => format_unit_to_parts(n, &locale, opts, &dp, &mut collector)?,
             "currency" => {
-                let currency = opt_str(opts, "currency")
-                    .ok_or_else(|| IntlError::InvalidArgument {
-                        message: "currency option required for currency style".into()}.into_vm_error())?;
+                let currency = opt_str(opts, "currency").ok_or_else(|| {
+                    IntlError::InvalidArgument {
+                        message: "currency option required for currency style".into(),
+                    }
+                    .into_vm_error()
+                })?;
                 let display = opt_str(opts, "currencyDisplay").unwrap_or("symbol");
                 format_currency_to_parts(n, &locale, currency, display, opts, &dp, &mut collector)?;
             }
             _ => match notation {
                 "compact" => {
                     let compact_display = opt_str(opts, "compactDisplay").unwrap_or("short");
-                    format_compact_to_parts(n, &locale, opts, compact_display, &dp, &mut collector)?;
+                    format_compact_to_parts(
+                        n,
+                        &locale,
+                        opts,
+                        compact_display,
+                        &dp,
+                        &mut collector,
+                    )?;
                 }
                 "scientific" => format_scientific_to_parts(n, &locale, opts, &dp, &mut collector)?,
-                "engineering" => format_engineering_to_parts(n, &locale, opts, &dp, &mut collector)?,
-                _ => format_standard_to_parts(n, &locale, opts, &dp, &mut collector)?}}
+                "engineering" => {
+                    format_engineering_to_parts(n, &locale, opts, &dp, &mut collector)?
+                }
+                _ => format_standard_to_parts(n, &locale, opts, &dp, &mut collector)?,
+            },
+        }
 
         Ok(collector.into_value())
     }
@@ -413,9 +577,12 @@ fn format_decimal_to_parts(
 ) -> Result<(), Error> {
     let formatter = decimal_formatter(locale, opts, dp)?;
     let formatted = formatter.format(decimal);
-    formatted
-        .write_to_parts(sink)
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())
+    formatted.write_to_parts(sink).map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })
 }
 
 fn format_standard_to_parts(
@@ -430,9 +597,12 @@ fn format_standard_to_parts(
     let mut decimal = decimal_from_f64(n);
     apply_digit_options(&mut decimal, opts);
     let formatted = formatter.format(&decimal);
-    formatted
-        .write_to_parts(sink)
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())
+    formatted.write_to_parts(sink).map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })
 }
 
 fn format_compact_to_parts(
@@ -445,21 +615,39 @@ fn format_compact_to_parts(
 ) -> Result<(), Error> {
     let formatter = if compact_display == "long" {
         match dp.as_buffer_provider() {
-            Some(p) => CompactDecimalFormatter::try_new_long_with_buffer_provider(p, locale.into(), Default::default()),
-            None => CompactDecimalFormatter::try_new_long(locale.into(), Default::default())}
+            Some(p) => CompactDecimalFormatter::try_new_long_with_buffer_provider(
+                p,
+                locale.into(),
+                Default::default(),
+            ),
+            None => CompactDecimalFormatter::try_new_long(locale.into(), Default::default()),
+        }
     } else {
         match dp.as_buffer_provider() {
-            Some(p) => CompactDecimalFormatter::try_new_short_with_buffer_provider(p, locale.into(), Default::default()),
-            None => CompactDecimalFormatter::try_new_short(locale.into(), Default::default())}
+            Some(p) => CompactDecimalFormatter::try_new_short_with_buffer_provider(
+                p,
+                locale.into(),
+                Default::default(),
+            ),
+            None => CompactDecimalFormatter::try_new_short(locale.into(), Default::default()),
+        }
     }
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    .map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })?;
 
     let mut decimal = decimal_from_f64(n);
     apply_sign_display(&mut decimal, opts);
     let formatted = formatter.format(&decimal);
-    formatted
-        .write_to_parts(sink)
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())
+    formatted.write_to_parts(sink).map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })
 }
 
 fn format_scientific_to_parts(
@@ -478,12 +666,22 @@ fn format_scientific_to_parts(
     decimal.multiply_pow10(-exponent as i16);
     format_decimal_to_parts(&decimal, locale, opts, dp, sink)?;
     use std::fmt::Write;
-    write!(sink, "×10").map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    write!(sink, "×10").map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })?;
     let mut exp_sink = PartsCollector::new();
     format_exponent_to_parts(exponent, locale, opts, dp, &mut exp_sink)?;
     for (part_type, value) in exp_sink.into_parts() {
         if part_type == "literal" {
-            sink.write_str(&value).map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+            sink.write_str(&value).map_err(|e| {
+                IntlError::Formatting {
+                    message: e.to_string(),
+                }
+                .into_vm_error()
+            })?;
         }
     }
     Ok(())
@@ -506,12 +704,22 @@ fn format_engineering_to_parts(
     decimal.multiply_pow10(-exponent as i16);
     format_decimal_to_parts(&decimal, locale, opts, dp, sink)?;
     use std::fmt::Write;
-    write!(sink, "×10").map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+    write!(sink, "×10").map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })?;
     let mut exp_sink = PartsCollector::new();
     format_exponent_to_parts(exponent, locale, opts, dp, &mut exp_sink)?;
     for (part_type, value) in exp_sink.into_parts() {
         if part_type == "literal" {
-            sink.write_str(&value).map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+            sink.write_str(&value).map_err(|e| {
+                IntlError::Formatting {
+                    message: e.to_string(),
+                }
+                .into_vm_error()
+            })?;
         }
     }
     Ok(())
@@ -528,9 +736,12 @@ fn format_exponent_to_parts(
     let mut decimal = fixed_decimal::Decimal::from(exponent);
     decimal.apply_sign_display(fixed_decimal::SignDisplay::ExceptZero);
     let formatted = formatter.format(&decimal);
-    formatted
-        .write_to_parts(sink)
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())
+    formatted.write_to_parts(sink).map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })
 }
 
 fn format_percent_to_parts(
@@ -541,9 +752,17 @@ fn format_percent_to_parts(
     sink: &mut PartsCollector,
 ) -> Result<(), Error> {
     let formatter = match dp.as_buffer_provider() {
-        Some(p) => PercentFormatter::try_new_with_buffer_provider(p, locale.into(), Default::default()),
-        None => PercentFormatter::try_new(locale.into(), Default::default())}
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+        Some(p) => {
+            PercentFormatter::try_new_with_buffer_provider(p, locale.into(), Default::default())
+        }
+        None => PercentFormatter::try_new(locale.into(), Default::default()),
+    }
+    .map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })?;
 
     let mut decimal = decimal_from_f64(n);
     decimal.multiply_pow10(2);
@@ -551,9 +770,12 @@ fn format_percent_to_parts(
     apply_fraction_digits(&mut decimal, opts);
     apply_sign_display(&mut decimal, opts);
     let formatted = formatter.format(&decimal);
-    formatted
-        .write_to_parts(sink)
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())
+    formatted.write_to_parts(sink).map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })
 }
 
 fn format_currency_to_parts(
@@ -565,33 +787,68 @@ fn format_currency_to_parts(
     dp: &DataProvider,
     sink: &mut PartsCollector,
 ) -> Result<(), Error> {
-    let currency_code = CurrencyType::try_from_str(currency)
-        .map_err(|_| IntlError::InvalidCurrency { code: currency.to_string() }.into_vm_error())?;
+    let currency_code = CurrencyType::try_from_str(currency).map_err(|_| {
+        IntlError::InvalidCurrency {
+            code: currency.to_string(),
+        }
+        .into_vm_error()
+    })?;
 
     let usage = match opt_str(opts, "currencySign") {
         Some("accounting") => CurrencyUsage::Accounting,
-        _ => CurrencyUsage::Standard};
+        _ => CurrencyUsage::Standard,
+    };
     let mut currency_opts = CurrencyFormatterOptions::default();
     currency_opts.usage = usage;
 
     let formatter = match (display, dp.as_buffer_provider()) {
-        ("code", Some(p)) => CurrencyFormatter::try_new_code_with_buffer_provider(p, locale.into(), currency_code, currency_opts),
-        ("code", None) => CurrencyFormatter::try_new_code(locale.into(), currency_code, currency_opts),
-        ("name", Some(p)) => CurrencyFormatter::try_new_name_with_buffer_provider(p, locale.into(), currency_code),
+        ("code", Some(p)) => CurrencyFormatter::try_new_code_with_buffer_provider(
+            p,
+            locale.into(),
+            currency_code,
+            currency_opts,
+        ),
+        ("code", None) => {
+            CurrencyFormatter::try_new_code(locale.into(), currency_code, currency_opts)
+        }
+        ("name", Some(p)) => {
+            CurrencyFormatter::try_new_name_with_buffer_provider(p, locale.into(), currency_code)
+        }
         ("name", None) => CurrencyFormatter::try_new_name(locale.into(), currency_code),
-        ("narrowSymbol", Some(p)) => CurrencyFormatter::try_new_symbol_narrow_with_buffer_provider(p, locale.into(), currency_code, currency_opts),
-        ("narrowSymbol", None) => CurrencyFormatter::try_new_symbol_narrow(locale.into(), currency_code, currency_opts),
-        (_, Some(p)) => CurrencyFormatter::try_new_symbol_with_buffer_provider(p, locale.into(), currency_code, currency_opts),
-        (_, None) => CurrencyFormatter::try_new_symbol(locale.into(), currency_code, currency_opts)}
-    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+        ("narrowSymbol", Some(p)) => CurrencyFormatter::try_new_symbol_narrow_with_buffer_provider(
+            p,
+            locale.into(),
+            currency_code,
+            currency_opts,
+        ),
+        ("narrowSymbol", None) => {
+            CurrencyFormatter::try_new_symbol_narrow(locale.into(), currency_code, currency_opts)
+        }
+        (_, Some(p)) => CurrencyFormatter::try_new_symbol_with_buffer_provider(
+            p,
+            locale.into(),
+            currency_code,
+            currency_opts,
+        ),
+        (_, None) => CurrencyFormatter::try_new_symbol(locale.into(), currency_code, currency_opts),
+    }
+    .map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })?;
 
     let mut decimal = decimal_from_f64(n);
     apply_fraction_digits(&mut decimal, opts);
     apply_sign_display(&mut decimal, opts);
     let formatted = formatter.format_fixed_decimal(&decimal);
-    formatted
-        .write_to_parts(sink)
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())
+    formatted.write_to_parts(sink).map_err(|e| {
+        IntlError::Formatting {
+            message: e.to_string(),
+        }
+        .into_vm_error()
+    })
 }
 
 fn format_unit_to_parts(
@@ -601,15 +858,19 @@ fn format_unit_to_parts(
     _dp: &DataProvider,
     sink: &mut PartsCollector,
 ) -> Result<(), Error> {
-    let unit_str = opt_str(opts, "unit")
-        .ok_or_else(|| IntlError::InvalidArgument {
-            message: "unit option required for unit style".into()}.into_vm_error())?;
+    let unit_str = opt_str(opts, "unit").ok_or_else(|| {
+        IntlError::InvalidArgument {
+            message: "unit option required for unit style".into(),
+        }
+        .into_vm_error()
+    })?;
 
     let unit_display = opt_str(opts, "unitDisplay").unwrap_or("short");
     let width = match unit_display {
         "long" => Width::Long,
         "narrow" => Width::Narrow,
-        _ => Width::Short};
+        _ => Width::Short,
+    };
     let mut unit_opts = UnitsFormatterOptions::default();
     unit_opts.width = width;
 
@@ -628,21 +889,28 @@ fn format_unit_to_parts(
             );
             if let Ok(fmt) = formatter {
                 let formatted = fmt.format_fixed_decimal(&decimal);
-                formatted
-                    .write_to_parts(sink)
-                    .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+                formatted.write_to_parts(sink).map_err(|e| {
+                    IntlError::Formatting {
+                        message: e.to_string(),
+                    }
+                    .into_vm_error()
+                })?;
                 return Ok(());
             }
         }};
     }
 
-    if unit_str == "meter" { try_unit_parts!(Length::meter(), Length) }
+    if unit_str == "meter" {
+        try_unit_parts!(Length::meter(), Length)
+    }
     match unit_str {
         "gram" => try_unit_parts!(Mass::gram(), Mass),
         "kilogram" => try_unit_parts!(Mass::kilogram(), Mass),
         _ => {}
     }
-    if unit_str == "square-meter" { try_unit_parts!(Area::square_meter(), Area) }
+    if unit_str == "square-meter" {
+        try_unit_parts!(Area::square_meter(), Area)
+    }
     match unit_str {
         "liter" => try_unit_parts!(Volume::liter(), Volume),
         "cubic-meter" => try_unit_parts!(Volume::cubic_meter(), Volume),
@@ -662,5 +930,8 @@ fn format_unit_to_parts(
         _ => {}
     }
 
-    Err(IntlError::InvalidUnit { unit: unit_str.to_string() }.into_vm_error())
+    Err(IntlError::InvalidUnit {
+        unit: unit_str.to_string(),
+    }
+    .into_vm_error())
 }

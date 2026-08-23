@@ -87,8 +87,8 @@ mod bool;
 mod r#fn;
 mod math;
 mod obj;
-pub(crate) mod shared;
 mod set;
+pub(crate) mod shared;
 mod r#str;
 mod r#type;
 

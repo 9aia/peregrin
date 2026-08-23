@@ -1,7 +1,7 @@
 //! [`NumberRule`] — matches numbers including negative numbers.
 
-use ac_lexer::{DefaultLexError, LexError, LexerConfig, NumberFactory, Token, TokenKind};
 use ac_lexer::LexRule;
+use ac_lexer::{DefaultLexError, LexError, LexerConfig, NumberFactory, Token, TokenKind};
 
 /// Matches number literals using the factory's [`NumberFactory::is_number_start`]
 /// and [`NumberFactory::lex_number`].
@@ -29,14 +29,15 @@ where
                     }
                 }
                 Some(
-                    config.factory().lex_number(chars)
-                        .map(|(value, span)| {
-                            Token::new(config.factory().number_kind(value), span)
-                        })
-                        .map_err(E::from)
+                    config
+                        .factory()
+                        .lex_number(chars)
+                        .map(|(value, span)| Token::new(config.factory().number_kind(value), span))
+                        .map_err(E::from),
                 )
             }
-            _ => None}
+            _ => None,
+        }
     }
 
     fn name(&self) -> &'static str {

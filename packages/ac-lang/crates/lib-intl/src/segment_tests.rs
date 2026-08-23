@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::module::IntlModule;
 
@@ -32,13 +32,18 @@ fn obj(pairs: &[(&str, &str)]) -> NonFunctionValue {
 
 fn get_segments(result: &NonFunctionValue) -> Vec<String> {
     let arr = result.as_array().expect("array result");
-    arr.iter().map(|v| {
-        if let Some(obj) = v.as_object() {
-            obj.get("segment").and_then(|s| s.as_str()).expect("segment field").to_string()
-        } else {
-            v.as_str().expect("string element").to_string()
-        }
-    }).collect()
+    arr.iter()
+        .map(|v| {
+            if let Some(obj) = v.as_object() {
+                obj.get("segment")
+                    .and_then(|s| s.as_str())
+                    .expect("segment field")
+                    .to_string()
+            } else {
+                v.as_str().expect("string element").to_string()
+            }
+        })
+        .collect()
 }
 
 #[test]
@@ -118,8 +123,8 @@ fn segment_grapheme_unicode() {
 }
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule::new());
@@ -130,7 +135,10 @@ fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
 
 #[test]
 fn vm_segment() {
-    let expr = Expr::call("intl.segment", vec![Expr::value(s("Hello World")), Expr::value(s("word"))]);
+    let expr = Expr::call(
+        "intl.segment",
+        vec![Expr::value(s("Hello World")), Expr::value(s("word"))],
+    );
     let result = eval_expr(&expr);
     assert!(result.as_array().is_some());
 }
@@ -144,29 +152,54 @@ fn segment_line() {
 
 #[test]
 fn segment_line_break_style_strict() {
-    let result = call(&[s("Hello World"), s("line"), s("ja"), obj(&[("lineBreakStyle", "strict")])]);
+    let result = call(&[
+        s("Hello World"),
+        s("line"),
+        s("ja"),
+        obj(&[("lineBreakStyle", "strict")]),
+    ]);
     let arr = result.as_array().expect("array result");
     assert!(!arr.is_empty());
 }
 
 #[test]
 fn segment_line_break_style_loose() {
-    let result = call(&[s("Hello World"), s("line"), s("ja"), obj(&[("lineBreakStyle", "loose")])]);
+    let result = call(&[
+        s("Hello World"),
+        s("line"),
+        s("ja"),
+        obj(&[("lineBreakStyle", "loose")]),
+    ]);
     let arr = result.as_array().expect("array result");
     assert!(!arr.is_empty());
 }
 
 #[test]
 fn segment_line_break_style_normal() {
-    let result = call(&[s("Hello World"), s("line"), s("ja"), obj(&[("lineBreakStyle", "normal")])]);
+    let result = call(&[
+        s("Hello World"),
+        s("line"),
+        s("ja"),
+        obj(&[("lineBreakStyle", "normal")]),
+    ]);
     let arr = result.as_array().expect("array result");
     assert!(!arr.is_empty());
 }
 
 #[test]
 fn segment_line_uses_ja_locale() {
-    let ja_strict = call(&[s("おっー"), s("line"), s("ja"), obj(&[("lineBreakStyle", "strict")])]);
-    let ja_normal = call(&[s("おっー"), s("line"), s("ja"), obj(&[("lineBreakStyle", "normal")])]);
+    let ja_strict = call(&[
+        s("おっー"),
+        s("line"),
+        s("ja"),
+        obj(&[("lineBreakStyle", "strict")]),
+    ]);
+    let ja_normal = call(&[
+        s("おっー"),
+        s("line"),
+        s("ja"),
+        obj(&[("lineBreakStyle", "normal")]),
+    ]);
     let ja_segments = get_segments(&ja_normal);
     let ja_strict_segments = get_segments(&ja_strict);
     assert!(

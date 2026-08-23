@@ -41,7 +41,8 @@ pub fn default_cli_config() -> Config {
         backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
-        extensions: Default::default()}
+        extensions: Default::default(),
+    }
     .with_extension(ac_typecheck_infer::HostFunctionSigs::default_host())
 }
 
@@ -56,20 +57,15 @@ pub fn typecheck_only_config() -> Config {
         backend: None,
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
-        extensions: Default::default()}
+        extensions: Default::default(),
+    }
     .with_extension(ac_typecheck_infer::HostFunctionSigs::default_host())
 }
 
 /// Full typegen pipeline: parse → extract → resolve → generate.
 pub fn typegen_pipeline() -> DriverPipeline<
     Config,
-    Then<
-        Then<
-            Then<ParseStage, ExtractStage>,
-            ResolveStage,
-        >,
-        GenerateFromResolvedStage,
-    >,
+    Then<Then<Then<ParseStage, ExtractStage>, ResolveStage>, GenerateFromResolvedStage>,
 > {
     DriverPipeline::new(ParseStage)
         .then(ExtractStage)
@@ -78,13 +74,8 @@ pub fn typegen_pipeline() -> DriverPipeline<
 }
 
 /// Typecheck pipeline: parse → extract → typecheck.
-pub fn typecheck_pipeline() -> DriverPipeline<
-    Config,
-    Then<
-        Then<ParseStage, ExtractStage>,
-        TypecheckOnlyStage,
-    >,
-> {
+pub fn typecheck_pipeline()
+-> DriverPipeline<Config, Then<Then<ParseStage, ExtractStage>, TypecheckOnlyStage>> {
     DriverPipeline::new(ParseStage)
         .then(ExtractStage)
         .then(TypecheckOnlyStage)
@@ -93,16 +84,7 @@ pub fn typecheck_pipeline() -> DriverPipeline<
 /// Full pipeline: parse → extract → resolve → typecheck → generate.
 pub fn full_pipeline() -> DriverPipeline<
     Config,
-    Then<
-        Then<
-            Then<
-                Then<ParseStage, ExtractStage>,
-                ResolveStage,
-            >,
-            TypecheckStage,
-        >,
-        GenerateStage,
-    >,
+    Then<Then<Then<Then<ParseStage, ExtractStage>, ResolveStage>, TypecheckStage>, GenerateStage>,
 > {
     DriverPipeline::new(ParseStage)
         .then(ExtractStage)

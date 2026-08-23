@@ -1,8 +1,9 @@
-use ac_runtime_example_1::DefaultHost;
 use ac_runtime::{Function, Host};
+use ac_runtime_example_1::DefaultHost;
 
 use crate::functions::{
-    AstArgs, AstIsCall, AstName, AstToString, Eval, IsFunction, Keys, Parse, TypeOf};
+    AstArgs, AstIsCall, AstName, AstToString, Eval, IsFunction, Keys, Parse, TypeOf,
+};
 
 /// A host that provides all [`DefaultHost`] functions plus meta
 /// functions for reflection, dynamic evaluation, and AST manipulation.
@@ -28,7 +29,8 @@ pub struct MetaHost {
     ast_to_string: AstToString,
     ast_name: AstName,
     ast_args: AstArgs,
-    ast_is_call: AstIsCall}
+    ast_is_call: AstIsCall,
+}
 
 impl Default for MetaHost {
     fn default() -> Self {
@@ -42,7 +44,8 @@ impl Default for MetaHost {
             ast_to_string: AstToString,
             ast_name: AstName,
             ast_args: AstArgs,
-            ast_is_call: AstIsCall}
+            ast_is_call: AstIsCall,
+        }
     }
 }
 
@@ -58,6 +61,7 @@ impl Host for MetaHost {
             "ast_name" => Some(&self.ast_name),
             "ast_args" => Some(&self.ast_args),
             "ast_is_call" => Some(&self.ast_is_call),
-            _ => self.default.function(name)}
+            _ => self.default.function(name),
+        }
     }
 }

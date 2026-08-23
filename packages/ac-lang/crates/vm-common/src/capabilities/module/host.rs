@@ -42,7 +42,8 @@ use super::import_function::ImportFunction;
 /// ```
 pub struct ResolverHost<H: Host> {
     inner: H,
-    import_fn: ImportFunction}
+    import_fn: ImportFunction,
+}
 
 impl<H: Host> ResolverHost<H> {
     /// Creates a new `ResolverHost` wrapping the given inner host.
@@ -52,7 +53,8 @@ impl<H: Host> ResolverHost<H> {
     pub fn new(inner: H, resolver: Box<dyn ModuleResolver>) -> Self {
         ResolverHost {
             inner,
-            import_fn: ImportFunction::new(resolver)}
+            import_fn: ImportFunction::new(resolver),
+        }
     }
 
     /// Sets the base path for relative import resolution.

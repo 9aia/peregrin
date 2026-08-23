@@ -33,7 +33,8 @@ use crate::resolved_module::ResolvedModule;
 /// ]);
 /// ```
 pub struct ChainResolver {
-    resolvers: Vec<Box<dyn ModuleResolver>>}
+    resolvers: Vec<Box<dyn ModuleResolver>>,
+}
 
 impl ChainResolver {
     /// Create a chain from an ordered list of resolvers.

@@ -11,7 +11,10 @@ fn type_factory_primitive() {
 #[test]
 fn type_factory_array() {
     let f = CanonicalTypeFactory;
-    assert_eq!(f.array(f.primitive("number")), Type::array(Type::primitive("number")));
+    assert_eq!(
+        f.array(f.primitive("number")),
+        Type::array(Type::primitive("number"))
+    );
 }
 
 #[test]

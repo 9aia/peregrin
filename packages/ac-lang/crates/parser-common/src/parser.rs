@@ -1,20 +1,21 @@
 use std::sync::Arc;
 
-use ac_lexer::{Span, Token, TokenKind};
 use crate::error::ParseError;
 use crate::grammar::Grammar;
+use ac_lexer::{Span, Token, TokenKind};
 
 #[derive(Debug, Clone)]
 pub struct Ast<N> {
     pub source: String,
-    pub root: N}
+    pub root: N,
+}
 
 pub struct ParserContext<K: TokenKind, N, E: ParseError> {
     pub(crate) tokens: Vec<Token<K>>,
     pub(crate) source: String,
     pub(crate) pos: usize,
-    pub(crate) grammar: Arc<dyn Grammar<K, N, E>>}
-
+    pub(crate) grammar: Arc<dyn Grammar<K, N, E>>,
+}
 
 impl<K: TokenKind, N, E: ParseError> ParserContext<K, N, E> {
     pub fn tokens(&self) -> &[Token<K>] {
@@ -42,9 +43,12 @@ impl<K: TokenKind, N, E: ParseError> ParserContext<K, N, E> {
     }
 
     pub fn peek_span(&self) -> Span {
-        self.peek()
-            .map(|t| t.span)
-            .unwrap_or_else(|| self.tokens.last().map(|t| Span::at(t.span.end)).unwrap_or(Span::at(0)))
+        self.peek().map(|t| t.span).unwrap_or_else(|| {
+            self.tokens
+                .last()
+                .map(|t| Span::at(t.span.end))
+                .unwrap_or(Span::at(0))
+        })
     }
 
     pub fn advance(&mut self) -> Result<&Token<K>, E> {
@@ -59,7 +63,8 @@ impl<K: TokenKind, N, E: ParseError> ParserContext<K, N, E> {
     pub fn match_kind(&mut self, kind: K) -> Option<&Token<K>> {
         let matches = match self.tokens.get(self.pos) {
             Some(token) => std::mem::discriminant(&token.kind) == std::mem::discriminant(&kind),
-            None => false};
+            None => false,
+        };
         if matches {
             let pos = self.pos;
             self.pos += 1;
@@ -71,7 +76,8 @@ impl<K: TokenKind, N, E: ParseError> ParserContext<K, N, E> {
     pub fn expect(&mut self, kind: K, label: &str) -> Result<&Token<K>, E> {
         let matches = match self.peek() {
             Some(token) => std::mem::discriminant(&token.kind) == std::mem::discriminant(&kind),
-            None => false};
+            None => false,
+        };
         if matches {
             let pos = self.pos;
             self.pos += 1;
@@ -82,18 +88,21 @@ impl<K: TokenKind, N, E: ParseError> ParserContext<K, N, E> {
 
     pub fn expression(&mut self, min_bp: u32) -> Result<N, E> {
         let token = self.advance()?.clone();
-        let rule = self.grammar.rule_for(&token.kind).ok_or_else(|| {
-            E::unexpected_token(token.span, "a prefix expression")
-        })?;
-        let nud = rule.nud.as_ref().ok_or_else(|| {
-            E::unexpected_token(token.span, "a prefix expression")
-        })?;
+        let rule = self
+            .grammar
+            .rule_for(&token.kind)
+            .ok_or_else(|| E::unexpected_token(token.span, "a prefix expression"))?;
+        let nud = rule
+            .nud
+            .as_ref()
+            .ok_or_else(|| E::unexpected_token(token.span, "a prefix expression"))?;
         let mut left = nud.as_ref()(token, self)?;
 
         while let Some(kind) = self.peek_kind() {
             let rule = match self.grammar.rule_for(&kind) {
                 Some(rule) => rule,
-                None => break};
+                None => break,
+            };
             if rule.led.is_none() || rule.left_bp <= min_bp {
                 break;
             }
@@ -108,7 +117,8 @@ impl<K: TokenKind, N, E: ParseError> ParserContext<K, N, E> {
 }
 
 pub struct Parser<K: TokenKind, N, E: ParseError> {
-    grammar: Arc<dyn Grammar<K, N, E>>}
+    grammar: Arc<dyn Grammar<K, N, E>>,
+}
 
 impl<K: TokenKind, N, E: ParseError> Parser<K, N, E> {
     pub fn new<G>(grammar: G) -> Self
@@ -116,7 +126,8 @@ impl<K: TokenKind, N, E: ParseError> Parser<K, N, E> {
         G: Grammar<K, N, E> + 'static,
     {
         Self {
-            grammar: Arc::new(grammar)}
+            grammar: Arc::new(grammar),
+        }
     }
 
     pub fn parse(&self, tokens: Vec<Token<K>>, source: &str) -> Result<Ast<N>, E> {
@@ -124,7 +135,8 @@ impl<K: TokenKind, N, E: ParseError> Parser<K, N, E> {
             tokens,
             source: source.to_string(),
             pos: 0,
-            grammar: self.grammar.clone()};
+            grammar: self.grammar.clone(),
+        };
         let root = self.grammar.parse_root(&mut context)?;
 
         if let Some(eof) = self.grammar.eof() {
@@ -135,6 +147,7 @@ impl<K: TokenKind, N, E: ParseError> Parser<K, N, E> {
 
         Ok(Ast {
             source: source.to_string(),
-            root})
+            root,
+        })
     }
 }

@@ -17,19 +17,25 @@ use ac_vm_canonical::{CanonicalContext, Context, Error, Function, Host, Vm};
 struct Mul;
 
 impl Function for Mul {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let a = args
             .first()
             .and_then(|v| v.as_number())
             .ok_or(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()})?;
+                got: args.len(),
+            })?;
         let b = args
             .get(1)
             .and_then(|v| v.as_number())
             .ok_or(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()})?;
+                got: args.len(),
+            })?;
         Ok(NonFunctionValue::new(serde_json::json!(a * b)))
     }
 }
@@ -37,19 +43,25 @@ impl Function for Mul {
 struct Add;
 
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let a = args
             .first()
             .and_then(|v| v.as_number())
             .ok_or(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()})?;
+                got: args.len(),
+            })?;
         let b = args
             .get(1)
             .and_then(|v| v.as_number())
             .ok_or(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()})?;
+                got: args.len(),
+            })?;
         Ok(NonFunctionValue::new(serde_json::json!(a + b)))
     }
 }
@@ -58,14 +70,16 @@ impl Function for Add {
 
 struct MathHost {
     add: Add,
-    mul: Mul}
+    mul: Mul,
+}
 
 impl Host for MathHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "add" => Some(&self.add),
             "mul" => Some(&self.mul),
-            _ => None}
+            _ => None,
+        }
     }
 }
 

@@ -74,7 +74,8 @@ fn function_value_roundtrip() {
             ("y".to_string(), serde_json::json!({"type": "number"})),
         ],
         return_schema: Some(serde_json::json!({"type": "number"})),
-        body: "mul(x, y)".to_string()};
+        body: "mul(x, y)".to_string(),
+    };
     let json = fn_val.to_json();
     let decoded = FunctionValue::from_json(&json).unwrap();
     assert_eq!(decoded, fn_val);
@@ -85,7 +86,8 @@ fn function_value_without_return() {
     let fn_val = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "string"}))],
         return_schema: None,
-        body: "x".to_string()};
+        body: "x".to_string(),
+    };
     let json = fn_val.to_json();
     let decoded = FunctionValue::from_json(&json).unwrap();
     assert_eq!(decoded.params.len(), 1);
@@ -105,7 +107,8 @@ fn runtime_value_is_function() {
     let fn_val = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
         return_schema: Some(serde_json::json!({"type": "number"})),
-        body: "mul(x, 2)".to_string()};
+        body: "mul(x, 2)".to_string(),
+    };
     let rv = NonFunctionValue::new_function(fn_val);
     assert!(rv.is_function());
     assert!(rv.as_function().is_some());
@@ -181,7 +184,8 @@ fn function_value_roundtrip_with_return_schema() {
             ("y".to_string(), serde_json::json!({"type": "string"})),
         ],
         return_schema: Some(serde_json::json!({"type": "object"})),
-        body: "transform(x, y)".to_string()};
+        body: "transform(x, y)".to_string(),
+    };
     let json = fn_val.to_json();
     let decoded = FunctionValue::from_json(&json).unwrap();
     assert_eq!(decoded, fn_val);
@@ -192,7 +196,8 @@ fn function_value_roundtrip_no_params_no_return() {
     let fn_val = FunctionValue {
         params: vec![],
         return_schema: None,
-        body: "answer".to_string()};
+        body: "answer".to_string(),
+    };
     let json = fn_val.to_json();
     let decoded = FunctionValue::from_json(&json).unwrap();
     assert_eq!(decoded, fn_val);
@@ -249,7 +254,8 @@ fn runtime_value_new_function_and_check() {
     let fn_val = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
         return_schema: None,
-        body: "mul(x, 2)".to_string()};
+        body: "mul(x, 2)".to_string(),
+    };
     let rv = NonFunctionValue::new_function(fn_val.clone());
     assert!(rv.is_function());
     let decoded = rv.as_function().unwrap();

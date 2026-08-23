@@ -77,7 +77,8 @@ pub fn extract_fields(
             computed.push(ComputedField {
                 name: name.clone(),
                 expr: expr_str.to_string(),
-                arg});
+                arg,
+            });
         }
         if raw.get(merge_key).and_then(|v| v.as_bool()) == Some(true) {
             merge.push(name.clone());
@@ -90,7 +91,8 @@ pub fn extract_fields(
         inheritable,
         immutable,
         computed,
-        merge})
+        merge,
+    })
 }
 
 /// Returns the names of fields present in `data` but not declared in

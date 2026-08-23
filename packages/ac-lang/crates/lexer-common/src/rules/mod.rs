@@ -30,6 +30,7 @@ mod operator_test;
 mod string_test;
 
 pub use block_comment::BlockCommentRule;
+pub use config::{empty_config, test_config};
 pub use delimiter::DelimiterRule;
 pub use ident::IdentRule;
 pub use keyword::KeywordRule;
@@ -38,4 +39,3 @@ pub use mock::{AtRule, BangRule, HashRule, RuleMock};
 pub use number::NumberRule;
 pub use operator::OperatorRule;
 pub use string::StringRule;
-pub use config::{empty_config, test_config};

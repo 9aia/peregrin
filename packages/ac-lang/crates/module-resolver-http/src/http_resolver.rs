@@ -16,7 +16,8 @@ use crate::url::resolve_url;
 /// By default, no module cache is used. Pass a [`ModuleCache`] to
 /// [`HttpResolver::with_cache`] to memoize resolved modules by URL.
 pub struct HttpResolver<C: ModuleCache = NoCache> {
-    cache: C}
+    cache: C,
+}
 
 impl HttpResolver<NoCache> {
     /// Create a resolver with no caching.
@@ -66,7 +67,8 @@ impl<C: ModuleCache> ModuleResolver for HttpResolver<C> {
             schemas: extracted.schemas,
             merge: extracted.merge,
             data: extracted.data.inner().clone(),
-            base_path: None};
+            base_path: None,
+        };
 
         self.cache.insert(&cache_key, module.clone());
         Some(module)

@@ -11,21 +11,24 @@ pub struct TypeEnv {
     /// Field name → type in this scope.
     bindings: HashMap<String, Type>,
     /// Parent scope, if any.
-    parent: Option<Box<TypeEnv>>}
+    parent: Option<Box<TypeEnv>>,
+}
 
 impl TypeEnv {
     /// Create an empty environment with no parent.
     pub fn new() -> Self {
         TypeEnv {
             bindings: HashMap::new(),
-            parent: None}
+            parent: None,
+        }
     }
 
     /// Create a child scope that inherits from `parent`.
     pub fn child(parent: TypeEnv) -> Self {
         TypeEnv {
             bindings: HashMap::new(),
-            parent: Some(Box::new(parent))}
+            parent: Some(Box::new(parent)),
+        }
     }
 
     /// Insert or update a binding in this scope.

@@ -4,7 +4,8 @@ use ac_runtime::{Context, Error, Function};
 fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0})
+        got: 0,
+    })
 }
 
 fn number_to_string(n: f64) -> String {
@@ -52,7 +53,8 @@ impl Function for ToNumber {
             let trimmed = s.trim();
             match trimmed.parse::<f64>() {
                 Ok(parsed) if parsed.is_finite() => parsed,
-                _ => 0.0}
+                _ => 0.0,
+            }
         } else if arg.is_null() {
             0.0
         } else {

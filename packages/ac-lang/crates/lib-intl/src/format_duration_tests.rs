@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::module::IntlModule;
 
@@ -61,7 +61,11 @@ fn format_duration_german() {
 
 #[test]
 fn format_duration_short_style() {
-    let result = call(&[obj(&[("hours", 2), ("minutes", 5)]), s("en"), opts(&[("style", "short")])]);
+    let result = call(&[
+        obj(&[("hours", 2), ("minutes", 5)]),
+        s("en"),
+        opts(&[("style", "short")]),
+    ]);
     let s = result.as_str().expect("string result");
     assert!(s.contains("2") && s.contains("5"));
 }
@@ -75,7 +79,11 @@ fn format_duration_narrow_style() {
 
 #[test]
 fn format_duration_digital_style() {
-    let result = call(&[obj(&[("hours", 1), ("minutes", 30)]), s("en"), opts(&[("style", "digital")])]);
+    let result = call(&[
+        obj(&[("hours", 1), ("minutes", 30)]),
+        s("en"),
+        opts(&[("style", "digital")]),
+    ]);
     let s = result.as_str().expect("string result");
     assert!(!s.is_empty());
 }
@@ -95,16 +103,21 @@ fn format_duration_no_args_errors() {
 #[test]
 fn format_duration_all_fields() {
     let result = call(&[obj(&[
-        ("years", 1), ("months", 2), ("weeks", 3), ("days", 4),
-        ("hours", 5), ("minutes", 6), ("seconds", 7),
+        ("years", 1),
+        ("months", 2),
+        ("weeks", 3),
+        ("days", 4),
+        ("hours", 5),
+        ("minutes", 6),
+        ("seconds", 7),
     ])]);
     let s = result.as_str().expect("string result");
     assert!(!s.is_empty());
 }
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule::new());
@@ -115,7 +128,10 @@ fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
 
 #[test]
 fn vm_format_duration() {
-    let expr = Expr::call("intl.format_duration", vec![Expr::value(obj(&[("seconds", 90)]))]);
+    let expr = Expr::call(
+        "intl.format_duration",
+        vec![Expr::value(obj(&[("seconds", 90)]))],
+    );
     let result = eval_expr(&expr);
     assert!(result.as_str().is_some());
 }
@@ -148,7 +164,10 @@ fn duration_per_unit_hours_style_long() {
         obj_str(&[("hoursStyle", "long")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("hour"), "hoursStyle:long should contain 'hour': {str}");
+    assert!(
+        str.contains("hour"),
+        "hoursStyle:long should contain 'hour': {str}"
+    );
 }
 
 #[test]
@@ -159,7 +178,10 @@ fn duration_per_unit_minutes_style_short() {
         obj_str(&[("minutesStyle", "short")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("min"), "minutesStyle:short should contain 'min': {str}");
+    assert!(
+        str.contains("min"),
+        "minutesStyle:short should contain 'min': {str}"
+    );
 }
 
 #[test]
@@ -170,7 +192,10 @@ fn duration_per_unit_seconds_style_narrow() {
         obj_str(&[("secondsStyle", "narrow")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(!str.is_empty(), "secondsStyle:narrow should produce output: {str}");
+    assert!(
+        !str.is_empty(),
+        "secondsStyle:narrow should produce output: {str}"
+    );
 }
 
 #[test]
@@ -181,7 +206,10 @@ fn duration_per_unit_hours_display_always() {
         obj_str(&[("hoursDisplay", "always")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(!str.is_empty(), "hoursDisplay:always should produce output: {str}");
+    assert!(
+        !str.is_empty(),
+        "hoursDisplay:always should produce output: {str}"
+    );
 }
 
 #[test]
@@ -192,7 +220,10 @@ fn duration_per_unit_years_style_long() {
         obj_str(&[("yearsStyle", "long")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("year"), "yearsStyle:long should contain 'year': {str}");
+    assert!(
+        str.contains("year"),
+        "yearsStyle:long should contain 'year': {str}"
+    );
 }
 
 #[test]
@@ -203,7 +234,10 @@ fn duration_per_unit_days_style_short() {
         obj_str(&[("daysStyle", "short")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("day") || str.contains("d"), "daysStyle:short should contain day abbreviation: {str}");
+    assert!(
+        str.contains("day") || str.contains("d"),
+        "daysStyle:short should contain day abbreviation: {str}"
+    );
 }
 
 #[test]
@@ -214,7 +248,10 @@ fn duration_per_unit_milliseconds_style_numeric() {
         obj_str(&[("millisecondsStyle", "numeric")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(!str.is_empty(), "millisecondsStyle:numeric should produce output: {str}");
+    assert!(
+        !str.is_empty(),
+        "millisecondsStyle:numeric should produce output: {str}"
+    );
 }
 
 #[test]
@@ -222,11 +259,21 @@ fn duration_per_unit_mixed_styles() {
     let result = call(&[
         obj(&[("hours", 2), ("minutes", 30), ("seconds", 45)]),
         s("en"),
-        obj_str(&[("hoursStyle", "long"), ("minutesStyle", "short"), ("secondsStyle", "narrow")]),
+        obj_str(&[
+            ("hoursStyle", "long"),
+            ("minutesStyle", "short"),
+            ("secondsStyle", "narrow"),
+        ]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("hour"), "should contain 'hour' from hoursStyle:long: {str}");
-    assert!(str.contains("min"), "should contain 'min' from minutesStyle:short: {str}");
+    assert!(
+        str.contains("hour"),
+        "should contain 'hour' from hoursStyle:long: {str}"
+    );
+    assert!(
+        str.contains("min"),
+        "should contain 'min' from minutesStyle:short: {str}"
+    );
 }
 
 #[test]
@@ -237,7 +284,10 @@ fn duration_fractional_digits() {
         obj_str(&[("millisecondsStyle", "numeric"), ("fractionalDigits", "2")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(!str.is_empty(), "fractionalDigits should produce output: {str}");
+    assert!(
+        !str.is_empty(),
+        "fractionalDigits should produce output: {str}"
+    );
 }
 
 #[test]
@@ -248,7 +298,10 @@ fn duration_per_unit_weeks_style() {
         obj_str(&[("weeksStyle", "long")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("week"), "weeksStyle:long should contain 'week': {str}");
+    assert!(
+        str.contains("week"),
+        "weeksStyle:long should contain 'week': {str}"
+    );
 }
 
 #[test]
@@ -259,7 +312,10 @@ fn duration_hours_numeric_style() {
         obj_str(&[("hoursStyle", "numeric"), ("minutesStyle", "numeric")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(!str.is_empty(), "numeric style should produce output: {str}");
+    assert!(
+        !str.is_empty(),
+        "numeric style should produce output: {str}"
+    );
 }
 
 #[test]
@@ -270,5 +326,8 @@ fn duration_seconds_two_digit_style() {
         obj_str(&[("secondsStyle", "2-digit")]),
     ]);
     let str = result.as_str().expect("string result");
-    assert!(!str.is_empty(), "2-digit style should produce output: {str}");
+    assert!(
+        !str.is_empty(),
+        "2-digit style should produce output: {str}"
+    );
 }

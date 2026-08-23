@@ -4,19 +4,23 @@ use ecma402_traits::number_format::NumberFormat as NumberFormatTrait;
 
 pub use ecma402_traits::number_format::{
     CompactDisplay, CurrencyDisplay, CurrencySign, Notation, NumberFormatOptions, NumberFormatPart,
-    NumberFormatPartType, NumberFormatStyle, RoundingMode, SignDisplay, UnitDisplay, UseGrouping};
+    NumberFormatPartType, NumberFormatStyle, RoundingMode, SignDisplay, UnitDisplay, UseGrouping,
+};
 use fixed_decimal::{
     Decimal, FloatPrecision, SignDisplay as FixedSignDisplay, SignedRoundingMode,
-    UnsignedRoundingMode};
+    UnsignedRoundingMode,
+};
 use icu::decimal::options::{
-    CompactDecimalFormatterOptions, DecimalFormatterOptions, GroupingStrategy};
+    CompactDecimalFormatterOptions, DecimalFormatterOptions, GroupingStrategy,
+};
 use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
 use icu::experimental::dimension::currency::CurrencyType;
 use icu::experimental::dimension::currency::formatter::CurrencyFormatter;
 use icu::experimental::dimension::currency::options::{CurrencyFormatterOptions, CurrencyUsage};
 use icu::experimental::dimension::percent::formatter::PercentFormatter;
 use icu::experimental::dimension::units::categorized_formatter::{
-    CategorizedFormatter, CategorizedUnitsFormatterPreferences};
+    CategorizedFormatter, CategorizedUnitsFormatterPreferences,
+};
 use icu::experimental::dimension::units::options::{UnitsFormatterOptions, Width};
 use icu::experimental::measure::category::{Area, Duration, Length, Mass, Volume};
 use icu::experimental::measure::measureunit::MeasureUnit;
@@ -29,17 +33,20 @@ use writeable::{Part, PartsWrite, Writeable};
 pub struct NumberFormat<'a> {
     locale: Locale,
     options: NumberFormatOptions,
-    provider: DataProvider<'a>}
+    provider: DataProvider<'a>,
+}
 
 enum DataProvider<'a> {
     Compiled,
-    Blob(&'a BlobDataProvider)}
+    Blob(&'a BlobDataProvider),
+}
 
 impl<'a> DataProvider<'a> {
     fn as_buffer_provider(&self) -> Option<&'a BlobDataProvider> {
         match self {
             Self::Compiled => None,
-            Self::Blob(p) => Some(p)}
+            Self::Blob(p) => Some(p),
+        }
     }
 }
 
@@ -51,7 +58,8 @@ pub enum Error {
     InvalidArgument(String),
     InvalidCurrency(String),
     InvalidUnit(String),
-    Formatting(String)}
+    Formatting(String),
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -61,7 +69,8 @@ impl fmt::Display for Error {
             Self::InvalidArgument(s) => write!(f, "invalid argument: {s}"),
             Self::InvalidCurrency(s) => write!(f, "invalid currency code: {s}"),
             Self::InvalidUnit(s) => write!(f, "invalid unit: {s}"),
-            Self::Formatting(s) => write!(f, "formatting error: {s}")}
+            Self::Formatting(s) => write!(f, "formatting error: {s}"),
+        }
     }
 }
 
@@ -82,7 +91,8 @@ impl<'a> NumberFormat<'a> {
         Ok(NumberFormat {
             locale,
             options,
-            provider: DataProvider::Compiled})
+            provider: DataProvider::Compiled,
+        })
     }
 
     /// Create a new `NumberFormat` using an ICU4X blob data provider.
@@ -97,7 +107,8 @@ impl<'a> NumberFormat<'a> {
         Ok(NumberFormat {
             locale,
             options,
-            provider: DataProvider::Blob(provider)})
+            provider: DataProvider::Blob(provider),
+        })
     }
 
     fn decimal_formatter(&self) -> Result<DecimalFormatter, Error> {
@@ -108,7 +119,8 @@ impl<'a> NumberFormat<'a> {
                 self.locale.clone().into(),
                 formatter_opts,
             ),
-            None => DecimalFormatter::try_new(self.locale.clone().into(), formatter_opts)}
+            None => DecimalFormatter::try_new(self.locale.clone().into(), formatter_opts),
+        }
         .map_err(Error::Data)
     }
 
@@ -229,7 +241,8 @@ impl<'a> NumberFormat<'a> {
                 self.locale.clone().into(),
                 Default::default(),
             ),
-            None => PercentFormatter::try_new(self.locale.clone().into(), Default::default())}
+            None => PercentFormatter::try_new(self.locale.clone().into(), Default::default()),
+        }
         .map_err(Error::Data)?;
 
         let mut decimal = decimal_from_f64(n);
@@ -304,7 +317,8 @@ impl<'a> NumberFormat<'a> {
                 self.locale.clone().into(),
                 currency_code,
                 currency_opts,
-            )}
+            ),
+        }
         .map_err(Error::Data)?;
 
         let mut decimal = decimal_from_f64(n);
@@ -328,7 +342,8 @@ impl<'a> NumberFormat<'a> {
         let width = match self.options.unit_display {
             UnitDisplay::Long => Width::Long,
             UnitDisplay::Narrow => Width::Narrow,
-            UnitDisplay::Short => Width::Short};
+            UnitDisplay::Short => Width::Short,
+        };
         let mut unit_opts = UnitsFormatterOptions::default();
         unit_opts.width = width;
 
@@ -362,7 +377,8 @@ impl<'a> NumberFormat<'a> {
         let number = self.format_prepared_decimal(&decimal)?;
         let separator = match self.options.unit_display {
             UnitDisplay::Narrow => "",
-            _ => " "};
+            _ => " ",
+        };
         Ok(format!("{number}{separator}{unit_str}"))
     }
 
@@ -406,7 +422,8 @@ impl<'a> NumberFormat<'a> {
         sink.with_part(
             Part {
                 category: "decimal",
-                value: "compact"},
+                value: "compact",
+            },
             |w| formatted.write_to_parts(w),
         )
         .map_err(|e| Error::Formatting(e.to_string()))
@@ -427,7 +444,8 @@ impl<'a> NumberFormat<'a> {
         sink.with_part(
             Part {
                 category: "decimal",
-                value: "exponentSeparator"},
+                value: "exponentSeparator",
+            },
             |w| w.write_str("×10"),
         )
         .map_err(|e| Error::Formatting(e.to_string()))?;
@@ -451,7 +469,8 @@ impl<'a> NumberFormat<'a> {
         sink.with_part(
             Part {
                 category: "decimal",
-                value: "exponentSeparator"},
+                value: "exponentSeparator",
+            },
             |w| w.write_str("×10"),
         )
         .map_err(|e| Error::Formatting(e.to_string()))?;
@@ -466,7 +485,8 @@ impl<'a> NumberFormat<'a> {
                 self.locale.clone().into(),
                 Default::default(),
             ),
-            None => PercentFormatter::try_new(self.locale.clone().into(), Default::default())}
+            None => PercentFormatter::try_new(self.locale.clone().into(), Default::default()),
+        }
         .map_err(Error::Data)?;
 
         let mut decimal = decimal_from_f64(n);
@@ -543,7 +563,8 @@ impl<'a> NumberFormat<'a> {
                 self.locale.clone().into(),
                 currency_code,
                 currency_opts,
-            )}
+            ),
+        }
         .map_err(Error::Data)?;
 
         let mut decimal = decimal_from_f64(n);
@@ -569,7 +590,8 @@ impl<'a> NumberFormat<'a> {
         let width = match self.options.unit_display {
             UnitDisplay::Long => Width::Long,
             UnitDisplay::Narrow => Width::Narrow,
-            UnitDisplay::Short => Width::Short};
+            UnitDisplay::Short => Width::Short,
+        };
         let mut unit_opts = UnitsFormatterOptions::default();
         unit_opts.width = width;
 
@@ -607,7 +629,8 @@ impl<'a> NumberFormat<'a> {
             sink.with_part(
                 Part {
                     category: "decimal",
-                    value: "literal"},
+                    value: "literal",
+                },
                 |w| w.write_str(" "),
             )
             .map_err(|e| Error::Formatting(e.to_string()))?;
@@ -615,7 +638,8 @@ impl<'a> NumberFormat<'a> {
         sink.with_part(
             Part {
                 category: "decimal",
-                value: "unit"},
+                value: "unit",
+            },
             |w| w.write_str(unit_str),
         )
         .map_err(|e| Error::Formatting(e.to_string()))
@@ -641,7 +665,9 @@ impl<'a> NumberFormatTrait for NumberFormat<'a> {
                 Notation::Compact => self.format_compact(value),
                 Notation::Scientific => self.format_scientific(value),
                 Notation::Engineering => self.format_engineering(value),
-                Notation::Standard => self.format_standard(value)}}
+                Notation::Standard => self.format_standard(value),
+            },
+        }
     }
 
     fn format_to_parts(&self, value: f64) -> Result<Vec<NumberFormatPart>, Self::Error> {
@@ -661,7 +687,9 @@ impl<'a> NumberFormatTrait for NumberFormat<'a> {
                 Notation::Compact => self.format_compact_to_parts(value, &mut sink)?,
                 Notation::Scientific => self.format_scientific_to_parts(value, &mut sink)?,
                 Notation::Engineering => self.format_engineering_to_parts(value, &mut sink)?,
-                Notation::Standard => self.format_standard_to_parts(value, &mut sink)?}}
+                Notation::Standard => self.format_standard_to_parts(value, &mut sink)?,
+            },
+        }
         Ok(sink.into_parts())
     }
 }
@@ -690,7 +718,8 @@ fn build_formatter_options(options: &NumberFormatOptions) -> DecimalFormatterOpt
         UseGrouping::Auto => GroupingStrategy::Auto,
         UseGrouping::Always => GroupingStrategy::Always,
         UseGrouping::False | UseGrouping::Never => GroupingStrategy::Never,
-        UseGrouping::True => GroupingStrategy::Auto});
+        UseGrouping::True => GroupingStrategy::Auto,
+    });
     opts
 }
 
@@ -711,7 +740,8 @@ fn parse_rounding_mode(options: &NumberFormatOptions) -> SignedRoundingMode {
         RoundingMode::HalfExpand => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfExpand),
         RoundingMode::HalfFloor => SignedRoundingMode::HalfFloor,
         RoundingMode::HalfTrunc => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfTrunc),
-        RoundingMode::HalfEven => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfEven)}
+        RoundingMode::HalfEven => SignedRoundingMode::Unsigned(UnsignedRoundingMode::HalfEven),
+    }
 }
 
 fn apply_minimum_integer_digits(decimal: &mut Decimal, options: &NumberFormatOptions) {
@@ -760,7 +790,8 @@ fn apply_sign_display(decimal: &mut Decimal, options: &NumberFormatOptions) {
         SignDisplay::Never => FixedSignDisplay::Never,
         SignDisplay::ExceptZero => FixedSignDisplay::ExceptZero,
         SignDisplay::Negative => FixedSignDisplay::Negative,
-        SignDisplay::Auto => return};
+        SignDisplay::Auto => return,
+    };
     decimal.apply_sign_display(sd);
 }
 
@@ -776,7 +807,8 @@ fn apply_digit_options(decimal: &mut Decimal, options: &NumberFormatOptions) {
 struct PartsCollector {
     parts: Vec<NumberFormatPart>,
     buf: String,
-    current_part: Part}
+    current_part: Part,
+}
 
 impl PartsCollector {
     fn new() -> Self {
@@ -785,7 +817,9 @@ impl PartsCollector {
             buf: String::new(),
             current_part: Part {
                 category: "",
-                value: "literal"}}
+                value: "literal",
+            },
+        }
     }
 
     fn flush(&mut self) {
@@ -793,7 +827,8 @@ impl PartsCollector {
             let text = std::mem::take(&mut self.buf);
             self.parts.push(NumberFormatPart {
                 part_type: NumberFormatPartType::from(self.current_part.value),
-                value: text});
+                value: text,
+            });
         }
     }
 

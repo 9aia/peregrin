@@ -18,7 +18,8 @@ pub enum RelativeTimeUnit {
     /// Quarters.
     Quarter,
     /// Years.
-    Year}
+    Year,
+}
 
 /// Style of relative time formatting.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -29,7 +30,8 @@ pub enum RelativeTimeStyle {
     /// Shorter form.
     Short,
     /// Shortest form.
-    Narrow}
+    Narrow,
+}
 
 /// Numeric presentation.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -38,7 +40,8 @@ pub enum RelativeTimeNumeric {
     #[default]
     Always,
     /// Use natural language when possible, e.g. `"yesterday"`.
-    Auto}
+    Auto,
+}
 
 /// Options used to construct a `RelativeTimeFormat` instance.
 #[derive(Debug, Clone)]
@@ -48,7 +51,8 @@ pub struct RelativeTimeOptions {
     /// Length of the output.
     pub style: RelativeTimeStyle,
     /// Whether to include the numeric value.
-    pub numeric: RelativeTimeNumeric}
+    pub numeric: RelativeTimeNumeric,
+}
 
 impl RelativeTimeOptions {
     /// Creates options for the requested `unit` with default style and
@@ -57,7 +61,8 @@ impl RelativeTimeOptions {
         Self {
             unit,
             style: RelativeTimeStyle::default(),
-            numeric: RelativeTimeNumeric::default()}
+            numeric: RelativeTimeNumeric::default(),
+        }
     }
 }
 
@@ -71,7 +76,8 @@ pub struct RelativeTimeFormatPart {
     /// The part type.
     pub part_type: NumberFormatPartType,
     /// The formatted text for this part.
-    pub value: String}
+    pub value: String,
+}
 
 /// ECMA-402 `Intl.RelativeTimeFormat` behavior, backend-agnostic.
 pub trait RelativeTimeFormat {

@@ -1,5 +1,5 @@
-use ac_runtime_modules::Module;
 use ac_runtime::Function;
+use ac_runtime_modules::Module;
 
 use super::compare_strings::CompareStrings;
 use super::display_name::DisplayName;
@@ -8,11 +8,11 @@ use super::format_duration::FormatDuration;
 use super::format_list::FormatList;
 use super::format_number::{FormatNumber, FormatNumberToParts};
 use super::format_relative_time::FormatRelativeTime;
+use super::locale::LocaleInfo;
+use super::locale_match::{GetCanonicalLocales, SupportedLocalesOf};
 use super::provider::IntlProvider;
 use super::segment::Segment;
 use super::select_plural::SelectPlural;
-use super::locale_match::{GetCanonicalLocales, SupportedLocalesOf};
-use super::locale::LocaleInfo;
 
 /// The `intl` module — internationalization functions.
 ///
@@ -49,7 +49,8 @@ pub struct IntlModule {
     f_segment: Segment,
     f_supported_locales_of: SupportedLocalesOf,
     f_get_canonical_locales: GetCanonicalLocales,
-    f_locale: LocaleInfo}
+    f_locale: LocaleInfo,
+}
 
 impl Default for IntlModule {
     fn default() -> Self {
@@ -75,7 +76,8 @@ impl IntlModule {
             f_segment: Segment::new(),
             f_supported_locales_of: SupportedLocalesOf::new(),
             f_get_canonical_locales: GetCanonicalLocales,
-            f_locale: LocaleInfo}
+            f_locale: LocaleInfo,
+        }
     }
 
     /// Create a new `IntlModule` using a runtime-loaded data blob.
@@ -101,7 +103,8 @@ impl IntlModule {
             f_segment: Segment::with_provider(provider.clone()),
             f_supported_locales_of: SupportedLocalesOf::with_provider(provider),
             f_get_canonical_locales: GetCanonicalLocales,
-            f_locale: LocaleInfo}
+            f_locale: LocaleInfo,
+        }
     }
 
     /// Create a new `IntlModule` from a blob of ICU4X postcard data.
@@ -138,6 +141,7 @@ impl Module for IntlModule {
             "supported_locales_of" => Some(&self.f_supported_locales_of),
             "get_canonical_locales" => Some(&self.f_get_canonical_locales),
             "locale" => Some(&self.f_locale),
-            _ => None}
+            _ => None,
+        }
     }
 }

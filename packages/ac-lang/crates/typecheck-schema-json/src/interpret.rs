@@ -62,8 +62,12 @@ pub fn interpret_schema(schema: &JsonValue) -> Type {
                                         .filter_map(|b| {
                                             let btype = b.get("type")?.as_str()?;
                                             match btype {
-                                                "trait" => b.get("name")?.as_str().map(|n| Type::Trait(n.to_string())),
-                                                _ => None}
+                                                "trait" => b
+                                                    .get("name")?
+                                                    .as_str()
+                                                    .map(|n| Type::Trait(n.to_string())),
+                                                _ => None,
+                                            }
                                         })
                                         .collect::<Vec<_>>()
                                 })
@@ -76,7 +80,8 @@ pub fn interpret_schema(schema: &JsonValue) -> Type {
                                     "contravariant" | "in" => Some(Variance::Contravariant),
                                     "invariant" => Some(Variance::Invariant),
                                     "bivariant" => Some(Variance::Bivariant),
-                                    _ => None})
+                                    _ => None,
+                                })
                                 .unwrap_or(Variance::Invariant);
                             let tp = if bounds.is_empty() {
                                 TypeParam::new(name)
@@ -108,22 +113,19 @@ pub fn interpret_schema(schema: &JsonValue) -> Type {
             Type::Function(FunctionType {
                 type_params,
                 params,
-                return_type: Box::new(return_type)})
+                return_type: Box::new(return_type),
+            })
         }
-        "var" => {
-            schema
-                .get("name")
-                .and_then(|v| v.as_str())
-                .map(|name| Type::Var(name.to_string()))
-                .unwrap_or(Type::Unknown)
-        }
-        "trait" => {
-            schema
-                .get("name")
-                .and_then(|v| v.as_str())
-                .map(|name| Type::Trait(name.to_string()))
-                .unwrap_or(Type::Unknown)
-        }
+        "var" => schema
+            .get("name")
+            .and_then(|v| v.as_str())
+            .map(|name| Type::Var(name.to_string()))
+            .unwrap_or(Type::Unknown),
+        "trait" => schema
+            .get("name")
+            .and_then(|v| v.as_str())
+            .map(|name| Type::Trait(name.to_string()))
+            .unwrap_or(Type::Unknown),
         "app" => {
             let ctor = schema
                 .get("ctor")
@@ -136,7 +138,8 @@ pub fn interpret_schema(schema: &JsonValue) -> Type {
                 .unwrap_or_default();
             Type::App(Box::new(ctor), args)
         }
-        _ => Type::Unknown}
+        _ => Type::Unknown,
+    }
 }
 
 /// Infer the [`Type`] of a concrete JSON value.
@@ -180,7 +183,8 @@ pub fn infer_json_type(value: &JsonValue) -> Type {
                 Type::Function(FunctionType {
                     type_params: Vec::new(),
                     params,
-                    return_type: Box::new(return_type)})
+                    return_type: Box::new(return_type),
+                })
             } else {
                 Type::Unknown
             }
@@ -203,10 +207,12 @@ pub fn interpret_function(
 
     let return_type = match return_schema {
         Some(schema) => Box::new(interpret_schema(schema)),
-        None => Box::new(Type::Unknown)};
+        None => Box::new(Type::Unknown),
+    };
 
     FunctionType {
         type_params: Vec::new(),
         params: param_types,
-        return_type}
+        return_type,
+    }
 }

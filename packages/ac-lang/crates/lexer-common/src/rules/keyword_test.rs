@@ -1,6 +1,6 @@
-use ac_lexer::{DefaultLexError, LexRule, LexerConfig, Span};
-use crate::tokens::{MockFactory, MockKind};
 use super::KeywordRule;
+use crate::tokens::{MockFactory, MockKind};
+use ac_lexer::{DefaultLexError, LexRule, LexerConfig, Span};
 
 const RULE: KeywordRule = KeywordRule;
 
@@ -8,7 +8,8 @@ const RULE: KeywordRule = KeywordRule;
 fn keyword_rule_matches_factory_keyword() {
     let factory = MockFactory::new().with_keyword_kind(|t| match t.as_str() {
         "await" => Some(MockKind::Keyword(t)),
-        _ => None});
+        _ => None,
+    });
     let config: LexerConfig<MockKind, DefaultLexError> = LexerConfig::new(factory);
     let mut chars = "await rest".char_indices().peekable();
     let token = RULE.try_lex(&mut chars, &config).unwrap().unwrap();

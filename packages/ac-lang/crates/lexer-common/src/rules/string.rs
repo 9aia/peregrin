@@ -1,7 +1,7 @@
 //! [`StringRule`] — matches string literals.
 
-use ac_lexer::{DefaultLexError, LexError, LexerConfig, StringFactory, Token, TokenKind};
 use ac_lexer::LexRule;
+use ac_lexer::{DefaultLexError, LexError, LexerConfig, StringFactory, Token, TokenKind};
 
 /// Matches string literals using the factory's [`StringFactory::is_string_start`]
 /// and [`StringFactory::lex_string`].
@@ -20,16 +20,15 @@ where
         config: &LexerConfig<K, E>,
     ) -> Option<Result<Token<K>, E>> {
         match chars.peek() {
-            Some(&(_, ch)) if config.factory().is_string_start(ch) => {
-                Some(
-                    config.factory().lex_string(chars)
-                        .map(|(value, span)| {
-                            Token::new(config.factory().string_kind(value), span)
-                        })
-                        .map_err(E::from)
-                )
-            }
-            _ => None}
+            Some(&(_, ch)) if config.factory().is_string_start(ch) => Some(
+                config
+                    .factory()
+                    .lex_string(chars)
+                    .map(|(value, span)| Token::new(config.factory().string_kind(value), span))
+                    .map_err(E::from),
+            ),
+            _ => None,
+        }
     }
 
     fn name(&self) -> &'static str {

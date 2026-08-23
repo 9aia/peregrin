@@ -77,7 +77,8 @@ pub fn unify(
                         Variance::Invariant => types_match(existing, actual),
                         Variance::Covariant => is_compatible(actual, existing),
                         Variance::Contravariant => is_compatible(existing, actual),
-                        Variance::Bivariant => true}
+                        Variance::Bivariant => true,
+                    }
                 }
             }
         }
@@ -94,18 +95,14 @@ pub fn unify(
         (Type::Boolean, Type::Boolean) => true,
         (Type::Null, Type::Null) => true,
 
-        (Type::Array(a_item), Type::Array(e_item)) => {
-            unify(a_item, e_item, subst, type_params)
-        }
+        (Type::Array(a_item), Type::Array(e_item)) => unify(a_item, e_item, subst, type_params),
 
-        (Type::Object(a_props), Type::Object(e_props)) => {
-            e_props.iter().all(|(key, e_ty)| {
-                a_props
-                    .get(key)
-                    .map(|a_ty| unify(a_ty, e_ty, subst, type_params))
-                    .unwrap_or(false)
-            })
-        }
+        (Type::Object(a_props), Type::Object(e_props)) => e_props.iter().all(|(key, e_ty)| {
+            a_props
+                .get(key)
+                .map(|a_ty| unify(a_ty, e_ty, subst, type_params))
+                .unwrap_or(false)
+        }),
 
         (Type::Function(a_fn), Type::Function(e_fn)) => {
             if a_fn.params.len() != e_fn.params.len() {
@@ -113,8 +110,7 @@ pub fn unify(
             }
             // Unify param types (contravariant position — but we check
             // structural match for simplicity, same as is_compatible).
-            a_fn
-                .params
+            a_fn.params
                 .iter()
                 .zip(&e_fn.params)
                 .all(|((_, a_ty), (_, e_ty))| unify(a_ty, e_ty, subst, type_params))
@@ -139,7 +135,11 @@ pub fn unify(
         // HKT: actual is a concrete type like Array<String>, pattern is App(Var("F"), [Var("T")])
         // We need to decompose the actual type to bind both F and T.
         // Array<T> is represented as App(Array, [T]) internally for HKT matching.
-        (actual, Type::App(e_ctor, e_args)) if type_params.iter().any(|tp| matches!(&**e_ctor, Type::Var(name) if tp.name == *name)) => {
+        (actual, Type::App(e_ctor, e_args))
+            if type_params
+                .iter()
+                .any(|tp| matches!(&**e_ctor, Type::Var(name) if tp.name == *name)) =>
+        {
             // The pattern constructor is a type variable in scope.
             // Try to decompose the actual type into a constructor + args.
             if let Some((a_ctor, a_args)) = decompose_type(actual) {
@@ -147,7 +147,11 @@ pub fn unify(
                     return false;
                 }
                 // Bind the higher-kinded type variable to the constructor.
-                let ctor_name = if let Type::Var(name) = &**e_ctor { name.clone() } else { return false; };
+                let ctor_name = if let Type::Var(name) = &**e_ctor {
+                    name.clone()
+                } else {
+                    return false;
+                };
                 match subst.get(&ctor_name) {
                     None => {
                         subst.insert(ctor_name.clone(), a_ctor);
@@ -159,13 +163,17 @@ pub fn unify(
                     }
                 }
                 // Unify the type arguments.
-                a_args.iter().zip(e_args).all(|(a, e)| unify(a, e, subst, type_params))
+                a_args
+                    .iter()
+                    .zip(e_args)
+                    .all(|(a, e)| unify(a, e, subst, type_params))
             } else {
                 false
             }
         }
 
-        _ => false}
+        _ => false,
+    }
 }
 
 /// Decompose a concrete type into a constructor and its type arguments.
@@ -183,12 +191,21 @@ fn decompose_type(ty: &Type) -> Option<(Type, Vec<Type>)> {
             // Functions decompose into (Function, [param_types..., return_type])
             let mut args = f.params.iter().map(|(_, t)| t.clone()).collect::<Vec<_>>();
             args.push((*f.return_type).clone());
-            Some((Type::Function(FunctionType {
-                type_params: f.type_params.clone(),
-                params: f.params.iter().map(|(n, _)| (n.clone(), Type::Unknown)).collect(),
-                return_type: Box::new(Type::Unknown)}), args))
+            Some((
+                Type::Function(FunctionType {
+                    type_params: f.type_params.clone(),
+                    params: f
+                        .params
+                        .iter()
+                        .map(|(n, _)| (n.clone(), Type::Unknown))
+                        .collect(),
+                    return_type: Box::new(Type::Unknown),
+                }),
+                args,
+            ))
         }
-        _ => None}
+        _ => None,
+    }
 }
 
 /// Check if two types are structurally identical (no unification, no Unknown
@@ -209,9 +226,9 @@ fn types_match(a: &Type, b: &Type) -> bool {
         (Type::Array(a_item), Type::Array(b_item)) => types_match(a_item, b_item),
         (Type::Object(a_props), Type::Object(b_props)) => {
             a_props.len() == b_props.len()
-                && a_props.iter().all(|(k, v)| {
-                    b_props.get(k).map(|bv| types_match(v, bv)).unwrap_or(false)
-                })
+                && a_props
+                    .iter()
+                    .all(|(k, v)| b_props.get(k).map(|bv| types_match(v, bv)).unwrap_or(false))
         }
         (Type::Function(a_fn), Type::Function(b_fn)) => {
             a_fn.params.len() == b_fn.params.len()
@@ -222,7 +239,8 @@ fn types_match(a: &Type, b: &Type) -> bool {
                     .all(|((_, at), (_, bt))| types_match(at, bt))
                 && types_match(&a_fn.return_type, &b_fn.return_type)
         }
-        _ => false}
+        _ => false,
+    }
 }
 
 /// Apply a substitution to a type, replacing all bound `Var`s with their
@@ -233,9 +251,12 @@ pub fn substitute(ty: &Type, subst: &Substitution) -> Type {
 
         Type::Array(item) => Type::Array(Box::new(substitute(item, subst))),
 
-        Type::Object(props) => {
-            Type::Object(props.iter().map(|(k, v)| (k.clone(), substitute(v, subst))).collect())
-        }
+        Type::Object(props) => Type::Object(
+            props
+                .iter()
+                .map(|(k, v)| (k.clone(), substitute(v, subst)))
+                .collect(),
+        ),
 
         Type::Function(f) => Type::Function(crate::FunctionType {
             type_params: f.type_params.clone(),
@@ -244,14 +265,16 @@ pub fn substitute(ty: &Type, subst: &Substitution) -> Type {
                 .iter()
                 .map(|(n, t)| (n.clone(), substitute(t, subst)))
                 .collect(),
-            return_type: Box::new(substitute(&f.return_type, subst))}),
+            return_type: Box::new(substitute(&f.return_type, subst)),
+        }),
 
         Type::App(ctor, args) => Type::App(
             Box::new(substitute(ctor, subst)),
             args.iter().map(|a| substitute(a, subst)).collect(),
         ),
 
-        _ => ty.clone()}
+        _ => ty.clone(),
+    }
 }
 
 /// Check that all type parameter bounds are satisfied by the substitution.
@@ -272,7 +295,8 @@ pub fn check_bounds(
         }
         match subst.get(&tp.name) {
             None => true,
-            Some(concrete) => registry.check_bounds(concrete, &tp.bounds)}
+            Some(concrete) => registry.check_bounds(concrete, &tp.bounds),
+        }
     })
 }
 
@@ -357,8 +381,18 @@ mod tests {
     fn consistent_rebinding_succeeds() {
         let mut subst = Substitution::new();
         let tp = [TypeParam::new("T")];
-        assert!(unify(&Type::String, &Type::Var("T".to_string()), &mut subst, &tp));
-        assert!(unify(&Type::String, &Type::Var("T".to_string()), &mut subst, &tp));
+        assert!(unify(
+            &Type::String,
+            &Type::Var("T".to_string()),
+            &mut subst,
+            &tp
+        ));
+        assert!(unify(
+            &Type::String,
+            &Type::Var("T".to_string()),
+            &mut subst,
+            &tp
+        ));
         assert_eq!(subst.get("T"), Some(&Type::String));
     }
 
@@ -366,8 +400,18 @@ mod tests {
     fn inconsistent_rebinding_fails() {
         let mut subst = Substitution::new();
         let tp = [TypeParam::new("T")];
-        assert!(unify(&Type::String, &Type::Var("T".to_string()), &mut subst, &tp));
-        assert!(!unify(&Type::Number, &Type::Var("T".to_string()), &mut subst, &tp));
+        assert!(unify(
+            &Type::String,
+            &Type::Var("T".to_string()),
+            &mut subst,
+            &tp
+        ));
+        assert!(!unify(
+            &Type::Number,
+            &Type::Var("T".to_string()),
+            &mut subst,
+            &tp
+        ));
     }
 
     #[test]
@@ -388,8 +432,18 @@ mod tests {
     fn unknown_existing_allows_more_specific() {
         let mut subst = Substitution::new();
         let tp = [TypeParam::new("T")];
-        assert!(unify(&Type::Unknown, &Type::Var("T".to_string()), &mut subst, &tp));
-        assert!(unify(&Type::String, &Type::Var("T".to_string()), &mut subst, &tp));
+        assert!(unify(
+            &Type::Unknown,
+            &Type::Var("T".to_string()),
+            &mut subst,
+            &tp
+        ));
+        assert!(unify(
+            &Type::String,
+            &Type::Var("T".to_string()),
+            &mut subst,
+            &tp
+        ));
         assert_eq!(subst.get("T"), Some(&Type::String));
     }
 
@@ -413,12 +467,14 @@ mod tests {
         let actual = Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::String)],
-            return_type: Box::new(Type::String)});
+            return_type: Box::new(Type::String),
+        });
 
         let pattern = Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::Var("T".to_string()))],
-            return_type: Box::new(Type::Var("T".to_string()))});
+            return_type: Box::new(Type::Var("T".to_string())),
+        });
 
         assert!(unify(&actual, &pattern, &mut subst, &tp));
         assert_eq!(subst.get("T"), Some(&Type::String));
@@ -462,7 +518,8 @@ mod tests {
         let ty = Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::Var("T".to_string()))],
-            return_type: Box::new(Type::Var("U".to_string()))});
+            return_type: Box::new(Type::Var("U".to_string())),
+        });
         let result = substitute(&ty, &subst);
         if let Type::Function(f) = result {
             assert_eq!(f.params[0].1, Type::String);
@@ -521,11 +578,13 @@ mod tests {
         let actual_fn = Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::String)],
-            return_type: Box::new(Type::Number)});
+            return_type: Box::new(Type::Number),
+        });
         let pattern_fn = Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::Var("T".to_string()))],
-            return_type: Box::new(Type::Var("U".to_string()))});
+            return_type: Box::new(Type::Var("U".to_string())),
+        });
         assert!(unify(&actual_fn, &pattern_fn, &mut subst, &tp));
 
         assert_eq!(subst.get("T"), Some(&Type::String));
@@ -533,7 +592,10 @@ mod tests {
 
         // Return type: Array<U> → Array<Number>
         let return_ty = Type::Array(Box::new(Type::Var("U".to_string())));
-        assert_eq!(substitute(&return_ty, &subst), Type::Array(Box::new(Type::Number)));
+        assert_eq!(
+            substitute(&return_ty, &subst),
+            Type::Array(Box::new(Type::Number))
+        );
     }
 
     #[test]

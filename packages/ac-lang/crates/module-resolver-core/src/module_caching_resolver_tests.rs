@@ -13,7 +13,8 @@ fn caching_calls_inner_once_for_same_path() {
     let count = Arc::new(AtomicU32::new(0));
     let resolver = CachingResolver::with_cache(
         CountingResolver {
-            count: count.clone()},
+            count: count.clone(),
+        },
         TestCache::new(),
     );
 
@@ -27,7 +28,8 @@ fn caching_calls_inner_for_different_paths() {
     let count = Arc::new(AtomicU32::new(0));
     let resolver = CachingResolver::with_cache(
         CountingResolver {
-            count: count.clone()},
+            count: count.clone(),
+        },
         TestCache::new(),
     );
 
@@ -50,7 +52,8 @@ fn caching_with_explicit_cache() {
     let count = Arc::new(AtomicU32::new(0));
     let resolver = CachingResolver::with_cache(
         CountingResolver {
-            count: count.clone()},
+            count: count.clone(),
+        },
         cache,
     );
 
@@ -65,7 +68,8 @@ fn caching_clear_cache() {
     let count = Arc::new(AtomicU32::new(0));
     let resolver = CachingResolver::with_cache(
         CountingResolver {
-            count: count.clone()},
+            count: count.clone(),
+        },
         TestCache::new(),
     );
 
@@ -84,7 +88,8 @@ fn caching_key_includes_base() {
     let count = Arc::new(AtomicU32::new(0));
     let resolver = CachingResolver::with_cache(
         CountingResolver {
-            count: count.clone()},
+            count: count.clone(),
+        },
         TestCache::new(),
     );
 

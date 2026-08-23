@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::math::MathModule;
 
@@ -309,7 +309,8 @@ fn type_mismatch_on_non_number() {
         result,
         Err(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})
+            got: "non-number"
+        })
     );
 }
 
@@ -322,7 +323,8 @@ fn argument_count_on_missing_args() {
         result,
         Err(Error::ArgumentCount {
             expected: 1,
-            got: 0})
+            got: 0
+        })
     );
 }
 

@@ -1,6 +1,6 @@
 use ac_dialect::Dialect;
 use ac_runtime::NonFunctionValue;
-use ac_runtime_canonical::{CanonicalContext, Context, Eval, Error, Host, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Error, Eval, Host, Vm};
 use serde_json::Value as JsonValue;
 
 use crate::parser::parse_expr_to_tree;
@@ -65,14 +65,16 @@ pub fn eval_body<H: Host + Clone + 'static>(
 struct VmEval<H: Host + Clone + 'static> {
     host: H,
     namespaces: Namespaces,
-    dialect: &'static dyn Dialect}
+    dialect: &'static dyn Dialect,
+}
 
 impl<H: Host + Clone + 'static> VmEval<H> {
     fn new(host: H, namespaces: Namespaces, dialect: &'static dyn Dialect) -> Self {
         VmEval {
             host,
             namespaces,
-            dialect}
+            dialect,
+        }
     }
 }
 

@@ -114,9 +114,11 @@ fn parse_handle_basic() {
             assert_eq!(handlers[0].continuation_name, "k");
             match *body {
                 ExprAst::Call(ref name, _) => assert_eq!(name, "fetch"),
-                ref other => panic!("expected Call body, got {other:?}")}
+                ref other => panic!("expected Call body, got {other:?}"),
+            }
         }
-        other => panic!("expected Handle, got {other:?}")}
+        other => panic!("expected Handle, got {other:?}"),
+    }
 }
 
 #[test]
@@ -132,7 +134,8 @@ fn parse_handle_multiple_handlers() {
             assert_eq!(handlers[0].op_name, "fetch");
             assert_eq!(handlers[1].op_name, "log");
         }
-        other => panic!("expected Handle, got {other:?}")}
+        other => panic!("expected Handle, got {other:?}"),
+    }
 }
 
 #[test]
@@ -147,7 +150,8 @@ fn parse_handle_no_params() {
             assert_eq!(handlers.len(), 1);
             assert!(handlers[0].params.is_empty());
         }
-        other => panic!("expected Handle, got {other:?}")}
+        other => panic!("expected Handle, got {other:?}"),
+    }
 }
 
 #[test]
@@ -168,12 +172,12 @@ fn parse_handle_handler_body_is_call() {
     )
     .unwrap();
     match ast {
-        ExprAst::Handle { handlers, .. } => {
-            match &*handlers[0].body {
-                ExprAst::Call(name, _) => assert_eq!(name, "k"),
-                other => panic!("expected Call handler body, got {other:?}")}
-        }
-        other => panic!("expected Handle, got {other:?}")}
+        ExprAst::Handle { handlers, .. } => match &*handlers[0].body {
+            ExprAst::Call(name, _) => assert_eq!(name, "k"),
+            other => panic!("expected Call handler body, got {other:?}"),
+        },
+        other => panic!("expected Handle, got {other:?}"),
+    }
 }
 
 #[test]
@@ -218,7 +222,8 @@ fn infer_function_call() {
                 ("x".to_string(), Type::Number),
                 ("y".to_string(), Type::Number),
             ],
-            return_type: Box::new(Type::Number)},
+            return_type: Box::new(Type::Number),
+        },
     );
 
     assert_eq!(infer("add(1, 2)", &env, &funcs, &AC_DIALECT), Type::Number);
@@ -239,7 +244,8 @@ fn infer_nested_function_call() {
                 ("a".to_string(), Type::Number),
                 ("b".to_string(), Type::Number),
             ],
-            return_type: Box::new(Type::Number)},
+            return_type: Box::new(Type::Number),
+        },
     );
 
     assert_eq!(
@@ -269,7 +275,8 @@ fn infer_arity_mismatch() {
                 ("a".to_string(), Type::Number),
                 ("b".to_string(), Type::Number),
             ],
-            return_type: Box::new(Type::Number)},
+            return_type: Box::new(Type::Number),
+        },
     );
 
     let env = TypeEnv::new();
@@ -287,7 +294,8 @@ fn infer_type_mismatch_in_args() {
                 ("a".to_string(), Type::Number),
                 ("b".to_string(), Type::Number),
             ],
-            return_type: Box::new(Type::Number)},
+            return_type: Box::new(Type::Number),
+        },
     );
 
     let env = TypeEnv::new();
@@ -351,7 +359,8 @@ fn infer_call_function_typed_binding() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::Number)],
-            return_type: Box::new(Type::Number)}),
+            return_type: Box::new(Type::Number),
+        }),
     );
 
     let funcs = FunctionTable::new();
@@ -367,7 +376,8 @@ fn infer_call_function_typed_field_via_shorthand() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::Number)],
-            return_type: Box::new(Type::Number)}),
+            return_type: Box::new(Type::Number),
+        }),
     );
     env.insert("doc", Type::Object(doc_props));
 
@@ -386,7 +396,8 @@ fn infer_call_function_typed_arg_mismatch() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::Number)],
-            return_type: Box::new(Type::Number)}),
+            return_type: Box::new(Type::Number),
+        }),
     );
 
     let funcs = FunctionTable::new();
@@ -404,7 +415,8 @@ fn infer_call_function_typed_arity_mismatch() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::Number)],
-            return_type: Box::new(Type::Number)}),
+            return_type: Box::new(Type::Number),
+        }),
     );
 
     let funcs = FunctionTable::new();
@@ -430,7 +442,8 @@ fn infer_generic_identity() {
         FunctionType {
             type_params: vec![TypeParam::new("T")],
             params: vec![("x".to_string(), Type::Var("T".to_string()))],
-            return_type: Box::new(Type::Var("T".to_string()))},
+            return_type: Box::new(Type::Var("T".to_string())),
+        },
     );
 
     let env = TypeEnv::new();
@@ -452,13 +465,21 @@ fn infer_generic_map() {
         FunctionType {
             type_params: vec![TypeParam::new("T"), TypeParam::new("U")],
             params: vec![
-                ("arr".to_string(), Type::Array(Box::new(Type::Var("T".to_string())))),
-                ("fn".to_string(), Type::Function(FunctionType {
-                    type_params: vec![],
-                    params: vec![("x".to_string(), Type::Var("T".to_string()))],
-                    return_type: Box::new(Type::Var("U".to_string()))})),
+                (
+                    "arr".to_string(),
+                    Type::Array(Box::new(Type::Var("T".to_string()))),
+                ),
+                (
+                    "fn".to_string(),
+                    Type::Function(FunctionType {
+                        type_params: vec![],
+                        params: vec![("x".to_string(), Type::Var("T".to_string()))],
+                        return_type: Box::new(Type::Var("U".to_string())),
+                    }),
+                ),
             ],
-            return_type: Box::new(Type::Array(Box::new(Type::Var("U".to_string()))))},
+            return_type: Box::new(Type::Array(Box::new(Type::Var("U".to_string())))),
+        },
     );
 
     let mut env = TypeEnv::new();
@@ -469,7 +490,8 @@ fn infer_generic_map() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("s".to_string(), Type::String)],
-            return_type: Box::new(Type::Number)}),
+            return_type: Box::new(Type::Number),
+        }),
     );
     env.insert("doc", Type::Object(doc_props));
 
@@ -487,7 +509,8 @@ fn infer_generic_with_unknown_arg() {
         FunctionType {
             type_params: vec![TypeParam::new("T")],
             params: vec![("x".to_string(), Type::Var("T".to_string()))],
-            return_type: Box::new(Type::Var("T".to_string()))},
+            return_type: Box::new(Type::Var("T".to_string())),
+        },
     );
 
     let env = TypeEnv::new();
@@ -505,10 +528,12 @@ fn infer_generic_type_mismatch() {
         "first",
         FunctionType {
             type_params: vec![TypeParam::new("T")],
-            params: vec![
-                ("arr".to_string(), Type::Array(Box::new(Type::Var("T".to_string())))),
-            ],
-            return_type: Box::new(Type::Var("T".to_string()))},
+            params: vec![(
+                "arr".to_string(),
+                Type::Array(Box::new(Type::Var("T".to_string()))),
+            )],
+            return_type: Box::new(Type::Var("T".to_string())),
+        },
     );
 
     let env = TypeEnv::new();
@@ -528,12 +553,17 @@ fn infer_generic_consistency_check() {
             type_params: vec![TypeParam::new("T")],
             params: vec![
                 ("x".to_string(), Type::Var("T".to_string())),
-                ("f".to_string(), Type::Function(FunctionType {
-                    type_params: vec![],
-                    params: vec![("y".to_string(), Type::Var("T".to_string()))],
-                    return_type: Box::new(Type::Var("T".to_string()))})),
+                (
+                    "f".to_string(),
+                    Type::Function(FunctionType {
+                        type_params: vec![],
+                        params: vec![("y".to_string(), Type::Var("T".to_string()))],
+                        return_type: Box::new(Type::Var("T".to_string())),
+                    }),
+                ),
             ],
-            return_type: Box::new(Type::Var("T".to_string()))},
+            return_type: Box::new(Type::Var("T".to_string())),
+        },
     );
 
     let mut env = TypeEnv::new();
@@ -544,7 +574,8 @@ fn infer_generic_consistency_check() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("y".to_string(), Type::Number)],
-            return_type: Box::new(Type::Number)}),
+            return_type: Box::new(Type::Number),
+        }),
     );
     env.insert("doc", Type::Object(doc_props));
 
@@ -562,7 +593,8 @@ fn detailed_monomorphic_arg_count_mismatch() {
     let fn_type = FunctionType {
         type_params: vec![],
         params: vec![("x".to_string(), Type::Number)],
-        return_type: Box::new(Type::Number)};
+        return_type: Box::new(Type::Number),
+    };
     let result = check_call_detailed("double", &fn_type, &[]);
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -581,7 +613,8 @@ fn detailed_monomorphic_arg_type_mismatch() {
     let fn_type = FunctionType {
         type_params: vec![],
         params: vec![("x".to_string(), Type::Number)],
-        return_type: Box::new(Type::Number)};
+        return_type: Box::new(Type::Number),
+    };
     let result = check_call_detailed("double", &fn_type, &[Type::String]);
     assert!(result.is_err());
     let err = result.unwrap_err();
@@ -604,7 +637,8 @@ fn detailed_generic_unification_failure() {
             "arr".to_string(),
             Type::Array(Box::new(Type::Var("T".to_string()))),
         )],
-        return_type: Box::new(Type::Var("T".to_string()))};
+        return_type: Box::new(Type::Var("T".to_string())),
+    };
     // Pass String where Array<T> is expected → unification fails
     let result = check_call_detailed("first", &fn_type, &[Type::String]);
     assert!(result.is_err());
@@ -625,7 +659,8 @@ fn detailed_generic_success_returns_ok() {
     let fn_type = FunctionType {
         type_params: vec![TypeParam::new("T")],
         params: vec![("x".to_string(), Type::Var("T".to_string()))],
-        return_type: Box::new(Type::Var("T".to_string()))};
+        return_type: Box::new(Type::Var("T".to_string())),
+    };
     let result = check_call_detailed("identity", &fn_type, &[Type::String]);
     assert_eq!(result, Ok(Type::String));
 }
@@ -635,7 +670,8 @@ fn detailed_monomorphic_success_returns_ok() {
     let fn_type = FunctionType {
         type_params: vec![],
         params: vec![("x".to_string(), Type::Number)],
-        return_type: Box::new(Type::Number)};
+        return_type: Box::new(Type::Number),
+    };
     let result = check_call_detailed("double", &fn_type, &[Type::Number]);
     assert_eq!(result, Ok(Type::Number));
 }
@@ -646,7 +682,9 @@ fn detailed_call_error_to_type_error_message() {
         function: "identity".to_string(),
         kind: CallErrorKind::ArgCount {
             expected: 1,
-            got: 0}};
+            got: 0,
+        },
+    };
     let type_err = err.to_type_error();
     assert_eq!(type_err.field, "identity");
     assert!(type_err.message.contains("expected 1 argument(s), got 0"));
@@ -660,10 +698,16 @@ fn detailed_generic_unification_error_message() {
             param: "arr".to_string(),
             index: 0,
             expected: Type::Array(Box::new(Type::Var("T".to_string()))),
-            actual: Type::String}};
+            actual: Type::String,
+        },
+    };
     let type_err = err.to_type_error();
     assert!(type_err.message.contains("first"));
-    assert!(type_err.message.contains("type mismatch in generic parameter"));
+    assert!(
+        type_err
+            .message
+            .contains("type mismatch in generic parameter")
+    );
     assert!(type_err.message.contains("arr"));
 }
 
@@ -680,7 +724,8 @@ fn infer_detailed_collects_generic_unification_error() {
                 "arr".to_string(),
                 Type::Array(Box::new(Type::Var("T".to_string()))),
             )],
-            return_type: Box::new(Type::Var("T".to_string()))},
+            return_type: Box::new(Type::Var("T".to_string())),
+        },
     );
 
     let env = TypeEnv::new();
@@ -701,7 +746,8 @@ fn infer_detailed_no_errors_on_valid_generic_call() {
         FunctionType {
             type_params: vec![TypeParam::new("T")],
             params: vec![("x".to_string(), Type::Var("T".to_string()))],
-            return_type: Box::new(Type::Var("T".to_string()))},
+            return_type: Box::new(Type::Var("T".to_string())),
+        },
     );
 
     let env = TypeEnv::new();
@@ -720,7 +766,8 @@ fn infer_detailed_monomorphic_arg_count_error() {
         FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::Number)],
-            return_type: Box::new(Type::Number)},
+            return_type: Box::new(Type::Number),
+        },
     );
 
     let env = TypeEnv::new();
@@ -743,7 +790,8 @@ fn return_type_driven_binds_unbound_type_var() {
         FunctionType {
             type_params: vec![TypeParam::new("T")],
             params: vec![],
-            return_type: Box::new(Type::Array(Box::new(Type::Var("T".to_string()))))},
+            return_type: Box::new(Type::Array(Box::new(Type::Var("T".to_string())))),
+        },
     );
 
     let env = TypeEnv::new();
@@ -774,7 +822,8 @@ fn return_type_driven_with_argument_binding() {
         FunctionType {
             type_params: vec![TypeParam::new("T")],
             params: vec![("x".to_string(), Type::Var("T".to_string()))],
-            return_type: Box::new(Type::Array(Box::new(Type::Var("T".to_string()))))},
+            return_type: Box::new(Type::Array(Box::new(Type::Var("T".to_string())))),
+        },
     );
 
     let env = TypeEnv::new();
@@ -798,19 +847,14 @@ fn return_type_driven_mismatch_does_not_fail() {
         FunctionType {
             type_params: vec![TypeParam::new("T")],
             params: vec![],
-            return_type: Box::new(Type::Array(Box::new(Type::Var("T".to_string()))))},
+            return_type: Box::new(Type::Array(Box::new(Type::Var("T".to_string())))),
+        },
     );
 
     let env = TypeEnv::new();
     // Expected type is String (not Array<...>) — return-type unification
     // fails gracefully, result is Array<Unknown>
     let ast = parse_expr("make_array()", &AC_DIALECT).unwrap();
-    let ty = infer_ast_with_expected(
-        &ast,
-        &env,
-        &funcs,
-        &AC_DIALECT,
-        Some(&Type::String),
-    );
+    let ty = infer_ast_with_expected(&ast, &env, &funcs, &AC_DIALECT, Some(&Type::String));
     assert_eq!(ty, Type::Array(Box::new(Type::Unknown)));
 }

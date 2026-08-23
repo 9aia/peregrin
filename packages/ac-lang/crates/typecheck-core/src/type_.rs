@@ -44,7 +44,8 @@ pub enum Type {
     /// parameter bound to `Array`.
     App(Box<Type>, Vec<Type>),
     Unknown,
-    Never}
+    Never,
+}
 
 /// A type parameter declaration on a generic function.
 ///
@@ -61,7 +62,8 @@ pub struct TypeParam {
     /// Empty means no constraints — any type is accepted.
     pub bounds: Vec<Type>,
     /// Variance annotation for subtyping. Defaults to [`Variance::Invariant`].
-    pub variance: Variance}
+    pub variance: Variance,
+}
 
 impl TypeParam {
     /// Create a type parameter with no bounds and invariant variance.
@@ -69,7 +71,8 @@ impl TypeParam {
         TypeParam {
             name: name.into(),
             bounds: Vec::new(),
-            variance: Variance::Invariant}
+            variance: Variance::Invariant,
+        }
     }
 
     /// Create a type parameter with the given trait bounds.
@@ -77,7 +80,8 @@ impl TypeParam {
         TypeParam {
             name: name.into(),
             bounds,
-            variance: Variance::Invariant}
+            variance: Variance::Invariant,
+        }
     }
 
     /// Set the variance of this type parameter.
@@ -103,7 +107,8 @@ pub enum Variance {
     Covariant,
     Contravariant,
     Invariant,
-    Bivariant}
+    Bivariant,
+}
 
 /// The kind of a type — tracks the "type of types" for higher-kinded types.
 ///
@@ -120,7 +125,8 @@ pub enum Variance {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Kind {
     Type,
-    Constructor(Vec<Kind>, Box<Kind>)}
+    Constructor(Vec<Kind>, Box<Kind>),
+}
 
 impl Kind {
     /// The kind of a proper type (no arguments).
@@ -135,10 +141,7 @@ impl Kind {
 
     /// Construct a `Type -> Type -> Type` kind (binary type constructor).
     pub fn binary() -> Self {
-        Kind::Constructor(
-            vec![Kind::Type, Kind::Type],
-            Box::new(Kind::Type),
-        )
+        Kind::Constructor(vec![Kind::Type, Kind::Type], Box::new(Kind::Type))
     }
 }
 
@@ -154,7 +157,8 @@ pub struct FunctionType {
     /// `(param_name, param_type)` pairs, in declaration order.
     pub params: Vec<(String, Type)>,
     /// The return type.
-    pub return_type: Box<Type>}
+    pub return_type: Box<Type>,
+}
 
 impl Type {
     /// Human-readable name for error messages.
@@ -189,7 +193,8 @@ impl Type {
                 format!("{}<{args_str}>", ctor.name())
             }
             Type::Unknown => "unknown".to_string(),
-            Type::Never => "never".to_string()}
+            Type::Never => "never".to_string(),
+        }
     }
 
     /// Returns `true` if this type is `Unknown`.
@@ -277,7 +282,8 @@ impl Type {
                 Some(Type::Function(FunctionType {
                     type_params: Vec::new(),
                     params: param_list,
-                    return_type}))
+                    return_type,
+                }))
             }
             "app" => {
                 let ctor = Box::new(Type::from_json(obj.get("constructor")?)?);
@@ -288,6 +294,7 @@ impl Type {
                 }
                 Some(Type::App(ctor, arg_list))
             }
-            _ => None}
+            _ => None,
+        }
     }
 }

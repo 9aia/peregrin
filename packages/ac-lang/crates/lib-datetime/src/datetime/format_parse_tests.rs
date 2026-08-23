@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::DateTimeModule;
 
@@ -220,7 +220,11 @@ fn parse_with_timezone_offset() {
     let result = call(
         &DateTimeModule,
         "parse",
-        &[s("2021-01-15T10:30:00"), s("%Y-%m-%dT%H:%M:%S"), s("+05:30")],
+        &[
+            s("2021-01-15T10:30:00"),
+            s("%Y-%m-%dT%H:%M:%S"),
+            s("+05:30"),
+        ],
     );
     assert_eq!(result.as_str(), Some("2021-01-15T05:00:00Z"));
 }
@@ -230,7 +234,11 @@ fn parse_with_timezone_negative_offset() {
     let result = call(
         &DateTimeModule,
         "parse",
-        &[s("2021-01-15T10:30:00"), s("%Y-%m-%dT%H:%M:%S"), s("-03:00")],
+        &[
+            s("2021-01-15T10:30:00"),
+            s("%Y-%m-%dT%H:%M:%S"),
+            s("-03:00"),
+        ],
     );
     assert_eq!(result.as_str(), Some("2021-01-15T13:30:00Z"));
 }
@@ -238,8 +246,8 @@ fn parse_with_timezone_negative_offset() {
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(DateTimeModule);

@@ -1,8 +1,7 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime::{Context, Error, Function};
-use icu::segmenter::{
-    GraphemeClusterSegmenter, LineSegmenter, SentenceSegmenter, WordSegmenter};
 use icu::segmenter::options::{LineBreakOptions, LineBreakStrictness, LineBreakWordOption};
+use icu::segmenter::{GraphemeClusterSegmenter, LineSegmenter, SentenceSegmenter, WordSegmenter};
 
 use super::common::{make_provider, opt_str, optional_locale, optional_object, require_string};
 use super::error::IntlError;
@@ -27,7 +26,8 @@ use super::provider::IntlProvider;
 /// - `intl.segment("Hello World", "line", "ja", {lineBreakStyle: "loose"})` → line segments with loose breaking
 #[derive(Clone)]
 pub struct Segment {
-    provider: Option<IntlProvider>}
+    provider: Option<IntlProvider>,
+}
 
 impl Segment {
     pub fn new() -> Self {
@@ -35,7 +35,9 @@ impl Segment {
     }
 
     pub fn with_provider(provider: IntlProvider) -> Self {
-        Self { provider: Some(provider) }
+        Self {
+            provider: Some(provider),
+        }
     }
 }
 
@@ -46,7 +48,11 @@ impl Default for Segment {
 }
 
 impl Function for Segment {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let text = require_string(args, 0)?;
         let granularity = require_string(args, 1)?;
         let locale = optional_locale(args, 2)?;
@@ -57,7 +63,12 @@ impl Function for Segment {
             "grapheme" => {
                 if let Some(p) = dp.as_buffer_provider() {
                     let segmenter = GraphemeClusterSegmenter::try_new_with_buffer_provider(p)
-                        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+                        .map_err(|e| {
+                            IntlError::Formatting {
+                                message: e.to_string(),
+                            }
+                            .into_vm_error()
+                        })?;
                     collect_segments(text, segmenter.as_borrowed().segment_str(text))
                 } else {
                     let segmenter = GraphemeClusterSegmenter::new();
@@ -66,8 +77,14 @@ impl Function for Segment {
             }
             "word" => {
                 if let Some(p) = dp.as_buffer_provider() {
-                    let segmenter = WordSegmenter::try_new_auto_with_buffer_provider(p, Default::default())
-                        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+                    let segmenter =
+                        WordSegmenter::try_new_auto_with_buffer_provider(p, Default::default())
+                            .map_err(|e| {
+                                IntlError::Formatting {
+                                    message: e.to_string(),
+                                }
+                                .into_vm_error()
+                            })?;
                     collect_word_segments(text, segmenter.as_borrowed().segment_str(text))
                 } else {
                     let segmenter = WordSegmenter::new_auto(Default::default());
@@ -76,8 +93,14 @@ impl Function for Segment {
             }
             "sentence" => {
                 if let Some(p) = dp.as_buffer_provider() {
-                    let segmenter = SentenceSegmenter::try_new_with_buffer_provider(p, Default::default())
-                        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+                    let segmenter =
+                        SentenceSegmenter::try_new_with_buffer_provider(p, Default::default())
+                            .map_err(|e| {
+                                IntlError::Formatting {
+                                    message: e.to_string(),
+                                }
+                                .into_vm_error()
+                            })?;
                     collect_segments(text, segmenter.as_borrowed().segment_str(text))
                 } else {
                     let segmenter = SentenceSegmenter::new(Default::default());
@@ -92,32 +115,47 @@ impl Function for Segment {
                         "strict" => LineBreakStrictness::Strict,
                         "loose" => LineBreakStrictness::Loose,
                         "anywhere" => LineBreakStrictness::Anywhere,
-                        _ => LineBreakStrictness::Normal});
+                        _ => LineBreakStrictness::Normal,
+                    });
                 }
                 if let Some(word) = opt_str(opts, "lineBreakWord") {
                     line_opts.word_option = Some(match word {
                         "break-all" => LineBreakWordOption::BreakAll,
                         "keep-all" => LineBreakWordOption::KeepAll,
-                        _ => LineBreakWordOption::Normal});
+                        _ => LineBreakWordOption::Normal,
+                    });
                 }
                 if let Some(p) = dp.as_buffer_provider() {
                     let segmenter = LineSegmenter::try_new_auto_with_buffer_provider(p, line_opts)
-                        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+                        .map_err(|e| {
+                            IntlError::Formatting {
+                                message: e.to_string(),
+                            }
+                            .into_vm_error()
+                        })?;
                     collect_segments(text, segmenter.as_borrowed().segment_str(text))
                 } else {
                     let segmenter = LineSegmenter::new_auto(line_opts);
                     collect_segments(text, segmenter.segment_str(text))
                 }
             }
-            _ => return Err(IntlError::InvalidType {
-                type_name: granularity.to_string(),
-                valid: "grapheme, word, sentence, line".into()}.into_vm_error())};
+            _ => {
+                return Err(IntlError::InvalidType {
+                    type_name: granularity.to_string(),
+                    valid: "grapheme, word, sentence, line".into(),
+                }
+                .into_vm_error());
+            }
+        };
 
         Ok(NonFunctionValue::new(serde_json::Value::Array(segments)))
     }
 }
 
-fn collect_segments<I: Iterator<Item = usize>>(text: &str, breakpoints: I) -> Vec<serde_json::Value> {
+fn collect_segments<I: Iterator<Item = usize>>(
+    text: &str,
+    breakpoints: I,
+) -> Vec<serde_json::Value> {
     let mut result = Vec::new();
     let mut start = 0usize;
     for breakpoint in breakpoints {
@@ -137,7 +175,10 @@ fn collect_segments<I: Iterator<Item = usize>>(text: &str, breakpoints: I) -> Ve
     result
 }
 
-fn collect_word_segments<I: Iterator<Item = usize>>(text: &str, breakpoints: I) -> Vec<serde_json::Value> {
+fn collect_word_segments<I: Iterator<Item = usize>>(
+    text: &str,
+    breakpoints: I,
+) -> Vec<serde_json::Value> {
     let mut result = Vec::new();
     let mut start = 0usize;
     for word_break in breakpoints {

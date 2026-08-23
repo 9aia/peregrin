@@ -16,7 +16,11 @@ use crate::types::Namespaces;
 /// The resulting tree is evaluated by the VM, so path lookups are
 /// encoded as host calls (`var` and `resolve`) and can be resolved
 /// lazily against the current [`Context`].
-pub fn parse_expr_to_tree(s: &str, dialect: &dyn Dialect, namespaces: &Namespaces) -> Option<Expr<NonFunctionValue>> {
+pub fn parse_expr_to_tree(
+    s: &str,
+    dialect: &dyn Dialect,
+    namespaces: &Namespaces,
+) -> Option<Expr<NonFunctionValue>> {
     let s = s.trim();
     if s.is_empty() {
         return None;
@@ -46,7 +50,11 @@ fn strip_interpolation<'a>(s: &'a str, dialect: &dyn Dialect) -> &'a str {
     }
 }
 
-fn build_path_expr(s: &str, dialect: &dyn Dialect, namespaces: &Namespaces) -> Expr<NonFunctionValue> {
+fn build_path_expr(
+    s: &str,
+    dialect: &dyn Dialect,
+    namespaces: &Namespaces,
+) -> Expr<NonFunctionValue> {
     let sep = dialect.syntax().path_separator();
     let parts: Vec<&str> = s.split(sep).collect();
     let roots: HashSet<&str> = namespaces.keys().map(|k| k.as_str()).collect();
@@ -60,7 +68,11 @@ fn build_path_expr(s: &str, dialect: &dyn Dialect, namespaces: &Namespaces) -> E
     };
 
     let root_expr = Expr::call("var", vec![Expr::value(NonFunctionValue::new(root))]);
-    let path = JsonValue::Array(rest.iter().map(|p| JsonValue::String(p.to_string())).collect());
+    let path = JsonValue::Array(
+        rest.iter()
+            .map(|p| JsonValue::String(p.to_string()))
+            .collect(),
+    );
     let path_expr = Expr::value(NonFunctionValue::new(path));
 
     Expr::call("resolve", vec![root_expr, path_expr])

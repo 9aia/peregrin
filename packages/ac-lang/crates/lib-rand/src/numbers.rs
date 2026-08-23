@@ -21,20 +21,26 @@ use crate::error::RandError;
 pub struct Int;
 
 impl Function for Int {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let (min, max) = match args.len() {
             1 => (0, require_int(args, 0)?),
             2 => (require_int(args, 0)?, require_int(args, 1)?),
             n => {
                 return Err(Error::ArgumentCount {
                     expected: 2,
-                    got: n})
+                    got: n,
+                });
             }
         };
         if min > max {
             return Err(RandError::InvalidRange {
                 min: min as f64,
-                max: max as f64}
+                max: max as f64,
+            }
             .into());
         }
         let result = rand::rng().random_range(min..=max);
@@ -56,7 +62,11 @@ impl Function for Int {
 pub struct Float;
 
 impl Function for Float {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         match args.len() {
             0 => {
                 let result = rand::rng().random::<f64>();
@@ -90,7 +100,9 @@ impl Function for Float {
             }
             n => Err(Error::ArgumentCount {
                 expected: 2,
-                got: n})}
+                got: n,
+            }),
+        }
     }
 }
 
@@ -104,7 +116,11 @@ impl Function for Float {
 pub struct Bool;
 
 impl Function for Bool {
-    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        _args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         Ok(bool_val(rand::rng().random()))
     }
 }

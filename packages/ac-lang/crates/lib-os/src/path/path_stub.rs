@@ -23,7 +23,8 @@ impl Path for StubPath {
     fn resolve(&self, parts: &[&str]) -> Result<String, OsError> {
         if parts.is_empty() {
             return Err(OsError::InvalidArgument {
-                message: "resolve requires at least one path".into()});
+                message: "resolve requires at least one path".into(),
+            });
         }
         let joined = parts.join("/");
         Ok(if joined.starts_with('/') {
@@ -46,13 +47,15 @@ impl Path for StubPath {
         match path.rfind('/') {
             Some(0) => Ok("/".into()),
             Some(idx) => Ok(path[..idx].to_string()),
-            None => Ok("".into())}
+            None => Ok("".into()),
+        }
     }
 
     fn extname(&self, path: &str) -> Result<String, OsError> {
         let basename = path.rsplit('/').next().unwrap_or(path);
         match basename.rfind('.') {
             Some(idx) if idx > 0 => Ok(basename[idx..].to_string()),
-            _ => Ok("".into())}
+            _ => Ok("".into()),
+        }
     }
 }

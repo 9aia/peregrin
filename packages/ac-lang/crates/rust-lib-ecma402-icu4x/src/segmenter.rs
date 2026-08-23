@@ -2,11 +2,13 @@ use std::fmt;
 
 use ecma402_traits::segmenter::{
     Granularity, LineBreakStyle, LineBreakWord, Segment as SegmentOutput,
-    Segmenter as SegmenterTrait};
+    Segmenter as SegmenterTrait,
+};
 use icu::locale::Locale;
 use icu::segmenter::{
     GraphemeClusterSegmenter, LineSegmenter, SentenceSegmenter, WordSegmenter,
-    options::{LineBreakOptions, LineBreakStrictness, LineBreakWordOption}};
+    options::{LineBreakOptions, LineBreakStrictness, LineBreakWordOption},
+};
 use icu_provider::DataError;
 use icu_provider_blob::BlobDataProvider;
 
@@ -17,19 +19,22 @@ type BreakFn = Box<dyn Fn(&str) -> Vec<usize>>;
 /// ICU4X-backed ECMA-402 `Intl.Segmenter`.
 pub struct Segmenter {
     break_fn: BreakFn,
-    is_word: bool}
+    is_word: bool,
+}
 
 /// Errors that can occur when constructing or using a `Segmenter`.
 #[derive(Debug)]
 pub enum Error {
     InvalidLocale(String),
-    Data(DataError)}
+    Data(DataError),
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidLocale(s) => write!(f, "invalid locale: {s}"),
-            Self::Data(e) => write!(f, "data provider error: {e}")}
+            Self::Data(e) => write!(f, "data provider error: {e}"),
+        }
     }
 }
 
@@ -57,11 +62,13 @@ impl Segmenter {
             LineBreakStyle::Strict => LineBreakStrictness::Strict,
             LineBreakStyle::Normal => LineBreakStrictness::Normal,
             LineBreakStyle::Loose => LineBreakStrictness::Loose,
-            LineBreakStyle::Anywhere => LineBreakStrictness::Anywhere});
+            LineBreakStyle::Anywhere => LineBreakStrictness::Anywhere,
+        });
         opts.word_option = Some(match word {
             LineBreakWord::Normal => LineBreakWordOption::Normal,
             LineBreakWord::BreakAll => LineBreakWordOption::BreakAll,
-            LineBreakWord::KeepAll => LineBreakWordOption::KeepAll});
+            LineBreakWord::KeepAll => LineBreakWordOption::KeepAll,
+        });
         opts
     }
 
@@ -163,7 +170,8 @@ impl SegmenterTrait for Segmenter {
                 result.push(SegmentOutput {
                     text: slice.to_string(),
                     index: start,
-                    is_word_like});
+                    is_word_like,
+                });
             }
             start = breakpoint;
         }
@@ -178,7 +186,8 @@ impl SegmenterTrait for Segmenter {
             result.push(SegmentOutput {
                 text: slice.to_string(),
                 index: start,
-                is_word_like});
+                is_word_like,
+            });
         }
 
         Ok(result)

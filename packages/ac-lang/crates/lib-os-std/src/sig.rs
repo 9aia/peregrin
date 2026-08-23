@@ -19,7 +19,9 @@ fn parse_signal(signal: &str) -> Result<nix::sys::signal::Signal, OsError> {
         "SIGSTOP" => Ok(Signal::SIGSTOP),
         "SIGTSTP" => Ok(Signal::SIGTSTP),
         _ => Err(OsError::InvalidArgument {
-            message: format!("unknown signal: {signal}")})}
+            message: format!("unknown signal: {signal}"),
+        }),
+    }
 }
 
 impl Sig for StdSig {
@@ -29,11 +31,13 @@ impl Sig for StdSig {
             let sig = parse_signal(signal)?;
             let pid = nix::unistd::Pid::from_raw(process_id as i32);
             nix::sys::signal::kill(pid, sig).map_err(|e| OsError::Io {
-                message: e.to_string()})
+                message: e.to_string(),
+            })
         }
         #[cfg(not(unix))]
         Err(OsError::InvalidArgument {
-            message: "sending signals is not supported on this platform".into()})
+            message: "sending signals is not supported on this platform".into(),
+        })
     }
 
     fn list(&self) -> Result<Vec<String>, OsError> {
@@ -49,7 +53,8 @@ impl Sig for StdSig {
                 "SIGCHLD".into(),
                 "SIGCONT".into(),
                 "SIGSTOP".into(),
-                "SIGTSTP".into()])
+                "SIGTSTP".into(),
+            ])
         }
         #[cfg(not(unix))]
         Ok(Vec::new())

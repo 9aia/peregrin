@@ -31,10 +31,15 @@ fn split_args_nested() {
 #[test]
 fn split_args_array_literal() {
     let d = AcDialect;
-    let args = d.parser().split_args("is_compatible, [obj.get(actual, \"item\"), obj.get(expected, \"item\")]");
+    let args = d
+        .parser()
+        .split_args("is_compatible, [obj.get(actual, \"item\"), obj.get(expected, \"item\")]");
     assert_eq!(args.len(), 2);
     assert_eq!(args[0], "is_compatible");
-    assert_eq!(args[1].trim(), "[obj.get(actual, \"item\"), obj.get(expected, \"item\")]");
+    assert_eq!(
+        args[1].trim(),
+        "[obj.get(actual, \"item\"), obj.get(expected, \"item\")]"
+    );
 }
 
 #[test]
@@ -113,7 +118,8 @@ fn is_null_literal() {
 fn find_handle_open_basic() {
     let d = AcDialect;
     assert_eq!(
-        d.parser().find_handle_open("handle(fetch(\"data\")) { \"fetch\"(url) as k: k(42) }"),
+        d.parser()
+            .find_handle_open("handle(fetch(\"data\")) { \"fetch\"(url) as k: k(42) }"),
         Some(6)
     );
 }
@@ -139,10 +145,7 @@ fn find_handle_open_none_for_literal() {
 #[test]
 fn find_handle_open_not_in_string() {
     let d = AcDialect;
-    assert_eq!(
-        d.parser().find_handle_open("\"handle(world\""),
-        None
-    );
+    assert_eq!(d.parser().find_handle_open("\"handle(world\""), None);
 }
 
 #[test]
@@ -155,7 +158,9 @@ fn find_handle_open_not_partial_word() {
 #[test]
 fn split_handler_clauses_single() {
     let d = AcDialect;
-    let clauses = d.parser().split_handler_clauses("\"fetch\"(url) as k: k(42)");
+    let clauses = d
+        .parser()
+        .split_handler_clauses("\"fetch\"(url) as k: k(42)");
     assert_eq!(clauses.len(), 1);
     assert_eq!(clauses[0], "\"fetch\"(url) as k: k(42)");
 }
@@ -220,16 +225,21 @@ fn parse_handler_clause_multiple_params() {
 #[test]
 fn parse_handler_clause_fails_without_op_name() {
     let d = AcDialect;
-    assert!(d.parser().parse_handler_clause("(url) as k: k(42)").is_none());
+    assert!(
+        d.parser()
+            .parse_handler_clause("(url) as k: k(42)")
+            .is_none()
+    );
 }
 
 #[test]
 fn parse_handler_clause_fails_without_as() {
     let d = AcDialect;
-    assert!(d
-        .parser()
-        .parse_handler_clause("\"fetch\"(url) k: k(42)")
-        .is_none());
+    assert!(
+        d.parser()
+            .parse_handler_clause("\"fetch\"(url) k: k(42)")
+            .is_none()
+    );
 }
 
 #[test]

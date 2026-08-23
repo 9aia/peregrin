@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::module::IntlModule;
 
@@ -86,8 +86,8 @@ fn display_name_language_ja() {
 }
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule::new());
@@ -98,7 +98,10 @@ fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
 
 #[test]
 fn vm_display_name() {
-    let expr = Expr::call("intl.display_name", vec![Expr::value(s("en")), Expr::value(s("language"))]);
+    let expr = Expr::call(
+        "intl.display_name",
+        vec![Expr::value(s("en")), Expr::value(s("language"))],
+    );
     let result = eval_expr(&expr);
     assert!(result.as_str().is_some());
 }
@@ -135,27 +138,50 @@ fn display_name_script_style_short() {
 
 #[test]
 fn display_name_language_style_short() {
-    let result = call(&[s("en-US"), s("language"), s("en"), obj(&[("style", "short")])]);
+    let result = call(&[
+        s("en-US"),
+        s("language"),
+        s("en"),
+        obj(&[("style", "short")]),
+    ]);
     let str = result.as_str().expect("string result");
     assert!(!str.is_empty());
 }
 
 #[test]
 fn display_name_language_style_narrow() {
-    let result = call(&[s("en-US"), s("language"), s("en"), obj(&[("style", "narrow")])]);
+    let result = call(&[
+        s("en-US"),
+        s("language"),
+        s("en"),
+        obj(&[("style", "narrow")]),
+    ]);
     let str = result.as_str().expect("string result");
     assert!(!str.is_empty());
 }
 
 #[test]
 fn display_name_fallback_none_returns_error_for_unknown() {
-    let result = call_err(&[s("zzzzz"), s("language"), s("zh"), obj(&[("fallback", "none")])]);
-    assert!(result.is_err(), "fallback:none should error for unknown code in zh locale");
+    let result = call_err(&[
+        s("zzzzz"),
+        s("language"),
+        s("zh"),
+        obj(&[("fallback", "none")]),
+    ]);
+    assert!(
+        result.is_err(),
+        "fallback:none should error for unknown code in zh locale"
+    );
 }
 
 #[test]
 fn display_name_fallback_code_returns_code_for_unknown() {
-    let result = call(&[s("zzz"), s("language"), s("en"), obj(&[("fallback", "code")])]);
+    let result = call(&[
+        s("zzz"),
+        s("language"),
+        s("en"),
+        obj(&[("fallback", "code")]),
+    ]);
     let str = result.as_str().expect("string result");
     assert!(!str.is_empty());
 }
@@ -166,35 +192,55 @@ fn display_name_fallback_code_returns_code_for_unknown() {
 fn display_name_currency_usd() {
     let result = call(&[s("USD"), s("currency"), s("en")]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("US dollar") || str.contains("US Dollar"), "currency USD in en should contain 'US dollar', got: {str}");
+    assert!(
+        str.contains("US dollar") || str.contains("US Dollar"),
+        "currency USD in en should contain 'US dollar', got: {str}"
+    );
 }
 
 #[test]
 fn display_name_currency_eur() {
     let result = call(&[s("EUR"), s("currency"), s("en")]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("Euro"), "currency EUR in en should contain 'Euro', got: {str}");
+    assert!(
+        str.contains("Euro"),
+        "currency EUR in en should contain 'Euro', got: {str}"
+    );
 }
 
 #[test]
 fn display_name_currency_jpy() {
     let result = call(&[s("JPY"), s("currency"), s("en")]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("Japanese yen") || str.contains("Yen"), "currency JPY in en should contain 'Japanese yen', got: {str}");
+    assert!(
+        str.contains("Japanese yen") || str.contains("Yen"),
+        "currency JPY in en should contain 'Japanese yen', got: {str}"
+    );
 }
 
 #[test]
 fn display_name_currency_locale_aware() {
     let result = call(&[s("USD"), s("currency"), s("pt")]);
     let str = result.as_str().expect("string result");
-    assert!(!str.is_empty() && str != "USD", "currency USD in pt should be localized, got: {str}");
+    assert!(
+        !str.is_empty() && str != "USD",
+        "currency USD in pt should be localized, got: {str}"
+    );
 }
 
 #[test]
 fn display_name_currency_fallback_code() {
-    let result = call(&[s("ZZZ"), s("currency"), s("en"), obj(&[("fallback", "code")])]);
+    let result = call(&[
+        s("ZZZ"),
+        s("currency"),
+        s("en"),
+        obj(&[("fallback", "code")]),
+    ]);
     let str = result.as_str().expect("string result");
-    assert_eq!(str, "ZZZ", "unknown currency with fallback:code should return code, got: {str}");
+    assert_eq!(
+        str, "ZZZ",
+        "unknown currency with fallback:code should return code, got: {str}"
+    );
 }
 
 // ── Calendar display names ───────────────────────────────────────
@@ -203,21 +249,35 @@ fn display_name_currency_fallback_code() {
 fn display_name_calendar_gregory() {
     let result = call(&[s("gregory"), s("calendar"), s("en")]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("Gregorian"), "calendar gregory should contain 'Gregorian', got: {str}");
+    assert!(
+        str.contains("Gregorian"),
+        "calendar gregory should contain 'Gregorian', got: {str}"
+    );
 }
 
 #[test]
 fn display_name_calendar_buddhist() {
     let result = call(&[s("buddhist"), s("calendar"), s("en")]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("Buddhist"), "calendar buddhist should contain 'Buddhist', got: {str}");
+    assert!(
+        str.contains("Buddhist"),
+        "calendar buddhist should contain 'Buddhist', got: {str}"
+    );
 }
 
 #[test]
 fn display_name_calendar_unknown_fallback() {
-    let result = call(&[s("unknowncal"), s("calendar"), s("en"), obj(&[("fallback", "code")])]);
+    let result = call(&[
+        s("unknowncal"),
+        s("calendar"),
+        s("en"),
+        obj(&[("fallback", "code")]),
+    ]);
     let str = result.as_str().expect("string result");
-    assert_eq!(str, "unknowncal", "unknown calendar with fallback:code should return code, got: {str}");
+    assert_eq!(
+        str, "unknowncal",
+        "unknown calendar with fallback:code should return code, got: {str}"
+    );
 }
 
 // ── DateTimeField display names ──────────────────────────────────
@@ -226,46 +286,93 @@ fn display_name_calendar_unknown_fallback() {
 fn display_name_datetime_field_year() {
     let result = call(&[s("year"), s("dateTimeField"), s("en")]);
     let str = result.as_str().expect("string result");
-    assert_eq!(str, "year", "dateTimeField year should be 'year', got: {str}");
+    assert_eq!(
+        str, "year",
+        "dateTimeField year should be 'year', got: {str}"
+    );
 }
 
 #[test]
 fn display_name_datetime_field_month() {
     let result = call(&[s("month"), s("dateTimeField"), s("en")]);
     let str = result.as_str().expect("string result");
-    assert_eq!(str, "month", "dateTimeField month should be 'month', got: {str}");
+    assert_eq!(
+        str, "month",
+        "dateTimeField month should be 'month', got: {str}"
+    );
 }
 
 #[test]
 fn display_name_datetime_field_time_zone_name() {
     let result = call(&[s("timeZoneName"), s("dateTimeField"), s("en")]);
     let str = result.as_str().expect("string result");
-    assert!(str.contains("time zone"), "dateTimeField timeZoneName should contain 'time zone', got: {str}");
+    assert!(
+        str.contains("time zone"),
+        "dateTimeField timeZoneName should contain 'time zone', got: {str}"
+    );
 }
 
 #[test]
 fn display_name_datetime_field_unknown_fallback() {
-    let result = call(&[s("unknownField"), s("dateTimeField"), s("en"), obj(&[("fallback", "code")])]);
+    let result = call(&[
+        s("unknownField"),
+        s("dateTimeField"),
+        s("en"),
+        obj(&[("fallback", "code")]),
+    ]);
     let str = result.as_str().expect("string result");
-    assert_eq!(str, "unknownField", "unknown dateTimeField with fallback:code should return code, got: {str}");
+    assert_eq!(
+        str, "unknownField",
+        "unknown dateTimeField with fallback:code should return code, got: {str}"
+    );
 }
 
 // ── Calendar/dateTimeField English-only fallback documentation ──
 
 #[test]
 fn display_name_calendar_ignores_locale() {
-    let en = call(&[s("gregory"), s("calendar"), s("en")]).as_str().expect("string").to_string();
-    let ja = call(&[s("gregory"), s("calendar"), s("ja")]).as_str().expect("string").to_string();
-    let pt = call(&[s("gregory"), s("calendar"), s("pt")]).as_str().expect("string").to_string();
-    assert_eq!(en, ja, "calendar display names are English-only fallbacks, locale should be ignored");
-    assert_eq!(en, pt, "calendar display names are English-only fallbacks, locale should be ignored");
+    let en = call(&[s("gregory"), s("calendar"), s("en")])
+        .as_str()
+        .expect("string")
+        .to_string();
+    let ja = call(&[s("gregory"), s("calendar"), s("ja")])
+        .as_str()
+        .expect("string")
+        .to_string();
+    let pt = call(&[s("gregory"), s("calendar"), s("pt")])
+        .as_str()
+        .expect("string")
+        .to_string();
+    assert_eq!(
+        en, ja,
+        "calendar display names are English-only fallbacks, locale should be ignored"
+    );
+    assert_eq!(
+        en, pt,
+        "calendar display names are English-only fallbacks, locale should be ignored"
+    );
 }
 
 #[test]
 fn display_name_datetime_field_ignores_locale() {
-    let en = call(&[s("year"), s("dateTimeField"), s("en")]).as_str().expect("string").to_string();
-    let ja = call(&[s("year"), s("dateTimeField"), s("ja")]).as_str().expect("string").to_string();
-    let de = call(&[s("year"), s("dateTimeField"), s("de")]).as_str().expect("string").to_string();
-    assert_eq!(en, ja, "dateTimeField display names are English-only fallbacks, locale should be ignored");
-    assert_eq!(en, de, "dateTimeField display names are English-only fallbacks, locale should be ignored");
+    let en = call(&[s("year"), s("dateTimeField"), s("en")])
+        .as_str()
+        .expect("string")
+        .to_string();
+    let ja = call(&[s("year"), s("dateTimeField"), s("ja")])
+        .as_str()
+        .expect("string")
+        .to_string();
+    let de = call(&[s("year"), s("dateTimeField"), s("de")])
+        .as_str()
+        .expect("string")
+        .to_string();
+    assert_eq!(
+        en, ja,
+        "dateTimeField display names are English-only fallbacks, locale should be ignored"
+    );
+    assert_eq!(
+        en, de,
+        "dateTimeField display names are English-only fallbacks, locale should be ignored"
+    );
 }

@@ -1,9 +1,10 @@
-use ac_runtime_modules::Module;
 use ac_runtime::Function;
+use ac_runtime_modules::Module;
 
 use crate::r#fn::combinators::{
-    Apply, Choice, Compose, Converge, Constantly, Fanout, Flip, Flow, Partial, Pipe, Tap, Unless,
-    When};
+    Apply, Choice, Compose, Constantly, Converge, Fanout, Flip, Flow, Partial, Pipe, Tap, Unless,
+    When,
+};
 
 /// The `fn` module — function combinator utilities.
 ///
@@ -32,6 +33,7 @@ impl Module for FnModule {
             "when" => Some(&When),
             "unless" => Some(&Unless),
             "converge" => Some(&Converge),
-            _ => None}
+            _ => None,
+        }
     }
 }

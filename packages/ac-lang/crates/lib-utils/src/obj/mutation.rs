@@ -1,9 +1,10 @@
-use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_runtime::{Context, Error, Function};
+use ac_runtime::{FunctionValue, NonFunctionValue};
 
 use super::common::{
-    obj_value, require_function_value, require_object, require_string,
-    require_three_args, set_path_recursive, update_path_recursive};
+    obj_value, require_function_value, require_object, require_string, require_three_args,
+    set_path_recursive, update_path_recursive,
+};
 use crate::shared::apply_fn;
 
 // ── set ───────────────────────────────────────────────────────────

@@ -10,14 +10,16 @@ pub struct Source {
     /// Format name (`yaml`, `json`, `toml`).
     pub format: String,
     /// File path of the input, if known. Used for relative import resolution.
-    pub path: Option<PathBuf>}
+    pub path: Option<PathBuf>,
+}
 
 impl Source {
     pub fn new(input: impl Into<String>, format: impl Into<String>) -> Self {
         Source {
             input: input.into(),
             format: format.into(),
-            path: None}
+            path: None,
+        }
     }
 
     pub fn with_path(mut self, path: impl Into<PathBuf>) -> Self {

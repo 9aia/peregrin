@@ -31,17 +31,22 @@ impl Function for Join {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let sep = require_string(&args[1])?;
         let arr = args[0].as_array().ok_or(Error::TypeMismatch {
             expected: "array",
-            got: "non-array"})?;
+            got: "non-array",
+        })?;
         let parts: Vec<&str> = arr
             .iter()
-            .map(|v| v.as_str().ok_or(Error::TypeMismatch {
-                expected: "string",
-                got: "non-string"}))
+            .map(|v| {
+                v.as_str().ok_or(Error::TypeMismatch {
+                    expected: "string",
+                    got: "non-string",
+                })
+            })
             .collect::<Result<Vec<_>, _>>()?;
         Ok(s(parts.join(sep)))
     }
@@ -58,7 +63,8 @@ impl Function for Replace {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_string(&args[0])?;
         let from = require_string(&args[1])?;
@@ -78,7 +84,8 @@ impl Function for ReplaceFirst {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_string(&args[0])?;
         let from = require_string(&args[1])?;
@@ -98,21 +105,25 @@ impl Function for Repeat {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_string(&args[0])?;
         let count = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if count < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         if !count.is_finite() || count > 1_000_000.0 {
             return Err(Error::TypeMismatch {
                 expected: "finite number <= 1_000_000",
-                got: "non-finite or excessively large number"});
+                got: "non-finite or excessively large number",
+            });
         }
         Ok(s(input.repeat(count as usize)))
     }
@@ -129,16 +140,19 @@ impl Function for CharAt {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_string(&args[0])?;
         let index = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if index < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         let char_count = input.chars().count();
         if (index as usize) >= char_count {
@@ -146,13 +160,7 @@ impl Function for CharAt {
                 "index {index} out of bounds (char count: {char_count})"
             )));
         }
-        Ok(s(
-            input
-                .chars()
-                .nth(index as usize)
-                .unwrap()
-                .to_string(),
-        ))
+        Ok(s(input.chars().nth(index as usize).unwrap().to_string()))
     }
 }
 
@@ -167,19 +175,23 @@ impl Function for Slice {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_string(&args[0])?;
         let start = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         let end = args[2].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if start < 0.0 || end < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         let chars: Vec<char> = input.chars().collect();
         let end = (end as usize).min(chars.len());
@@ -214,21 +226,25 @@ impl Function for PadLeft {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_string(&args[0])?;
         let target_len = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if target_len < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         if !target_len.is_finite() || target_len > 1_000_000.0 {
             return Err(Error::TypeMismatch {
                 expected: "finite number <= 1_000_000",
-                got: "non-finite or excessively large number"});
+                got: "non-finite or excessively large number",
+            });
         }
         let pad_char = require_string(&args[2])?;
         Ok(s(pad_to_len(input, target_len as usize, pad_char, true)))
@@ -246,21 +262,25 @@ impl Function for PadRight {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_string(&args[0])?;
         let target_len = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if target_len < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         if !target_len.is_finite() || target_len > 1_000_000.0 {
             return Err(Error::TypeMismatch {
                 expected: "finite number <= 1_000_000",
-                got: "non-finite or excessively large number"});
+                got: "non-finite or excessively large number",
+            });
         }
         let pad_char = require_string(&args[2])?;
         Ok(s(pad_to_len(input, target_len as usize, pad_char, false)))
@@ -325,16 +345,19 @@ impl Function for SplitAt {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_string(&args[0])?;
         let index = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if index < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         let chars: Vec<char> = input.chars().collect();
         let mid = (index as usize).min(chars.len());
@@ -376,16 +399,19 @@ impl Function for Truncate {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_string(&args[0])?;
         let max_len = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if max_len < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         let max_len = max_len as usize;
         let suffix = if args.len() >= 3 {
@@ -468,7 +494,8 @@ impl Function for EscapeHtml {
                 '"' => "&quot;".to_string(),
                 '\'' => "&#x27;".to_string(),
                 '/' => "&#x2F;".to_string(),
-                _ => c.to_string()})
+                _ => c.to_string(),
+            })
             .collect();
         Ok(s(escaped))
     }
@@ -549,7 +576,8 @@ impl Function for UnescapeUrl {
         }
         let decoded = String::from_utf8(result).map_err(|_| Error::TypeMismatch {
             expected: "valid UTF-8 after URL decoding",
-            got: "invalid UTF-8 sequence"})?;
+            got: "invalid UTF-8 sequence",
+        })?;
         Ok(s(decoded))
     }
 }
@@ -565,16 +593,19 @@ impl Function for WordWrap {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_string(&args[0])?;
         let width = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if width < 1.0 {
             return Err(Error::TypeMismatch {
                 expected: "positive number",
-                got: "non-positive number"});
+                got: "non-positive number",
+            });
         }
         let width = width as usize;
         let mut result = String::new();

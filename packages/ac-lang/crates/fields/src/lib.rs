@@ -53,7 +53,8 @@ pub use namespace::{build_doc_namespace, build_env_namespace};
 pub use parser::parse_expr_to_tree;
 pub use scope::validate_mutable;
 pub use types::{
-    APPLY_FUNCTION, ArgSpec, ComputedField, DEFAULT_NAMESPACE, ExtractedFields, Namespaces};
+    APPLY_FUNCTION, ArgSpec, ComputedField, DEFAULT_NAMESPACE, ExtractedFields, Namespaces,
+};
 pub use validation::{validate_args, validate_return};
 
 #[cfg(test)]

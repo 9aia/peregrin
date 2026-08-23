@@ -1,9 +1,9 @@
 use std::future::Future;
 use std::pin::Pin;
 
+use crate::Context;
 use crate::Error;
 use crate::Operation;
-use crate::Context;
 use ac_ast_canonical::Expr;
 use ac_runtime_values::NonFunctionValue;
 
@@ -113,7 +113,11 @@ pub trait Function {
     /// # Returns
     ///
     /// The result value, or an [`Error`] if execution failed.
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error>;
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error>;
 }
 
 /// A generic function that receives resolved type arguments at runtime.
@@ -271,7 +275,10 @@ pub trait LazyFunction {
         &self,
         args: &[Expr<NonFunctionValue>],
         ctx: &mut dyn Context,
-        evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut dyn Context) -> Result<NonFunctionValue, Error>,
+        evaluate: &mut dyn FnMut(
+            &Expr<NonFunctionValue>,
+            &mut dyn Context,
+        ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error>;
 }
 

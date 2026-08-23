@@ -86,7 +86,8 @@ pub struct TypegenContext {
     ///
     /// Uses `IndexMap` to preserve insertion order while providing O(1)
     /// lookups for `remove_fields` and `merge_fields`.
-    pub fields: IndexMap<String, JsonValue>}
+    pub fields: IndexMap<String, JsonValue>,
+}
 
 impl TypegenContext {
     /// Build from raw field schemas. No filtering, no stripping.

@@ -14,7 +14,13 @@ fn compute_fields_basic() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(6.0));
 }
@@ -30,7 +36,13 @@ fn compute_fields_path_lookup() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["full"], "alicesmith");
 }
@@ -46,7 +58,13 @@ fn compute_fields_chained() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(10.0));
     assert_eq!(data["quadrupled"].as_f64(), Some(20.0));
@@ -63,7 +81,13 @@ fn compute_fields_overrides_existing() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(6.0));
 }
@@ -79,7 +103,13 @@ fn compute_fields_unresolvable() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert_eq!(errors.len(), 1);
     assert!(errors[0].contains("bad"));
 }
@@ -88,7 +118,13 @@ fn compute_fields_unresolvable() {
 fn compute_fields_empty_is_noop() {
     let mut data = serde_json::json!({"name": "ac"});
     let mut ns = Namespaces::new();
-    let errors = compute_fields(&mut data, &[], &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &[],
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
 }
 
@@ -98,12 +134,19 @@ fn compute_fields_with_arg_string() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "greeting".to_string(),
         expr: "concat(arg, \"!\")".to_string(),
-        arg: Some(ArgSpec::Untyped)}];
+        arg: Some(ArgSpec::Untyped),
+    }];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["greeting"], "hello!");
 }
@@ -114,12 +157,19 @@ fn compute_fields_with_arg_number() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "doubled".to_string(),
         expr: "mul(arg, 2)".to_string(),
-        arg: Some(ArgSpec::Untyped)}];
+        arg: Some(ArgSpec::Untyped),
+    }];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(10.0));
 }
@@ -132,12 +182,19 @@ fn compute_fields_with_arg_object_path() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "endpoint".to_string(),
         expr: "arg.host".to_string(),
-        arg: Some(ArgSpec::Untyped)}];
+        arg: Some(ArgSpec::Untyped),
+    }];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["endpoint"], "example.com");
 }
@@ -150,12 +207,19 @@ fn compute_fields_with_arg_array_index() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "first_item".to_string(),
         expr: "arg.0".to_string(),
-        arg: Some(ArgSpec::Untyped)}];
+        arg: Some(ArgSpec::Untyped),
+    }];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["first_item"], "a");
 }
@@ -166,12 +230,19 @@ fn compute_fields_with_arg_typed_valid() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "doubled".to_string(),
         expr: "mul(arg, 2)".to_string(),
-        arg: Some(ArgSpec::Typed(serde_json::json!({"type": "number"})))}];
+        arg: Some(ArgSpec::Typed(serde_json::json!({"type": "number"}))),
+    }];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(10.0));
 }
@@ -182,12 +253,19 @@ fn compute_fields_with_arg_typed_invalid() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "doubled".to_string(),
         expr: "mul(arg, 2)".to_string(),
-        arg: Some(ArgSpec::Typed(serde_json::json!({"type": "number"})))}];
+        arg: Some(ArgSpec::Typed(serde_json::json!({"type": "number"}))),
+    }];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert_eq!(errors.len(), 1);
     assert!(errors[0].contains("arg"));
     assert!(errors[0].contains("expected type number"));
@@ -207,7 +285,13 @@ fn compute_fields_chained_with_stale_data() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(10.0));
     assert_eq!(data["quadrupled"].as_f64(), Some(20.0));
@@ -221,12 +305,19 @@ fn compute_fields_arg_without_declaration() {
     let computed: Vec<ComputedField> = vec![ComputedField {
         name: "greeting".to_string(),
         expr: "concat(arg, \"!\")".to_string(),
-        arg: None}];
+        arg: None,
+    }];
 
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["greeting"], "hello!");
 }
@@ -242,7 +333,13 @@ fn compute_fields_without_arg_backward_compat() {
     let mut ns = Namespaces::new();
     ns.insert("doc".to_string(), data.clone());
 
-    let errors = compute_fields(&mut data, &computed, &mut ns, &DefaultHost::default(), &AC_DIALECT);
+    let errors = compute_fields(
+        &mut data,
+        &computed,
+        &mut ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert!(errors.is_empty());
     assert_eq!(data["doubled"].as_f64(), Some(6.0));
 }

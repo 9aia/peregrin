@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::StrModule;
 
@@ -527,12 +527,18 @@ fn is_numeric_non_string_errors() {
 
 #[test]
 fn is_alphanumeric_true() {
-    assert_eq!(call("is_alphanumeric", &[s("hello123")]).as_bool(), Some(true));
+    assert_eq!(
+        call("is_alphanumeric", &[s("hello123")]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
 fn is_alphanumeric_false() {
-    assert_eq!(call("is_alphanumeric", &[s("hello 123")]).as_bool(), Some(false));
+    assert_eq!(
+        call("is_alphanumeric", &[s("hello 123")]).as_bool(),
+        Some(false)
+    );
 }
 
 #[test]
@@ -542,7 +548,10 @@ fn is_alphanumeric_empty_false() {
 
 #[test]
 fn is_alphanumeric_unicode() {
-    assert_eq!(call("is_alphanumeric", &[s("café123")]).as_bool(), Some(true));
+    assert_eq!(
+        call("is_alphanumeric", &[s("café123")]).as_bool(),
+        Some(true)
+    );
 }
 
 #[test]
@@ -571,7 +580,8 @@ fn type_mismatch_on_non_string() {
         result,
         Err(Error::TypeMismatch {
             expected: "string",
-            got: "non-string"})
+            got: "non-string"
+        })
     );
 }
 
@@ -582,6 +592,7 @@ fn argument_count_on_missing_args() {
         result,
         Err(Error::ArgumentCount {
             expected: 1,
-            got: 0})
+            got: 0
+        })
     );
 }

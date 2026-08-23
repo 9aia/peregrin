@@ -174,13 +174,17 @@ pub trait IdentFactory<K: TokenKind>: Clone + Send + Sync + 'static {
 /// Factory for constructing keyword token kinds.
 pub trait KeywordFactory<K: TokenKind>: Clone + Send + Sync + 'static {
     /// Construct a keyword token kind from the keyword text, if recognized.
-    fn keyword_kind(&self, _text: &str) -> Option<K> { None }
+    fn keyword_kind(&self, _text: &str) -> Option<K> {
+        None
+    }
 }
 
 /// Factory for constructing and lexing operator token kinds.
 pub trait OperatorFactory<K: TokenKind>: Clone + Send + Sync + 'static {
     /// Construct an operator token kind from the operator text, if recognized.
-    fn operator_kind(&self, _text: &str) -> Option<K> { None }
+    fn operator_kind(&self, _text: &str) -> Option<K> {
+        None
+    }
 
     /// The set of characters that may begin an operator.
     ///
@@ -213,9 +217,7 @@ pub trait OperatorFactory<K: TokenKind>: Clone + Send + Sync + 'static {
 /// A convenience trait for factories that implement all common token-kind
 /// constructors. Rules can instead require the smaller factory traits they
 /// actually need, so dialects only implement the categories they support.
-pub trait KindFactory<K: TokenKind>:
-    Clone + Send + Sync + 'static
-{
+pub trait KindFactory<K: TokenKind>: Clone + Send + Sync + 'static {
     /// Construct a string-literal token kind from the unescaped value.
     fn string_kind(&self, value: String) -> K;
 
@@ -229,10 +231,14 @@ pub trait KindFactory<K: TokenKind>:
     fn eof_kind(&self) -> K;
 
     /// Construct a keyword token kind from the keyword text, if recognized.
-    fn keyword_kind(&self, _text: &str) -> Option<K> { None }
+    fn keyword_kind(&self, _text: &str) -> Option<K> {
+        None
+    }
 
     /// Construct an operator token kind from the operator text, if recognized.
-    fn operator_kind(&self, _text: &str) -> Option<K> { None }
+    fn operator_kind(&self, _text: &str) -> Option<K> {
+        None
+    }
 }
 
 impl<T, K> EofFactory<K> for T
@@ -240,7 +246,9 @@ where
     T: KindFactory<K>,
     K: TokenKind,
 {
-    fn eof_kind(&self) -> K { KindFactory::eof_kind(self) }
+    fn eof_kind(&self) -> K {
+        KindFactory::eof_kind(self)
+    }
 }
 
 impl<T, K> StringFactory<K> for T
@@ -248,7 +256,9 @@ where
     T: KindFactory<K>,
     K: TokenKind,
 {
-    fn string_kind(&self, value: String) -> K { KindFactory::string_kind(self, value) }
+    fn string_kind(&self, value: String) -> K {
+        KindFactory::string_kind(self, value)
+    }
 }
 
 impl<T, K> NumberFactory<K> for T
@@ -256,7 +266,9 @@ where
     T: KindFactory<K>,
     K: TokenKind,
 {
-    fn number_kind(&self, value: f64) -> K { KindFactory::number_kind(self, value) }
+    fn number_kind(&self, value: f64) -> K {
+        KindFactory::number_kind(self, value)
+    }
 }
 
 impl<T, K> IdentFactory<K> for T
@@ -264,7 +276,9 @@ where
     T: KindFactory<K>,
     K: TokenKind,
 {
-    fn ident_kind(&self, text: String) -> K { KindFactory::ident_kind(self, text) }
+    fn ident_kind(&self, text: String) -> K {
+        KindFactory::ident_kind(self, text)
+    }
 }
 
 impl<T, K> KeywordFactory<K> for T
@@ -272,7 +286,9 @@ where
     T: KindFactory<K>,
     K: TokenKind,
 {
-    fn keyword_kind(&self, text: &str) -> Option<K> { KindFactory::keyword_kind(self, text) }
+    fn keyword_kind(&self, text: &str) -> Option<K> {
+        KindFactory::keyword_kind(self, text)
+    }
 }
 
 impl<T, K> OperatorFactory<K> for T
@@ -280,7 +296,9 @@ where
     T: KindFactory<K>,
     K: TokenKind,
 {
-    fn operator_kind(&self, text: &str) -> Option<K> { KindFactory::operator_kind(self, text) }
+    fn operator_kind(&self, text: &str) -> Option<K> {
+        KindFactory::operator_kind(self, text)
+    }
 }
 
 /// A factory for constructing and lexing comment token kinds.
@@ -290,7 +308,10 @@ pub trait CommentFactory<K: CommentTokenKind>: Clone + Send + Sync + 'static {
 
     /// Returns `true` if the iterator is positioned at the start of a line
     /// comment. The default implementation recognizes `//`.
-    fn is_line_comment_start(&self, chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>) -> bool {
+    fn is_line_comment_start(
+        &self,
+        chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
+    ) -> bool {
         crate::primitives::is_line_comment_start(chars)
     }
 
@@ -308,7 +329,10 @@ pub trait CommentFactory<K: CommentTokenKind>: Clone + Send + Sync + 'static {
 
     /// Returns `true` if the iterator is positioned at the start of a block
     /// comment. The default implementation recognizes `/*`.
-    fn is_block_comment_start(&self, chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>) -> bool {
+    fn is_block_comment_start(
+        &self,
+        chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
+    ) -> bool {
         crate::primitives::is_block_comment_start(chars)
     }
 
@@ -332,7 +356,8 @@ pub struct Token<K: TokenKind> {
     pub kind: K,
 
     /// Where this token appears in the source text.
-    pub span: Span}
+    pub span: Span,
+}
 
 impl<K: TokenKind> Token<K> {
     /// Creates a token at the given span.

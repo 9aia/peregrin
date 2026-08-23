@@ -4,22 +4,26 @@ use ecma402_traits::display_names::DisplayNames as DisplayNamesTrait;
 use icu::experimental::dimension::provider::currency::displayname::CurrencyDisplaynameV1;
 use icu::locale::names::{
     LanguageDisplay as IcuLanguageDisplay, LanguageIdentifierDisplayName,
-    LanguageIdentifierDisplayNameOptions, RegionDisplayName, ScriptDisplayName, VariantDisplayName};
+    LanguageIdentifierDisplayNameOptions, RegionDisplayName, ScriptDisplayName, VariantDisplayName,
+};
 use icu::locale::{DataLocale, LanguageIdentifier, Locale};
 use icu_provider::DataError;
 use icu_provider::{
     DataIdentifierBorrowed, DataMarkerAttributes, DataProvider, DataRequest, ResultDataError,
-    buf::AsDeserializingBufferProvider};
+    buf::AsDeserializingBufferProvider,
+};
 use icu_provider_blob::BlobDataProvider;
 use writeable::Writeable;
 
 pub use ecma402_traits::display_names::{
-    DisplayNamesOptions as Options, Fallback, LanguageDisplay, Style, Type};
+    DisplayNamesOptions as Options, Fallback, LanguageDisplay, Style, Type,
+};
 
 /// ICU4X-backed ECMA-402 `Intl.DisplayNames`.
 pub struct DisplayNames<'p> {
     locale: Locale,
-    provider: Option<&'p BlobDataProvider>}
+    provider: Option<&'p BlobDataProvider>,
+}
 
 /// Errors that can occur when constructing or using a `DisplayNames`.
 #[derive(Debug)]
@@ -27,7 +31,8 @@ pub enum Error {
     InvalidLocale(String),
     InvalidCode { type_: Type, code: String },
     NotFound { type_: Type, code: String },
-    Data(DataError)}
+    Data(DataError),
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -39,7 +44,8 @@ impl fmt::Display for Error {
             Self::NotFound { type_, code } => {
                 write!(f, "no display name for {}: {code}", type_.as_str())
             }
-            Self::Data(e) => write!(f, "data provider error: {e}")}
+            Self::Data(e) => write!(f, "data provider error: {e}"),
+        }
     }
 }
 
@@ -58,7 +64,8 @@ fn parse_locale(locale: &str) -> Result<Locale, Error> {
 fn map_language_display(display: LanguageDisplay) -> IcuLanguageDisplay {
     match display {
         LanguageDisplay::Dialect => IcuLanguageDisplay::Dialect,
-        LanguageDisplay::Standard => IcuLanguageDisplay::Standard}
+        LanguageDisplay::Standard => IcuLanguageDisplay::Standard,
+    }
 }
 
 fn fallback_or_error(
@@ -70,7 +77,8 @@ fn fallback_or_error(
     match fallback {
         Fallback::Code => Ok(code.to_string()),
         // ECMA-402 `fallback: "none"` returns an empty display name.
-        Fallback::None => Ok(String::new())}
+        Fallback::None => Ok(String::new()),
+    }
 }
 
 impl<'p> DisplayNames<'p> {
@@ -79,7 +87,8 @@ impl<'p> DisplayNames<'p> {
         let locale = parse_locale(locale)?;
         Ok(Self {
             locale,
-            provider: None})
+            provider: None,
+        })
     }
 
     /// Create a new `DisplayNames` using an ICU4X blob data provider.
@@ -91,13 +100,15 @@ impl<'p> DisplayNames<'p> {
         let locale = parse_locale(locale)?;
         Ok(Self {
             locale,
-            provider: Some(provider)})
+            provider: Some(provider),
+        })
     }
 
     fn language_name(&self, code: &str, options: &Options) -> Result<String, Error> {
         let lang_id: LanguageIdentifier = code.parse().map_err(|_| Error::InvalidCode {
             type_: Type::Language,
-            code: code.to_string()})?;
+            code: code.to_string(),
+        })?;
 
         let mut dn_opts = LanguageIdentifierDisplayNameOptions::default();
         dn_opts.language_display = Some(map_language_display(options.language_display));
@@ -114,7 +125,8 @@ impl<'p> DisplayNames<'p> {
                     self.locale.clone().into(),
                     lang_id,
                     dn_opts,
-                )},
+                ),
+            },
             Style::Narrow => match self.provider {
                 Some(p) => LanguageIdentifierDisplayName::try_new_light_with_buffer_provider(
                     p,
@@ -126,7 +138,8 @@ impl<'p> DisplayNames<'p> {
                     self.locale.clone().into(),
                     lang_id,
                     dn_opts,
-                )},
+                ),
+            },
             Style::Long => match self.provider {
                 Some(p) => LanguageIdentifierDisplayName::try_new_long_light_with_buffer_provider(
                     p,
@@ -138,17 +151,21 @@ impl<'p> DisplayNames<'p> {
                     self.locale.clone().into(),
                     lang_id,
                     dn_opts,
-                )}};
+                ),
+            },
+        };
 
         match result {
             Ok(display) => Ok(display.as_borrowed().write_to_string().into_owned()),
-            Err(e) => fallback_or_error(code, Type::Language, options.fallback, e.into())}
+            Err(e) => fallback_or_error(code, Type::Language, options.fallback, e.into()),
+        }
     }
 
     fn region_name(&self, code: &str, options: &Options) -> Result<String, Error> {
         let region = code.parse().map_err(|_| Error::InvalidCode {
             type_: Type::Region,
-            code: code.to_string()})?;
+            code: code.to_string(),
+        })?;
 
         let result = match options.style {
             Style::Short => match self.provider {
@@ -157,31 +174,37 @@ impl<'p> DisplayNames<'p> {
                     self.locale.clone().into(),
                     region,
                 ),
-                None => RegionDisplayName::try_new_short_tiny(self.locale.clone().into(), region)},
+                None => RegionDisplayName::try_new_short_tiny(self.locale.clone().into(), region),
+            },
             Style::Narrow => match self.provider {
                 Some(p) => RegionDisplayName::try_new_tiny_with_buffer_provider(
                     p,
                     self.locale.clone().into(),
                     region,
                 ),
-                None => RegionDisplayName::try_new_tiny(self.locale.clone().into(), region)},
+                None => RegionDisplayName::try_new_tiny(self.locale.clone().into(), region),
+            },
             Style::Long => match self.provider {
                 Some(p) => RegionDisplayName::try_new_light_with_buffer_provider(
                     p,
                     self.locale.clone().into(),
                     region,
                 ),
-                None => RegionDisplayName::try_new_light(self.locale.clone().into(), region)}};
+                None => RegionDisplayName::try_new_light(self.locale.clone().into(), region),
+            },
+        };
 
         match result {
             Ok(display) => Ok(display.write_to_string().into_owned()),
-            Err(e) => fallback_or_error(code, Type::Region, options.fallback, e.into())}
+            Err(e) => fallback_or_error(code, Type::Region, options.fallback, e.into()),
+        }
     }
 
     fn script_name(&self, code: &str, options: &Options) -> Result<String, Error> {
         let script = code.parse().map_err(|_| Error::InvalidCode {
             type_: Type::Script,
-            code: code.to_string()})?;
+            code: code.to_string(),
+        })?;
 
         let result = match options.style {
             Style::Short => match self.provider {
@@ -190,31 +213,37 @@ impl<'p> DisplayNames<'p> {
                     self.locale.clone().into(),
                     script,
                 ),
-                None => ScriptDisplayName::try_new_short_heavy(self.locale.clone().into(), script)},
+                None => ScriptDisplayName::try_new_short_heavy(self.locale.clone().into(), script),
+            },
             Style::Narrow => match self.provider {
                 Some(p) => ScriptDisplayName::try_new_light_with_buffer_provider(
                     p,
                     self.locale.clone().into(),
                     script,
                 ),
-                None => ScriptDisplayName::try_new_light(self.locale.clone().into(), script)},
+                None => ScriptDisplayName::try_new_light(self.locale.clone().into(), script),
+            },
             Style::Long => match self.provider {
                 Some(p) => ScriptDisplayName::try_new_heavy_with_buffer_provider(
                     p,
                     self.locale.clone().into(),
                     script,
                 ),
-                None => ScriptDisplayName::try_new_heavy(self.locale.clone().into(), script)}};
+                None => ScriptDisplayName::try_new_heavy(self.locale.clone().into(), script),
+            },
+        };
 
         match result {
             Ok(display) => Ok(display.write_to_string().into_owned()),
-            Err(e) => fallback_or_error(code, Type::Script, options.fallback, e.into())}
+            Err(e) => fallback_or_error(code, Type::Script, options.fallback, e.into()),
+        }
     }
 
     fn variant_name(&self, code: &str, options: &Options) -> Result<String, Error> {
         let variant = code.parse().map_err(|_| Error::InvalidCode {
             type_: Type::Variant,
-            code: code.to_string()})?;
+            code: code.to_string(),
+        })?;
 
         let result = match self.provider {
             Some(p) => VariantDisplayName::try_new_heavy_with_buffer_provider(
@@ -222,11 +251,13 @@ impl<'p> DisplayNames<'p> {
                 self.locale.clone().into(),
                 variant,
             ),
-            None => VariantDisplayName::try_new_heavy(self.locale.clone().into(), variant)};
+            None => VariantDisplayName::try_new_heavy(self.locale.clone().into(), variant),
+        };
 
         match result {
             Ok(display) => Ok(display.write_to_string().into_owned()),
-            Err(e) => fallback_or_error(code, Type::Variant, options.fallback, e.into())}
+            Err(e) => fallback_or_error(code, Type::Variant, options.fallback, e.into()),
+        }
     }
 
     fn currency_name(&self, code: &str, options: &Options) -> Result<String, Error> {
@@ -234,7 +265,8 @@ impl<'p> DisplayNames<'p> {
         let attrs =
             DataMarkerAttributes::try_from_str(&code_upper).map_err(|_| Error::InvalidCode {
                 type_: Type::Currency,
-                code: code.to_string()})?;
+                code: code.to_string(),
+            })?;
 
         let data_locale: DataLocale = self.locale.clone().into();
         let response_opt = match self.provider {
@@ -257,7 +289,8 @@ impl<'p> DisplayNames<'p> {
                     ),
                     ..Default::default()
                 },
-            )}
+            ),
+        }
         .allow_identifier_not_found()
         .map_err(Error::Data)?;
 
@@ -269,8 +302,10 @@ impl<'p> DisplayNames<'p> {
                 options.fallback,
                 Error::NotFound {
                     type_: Type::Currency,
-                    code: code.to_string()},
-            )}
+                    code: code.to_string(),
+                },
+            ),
+        }
     }
 
     fn calendar_name(&self, code: &str, options: &Options) -> Result<String, Error> {
@@ -282,8 +317,10 @@ impl<'p> DisplayNames<'p> {
                 options.fallback,
                 Error::NotFound {
                     type_: Type::Calendar,
-                    code: code.to_string()},
-            )}
+                    code: code.to_string(),
+                },
+            ),
+        }
     }
 
     fn datetime_field_name(&self, code: &str, options: &Options) -> Result<String, Error> {
@@ -295,8 +332,10 @@ impl<'p> DisplayNames<'p> {
                 options.fallback,
                 Error::NotFound {
                     type_: Type::DateTimeField,
-                    code: code.to_string()},
-            )}
+                    code: code.to_string(),
+                },
+            ),
+        }
     }
 }
 
@@ -311,7 +350,8 @@ impl<'p> DisplayNamesTrait for DisplayNames<'p> {
             Type::Variant => self.variant_name(code, &options),
             Type::Currency => self.currency_name(code, &options),
             Type::Calendar => self.calendar_name(code, &options),
-            Type::DateTimeField => self.datetime_field_name(code, &options)}
+            Type::DateTimeField => self.datetime_field_name(code, &options),
+        }
     }
 }
 
@@ -344,7 +384,8 @@ fn calendar_display_name(code: &str) -> Option<String> {
         "japanese" => "Japanese Calendar",
         "persian" => "Persian Calendar",
         "roc" => "Republic of China Calendar",
-        _ => return None};
+        _ => return None,
+    };
     Some(name.to_string())
 }
 
@@ -368,7 +409,8 @@ fn datetime_field_display_name(code: &str) -> Option<String> {
         "minute" => "minute",
         "second" => "second",
         "timeZoneName" => "time zone name",
-        _ => return None};
+        _ => return None,
+    };
     Some(name.to_string())
 }
 

@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::module::IntlModule;
 
@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
@@ -63,7 +67,12 @@ fn select_plural_en_zero() {
 #[test]
 fn select_plural_en_ordinal_one() {
     assert_eq!(
-        call(&IntlModule::new(), "select_plural", &[n(1.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
+        call(
+            &IntlModule::new(),
+            "select_plural",
+            &[n(1.0), s("en"), obj(&[("type", "ordinal")])]
+        )
+        .as_str(),
         Some("one")
     );
 }
@@ -71,7 +80,12 @@ fn select_plural_en_ordinal_one() {
 #[test]
 fn select_plural_en_ordinal_two() {
     assert_eq!(
-        call(&IntlModule::new(), "select_plural", &[n(2.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
+        call(
+            &IntlModule::new(),
+            "select_plural",
+            &[n(2.0), s("en"), obj(&[("type", "ordinal")])]
+        )
+        .as_str(),
         Some("two")
     );
 }
@@ -79,7 +93,12 @@ fn select_plural_en_ordinal_two() {
 #[test]
 fn select_plural_en_ordinal_few() {
     assert_eq!(
-        call(&IntlModule::new(), "select_plural", &[n(3.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
+        call(
+            &IntlModule::new(),
+            "select_plural",
+            &[n(3.0), s("en"), obj(&[("type", "ordinal")])]
+        )
+        .as_str(),
         Some("few")
     );
 }
@@ -87,7 +106,12 @@ fn select_plural_en_ordinal_few() {
 #[test]
 fn select_plural_en_ordinal_other() {
     assert_eq!(
-        call(&IntlModule::new(), "select_plural", &[n(11.0), s("en"), obj(&[("type", "ordinal")])]).as_str(),
+        call(
+            &IntlModule::new(),
+            "select_plural",
+            &[n(11.0), s("en"), obj(&[("type", "ordinal")])]
+        )
+        .as_str(),
         Some("other")
     );
 }
@@ -188,45 +212,89 @@ fn select_plural_non_number_errors() {
 
 #[test]
 fn select_plural_minimum_integer_digits() {
-    let result = call(&IntlModule::new(), "select_plural", &[n(5.0), s("en"), obj(&[("minimumIntegerDigits", "3")])]);
+    let result = call(
+        &IntlModule::new(),
+        "select_plural",
+        &[n(5.0), s("en"), obj(&[("minimumIntegerDigits", "3")])],
+    );
     assert_eq!(result.as_str(), Some("other"), "005 should be 'other'");
 }
 
 #[test]
 fn select_plural_min_fraction_digits_changes_category() {
-    let result = call(&IntlModule::new(), "select_plural", &[n(1.0), s("en"), obj(&[("minimumFractionDigits", "2")])]);
-    assert_eq!(result.as_str(), Some("other"), "1.00 should be 'other' not 'one'");
+    let result = call(
+        &IntlModule::new(),
+        "select_plural",
+        &[n(1.0), s("en"), obj(&[("minimumFractionDigits", "2")])],
+    );
+    assert_eq!(
+        result.as_str(),
+        Some("other"),
+        "1.00 should be 'other' not 'one'"
+    );
 }
 
 #[test]
 fn select_plural_trailing_zero_not_one() {
-    let result = call(&IntlModule::new(), "select_plural", &[n(1.0), s("en"), obj(&[("minimumFractionDigits", "1")])]);
-    assert_eq!(result.as_str(), Some("other"), "1.0 should be 'other' not 'one'");
+    let result = call(
+        &IntlModule::new(),
+        "select_plural",
+        &[n(1.0), s("en"), obj(&[("minimumFractionDigits", "1")])],
+    );
+    assert_eq!(
+        result.as_str(),
+        Some("other"),
+        "1.0 should be 'other' not 'one'"
+    );
 }
 
 #[test]
 fn select_plural_max_fraction_digits() {
-    let result = call(&IntlModule::new(), "select_plural", &[n(1.5), s("en"), obj(&[("maximumFractionDigits", "0")])]);
-    assert_eq!(result.as_str(), Some("other"), "1.5 rounded to 2 should be 'other'");
+    let result = call(
+        &IntlModule::new(),
+        "select_plural",
+        &[n(1.5), s("en"), obj(&[("maximumFractionDigits", "0")])],
+    );
+    assert_eq!(
+        result.as_str(),
+        Some("other"),
+        "1.5 rounded to 2 should be 'other'"
+    );
 }
 
 #[test]
 fn select_plural_min_significant_digits() {
-    let result = call(&IntlModule::new(), "select_plural", &[n(1.0), s("en"), obj(&[("minimumSignificantDigits", "3")])]);
-    assert_eq!(result.as_str(), Some("one"), "1.0 with 3 sig digits pads leading zeros, still 'one'");
+    let result = call(
+        &IntlModule::new(),
+        "select_plural",
+        &[n(1.0), s("en"), obj(&[("minimumSignificantDigits", "3")])],
+    );
+    assert_eq!(
+        result.as_str(),
+        Some("one"),
+        "1.0 with 3 sig digits pads leading zeros, still 'one'"
+    );
 }
 
 #[test]
 fn select_plural_ar_with_fraction_digits() {
-    let result = call(&IntlModule::new(), "select_plural", &[n(1.5), s("ar"), obj(&[("minimumFractionDigits", "2")])]);
-    assert_eq!(result.as_str(), Some("other"), "1.50 in Arabic is 'other' (n=1.50, not n=1)");
+    let result = call(
+        &IntlModule::new(),
+        "select_plural",
+        &[n(1.5), s("ar"), obj(&[("minimumFractionDigits", "2")])],
+    );
+    assert_eq!(
+        result.as_str(),
+        Some("other"),
+        "1.50 in Arabic is 'other' (n=1.50, not n=1)"
+    );
 }
 
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule::new());

@@ -65,7 +65,8 @@ use ac_typegen_core::TypegenContext;
 // Re-export driver-lang types
 pub use driver_lang::{
     Diagnostic as DriverDiagnostic, DriverError, Pipeline as DriverPipeline, Session,
-    Severity as DriverSeverity, Stage, Then};
+    Severity as DriverSeverity, Stage, Then,
+};
 
 // ---------------------------------------------------------------------------
 // Artifact types — typed inputs/outputs for each phase
@@ -76,14 +77,16 @@ pub struct ParsedDoc {
     pub value: NonFunctionValue,
     pub source_map: SourceMap,
     /// Base path for relative import resolution (parent dir of source file).
-    pub base_path: Option<PathBuf>}
+    pub base_path: Option<PathBuf>,
+}
 
 /// Output of the extract phase — extracted fields plus carried source map.
 pub struct ExtractedDoc {
     pub extracted: ExtractedFields,
     pub source_map: SourceMap,
     /// Base path for relative import resolution.
-    pub base_path: Option<PathBuf>}
+    pub base_path: Option<PathBuf>,
+}
 
 /// Output of the resolve phase — extracted fields, typegen context, source map.
 pub struct ResolvedDoc {
@@ -91,17 +94,20 @@ pub struct ResolvedDoc {
     pub typegen_ctx: TypegenContext,
     pub source_map: SourceMap,
     /// Base path — carried through for typecheck import resolution.
-    pub base_path: Option<PathBuf>}
+    pub base_path: Option<PathBuf>,
+}
 
 /// Output of the typecheck phase (after resolve) — all artifacts plus type errors.
 pub struct CheckedDoc {
     pub extracted: ExtractedFields,
     pub typegen_ctx: TypegenContext,
     pub type_errors: Vec<TypeError>,
-    pub source_map: SourceMap}
+    pub source_map: SourceMap,
+}
 
 /// Output of the typecheck-only phase (no resolve) — extracted fields + errors.
 pub struct TypecheckResult {
     pub extracted: ExtractedFields,
     pub type_errors: Vec<TypeError>,
-    pub source_map: SourceMap}
+    pub source_map: SourceMap,
+}

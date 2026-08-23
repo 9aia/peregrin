@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error, Eval};
+use ac_runtime_modules::Module;
 
 use serde_json::json;
 
@@ -37,8 +37,8 @@ fn s(v: &str) -> NonFunctionValue {
 // ── callback test infrastructure ─────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_example_1::DefaultHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_example_1::DefaultHost;
 
 struct TestEval;
 impl Eval for TestEval {
@@ -97,7 +97,8 @@ fn split_args(s: &str) -> Vec<String> {
                 result.push(current.trim().to_string());
                 current.clear();
             }
-            _ => current.push(ch)}
+            _ => current.push(ch),
+        }
     }
     if !current.trim().is_empty() {
         result.push(current.trim().to_string());

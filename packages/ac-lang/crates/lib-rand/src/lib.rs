@@ -63,18 +63,18 @@ pub use error::RandError;
 pub use module::RandModule;
 
 #[cfg(test)]
-mod test_helpers;
+mod distribution_tests;
+#[cfg(test)]
+mod generation_tests;
+#[cfg(test)]
+mod module_tests;
+#[cfg(test)]
+mod noise_tests;
 #[cfg(test)]
 mod numbers_tests;
 #[cfg(test)]
 mod sampling_tests;
 #[cfg(test)]
-mod generation_tests;
-#[cfg(test)]
-mod distribution_tests;
-#[cfg(test)]
-mod noise_tests;
-#[cfg(test)]
 mod seeded_tests;
 #[cfg(test)]
-mod module_tests;
+mod test_helpers;

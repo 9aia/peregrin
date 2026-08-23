@@ -18,7 +18,10 @@ impl ExprHandler for ValueHandler {
         expr: &RuntimeExpr,
         _ctx: &mut dyn Context,
         _host: &dyn Host,
-        _dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context) -> Result<NonFunctionValue, Error>,
+        _dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context,
+        ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
@@ -43,7 +46,12 @@ impl ExprHandler for CallHandler {
         host: &dyn Host,
         dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
-        let Expr::Call { name, args, type_args } = expr else {
+        let Expr::Call {
+            name,
+            args,
+            type_args,
+        } = expr
+        else {
             return Err(Error::PrimitiveError("expected call".to_string()));
         };
 
@@ -73,7 +81,9 @@ impl ExprHandler for CallHandler {
             return function.call(&evaluated_args, ctx);
         }
 
-        if let Ok(value) = ctx.get(name) && value.is_function() {
+        if let Ok(value) = ctx.get(name)
+            && value.is_function()
+        {
             let apply = host
                 .function("apply")
                 .ok_or_else(|| Error::UnknownFunction("apply".to_string()))?;
@@ -157,7 +167,10 @@ impl ExprHandler for HandleHandler {
         expr: &RuntimeExpr,
         ctx: &mut dyn Context,
         host: &dyn Host,
-        _dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context) -> Result<NonFunctionValue, Error>,
+        _dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context,
+        ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
         let result =
             crate::CanonicalVm::new(crate::HostRef::new(host)).eval_resumable(expr, ctx, None);
@@ -172,7 +185,11 @@ impl ExprHandler for HandleHandler {
                 let args: Vec<NonFunctionValue> = value
                     .get("args")
                     .and_then(|v| v.as_array())
-                    .map(|arr| arr.iter().map(|v| NonFunctionValue::new(v.clone())).collect())
+                    .map(|arr| {
+                        arr.iter()
+                            .map(|v| NonFunctionValue::new(v.clone()))
+                            .collect()
+                    })
                     .unwrap_or_default();
                 Err(Error::Operation {
                     name: name.to_string(),

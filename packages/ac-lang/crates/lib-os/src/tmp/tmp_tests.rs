@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
 
 use super::tmp::TmpModule;
 use super::tmp_stub::StubTmp;

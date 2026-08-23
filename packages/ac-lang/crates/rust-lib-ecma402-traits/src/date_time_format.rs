@@ -28,7 +28,8 @@ pub enum DateTimeFormatPartType {
     /// Any literal text, including separators and whitespace.
     Literal,
     /// An unrecognized part type produced by the backend.
-    Other(String)}
+    Other(String),
+}
 
 impl DateTimeFormatPartType {
     /// Returns the ECMA-402 `DateTimeFormat` part type string.
@@ -47,7 +48,8 @@ impl DateTimeFormatPartType {
             Self::Weekday => "weekday",
             Self::Year => "year",
             Self::Literal => "literal",
-            Self::Other(s) => s.as_str()}
+            Self::Other(s) => s.as_str(),
+        }
     }
 }
 
@@ -67,7 +69,8 @@ impl From<&str> for DateTimeFormatPartType {
             "weekday" => Self::Weekday,
             "year" => Self::Year,
             "literal" => Self::Literal,
-            _ => Self::Other(value.to_string())}
+            _ => Self::Other(value.to_string()),
+        }
     }
 }
 
@@ -77,7 +80,8 @@ pub struct DateTimeFormatPart {
     /// The part type.
     pub part_type: DateTimeFormatPartType,
     /// The formatted text for this part.
-    pub value: String}
+    pub value: String,
+}
 
 /// Overall date/time style.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -90,7 +94,8 @@ pub enum DateTimeStyle {
     #[default]
     Medium,
     /// Short style.
-    Short}
+    Short,
+}
 
 impl DateTimeStyle {
     /// Returns the ECMA-402 style string (`"full"`, `"long"`, etc.).
@@ -99,7 +104,8 @@ impl DateTimeStyle {
             Self::Full => "full",
             Self::Long => "long",
             Self::Medium => "medium",
-            Self::Short => "short"}
+            Self::Short => "short",
+        }
     }
 }
 
@@ -112,7 +118,8 @@ pub enum DateType {
     /// Format a time only.
     Time,
     /// Format a date and time.
-    DateTime}
+    DateTime,
+}
 
 impl DateType {
     /// Returns the ECMA-402 type string (`"date"`, `"time"`, `"datetime"`).
@@ -120,7 +127,8 @@ impl DateType {
         match self {
             Self::Date => "date",
             Self::Time => "time",
-            Self::DateTime => "datetime"}
+            Self::DateTime => "datetime",
+        }
     }
 }
 
@@ -138,7 +146,8 @@ pub enum DateTimeFieldStyle {
     /// Short form, e.g. `"Jan"`.
     Short,
     /// Narrow form, e.g. `"J"`.
-    Narrow}
+    Narrow,
+}
 
 impl DateTimeFieldStyle {
     /// Returns the ECMA-402 field value string.
@@ -148,7 +157,8 @@ impl DateTimeFieldStyle {
             Self::TwoDigit => "2-digit",
             Self::Long => "long",
             Self::Short => "short",
-            Self::Narrow => "narrow"}
+            Self::Narrow => "narrow",
+        }
     }
 }
 
@@ -166,7 +176,8 @@ pub enum TimeZoneNameStyle {
     /// Short generic form.
     ShortGeneric,
     /// Long generic form.
-    LongGeneric}
+    LongGeneric,
+}
 
 impl TimeZoneNameStyle {
     /// Returns the ECMA-402 `timeZoneName` string.
@@ -177,7 +188,8 @@ impl TimeZoneNameStyle {
             Self::ShortOffset => "shortOffset",
             Self::LongOffset => "longOffset",
             Self::ShortGeneric => "shortGeneric",
-            Self::LongGeneric => "longGeneric"}
+            Self::LongGeneric => "longGeneric",
+        }
     }
 }
 
@@ -225,7 +237,8 @@ pub struct DateTimeFormatOptions {
     /// Field-bag style for `timeZoneName`.
     pub time_zone_name: Option<TimeZoneNameStyle>,
     /// Field-bag style for `dayPeriod`.
-    pub day_period: Option<DateTimeFieldStyle>}
+    pub day_period: Option<DateTimeFieldStyle>,
+}
 
 impl Default for DateTimeFormatOptions {
     fn default() -> Self {
@@ -248,7 +261,8 @@ impl Default for DateTimeFormatOptions {
             minute: None,
             second: None,
             time_zone_name: None,
-            day_period: None}
+            day_period: None,
+        }
     }
 }
 

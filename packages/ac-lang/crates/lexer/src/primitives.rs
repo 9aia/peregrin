@@ -30,30 +30,30 @@ pub fn lex_string(
         match chars.next() {
             None => {
                 return Err(DefaultLexError::UnterminatedString {
-                    span: Span::new(start, end)});
+                    span: Span::new(start, end),
+                });
             }
             Some((pos, ch)) if ch == quote => {
                 end = pos + 1;
                 break;
             }
-            Some((_, '\\')) => {
-                match chars.next() {
-                    Some((_, 'n')) => value.push('\n'),
-                    Some((_, 't')) => value.push('\t'),
-                    Some((_, 'r')) => value.push('\r'),
-                    Some((_, '\\')) => value.push('\\'),
-                    Some((_, '"')) => value.push('"'),
-                    Some((_, '\'')) => value.push('\''),
-                    Some((pos, ch)) => {
-                        value.push(ch);
-                        let _ = pos;
-                    }
-                    None => {
-                        return Err(DefaultLexError::UnterminatedString {
-                            span: Span::new(start, end)});
-                    }
+            Some((_, '\\')) => match chars.next() {
+                Some((_, 'n')) => value.push('\n'),
+                Some((_, 't')) => value.push('\t'),
+                Some((_, 'r')) => value.push('\r'),
+                Some((_, '\\')) => value.push('\\'),
+                Some((_, '"')) => value.push('"'),
+                Some((_, '\'')) => value.push('\''),
+                Some((pos, ch)) => {
+                    value.push(ch);
+                    let _ = pos;
                 }
-            }
+                None => {
+                    return Err(DefaultLexError::UnterminatedString {
+                        span: Span::new(start, end),
+                    });
+                }
+            },
             Some((_, ch)) => {
                 value.push(ch);
             }
@@ -89,7 +89,8 @@ pub fn lex_number(
     }
 
     let value: f64 = text.parse().map_err(|_| DefaultLexError::InvalidNumber {
-        span: Span::new(start, end)})?;
+        span: Span::new(start, end),
+    })?;
 
     Ok((value, Span::new(start, end)))
 }
@@ -153,7 +154,8 @@ pub fn lex_block_comment(
         match chars.next() {
             None => {
                 return Err(DefaultLexError::UnterminatedString {
-                    span: Span::new(start, end)});
+                    span: Span::new(start, end),
+                });
             }
             Some((pos, '*')) => {
                 end = pos + 1;
@@ -163,7 +165,8 @@ pub fn lex_block_comment(
                         end += 1;
                         break;
                     }
-                    _ => text.push('*')}
+                    _ => text.push('*'),
+                }
             }
             Some((pos, ch)) => {
                 text.push(ch);

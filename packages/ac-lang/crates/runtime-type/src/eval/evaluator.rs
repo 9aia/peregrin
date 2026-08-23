@@ -27,7 +27,8 @@ pub struct TypeEval {
     host: TypeHost,
     namespaces: RefCell<Namespaces>,
     depth: Cell<usize>,
-    call_chain: RefCell<Vec<String>>}
+    call_chain: RefCell<Vec<String>>,
+}
 
 impl TypeEval {
     pub fn new(host: TypeHost) -> Self {
@@ -35,7 +36,8 @@ impl TypeEval {
             host,
             namespaces: RefCell::new(HashMap::new()),
             depth: Cell::new(0),
-            call_chain: RefCell::new(Vec::new())}
+            call_chain: RefCell::new(Vec::new()),
+        }
     }
 
     pub fn with_namespaces(host: TypeHost, namespaces: Namespaces) -> Self {
@@ -43,7 +45,8 @@ impl TypeEval {
             host,
             namespaces: RefCell::new(namespaces),
             depth: Cell::new(0),
-            call_chain: RefCell::new(Vec::new())}
+            call_chain: RefCell::new(Vec::new()),
+        }
     }
 
     pub(crate) fn namespaces(&self) -> std::cell::Ref<'_, Namespaces> {
@@ -225,7 +228,8 @@ impl TypeEval {
             host: self.host.clone(),
             namespaces: self.namespaces.borrow().clone(),
             depth: Cell::new(self.depth.get()),
-            call_chain: RefCell::new(self.call_chain.borrow().clone())}));
+            call_chain: RefCell::new(self.call_chain.borrow().clone()),
+        }));
 
         let expr_args: Vec<Expr<NonFunctionValue>> = args
             .iter()
@@ -266,7 +270,8 @@ struct TypeEvalShim {
     host: TypeHost,
     namespaces: Namespaces,
     depth: Cell<usize>,
-    call_chain: RefCell<Vec<String>>}
+    call_chain: RefCell<Vec<String>>,
+}
 
 impl Eval for TypeEvalShim {
     fn eval_expr(
@@ -278,7 +283,8 @@ impl Eval for TypeEvalShim {
             host: self.host.clone(),
             namespaces: RefCell::new(self.namespaces.clone()),
             depth: Cell::new(self.depth.get()),
-            call_chain: RefCell::new(self.call_chain.borrow().clone())};
+            call_chain: RefCell::new(self.call_chain.borrow().clone()),
+        };
 
         // Build merged namespaces with vars in doc namespace
         let mut merged = eval.namespaces.borrow().clone();

@@ -1,7 +1,7 @@
 //! [`BlockCommentRule`] — matches block comments.
 
-use ac_lexer::{CommentFactory, CommentTokenKind, DefaultLexError, LexError, LexerConfig, Token};
 use ac_lexer::LexRule;
+use ac_lexer::{CommentFactory, CommentTokenKind, DefaultLexError, LexError, LexerConfig, Token};
 
 /// Matches block comments using the factory's [`CommentFactory::is_block_comment_start`]
 /// and [`CommentFactory::lex_block_comment`].
@@ -24,11 +24,11 @@ where
         }
 
         Some(
-            config.factory().lex_block_comment(chars)
-                .map(|(text, span)| {
-                    Token::new(config.factory().comment_kind(text), span)
-                })
-                .map_err(E::from)
+            config
+                .factory()
+                .lex_block_comment(chars)
+                .map(|(text, span)| Token::new(config.factory().comment_kind(text), span))
+                .map_err(E::from),
         )
     }
 

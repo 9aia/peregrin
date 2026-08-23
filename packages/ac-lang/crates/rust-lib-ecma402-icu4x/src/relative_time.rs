@@ -5,7 +5,8 @@ use ecma402_traits::number_format::NumberFormatOptions;
 use ecma402_traits::plural_rules::{PluralCategory, PluralRules as _};
 use ecma402_traits::relative_time::{
     RelativeTimeFormat as RelativeTimeFormatTrait, RelativeTimeFormatPart, RelativeTimeNumeric,
-    RelativeTimeStyle, RelativeTimeUnit};
+    RelativeTimeStyle, RelativeTimeUnit,
+};
 use fixed_decimal::{Decimal, FloatPrecision};
 use icu::experimental::relativetime::options::Numeric;
 use icu::experimental::relativetime::{RelativeTimeFormatter, RelativeTimeFormatterOptions};
@@ -24,21 +25,24 @@ pub use ecma402_traits::relative_time::RelativeTimeOptions as Options;
 pub struct RelativeTimeFormat<'a> {
     formatter: RelativeTimeFormatter,
     number_format: NumberFormat<'a>,
-    plural_rules: PluralRules}
+    plural_rules: PluralRules,
+}
 
 /// Errors that can occur when constructing or using a `RelativeTimeFormat`.
 #[derive(Debug)]
 pub enum Error {
     InvalidLocale(String),
     Data(DataError),
-    Formatting(String)}
+    Formatting(String),
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidLocale(s) => write!(f, "invalid locale: {s}"),
             Self::Data(e) => write!(f, "data provider error: {e}"),
-            Self::Formatting(s) => write!(f, "formatting error: {s}")}
+            Self::Formatting(s) => write!(f, "formatting error: {s}"),
+        }
     }
 }
 
@@ -55,7 +59,8 @@ impl From<crate::number_format::Error> for Error {
         match e {
             crate::number_format::Error::Data(de) => Self::Data(de),
             crate::number_format::Error::InvalidLocale(s) => Self::InvalidLocale(s),
-            _ => Self::Formatting(e.to_string())}
+            _ => Self::Formatting(e.to_string()),
+        }
     }
 }
 
@@ -63,7 +68,8 @@ impl From<crate::plural_rules::Error> for Error {
     fn from(e: crate::plural_rules::Error) -> Self {
         match e {
             crate::plural_rules::Error::Data(de) => Self::Data(de),
-            crate::plural_rules::Error::InvalidLocale(s) => Self::InvalidLocale(s)}
+            crate::plural_rules::Error::InvalidLocale(s) => Self::InvalidLocale(s),
+        }
     }
 }
 
@@ -89,7 +95,8 @@ impl<'a> RelativeTimeFormat<'a> {
             ($compiled:path, $blob:path) => {
                 match provider {
                     Some(p) => $blob(p, locale.into(), Self::make_options(options)),
-                    None => $compiled(locale.into(), Self::make_options(options))}
+                    None => $compiled(locale.into(), Self::make_options(options)),
+                }
             };
         }
 
@@ -192,7 +199,8 @@ impl<'a> RelativeTimeFormat<'a> {
             (Year, Narrow) => try_construct!(
                 RelativeTimeFormatter::try_new_narrow_year,
                 RelativeTimeFormatter::try_new_narrow_year_with_buffer_provider
-            )};
+            ),
+        };
 
         result.map_err(Error::from)
     }
@@ -207,7 +215,8 @@ impl<'a> RelativeTimeFormat<'a> {
         Ok(RelativeTimeFormat {
             formatter,
             number_format,
-            plural_rules})
+            plural_rules,
+        })
     }
 
     /// Create a new `RelativeTimeFormat` using an ICU4X blob data provider.
@@ -226,7 +235,8 @@ impl<'a> RelativeTimeFormat<'a> {
         Ok(Self {
             formatter,
             number_format,
-            plural_rules})
+            plural_rules,
+        })
     }
 
     /// Select the CLDR cardinal plural category for `value` in this locale.

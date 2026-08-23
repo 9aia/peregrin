@@ -3,7 +3,8 @@ use ac_runtime::{Context, Error, Function, GenericFunction};
 
 use super::helpers::{
     arr, b, key_to_string, require_array, require_function_and_array, require_function_value,
-    require_one_arg};
+    require_one_arg,
+};
 use crate::shared::{apply_fn, filter_iter, find_first, fold_iter, is_truthy_fn, map_iter};
 
 // ── range ──────────────────────────────────────────────────────────
@@ -19,25 +20,30 @@ impl Function for Range {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let start = args[0].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         let end = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         let step = if args.len() >= 3 {
             args[2].as_number().ok_or(Error::TypeMismatch {
                 expected: "number",
-                got: "non-number"})?
+                got: "non-number",
+            })?
         } else {
             1.0
         };
         if step == 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-zero step",
-                got: "zero step"});
+                got: "zero step",
+            });
         }
         let mut values = Vec::new();
         let mut current = start;
@@ -69,7 +75,8 @@ impl Function for Zip {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let a = require_array(&args[0])?;
         let b = require_array(&args[1])?;
@@ -94,16 +101,19 @@ impl Function for Chunk {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let input = require_array(&args[0])?;
         let size = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if size <= 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "positive chunk size",
-                got: "non-positive chunk size"});
+                got: "non-positive chunk size",
+            });
         }
         let size = size as usize;
         let chunks: Vec<serde_json::Value> = input
@@ -188,7 +198,8 @@ impl Function for Reduce {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let fn_val = require_function_value(&args[0])?;
         let array = require_array(&args[1])?;
@@ -208,7 +219,8 @@ impl GenericFunction for Reduce {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let fn_val = require_function_value(&args[0])?;
         let array = require_array(&args[1])?;
@@ -267,7 +279,8 @@ impl Function for Find {
         let result = find_first(ctx, &fn_val, array.iter())?;
         match result {
             Some(v) => Ok(NonFunctionValue::new(v)),
-            None => Ok(NonFunctionValue::new(serde_json::Value::Null))}
+            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
+        }
     }
 }
 
@@ -369,7 +382,12 @@ impl Function for GroupBy {
 }
 
 impl GenericFunction for GroupBy {
-    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
 }
@@ -402,7 +420,12 @@ impl Function for Partition {
 }
 
 impl GenericFunction for Partition {
-    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
 }
@@ -420,7 +443,8 @@ fn sort_by_impl(
         let key = apply_fn(ctx, &fn_val, item)?;
         let num = key.as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         keyed.push((num, item.clone()));
     }
     if descending {
@@ -445,7 +469,12 @@ impl Function for SortBy {
 }
 
 impl GenericFunction for SortBy {
-    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
 }
@@ -463,7 +492,12 @@ impl Function for SortByDesc {
 }
 
 impl GenericFunction for SortByDesc {
-    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
 }
@@ -487,7 +521,12 @@ impl Function for Compact {
 }
 
 impl GenericFunction for Compact {
-    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
 }
@@ -505,12 +544,14 @@ impl Function for Pluck {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let key = args[1].as_str().ok_or(Error::TypeMismatch {
             expected: "string",
-            got: "non-string"})?;
+            got: "non-string",
+        })?;
         let result: Vec<serde_json::Value> = array
             .iter()
             .map(|item| {
@@ -525,7 +566,12 @@ impl Function for Pluck {
 }
 
 impl GenericFunction for Pluck {
-    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
 }
@@ -543,7 +589,8 @@ fn extremum_by_impl(
         let key = apply_fn(ctx, &fn_val, item)?;
         let num = key.as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         match &best {
             None => best = Some((num, item)),
             Some((bn, _)) if pick_max && num > *bn => best = Some((num, item)),
@@ -553,7 +600,8 @@ fn extremum_by_impl(
     }
     match best {
         Some((_, v)) => Ok(NonFunctionValue::new(v.clone())),
-        None => Ok(NonFunctionValue::new(serde_json::Value::Null))}
+        None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -569,7 +617,12 @@ impl Function for MinBy {
 }
 
 impl GenericFunction for MinBy {
-    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
 }
@@ -587,7 +640,12 @@ impl Function for MaxBy {
 }
 
 impl GenericFunction for MaxBy {
-    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
 }
@@ -603,8 +661,7 @@ impl Function for CountBy {
         ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
-        let mut counts: std::collections::BTreeMap<String, f64> =
-            std::collections::BTreeMap::new();
+        let mut counts: std::collections::BTreeMap<String, f64> = std::collections::BTreeMap::new();
         for item in array {
             let key = apply_fn(ctx, &fn_val, item)?;
             let key_str = key_to_string(&key);
@@ -619,7 +676,12 @@ impl Function for CountBy {
 }
 
 impl GenericFunction for CountBy {
-    fn call_with_types(&self, args: &[NonFunctionValue], _type_args: &[String], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call_with_types(
+        &self,
+        args: &[NonFunctionValue],
+        _type_args: &[String],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
 }

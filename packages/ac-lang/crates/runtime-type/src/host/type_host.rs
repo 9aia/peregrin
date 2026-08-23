@@ -1,19 +1,21 @@
 //! Composite `TypeHost` bundling the standard library helpers and type helpers.
 
-use ac_runtime_example_1::DefaultHost;
 use ac_lib_utils::{ArrayModule, BoolModule, FnModule, ObjModule, StrModule};
-use ac_runtime_modules::ModuleHost;
 use ac_runtime::{Function, Host};
+use ac_runtime_example_1::DefaultHost;
+use ac_runtime_modules::ModuleHost;
 
 use super::functions::{
-    AppArgsCompatible, FuncParamsCompatible, ObjEvery, PairSecond, TypeKind, TypeName, ZipAll};
+    AppArgsCompatible, FuncParamsCompatible, ObjEvery, PairSecond, TypeKind, TypeName, ZipAll,
+};
 
 /// A host that provides type-checking helper functions alongside
 /// the standard `lib-utils` modules and default `var`/`resolve`.
 #[derive(Clone)]
 pub struct TypeHost {
     inner: ModuleHost,
-    default: DefaultHost}
+    default: DefaultHost,
+}
 
 impl TypeHost {
     pub fn new() -> Self {
@@ -26,7 +28,8 @@ impl TypeHost {
             .with(TypeHelpersModule);
         TypeHost {
             inner,
-            default: DefaultHost::default()}
+            default: DefaultHost::default(),
+        }
     }
 }
 
@@ -70,6 +73,7 @@ impl ac_runtime_modules::Module for TypeHelpersModule {
             "obj_every" => Some(&ObjEvery),
             "func_params_compatible" => Some(&FuncParamsCompatible),
             "app_args_compatible" => Some(&AppArgsCompatible),
-            _ => None}
+            _ => None,
+        }
     }
 }

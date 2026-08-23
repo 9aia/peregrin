@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{Context, Error};
+use ac_runtime_modules::Module;
 
 use super::bool::BoolModule;
 
@@ -217,7 +217,8 @@ fn type_mismatch_on_non_bool() {
         result,
         Err(Error::TypeMismatch {
             expected: "boolean",
-            got: "non-boolean"})
+            got: "non-boolean"
+        })
     );
 }
 
@@ -230,15 +231,16 @@ fn argument_count_on_missing_args() {
         result,
         Err(Error::ArgumentCount {
             expected: 1,
-            got: 0})
+            got: 0
+        })
     );
 }
 
 // ── lazy evaluation tests ─────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::{CanonicalContext, Host, Vm};
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(BoolModule);

@@ -1,9 +1,7 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime::{Context, Error, Function};
 
-use super::helpers::{
-    arr, num, require_array, require_function_value,
-    array_unary_fn};
+use super::helpers::{arr, array_unary_fn, num, require_array, require_function_value};
 use crate::shared::{apply_fn, apply_fn2, find_index, is_truthy_fn};
 
 // ── take / drop ────────────────────────────────────────────────────
@@ -19,16 +17,19 @@ impl Function for Take {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let n = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if n < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         let n = (n as usize).min(array.len());
         Ok(arr(&array[..n]))
@@ -46,16 +47,19 @@ impl Function for Drop {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let n = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if n < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         let n = (n as usize).min(array.len());
         Ok(arr(&array[n..]))
@@ -103,7 +107,8 @@ impl Function for Intersperse {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let sep = args[1].inner().clone();
@@ -129,7 +134,8 @@ impl Function for Intercalate {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let sep = require_array(&args[1])?;
@@ -171,7 +177,8 @@ impl Function for Prepend {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let mut result = Vec::with_capacity(array.len() + 1);
@@ -194,7 +201,8 @@ impl Function for TakeWhile {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -221,7 +229,8 @@ impl Function for DropWhile {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -250,7 +259,8 @@ impl Function for Scan {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -276,7 +286,8 @@ impl Function for Foldr {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -301,7 +312,8 @@ impl Function for FindIndex {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
@@ -321,14 +333,16 @@ impl Function for FindLast {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
         let result = crate::shared::find_first_rev(ctx, &fn_val, array.iter().rev())?;
         match result {
             Some(v) => Ok(NonFunctionValue::new(v)),
-            None => Ok(NonFunctionValue::new(serde_json::Value::Null))}
+            None => Ok(NonFunctionValue::new(serde_json::Value::Null)),
+        }
     }
 }
 
@@ -343,12 +357,15 @@ impl Function for FindLastIndex {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let fn_val = require_function_value(&args[1])?;
         let idx = crate::shared::find_index_rev(ctx, &fn_val, array.iter().rev())?;
-        Ok(num(idx.map(|i| (array.len() - 1 - i) as f64).unwrap_or(-1.0)))
+        Ok(num(idx
+            .map(|i| (array.len() - 1 - i) as f64)
+            .unwrap_or(-1.0)))
     }
 }
 
@@ -365,16 +382,19 @@ impl Function for Windows {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let size = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if size < 1.0 {
             return Err(Error::TypeMismatch {
                 expected: "positive number",
-                got: "non-positive number"});
+                got: "non-positive number",
+            });
         }
         let size = size as usize;
         if size > array.len() {
@@ -398,14 +418,17 @@ impl Function for Transpose {
     ) -> Result<NonFunctionValue, Error> {
         let array = require_array(args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0})?)?;
+            got: 0,
+        })?)?;
         if array.is_empty() {
             return Ok(arr(&[]));
         }
         let rows: Vec<&[serde_json::Value]> = array
             .iter()
             .map(|item| {
-                item.as_array().map(|a| a.as_slice()).unwrap_or(std::slice::from_ref(item))
+                item.as_array()
+                    .map(|a| a.as_slice())
+                    .unwrap_or(std::slice::from_ref(item))
             })
             .collect();
         let max_cols = rows.iter().map(|r| r.len()).max().unwrap_or(0);
@@ -414,10 +437,8 @@ impl Function for Transpose {
         }
         let mut transposed = Vec::with_capacity(max_cols);
         for col in 0..max_cols {
-            let column: Vec<serde_json::Value> = rows
-                .iter()
-                .filter_map(|r| r.get(col).cloned())
-                .collect();
+            let column: Vec<serde_json::Value> =
+                rows.iter().filter_map(|r| r.get(col).cloned()).collect();
             transposed.push(serde_json::Value::Array(column));
         }
         Ok(arr(&transposed))
@@ -437,16 +458,19 @@ impl Function for InsertAt {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let index = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if index < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         let index = (index as usize).min(array.len());
         let value = args[2].inner().clone();
@@ -469,16 +493,19 @@ impl Function for RemoveAt {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let array = require_array(&args[0])?;
         let index = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number"})?;
+            got: "non-number",
+        })?;
         if index < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         let index = index as usize;
         if index >= array.len() {

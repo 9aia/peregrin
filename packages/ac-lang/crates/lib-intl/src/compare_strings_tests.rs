@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::module::IntlModule;
 
@@ -97,8 +97,8 @@ fn compare_swedish_a_ring() {
 }
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule::new());
@@ -109,7 +109,10 @@ fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
 
 #[test]
 fn vm_compare_strings() {
-    let expr = Expr::call("intl.compare_strings", vec![Expr::value(s("a")), Expr::value(s("b"))]);
+    let expr = Expr::call(
+        "intl.compare_strings",
+        vec![Expr::value(s("a")), Expr::value(s("b"))],
+    );
     let result = eval_expr(&expr);
     assert!(result.as_number().is_some());
 }
@@ -124,7 +127,12 @@ fn obj_bool(pairs: &[(&str, bool)]) -> NonFunctionValue {
 
 #[test]
 fn compare_numeric_sort() {
-    let result = call(&[s("file10"), s("file2"), s("en"), obj_bool(&[("numeric", true)])]);
+    let result = call(&[
+        s("file10"),
+        s("file2"),
+        s("en"),
+        obj_bool(&[("numeric", true)]),
+    ]);
     let n = result.as_number().expect("number result");
     assert_eq!(n, 1.0);
 }
@@ -145,7 +153,12 @@ fn compare_case_first_upper() {
 
 #[test]
 fn compare_ignore_punctuation() {
-    let result = call(&[s("hello"), s("hel-lo"), s("en"), obj_bool(&[("ignorePunctuation", true)])]);
+    let result = call(&[
+        s("hello"),
+        s("hel-lo"),
+        s("en"),
+        obj_bool(&[("ignorePunctuation", true)]),
+    ]);
     let n = result.as_number().expect("number result");
     assert_eq!(n, 0.0);
 }

@@ -19,7 +19,8 @@ impl Function for TypeKind {
         if args.is_empty() {
             return Err(Error::ArgumentCount {
                 expected: 1,
-                got: 0});
+                got: 0,
+            });
         }
         let kind = args[0]
             .inner()
@@ -46,7 +47,8 @@ impl Function for TypeName {
         if args.is_empty() {
             return Err(Error::ArgumentCount {
                 expected: 1,
-                got: 0});
+                got: 0,
+            });
         }
         let name = args[0]
             .inner()
@@ -73,7 +75,8 @@ impl Function for PairSecond {
         if args.is_empty() {
             return Err(Error::ArgumentCount {
                 expected: 1,
-                got: 0});
+                got: 0,
+            });
         }
         let val = args[0]
             .inner()
@@ -101,17 +104,21 @@ impl Function for ZipAll {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let a = args[0].as_array().ok_or(Error::TypeMismatch {
             expected: "array",
-            got: "non-array"})?;
+            got: "non-array",
+        })?;
         let b = args[1].as_array().ok_or(Error::TypeMismatch {
             expected: "array",
-            got: "non-array"})?;
+            got: "non-array",
+        })?;
         let fn_val = args[2].as_function().ok_or(Error::TypeMismatch {
             expected: "function value",
-            got: "non-function"})?;
+            got: "non-function",
+        })?;
 
         if a.len() != b.len() {
             return Ok(NonFunctionValue::new(false));
@@ -150,17 +157,21 @@ impl Function for ObjEvery {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let a_props = args[0].as_object().ok_or(Error::TypeMismatch {
             expected: "object",
-            got: "non-object"})?;
+            got: "non-object",
+        })?;
         let e_props = args[1].as_object().ok_or(Error::TypeMismatch {
             expected: "object",
-            got: "non-object"})?;
+            got: "non-object",
+        })?;
         let fn_val = args[2].as_function().ok_or(Error::TypeMismatch {
             expected: "function value",
-            got: "non-function"})?;
+            got: "non-function",
+        })?;
 
         for (key, e_ty) in e_props.iter() {
             let Some(a_ty) = a_props.get(key) else {
@@ -199,17 +210,21 @@ impl Function for FuncParamsCompatible {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let a_params = args[0].as_array().ok_or(Error::TypeMismatch {
             expected: "array",
-            got: "non-array"})?;
+            got: "non-array",
+        })?;
         let e_params = args[1].as_array().ok_or(Error::TypeMismatch {
             expected: "array",
-            got: "non-array"})?;
+            got: "non-array",
+        })?;
         let fn_val = args[2].as_function().ok_or(Error::TypeMismatch {
             expected: "function value",
-            got: "non-function"})?;
+            got: "non-function",
+        })?;
 
         if a_params.len() != e_params.len() {
             return Ok(NonFunctionValue::new(false));
@@ -257,17 +272,21 @@ impl Function for AppArgsCompatible {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let a_args = args[0].as_array().ok_or(Error::TypeMismatch {
             expected: "array",
-            got: "non-array"})?;
+            got: "non-array",
+        })?;
         let e_args = args[1].as_array().ok_or(Error::TypeMismatch {
             expected: "array",
-            got: "non-array"})?;
+            got: "non-array",
+        })?;
         let fn_val = args[2].as_function().ok_or(Error::TypeMismatch {
             expected: "function value",
-            got: "non-function"})?;
+            got: "non-function",
+        })?;
 
         if a_args.len() != e_args.len() {
             return Ok(NonFunctionValue::new(false));

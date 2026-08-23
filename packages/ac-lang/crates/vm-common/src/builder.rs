@@ -1,4 +1,7 @@
-use ac_runtime::{AsyncFunction, Error, Function, GenericFunction, LazyFunction, NonFunctionValue, Operation, OperationSig, Context};
+use ac_runtime::{
+    AsyncFunction, Context, Error, Function, GenericFunction, LazyFunction, NonFunctionValue,
+    Operation, OperationSig,
+};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -14,8 +17,7 @@ impl<F> FnFunction<F> {
 
 impl<F> Function for FnFunction<F>
 where
-    F: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error>
-        + 'static,
+    F: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error> + 'static,
 {
     fn call(
         &self,
@@ -29,8 +31,7 @@ where
 /// Creates a synchronous function from a closure.
 pub fn fn_function<F>(f: F) -> Box<dyn Function>
 where
-    F: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error>
-        + 'static,
+    F: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error> + 'static,
 {
     Box::new(FnFunction::new(f))
 }
@@ -38,7 +39,8 @@ where
 /// An operation backed by closures for its signature and behavior.
 pub struct FnOperation<S, P> {
     signature: S,
-    perform: P}
+    perform: P,
+}
 
 impl<S, P> FnOperation<S, P> {
     /// Creates a new operation from a signature closure and a perform closure.
@@ -50,8 +52,7 @@ impl<S, P> FnOperation<S, P> {
 impl<S, P> Operation for FnOperation<S, P>
 where
     S: Fn() -> OperationSig + 'static,
-    P: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error>
-        + 'static,
+    P: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error> + 'static,
 {
     fn signature(&self) -> OperationSig {
         (self.signature)()
@@ -70,8 +71,7 @@ where
 pub fn fn_operation<S, P>(signature: S, perform: P) -> Box<dyn Operation>
 where
     S: Fn() -> OperationSig + 'static,
-    P: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error>
-        + 'static,
+    P: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error> + 'static,
 {
     Box::new(FnOperation::new(signature, perform))
 }

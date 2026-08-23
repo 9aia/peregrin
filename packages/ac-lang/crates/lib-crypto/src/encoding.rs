@@ -1,6 +1,6 @@
-use base64::{engine::general_purpose, Engine as _};
 use ac_runtime::NonFunctionValue;
 use ac_runtime::{Context, Error, Function};
+use base64::{Engine as _, engine::general_purpose};
 
 use super::common::{byte_array, extract_bytes, require_string, s};
 use crate::error::CryptoError;
@@ -19,7 +19,11 @@ use crate::error::CryptoError;
 pub struct Base64Encode;
 
 impl Function for Base64Encode {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let data = extract_bytes(args, 0)?;
         Ok(s(general_purpose::STANDARD.encode(&data)))
     }
@@ -38,11 +42,17 @@ impl Function for Base64Encode {
 pub struct Base64Decode;
 
 impl Function for Base64Decode {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let encoded = require_string(args, 0)?;
         let decoded = general_purpose::STANDARD
             .decode(encoded.as_bytes())
-            .map_err(|e| CryptoError::DecodeError { message: e.to_string() })?;
+            .map_err(|e| CryptoError::DecodeError {
+                message: e.to_string(),
+            })?;
         Ok(byte_array(&decoded))
     }
 }
@@ -61,7 +71,11 @@ impl Function for Base64Decode {
 pub struct HexEncode;
 
 impl Function for HexEncode {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let data = extract_bytes(args, 0)?;
         Ok(s(hex::encode(&data)))
     }
@@ -81,10 +95,15 @@ impl Function for HexEncode {
 pub struct HexDecode;
 
 impl Function for HexDecode {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let encoded = require_string(args, 0)?;
-        let decoded = hex::decode(encoded)
-            .map_err(|e| CryptoError::DecodeError { message: e.to_string() })?;
+        let decoded = hex::decode(encoded).map_err(|e| CryptoError::DecodeError {
+            message: e.to_string(),
+        })?;
         Ok(byte_array(&decoded))
     }
 }

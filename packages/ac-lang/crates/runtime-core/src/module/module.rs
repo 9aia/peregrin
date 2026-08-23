@@ -1,4 +1,4 @@
-use ac_runtime::{Function, GenericFunction, LazyFunction};
+use ac_runtime::{AsyncFunction, Function, GenericFunction, LazyFunction, Operation};
 
 /// A named group of functions.
 ///
@@ -50,6 +50,22 @@ pub trait Module: Send + Sync {
     /// that need to inspect type arguments at runtime. The VM calls
     /// this when a call carries non-empty `type_args`.
     fn generic_function(&self, _name: &str) -> Option<&dyn GenericFunction> {
+        None
+    }
+
+    /// Resolve a function name to an [`AsyncFunction`].
+    ///
+    /// Returns `None` by default. Override to provide async functions
+    /// (network I/O, timers, etc.) for this module.
+    fn async_function(&self, _name: &str) -> Option<&dyn AsyncFunction> {
+        None
+    }
+
+    /// Resolve a function name to a typed [`Operation`].
+    ///
+    /// Returns `None` by default. Override to provide algebraic-effect
+    /// operations for this module.
+    fn operation(&self, _name: &str) -> Option<&dyn Operation> {
         None
     }
 }

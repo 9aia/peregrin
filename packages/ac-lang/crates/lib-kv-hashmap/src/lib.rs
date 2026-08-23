@@ -27,7 +27,8 @@ use ac_lib_kv::{KeyValueStore, KvError};
 /// sled or SQLite backend.
 #[derive(Default)]
 pub struct HashKeyValueStore {
-    data: Mutex<HashMap<String, String>>}
+    data: Mutex<HashMap<String, String>>,
+}
 
 impl HashKeyValueStore {
     pub fn new() -> Self {
@@ -38,7 +39,8 @@ impl HashKeyValueStore {
         let mut data = HashMap::new();
         data.insert(key.into(), value.into());
         HashKeyValueStore {
-            data: Mutex::new(data)}
+            data: Mutex::new(data),
+        }
     }
 }
 
@@ -75,8 +77,8 @@ impl KeyValueStore for HashKeyValueStore {
 mod tests {
     use ac_lib_kv::KeyValueStoreModule;
     use ac_runtime::NonFunctionValue;
-    use ac_runtime_modules::Module;
     use ac_runtime::{CanonicalContext, Context};
+    use ac_runtime_modules::Module;
 
     use super::HashKeyValueStore;
 

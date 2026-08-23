@@ -8,10 +8,10 @@ use std::rc::Rc;
 use ac_compiler_canonical::{CompilerHost, Import};
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{DEFAULT_NAMESPACE, build_doc_namespace, eval_expression};
-use ac_runtime_example_1::DefaultHost;
 use ac_module_resolver_file::FileResolver;
 use ac_module_resolver_memory::MemoryModuleCache;
 use ac_runtime::NonFunctionValue;
+use ac_runtime_example_1::DefaultHost;
 
 fn main() {
     let yaml = r#"

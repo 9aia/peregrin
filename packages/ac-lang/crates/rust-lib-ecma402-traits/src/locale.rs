@@ -8,7 +8,8 @@ pub enum HourCycle {
     /// 23-hour cycle.
     H23,
     /// 24-hour cycle.
-    H24}
+    H24,
+}
 
 impl HourCycle {
     /// Returns the Unicode hour cycle subtag string (`"h11"`, `"h12"`, etc.).
@@ -17,7 +18,8 @@ impl HourCycle {
             Self::H11 => "h11",
             Self::H12 => "h12",
             Self::H23 => "h23",
-            Self::H24 => "h24"}
+            Self::H24 => "h24",
+        }
     }
 }
 
@@ -30,7 +32,8 @@ impl std::str::FromStr for HourCycle {
             "h12" => Ok(Self::H12),
             "h23" => Ok(Self::H23),
             "h24" => Ok(Self::H24),
-            _ => Err(())}
+            _ => Err(()),
+        }
     }
 }
 
@@ -48,7 +51,8 @@ pub struct LocaleOverrides {
     /// Override the numbering system subtag, e.g. `"latn"`.
     pub numbering_system: Option<String>,
     /// Override the hour cycle, e.g. `HourCycle::H23`.
-    pub hour_cycle: Option<HourCycle>}
+    pub hour_cycle: Option<HourCycle>,
+}
 
 /// Canonicalized locale information returned by `Intl.Locale`.
 #[derive(Debug, Clone)]
@@ -66,7 +70,8 @@ pub struct LocaleInfo {
     /// Numbering system subtag, if any.
     pub numbering_system: Option<String>,
     /// Hour cycle, if any.
-    pub hour_cycle: Option<HourCycle>}
+    pub hour_cycle: Option<HourCycle>,
+}
 
 /// ECMA-402 `Intl.Locale` behavior, backend-agnostic.
 pub trait Locale {

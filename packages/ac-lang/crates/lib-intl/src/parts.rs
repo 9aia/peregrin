@@ -12,7 +12,8 @@ use writeable::{Part, PartsWrite};
 pub(super) struct PartsCollector {
     parts: Vec<(String, Part)>,
     buf: String,
-    current_part: Part}
+    current_part: Part,
+}
 
 impl PartsCollector {
     pub fn new() -> Self {
@@ -21,7 +22,9 @@ impl PartsCollector {
             buf: String::new(),
             current_part: Part {
                 category: "",
-                value: "literal"}}
+                value: "literal",
+            },
+        }
     }
 
     fn flush(&mut self) {
@@ -48,9 +51,7 @@ impl PartsCollector {
         let arr: Vec<serde_json::Value> = self
             .into_parts()
             .into_iter()
-            .map(|(part_type, value)| {
-                serde_json::json!({ "type": part_type, "value": value })
-            })
+            .map(|(part_type, value)| serde_json::json!({ "type": part_type, "value": value }))
             .collect();
         NonFunctionValue::new(serde_json::Value::Array(arr))
     }

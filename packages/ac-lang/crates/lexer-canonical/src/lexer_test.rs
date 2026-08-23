@@ -1,5 +1,5 @@
-use ac_lexer::{Lexer, Span, Token};
 use crate::{CanonicalKind, CanonicalLexer, canonical_config};
+use ac_lexer::{Lexer, Span, Token};
 
 type CanonToken = Token<CanonicalKind>;
 
@@ -46,7 +46,10 @@ fn lex_string_with_escapes() {
 #[test]
 fn lex_number_integer() {
     let tokens = lex("42");
-    assert_eq!(tokens, vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]);
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]
+    );
 }
 
 #[test]
@@ -58,7 +61,10 @@ fn lex_number_decimal() {
 #[test]
 fn lex_number_negative() {
     let tokens = lex("-3");
-    assert_eq!(tokens, vec![CanonicalKind::Number(-3.0), CanonicalKind::Eof]);
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Number(-3.0), CanonicalKind::Eof]
+    );
 }
 
 #[test]
@@ -93,14 +99,20 @@ fn lex_namespaced_identifier() {
     let tokens = lex("math.sqrt");
     assert_eq!(
         tokens,
-        vec![CanonicalKind::Identifier("math.sqrt".into()), CanonicalKind::Eof]
+        vec![
+            CanonicalKind::Identifier("math.sqrt".into()),
+            CanonicalKind::Eof
+        ]
     );
 }
 
 #[test]
 fn lex_keywords() {
     let tokens = lex("handle as");
-    assert_eq!(tokens, vec![CanonicalKind::Handle, CanonicalKind::As, CanonicalKind::Eof]);
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Handle, CanonicalKind::As, CanonicalKind::Eof]
+    );
 }
 
 #[test]
@@ -185,7 +197,10 @@ fn lex_string_all_escapes() {
     let tokens = lex(r#""\n\t\r\\\"\'""#);
     assert_eq!(
         tokens,
-        vec![CanonicalKind::String("\n\t\r\\\"\'".into()), CanonicalKind::Eof]
+        vec![
+            CanonicalKind::String("\n\t\r\\\"\'".into()),
+            CanonicalKind::Eof
+        ]
     );
 }
 
@@ -265,7 +280,10 @@ fn lex_identifier_with_underscore() {
     let tokens = lex("my_var");
     assert_eq!(
         tokens,
-        vec![CanonicalKind::Identifier("my_var".into()), CanonicalKind::Eof]
+        vec![
+            CanonicalKind::Identifier("my_var".into()),
+            CanonicalKind::Eof
+        ]
     );
 }
 
@@ -314,7 +332,11 @@ fn lex_block_delimiters() {
     let tokens = lex("{}");
     assert_eq!(
         tokens,
-        vec![CanonicalKind::BlockOpen, CanonicalKind::BlockClose, CanonicalKind::Eof]
+        vec![
+            CanonicalKind::BlockOpen,
+            CanonicalKind::BlockClose,
+            CanonicalKind::Eof
+        ]
     );
 }
 
@@ -329,7 +351,11 @@ fn lex_bracket_delimiters() {
     let tokens = lex("[]");
     assert_eq!(
         tokens,
-        vec![CanonicalKind::BracketOpen, CanonicalKind::BracketClose, CanonicalKind::Eof]
+        vec![
+            CanonicalKind::BracketOpen,
+            CanonicalKind::BracketClose,
+            CanonicalKind::Eof
+        ]
     );
 }
 
@@ -398,18 +424,15 @@ fn config_custom_keyword() {
 
 #[test]
 fn config_replace_keyword() {
-    let lexer = CanonicalLexer::with_config(
-        canonical_config().with_keyword("true", CanonicalKind::Null),
-    );
+    let lexer =
+        CanonicalLexer::with_config(canonical_config().with_keyword("true", CanonicalKind::Null));
     let tokens = lexer.lex("true").unwrap();
     assert_eq!(tokens[0].kind, CanonicalKind::Null);
 }
 
 #[test]
 fn config_without_keyword_falls_back_to_identifier() {
-    let lexer = CanonicalLexer::with_config(
-        canonical_config().without_keyword("handle"),
-    );
+    let lexer = CanonicalLexer::with_config(canonical_config().without_keyword("handle"));
     let tokens = lexer.lex("handle").unwrap();
     assert_eq!(tokens[0].kind, CanonicalKind::Identifier("handle".into()));
 }
@@ -418,9 +441,8 @@ fn config_without_keyword_falls_back_to_identifier() {
 
 #[test]
 fn config_custom_delimiter() {
-    let lexer = CanonicalLexer::with_config(
-        canonical_config().with_delimiter(';', CanonicalKind::Comma),
-    );
+    let lexer =
+        CanonicalLexer::with_config(canonical_config().with_delimiter(';', CanonicalKind::Comma));
     let tokens = lexer.lex("a;b").unwrap();
     assert_eq!(
         tokens.iter().map(|t| t.kind.clone()).collect::<Vec<_>>(),
@@ -435,9 +457,7 @@ fn config_custom_delimiter() {
 
 #[test]
 fn config_without_delimiter_errors() {
-    let lexer = CanonicalLexer::with_config(
-        canonical_config().without_delimiter(':'),
-    );
+    let lexer = CanonicalLexer::with_config(canonical_config().without_delimiter(':'));
     let result = lexer.lex(":");
     assert!(result.is_err());
 }
@@ -450,8 +470,18 @@ fn config_default_matches_canonical() {
     let canonical = CanonicalLexer::with_config(canonical_config());
 
     let input = "handle(\"fetch\"(url) as k: k(42))";
-    let default_tokens: Vec<_> = default.lex(input).unwrap().into_iter().map(|t| t.kind).collect();
-    let canonical_tokens: Vec<_> = canonical.lex(input).unwrap().into_iter().map(|t| t.kind).collect();
+    let default_tokens: Vec<_> = default
+        .lex(input)
+        .unwrap()
+        .into_iter()
+        .map(|t| t.kind)
+        .collect();
+    let canonical_tokens: Vec<_> = canonical
+        .lex(input)
+        .unwrap()
+        .into_iter()
+        .map(|t| t.kind)
+        .collect();
 
     assert_eq!(default_tokens, canonical_tokens);
 }
@@ -492,11 +522,20 @@ fn lex_iter_yields_one_at_a_time() {
     let lexer = CanonicalLexer::default();
     let mut iter = lexer.lex_iter("add(1, 2)");
 
-    assert_eq!(iter.next().unwrap().unwrap().kind, CanonicalKind::Identifier("add".into()));
+    assert_eq!(
+        iter.next().unwrap().unwrap().kind,
+        CanonicalKind::Identifier("add".into())
+    );
     assert_eq!(iter.next().unwrap().unwrap().kind, CanonicalKind::CallOpen);
-    assert_eq!(iter.next().unwrap().unwrap().kind, CanonicalKind::Number(1.0));
+    assert_eq!(
+        iter.next().unwrap().unwrap().kind,
+        CanonicalKind::Number(1.0)
+    );
     assert_eq!(iter.next().unwrap().unwrap().kind, CanonicalKind::Comma);
-    assert_eq!(iter.next().unwrap().unwrap().kind, CanonicalKind::Number(2.0));
+    assert_eq!(
+        iter.next().unwrap().unwrap().kind,
+        CanonicalKind::Number(2.0)
+    );
     assert_eq!(iter.next().unwrap().unwrap().kind, CanonicalKind::CallClose);
     assert_eq!(iter.next().unwrap().unwrap().kind, CanonicalKind::Eof);
     assert!(iter.next().is_none());
@@ -532,7 +571,10 @@ fn lex_iter_error_after_valid_tokens() {
     let lexer = CanonicalLexer::default();
     let mut iter = lexer.lex_iter("42 @");
 
-    assert_eq!(iter.next().unwrap().unwrap().kind, CanonicalKind::Number(42.0));
+    assert_eq!(
+        iter.next().unwrap().unwrap().kind,
+        CanonicalKind::Number(42.0)
+    );
     assert!(iter.next().unwrap().is_err());
     assert!(iter.next().is_none());
 }
@@ -581,10 +623,19 @@ fn lex_iter_with_custom_config() {
         canonical_config().with_keyword("await", CanonicalKind::Handle),
     );
 
-    let tokens: Vec<_> = lexer.lex_iter("await(42)").map(|r| r.unwrap().kind).collect();
+    let tokens: Vec<_> = lexer
+        .lex_iter("await(42)")
+        .map(|r| r.unwrap().kind)
+        .collect();
     assert_eq!(
         tokens,
-        vec![CanonicalKind::Handle, CanonicalKind::CallOpen, CanonicalKind::Number(42.0), CanonicalKind::CallClose, CanonicalKind::Eof]
+        vec![
+            CanonicalKind::Handle,
+            CanonicalKind::CallOpen,
+            CanonicalKind::Number(42.0),
+            CanonicalKind::CallClose,
+            CanonicalKind::Eof
+        ]
     );
 }
 
@@ -592,8 +643,8 @@ fn lex_iter_with_custom_config() {
 
 #[test]
 fn custom_rule_handles_comments() {
-    use ac_lexer::{DefaultLexError, LexerConfig, Span, Token, FnRule};
     use crate::CanonicalKind;
+    use ac_lexer::{DefaultLexError, FnRule, LexerConfig, Span, Token};
 
     fn comment_rule(
         chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
@@ -611,15 +662,24 @@ fn custom_rule_handles_comments() {
                     end = pos + ch.len_utf8();
                     chars.next();
                 }
-                Some(Ok(Token::new(CanonicalKind::Comment("# comment".into()), Span::new(start, end))))
+                Some(Ok(Token::new(
+                    CanonicalKind::Comment("# comment".into()),
+                    Span::new(start, end),
+                )))
             }
-            _ => None}
+            _ => None,
+        }
     }
 
     let config = canonical_config().insert_rule(0, FnRule::new("hash_comment", comment_rule));
     let lexer = CanonicalLexer::with_config(config);
 
-    let tokens: Vec<_> = lexer.lex("# this is a comment\n42").unwrap().into_iter().map(|t| t.kind).collect();
+    let tokens: Vec<_> = lexer
+        .lex("# this is a comment\n42")
+        .unwrap()
+        .into_iter()
+        .map(|t| t.kind)
+        .collect();
     assert_eq!(tokens.len(), 2);
     assert_eq!(tokens[0], CanonicalKind::Number(42.0));
     assert_eq!(tokens[1], CanonicalKind::Eof);
@@ -635,7 +695,12 @@ fn merge_configs_and_lex() {
     let merged = base.merge(extension);
     let lexer = CanonicalLexer::with_config(merged);
 
-    let tokens: Vec<_> = lexer.lex("await(1; 2)").unwrap().into_iter().map(|t| t.kind).collect();
+    let tokens: Vec<_> = lexer
+        .lex("await(1; 2)")
+        .unwrap()
+        .into_iter()
+        .map(|t| t.kind)
+        .collect();
     assert_eq!(
         tokens,
         vec![
@@ -652,8 +717,8 @@ fn merge_configs_and_lex() {
 
 #[test]
 fn rule_ordering_matters() {
-    use ac_lexer::{DefaultLexError, LexerConfig, Span, Token, FnRule};
     use crate::CanonicalKind;
+    use ac_lexer::{DefaultLexError, FnRule, LexerConfig, Span, Token};
 
     fn custom_ident_rule(
         chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
@@ -679,14 +744,23 @@ fn rule_ordering_matters() {
                     .unwrap_or_else(|| CanonicalKind::Identifier(text));
                 Some(Ok(Token::new(kind, Span::new(start, end))))
             }
-            _ => None}
+            _ => None,
+        }
     }
 
     let config = canonical_config().insert_rule(0, FnRule::new("dollar_ident", custom_ident_rule));
     let lexer = CanonicalLexer::with_config(config);
 
-    let tokens: Vec<_> = lexer.lex("$foo").unwrap().into_iter().map(|t| t.kind).collect();
-    assert_eq!(tokens, vec![CanonicalKind::Identifier("$foo".into()), CanonicalKind::Eof]);
+    let tokens: Vec<_> = lexer
+        .lex("$foo")
+        .unwrap()
+        .into_iter()
+        .map(|t| t.kind)
+        .collect();
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Identifier("$foo".into()), CanonicalKind::Eof]
+    );
 }
 
 #[test]
@@ -700,7 +774,7 @@ fn without_rule_disables_feature() {
 
 #[test]
 fn merge_preserves_rule_order() {
-    use ac_lexer::{DefaultLexError, LexerConfig, Token, FnRule};
+    use ac_lexer::{DefaultLexError, FnRule, LexerConfig, Token};
 
     fn rule_a(
         _: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
@@ -728,8 +802,8 @@ fn merge_preserves_rule_order() {
 
 #[test]
 fn custom_rule_emits_extension_token() {
-    use ac_lexer::{DefaultLexError, LexerConfig, Span, Token, FnRule};
     use crate::CanonicalKind;
+    use ac_lexer::{DefaultLexError, FnRule, LexerConfig, Span, Token};
 
     fn regex_rule(
         chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
@@ -755,13 +829,19 @@ fn custom_rule_emits_extension_token() {
                     Span::new(start, end),
                 )))
             }
-            _ => None}
+            _ => None,
+        }
     }
 
     let config = canonical_config().insert_rule(0, FnRule::new("regex", regex_rule));
     let lexer = CanonicalLexer::with_config(config);
 
-    let tokens: Vec<_> = lexer.lex("/[a-z]+/").unwrap().into_iter().map(|t| t.kind).collect();
+    let tokens: Vec<_> = lexer
+        .lex("/[a-z]+/")
+        .unwrap()
+        .into_iter()
+        .map(|t| t.kind)
+        .collect();
     assert_eq!(tokens.len(), 1);
     assert_eq!(tokens[0], CanonicalKind::Eof);
 }
@@ -777,13 +857,19 @@ fn lex_line_comment_at_eof() {
 #[test]
 fn lex_line_comment_before_expression() {
     let tokens = lex("// comment\n42");
-    assert_eq!(tokens, vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]);
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]
+    );
 }
 
 #[test]
 fn lex_line_comment_after_expression() {
     let tokens = lex("42 // trailing comment");
-    assert_eq!(tokens, vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]);
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]
+    );
 }
 
 #[test]
@@ -810,19 +896,28 @@ fn lex_block_comment_at_eof() {
 #[test]
 fn lex_block_comment_before_expression() {
     let tokens = lex("/* comment */ 42");
-    assert_eq!(tokens, vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]);
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]
+    );
 }
 
 #[test]
 fn lex_block_comment_multiline() {
     let tokens = lex("/* line one\nline two */ 42");
-    assert_eq!(tokens, vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]);
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]
+    );
 }
 
 #[test]
 fn lex_block_comment_nested_stars() {
     let tokens = lex("/* a * b * c */ 42");
-    assert_eq!(tokens, vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]);
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]
+    );
 }
 
 #[test]
@@ -845,7 +940,10 @@ fn lex_block_comment_inside_call() {
 #[test]
 fn lex_mixed_comments() {
     let tokens = lex("// line\n/* block */ 42 // trailing");
-    assert_eq!(tokens, vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]);
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]
+    );
 }
 
 #[test]
@@ -857,13 +955,22 @@ fn lex_unterminated_block_comment() {
 #[test]
 fn lex_iter_skips_comments() {
     let lexer = CanonicalLexer::default();
-    let tokens: Vec<_> = lexer.lex_iter("// comment\n42 /* block */").map(|r| r.unwrap().kind).collect();
-    assert_eq!(tokens, vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]);
+    let tokens: Vec<_> = lexer
+        .lex_iter("// comment\n42 /* block */")
+        .map(|r| r.unwrap().kind)
+        .collect();
+    assert_eq!(
+        tokens,
+        vec![CanonicalKind::Number(42.0), CanonicalKind::Eof]
+    );
 }
 
 #[test]
 fn lex_iter_line_comment_at_eof() {
     let lexer = CanonicalLexer::default();
-    let tokens: Vec<_> = lexer.lex_iter("// just a comment").map(|r| r.unwrap().kind).collect();
+    let tokens: Vec<_> = lexer
+        .lex_iter("// just a comment")
+        .map(|r| r.unwrap().kind)
+        .collect();
     assert_eq!(tokens, vec![CanonicalKind::Eof]);
 }

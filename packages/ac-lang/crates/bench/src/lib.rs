@@ -18,7 +18,8 @@ pub fn flat_yaml(n: usize) -> String {
             0 => "string",
             1 => "number",
             2 => "boolean",
-            _ => "object"};
+            _ => "object",
+        };
         lines.push_str(&format!("  field_{i}:\n    type: {ty}\n"));
     }
     lines.push('\n');
@@ -27,7 +28,8 @@ pub fn flat_yaml(n: usize) -> String {
             0 => "\"value\"",
             1 => "42",
             2 => "true",
-            _ => "{}"};
+            _ => "{}",
+        };
         lines.push_str(&format!("field_{i}: {val}\n"));
     }
     lines
@@ -146,7 +148,8 @@ pub fn mixed_yaml(n: usize) -> String {
             1 => lines.push_str(&format!("field_{i}: {i}\n")),
             2 => lines.push_str(&format!("field_{i}: \"root_{i}\"\n")),
             3 => lines.push_str(&format!("field_{i}: \"root_{i}\"\n")),
-            _ => lines.push_str(&format!("field_{i}:\n  sub_{i}: \"val_{i}\"\n"))}
+            _ => lines.push_str(&format!("field_{i}:\n  sub_{i}: \"val_{i}\"\n")),
+        }
     }
     lines
 }
@@ -163,7 +166,8 @@ pub fn simple_schemas(n: usize) -> Vec<(String, JsonValue)> {
                 0 => "string",
                 1 => "number",
                 2 => "boolean",
-                _ => "object"};
+                _ => "object",
+            };
             (format!("field_{i}"), json!({ "type": ty }))
         })
         .collect()
@@ -275,7 +279,8 @@ pub fn literal_expr(i: usize) -> String {
         0 => format!("\"string_{i}\""),
         1 => format!("{i}"),
         2 => "true".to_string(),
-        _ => "null".to_string()}
+        _ => "null".to_string(),
+    }
 }
 
 /// Generate a path lookup expression of `depth` segments.
@@ -301,7 +306,8 @@ pub fn mixed_exprs(n: usize) -> Vec<String> {
         .map(|i| match i % 3 {
             0 => literal_expr(i),
             1 => path_expr(i % 5 + 1),
-            _ => nested_call_expr(i % 5)})
+            _ => nested_call_expr(i % 5),
+        })
         .collect()
 }
 
@@ -313,7 +319,8 @@ pub fn generic_call_exprs(n: usize) -> Vec<String> {
             0 => format!("array.map(fn_{i}, arr_{i})"),
             1 => format!("array.filter(fn_{i}, arr_{i})"),
             2 => format!("array.reduce(fn_{i}, arr_{i}, init_{i})"),
-            _ => format!("array.flat_map(fn_{i}, arr_{i})")})
+            _ => format!("array.flat_map(fn_{i}, arr_{i})"),
+        })
         .collect()
 }
 
@@ -329,7 +336,8 @@ pub fn simple_type(i: usize) -> Type {
         0 => Type::String,
         1 => Type::Number,
         2 => Type::Boolean,
-        _ => Type::Null}
+        _ => Type::Null,
+    }
 }
 
 /// Generate an object type with `n` properties.
@@ -366,7 +374,8 @@ pub fn simple_schema(i: usize) -> JsonValue {
         0 => json!({ "type": "string" }),
         1 => json!({ "type": "number" }),
         2 => json!({ "type": "boolean" }),
-        _ => json!({ "type": "null" })}
+        _ => json!({ "type": "null" }),
+    }
 }
 
 /// Generate a JSON schema for an object with `n` properties.

@@ -1,6 +1,6 @@
 mod access;
-mod common;
 mod combination;
+mod common;
 mod inspection;
 pub(super) mod module;
 mod mutation;

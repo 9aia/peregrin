@@ -13,7 +13,10 @@ fn main() {
     let yaml_input = std::fs::read_to_string(&yaml_path)
         .unwrap_or_else(|_| panic!("failed to read {}", yaml_path.display()));
 
-    println!("Typechecking generic functions from {}\n", yaml_path.display());
+    println!(
+        "Typechecking generic functions from {}\n",
+        yaml_path.display()
+    );
 
     let report = ac_compiler::typecheck::run(&yaml_input, "yaml", None).unwrap();
 

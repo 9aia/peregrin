@@ -1,6 +1,7 @@
 use crate::date_time_format::{
     DateTimeFieldStyle, DateTimeFormat, DateTimeFormatOptions, DateTimeStyle, DateType, Error,
-    TimeZoneNameStyle};
+    TimeZoneNameStyle,
+};
 use ecma402_traits::date_time_format::DateTimeFormat as DateTimeFormatTrait;
 
 fn style(s: &str) -> DateTimeStyle {
@@ -8,7 +9,8 @@ fn style(s: &str) -> DateTimeStyle {
         "full" => DateTimeStyle::Full,
         "long" => DateTimeStyle::Long,
         "short" => DateTimeStyle::Short,
-        _ => DateTimeStyle::Medium}
+        _ => DateTimeStyle::Medium,
+    }
 }
 
 fn field(s: &str) -> DateTimeFieldStyle {
@@ -18,7 +20,8 @@ fn field(s: &str) -> DateTimeFieldStyle {
         "long" => DateTimeFieldStyle::Long,
         "short" => DateTimeFieldStyle::Short,
         "narrow" => DateTimeFieldStyle::Narrow,
-        _ => DateTimeFieldStyle::Short}
+        _ => DateTimeFieldStyle::Short,
+    }
 }
 
 fn date_opts() -> DateTimeFormatOptions {

@@ -12,10 +12,10 @@ use std::rc::Rc;
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, DEFAULT_NAMESPACE};
-use ac_runtime_example_1::DefaultHost;
 use ac_module_resolver_core::{ModuleResolver, ResolvedModule};
-use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_runtime::{Context, Error, Function, Host};
+use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_runtime_example_1::DefaultHost;
 use serde_json::Value as JsonValue;
 
 /// A host that combines the default AC primitives with compiler-specific
@@ -24,16 +24,13 @@ use serde_json::Value as JsonValue;
 pub struct CompilerHost {
     default: DefaultHost,
     import: Import,
-    data_functions: HashMap<String, DataFunction>}
+    data_functions: HashMap<String, DataFunction>,
+}
 
 impl CompilerHost {
     /// Creates a new host from a default host, import resolver, base path,
     /// and the current namespaces.
-    pub fn new(
-        default: DefaultHost,
-        import: Import,
-        namespaces: &ac_fields::Namespaces,
-    ) -> Self {
+    pub fn new(default: DefaultHost, import: Import, namespaces: &ac_fields::Namespaces) -> Self {
         let mut data_functions = HashMap::new();
         if let Some(doc) = namespaces.get(DEFAULT_NAMESPACE) {
             collect_data_functions("", doc, &mut data_functions);
@@ -48,7 +45,8 @@ impl CompilerHost {
         CompilerHost {
             default,
             import,
-            data_functions}
+            data_functions,
+        }
     }
 }
 
@@ -70,14 +68,16 @@ impl Host for CompilerHost {
 struct DataFunction {
     params: Vec<String>,
     body: String,
-    return_schema: Option<JsonValue>}
+    return_schema: Option<JsonValue>,
+}
 
 impl DataFunction {
     fn from(value: &FunctionValue) -> Self {
         DataFunction {
             params: value.params.iter().map(|(n, _)| n.clone()).collect(),
             body: value.body.clone(),
-            return_schema: value.return_schema.clone()}
+            return_schema: value.return_schema.clone(),
+        }
     }
 }
 
@@ -101,8 +101,7 @@ impl Function for DataFunction {
                 .schema_vocabulary()
                 .compile(raw)
                 .map_err(|e| Error::PrimitiveError(format!("invalid return schema: {e}")))?;
-            ac_fields::validate_return(&value, schema.as_ref())
-                .map_err(Error::PrimitiveError)?;
+            ac_fields::validate_return(&value, schema.as_ref()).map_err(Error::PrimitiveError)?;
         }
 
         Ok(value)
@@ -114,7 +113,8 @@ impl Function for DataFunction {
 pub struct Import {
     base_path: Option<PathBuf>,
     import_cache: Rc<RefCell<HashMap<String, JsonValue>>>,
-    resolver: Rc<Box<dyn ModuleResolver>>}
+    resolver: Rc<Box<dyn ModuleResolver>>,
+}
 
 impl Import {
     /// Creates a new `import` host function.
@@ -126,14 +126,16 @@ impl Import {
         Import {
             base_path,
             import_cache,
-            resolver}
+            resolver,
+        }
     }
 
     /// Helper to build a cache key for an import path.
     pub fn cache_key(&self, path: &str) -> String {
         match &self.base_path {
             Some(base) => base.join(path).to_string_lossy().to_string(),
-            None => path.to_string()}
+            None => path.to_string(),
+        }
     }
 }
 
@@ -146,7 +148,10 @@ impl Function for Import {
         let path = args
             .first()
             .and_then(|v| v.as_str())
-            .ok_or_else(|| Error::ArgumentCount { expected: 1, got: 0 })?;
+            .ok_or_else(|| Error::ArgumentCount {
+                expected: 1,
+                got: 0,
+            })?;
 
         let key = self.cache_key(path);
         if let Some(cached) = self.import_cache.borrow().get(&key) {
@@ -158,12 +163,18 @@ impl Function for Import {
             .resolve(path, self.base_path.as_deref())
             .ok_or_else(|| Error::PrimitiveError(format!("import: failed to resolve '{path}'")))?;
 
-        self.import_cache.borrow_mut().insert(key.clone(), data.clone());
+        self.import_cache
+            .borrow_mut()
+            .insert(key.clone(), data.clone());
         Ok(NonFunctionValue::new(data))
     }
 }
 
-fn collect_data_functions(prefix: &str, value: &JsonValue, out: &mut HashMap<String, DataFunction>) {
+fn collect_data_functions(
+    prefix: &str,
+    value: &JsonValue,
+    out: &mut HashMap<String, DataFunction>,
+) {
     if let Some(obj) = value.as_object() {
         for (name, child) in obj {
             if let Some(fn_val) = FunctionValue::from_json(child) {

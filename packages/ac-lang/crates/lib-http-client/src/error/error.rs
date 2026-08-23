@@ -9,13 +9,15 @@ use ac_runtime::Error as VmError;
 #[derive(Debug, Clone)]
 pub enum HttpError {
     Network { message: String },
-    InvalidArgument { message: String }}
+    InvalidArgument { message: String },
+}
 
 impl fmt::Display for HttpError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Network { message } => write!(f, "network error: {message}"),
-            Self::InvalidArgument { message } => write!(f, "invalid argument: {message}")}
+            Self::InvalidArgument { message } => write!(f, "invalid argument: {message}"),
+        }
     }
 }
 

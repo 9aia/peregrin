@@ -9,7 +9,13 @@ fn eval_body_user_defined() {
     let ns = Namespaces::new();
 
     let params = vec![("x".to_string(), serde_json::json!(5))];
-    let result = eval_body("mul(x, 2)", &params, &ns, &DefaultHost::default(), &AC_DIALECT);
+    let result = eval_body(
+        "mul(x, 2)",
+        &params,
+        &ns,
+        &DefaultHost::default(),
+        &AC_DIALECT,
+    );
     assert_eq!(result.unwrap().as_f64(), Some(10.0));
 }
 
@@ -71,7 +77,8 @@ fn call_function_value_from_param() {
     let fn_val = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
         return_schema: None,
-        body: "mul(x, 2)".to_string()};
+        body: "mul(x, 2)".to_string(),
+    };
     ns.insert("doc".to_string(), fn_val.to_json());
 
     let resolver = DefaultHost::default();
@@ -85,7 +92,8 @@ fn call_function_value_from_shorthand() {
     let fn_val = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
         return_schema: None,
-        body: "mul(x, 3)".to_string()};
+        body: "mul(x, 3)".to_string(),
+    };
     let mut doc = serde_json::Map::new();
     doc.insert("transform".to_string(), fn_val.to_json());
     ns.insert("doc".to_string(), serde_json::Value::Object(doc));
@@ -101,7 +109,8 @@ fn call_function_value_nested_in_body() {
     let double_fn = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
         return_schema: None,
-        body: "mul(x, 2)".to_string()};
+        body: "mul(x, 2)".to_string(),
+    };
     let mut doc = serde_json::Map::new();
     doc.insert("double".to_string(), double_fn.to_json());
     ns.insert("doc".to_string(), serde_json::Value::Object(doc));

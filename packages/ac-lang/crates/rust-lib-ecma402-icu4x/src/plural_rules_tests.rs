@@ -15,7 +15,8 @@ fn ordinal_en() {
     let rules = PluralRules::new(
         "en",
         Options {
-            rule_type: PluralRuleType::Ordinal},
+            rule_type: PluralRuleType::Ordinal,
+        },
     )
     .unwrap();
     assert_eq!(rules.select(1.0).unwrap(), PluralCategory::One);

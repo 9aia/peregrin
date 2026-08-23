@@ -13,7 +13,8 @@ pub const DEFAULT_DEPTH: usize = 1;
 /// bare shallow cloning, ref refreshing, and blob reading.
 pub struct GitFetcher {
     cache_dir: PathBuf,
-    depth: usize}
+    depth: usize,
+}
 
 impl GitFetcher {
     pub fn new(cache_dir: PathBuf, depth: usize) -> Self {

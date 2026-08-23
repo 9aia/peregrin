@@ -18,7 +18,8 @@ impl Function for Compare {
         let val = match result {
             std::cmp::Ordering::Less => -1.0,
             std::cmp::Ordering::Equal => 0.0,
-            std::cmp::Ordering::Greater => 1.0};
+            std::cmp::Ordering::Greater => 1.0,
+        };
         Ok(n(val))
     }
 }

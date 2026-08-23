@@ -80,7 +80,8 @@ impl<V: VirtualMachine, M: VmMiddleware> VirtualMachine for MiddlewareVm<V, M> {
             Some(cached) => cached,
             None => self.inner.eval(expr, ctx),
         };
-        self.middleware.after_eval(EvalKind::Sync, expr, result, ctx)
+        self.middleware
+            .after_eval(EvalKind::Sync, expr, result, ctx)
     }
 
     fn eval_async(
@@ -93,7 +94,8 @@ impl<V: VirtualMachine, M: VmMiddleware> VirtualMachine for MiddlewareVm<V, M> {
                 Some(cached) => cached,
                 None => self.inner.eval_async(expr, ctx).await,
             };
-            self.middleware.after_eval(EvalKind::Async, expr, result, ctx)
+            self.middleware
+                .after_eval(EvalKind::Async, expr, result, ctx)
         }
     }
 }
@@ -221,10 +223,7 @@ impl Trace {
     ///
     /// This does not panic if the underlying `Mutex` is poisoned.
     pub fn events(&self) -> Vec<TraceEvent> {
-        let guard = self
-            .events
-            .lock()
-            .unwrap_or_else(|e| e.into_inner());
+        let guard = self.events.lock().unwrap_or_else(|e| e.into_inner());
         guard.clone()
     }
 
@@ -300,7 +299,7 @@ impl VmMiddleware for Counter {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{fn_function, MockHost, NoopHost};
+    use crate::{MockHost, NoopHost, fn_function};
     use ac_runtime::{CanonicalContext, Expr, NonFunctionValue};
     use ac_runtime_canonical::CanonicalVm;
     use std::future::Future;

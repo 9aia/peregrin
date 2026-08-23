@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{Context, Error, Function};
+use ac_runtime_modules::Module;
 
 /// The `math` module — numeric utility functions.
 ///
@@ -66,21 +66,24 @@ impl Module for MathModule {
             "atanh" => Some(&Atanh),
             "factorial" => Some(&Factorial),
             "floor_div" => Some(&FloorDiv),
-            _ => None}
+            _ => None,
+        }
     }
 }
 
 fn require_number(arg: &NonFunctionValue) -> Result<f64, Error> {
     arg.as_number().ok_or(Error::TypeMismatch {
         expected: "number",
-        got: "non-number"})
+        got: "non-number",
+    })
 }
 
 fn require_two_numbers(args: &[NonFunctionValue]) -> Result<(f64, f64), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len()});
+            got: args.len(),
+        });
     }
     let a = require_number(&args[0])?;
     let b = require_number(&args[1])?;
@@ -107,7 +110,8 @@ macro_rules! unary_fn {
             ) -> Result<NonFunctionValue, Error> {
                 let arg = args.first().ok_or(Error::ArgumentCount {
                     expected: 1,
-                    got: 0})?;
+                    got: 0,
+                })?;
                 let x = require_number(arg)?;
                 Ok(num($body(x)))
             }
@@ -127,7 +131,8 @@ macro_rules! bool_unary_fn {
             ) -> Result<NonFunctionValue, Error> {
                 let arg = args.first().ok_or(Error::ArgumentCount {
                     expected: 1,
-                    got: 0})?;
+                    got: 0,
+                })?;
                 let x = require_number(arg)?;
                 Ok(b($body(x)))
             }
@@ -179,14 +184,16 @@ impl Function for RoundTo {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let value = require_number(&args[0])?;
         let decimals = require_number(&args[1])?;
         if decimals < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         let multiplier = 10f64.powi(decimals as i32);
         Ok(num((value * multiplier).round() / multiplier))
@@ -243,7 +250,8 @@ impl Function for Clamp {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let value = require_number(&args[0])?;
         let min = require_number(&args[1])?;
@@ -362,7 +370,8 @@ impl Function for Lerp {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let start = require_number(&args[0])?;
         let end = require_number(&args[1])?;
@@ -382,7 +391,8 @@ impl Function for MapRange {
         if args.len() < 5 {
             return Err(Error::ArgumentCount {
                 expected: 5,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let value = require_number(&args[0])?;
         let in_min = require_number(&args[1])?;
@@ -411,7 +421,8 @@ impl Function for Gcd {
         if a < 0.0 || b < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         Ok(num(gcd_u64(a as u64, b as u64) as f64))
     }
@@ -429,7 +440,8 @@ impl Function for Lcm {
         if a < 0.0 || b < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         let a_u = a as u64;
         let b_u = b as u64;
@@ -450,17 +462,20 @@ impl Function for Factorial {
     ) -> Result<NonFunctionValue, Error> {
         let arg = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0})?;
+            got: 0,
+        })?;
         let x = require_number(arg)?;
         if x < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number"});
+                got: "negative number",
+            });
         }
         if x.fract() != 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "integer",
-                got: "non-integer"});
+                got: "non-integer",
+            });
         }
         let n = x as u64;
         let mut result: f64 = 1.0;
@@ -483,7 +498,8 @@ impl Function for FloorDiv {
         if b == 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-zero divisor",
-                got: "zero"});
+                got: "zero",
+            });
         }
         Ok(num((a / b).floor()))
     }

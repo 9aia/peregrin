@@ -8,7 +8,12 @@ use serde_json::Value as JsonValue;
 /// `type_params` is a list of type parameter declarations (e.g. `[TypeParam::new("T")]`).
 /// `params` is a list of `(param_name, raw_schema)` pairs.
 /// `return_schema` is the raw return type schema, if declared.
-pub type RawFnSig = (String, Vec<TypeParam>, Vec<(String, JsonValue)>, Option<JsonValue>);
+pub type RawFnSig = (
+    String,
+    Vec<TypeParam>,
+    Vec<(String, JsonValue)>,
+    Option<JsonValue>,
+);
 
 /// Host function signatures for typechecking.
 ///
@@ -149,10 +154,7 @@ impl HostFunctionSigs {
                             "items": { "type": "var", "name": "T" }
                         }),
                     ),
-                    (
-                        "init".to_string(),
-                        json!({ "type": "var", "name": "U" }),
-                    ),
+                    ("init".to_string(), json!({ "type": "var", "name": "U" })),
                 ],
                 Some(json!({ "type": "var", "name": "U" })),
             ),
@@ -356,15 +358,13 @@ impl HostFunctionSigs {
             (
                 "array.compact".to_string(),
                 vec![TypeParam::new("T")],
-                vec![
-                    (
-                        "arr".to_string(),
-                        json!({
-                            "type": "array",
-                            "items": { "type": "var", "name": "T" }
-                        }),
-                    ),
-                ],
+                vec![(
+                    "arr".to_string(),
+                    json!({
+                        "type": "array",
+                        "items": { "type": "var", "name": "T" }
+                    }),
+                )],
                 Some(json!({
                     "type": "array",
                     "items": { "type": "var", "name": "T" }
@@ -379,10 +379,7 @@ impl HostFunctionSigs {
                         "arr".to_string(),
                         json!({ "type": "array", "items": { "type": "object" } }),
                     ),
-                    (
-                        "key".to_string(),
-                        json!({ "type": "string" }),
-                    ),
+                    ("key".to_string(), json!({ "type": "string" })),
                 ],
                 Some(json!({
                     "type": "array",
@@ -468,13 +465,15 @@ impl HostFunctionSigs {
 /// Built from raw function signatures using a [`SchemaInterpreter`]
 /// to convert raw schema values into [`Type`]s.
 pub struct FunctionTable {
-    functions: BTreeMap<String, FunctionType>}
+    functions: BTreeMap<String, FunctionType>,
+}
 
 impl FunctionTable {
     /// Create an empty table.
     pub fn new() -> Self {
         FunctionTable {
-            functions: BTreeMap::new()}
+            functions: BTreeMap::new(),
+        }
     }
 
     /// Build a table from raw function signatures.
@@ -493,14 +492,16 @@ impl FunctionTable {
 
             let return_type = match return_schema {
                 Some(schema) => Box::new(interpreter.interpret(schema)),
-                None => Box::new(Type::Unknown)};
+                None => Box::new(Type::Unknown),
+            };
 
             table.functions.insert(
                 name.clone(),
                 FunctionType {
                     type_params: type_params.clone(),
                     params: param_types,
-                    return_type},
+                    return_type,
+                },
             );
         }
         table

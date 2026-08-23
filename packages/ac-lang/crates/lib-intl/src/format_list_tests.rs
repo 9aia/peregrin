@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::module::IntlModule;
 
@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
@@ -69,7 +73,11 @@ fn format_list_no_args_errors() {
 
 #[test]
 fn format_list_es_pair() {
-    let result = call(&IntlModule::new(), "format_list", &[arr(&["España", "Suiza"]), s("es")]);
+    let result = call(
+        &IntlModule::new(),
+        "format_list",
+        &[arr(&["España", "Suiza"]), s("es")],
+    );
     assert_eq!(result.as_str(), Some("España y Suiza"));
 }
 
@@ -77,7 +85,15 @@ fn format_list_es_pair() {
 
 #[test]
 fn format_list_disjunction() {
-    let result = call(&IntlModule::new(), "format_list", &[arr(&["a", "b", "c"]), s("en"), obj(&[("type", "disjunction")])]);
+    let result = call(
+        &IntlModule::new(),
+        "format_list",
+        &[
+            arr(&["a", "b", "c"]),
+            s("en"),
+            obj(&[("type", "disjunction")]),
+        ],
+    );
     assert_eq!(result.as_str(), Some("a, b, or c"));
 }
 
@@ -85,7 +101,11 @@ fn format_list_disjunction() {
 
 #[test]
 fn format_list_short_style() {
-    let result = call(&IntlModule::new(), "format_list", &[arr(&["a", "b"]), s("en"), obj(&[("style", "short")])]);
+    let result = call(
+        &IntlModule::new(),
+        "format_list",
+        &[arr(&["a", "b"]), s("en"), obj(&[("style", "short")])],
+    );
     let formatted = result.as_str().expect("string result");
     assert!(formatted.contains("a") && formatted.contains("b"));
 }
@@ -93,8 +113,8 @@ fn format_list_short_style() {
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule::new());
@@ -112,7 +132,11 @@ fn vm_format_list() {
 
 #[test]
 fn format_list_unit() {
-    let result = call(&IntlModule::new(), "format_list", &[arr(&["5", "7"]), s("en"), obj(&[("type", "unit")])]);
+    let result = call(
+        &IntlModule::new(),
+        "format_list",
+        &[arr(&["5", "7"]), s("en"), obj(&[("type", "unit")])],
+    );
     let str = result.as_str().expect("string result");
     assert!(!str.is_empty());
     assert!(str.contains("5") && str.contains("7"));
@@ -120,7 +144,15 @@ fn format_list_unit() {
 
 #[test]
 fn format_list_unit_short() {
-    let result = call(&IntlModule::new(), "format_list", &[arr(&["5", "7"]), s("en"), obj(&[("type", "unit"), ("style", "short")])]);
+    let result = call(
+        &IntlModule::new(),
+        "format_list",
+        &[
+            arr(&["5", "7"]),
+            s("en"),
+            obj(&[("type", "unit"), ("style", "short")]),
+        ],
+    );
     let str = result.as_str().expect("string result");
     assert!(!str.is_empty());
 }

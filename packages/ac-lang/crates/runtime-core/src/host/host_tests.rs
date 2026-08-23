@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_canonical::{CanonicalContext, Context, Host, Vm};
+use ac_runtime_canonical::{CanonicalContext, Host, Vm};
 
 use crate::host::ModuleHost;
 use crate::module::module_stub::StubModule;
@@ -10,7 +10,8 @@ fn make_call(name: &str, args: &[NonFunctionValue]) -> Expr<NonFunctionValue> {
     Expr::Call {
         name: name.to_string(),
         args: args.iter().map(|v| Expr::Value(v.clone())).collect(),
-        type_args: Vec::new()}
+        type_args: Vec::new(),
+    }
 }
 
 #[test]
@@ -42,6 +43,30 @@ fn unknown_qualified_returns_none() {
 fn unknown_unqualified_returns_none() {
     let host = ModuleHost::new().with(StubModule);
     assert!(host.function("nope").is_none());
+}
+
+#[test]
+fn qualified_async_resolves() {
+    let host = ModuleHost::new().with(StubModule);
+    assert!(host.async_function("stub.async_echo").is_some());
+}
+
+#[test]
+fn unqualified_async_resolves() {
+    let host = ModuleHost::new().with(StubModule);
+    assert!(host.async_function("async_echo").is_some());
+}
+
+#[test]
+fn qualified_operation_resolves() {
+    let host = ModuleHost::new().with(StubModule);
+    assert!(host.operation("stub.raise").is_some());
+}
+
+#[test]
+fn unqualified_operation_resolves() {
+    let host = ModuleHost::new().with(StubModule);
+    assert!(host.operation("raise").is_some());
 }
 
 #[test]

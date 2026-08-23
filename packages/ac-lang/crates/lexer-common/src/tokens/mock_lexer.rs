@@ -1,11 +1,12 @@
 //! [`MockLexer`] — a mock [`Lexer`] that returns predefined results.
 
-use ac_lexer::{DefaultLexError, LexError, Lexer, Token};
 use super::MockKind;
+use ac_lexer::{DefaultLexError, LexError, Lexer, Token};
 
 /// A mock lexer that returns a predefined token list or error.
 pub struct MockLexer<E: LexError = DefaultLexError> {
-    tokens: Result<Vec<Token<MockKind>>, E>}
+    tokens: Result<Vec<Token<MockKind>>, E>,
+}
 
 impl<E: LexError> MockLexer<E> {
     pub fn ok(tokens: Vec<Token<MockKind>>) -> Self {

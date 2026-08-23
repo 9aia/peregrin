@@ -16,7 +16,8 @@ use crate::NodeMetadata;
 pub struct Node<K, V, M: NodeMetadata = ()> {
     pub kind: K,
     pub metadata: M,
-    pub _value: PhantomData<V>}
+    pub _value: PhantomData<V>,
+}
 
 impl<K, V> Node<K, V, ()> {
     /// Creates a node with no metadata.
@@ -24,7 +25,8 @@ impl<K, V> Node<K, V, ()> {
         Self {
             kind,
             metadata: (),
-            _value: PhantomData}
+            _value: PhantomData,
+        }
     }
 }
 
@@ -34,7 +36,8 @@ impl<K, V, M: NodeMetadata> Node<K, V, M> {
         Node {
             kind: self.kind,
             metadata,
-            _value: PhantomData}
+            _value: PhantomData,
+        }
     }
 
     /// Maps the kind while preserving metadata and the value type.
@@ -45,6 +48,7 @@ impl<K, V, M: NodeMetadata> Node<K, V, M> {
         Node {
             kind: f(self.kind),
             metadata: self.metadata,
-            _value: PhantomData}
+            _value: PhantomData,
+        }
     }
 }

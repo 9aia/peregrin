@@ -17,7 +17,8 @@ fn stmt_let() {
         s,
         Stmt::Let {
             name: "x".to_string(),
-            value: Expr::value(42)}
+            value: Expr::value(42)
+        }
     );
 }
 
@@ -33,5 +34,6 @@ fn stmt_block() {
         Stmt::Block(stmts) => {
             assert_eq!(stmts.len(), 2);
         }
-        _ => panic!("expected Block")}
+        _ => panic!("expected Block"),
+    }
 }

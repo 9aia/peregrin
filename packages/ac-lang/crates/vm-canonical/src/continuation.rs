@@ -43,7 +43,7 @@
 //! let result = vm.eval_resumable(&expr, &mut ctx, Some(cont));
 //! ```
 
-use crate::{Error, Expr, HandlerClause, Host, NonFunctionValue, Context};
+use crate::{Context, Error, Expr, HandlerClause, Host, NonFunctionValue};
 
 type RuntimeExpr = Expr<NonFunctionValue>;
 type RuntimeHandlerClause = HandlerClause<NonFunctionValue>;
@@ -62,7 +62,8 @@ pub struct Frame {
     pub pending: Vec<RuntimeExpr>,
     /// Handler clauses active for this frame (from enclosing Handle exprs).
     /// Empty for frames outside any handler. Innermost handler is last.
-    pub handlers: Vec<RuntimeHandlerClause>}
+    pub handlers: Vec<RuntimeHandlerClause>,
+}
 
 /// A serializable continuation of a paused evaluation.
 ///
@@ -72,7 +73,8 @@ pub struct Frame {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Continuation {
     /// The frame stack, bottom to top.
-    pub frames: Vec<Frame>}
+    pub frames: Vec<Frame>,
+}
 
 impl Continuation {
     /// Creates an empty continuation (no frames).
@@ -139,7 +141,8 @@ fn expr_to_json(expr: &RuntimeExpr) -> serde_json::Value {
             "elements": elements.iter().map(expr_to_json).collect::<Vec<_>>()}),
         Expr::Object(entries) => serde_json::json!({
             "type": "object",
-            "entries": entries.iter().map(|(k, v)| serde_json::json!([k, expr_to_json(v)])).collect::<Vec<_>>()})}
+            "entries": entries.iter().map(|(k, v)| serde_json::json!([k, expr_to_json(v)])).collect::<Vec<_>>()}),
+    }
 }
 
 fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error> {
@@ -171,7 +174,11 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error> {
                 .iter()
                 .map(expr_from_json)
                 .collect::<Result<Vec<_>, _>>()?;
-            Ok(Expr::Call { name, args, type_args: Vec::new() })
+            Ok(Expr::Call {
+                name,
+                args,
+                type_args: Vec::new(),
+            })
         }
         Some("handle") => {
             let body = obj
@@ -214,11 +221,17 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error> {
                 .iter()
                 .map(|entry| {
                     let arr = entry.as_array().ok_or_else(|| {
-                        Error::PrimitiveError("object entry must be a [key, value] array".to_string())
+                        Error::PrimitiveError(
+                            "object entry must be a [key, value] array".to_string(),
+                        )
                     })?;
-                    let key = arr.get(0).and_then(|v| v.as_str()).ok_or_else(|| {
-                        Error::PrimitiveError("object entry missing string key".to_string())
-                    })?.to_string();
+                    let key = arr
+                        .get(0)
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| {
+                            Error::PrimitiveError("object entry missing string key".to_string())
+                        })?
+                        .to_string();
                     let value = expr_from_json(arr.get(1).ok_or_else(|| {
                         Error::PrimitiveError("object entry missing value expression".to_string())
                     })?)?;
@@ -229,7 +242,8 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error> {
         }
         other => Err(Error::PrimitiveError(format!(
             "unknown expression type: {other:?}"
-        )))}
+        ))),
+    }
 }
 
 fn handler_clause_to_json(clause: &RuntimeHandlerClause) -> serde_json::Value {
@@ -276,7 +290,8 @@ fn handler_clause_from_json(value: &serde_json::Value) -> Result<RuntimeHandlerC
         op_name,
         params,
         continuation_name,
-        body})
+        body,
+    })
 }
 
 fn frame_from_json(value: &serde_json::Value) -> Result<Frame, Error> {
@@ -319,7 +334,8 @@ fn frame_from_json(value: &serde_json::Value) -> Result<Frame, Error> {
                     .collect::<Result<Vec<_>, _>>()
             })
             .transpose()?
-            .unwrap_or_default()})
+            .unwrap_or_default(),
+    })
 }
 
 /// The result of a resumable evaluation step.
@@ -333,9 +349,11 @@ pub enum EvalResult {
     /// The [`NonFunctionValue`] is the value yielded by the host function.
     Yielded {
         value: NonFunctionValue,
-        continuation: Continuation},
+        continuation: Continuation,
+    },
     /// Evaluation failed with an error.
-    Error(Error)}
+    Error(Error),
+}
 
 impl<H: Host> crate::CanonicalVm<H> {
     /// Evaluates an expression using an explicit frame stack.
@@ -384,8 +402,10 @@ impl<H: Host> crate::CanonicalVm<H> {
             StepResult::Done(value) => EvalResult::Done(value),
             StepResult::Yield { value, frames } => EvalResult::Yielded {
                 value,
-                continuation: Continuation { frames }},
-            StepResult::Error(err) => EvalResult::Error(err)}
+                continuation: Continuation { frames },
+            },
+            StepResult::Error(err) => EvalResult::Error(err),
+        }
     }
 
     fn resume(&self, cont: Continuation, ctx: &mut dyn Context) -> EvalResult {
@@ -420,7 +440,8 @@ impl<H: Host> crate::CanonicalVm<H> {
                 frames.insert(0, bottom);
                 EvalResult::Yielded {
                     value: yielded_value,
-                    continuation: Continuation { frames }}
+                    continuation: Continuation { frames },
+                }
             }
             Err(Error::Operation { name, args }) => {
                 // The resumed operation signaled. Check handler
@@ -471,11 +492,15 @@ impl<H: Host> crate::CanonicalVm<H> {
                         StepResult::Done(v) => EvalResult::Done(v),
                         StepResult::Yield {
                             value,
-                            frames: yield_frames} => EvalResult::Yielded {
+                            frames: yield_frames,
+                        } => EvalResult::Yielded {
                             value,
                             continuation: Continuation {
-                                frames: yield_frames}},
-                        StepResult::Error(err) => EvalResult::Error(err)}
+                                frames: yield_frames,
+                            },
+                        },
+                        StepResult::Error(err) => EvalResult::Error(err),
+                    }
                 } else {
                     // No matching handler — propagate.
                     frames.insert(0, bottom);
@@ -485,10 +510,12 @@ impl<H: Host> crate::CanonicalVm<H> {
                         "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>()}));
                     EvalResult::Yielded {
                         value: op_value,
-                        continuation: Continuation { frames }}
+                        continuation: Continuation { frames },
+                    }
                 }
             }
-            Err(err) => EvalResult::Error(err)}
+            Err(err) => EvalResult::Error(err),
+        }
     }
 
     fn unwind(
@@ -512,16 +539,20 @@ impl<H: Host> crate::CanonicalVm<H> {
             StepResult::Done(result) => self.unwind(frames, result, ctx),
             StepResult::Yield {
                 value,
-                frames: mut yield_frames} => {
+                frames: mut yield_frames,
+            } => {
                 // yield_frames are innermost-to-current. Append the
                 // remaining ancestor frames to get the full stack.
                 yield_frames.extend(frames);
                 EvalResult::Yielded {
                     value,
                     continuation: Continuation {
-                        frames: yield_frames}}
+                        frames: yield_frames,
+                    },
+                }
             }
-            StepResult::Error(err) => EvalResult::Error(err)}
+            StepResult::Error(err) => EvalResult::Error(err),
+        }
     }
 
     fn eval_frame(
@@ -544,7 +575,8 @@ impl<H: Host> crate::CanonicalVm<H> {
                     frames.push(frame.clone());
                     return StepResult::Yield { value, frames };
                 }
-                StepResult::Error(err) => return StepResult::Error(err)}
+                StepResult::Error(err) => return StepResult::Error(err),
+            }
         }
 
         // All args evaluated — check if this is a continuation call.
@@ -580,12 +612,16 @@ impl<H: Host> crate::CanonicalVm<H> {
                             EvalResult::Done(v) => StepResult::Done(v),
                             EvalResult::Yielded {
                                 value,
-                                continuation} => StepResult::Yield {
+                                continuation,
+                            } => StepResult::Yield {
                                 value,
-                                frames: continuation.frames},
-                            EvalResult::Error(err) => StepResult::Error(err)};
+                                frames: continuation.frames,
+                            },
+                            EvalResult::Error(err) => StepResult::Error(err),
+                        };
                     }
-                    Err(err) => return StepResult::Error(err)}
+                    Err(err) => return StepResult::Error(err),
+                }
             }
         }
 
@@ -597,7 +633,8 @@ impl<H: Host> crate::CanonicalVm<H> {
                 stack.push(frame.clone());
                 StepResult::Yield {
                     value: yielded_value,
-                    frames: std::mem::take(stack)}
+                    frames: std::mem::take(stack),
+                }
             }
             Err(Error::Operation { name, args }) => {
                 // A typed operation signaled. Check handler clauses
@@ -657,10 +694,12 @@ impl<H: Host> crate::CanonicalVm<H> {
                         "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>()}));
                     StepResult::Yield {
                         value: op_value,
-                        frames: std::mem::take(stack)}
+                        frames: std::mem::take(stack),
+                    }
                 }
             }
-            Err(err) => StepResult::Error(err)}
+            Err(err) => StepResult::Error(err),
+        }
     }
 
     fn eval_step(
@@ -687,27 +726,23 @@ impl<H: Host> crate::CanonicalVm<H> {
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host().lazy_function(name) {
                     let handlers = inherited_handlers.to_vec();
-                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context| {
-                        match self.eval_step_with_handlers(sub, c, stack, &handlers) {
-                            StepResult::Done(v) => Ok(v),
-                            StepResult::Yield { value, .. } => {
-                                Err(Error::Yield(value))
-                            }
-                            StepResult::Error(err) => Err(err)}
+                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context| match self
+                        .eval_step_with_handlers(sub, c, stack, &handlers)
+                    {
+                        StepResult::Done(v) => Ok(v),
+                        StepResult::Yield { value, .. } => Err(Error::Yield(value)),
+                        StepResult::Error(err) => Err(err),
                     };
                     match lazy.call(args, ctx, &mut evaluate) {
                         Ok(v) => StepResult::Done(v),
-                        Err(Error::Yield(value)) => {
-                            StepResult::Yield {
-                                value,
-                                frames: std::mem::take(stack)}
-                        }
+                        Err(Error::Yield(value)) => StepResult::Yield {
+                            value,
+                            frames: std::mem::take(stack),
+                        },
                         Err(Error::Operation { name, args }) => {
                             // Check handler clauses for a match.
-                            let matching_clause = inherited_handlers
-                                .iter()
-                                .rev()
-                                .find(|h| h.op_name == name);
+                            let matching_clause =
+                                inherited_handlers.iter().rev().find(|h| h.op_name == name);
                             if let Some(clause) = matching_clause {
                                 self.handle_operation(
                                     name,
@@ -722,23 +757,27 @@ impl<H: Host> crate::CanonicalVm<H> {
                                     name: name.clone(),
                                     evaluated: args.clone(),
                                     pending: vec![],
-                                    handlers: inherited_handlers.to_vec()});
+                                    handlers: inherited_handlers.to_vec(),
+                                });
                                 let op_value = NonFunctionValue::new(serde_json::json!({
                                     "type": "operation",
                                     "name": name,
                                     "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>()}));
                                 StepResult::Yield {
                                     value: op_value,
-                                    frames: std::mem::take(stack)}
+                                    frames: std::mem::take(stack),
+                                }
                             }
                         }
-                        Err(err) => StepResult::Error(err)}
+                        Err(err) => StepResult::Error(err),
+                    }
                 } else {
                     let mut frame = Frame {
                         name: name.clone(),
                         evaluated: Vec::with_capacity(args.len()),
                         pending: args.clone(),
-                        handlers: inherited_handlers.to_vec()};
+                        handlers: inherited_handlers.to_vec(),
+                    };
                     self.eval_frame(&mut frame, ctx, stack)
                 }
             }
@@ -759,7 +798,8 @@ impl<H: Host> crate::CanonicalVm<H> {
                         StepResult::Yield { value, frames } => {
                             return StepResult::Yield { value, frames };
                         }
-                        StepResult::Error(err) => return StepResult::Error(err)}
+                        StepResult::Error(err) => return StepResult::Error(err),
+                    }
                 }
                 StepResult::Done(NonFunctionValue::new(serde_json::Value::Array(values)))
             }
@@ -768,11 +808,14 @@ impl<H: Host> crate::CanonicalVm<H> {
                 let mut map = serde_json::Map::with_capacity(entries.len());
                 for (key, expr) in entries {
                     match self.eval_step_with_handlers(expr, ctx, stack, inherited_handlers) {
-                        StepResult::Done(v) => { map.insert(key.clone(), v.into_inner()); }
+                        StepResult::Done(v) => {
+                            map.insert(key.clone(), v.into_inner());
+                        }
                         StepResult::Yield { value, frames } => {
                             return StepResult::Yield { value, frames };
                         }
-                        StepResult::Error(err) => return StepResult::Error(err)}
+                        StepResult::Error(err) => return StepResult::Error(err),
+                    }
                 }
                 StepResult::Done(NonFunctionValue::new(serde_json::Value::Object(map)))
             }
@@ -799,62 +842,57 @@ impl<H: Host> crate::CanonicalVm<H> {
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host().lazy_function(name) {
                     let handlers_vec = handlers.to_vec();
-                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context| {
-                        match self.eval_step_with_handlers(sub, c, stack, &handlers_vec) {
-                            StepResult::Done(v) => Ok(v),
-                            StepResult::Yield { value, .. } => {
-                                Err(Error::Yield(value))
-                            }
-                            StepResult::Error(err) => Err(err)}
+                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context| match self
+                        .eval_step_with_handlers(sub, c, stack, &handlers_vec)
+                    {
+                        StepResult::Done(v) => Ok(v),
+                        StepResult::Yield { value, .. } => Err(Error::Yield(value)),
+                        StepResult::Error(err) => Err(err),
                     };
                     match lazy.call(args, ctx, &mut evaluate) {
                         Ok(v) => StepResult::Done(v),
-                        Err(Error::Yield(value)) => {
-                            StepResult::Yield {
-                                value,
-                                frames: std::mem::take(stack)}
-                        }
+                        Err(Error::Yield(value)) => StepResult::Yield {
+                            value,
+                            frames: std::mem::take(stack),
+                        },
                         Err(Error::Operation { name, args }) => {
-                            let matching_clause =
-                                handlers.iter().rev().find(|h| h.op_name == name);
+                            let matching_clause = handlers.iter().rev().find(|h| h.op_name == name);
                             if let Some(clause) = matching_clause {
-                                self.handle_operation(
-                                    name,
-                                    args,
-                                    clause,
-                                    handlers,
-                                    ctx,
-                                    stack,
-                                )
+                                self.handle_operation(name, args, clause, handlers, ctx, stack)
                             } else {
                                 stack.push(Frame {
                                     name: name.clone(),
                                     evaluated: args.clone(),
                                     pending: vec![],
-                                    handlers: handlers.to_vec()});
+                                    handlers: handlers.to_vec(),
+                                });
                                 let op_value = NonFunctionValue::new(serde_json::json!({
                                     "type": "operation",
                                     "name": name,
                                     "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>()}));
                                 StepResult::Yield {
                                     value: op_value,
-                                    frames: std::mem::take(stack)}
+                                    frames: std::mem::take(stack),
+                                }
                             }
                         }
-                        Err(err) => StepResult::Error(err)}
+                        Err(err) => StepResult::Error(err),
+                    }
                 } else {
                     let mut frame = Frame {
                         name: name.clone(),
                         evaluated: Vec::with_capacity(args.len()),
                         pending: args.clone(),
-                        handlers: handlers.to_vec()};
+                        handlers: handlers.to_vec(),
+                    };
                     self.eval_frame(&mut frame, ctx, stack)
                 }
             }
 
             Expr::Handle {
                 body: inner_body,
-                handlers: inner_handlers} => {
+                handlers: inner_handlers,
+            } => {
                 // Nested handle: inner handlers take precedence.
                 let mut merged = inner_handlers.clone();
                 merged.extend(handlers.iter().cloned());
@@ -869,7 +907,8 @@ impl<H: Host> crate::CanonicalVm<H> {
                         StepResult::Yield { value, frames } => {
                             return StepResult::Yield { value, frames };
                         }
-                        StepResult::Error(err) => return StepResult::Error(err)}
+                        StepResult::Error(err) => return StepResult::Error(err),
+                    }
                 }
                 StepResult::Done(NonFunctionValue::new(serde_json::Value::Array(values)))
             }
@@ -878,11 +917,14 @@ impl<H: Host> crate::CanonicalVm<H> {
                 let mut map = serde_json::Map::with_capacity(entries.len());
                 for (key, expr) in entries {
                     match self.eval_handle(expr, handlers, ctx, stack) {
-                        StepResult::Done(v) => { map.insert(key.clone(), v.into_inner()); }
+                        StepResult::Done(v) => {
+                            map.insert(key.clone(), v.into_inner());
+                        }
                         StepResult::Yield { value, frames } => {
                             return StepResult::Yield { value, frames };
                         }
-                        StepResult::Error(err) => return StepResult::Error(err)}
+                        StepResult::Error(err) => return StepResult::Error(err),
+                    }
                 }
                 StepResult::Done(NonFunctionValue::new(serde_json::Value::Object(map)))
             }
@@ -908,7 +950,9 @@ impl<H: Host> crate::CanonicalVm<H> {
         }
 
         // Allow function values stored in the context to be called by name.
-        if let Ok(value) = ctx.get(name) && value.is_function() {
+        if let Ok(value) = ctx.get(name)
+            && value.is_function()
+        {
             let apply = self
                 .host()
                 .function("apply")
@@ -959,8 +1003,7 @@ impl<H: Host> crate::CanonicalVm<H> {
             .filter(|h| h.op_name != clause.op_name)
             .cloned()
             .collect();
-        let result =
-            self.eval_step_with_handlers(&clause.body, ctx, stack, &remaining_handlers);
+        let result = self.eval_step_with_handlers(&clause.body, ctx, stack, &remaining_handlers);
 
         ctx.pop_scope();
         result
@@ -975,6 +1018,8 @@ enum StepResult {
     /// stack at the point of yield (bottom to top).
     Yield {
         value: NonFunctionValue,
-        frames: Vec<Frame>},
+        frames: Vec<Frame>,
+    },
     /// An error occurred.
-    Error(Error)}
+    Error(Error),
+}

@@ -18,7 +18,8 @@ pub enum MockKind {
     Delim(char),
     Operator(String),
     Custom(String),
-    Eof}
+    Eof,
+}
 
 impl fmt::Display for MockKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -35,7 +36,8 @@ impl fmt::Display for MockKind {
             MockKind::Delim(c) => write!(f, "delim({c})"),
             MockKind::Operator(s) => write!(f, "operator({s})"),
             MockKind::Custom(s) => write!(f, "custom({s})"),
-            MockKind::Eof => write!(f, "eof")}
+            MockKind::Eof => write!(f, "eof"),
+        }
     }
 }
 

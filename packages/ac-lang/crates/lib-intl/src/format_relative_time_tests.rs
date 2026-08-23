@@ -1,19 +1,23 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::module::IntlModule;
 
 fn call(args: &[NonFunctionValue]) -> NonFunctionValue {
     let module = IntlModule::new();
-    let func = module.function("format_relative_time").expect("function exists");
+    let func = module
+        .function("format_relative_time")
+        .expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_err(args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let module = IntlModule::new();
-    let func = module.function("format_relative_time").expect("function exists");
+    let func = module
+        .function("format_relative_time")
+        .expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
@@ -99,15 +103,17 @@ fn relative_time_invalid_unit_errors() {
 
 #[test]
 fn relative_time_all_units() {
-    for unit in &["second", "minute", "hour", "day", "week", "month", "quarter", "year"] {
+    for unit in &[
+        "second", "minute", "hour", "day", "week", "month", "quarter", "year",
+    ] {
         let result = call(&[n(5.0), s(unit)]);
         assert!(result.as_str().is_some(), "unit {} should work", unit);
     }
 }
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::Vm;
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule::new());
@@ -118,7 +124,10 @@ fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
 
 #[test]
 fn vm_format_relative_time() {
-    let expr = Expr::call("intl.format_relative_time", vec![Expr::value(n(5.0)), Expr::value(s("second"))]);
+    let expr = Expr::call(
+        "intl.format_relative_time",
+        vec![Expr::value(n(5.0)), Expr::value(s("second"))],
+    );
     let result = eval_expr(&expr);
     assert!(result.as_str().is_some());
 }

@@ -1,10 +1,11 @@
-use ac_runtime::NonFunctionValue;
 use ac_runtime::Error;
+use ac_runtime::NonFunctionValue;
 
 use serde_json::json;
 
 use super::test_helpers::{
-    arr, call, call_err, call_err_with_eval, call_with_eval, fn_value, n, s};
+    arr, call, call_err, call_err_with_eval, call_with_eval, fn_value, n, s,
+};
 
 // ── take ───────────────────────────────────────────────────────────
 
@@ -170,10 +171,7 @@ fn unzip_empty() {
 
 #[test]
 fn unzip_skips_non_pairs() {
-    let result = call(
-        "unzip",
-        &[arr(&[json!([1, 2]), json!(42), json!([3, 4])])],
-    );
+    let result = call("unzip", &[arr(&[json!([1, 2]), json!(42), json!([3, 4])])]);
     let array = result.as_array().unwrap();
     assert_eq!(array[0], json!([1, 3]));
     assert_eq!(array[1], json!([2, 4]));
@@ -189,7 +187,10 @@ fn unzip_non_array_errors() {
 
 #[test]
 fn intersperse_basic() {
-    let result = call("intersperse", &[arr(&[json!(1), json!(2), json!(3)]), s(",")]);
+    let result = call(
+        "intersperse",
+        &[arr(&[json!(1), json!(2), json!(3)]), s(",")],
+    );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 5);
     assert_eq!(array[0], json!(1));
@@ -259,10 +260,7 @@ fn intercalate_basic() {
 
 #[test]
 fn intercalate_single_group() {
-    let result = call(
-        "intercalate",
-        &[arr(&[json!([1, 2])]), arr(&[json!(0)])],
-    );
+    let result = call("intercalate", &[arr(&[json!([1, 2])]), arr(&[json!(0)])]);
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 2);
     assert_eq!(array[0], json!(1));
@@ -425,10 +423,7 @@ fn take_while_none_match() {
 
 #[test]
 fn take_while_empty() {
-    let result = call_with_eval(
-        "take_while",
-        &[arr(&[]), fn_value("add(x, -3)", &["x"])],
-    );
+    let result = call_with_eval("take_while", &[arr(&[]), fn_value("add(x, -3)", &["x"])]);
     assert!(result.as_array().unwrap().is_empty());
 }
 
@@ -482,10 +477,7 @@ fn drop_while_none_match() {
 
 #[test]
 fn drop_while_empty() {
-    let result = call_with_eval(
-        "drop_while",
-        &[arr(&[]), fn_value("add(x, -3)", &["x"])],
-    );
+    let result = call_with_eval("drop_while", &[arr(&[]), fn_value("add(x, -3)", &["x"])]);
     assert!(result.as_array().unwrap().is_empty());
 }
 
@@ -640,10 +632,7 @@ fn find_index_not_found() {
 
 #[test]
 fn find_index_empty() {
-    let result = call_with_eval(
-        "find_index",
-        &[arr(&[]), fn_value("add(x, 0)", &["x"])],
-    );
+    let result = call_with_eval("find_index", &[arr(&[]), fn_value("add(x, 0)", &["x"])]);
     assert_eq!(result.as_number(), Some(-1.0));
 }
 
@@ -678,10 +667,7 @@ fn find_last_not_found() {
 
 #[test]
 fn find_last_empty() {
-    let result = call_with_eval(
-        "find_last",
-        &[arr(&[]), fn_value("add(x, 0)", &["x"])],
-    );
+    let result = call_with_eval("find_last", &[arr(&[]), fn_value("add(x, 0)", &["x"])]);
     assert!(result.is_null());
 }
 
@@ -772,7 +758,10 @@ fn windows_basic() {
 fn windows_size_three() {
     let result = call(
         "windows",
-        &[arr(&[json!(1), json!(2), json!(3), json!(4), json!(5)]), n(3.0)],
+        &[
+            arr(&[json!(1), json!(2), json!(3), json!(4), json!(5)]),
+            n(3.0),
+        ],
     );
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
@@ -834,10 +823,7 @@ fn windows_too_few_args_errors() {
 
 #[test]
 fn transpose_basic() {
-    let result = call(
-        "transpose",
-        &[arr(&[json!([1, 2]), json!([3, 4])])],
-    );
+    let result = call("transpose", &[arr(&[json!([1, 2]), json!([3, 4])])]);
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 2);
     assert_eq!(array[0], json!([1, 3]));
@@ -846,10 +832,7 @@ fn transpose_basic() {
 
 #[test]
 fn transpose_rectangular() {
-    let result = call(
-        "transpose",
-        &[arr(&[json!([1, 2, 3]), json!([4, 5, 6])])],
-    );
+    let result = call("transpose", &[arr(&[json!([1, 2, 3]), json!([4, 5, 6])])]);
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
     assert_eq!(array[0], json!([1, 4]));
@@ -869,10 +852,7 @@ fn transpose_single_row() {
 
 #[test]
 fn transpose_single_col() {
-    let result = call(
-        "transpose",
-        &[arr(&[json!([1]), json!([2]), json!([3])])],
-    );
+    let result = call("transpose", &[arr(&[json!([1]), json!([2]), json!([3])])]);
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 1);
     assert_eq!(array[0], json!([1, 2, 3]));
@@ -886,10 +866,7 @@ fn transpose_empty() {
 
 #[test]
 fn transpose_ragged() {
-    let result = call(
-        "transpose",
-        &[arr(&[json!([1, 2, 3]), json!([4, 5])])],
-    );
+    let result = call("transpose", &[arr(&[json!([1, 2, 3]), json!([4, 5])])]);
     let array = result.as_array().unwrap();
     assert_eq!(array.len(), 3);
     assert_eq!(array[0], json!([1, 4]));
@@ -915,7 +892,11 @@ fn transpose_no_args_errors() {
 fn insert_at_beginning() {
     let result = call(
         "insert_at",
-        &[arr(&[json!(2), json!(3)]), n(0.0), NonFunctionValue::new(json!(1))],
+        &[
+            arr(&[json!(2), json!(3)]),
+            n(0.0),
+            NonFunctionValue::new(json!(1)),
+        ],
     );
     let array = result.as_array().unwrap();
     assert_eq!(array, &[json!(1), json!(2), json!(3)]);
@@ -925,7 +906,11 @@ fn insert_at_beginning() {
 fn insert_at_middle() {
     let result = call(
         "insert_at",
-        &[arr(&[json!(1), json!(3)]), n(1.0), NonFunctionValue::new(json!(2))],
+        &[
+            arr(&[json!(1), json!(3)]),
+            n(1.0),
+            NonFunctionValue::new(json!(2)),
+        ],
     );
     let array = result.as_array().unwrap();
     assert_eq!(array, &[json!(1), json!(2), json!(3)]);
@@ -935,7 +920,11 @@ fn insert_at_middle() {
 fn insert_at_end() {
     let result = call(
         "insert_at",
-        &[arr(&[json!(1), json!(2)]), n(2.0), NonFunctionValue::new(json!(3))],
+        &[
+            arr(&[json!(1), json!(2)]),
+            n(2.0),
+            NonFunctionValue::new(json!(3)),
+        ],
     );
     let array = result.as_array().unwrap();
     assert_eq!(array, &[json!(1), json!(2), json!(3)]);
@@ -953,26 +942,38 @@ fn insert_at_index_beyond_length_appends() {
 
 #[test]
 fn insert_at_empty_array() {
-    let result = call("insert_at", &[arr(&[]), n(0.0), NonFunctionValue::new(json!(1))]);
+    let result = call(
+        "insert_at",
+        &[arr(&[]), n(0.0), NonFunctionValue::new(json!(1))],
+    );
     let array = result.as_array().unwrap();
     assert_eq!(array, &[json!(1)]);
 }
 
 #[test]
 fn insert_at_negative_index_errors() {
-    let result = call_err("insert_at", &[arr(&[json!(1)]), n(-1.0), NonFunctionValue::new(json!(2))]);
+    let result = call_err(
+        "insert_at",
+        &[arr(&[json!(1)]), n(-1.0), NonFunctionValue::new(json!(2))],
+    );
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
 #[test]
 fn insert_at_non_number_index_errors() {
-    let result = call_err("insert_at", &[arr(&[json!(1)]), s("x"), NonFunctionValue::new(json!(2))]);
+    let result = call_err(
+        "insert_at",
+        &[arr(&[json!(1)]), s("x"), NonFunctionValue::new(json!(2))],
+    );
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 
 #[test]
 fn insert_at_non_array_errors() {
-    let result = call_err("insert_at", &[n(1.0), n(0.0), NonFunctionValue::new(json!(2))]);
+    let result = call_err(
+        "insert_at",
+        &[n(1.0), n(0.0), NonFunctionValue::new(json!(2))],
+    );
     assert!(matches!(result, Err(Error::TypeMismatch { .. })));
 }
 

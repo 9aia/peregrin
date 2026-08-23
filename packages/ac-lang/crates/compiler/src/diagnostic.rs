@@ -12,7 +12,8 @@ pub enum Severity {
     Error,
     Warning,
     Info,
-    Hint}
+    Hint,
+}
 
 /// A structured diagnostic message.
 #[derive(Clone, Debug)]
@@ -21,7 +22,8 @@ pub struct Diagnostic {
     pub code: Option<String>,
     pub message: String,
     pub location: Option<SourceLocation>,
-    pub notes: Vec<String>}
+    pub notes: Vec<String>,
+}
 
 impl Diagnostic {
     pub fn error(message: impl Into<String>) -> Self {
@@ -30,7 +32,8 @@ impl Diagnostic {
             code: None,
             message: message.into(),
             location: None,
-            notes: Vec::new()}
+            notes: Vec::new(),
+        }
     }
 
     pub fn warning(message: impl Into<String>) -> Self {
@@ -39,7 +42,8 @@ impl Diagnostic {
             code: None,
             message: message.into(),
             location: None,
-            notes: Vec::new()}
+            notes: Vec::new(),
+        }
     }
 
     pub fn info(message: impl Into<String>) -> Self {
@@ -48,7 +52,8 @@ impl Diagnostic {
             code: None,
             message: message.into(),
             location: None,
-            notes: Vec::new()}
+            notes: Vec::new(),
+        }
     }
 
     pub fn hint(message: impl Into<String>) -> Self {
@@ -57,7 +62,8 @@ impl Diagnostic {
             code: None,
             message: message.into(),
             location: None,
-            notes: Vec::new()}
+            notes: Vec::new(),
+        }
     }
 
     pub fn with_code(mut self, code: impl Into<String>) -> Self {
@@ -79,7 +85,8 @@ impl Diagnostic {
 /// Collects diagnostics emitted during compilation.
 #[derive(Clone, Debug, Default)]
 pub struct DiagnosticSink {
-    diagnostics: Vec<Diagnostic>}
+    diagnostics: Vec<Diagnostic>,
+}
 
 impl DiagnosticSink {
     pub fn new() -> Self {
@@ -99,11 +106,15 @@ impl DiagnosticSink {
     }
 
     pub fn has_errors(&self) -> bool {
-        self.diagnostics.iter().any(|d| d.severity == Severity::Error)
+        self.diagnostics
+            .iter()
+            .any(|d| d.severity == Severity::Error)
     }
 
     pub fn errors(&self) -> impl Iterator<Item = &Diagnostic> {
-        self.diagnostics.iter().filter(|d| d.severity == Severity::Error)
+        self.diagnostics
+            .iter()
+            .filter(|d| d.severity == Severity::Error)
     }
 
     pub fn warnings(&self) -> impl Iterator<Item = &Diagnostic> {

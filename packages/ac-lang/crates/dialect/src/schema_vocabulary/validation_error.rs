@@ -17,7 +17,8 @@ pub struct ValidationError {
     /// Source location (line:column) of the offending value, if known.
     /// Populated by the compiler after validation, using the original
     /// source text.
-    pub location: Option<SourceLocation>}
+    pub location: Option<SourceLocation>,
+}
 
 impl std::fmt::Display for ValidationError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

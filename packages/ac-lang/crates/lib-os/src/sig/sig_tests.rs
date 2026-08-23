@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
 
 use super::sig::SigModule;
 use super::sig_stub::StubSig;
@@ -58,5 +58,9 @@ fn argument_count() {
     let err = call_err(&module, "send", &[n(42)]);
     assert_eq!(
         err,
-        ac_runtime::Error::ArgumentCount { expected: 2, got: 1 });
+        ac_runtime::Error::ArgumentCount {
+            expected: 2,
+            got: 1
+        }
+    );
 }

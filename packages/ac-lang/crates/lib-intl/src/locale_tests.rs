@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::module::IntlModule;
 
@@ -31,11 +31,16 @@ fn obj(pairs: &[(&str, &str)]) -> NonFunctionValue {
 }
 
 fn get_str(result: &NonFunctionValue, key: &str) -> Option<String> {
-    result.as_object()?.get(key)?.as_str().map(|s| s.to_string())
+    result
+        .as_object()?
+        .get(key)?
+        .as_str()
+        .map(|s| s.to_string())
 }
 
 fn is_null(result: &NonFunctionValue, key: &str) -> bool {
-    result.as_object()
+    result
+        .as_object()
         .and_then(|o| o.get(key))
         .map(|v| v.is_null())
         .unwrap_or(true)
@@ -99,7 +104,10 @@ fn locale_override_language() {
 fn locale_calendar_extension() {
     let result = call(&[s("en-US"), obj(&[("calendar", "buddhist")])]);
     let base = get_str(&result, "baseName").expect("baseName");
-    assert!(base.contains("buddhist"), "baseName should contain buddhist: {base}");
+    assert!(
+        base.contains("buddhist"),
+        "baseName should contain buddhist: {base}"
+    );
     assert_eq!(get_str(&result, "calendar"), Some("buddhist".to_string()));
 }
 
@@ -107,8 +115,14 @@ fn locale_calendar_extension() {
 fn locale_numbering_system_extension() {
     let result = call(&[s("en-US"), obj(&[("numberingSystem", "arab")])]);
     let base = get_str(&result, "baseName").expect("baseName");
-    assert!(base.contains("arab"), "baseName should contain arab: {base}");
-    assert_eq!(get_str(&result, "numberingSystem"), Some("arab".to_string()));
+    assert!(
+        base.contains("arab"),
+        "baseName should contain arab: {base}"
+    );
+    assert_eq!(
+        get_str(&result, "numberingSystem"),
+        Some("arab".to_string())
+    );
 }
 
 #[test]

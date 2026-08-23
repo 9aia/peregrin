@@ -36,7 +36,8 @@ pub enum ArgSpec {
     /// The arg is available without type validation.
     Untyped,
     /// The arg is validated against this raw schema value before the expr runs.
-    Typed(JsonValue)}
+    Typed(JsonValue),
+}
 
 /// A computed field declaration extracted from `$:`.
 ///
@@ -50,14 +51,16 @@ pub struct ComputedField {
     /// The expression string to evaluate.
     pub expr: String,
     /// If present, the field's data value is available as `${arg}`.
-    pub arg: Option<ArgSpec>}
+    pub arg: Option<ArgSpec>,
+}
 
 impl From<(String, String)> for ComputedField {
     fn from((name, expr): (String, String)) -> Self {
         ComputedField {
             name,
             expr,
-            arg: None}
+            arg: None,
+        }
     }
 }
 
@@ -79,4 +82,5 @@ pub struct ExtractedFields {
     /// Field names declared with `merge: true`.
     /// After computation, these fields' values (must be objects) are spread
     /// into the parent scope and the field itself is removed.
-    pub merge: Vec<String>}
+    pub merge: Vec<String>,
+}

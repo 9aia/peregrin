@@ -10,7 +10,8 @@ use crate::{DriverError, Session, Source, typecheck_only_config, typecheck_pipel
 
 /// Report from a typecheck run.
 pub struct TypecheckReport {
-    pub errors: Vec<TypeError>}
+    pub errors: Vec<TypeError>,
+}
 
 impl TypecheckReport {
     pub fn is_valid(&self) -> bool {
@@ -18,7 +19,11 @@ impl TypecheckReport {
     }
 }
 
-pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<TypecheckReport, DriverError> {
+pub fn run(
+    input: &str,
+    format: &str,
+    base_path: Option<&Path>,
+) -> Result<TypecheckReport, DriverError> {
     let mut source = Source::new(input, format);
     if let Some(base) = base_path {
         source = source.with_path(base);
@@ -29,5 +34,6 @@ pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<Typech
     let result = driver.run(source, &mut session)?;
 
     Ok(TypecheckReport {
-        errors: result.type_errors})
+        errors: result.type_errors,
+    })
 }

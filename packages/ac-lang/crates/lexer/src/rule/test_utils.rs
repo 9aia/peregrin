@@ -5,7 +5,8 @@
 
 use crate::{
     CommentFactory, CommentTokenKind, DefaultLexError, KindFactory, LexError, LexRule, Lexer,
-    LexerConfig, Span, Token, TokenKind};
+    LexerConfig, Span, Token, TokenKind,
+};
 use std::fmt;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -20,7 +21,8 @@ pub enum TestKind {
     Comment(String),
     Delim(char),
     Custom(String),
-    Eof}
+    Eof,
+}
 
 impl fmt::Display for TestKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -35,32 +37,49 @@ impl fmt::Display for TestKind {
             TestKind::Comment(s) => write!(f, "comment({s:?})"),
             TestKind::Delim(c) => write!(f, "delim({c})"),
             TestKind::Custom(s) => write!(f, "custom({s})"),
-            TestKind::Eof => write!(f, "eof")}
+            TestKind::Eof => write!(f, "eof"),
+        }
     }
 }
 
 impl TokenKind for TestKind {
     type Factory = TestFactory;
-    fn is_eof(&self) -> bool { matches!(self, TestKind::Eof) }
-    fn is_error(&self) -> bool { false }
+    fn is_eof(&self) -> bool {
+        matches!(self, TestKind::Eof)
+    }
+    fn is_error(&self) -> bool {
+        false
+    }
 }
 
 impl CommentTokenKind for TestKind {
-    fn is_comment(&self) -> bool { matches!(self, TestKind::Comment(_)) }
+    fn is_comment(&self) -> bool {
+        matches!(self, TestKind::Comment(_))
+    }
 }
 
 #[derive(Clone, Default)]
 pub struct TestFactory;
 
 impl KindFactory<TestKind> for TestFactory {
-    fn string_kind(&self, v: String) -> TestKind { TestKind::Str(v) }
-    fn number_kind(&self, v: f64) -> TestKind { TestKind::Num(v) }
-    fn ident_kind(&self, t: String) -> TestKind { TestKind::Ident(t) }
-    fn eof_kind(&self) -> TestKind { TestKind::Eof }
+    fn string_kind(&self, v: String) -> TestKind {
+        TestKind::Str(v)
+    }
+    fn number_kind(&self, v: f64) -> TestKind {
+        TestKind::Num(v)
+    }
+    fn ident_kind(&self, t: String) -> TestKind {
+        TestKind::Ident(t)
+    }
+    fn eof_kind(&self) -> TestKind {
+        TestKind::Eof
+    }
 }
 
 impl CommentFactory<TestKind> for TestFactory {
-    fn comment_kind(&self, t: String) -> TestKind { TestKind::Comment(t) }
+    fn comment_kind(&self, t: String) -> TestKind {
+        TestKind::Comment(t)
+    }
 }
 
 pub fn cfg() -> LexerConfig<TestKind, DefaultLexError> {
@@ -83,10 +102,13 @@ impl<E: LexError> LexRule<TestKind, E> for BangRule {
                 let (pos, _) = chars.next().unwrap();
                 Some(Ok(Token::new(TestKind::Null, Span::at(pos))))
             }
-            _ => None}
+            _ => None,
+        }
     }
 
-    fn name(&self) -> &'static str { "bang" }
+    fn name(&self) -> &'static str {
+        "bang"
+    }
 
     fn clone_box(&self) -> Box<dyn LexRule<TestKind, E>> {
         Box::new(self.clone())
@@ -96,7 +118,8 @@ impl<E: LexError> LexRule<TestKind, E> for BangRule {
 // --- Local mock lexer ---
 
 pub struct MockLexer<E: LexError = DefaultLexError> {
-    tokens: Result<Vec<Token<TestKind>>, E>}
+    tokens: Result<Vec<Token<TestKind>>, E>,
+}
 
 impl<E: LexError> MockLexer<E> {
     pub fn ok(tokens: Vec<Token<TestKind>>) -> Self {

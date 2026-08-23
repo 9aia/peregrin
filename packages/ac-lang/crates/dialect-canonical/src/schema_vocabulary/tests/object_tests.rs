@@ -66,7 +66,9 @@ fn validate_pattern_properties() {
     }));
     assert!(
         schema
-            .validate(&NonFunctionValue::new(serde_json::json!({"x-custom": "hello"})))
+            .validate(&NonFunctionValue::new(
+                serde_json::json!({"x-custom": "hello"})
+            ))
             .is_ok()
     );
     assert!(

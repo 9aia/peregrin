@@ -44,10 +44,7 @@ type CallGraph = HashMap<String, HashSet<String>>;
 /// `function_bodies` is a map of function name → body expression string.
 /// Functions whose body cannot be parsed are skipped (they'll be caught
 /// by the expression typechecker).
-fn build_call_graph(
-    function_bodies: &HashMap<String, String>,
-    dialect: &dyn Dialect,
-) -> CallGraph {
+fn build_call_graph(function_bodies: &HashMap<String, String>, dialect: &dyn Dialect) -> CallGraph {
     let mut graph: CallGraph = HashMap::new();
 
     for (name, body) in function_bodies {
@@ -150,15 +147,7 @@ fn dfs_cycle(
                 continue;
             }
             if white.contains(callee) {
-                dfs_cycle(
-                    callee,
-                    graph,
-                    white,
-                    gray,
-                    black,
-                    stack,
-                    cycles,
-                );
+                dfs_cycle(callee, graph, white, gray, black, stack, cycles);
             }
         }
     }
@@ -198,10 +187,7 @@ pub fn extract_function_bodies(data: &JsonValue) -> HashMap<String, String> {
 /// Check all document-declared functions for infinite recursion cycles.
 ///
 /// Returns a list of [`TypeError`]s, one per detected cycle.
-pub fn check(
-    function_bodies: &HashMap<String, String>,
-    dialect: &dyn Dialect,
-) -> Vec<TypeError> {
+pub fn check(function_bodies: &HashMap<String, String>, dialect: &dyn Dialect) -> Vec<TypeError> {
     let graph = build_call_graph(function_bodies, dialect);
     let cycles = detect_cycles(&graph);
 

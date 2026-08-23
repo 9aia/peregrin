@@ -11,14 +11,16 @@ pub struct TypegenInput<'a> {
     pub input_path: &'a Path,
     pub output_format: &'a str,
     pub output_dir: &'a Path,
-    pub stdout: bool}
+    pub stdout: bool,
+}
 
 /// Result of a typegen run.
 pub enum TypegenResult {
     /// Schema was printed to stdout (the serialized schema).
     Stdout(String),
     /// Schema was written to a file (the file path).
-    FileWritten(PathBuf)}
+    FileWritten(PathBuf),
+}
 
 pub fn run(args: &TypegenInput) -> Result<TypegenResult, DriverError> {
     let source = Source::new(args.input, args.format).with_path(args.input_path);

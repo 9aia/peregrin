@@ -22,14 +22,20 @@ fn perlin_1d_in_range() {
         let x = i as f64 * 0.1;
         let result = call("perlin_1d", &[n(x)]);
         let val = extract_num(&result);
-        assert!((-1.5..=1.5).contains(&val), "1D noise {val} out of expected range at x={x}");
+        assert!(
+            (-1.5..=1.5).contains(&val),
+            "1D noise {val} out of expected range at x={x}"
+        );
     }
 }
 
 #[test]
 fn perlin_1d_no_args_errors() {
     let result = call_err("perlin_1d", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.perlin_2d ──────────────────────────────────────────────
@@ -56,7 +62,10 @@ fn perlin_2d_in_range() {
             let y = j as f64 * 0.1;
             let result = call("perlin_2d", &[n(x), n(y)]);
             let val = extract_num(&result);
-            assert!((-1.5..=1.5).contains(&val), "2D noise {val} out of range at ({x},{y})");
+            assert!(
+                (-1.5..=1.5).contains(&val),
+                "2D noise {val} out of range at ({x},{y})"
+            );
         }
     }
 }
@@ -65,19 +74,28 @@ fn perlin_2d_in_range() {
 fn perlin_2d_integer_coords_zero() {
     let result = call("perlin_2d", &[n(0.0), n(0.0)]);
     let val = extract_num(&result);
-    assert!(val.abs() < 1e-10, "noise at integer coords should be ~0, got {val}");
+    assert!(
+        val.abs() < 1e-10,
+        "noise at integer coords should be ~0, got {val}"
+    );
 }
 
 #[test]
 fn perlin_2d_no_args_errors() {
     let result = call_err("perlin_2d", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 #[test]
 fn perlin_2d_one_arg_errors() {
     let result = call_err("perlin_2d", &[n(1.0)]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.perlin_3d ──────────────────────────────────────────────
@@ -106,7 +124,10 @@ fn perlin_3d_in_range() {
                 let z = k as f64 * 0.1;
                 let result = call("perlin_3d", &[n(x), n(y), n(z)]);
                 let val = extract_num(&result);
-                assert!((-1.5..=1.5).contains(&val), "3D noise {val} out of range at ({x},{y},{z})");
+                assert!(
+                    (-1.5..=1.5).contains(&val),
+                    "3D noise {val} out of range at ({x},{y},{z})"
+                );
             }
         }
     }
@@ -115,13 +136,19 @@ fn perlin_3d_in_range() {
 #[test]
 fn perlin_3d_no_args_errors() {
     let result = call_err("perlin_3d", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 #[test]
 fn perlin_3d_one_arg_errors() {
     let result = call_err("perlin_3d", &[n(1.0)]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.simplex_2d ──────────────────────────────────────────────
@@ -148,7 +175,10 @@ fn simplex_2d_in_range() {
             let y = j as f64 * 0.1;
             let result = call("simplex_2d", &[n(x), n(y)]);
             let val = extract_num(&result);
-            assert!((-1.0..=1.0).contains(&val), "2D simplex noise {val} out of range at ({x},{y})");
+            assert!(
+                (-1.0..=1.0).contains(&val),
+                "2D simplex noise {val} out of range at ({x},{y})"
+            );
         }
     }
 }
@@ -157,19 +187,28 @@ fn simplex_2d_in_range() {
 fn simplex_2d_origin_zero() {
     let result = call("simplex_2d", &[n(0.0), n(0.0)]);
     let val = extract_num(&result);
-    assert!(val.abs() < 1e-10, "simplex at origin should be ~0, got {val}");
+    assert!(
+        val.abs() < 1e-10,
+        "simplex at origin should be ~0, got {val}"
+    );
 }
 
 #[test]
 fn simplex_2d_no_args_errors() {
     let result = call_err("simplex_2d", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 #[test]
 fn simplex_2d_one_arg_errors() {
     let result = call_err("simplex_2d", &[n(1.0)]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.simplex_3d ──────────────────────────────────────────────
@@ -198,7 +237,10 @@ fn simplex_3d_in_range() {
                 let z = k as f64 * 0.1;
                 let result = call("simplex_3d", &[n(x), n(y), n(z)]);
                 let val = extract_num(&result);
-                assert!((-1.0..=1.0).contains(&val), "3D simplex noise {val} out of range at ({x},{y},{z})");
+                assert!(
+                    (-1.0..=1.0).contains(&val),
+                    "3D simplex noise {val} out of range at ({x},{y},{z})"
+                );
             }
         }
     }
@@ -208,17 +250,26 @@ fn simplex_3d_in_range() {
 fn simplex_3d_origin_zero() {
     let result = call("simplex_3d", &[n(0.0), n(0.0), n(0.0)]);
     let val = extract_num(&result);
-    assert!(val.abs() < 1e-10, "simplex at origin should be ~0, got {val}");
+    assert!(
+        val.abs() < 1e-10,
+        "simplex at origin should be ~0, got {val}"
+    );
 }
 
 #[test]
 fn simplex_3d_no_args_errors() {
     let result = call_err("simplex_3d", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 #[test]
 fn simplex_3d_one_arg_errors() {
     let result = call_err("simplex_3d", &[n(1.0)]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }

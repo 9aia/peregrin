@@ -12,7 +12,8 @@ pub enum OsError {
     PermissionDenied { path: String },
     AlreadyExists { path: String },
     InvalidArgument { message: String },
-    Io { message: String }}
+    Io { message: String },
+}
 
 impl fmt::Display for OsError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -21,7 +22,8 @@ impl fmt::Display for OsError {
             Self::PermissionDenied { path } => write!(f, "permission denied: {path}"),
             Self::AlreadyExists { path } => write!(f, "already exists: {path}"),
             Self::InvalidArgument { message } => write!(f, "invalid argument: {message}"),
-            Self::Io { message } => write!(f, "io error: {message}")}
+            Self::Io { message } => write!(f, "io error: {message}"),
+        }
     }
 }
 

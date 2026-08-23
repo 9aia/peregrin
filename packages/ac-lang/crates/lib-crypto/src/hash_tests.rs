@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{Context, Error};
+use ac_runtime_modules::Module;
 
 use super::module::CryptoModule;
 
@@ -10,7 +10,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
@@ -38,7 +42,12 @@ fn sha256_string() {
 #[test]
 fn sha256_byte_array() {
     assert_eq!(
-        call(&CryptoModule, "sha256", &[bytes(&[104, 101, 108, 108, 111])]).as_str(),
+        call(
+            &CryptoModule,
+            "sha256",
+            &[bytes(&[104, 101, 108, 108, 111])]
+        )
+        .as_str(),
         Some("2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824")
     );
 }
@@ -113,8 +122,8 @@ fn md5_no_args_errors() {
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::{CanonicalContext, Host, Vm};
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(CryptoModule);

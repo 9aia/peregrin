@@ -4,7 +4,8 @@ use ac_runtime::{Context, Error, Function};
 fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0})
+        got: 0,
+    })
 }
 
 fn b(value: bool) -> NonFunctionValue {

@@ -1,7 +1,7 @@
 //! [`LineCommentRule`] — matches line comments.
 
-use ac_lexer::{CommentFactory, CommentTokenKind, LexError, LexerConfig, Token};
 use ac_lexer::LexRule;
+use ac_lexer::{CommentFactory, CommentTokenKind, LexError, LexerConfig, Token};
 
 /// Matches line comments using the factory's [`CommentFactory::is_line_comment_start`]
 /// and [`CommentFactory::lex_line_comment`].
@@ -24,10 +24,7 @@ where
         }
 
         let (text, span) = config.factory().lex_line_comment(chars);
-        Some(Ok(Token::new(
-            config.factory().comment_kind(text),
-            span,
-        )))
+        Some(Ok(Token::new(config.factory().comment_kind(text), span)))
     }
 
     fn name(&self) -> &'static str {

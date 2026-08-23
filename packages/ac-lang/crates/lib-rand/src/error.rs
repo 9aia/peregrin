@@ -12,7 +12,8 @@ pub enum RandError {
     NonNumericWeight { index: usize },
     InvalidStringLength { length: i64 },
     InvalidByteLength { length: i64 },
-    InvalidCharset { name: String }}
+    InvalidCharset { name: String },
+}
 
 impl fmt::Display for RandError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -21,7 +22,10 @@ impl fmt::Display for RandError {
                 write!(f, "invalid range: min ({min}) must be <= max ({max})")
             }
             Self::EmptyArray => write!(f, "cannot pick from an empty array"),
-            Self::InvalidSampleCount { requested, available } => {
+            Self::InvalidSampleCount {
+                requested,
+                available,
+            } => {
                 write!(
                     f,
                     "cannot sample {requested} elements from array of {available}"
@@ -46,7 +50,10 @@ impl fmt::Display for RandError {
                 write!(f, "byte length must be non-negative, got {length}")
             }
             Self::InvalidCharset { name } => {
-                write!(f, "unknown charset '{name}' — valid options: alphanumeric, alpha, numeric, hex, lower, upper")
+                write!(
+                    f,
+                    "unknown charset '{name}' — valid options: alphanumeric, alpha, numeric, hex, lower, upper"
+                )
             }
         }
     }

@@ -126,7 +126,10 @@ fn eval_with_callback() {
     ctx.set_eval(Box::new(SimpleEval));
     ctx.define("x", NonFunctionValue::new(21));
 
-    let expr = Expr::call("eval", vec![Expr::value(NonFunctionValue::new("mul(x, 2)"))]);
+    let expr = Expr::call(
+        "eval",
+        vec![Expr::value(NonFunctionValue::new("mul(x, 2)"))],
+    );
     let result = vm.eval(&expr, &mut ctx).unwrap();
     assert_eq!(result.as_number(), Some(42.0));
 }
@@ -136,7 +139,10 @@ fn eval_without_callback_errors() {
     let vm = Vm::new(MetaHost::default());
     let mut ctx = CanonicalContext::new();
 
-    let expr = Expr::call("eval", vec![Expr::value(NonFunctionValue::new("add(1, 2)"))]);
+    let expr = Expr::call(
+        "eval",
+        vec![Expr::value(NonFunctionValue::new("add(1, 2)"))],
+    );
     let result = vm.eval(&expr, &mut ctx);
     assert!(result.is_err());
 }
@@ -234,7 +240,9 @@ fn parse_dollar_wrapped() {
 fn parse_handle_single_handler() {
     let v = call_meta(
         "parse",
-        &[NonFunctionValue::new("handle(fetch(\"data\")) { \"fetch\"(url) as k: k(42) }")],
+        &[NonFunctionValue::new(
+            "handle(fetch(\"data\")) { \"fetch\"(url) as k: k(42) }",
+        )],
     );
     let obj = v.as_object().unwrap();
     assert_eq!(obj.get("kind").unwrap().as_str(), Some("handle"));
@@ -266,7 +274,9 @@ fn parse_handle_multiple_handlers() {
 fn parse_handle_no_params() {
     let v = call_meta(
         "parse",
-        &[NonFunctionValue::new("handle(fetch()) { \"fetch\"() as k: \"cached\" }")],
+        &[NonFunctionValue::new(
+            "handle(fetch()) { \"fetch\"() as k: \"cached\" }",
+        )],
     );
     let obj = v.as_object().unwrap();
     assert_eq!(obj.get("kind").unwrap().as_str(), Some("handle"));
@@ -280,7 +290,9 @@ fn parse_handle_no_params() {
 fn parse_handle_dollar_wrapped() {
     let v = call_meta(
         "parse",
-        &[NonFunctionValue::new("${handle(fetch(\"d\")) { \"fetch\"(url) as k: k(42) }}")],
+        &[NonFunctionValue::new(
+            "${handle(fetch(\"d\")) { \"fetch\"(url) as k: k(42) }}",
+        )],
     );
     let obj = v.as_object().unwrap();
     assert_eq!(obj.get("kind").unwrap().as_str(), Some("handle"));
@@ -290,7 +302,9 @@ fn parse_handle_dollar_wrapped() {
 fn parse_handle_handler_body_is_call() {
     let v = call_meta(
         "parse",
-        &[NonFunctionValue::new("handle(fetch(\"data\")) { \"fetch\"(url) as k: k(42) }")],
+        &[NonFunctionValue::new(
+            "handle(fetch(\"data\")) { \"fetch\"(url) as k: k(42) }",
+        )],
     );
     let obj = v.as_object().unwrap();
     let handlers = obj.get("handlers").unwrap().as_array().unwrap();
@@ -516,7 +530,10 @@ fn meta_host_provides_mul() {
 fn meta_host_provides_concat() {
     let v = call_meta(
         "concat",
-        &[NonFunctionValue::new("hello"), NonFunctionValue::new(" world")],
+        &[
+            NonFunctionValue::new("hello"),
+            NonFunctionValue::new(" world"),
+        ],
     );
     assert_eq!(v.as_str(), Some("hello world"));
 }
@@ -527,10 +544,14 @@ fn call_meta(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     try_call_meta(name, args).expect("call should succeed")
 }
 
-fn try_call_meta(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, ac_runtime::Error> {
+fn try_call_meta(
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, ac_runtime::Error> {
     let vm = Vm::new(MetaHost::default());
     let mut ctx = CanonicalContext::new();
-    let expr_args: Vec<Expr<NonFunctionValue>> = args.iter().map(|a| Expr::value(a.clone())).collect();
+    let expr_args: Vec<Expr<NonFunctionValue>> =
+        args.iter().map(|a| Expr::value(a.clone())).collect();
     let expr = Expr::call(name, expr_args);
     vm.eval(&expr, &mut ctx)
 }

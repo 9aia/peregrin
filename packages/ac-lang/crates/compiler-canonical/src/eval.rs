@@ -1,8 +1,8 @@
 use ac_ast_canonical::Expr;
 use ac_frontend::frontend_for;
-use ac_runtime_example_1::DefaultHost;
 use ac_runtime::NonFunctionValue;
 use ac_runtime_canonical::{CanonicalContext, Context, Vm};
+use ac_runtime_example_1::DefaultHost;
 
 pub fn run(input: &str, format: &str, output_format: &str) -> Result<String, String> {
     let frontend = frontend_for(format)?;

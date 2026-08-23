@@ -31,7 +31,8 @@ pub struct Config {
     pub import_resolver: Box<dyn ImportResolver>,
     /// Extensible typed config — custom passes can read their config
     /// via [`Config::extension`] without modifying this struct.
-    pub extensions: HashMap<TypeId, Box<dyn Any + Send + Sync>>}
+    pub extensions: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
+}
 
 impl Config {
     /// Borrow a typed extension previously added via [`Config::with_extension`].
@@ -47,5 +48,4 @@ impl Config {
         self.extensions.insert(TypeId::of::<T>(), Box::new(ext));
         self
     }
-
 }

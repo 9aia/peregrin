@@ -1,10 +1,11 @@
-use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_runtime::Error;
+use ac_runtime::{FunctionValue, NonFunctionValue};
 
 pub(super) fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0})
+        got: 0,
+    })
 }
 
 pub(super) fn require_two_args(
@@ -13,7 +14,8 @@ pub(super) fn require_two_args(
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len()});
+            got: args.len(),
+        });
     }
     Ok((&args[0], &args[1]))
 }
@@ -24,7 +26,8 @@ pub(super) fn require_three_args(
     if args.len() < 3 {
         return Err(Error::ArgumentCount {
             expected: 3,
-            got: args.len()});
+            got: args.len(),
+        });
     }
     Ok((&args[0], &args[1], &args[2]))
 }
@@ -34,13 +37,15 @@ pub(super) fn require_object(
 ) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
     arg.as_object().ok_or(Error::TypeMismatch {
         expected: "object",
-        got: "non-object"})
+        got: "non-object",
+    })
 }
 
 pub(super) fn require_array(arg: &NonFunctionValue) -> Result<&[serde_json::Value], Error> {
     arg.as_array().ok_or(Error::TypeMismatch {
         expected: "array",
-        got: "non-array"})
+        got: "non-array",
+    })
 }
 
 pub(super) fn require_string(arg: &NonFunctionValue) -> Result<String, Error> {
@@ -48,13 +53,15 @@ pub(super) fn require_string(arg: &NonFunctionValue) -> Result<String, Error> {
         .map(|s| s.to_string())
         .ok_or(Error::TypeMismatch {
             expected: "string",
-            got: "non-string"})
+            got: "non-string",
+        })
 }
 
 pub(super) fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error> {
     arg.as_function().ok_or(Error::TypeMismatch {
         expected: "function value",
-        got: "non-function"})
+        got: "non-function",
+    })
 }
 
 pub(super) fn b(value: bool) -> NonFunctionValue {
@@ -118,7 +125,8 @@ pub(super) fn value_to_string(value: &serde_json::Value) -> String {
         }
         serde_json::Value::Bool(b) => b.to_string(),
         serde_json::Value::Null => "null".to_string(),
-        _ => serde_json::to_string(value).unwrap_or_else(|_| "unknown".to_string())}
+        _ => serde_json::to_string(value).unwrap_or_else(|_| "unknown".to_string()),
+    }
 }
 
 pub(super) fn deep_merge_values(a: &serde_json::Value, b: &serde_json::Value) -> serde_json::Value {
@@ -134,7 +142,8 @@ pub(super) fn deep_merge_values(a: &serde_json::Value, b: &serde_json::Value) ->
             }
             serde_json::Value::Object(result)
         }
-        (_, b) => b.clone()}
+        (_, b) => b.clone(),
+    }
 }
 
 pub(super) fn set_path_recursive(
@@ -149,7 +158,8 @@ pub(super) fn set_path_recursive(
     let rest = &segments[1..];
     let mut map = match value {
         serde_json::Value::Object(m) => m,
-        _ => serde_json::Map::new()};
+        _ => serde_json::Map::new(),
+    };
     let current = map.get(segment).cloned().unwrap_or(serde_json::Value::Null);
     let updated = set_path_recursive(current, rest, new_value);
     map.insert(segment.to_string(), updated);
@@ -171,7 +181,8 @@ pub(super) fn update_path_recursive(
     let rest = &segments[1..];
     let mut map = match value {
         serde_json::Value::Object(m) => m,
-        _ => serde_json::Map::new()};
+        _ => serde_json::Map::new(),
+    };
     let current = map.get(segment).cloned().unwrap_or(serde_json::Value::Null);
     let updated = update_path_recursive(current, rest, fn_val, ctx)?;
     map.insert(segment.to_string(), updated);

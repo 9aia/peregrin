@@ -6,15 +6,14 @@
 
 use ac_lib_intl::IntlModule;
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
 
 fn blob() -> Vec<u8> {
-    let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("tests/data/test.postcard");
-    std::fs::read(&path).unwrap_or_else(|e| {
-        panic!("failed to read test blob at {}: {e}", path.display())
-    })
+    let path =
+        std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/data/test.postcard");
+    std::fs::read(&path)
+        .unwrap_or_else(|e| panic!("failed to read test blob at {}: {e}", path.display()))
 }
 
 fn module() -> IntlModule {
@@ -84,20 +83,44 @@ fn blob_format_number_locale_ja() {
 
 #[test]
 fn blob_format_number_percent() {
-    let result = call(&module(), "format_number", &[n(0.5), s("en"), obj(&[("style", serde_json::json!("percent"))])]);
+    let result = call(
+        &module(),
+        "format_number",
+        &[
+            n(0.5),
+            s("en"),
+            obj(&[("style", serde_json::json!("percent"))]),
+        ],
+    );
     assert_eq!(result.as_str(), Some("50%"));
 }
 
 #[test]
 fn blob_format_number_compact() {
-    let result = call(&module(), "format_number", &[n(1000000.0), s("en"), obj(&[("notation", serde_json::json!("compact"))])]);
+    let result = call(
+        &module(),
+        "format_number",
+        &[
+            n(1000000.0),
+            s("en"),
+            obj(&[("notation", serde_json::json!("compact"))]),
+        ],
+    );
     let s = result.as_str().expect("non-empty");
     assert!(s.contains("M") || s.contains("million"), "got: {s}");
 }
 
 #[test]
 fn blob_format_number_min_fraction_digits() {
-    let result = call(&module(), "format_number", &[n(1.5), s("en"), obj(&[("minimumFractionDigits", serde_json::json!(2))])]);
+    let result = call(
+        &module(),
+        "format_number",
+        &[
+            n(1.5),
+            s("en"),
+            obj(&[("minimumFractionDigits", serde_json::json!(2))]),
+        ],
+    );
     assert_eq!(result.as_str(), Some("1.50"));
 }
 
@@ -123,7 +146,15 @@ fn blob_select_plural_arabic_zero() {
 
 #[test]
 fn blob_select_plural_ordinal() {
-    let result = call(&module(), "select_plural", &[n(2.0), s("en"), obj(&[("type", serde_json::json!("ordinal"))])]);
+    let result = call(
+        &module(),
+        "select_plural",
+        &[
+            n(2.0),
+            s("en"),
+            obj(&[("type", serde_json::json!("ordinal"))]),
+        ],
+    );
     assert_eq!(result.as_str(), Some("two"));
 }
 
@@ -131,28 +162,55 @@ fn blob_select_plural_ordinal() {
 
 #[test]
 fn blob_format_list_conjunction() {
-    let result = call(&module(), "format_list", &[arr_str(&["a", "b", "c"]), s("en")]);
+    let result = call(
+        &module(),
+        "format_list",
+        &[arr_str(&["a", "b", "c"]), s("en")],
+    );
     assert_eq!(result.as_str(), Some("a, b, and c"));
 }
 
 #[test]
 fn blob_format_list_disjunction() {
-    let result = call(&module(), "format_list", &[arr_str(&["a", "b", "c"]), s("en"), obj(&[("type", serde_json::json!("disjunction"))])]);
+    let result = call(
+        &module(),
+        "format_list",
+        &[
+            arr_str(&["a", "b", "c"]),
+            s("en"),
+            obj(&[("type", serde_json::json!("disjunction"))]),
+        ],
+    );
     assert_eq!(result.as_str(), Some("a, b, or c"));
 }
 
 #[test]
 fn blob_format_list_unit() {
-    let result = call(&module(), "format_list", &[arr_str(&["5", "7"]), s("en"), obj(&[("type", serde_json::json!("unit"))])]);
+    let result = call(
+        &module(),
+        "format_list",
+        &[
+            arr_str(&["5", "7"]),
+            s("en"),
+            obj(&[("type", serde_json::json!("unit"))]),
+        ],
+    );
     let s = result.as_str().expect("non-empty");
     assert!(s.contains("5") && s.contains("7"), "got: {s}");
 }
 
 #[test]
 fn blob_format_list_locale_es() {
-    let result = call(&module(), "format_list", &[arr_str(&["a", "b", "c"]), s("es")]);
+    let result = call(
+        &module(),
+        "format_list",
+        &[arr_str(&["a", "b", "c"]), s("es")],
+    );
     let s = result.as_str().expect("non-empty");
-    assert!(s.contains("a") && s.contains("b") && s.contains("c"), "got: {s}");
+    assert!(
+        s.contains("a") && s.contains("b") && s.contains("c"),
+        "got: {s}"
+    );
 }
 
 // ── format_date ───────────────────────────────────────────────────
@@ -166,14 +224,30 @@ fn blob_format_date_ymd() {
 
 #[test]
 fn blob_format_date_time_only() {
-    let result = call(&module(), "format_date", &[s("2024-05-08T14:30:00"), s("en"), obj(&[("type", serde_json::json!("time"))])]);
+    let result = call(
+        &module(),
+        "format_date",
+        &[
+            s("2024-05-08T14:30:00"),
+            s("en"),
+            obj(&[("type", serde_json::json!("time"))]),
+        ],
+    );
     let s = result.as_str().expect("non-empty");
     assert!(s.contains("14") || s.contains("2"), "got: {s}");
 }
 
 #[test]
 fn blob_format_date_datetime() {
-    let result = call(&module(), "format_date", &[s("2024-05-08T14:30:00"), s("en"), obj(&[("type", serde_json::json!("datetime"))])]);
+    let result = call(
+        &module(),
+        "format_date",
+        &[
+            s("2024-05-08T14:30:00"),
+            s("en"),
+            obj(&[("type", serde_json::json!("datetime"))]),
+        ],
+    );
     let s = result.as_str().expect("non-empty");
     assert!(s.contains("2024") || s.contains("May"), "got: {s}");
 }
@@ -207,10 +281,16 @@ fn blob_compare_strings_greater() {
 
 #[test]
 fn blob_compare_strings_numeric() {
-    let result = call(&module(), "compare_strings", &[
-        s("file10"), s("file2"), s("en"),
-        obj(&[("numeric", serde_json::json!(true))]),
-    ]);
+    let result = call(
+        &module(),
+        "compare_strings",
+        &[
+            s("file10"),
+            s("file2"),
+            s("en"),
+            obj(&[("numeric", serde_json::json!(true))]),
+        ],
+    );
     assert_eq!(result.as_number(), Some(1.0));
 }
 
@@ -227,14 +307,26 @@ fn blob_segment_grapheme() {
 fn blob_segment_word() {
     let result = call(&module(), "segment", &[s("hello world"), s("word")]);
     let arr = result.as_array().expect("array");
-    assert!(arr.len() >= 2, "expected at least 2 segments, got {}", arr.len());
+    assert!(
+        arr.len() >= 2,
+        "expected at least 2 segments, got {}",
+        arr.len()
+    );
 }
 
 #[test]
 fn blob_segment_sentence() {
-    let result = call(&module(), "segment", &[s("Hello world. Goodbye."), s("sentence")]);
+    let result = call(
+        &module(),
+        "segment",
+        &[s("Hello world. Goodbye."), s("sentence")],
+    );
     let arr = result.as_array().expect("array");
-    assert!(arr.len() >= 2, "expected at least 2 segments, got {}", arr.len());
+    assert!(
+        arr.len() >= 2,
+        "expected at least 2 segments, got {}",
+        arr.len()
+    );
 }
 
 #[test]
@@ -254,14 +346,22 @@ fn blob_display_name_region() {
 
 #[test]
 fn blob_display_name_language() {
-    let result = call(&module(), "display_name", &[s("en"), s("language"), s("pt-BR")]);
+    let result = call(
+        &module(),
+        "display_name",
+        &[s("en"), s("language"), s("pt-BR")],
+    );
     let s = result.as_str().expect("non-empty");
     assert!(!s.is_empty(), "display name should not be empty");
 }
 
 #[test]
 fn blob_display_name_script() {
-    let result = call(&module(), "display_name", &[s("Latn"), s("script"), s("en")]);
+    let result = call(
+        &module(),
+        "display_name",
+        &[s("Latn"), s("script"), s("en")],
+    );
     assert_eq!(result.as_str(), Some("Latin"));
 }
 
@@ -269,29 +369,63 @@ fn blob_display_name_script() {
 
 #[test]
 fn blob_display_name_currency_usd() {
-    let result = call(&module(), "display_name", &[s("USD"), s("currency"), s("en")]);
+    let result = call(
+        &module(),
+        "display_name",
+        &[s("USD"), s("currency"), s("en")],
+    );
     let s = result.as_str().expect("non-empty");
-    assert!(s.contains("US dollar") || s.contains("US Dollar"), "currency USD in en should contain 'US dollar', got: {s}");
+    assert!(
+        s.contains("US dollar") || s.contains("US Dollar"),
+        "currency USD in en should contain 'US dollar', got: {s}"
+    );
 }
 
 #[test]
 fn blob_display_name_currency_eur() {
-    let result = call(&module(), "display_name", &[s("EUR"), s("currency"), s("en")]);
+    let result = call(
+        &module(),
+        "display_name",
+        &[s("EUR"), s("currency"), s("en")],
+    );
     let s = result.as_str().expect("non-empty");
-    assert!(s.contains("Euro"), "currency EUR in en should contain 'Euro', got: {s}");
+    assert!(
+        s.contains("Euro"),
+        "currency EUR in en should contain 'Euro', got: {s}"
+    );
 }
 
 #[test]
 fn blob_display_name_currency_fallback_code() {
-    let result = call(&module(), "display_name", &[s("ZZZ"), s("currency"), s("en"), obj(&[("fallback", serde_json::json!("code"))])]);
+    let result = call(
+        &module(),
+        "display_name",
+        &[
+            s("ZZZ"),
+            s("currency"),
+            s("en"),
+            obj(&[("fallback", serde_json::json!("code"))]),
+        ],
+    );
     let s = result.as_str().expect("non-empty");
-    assert_eq!(s, "ZZZ", "unknown currency with fallback:code should return code, got: {s}");
+    assert_eq!(
+        s, "ZZZ",
+        "unknown currency with fallback:code should return code, got: {s}"
+    );
 }
 
 #[test]
 fn blob_compiled_parity_display_name_currency() {
-    let compiled = call(&IntlModule::new(), "display_name", &[s("USD"), s("currency"), s("en")]);
-    let blob_result = call(&module(), "display_name", &[s("USD"), s("currency"), s("en")]);
+    let compiled = call(
+        &IntlModule::new(),
+        "display_name",
+        &[s("USD"), s("currency"), s("en")],
+    );
+    let blob_result = call(
+        &module(),
+        "display_name",
+        &[s("USD"), s("currency"), s("en")],
+    );
     assert_eq!(compiled.as_str(), blob_result.as_str());
 }
 
@@ -299,21 +433,33 @@ fn blob_compiled_parity_display_name_currency() {
 
 #[test]
 fn blob_format_relative_time_future() {
-    let result = call(&module(), "format_relative_time", &[n(5.0), s("second"), s("en")]);
+    let result = call(
+        &module(),
+        "format_relative_time",
+        &[n(5.0), s("second"), s("en")],
+    );
     let s = result.as_str().expect("non-empty");
     assert!(s.contains("5") && s.contains("second"), "got: {s}");
 }
 
 #[test]
 fn blob_format_relative_time_past() {
-    let result = call(&module(), "format_relative_time", &[n(-10.0), s("second"), s("en")]);
+    let result = call(
+        &module(),
+        "format_relative_time",
+        &[n(-10.0), s("second"), s("en")],
+    );
     let s = result.as_str().expect("non-empty");
     assert!(s.contains("10") && s.contains("ago"), "got: {s}");
 }
 
 #[test]
 fn blob_format_relative_time_locale_es() {
-    let result = call(&module(), "format_relative_time", &[n(5.0), s("second"), s("es")]);
+    let result = call(
+        &module(),
+        "format_relative_time",
+        &[n(5.0), s("second"), s("es")],
+    );
     let s = result.as_str().expect("non-empty");
     assert!(s.contains("5"), "got: {s}");
 }
@@ -335,7 +481,9 @@ fn blob_format_duration_returns_graceful_error() {
     assert!(result.is_err(), "expected graceful error, not panic");
     let err = result.unwrap_err();
     assert!(
-        err.to_string().contains("blob") || err.to_string().contains("buffer") || err.to_string().contains("provider"),
+        err.to_string().contains("blob")
+            || err.to_string().contains("buffer")
+            || err.to_string().contains("provider"),
         "error should mention the provider limitation, got: {err}"
     );
 }
@@ -351,15 +499,27 @@ fn blob_format_duration_zero() {
 
 #[test]
 fn blob_compiled_parity_format_number() {
-    let compiled = call(&IntlModule::new(), "format_number", &[n(1234567.89), s("en")]);
+    let compiled = call(
+        &IntlModule::new(),
+        "format_number",
+        &[n(1234567.89), s("en")],
+    );
     let blob_result = call(&module(), "format_number", &[n(1234567.89), s("en")]);
     assert_eq!(compiled.as_str(), blob_result.as_str());
 }
 
 #[test]
 fn blob_compiled_parity_format_list() {
-    let compiled = call(&IntlModule::new(), "format_list", &[arr_str(&["a", "b", "c"]), s("en")]);
-    let blob_result = call(&module(), "format_list", &[arr_str(&["a", "b", "c"]), s("en")]);
+    let compiled = call(
+        &IntlModule::new(),
+        "format_list",
+        &[arr_str(&["a", "b", "c"]), s("en")],
+    );
+    let blob_result = call(
+        &module(),
+        "format_list",
+        &[arr_str(&["a", "b", "c"]), s("en")],
+    );
     assert_eq!(compiled.as_str(), blob_result.as_str());
 }
 
@@ -389,7 +549,11 @@ fn blob_compiled_parity_segment_grapheme() {
 
 #[test]
 fn blob_compiled_parity_display_name() {
-    let compiled = call(&IntlModule::new(), "display_name", &[s("US"), s("region"), s("en")]);
+    let compiled = call(
+        &IntlModule::new(),
+        "display_name",
+        &[s("US"), s("region"), s("en")],
+    );
     let blob_result = call(&module(), "display_name", &[s("US"), s("region"), s("en")]);
     assert_eq!(compiled.as_str(), blob_result.as_str());
 }
@@ -407,17 +571,29 @@ fn blob_supported_locales_of_returns_blob_locales() {
 
 #[test]
 fn blob_supported_locales_of_filters_to_blob() {
-    let result = call(&module(), "supported_locales_of", &[arr_str(&["en", "de", "ja"])]);
+    let result = call(
+        &module(),
+        "supported_locales_of",
+        &[arr_str(&["en", "de", "ja"])],
+    );
     let arr = result.as_array().expect("array result");
     let langs: Vec<&str> = arr.iter().filter_map(|v| v.as_str()).collect();
-    assert!(langs.contains(&"en"), "en should be supported by blob, got: {:?}", langs);
+    assert!(
+        langs.contains(&"en"),
+        "en should be supported by blob, got: {:?}",
+        langs
+    );
 }
 
 #[test]
 fn blob_supported_locales_of_rejects_unavailable() {
     let result = call(&module(), "supported_locales_of", &[arr_str(&["xx", "yy"])]);
     let arr = result.as_array().expect("array result");
-    assert!(arr.is_empty(), "unavailable locales should be filtered out, got: {:?}", arr);
+    assert!(
+        arr.is_empty(),
+        "unavailable locales should be filtered out, got: {:?}",
+        arr
+    );
 }
 
 #[test]
@@ -430,10 +606,19 @@ fn blob_supported_locales_of_subset_of_compiled() {
     assert!(!compiled_arr.is_empty(), "compiled should have locales");
     let compiled_langs: std::collections::HashSet<String> = compiled_arr
         .iter()
-        .filter_map(|v| v.as_str().map(|s| s.split('-').next().unwrap_or(s).to_string()))
+        .filter_map(|v| {
+            v.as_str()
+                .map(|s| s.split('-').next().unwrap_or(s).to_string())
+        })
         .collect();
     for item in blob_arr {
-        let lang = item.as_str().expect("string").split('-').next().unwrap_or("").to_string();
+        let lang = item
+            .as_str()
+            .expect("string")
+            .split('-')
+            .next()
+            .unwrap_or("")
+            .to_string();
         if lang != "und" && !lang.is_empty() {
             assert!(
                 compiled_langs.contains(&lang),

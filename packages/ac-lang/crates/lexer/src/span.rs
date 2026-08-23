@@ -9,7 +9,8 @@ pub struct Span {
     /// Start byte offset (inclusive).
     pub start: usize,
     /// End byte offset (exclusive).
-    pub end: usize}
+    pub end: usize,
+}
 
 impl Span {
     /// Creates a span from `[start, end)`.
@@ -28,7 +29,10 @@ impl Span {
 
     /// Creates a zero-length span at `pos`.
     pub fn at(pos: usize) -> Self {
-        Span { start: pos, end: pos }
+        Span {
+            start: pos,
+            end: pos,
+        }
     }
 
     /// Returns the length of the span in bytes.

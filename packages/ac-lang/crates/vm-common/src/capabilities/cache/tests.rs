@@ -1,5 +1,5 @@
-use ac_ast_canonical::Expr;
 use super::{CacheHost, CallCache};
+use ac_ast_canonical::Expr;
 use ac_runtime::NonFunctionValue;
 use ac_runtime_canonical::{CanonicalContext, Context, Error, EvalResult, Function, Host, Vm};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -15,16 +15,25 @@ impl Host for EmptyHost {
 
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
 }
 
 struct CountingFetch {
-    calls: AtomicUsize}
+    calls: AtomicUsize,
+}
 impl Function for CountingFetch {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let n = self.calls.fetch_add(1, Ordering::SeqCst);
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("?");
         Ok(NonFunctionValue::new(format!("result_{input}_{n}")))
@@ -33,9 +42,15 @@ impl Function for CountingFetch {
 
 struct YieldingFetch;
 impl Function for YieldingFetch {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("?");
-        Err(Error::Yield(NonFunctionValue::new(format!("yield:{input}"))))
+        Err(Error::Yield(NonFunctionValue::new(format!(
+            "yield:{input}"
+        ))))
     }
 }
 
@@ -108,7 +123,8 @@ fn cache_empty_serialization() {
 fn cache_host_caches_successful_calls() {
     let mut host = CacheHost::new(EmptyHost);
     let fetch = CountingFetch {
-        calls: AtomicUsize::new(0)};
+        calls: AtomicUsize::new(0),
+    };
     host.register("fetch", Box::new(fetch));
     host.register("add", Box::new(Add));
 
@@ -172,8 +188,10 @@ fn end_to_end_server_to_client_migration() {
     let (yielded_value, continuation) = match result {
         EvalResult::Yielded {
             value,
-            continuation} => (value, continuation),
-        other => panic!("expected Yielded, got {other:?}")};
+            continuation,
+        } => (value, continuation),
+        other => panic!("expected Yielded, got {other:?}"),
+    };
     assert_eq!(yielded_value.as_str(), Some("yield:data"));
 
     // Serialize continuation + cache
@@ -201,5 +219,6 @@ fn end_to_end_server_to_client_migration() {
     let result = client_vm.eval_resumable(&expr, &mut ctx, Some(restored_cont));
     match result {
         EvalResult::Done(value) => assert_eq!(value.as_number(), Some(52.0)),
-        other => panic!("expected Done, got {other:?}")}
+        other => panic!("expected Done, got {other:?}"),
+    }
 }

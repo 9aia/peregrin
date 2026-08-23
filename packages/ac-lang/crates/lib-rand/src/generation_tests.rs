@@ -24,10 +24,7 @@ fn string_alphanumeric_only() {
     let result = call("string", &[n(100.0)]);
     let s = extract_str(&result);
     for c in s.chars() {
-        assert!(
-            c.is_ascii_alphanumeric(),
-            "non-alphanumeric character: {c}"
-        );
+        assert!(c.is_ascii_alphanumeric(), "non-alphanumeric character: {c}");
     }
 }
 
@@ -43,7 +40,10 @@ fn string_hex_charset() {
     let s = extract_str(&result);
     assert_eq!(s.len(), 100);
     for c in s.chars() {
-        assert!(c.is_ascii_digit() || ('a'..='f').contains(&c), "non-hex character: {c}");
+        assert!(
+            c.is_ascii_digit() || ('a'..='f').contains(&c),
+            "non-hex character: {c}"
+        );
     }
 }
 
@@ -96,7 +96,10 @@ fn string_invalid_charset_errors() {
 #[test]
 fn string_non_string_charset_errors() {
     let result = call_err("string", &[n(10.0), n(42.0)]);
-    assert!(matches!(result, Err(ac_runtime::Error::TypeMismatch { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::TypeMismatch { .. })
+    ));
 }
 
 // ── rand.bytes ───────────────────────────────────────────────────
@@ -122,7 +125,10 @@ fn bytes_in_range() {
     let arr = extract_array(&result);
     for v in &arr {
         let byte_val = v.as_f64().unwrap();
-        assert!((0.0..=255.0).contains(&byte_val), "byte {byte_val} out of range");
+        assert!(
+            (0.0..=255.0).contains(&byte_val),
+            "byte {byte_val} out of range"
+        );
         assert_eq!(byte_val, byte_val.trunc(), "byte value must be an integer");
     }
 }
@@ -156,7 +162,10 @@ fn uuid_version_4() {
         let result = call("uuid", &[]);
         let uuid = extract_str(&result);
         let version_char = uuid.chars().nth(14).unwrap();
-        assert_eq!(version_char, '4', "version nibble must be 4, got {version_char}");
+        assert_eq!(
+            version_char, '4',
+            "version nibble must be 4, got {version_char}"
+        );
     }
 }
 

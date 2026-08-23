@@ -34,11 +34,13 @@ pub fn split_parts(items: &[&str], formatted: &str) -> Vec<ListFormatPart> {
                 if !literal.is_empty() {
                     result.push(ListFormatPart {
                         part_type: ListFormatPartType::Literal,
-                        value: literal.to_string()});
+                        value: literal.to_string(),
+                    });
                 }
                 result.push(ListFormatPart {
                     part_type: ListFormatPartType::Element,
-                    value: (*item).to_string()});
+                    value: (*item).to_string(),
+                });
                 remaining = &remaining[pos + marker.len()..];
             }
             None => {
@@ -46,7 +48,8 @@ pub fn split_parts(items: &[&str], formatted: &str) -> Vec<ListFormatPart> {
                 if !remaining.is_empty() {
                     result.push(ListFormatPart {
                         part_type: ListFormatPartType::Literal,
-                        value: remaining.to_string()});
+                        value: remaining.to_string(),
+                    });
                 }
                 return result;
             }
@@ -56,7 +59,8 @@ pub fn split_parts(items: &[&str], formatted: &str) -> Vec<ListFormatPart> {
     if !remaining.is_empty() {
         result.push(ListFormatPart {
             part_type: ListFormatPartType::Literal,
-            value: remaining.to_string()});
+            value: remaining.to_string(),
+        });
     }
 
     result

@@ -7,12 +7,12 @@ use chrono::{TimeZone, Utc};
 
 fn get_number(args: &[NonFunctionValue], index: usize, default: f64) -> Result<f64, Error> {
     match args.get(index) {
-        Some(v) => v
-            .as_number()
-            .ok_or(Error::TypeMismatch {
-                expected: "number",
-                got: "non-number"}),
-        None => Ok(default)}
+        Some(v) => v.as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        }),
+        None => Ok(default),
+    }
 }
 
 #[derive(Clone, Copy)]
@@ -26,7 +26,8 @@ impl Function for FromComponents {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len()});
+                got: args.len(),
+            });
         }
         let year = get_number(args, 0, 0.0)? as i32;
         let month = get_number(args, 1, 0.0)? as u32;
@@ -38,13 +39,17 @@ impl Function for FromComponents {
         let dt = Utc
             .with_ymd_and_hms(year, month, day, hour, minute, second)
             .single()
-            .ok_or(DatetimeError::InvalidDateComponents {
-                year,
-                month,
-                day,
-                hour,
-                minute,
-                second}.into_vm_error())?;
+            .ok_or(
+                DatetimeError::InvalidDateComponents {
+                    year,
+                    month,
+                    day,
+                    hour,
+                    minute,
+                    second,
+                }
+                .into_vm_error(),
+            )?;
 
         Ok(s(format_iso(&dt)))
     }

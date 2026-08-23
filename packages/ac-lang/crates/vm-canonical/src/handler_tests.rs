@@ -1,11 +1,11 @@
 use crate::CanonicalContext;
 use crate::Context;
-use crate::{Continuation, EvalResult};
 use crate::Error;
+use crate::NonFunctionValue;
+use crate::{Continuation, EvalResult};
+use crate::{Expr, HandlerClause};
 use crate::{Function, Host};
 use crate::{Operation, OperationSig};
-use crate::{Expr, HandlerClause};
-use crate::NonFunctionValue;
 
 // ── test operations and functions ────────────────────────────────
 
@@ -17,13 +17,19 @@ impl Operation for FetchOp {
         OperationSig {
             name: "fetch".to_string(),
             params: vec![("url".to_string(), serde_json::json!({"type": "string"}))],
-            return_schema: Some(serde_json::json!({"type": "string"}))}
+            return_schema: Some(serde_json::json!({"type": "string"})),
+        }
     }
 
-    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn perform(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
-            args: args.to_vec()})
+            args: args.to_vec(),
+        })
     }
 }
 
@@ -31,7 +37,11 @@ impl Operation for FetchOp {
 struct Add;
 
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -41,7 +51,11 @@ impl Function for Add {
 struct Concat;
 
 impl Function for Concat {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let s: String = args
             .iter()
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -55,14 +69,16 @@ impl Function for Concat {
 struct OpHost {
     add: Add,
     concat: Concat,
-    fetch: FetchOp}
+    fetch: FetchOp,
+}
 
 impl Default for OpHost {
     fn default() -> Self {
         OpHost {
             add: Add,
             concat: Concat,
-            fetch: FetchOp}
+            fetch: FetchOp,
+        }
     }
 }
 
@@ -71,13 +87,15 @@ impl Host for OpHost {
         match name {
             "add" => Some(&self.add),
             "concat" => Some(&self.concat),
-            _ => None}
+            _ => None,
+        }
     }
 
     fn operation(&self, name: &str) -> Option<&dyn Operation> {
         match name {
             "fetch" => Some(&self.fetch),
-            _ => None}
+            _ => None,
+        }
     }
 }
 
@@ -92,7 +110,8 @@ fn handler_intercepts_operation() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("intercepted"))}],
+            body: Expr::value(NonFunctionValue::new("intercepted")),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -121,7 +140,8 @@ fn handler_binds_operation_args() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("handler-result"))}],
+            body: Expr::value(NonFunctionValue::new("handler-result")),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -148,7 +168,8 @@ fn handler_resume_continuation() {
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
             // Resume the continuation with value 42
-            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))])}],
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -167,7 +188,8 @@ fn handler_no_match_propagates() {
             op_name: "read_file".to_string(),
             params: vec!["path".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("unused"))}],
+            body: Expr::value(NonFunctionValue::new("unused")),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -186,7 +208,8 @@ fn handler_body_is_pure_value() {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("never-called"))}],
+            body: Expr::value(NonFunctionValue::new("never-called")),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -205,7 +228,8 @@ fn resumable_handler_intercepts_operation() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("handled"))}],
+            body: Expr::value(NonFunctionValue::new("handled")),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -216,7 +240,8 @@ fn resumable_handler_intercepts_operation() {
         EvalResult::Done(value) => {
             assert_eq!(value.as_str(), Some("handled"));
         }
-        other => panic!("expected Done, got {other:?}")}
+        other => panic!("expected Done, got {other:?}"),
+    }
 }
 
 #[test]
@@ -235,7 +260,8 @@ fn resumable_handler_resume_continuation() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))])}],
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -246,7 +272,8 @@ fn resumable_handler_resume_continuation() {
         EvalResult::Done(value) => {
             assert_eq!(value.as_number(), Some(52.0));
         }
-        other => panic!("expected Done, got {other:?}")}
+        other => panic!("expected Done, got {other:?}"),
+    }
 }
 
 #[test]
@@ -257,7 +284,8 @@ fn resumable_handler_no_match_yields() {
             op_name: "read_file".to_string(),
             params: vec!["path".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("unused"))}],
+            body: Expr::value(NonFunctionValue::new("unused")),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -272,7 +300,8 @@ fn resumable_handler_no_match_yields() {
             );
             assert_eq!(value.get("name").and_then(|v| v.as_str()), Some("fetch"));
         }
-        other => panic!("expected Yielded, got {other:?}")}
+        other => panic!("expected Yielded, got {other:?}"),
+    }
 }
 
 // ── tests: handler serialization ─────────────────────────────────
@@ -285,7 +314,8 @@ fn handle_expr_serialization_roundtrip() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("result"))])}],
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("result"))]),
+        }],
     );
 
     // Serialize via continuation (expr_to_json is internal, but we
@@ -295,7 +325,9 @@ fn handle_expr_serialization_roundtrip() {
             name: "wrapper".to_string(),
             evaluated: vec![],
             pending: vec![expr],
-            handlers: vec![]}]};
+            handlers: vec![],
+        }],
+    };
 
     let json = cont.to_json();
     let restored = Continuation::from_json(&json).unwrap();
@@ -314,12 +346,14 @@ fn handler_multiple_clauses_last_match_wins() {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(NonFunctionValue::new("first"))},
+                body: Expr::value(NonFunctionValue::new("first")),
+            },
             HandlerClause {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(NonFunctionValue::new("second"))},
+                body: Expr::value(NonFunctionValue::new("second")),
+            },
         ],
     );
 
@@ -339,12 +373,14 @@ fn handler_multiple_clauses_different_ops() {
                 op_name: "read_file".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(NonFunctionValue::new("file-handled"))},
+                body: Expr::value(NonFunctionValue::new("file-handled")),
+            },
             HandlerClause {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(NonFunctionValue::new("fetch-handled"))},
+                body: Expr::value(NonFunctionValue::new("fetch-handled")),
+            },
         ],
     );
 
@@ -373,7 +409,8 @@ fn handler_does_not_resume_continuation() {
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
             // Don't call k — just return a constant
-            body: Expr::value(NonFunctionValue::new(999.0))}],
+            body: Expr::value(NonFunctionValue::new(999.0)),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -394,7 +431,8 @@ fn handler_operation_completes_without_signaling() {
             OperationSig {
                 name: "fetch".to_string(),
                 params: vec![],
-                return_schema: None}
+                return_schema: None,
+            }
         }
         fn perform(
             &self,
@@ -407,24 +445,28 @@ fn handler_operation_completes_without_signaling() {
 
     struct CachedHost {
         add: Add,
-        fetch: CachedOp}
+        fetch: CachedOp,
+    }
     impl Host for CachedHost {
         fn function(&self, name: &str) -> Option<&dyn Function> {
             match name {
                 "add" => Some(&self.add),
-                _ => None}
+                _ => None,
+            }
         }
         fn operation(&self, name: &str) -> Option<&dyn Operation> {
             match name {
                 "fetch" => Some(&self.fetch),
-                _ => None}
+                _ => None,
+            }
         }
     }
     impl Default for CachedHost {
         fn default() -> Self {
             CachedHost {
                 add: Add,
-                fetch: CachedOp}
+                fetch: CachedOp,
+            }
         }
     }
 
@@ -434,7 +476,8 @@ fn handler_operation_completes_without_signaling() {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("should-not-fire"))}],
+            body: Expr::value(NonFunctionValue::new("should-not-fire")),
+        }],
     );
 
     let vm = crate::Vm::new(CachedHost::default());
@@ -470,7 +513,8 @@ fn handler_resume_with_transformed_value() {
                         Expr::value(NonFunctionValue::new(2.0)),
                     ],
                 )],
-            )}],
+            ),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -491,13 +535,15 @@ fn nested_handlers_outer_takes_precedence() {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(NonFunctionValue::new("inner"))}],
+                body: Expr::value(NonFunctionValue::new("inner")),
+            }],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("outer"))}],
+            body: Expr::value(NonFunctionValue::new("outer")),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -517,13 +563,15 @@ fn nested_handlers_outer_catches_unhandled_op() {
                 op_name: "read_file".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value(NonFunctionValue::new("file-handled"))}],
+                body: Expr::value(NonFunctionValue::new("file-handled")),
+            }],
         ),
         vec![HandlerClause {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("fetch-handled"))}],
+            body: Expr::value(NonFunctionValue::new("fetch-handled")),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -549,7 +597,8 @@ fn handler_in_resumable_eval_with_continuation_serialization() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))])}],
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
+        }],
     );
 
     let vm = crate::Vm::new(OpHost::default());
@@ -560,5 +609,6 @@ fn handler_in_resumable_eval_with_continuation_serialization() {
         EvalResult::Done(value) => {
             assert_eq!(value.as_number(), Some(52.0));
         }
-        other => panic!("expected Done, got {other:?}")}
+        other => panic!("expected Done, got {other:?}"),
+    }
 }

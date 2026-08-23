@@ -1,4 +1,4 @@
-use crate::{Error, Expr, Host, NonFunctionValue, Context, VirtualMachine};
+use crate::{Context, Error, Expr, Host, NonFunctionValue, VirtualMachine};
 use serde_json::Value as JsonValue;
 
 type RuntimeExpr = Expr<NonFunctionValue>;
@@ -29,7 +29,8 @@ type RuntimeExpr = Expr<NonFunctionValue>;
 ///
 /// The VM doesn't know what any of those functions mean.
 pub struct CanonicalVm<H: Host> {
-    host: H}
+    host: H,
+}
 
 impl<H: Host> CanonicalVm<H> {
     /// Creates a new VM with the given host.
@@ -54,7 +55,11 @@ impl<H: Host> CanonicalVm<H> {
     /// The function decides which arguments to evaluate (short-circuit).
     /// Otherwise, the VM eagerly evaluates all arguments and dispatches
     /// to [`Host::function`] or [`Host::operation`].
-    pub fn eval(&self, expr: &RuntimeExpr, ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    pub fn eval(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
 
@@ -77,16 +82,26 @@ impl<H: Host> CanonicalVm<H> {
                         let args: Vec<NonFunctionValue> = value
                             .get("args")
                             .and_then(|v| v.as_array())
-                            .map(|arr| arr.iter().map(|v| NonFunctionValue::new(v.clone())).collect())
+                            .map(|arr| {
+                                arr.iter()
+                                    .map(|v| NonFunctionValue::new(v.clone()))
+                                    .collect()
+                            })
                             .unwrap_or_default();
                         Err(Error::Operation {
                             name: name.to_string(),
-                            args})
+                            args,
+                        })
                     }
-                    crate::EvalResult::Error(err) => Err(err)}
+                    crate::EvalResult::Error(err) => Err(err),
+                }
             }
 
-            Expr::Call { name, args, type_args } => {
+            Expr::Call {
+                name,
+                args,
+                type_args,
+            } => {
                 ctx.increment_call_count()?;
                 ctx.check_depth()?;
 
@@ -118,7 +133,9 @@ impl<H: Host> CanonicalVm<H> {
                     return function.call(&evaluated_args, ctx);
                 }
 
-                if let Ok(value) = ctx.get(name) && value.is_function() {
+                if let Ok(value) = ctx.get(name)
+                    && value.is_function()
+                {
                     let apply = self
                         .host
                         .function("apply")
@@ -192,16 +209,26 @@ impl<H: Host> CanonicalVm<H> {
                         let args: Vec<NonFunctionValue> = value
                             .get("args")
                             .and_then(|v| v.as_array())
-                            .map(|arr| arr.iter().map(|v| NonFunctionValue::new(v.clone())).collect())
+                            .map(|arr| {
+                                arr.iter()
+                                    .map(|v| NonFunctionValue::new(v.clone()))
+                                    .collect()
+                            })
                             .unwrap_or_default();
                         Err(Error::Operation {
                             name: name.to_string(),
-                            args})
+                            args,
+                        })
                     }
-                    crate::EvalResult::Error(err) => Err(err)}
+                    crate::EvalResult::Error(err) => Err(err),
+                }
             }
 
-            Expr::Call { name, args, type_args } => {
+            Expr::Call {
+                name,
+                args,
+                type_args,
+            } => {
                 ctx.increment_call_count()?;
                 ctx.check_depth()?;
 
@@ -234,7 +261,9 @@ impl<H: Host> CanonicalVm<H> {
                     return function.call(&evaluated_args, ctx);
                 }
 
-                if let Ok(value) = ctx.get(name) && value.is_function() {
+                if let Ok(value) = ctx.get(name)
+                    && value.is_function()
+                {
                     let apply = self
                         .host
                         .function("apply")
@@ -272,11 +301,7 @@ impl<H: Host> CanonicalVm<H> {
 }
 
 impl<H: Host> VirtualMachine for CanonicalVm<H> {
-    fn eval(
-        &self,
-        expr: &RuntimeExpr,
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+    fn eval(&self, expr: &RuntimeExpr, ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         Self::eval(self, expr, ctx)
     }
 

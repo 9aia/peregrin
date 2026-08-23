@@ -2,15 +2,18 @@ use std::collections::HashMap;
 use std::mem::Discriminant;
 use std::sync::Arc;
 
-use ac_lexer::{Span, Token, TokenKind};
 use crate::error::ParseError;
 use crate::parser::ParserContext;
+use ac_lexer::{Span, Token, TokenKind};
 
 pub struct Rule<K: TokenKind, N, E: ParseError> {
     pub left_bp: u32,
     pub right_bp: Option<u32>,
     pub nud: Option<Arc<dyn Fn(Token<K>, &mut ParserContext<K, N, E>) -> Result<N, E> + 'static>>,
-    pub led: Option<Arc<dyn Fn(N, Token<K>, &mut ParserContext<K, N, E>, u32) -> Result<N, E> + 'static>>}
+    pub led: Option<
+        Arc<dyn Fn(N, Token<K>, &mut ParserContext<K, N, E>, u32) -> Result<N, E> + 'static>,
+    >,
+}
 
 impl<K: TokenKind, N, E: ParseError> Rule<K, N, E> {
     pub fn new(left_bp: u32) -> Self {
@@ -18,14 +21,16 @@ impl<K: TokenKind, N, E: ParseError> Rule<K, N, E> {
             left_bp,
             right_bp: None,
             nud: None,
-            led: None}
+            led: None,
+        }
     }
 
     pub fn with_nud<F>(mut self, f: F) -> Self
     where
         F: Fn(Token<K>, &mut ParserContext<K, N, E>) -> Result<N, E> + 'static,
     {
-        let f: Arc<dyn Fn(Token<K>, &mut ParserContext<K, N, E>) -> Result<N, E> + 'static> = Arc::new(f);
+        let f: Arc<dyn Fn(Token<K>, &mut ParserContext<K, N, E>) -> Result<N, E> + 'static> =
+            Arc::new(f);
         self.nud = Some(f);
         self
     }
@@ -34,7 +39,9 @@ impl<K: TokenKind, N, E: ParseError> Rule<K, N, E> {
     where
         F: Fn(N, Token<K>, &mut ParserContext<K, N, E>, u32) -> Result<N, E> + 'static,
     {
-        let f: Arc<dyn Fn(N, Token<K>, &mut ParserContext<K, N, E>, u32) -> Result<N, E> + 'static> = Arc::new(f);
+        let f: Arc<
+            dyn Fn(N, Token<K>, &mut ParserContext<K, N, E>, u32) -> Result<N, E> + 'static,
+        > = Arc::new(f);
         self.led = Some(f);
         self
     }
@@ -51,7 +58,8 @@ impl<K: TokenKind, N, E: ParseError> Clone for Rule<K, N, E> {
             left_bp: self.left_bp,
             right_bp: self.right_bp,
             nud: self.nud.clone(),
-            led: self.led.clone()}
+            led: self.led.clone(),
+        }
     }
 }
 
@@ -64,7 +72,8 @@ pub trait Grammar<K: TokenKind, N, E: ParseError> {
 pub struct SimpleGrammar<K: TokenKind, N, E: ParseError> {
     rules: HashMap<Discriminant<K>, Rule<K, N, E>>,
     eof: Option<K>,
-    parse_root: Arc<dyn Fn(&mut ParserContext<K, N, E>) -> Result<N, E> + 'static>}
+    parse_root: Arc<dyn Fn(&mut ParserContext<K, N, E>) -> Result<N, E> + 'static>,
+}
 
 impl<K: TokenKind, N, E: ParseError> SimpleGrammar<K, N, E> {
     pub fn new() -> Self {
@@ -73,7 +82,8 @@ impl<K: TokenKind, N, E: ParseError> SimpleGrammar<K, N, E> {
         Self {
             rules: HashMap::new(),
             eof: None,
-            parse_root}
+            parse_root,
+        }
     }
 
     pub fn rule(mut self, kind: K, rule: Rule<K, N, E>) -> Self {

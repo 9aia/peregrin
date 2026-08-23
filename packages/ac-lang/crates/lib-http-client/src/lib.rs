@@ -1,4 +1,4 @@
-//! # ac-lib-http
+//! # ac-lib-http-client
 //!
 //! Abstract HTTP client service trait for the AC runtime.
 //!
@@ -8,8 +8,8 @@
 //! ## Architecture
 //!
 //! ```text
-//! ac-runtime-core          ac-lib-http                   ac-lib-http-std
-//! ─────────────            ──────────────────            ─────────────────────
+//! ac-runtime-core          ac-lib-http-client            ac-lib-http-client-std
+//! ─────────────            ─────────────────────         ───────────────────────────
 //! Module trait             HttpClient trait              StdHttpClient (ureq)
 //! ModuleHost               HttpMethod/HttpRequest/HttpResponse
 //!                          HttpError
@@ -18,13 +18,13 @@
 //!
 //! - **This crate** — abstract trait + module adapter + test stub.
 //!   No I/O, no platform dependencies.
-//! - **`ac-lib-http-std`** — concrete implementation using `ureq`.
+//! - **`ac-lib-http-client-std`** — concrete implementation using `ureq`.
 //!
 //! ## Usage
 //!
 //! ```ignore
 //! use ac_runtime_modules::ModuleHost;
-//! use ac_lib_http::{HttpClientModule, http_client_stub::StubHttpClient};
+//! use ac_lib_http_client::{HttpClientModule, http_client_stub::StubHttpClient};
 //!
 //! let host = ModuleHost::new()
 //!     .with(HttpClientModule::new(StubHttpClient::default()));

@@ -3,7 +3,9 @@ use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
 
-use ac_runtime::{AsyncEval, CanonicalContext, Error, Eval, Expr, NonFunctionValue, VirtualMachine};
+use ac_runtime::{
+    AsyncEval, CanonicalContext, Error, Eval, Expr, NonFunctionValue, VirtualMachine,
+};
 use serde_json::Value as JsonValue;
 
 /// Builds a canonical VM context from small, composable decisions.
@@ -16,7 +18,8 @@ pub struct ContextBuilder {
     max_depth: Option<usize>,
     max_calls: Option<usize>,
     eval: Option<Rc<dyn Eval>>,
-    async_eval: Option<Rc<dyn AsyncEval>>}
+    async_eval: Option<Rc<dyn AsyncEval>>,
+}
 
 struct EvalClone(Rc<dyn Eval>);
 
@@ -131,14 +134,16 @@ impl ContextBuilder {
 /// keeping the VM stateless and concurrency-friendly.
 pub struct Machine<V: VirtualMachine> {
     vm: V,
-    context: ContextBuilder}
+    context: ContextBuilder,
+}
 
 impl<V: VirtualMachine> Machine<V> {
     /// Creates a machine from a virtual-machine implementation.
     pub fn new(vm: V) -> Self {
         Machine {
             vm,
-            context: ContextBuilder::new()}
+            context: ContextBuilder::new(),
+        }
     }
 
     /// Configures the context builder for every evaluation.

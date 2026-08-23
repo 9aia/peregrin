@@ -4,22 +4,36 @@ use ac_runtime::Error as VmError;
 
 #[derive(Debug, Clone)]
 pub enum DatetimeError {
-    InvalidDatetime { input: String },
-    InvalidUnixTimestamp { value: f64 },
-    InvalidTimezoneOffset { offset: String },
+    InvalidDatetime {
+        input: String,
+    },
+    InvalidUnixTimestamp {
+        value: f64,
+    },
+    InvalidTimezoneOffset {
+        offset: String,
+    },
     InvalidDateComponents {
         year: i32,
         month: u32,
         day: u32,
         hour: u32,
         minute: u32,
-        second: u32},
-    YearOverflow { year: i64 },
+        second: u32,
+    },
+    YearOverflow {
+        year: i64,
+    },
     InvalidDateAfterArithmetic {
         year: i64,
         month: i64,
-        day: u32},
-    ParseFailed { input: String, format: String }}
+        day: u32,
+    },
+    ParseFailed {
+        input: String,
+        format: String,
+    },
+}
 
 impl fmt::Display for DatetimeError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -39,7 +53,8 @@ impl fmt::Display for DatetimeError {
                 day,
                 hour,
                 minute,
-                second} => {
+                second,
+            } => {
                 write!(
                     f,
                     "invalid date components: {year}-{month:02}-{day:02}T{hour:02}:{minute:02}:{second:02}"
@@ -49,7 +64,10 @@ impl fmt::Display for DatetimeError {
                 write!(f, "year overflow: {year}")
             }
             Self::InvalidDateAfterArithmetic { year, month, day } => {
-                write!(f, "invalid date after month arithmetic: {year}-{month}-{day}")
+                write!(
+                    f,
+                    "invalid date after month arithmetic: {year}-{month}-{day}"
+                )
             }
             Self::ParseFailed { input, format } => {
                 write!(f, "parse failed: {input} with format {format}")

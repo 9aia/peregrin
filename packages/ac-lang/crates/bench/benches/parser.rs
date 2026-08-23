@@ -33,5 +33,9 @@ fn bench_canonical_lex_and_parse(c: &mut Criterion) {
     });
 }
 
-criterion_group!(parser_benches, bench_canonical_parse, bench_canonical_lex_and_parse);
+criterion_group!(
+    parser_benches,
+    bench_canonical_parse,
+    bench_canonical_lex_and_parse
+);
 criterion_main!(parser_benches);

@@ -117,13 +117,15 @@ fn add_months_to_date(dt: DateTime<Utc>, months: i64) -> Result<DateTime<Utc>, E
     let clamped_day = day.min(last_day);
 
     let naive = chrono::NaiveDate::from_ymd_opt(new_year as i32, new_month as u32, clamped_day)
-        .and_then(|d| {
-            d.and_hms_opt(dt.time().hour(), dt.time().minute(), dt.time().second())
-        })
-        .ok_or_else(|| DatetimeError::InvalidDateAfterArithmetic {
-            year: new_year,
-            month: new_month,
-            day: clamped_day}.into_vm_error())?;
+        .and_then(|d| d.and_hms_opt(dt.time().hour(), dt.time().minute(), dt.time().second()))
+        .ok_or_else(|| {
+            DatetimeError::InvalidDateAfterArithmetic {
+                year: new_year,
+                month: new_month,
+                day: clamped_day,
+            }
+            .into_vm_error()
+        })?;
     Ok(Utc.from_utc_datetime(&naive))
 }
 

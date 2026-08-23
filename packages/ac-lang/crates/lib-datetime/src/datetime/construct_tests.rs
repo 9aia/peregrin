@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{Context, Error};
+use ac_runtime_modules::Module;
 
 use super::DateTimeModule;
 
@@ -108,11 +108,7 @@ fn from_components_no_args_errors() {
 
 #[test]
 fn from_components_two_args_errors() {
-    let result = call_err(
-        &DateTimeModule,
-        "from_components",
-        &[n(2021.0), n(6.0)],
-    );
+    let result = call_err(&DateTimeModule, "from_components", &[n(2021.0), n(6.0)]);
     assert!(matches!(result, Err(Error::ArgumentCount { .. })));
 }
 
@@ -129,8 +125,8 @@ fn from_components_non_number_errors() {
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::{CanonicalContext, Host, Vm};
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(DateTimeModule);

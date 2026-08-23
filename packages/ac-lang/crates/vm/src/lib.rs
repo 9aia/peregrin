@@ -24,9 +24,8 @@ mod error_tests;
 pub use ac_ast_canonical::{Expr, ExprFactory, HandlerClause};
 pub use ac_runtime_values::{Frontend, FunctionValue, HostValue, NonFunctionValue};
 pub use context::CanonicalContext;
-pub use runtime::{Context, VirtualMachine};
 pub use error::Error;
 pub use eval::{AsyncEval, Eval};
-pub use host::{
-    AsyncFunction, Function, GenericFunction, Host, HostRef, LazyFunction};
+pub use host::{AsyncFunction, Function, GenericFunction, Host, HostRef, LazyFunction};
 pub use operation::{Operation, OperationSig};
+pub use runtime::{Context, VirtualMachine};

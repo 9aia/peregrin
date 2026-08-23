@@ -6,7 +6,8 @@ pub enum ListFormatPartType {
     /// Separator text or other literal.
     Literal,
     /// An unrecognized part type produced by the backend.
-    Other(String)}
+    Other(String),
+}
 
 impl ListFormatPartType {
     /// Returns the ECMA-402 `ListFormat` part type string.
@@ -14,7 +15,8 @@ impl ListFormatPartType {
         match self {
             Self::Element => "element",
             Self::Literal => "literal",
-            Self::Other(s) => s.as_str()}
+            Self::Other(s) => s.as_str(),
+        }
     }
 }
 
@@ -23,7 +25,8 @@ impl From<&str> for ListFormatPartType {
         match value {
             "element" => Self::Element,
             "literal" => Self::Literal,
-            _ => Self::Other(value.to_string())}
+            _ => Self::Other(value.to_string()),
+        }
     }
 }
 
@@ -33,7 +36,8 @@ pub struct ListFormatPart {
     /// The part type.
     pub part_type: ListFormatPartType,
     /// The formatted text for this part.
-    pub value: String}
+    pub value: String,
+}
 
 /// The kind of list to format.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -44,7 +48,8 @@ pub enum ListType {
     /// `"or"`-style joining, e.g. `"A, B or C"`.
     Disjunction,
     /// Unit-style joining for measurements.
-    Unit}
+    Unit,
+}
 
 /// The style of list formatting.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -55,7 +60,8 @@ pub enum ListStyle {
     /// Shorter form.
     Short,
     /// Shortest form.
-    Narrow}
+    Narrow,
+}
 
 /// Options used to construct a `ListFormat` instance.
 #[derive(Debug, Clone, Default)]
@@ -63,7 +69,8 @@ pub struct ListFormatOptions {
     /// Kind of list to produce.
     pub list_type: ListType,
     /// Length of the produced list.
-    pub style: ListStyle}
+    pub style: ListStyle,
+}
 
 /// ECMA-402 `Intl.ListFormat` behavior, backend-agnostic.
 pub trait ListFormat {

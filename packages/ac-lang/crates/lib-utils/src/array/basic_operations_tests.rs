@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use serde_json::json;
 
@@ -74,7 +74,11 @@ fn contains_string() {
 #[test]
 fn index_of_found() {
     assert_eq!(
-        call("index_of", &[arr(&[json!(10), json!(20), json!(30)]), ni(20)]).as_number(),
+        call(
+            "index_of",
+            &[arr(&[json!(10), json!(20), json!(30)]), ni(20)]
+        )
+        .as_number(),
         Some(1.0)
     );
 }
@@ -156,7 +160,10 @@ fn sort_strings() {
 
 #[test]
 fn sort_mixed_numbers_before_strings() {
-    let result = call("sort", &[arr(&[json!("b"), json!(2), json!("a"), json!(1)])]);
+    let result = call(
+        "sort",
+        &[arr(&[json!("b"), json!(2), json!("a"), json!(1)])],
+    );
     let array = result.as_array().unwrap();
     assert_eq!(array[0], json!(1));
     assert_eq!(array[1], json!(2));
@@ -324,7 +331,8 @@ fn type_mismatch_on_non_array() {
         result,
         Err(Error::TypeMismatch {
             expected: "array",
-            got: "non-array"})
+            got: "non-array"
+        })
     );
 }
 
@@ -337,6 +345,7 @@ fn argument_count_on_missing_args() {
         result,
         Err(Error::ArgumentCount {
             expected: 1,
-            got: 0})
+            got: 0
+        })
     );
 }

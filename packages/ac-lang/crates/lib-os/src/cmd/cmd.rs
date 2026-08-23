@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{Context, Error, Function};
+use ac_runtime_modules::Module;
 
 use crate::error::OsError;
 
@@ -11,7 +11,8 @@ use crate::error::OsError;
 pub struct CmdOutput {
     pub exit_code: i32,
     pub stdout: String,
-    pub stderr: String}
+    pub stderr: String,
+}
 
 /// Abstract command execution service.
 ///
@@ -27,13 +28,16 @@ pub trait Cmd: Send + Sync {
 
 /// Module adapter for [`Cmd`] — exposes `cmd.*` functions.
 pub struct CmdModule {
-    run: RunFn}
+    run: RunFn,
+}
 
 impl CmdModule {
     pub fn new(command: impl Cmd + 'static) -> Self {
         CmdModule {
             run: RunFn {
-                command: Arc::new(command)}}
+                command: Arc::new(command),
+            },
+        }
     }
 }
 
@@ -45,7 +49,8 @@ impl Module for CmdModule {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "run" => Some(&self.run),
-            _ => None}
+            _ => None,
+        }
     }
 }
 
@@ -57,16 +62,23 @@ fn output_to_value(output: CmdOutput) -> NonFunctionValue {
 }
 
 struct RunFn {
-    command: Arc<dyn Cmd>}
+    command: Arc<dyn Cmd>,
+}
 
 impl Function for RunFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let program = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0})?;
+            got: 0,
+        })?;
         let program = program.as_str().ok_or(Error::TypeMismatch {
             expected: "string",
-            got: "non-string"})?;
+            got: "non-string",
+        })?;
 
         let arg_strings: Vec<String> = args
             .iter()
@@ -74,7 +86,8 @@ impl Function for RunFn {
             .map(|v| {
                 v.as_str().map(String::from).ok_or(Error::TypeMismatch {
                     expected: "string",
-                    got: "non-string"})
+                    got: "non-string",
+                })
             })
             .collect::<Result<_, _>>()?;
 

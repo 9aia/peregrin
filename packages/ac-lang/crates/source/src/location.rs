@@ -6,7 +6,8 @@ pub struct SourceLocation {
     /// 1-indexed line number.
     pub line: usize,
     /// 1-indexed column number (character offset within the line).
-    pub column: usize}
+    pub column: usize,
+}
 
 impl SourceLocation {
     pub fn new(line: usize, column: usize) -> Self {

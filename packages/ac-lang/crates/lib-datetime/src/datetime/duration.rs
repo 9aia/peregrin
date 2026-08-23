@@ -3,7 +3,10 @@ use ac_runtime::{Context, Error, Function};
 
 use super::common::{n, parse_iso, require_two_strings};
 
-fn duration_secs_f64(dt_a: chrono::DateTime<chrono::Utc>, dt_b: chrono::DateTime<chrono::Utc>) -> f64 {
+fn duration_secs_f64(
+    dt_a: chrono::DateTime<chrono::Utc>,
+    dt_b: chrono::DateTime<chrono::Utc>,
+) -> f64 {
     let dur = dt_b - dt_a;
     let ms = dur.num_milliseconds() as f64;
     let sub_ms_nanos = (dur.subsec_nanos()) as f64;

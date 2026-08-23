@@ -26,7 +26,11 @@ fn provider_clone_is_cheap() {
     let provider = IntlProvider::from_blob(data);
     let _cloned = provider.clone();
     assert_eq!(provider.as_bytes().len(), 1_000_000);
-    assert_eq!(provider.strong_count(), 2, "Arc refcount should be 2 after one clone");
+    assert_eq!(
+        provider.strong_count(),
+        2,
+        "Arc refcount should be 2 after one clone"
+    );
 }
 
 #[test]

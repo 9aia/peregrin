@@ -5,28 +5,33 @@ use fixed_decimal::{Decimal, FloatPrecision};
 use icu::locale::Locale;
 use icu::plurals::{
     PluralCategory as IcuPluralCategory, PluralRuleType as IcuPluralRuleType,
-    PluralRules as IcuPluralRules, PluralRulesOptions};
+    PluralRules as IcuPluralRules, PluralRulesOptions,
+};
 use icu_provider::DataError;
 use icu_provider_blob::BlobDataProvider;
 
 pub use ecma402_traits::plural_rules::{
-    PluralRules as PluralRulesTrait, PluralRulesOptions as Options};
+    PluralRules as PluralRulesTrait, PluralRulesOptions as Options,
+};
 
 /// ICU4X-backed ECMA-402 `Intl.PluralRules`.
 pub struct PluralRules {
-    rules: IcuPluralRules}
+    rules: IcuPluralRules,
+}
 
 /// Errors that can occur when constructing or using a `PluralRules`.
 #[derive(Debug)]
 pub enum Error {
     InvalidLocale(String),
-    Data(DataError)}
+    Data(DataError),
+}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidLocale(s) => write!(f, "invalid locale: {s}"),
-            Self::Data(e) => write!(f, "data provider error: {e}")}
+            Self::Data(e) => write!(f, "data provider error: {e}"),
+        }
     }
 }
 
@@ -45,7 +50,8 @@ impl PluralRules {
 
         let rule_type = match options.rule_type {
             PluralRuleType::Cardinal => IcuPluralRuleType::Cardinal,
-            PluralRuleType::Ordinal => IcuPluralRuleType::Ordinal};
+            PluralRuleType::Ordinal => IcuPluralRuleType::Ordinal,
+        };
         let icu_options = PluralRulesOptions::default().with_type(rule_type);
 
         let rules = IcuPluralRules::try_new(locale.into(), icu_options)?;
@@ -62,7 +68,8 @@ impl PluralRules {
 
         let rule_type = match options.rule_type {
             PluralRuleType::Cardinal => IcuPluralRuleType::Cardinal,
-            PluralRuleType::Ordinal => IcuPluralRuleType::Ordinal};
+            PluralRuleType::Ordinal => IcuPluralRuleType::Ordinal,
+        };
         let icu_options = PluralRulesOptions::default().with_type(rule_type);
 
         let rules =
@@ -101,5 +108,6 @@ fn map_category(category: IcuPluralCategory) -> PluralCategory {
         IcuPluralCategory::Two => PluralCategory::Two,
         IcuPluralCategory::Few => PluralCategory::Few,
         IcuPluralCategory::Many => PluralCategory::Many,
-        IcuPluralCategory::Other => PluralCategory::Other}
+        IcuPluralCategory::Other => PluralCategory::Other,
+    }
 }

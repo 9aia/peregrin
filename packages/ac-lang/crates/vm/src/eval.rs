@@ -42,8 +42,11 @@ pub trait Eval {
     /// # Returns
     ///
     /// The evaluated [`NonFunctionValue`], or an [`Error`] if evaluation failed.
-    fn eval_expr(&self, expr: &str, vars: &[(String, NonFunctionValue)])
-    -> Result<NonFunctionValue, Error>;
+    fn eval_expr(
+        &self,
+        expr: &str,
+        vars: &[(String, NonFunctionValue)],
+    ) -> Result<NonFunctionValue, Error>;
 }
 
 /// An async callback that evaluates an expression string with variable bindings.

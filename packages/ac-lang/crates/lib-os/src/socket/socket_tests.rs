@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
 
 use super::socket::SocketModule;
 use super::socket_stub::StubSocket;
@@ -35,7 +35,9 @@ fn module_name() {
 fn connect_and_recv() {
     let socket = StubSocket::with_binding("echo://test", "hello");
     let module = SocketModule::new(socket);
-    let handle = call(&module, "connect", &[s("echo://test")]).as_number().unwrap() as i64;
+    let handle = call(&module, "connect", &[s("echo://test")])
+        .as_number()
+        .unwrap() as i64;
     let result = call(&module, "recv", &[n(handle), n(1024)]);
     assert_eq!(result.as_str(), Some("hello"));
 }
@@ -44,8 +46,12 @@ fn connect_and_recv() {
 fn send_and_close() {
     let socket = StubSocket::default();
     let module = SocketModule::new(socket);
-    let handle = call(&module, "connect", &[s("echo://test")]).as_number().unwrap() as i64;
-    let sent = call(&module, "send", &[n(handle), s("data")]).as_number().unwrap() as usize;
+    let handle = call(&module, "connect", &[s("echo://test")])
+        .as_number()
+        .unwrap() as i64;
+    let sent = call(&module, "send", &[n(handle), s("data")])
+        .as_number()
+        .unwrap() as usize;
     assert_eq!(sent, 4);
     call(&module, "close", &[n(handle)]);
     let err = call_err(&module, "recv", &[n(handle), n(1024)]);
@@ -64,5 +70,9 @@ fn argument_count() {
     let err = call_err(&module, "connect", &[]);
     assert_eq!(
         err,
-        ac_runtime::Error::ArgumentCount { expected: 1, got: 0 });
+        ac_runtime::Error::ArgumentCount {
+            expected: 1,
+            got: 0
+        }
+    );
 }

@@ -77,7 +77,12 @@ fn fetch_op() -> Box<dyn Operation> {
 fn builder_fn_function_works() {
     let f = add_fn();
     let mut ctx = CanonicalContext::new();
-    let result = f.call(&[NonFunctionValue::new(1.0), NonFunctionValue::new(2.0)], &mut ctx).unwrap();
+    let result = f
+        .call(
+            &[NonFunctionValue::new(1.0), NonFunctionValue::new(2.0)],
+            &mut ctx,
+        )
+        .unwrap();
     assert_eq!(result.as_number(), Some(3.0));
 }
 
@@ -124,9 +129,11 @@ fn context_builder_sets_limits() {
 
 #[test]
 fn memoize_caches_function_calls() {
-    let inner = CaptureFn::new(|args: &[NonFunctionValue], _ctx: &mut dyn ac_runtime::Context| {
-        Ok(NonFunctionValue::new(args.len()))
-    });
+    let inner = CaptureFn::new(
+        |args: &[NonFunctionValue], _ctx: &mut dyn ac_runtime::Context| {
+            Ok(NonFunctionValue::new(args.len()))
+        },
+    );
     let cached = memoize(inner);
 
     let mut ctx = CanonicalContext::new();
@@ -144,11 +151,18 @@ fn memoize_caches_function_calls() {
 #[test]
 fn map_args_transforms_arguments() {
     let f = map_args(add_fn(), |args| {
-        args.iter().map(|v| NonFunctionValue::new(v.as_number().unwrap_or(0.0) * 2.0)).collect()
+        args.iter()
+            .map(|v| NonFunctionValue::new(v.as_number().unwrap_or(0.0) * 2.0))
+            .collect()
     });
 
     let mut ctx = CanonicalContext::new();
-    let result = f.call(&[NonFunctionValue::new(1.0), NonFunctionValue::new(2.0)], &mut ctx).unwrap();
+    let result = f
+        .call(
+            &[NonFunctionValue::new(1.0), NonFunctionValue::new(2.0)],
+            &mut ctx,
+        )
+        .unwrap();
     // 1*2 + 2*2 = 6
     assert_eq!(result.as_number(), Some(6.0));
 }
@@ -160,7 +174,12 @@ fn map_result_transforms_result() {
     });
 
     let mut ctx = CanonicalContext::new();
-    let result = f.call(&[NonFunctionValue::new(1.0), NonFunctionValue::new(2.0)], &mut ctx).unwrap();
+    let result = f
+        .call(
+            &[NonFunctionValue::new(1.0), NonFunctionValue::new(2.0)],
+            &mut ctx,
+        )
+        .unwrap();
     assert_eq!(result.as_number(), Some(30.0));
 }
 
@@ -178,12 +197,22 @@ fn catch_recovers_error() {
 
 #[test]
 fn pipe_composes_functions() {
-    let f = pipe(add_fn(), fn_function(|args, _ctx| {
-        Ok(NonFunctionValue::new(args[0].as_number().unwrap_or(0.0) * 2.0))
-    }));
+    let f = pipe(
+        add_fn(),
+        fn_function(|args, _ctx| {
+            Ok(NonFunctionValue::new(
+                args[0].as_number().unwrap_or(0.0) * 2.0,
+            ))
+        }),
+    );
 
     let mut ctx = CanonicalContext::new();
-    let result = f.call(&[NonFunctionValue::new(1.0), NonFunctionValue::new(2.0)], &mut ctx).unwrap();
+    let result = f
+        .call(
+            &[NonFunctionValue::new(1.0), NonFunctionValue::new(2.0)],
+            &mut ctx,
+        )
+        .unwrap();
     // (1+2)*2 = 6
     assert_eq!(result.as_number(), Some(6.0));
 }
@@ -200,7 +229,12 @@ fn const_returns_value() {
 fn identity_returns_first_arg() {
     let f = identity();
     let mut ctx = CanonicalContext::new();
-    let result = f.call(&[NonFunctionValue::new(7.0), NonFunctionValue::new(2.0)], &mut ctx).unwrap();
+    let result = f
+        .call(
+            &[NonFunctionValue::new(7.0), NonFunctionValue::new(2.0)],
+            &mut ctx,
+        )
+        .unwrap();
     assert_eq!(result.as_number(), Some(7.0));
 }
 
@@ -222,11 +256,15 @@ fn if_chooses_branch() {
 
     let mut ctx = CanonicalContext::new();
     assert_eq!(
-        f.call(&[NonFunctionValue::new(true)], &mut ctx).unwrap().as_number(),
+        f.call(&[NonFunctionValue::new(true)], &mut ctx)
+            .unwrap()
+            .as_number(),
         Some(1.0)
     );
     assert_eq!(
-        f.call(&[NonFunctionValue::new(false)], &mut ctx).unwrap().as_number(),
+        f.call(&[NonFunctionValue::new(false)], &mut ctx)
+            .unwrap()
+            .as_number(),
         Some(2.0)
     );
 }
@@ -271,7 +309,9 @@ fn spy_host_records_lookups() {
 #[test]
 fn map_host_rewrites_names() {
     let inner = MockHost::new().with_function("add", add_fn());
-    let host = MapHost::new(Box::new(inner), |name| name.strip_prefix("math.").unwrap_or(name).to_string());
+    let host = MapHost::new(Box::new(inner), |name| {
+        name.strip_prefix("math.").unwrap_or(name).to_string()
+    });
 
     assert!(host.function("math.add").is_some());
 }
@@ -291,7 +331,9 @@ fn logging_host_logs_lookups() {
     let seen: Rc<RefCell<Vec<(HostEventKind, String, bool)>>> = Rc::new(RefCell::new(Vec::new()));
     let captured = seen.clone();
     let host = LoggingHost::new(Box::new(inner), move |event| {
-        captured.borrow_mut().push((event.kind, event.name.to_string(), event.found));
+        captured
+            .borrow_mut()
+            .push((event.kind, event.name.to_string(), event.found));
     });
 
     let _ = host.function("add");
@@ -343,13 +385,18 @@ fn noop_host_resolves_nothing() {
 
 #[test]
 fn capture_fn_records_calls() {
-    let f = CaptureFn::new(|args: &[NonFunctionValue], _ctx: &mut dyn ac_runtime::Context| {
-        let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-        Ok(NonFunctionValue::new(sum))
-    });
+    let f = CaptureFn::new(
+        |args: &[NonFunctionValue], _ctx: &mut dyn ac_runtime::Context| {
+            let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
+            Ok(NonFunctionValue::new(sum))
+        },
+    );
     let mut ctx = CanonicalContext::new();
     let _ = f.call(&[NonFunctionValue::new(1.0)], &mut ctx);
-    let _ = f.call(&[NonFunctionValue::new(2.0), NonFunctionValue::new(3.0)], &mut ctx);
+    let _ = f.call(
+        &[NonFunctionValue::new(2.0), NonFunctionValue::new(3.0)],
+        &mut ctx,
+    );
 
     let calls = f.calls();
     assert_eq!(calls.len(), 2);
@@ -372,10 +419,12 @@ fn sandbox_limits_context() {
 fn machine_eval_async_works() {
     let host = MockHost::new().with_async(
         "async_add",
-        fn_async(|args, _ctx| Box::pin(async move {
-            let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
-            Ok(NonFunctionValue::new(sum))
-        })),
+        fn_async(|args, _ctx| {
+            Box::pin(async move {
+                let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
+                Ok(NonFunctionValue::new(sum))
+            })
+        }),
     );
 
     let machine = Machine::new(CanonicalVm::new(host));

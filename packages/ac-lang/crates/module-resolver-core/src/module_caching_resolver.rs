@@ -30,7 +30,8 @@ use crate::resolved_module::ResolvedModule;
 /// ```
 pub struct CachingResolver<R: ModuleResolver, C: ModuleCache> {
     inner: R,
-    cache: C}
+    cache: C,
+}
 
 impl<R: ModuleResolver, C: ModuleCache> CachingResolver<R, C> {
     /// Wrap a resolver with a specific cache implementation.
@@ -53,7 +54,8 @@ impl<R: ModuleResolver, C: ModuleCache> ModuleResolver for CachingResolver<R, C>
     fn resolve(&self, path: &str, base: Option<&Path>) -> Option<ResolvedModule> {
         let key = match base {
             Some(b) => format!("{}:{}", path, b.display()),
-            None => path.to_string()};
+            None => path.to_string(),
+        };
         if let Some(cached) = self.cache.get(&key) {
             return Some(cached);
         }

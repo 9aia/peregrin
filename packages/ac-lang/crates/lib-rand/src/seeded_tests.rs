@@ -14,7 +14,10 @@ fn seeded_int_in_range() {
     for seed in [0.0, 1.0, 42.0, 999.0, 1e10] {
         let result = call("seeded_int", &[n(seed), n(1.0), n(6.0)]);
         let val = extract_num(&result) as i64;
-        assert!((1..=6).contains(&val), "seed {seed} produced {val}, expected 1..=6");
+        assert!(
+            (1..=6).contains(&val),
+            "seed {seed} produced {val}, expected 1..=6"
+        );
     }
 }
 
@@ -25,7 +28,10 @@ fn seeded_int_different_seeds_differ() {
         let result = call("seeded_int", &[n(seed as f64), n(0.0), n(1000.0)]);
         values.insert(extract_num(&result) as i64);
     }
-    assert!(values.len() > 1, "different seeds should produce different values");
+    assert!(
+        values.len() > 1,
+        "different seeds should produce different values"
+    );
 }
 
 #[test]
@@ -37,7 +43,10 @@ fn seeded_int_min_greater_than_max_errors() {
 #[test]
 fn seeded_int_no_args_errors() {
     let result = call_err("seeded_int", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.seeded_float ────────────────────────────────────────────
@@ -65,7 +74,10 @@ fn seeded_float_min_equals_max() {
 #[test]
 fn seeded_float_no_args_errors() {
     let result = call_err("seeded_float", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.seeded_bool ─────────────────────────────────────────────
@@ -211,11 +223,17 @@ fn seeded_string_correct_length() {
 
 #[test]
 fn seeded_string_hex_charset() {
-    let result = call("seeded_string", &[n(42.0), n(50.0), ac_runtime::NonFunctionValue::new("hex")]);
+    let result = call(
+        "seeded_string",
+        &[n(42.0), n(50.0), ac_runtime::NonFunctionValue::new("hex")],
+    );
     let s = extract_str(&result);
     assert_eq!(s.len(), 50);
     for c in s.chars() {
-        assert!(c.is_ascii_digit() || ('a'..='f').contains(&c), "non-hex character: {c}");
+        assert!(
+            c.is_ascii_digit() || ('a'..='f').contains(&c),
+            "non-hex character: {c}"
+        );
     }
 }
 

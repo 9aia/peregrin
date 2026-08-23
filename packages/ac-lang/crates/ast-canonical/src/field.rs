@@ -12,13 +12,15 @@ pub struct Field<V> {
     pub name: String,
 
     /// The field's value.
-    pub value: V}
+    pub value: V,
+}
 
 impl<V> Field<V> {
     /// Creates a new field.
     pub fn new(name: impl Into<String>, value: V) -> Self {
         Field {
             name: name.into(),
-            value}
+            value,
+        }
     }
 }

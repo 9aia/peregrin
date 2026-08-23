@@ -82,7 +82,8 @@ impl Function for Size {
         } else {
             return Err(Error::TypeMismatch {
                 expected: "array, object, string, or null",
-                got: "non-sized type"});
+                got: "non-sized type",
+            });
         };
         Ok(num(size))
     }

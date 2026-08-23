@@ -1,5 +1,5 @@
-use ac_runtime_modules::Module;
 use ac_runtime::Function;
+use ac_runtime_modules::Module;
 
 use super::distribution::{Binomial, Exponential, Gauss, Poisson};
 use super::generation::{Bytes, String_, Uuid};
@@ -7,8 +7,9 @@ use super::noise::{Perlin1D, Perlin2D, Perlin3D, Simplex2D, Simplex3D};
 use super::numbers::{Bool, Float, Int};
 use super::sampling::{Choice, Pick, Sample, Shuffle, WeightedPick};
 use super::seeded::{
-    SeededBool, SeededChoice, SeededFloat, SeededGauss, SeededInt, SeededPick,
-    SeededSample, SeededShuffle, SeededString};
+    SeededBool, SeededChoice, SeededFloat, SeededGauss, SeededInt, SeededPick, SeededSample,
+    SeededShuffle, SeededString,
+};
 
 /// The `rand` module — random number generation and sampling.
 ///
@@ -71,6 +72,7 @@ impl Module for RandModule {
             "seeded_shuffle" => Some(&SeededShuffle),
             "seeded_string" => Some(&SeededString),
             "seeded_gauss" => Some(&SeededGauss),
-            _ => None}
+            _ => None,
+        }
     }
 }

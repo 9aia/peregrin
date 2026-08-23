@@ -8,7 +8,8 @@ use crate::resolved_module_test_helpers::make_resolved_module;
 
 /// A resolver that counts how many times `resolve` is called.
 pub struct CountingResolver {
-    pub count: Arc<AtomicU32>}
+    pub count: Arc<AtomicU32>,
+}
 
 impl ModuleResolver for CountingResolver {
     fn resolve(&self, path: &str, _base: Option<&Path>) -> Option<ResolvedModule> {

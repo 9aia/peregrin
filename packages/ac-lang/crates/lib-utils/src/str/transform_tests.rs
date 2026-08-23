@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::StrModule;
 
@@ -937,10 +937,7 @@ fn truncate_custom_suffix() {
 
 #[test]
 fn truncate_no_truncation_needed() {
-    assert_eq!(
-        call("truncate", &[s("hi"), n(10.0)]).as_str(),
-        Some("hi")
-    );
+    assert_eq!(call("truncate", &[s("hi"), n(10.0)]).as_str(), Some("hi"));
 }
 
 #[test]
@@ -961,10 +958,7 @@ fn truncate_suffix_equal_to_max() {
 
 #[test]
 fn truncate_zero_max() {
-    assert_eq!(
-        call("truncate", &[s("hello"), n(0.0)]).as_str(),
-        Some("")
-    );
+    assert_eq!(call("truncate", &[s("hello"), n(0.0)]).as_str(), Some(""));
 }
 
 #[test]
@@ -1003,22 +997,34 @@ fn truncate_unicode() {
 
 #[test]
 fn slugify_basic() {
-    assert_eq!(call("slugify", &[s("Hello World")]).as_str(), Some("hello-world"));
+    assert_eq!(
+        call("slugify", &[s("Hello World")]).as_str(),
+        Some("hello-world")
+    );
 }
 
 #[test]
 fn slugify_special_chars() {
-    assert_eq!(call("slugify", &[s("Hello, World!")]).as_str(), Some("hello-world"));
+    assert_eq!(
+        call("slugify", &[s("Hello, World!")]).as_str(),
+        Some("hello-world")
+    );
 }
 
 #[test]
 fn slugify_multiple_spaces() {
-    assert_eq!(call("slugify", &[s("hello   world")]).as_str(), Some("hello-world"));
+    assert_eq!(
+        call("slugify", &[s("hello   world")]).as_str(),
+        Some("hello-world")
+    );
 }
 
 #[test]
 fn slugify_underscores() {
-    assert_eq!(call("slugify", &[s("hello_world")]).as_str(), Some("hello-world"));
+    assert_eq!(
+        call("slugify", &[s("hello_world")]).as_str(),
+        Some("hello-world")
+    );
 }
 
 #[test]
@@ -1038,7 +1044,10 @@ fn slugify_only_special_chars() {
 
 #[test]
 fn slugify_unicode() {
-    assert_eq!(call("slugify", &[s("café au lait")]).as_str(), Some("café-au-lait"));
+    assert_eq!(
+        call("slugify", &[s("café au lait")]).as_str(),
+        Some("café-au-lait")
+    );
 }
 
 #[test]
@@ -1093,7 +1102,13 @@ fn escape_html_non_string_errors() {
 #[test]
 fn unescape_html_basic() {
     assert_eq!(
-        call("unescape_html", &[s("&lt;div&gt;&quot;hello&quot; &amp; &#x27;world&#x27; &#x2F; &lt;/div&gt;")]).as_str(),
+        call(
+            "unescape_html",
+            &[s(
+                "&lt;div&gt;&quot;hello&quot; &amp; &#x27;world&#x27; &#x2F; &lt;/div&gt;"
+            )]
+        )
+        .as_str(),
         Some("<div>\"hello\" & 'world' / </div>")
     );
 }
@@ -1187,10 +1202,7 @@ fn unescape_url_roundtrip() {
 
 #[test]
 fn unescape_url_no_encoding() {
-    assert_eq!(
-        call("unescape_url", &[s("hello")]).as_str(),
-        Some("hello")
-    );
+    assert_eq!(call("unescape_url", &[s("hello")]).as_str(), Some("hello"));
 }
 
 #[test]

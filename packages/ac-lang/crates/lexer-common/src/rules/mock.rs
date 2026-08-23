@@ -1,7 +1,7 @@
 //! [`RuleMock`] — helpers for creating test rules with trait impls.
 
-use ac_lexer::{LexError, LexRule, LexerConfig, Span, Token};
 use crate::tokens::MockKind;
+use ac_lexer::{LexError, LexRule, LexerConfig, Span, Token};
 
 /// Helpers for creating test rules and rule-related test fixtures.
 pub struct RuleMock;
@@ -46,7 +46,8 @@ impl<E: LexError> LexRule<MockKind, E> for BangRule {
                 let (pos, _) = chars.next().unwrap();
                 Some(Ok(Token::new(MockKind::Null, Span::at(pos))))
             }
-            _ => None}
+            _ => None,
+        }
     }
 
     fn name(&self) -> &'static str {
@@ -72,7 +73,8 @@ impl<E: LexError> LexRule<MockKind, E> for HashRule {
                     Span::at(start),
                 )))
             }
-            _ => None}
+            _ => None,
+        }
     }
 
     fn name(&self) -> &'static str {
@@ -98,7 +100,8 @@ impl<E: LexError> LexRule<MockKind, E> for AtRule {
                     Span::at(start),
                 )))
             }
-            _ => None}
+            _ => None,
+        }
     }
 
     fn name(&self) -> &'static str {

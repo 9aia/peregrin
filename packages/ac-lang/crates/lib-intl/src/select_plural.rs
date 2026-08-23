@@ -1,8 +1,11 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime::{Context, Error, Function};
-use icu::plurals::{PluralCategory, PluralRules, PluralRulesOptions, PluralRuleType};
+use icu::plurals::{PluralCategory, PluralRuleType, PluralRules, PluralRulesOptions};
 
-use super::common::{apply_fraction_digits, apply_minimum_integer_digits, apply_significant_digits, decimal_from_f64, make_provider, opt_str, optional_locale, optional_object, require_number, s};
+use super::common::{
+    apply_fraction_digits, apply_minimum_integer_digits, apply_significant_digits,
+    decimal_from_f64, make_provider, opt_str, optional_locale, optional_object, require_number, s,
+};
 use super::error::IntlError;
 use super::provider::IntlProvider;
 
@@ -28,7 +31,8 @@ use super::provider::IntlProvider;
 /// - `intl.select_plural(1, "en", {minimumFractionDigits: 2})` → `"other"` (padded to 1.00)
 #[derive(Clone)]
 pub struct SelectPlural {
-    provider: Option<IntlProvider>}
+    provider: Option<IntlProvider>,
+}
 
 impl SelectPlural {
     pub fn new() -> Self {
@@ -36,7 +40,9 @@ impl SelectPlural {
     }
 
     pub fn with_provider(provider: IntlProvider) -> Self {
-        Self { provider: Some(provider) }
+        Self {
+            provider: Some(provider),
+        }
     }
 }
 
@@ -47,7 +53,11 @@ impl Default for SelectPlural {
 }
 
 impl Function for SelectPlural {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let n = require_number(args, 0)?;
         let locale = optional_locale(args, 1)?;
         let opts = optional_object(args, 2)?;
@@ -55,13 +65,20 @@ impl Function for SelectPlural {
 
         let rule_type = match opt_str(opts, "type").unwrap_or("cardinal") {
             "ordinal" => PluralRuleType::Ordinal,
-            _ => PluralRuleType::Cardinal};
+            _ => PluralRuleType::Cardinal,
+        };
 
         let options = PluralRulesOptions::default().with_type(rule_type);
         let rules = match dp.as_buffer_provider() {
             Some(p) => PluralRules::try_new_with_buffer_provider(p, locale.into(), options),
-            None => PluralRules::try_new(locale.into(), options)}
-        .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
+            None => PluralRules::try_new(locale.into(), options),
+        }
+        .map_err(|e| {
+            IntlError::Formatting {
+                message: e.to_string(),
+            }
+            .into_vm_error()
+        })?;
 
         let mut decimal = decimal_from_f64(n);
         apply_minimum_integer_digits(&mut decimal, opts);
@@ -75,7 +92,8 @@ impl Function for SelectPlural {
             PluralCategory::Two => "two",
             PluralCategory::Few => "few",
             PluralCategory::Many => "many",
-            PluralCategory::Other => "other"};
+            PluralCategory::Other => "other",
+        };
         Ok(s(name.to_string()))
     }
 }

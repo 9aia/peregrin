@@ -13,13 +13,15 @@ use ac_runtime::NonFunctionValue;
 /// Maps module paths to pre-parsed JSON document data.
 /// No filesystem I/O — all modules live in memory.
 pub struct VirtualResolver {
-    modules: HashMap<String, JsonValue>}
+    modules: HashMap<String, JsonValue>,
+}
 
 impl VirtualResolver {
     /// Create an empty resolver.
     pub fn new() -> Self {
         VirtualResolver {
-            modules: HashMap::new()}
+            modules: HashMap::new(),
+        }
     }
 
     /// Register a module by path with its parsed document data.
@@ -51,6 +53,7 @@ impl ModuleResolver for VirtualResolver {
             schemas: extracted.schemas,
             merge: extracted.merge,
             data: extracted.data.inner().clone(),
-            base_path: None})
+            base_path: None,
+        })
     }
 }

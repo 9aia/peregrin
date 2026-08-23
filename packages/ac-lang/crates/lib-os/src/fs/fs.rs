@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{Context, Error, Function};
+use ac_runtime_modules::Module;
 
 use crate::error::OsError;
 
@@ -26,7 +26,8 @@ pub struct FsModule {
     write: WriteFileFn,
     exists: ExistsFn,
     remove: RemoveFn,
-    list: ListDirFn}
+    list: ListDirFn,
+}
 
 impl FsModule {
     pub fn new(fs: impl Fs + 'static) -> Self {
@@ -36,7 +37,8 @@ impl FsModule {
             write: WriteFileFn { fs: fs.clone() },
             exists: ExistsFn { fs: fs.clone() },
             remove: RemoveFn { fs: fs.clone() },
-            list: ListDirFn { fs }}
+            list: ListDirFn { fs },
+        }
     }
 }
 
@@ -52,7 +54,8 @@ impl Module for FsModule {
             "exists" => Some(&self.exists),
             "remove" => Some(&self.remove),
             "list" => Some(&self.list),
-            _ => None}
+            _ => None,
+        }
     }
 }
 
@@ -60,23 +63,30 @@ fn require_string_arg(args: &[NonFunctionValue], expected: usize) -> Result<Vec<
     if args.len() < expected {
         return Err(Error::ArgumentCount {
             expected,
-            got: args.len()});
+            got: args.len(),
+        });
     }
     args.iter()
         .take(expected)
         .map(|v| {
             v.as_str().ok_or(Error::TypeMismatch {
                 expected: "string",
-                got: "non-string"})
+                got: "non-string",
+            })
         })
         .collect()
 }
 
 struct ReadFileFn {
-    fs: Arc<dyn Fs>}
+    fs: Arc<dyn Fs>,
+}
 
 impl Function for ReadFileFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         self.fs
             .read_file(path)
@@ -86,24 +96,35 @@ impl Function for ReadFileFn {
 }
 
 struct WriteFileFn {
-    fs: Arc<dyn Fs>}
+    fs: Arc<dyn Fs>,
+}
 
 impl Function for WriteFileFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 2)?[0];
         let content = args[1].as_str().ok_or(Error::TypeMismatch {
             expected: "string",
-            got: "non-string"})?;
+            got: "non-string",
+        })?;
         self.fs.write_file(path, content)?;
         Ok(NonFunctionValue::default())
     }
 }
 
 struct ExistsFn {
-    fs: Arc<dyn Fs>}
+    fs: Arc<dyn Fs>,
+}
 
 impl Function for ExistsFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         self.fs
             .exists(path)
@@ -113,10 +134,15 @@ impl Function for ExistsFn {
 }
 
 struct RemoveFn {
-    fs: Arc<dyn Fs>}
+    fs: Arc<dyn Fs>,
+}
 
 impl Function for RemoveFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         self.fs.remove(path)?;
         Ok(NonFunctionValue::default())
@@ -124,10 +150,15 @@ impl Function for RemoveFn {
 }
 
 struct ListDirFn {
-    fs: Arc<dyn Fs>}
+    fs: Arc<dyn Fs>,
+}
 
 impl Function for ListDirFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         let entries = self.fs.list_dir(path)?;
         let arr: Vec<serde_json::Value> =

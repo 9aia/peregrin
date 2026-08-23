@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
 
 use super::fs::FsModule;
 use super::fs_stub::StubFs;
@@ -43,7 +43,8 @@ fn read_file_not_found() {
     let err = call_err(&module, "read", &[s("missing.txt")]);
     match err {
         ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("not found")),
-        other => panic!("expected PrimitiveError, got {other:?}")}
+        other => panic!("expected PrimitiveError, got {other:?}"),
+    }
 }
 
 #[test]
@@ -109,6 +110,7 @@ fn argument_count() {
         err,
         ac_runtime::Error::ArgumentCount {
             expected: 1,
-            got: 0}
+            got: 0
+        }
     );
 }

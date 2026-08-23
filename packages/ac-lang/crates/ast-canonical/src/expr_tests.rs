@@ -14,7 +14,8 @@ fn call_expr() {
             assert_eq!(name, "add");
             assert_eq!(args.len(), 2);
         }
-        _ => panic!("expected Call variant")}
+        _ => panic!("expected Call variant"),
+    }
 }
 
 #[test]
@@ -33,7 +34,8 @@ fn handle_expr_construction() {
         op_name: "fetch".to_string(),
         params: vec!["url".to_string()],
         continuation_name: "k".to_string(),
-        body: Expr::value("intercepted".to_string())};
+        body: Expr::value("intercepted".to_string()),
+    };
     let expr = Expr::handle(body, vec![handler]);
     match expr {
         Expr::Handle { body, handlers } => {
@@ -41,9 +43,11 @@ fn handle_expr_construction() {
             assert_eq!(handlers[0].op_name, "fetch");
             match &*body {
                 Expr::Call { name, .. } => assert_eq!(name, "fetch"),
-                _ => panic!("expected Call body")}
+                _ => panic!("expected Call body"),
+            }
         }
-        _ => panic!("expected Handle variant")}
+        _ => panic!("expected Handle variant"),
+    }
 }
 
 #[test]
@@ -54,7 +58,8 @@ fn handle_expr_clone_eq() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value("result".to_string())}],
+            body: Expr::value("result".to_string()),
+        }],
     );
     let cloned = expr.clone();
     assert_eq!(expr, cloned);
@@ -68,9 +73,11 @@ fn handle_expr_with_empty_handlers() {
             assert!(handlers.is_empty());
             match &*body {
                 Expr::Value(v) => assert_eq!(*v, 42),
-                _ => panic!("expected Value body")}
+                _ => panic!("expected Value body"),
+            }
         }
-        _ => panic!("expected Handle variant")}
+        _ => panic!("expected Handle variant"),
+    }
 }
 
 #[test]
@@ -82,12 +89,14 @@ fn handle_expr_with_multiple_handlers() {
                 op_name: "fetch".to_string(),
                 params: vec![],
                 continuation_name: "k".to_string(),
-                body: Expr::value("fetched".to_string())},
+                body: Expr::value("fetched".to_string()),
+            },
             HandlerClause {
                 op_name: "read_file".to_string(),
                 params: vec!["path".to_string()],
                 continuation_name: "k".to_string(),
-                body: Expr::value("read".to_string())},
+                body: Expr::value("read".to_string()),
+            },
         ],
     );
     match expr {
@@ -96,7 +105,8 @@ fn handle_expr_with_multiple_handlers() {
             assert_eq!(handlers[0].op_name, "fetch");
             assert_eq!(handlers[1].op_name, "read_file");
         }
-        _ => panic!("expected Handle variant")}
+        _ => panic!("expected Handle variant"),
+    }
 }
 
 #[test]
@@ -107,7 +117,8 @@ fn nested_handle_expr() {
             op_name: "fetch".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value("inner-handled".to_string())}],
+            body: Expr::value("inner-handled".to_string()),
+        }],
     );
     let outer = Expr::handle(
         inner,
@@ -115,7 +126,8 @@ fn nested_handle_expr() {
             op_name: "read_file".to_string(),
             params: vec![],
             continuation_name: "k".to_string(),
-            body: Expr::value("outer-handled".to_string())}],
+            body: Expr::value("outer-handled".to_string()),
+        }],
     );
     match outer {
         Expr::Handle { body, handlers } => {
@@ -126,9 +138,11 @@ fn nested_handle_expr() {
                     assert_eq!(handlers.len(), 1);
                     assert_eq!(handlers[0].op_name, "fetch");
                 }
-                _ => panic!("expected nested Handle")}
+                _ => panic!("expected nested Handle"),
+            }
         }
-        _ => panic!("expected outer Handle")}
+        _ => panic!("expected outer Handle"),
+    }
 }
 
 #[test]
@@ -137,7 +151,8 @@ fn handler_clause_clone_eq() {
         op_name: "fetch".to_string(),
         params: vec!["url".to_string()],
         continuation_name: "k".to_string(),
-        body: Expr::value("result".to_string())};
+        body: Expr::value("result".to_string()),
+    };
     let cloned = clause.clone();
     assert_eq!(clause, cloned);
 }
@@ -148,7 +163,8 @@ fn handler_clause_debug() {
         op_name: "fetch".to_string(),
         params: vec!["url".to_string()],
         continuation_name: "k".to_string(),
-        body: Expr::value("result".to_string())};
+        body: Expr::value("result".to_string()),
+    };
     let debug = format!("{:?}", clause);
     assert!(debug.contains("fetch"));
     assert!(debug.contains("HandlerClause"));
@@ -179,9 +195,11 @@ fn deeply_nested_call_expr() {
                     assert_eq!(name, "mul");
                     assert_eq!(args.len(), 2);
                 }
-                _ => panic!("expected mul call")}
+                _ => panic!("expected mul call"),
+            }
         }
-        _ => panic!("expected add call")}
+        _ => panic!("expected add call"),
+    }
 }
 
 #[test]
@@ -192,5 +210,6 @@ fn call_with_empty_args() {
             assert_eq!(name, "now");
             assert!(args.is_empty());
         }
-        _ => panic!("expected Call variant")}
+        _ => panic!("expected Call variant"),
+    }
 }

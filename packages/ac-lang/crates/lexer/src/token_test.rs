@@ -1,5 +1,5 @@
-use crate::{Span, Token, TokenKind};
 use crate::rule::test_utils::TestKind;
+use crate::{Span, Token, TokenKind};
 
 #[test]
 fn token_new() {

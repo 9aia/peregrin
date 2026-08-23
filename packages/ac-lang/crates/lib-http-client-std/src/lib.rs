@@ -1,4 +1,4 @@
-//! # ac-lib-http-std
+//! # ac-lib-http-client-std
 //!
 //! Concrete HTTP client implementation backed by `ureq`.
 //!
@@ -8,8 +8,8 @@
 //!
 //! ```ignore
 //! use ac_runtime_modules::ModuleHost;
-//! use ac_lib_http::HttpClientModule;
-//! use ac_lib_http_std::StdHttpClient;
+//! use ac_lib_http_client::HttpClientModule;
+//! use ac_lib_http_client_std::StdHttpClient;
 //!
 //! let host = ModuleHost::new()
 //!     .with(HttpClientModule::new(StdHttpClient));

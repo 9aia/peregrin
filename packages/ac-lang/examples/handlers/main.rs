@@ -9,13 +9,19 @@
 
 use ac_ast_canonical::{Expr, HandlerClause};
 use ac_runtime::NonFunctionValue;
-use ac_vm_canonical::{CanonicalContext, Context, Error, Function, Host, Operation, OperationSig, Vm};
+use ac_vm_canonical::{
+    CanonicalContext, Context, Error, Function, Host, Operation, OperationSig, Vm,
+};
 
 // ── functions ─────────────────────────────────────────────────────
 
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -23,7 +29,11 @@ impl Function for Add {
 
 struct Concat;
 impl Function for Concat {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let s: String = args
             .iter()
             .filter_map(|v| v.as_str().map(|s| s.to_string()))
@@ -42,12 +52,18 @@ impl Operation for FetchOp {
         OperationSig {
             name: "fetch".to_string(),
             params: vec![("url".to_string(), serde_json::json!({"type": "string"}))],
-            return_schema: Some(serde_json::json!({"type": "string"}))}
+            return_schema: Some(serde_json::json!({"type": "string"})),
+        }
     }
-    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn perform(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
-            args: args.to_vec()})
+            args: args.to_vec(),
+        })
     }
 }
 
@@ -56,19 +72,22 @@ impl Operation for FetchOp {
 struct DemoHost {
     add: Add,
     concat: Concat,
-    fetch: FetchOp}
+    fetch: FetchOp,
+}
 
 impl Host for DemoHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "add" => Some(&self.add),
             "concat" => Some(&self.concat),
-            _ => None}
+            _ => None,
+        }
     }
     fn operation(&self, name: &str) -> Option<&dyn Operation> {
         match name {
             "fetch" => Some(&self.fetch),
-            _ => None}
+            _ => None,
+        }
     }
 }
 
@@ -77,7 +96,8 @@ impl Default for DemoHost {
         DemoHost {
             add: Add,
             concat: Concat,
-            fetch: FetchOp}
+            fetch: FetchOp,
+        }
     }
 }
 
@@ -100,7 +120,8 @@ fn main() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new("intercepted-data"))}],
+            body: Expr::value(NonFunctionValue::new("intercepted-data")),
+        }],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
     println!(
@@ -122,7 +143,8 @@ fn main() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))])}],
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new(42.0))]),
+        }],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
     println!(
@@ -144,7 +166,8 @@ fn main() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("World"))])}],
+            body: Expr::call("k", vec![Expr::value(NonFunctionValue::new("World"))]),
+        }],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
     println!(
@@ -166,7 +189,8 @@ fn main() {
             op_name: "fetch".to_string(),
             params: vec!["url".to_string()],
             continuation_name: "k".to_string(),
-            body: Expr::value(NonFunctionValue::new(999.0))}],
+            body: Expr::value(NonFunctionValue::new(999.0)),
+        }],
     );
     let result = vm.eval(&expr, &mut ctx).unwrap();
     println!(

@@ -1,7 +1,7 @@
 use crate::AsyncEval;
+use crate::Context;
 use crate::Error;
 use crate::Eval;
-use crate::Context;
 use ac_runtime_values::NonFunctionValue;
 use indexmap::IndexMap;
 use serde_json::Value as JsonValue;
@@ -30,7 +30,8 @@ pub struct CanonicalContext {
     async_eval: Option<Box<dyn AsyncEval>>,
     max_depth: Option<usize>,
     max_calls: Option<usize>,
-    call_count: Cell<usize>}
+    call_count: Cell<usize>,
+}
 
 impl CanonicalContext {
     /// Creates a new context with a single empty global scope.
@@ -41,7 +42,8 @@ impl CanonicalContext {
             async_eval: None,
             max_depth: None,
             max_calls: None,
-            call_count: Cell::new(0)}
+            call_count: Cell::new(0),
+        }
     }
 
     /// Creates a context with each namespace root bound as a variable.
@@ -125,7 +127,8 @@ impl CanonicalContext {
             Some(eval) => eval.eval_expr_async(expr, vars),
             None => Box::pin(std::future::ready(Err(Error::PrimitiveError(
                 "no async eval callback set".to_string(),
-            ))))}
+            )))),
+        }
     }
 
     /// Pushes a new empty scope onto the scope stack.
@@ -192,9 +195,7 @@ impl CanonicalContext {
         self.call_count.set(count);
         if let Some(max) = self.max_calls {
             if count > max {
-                return Err(Error::ResourceLimit(format!(
-                    "call limit exceeded: {max}"
-                )));
+                return Err(Error::ResourceLimit(format!("call limit exceeded: {max}")));
             }
         }
         Ok(())
@@ -207,9 +208,7 @@ impl CanonicalContext {
     pub fn check_depth(&self) -> Result<(), Error> {
         if let Some(max) = self.max_depth {
             if self.scopes.len() >= max {
-                return Err(Error::ResourceLimit(format!(
-                    "depth limit exceeded: {max}"
-                )));
+                return Err(Error::ResourceLimit(format!("depth limit exceeded: {max}")));
             }
         }
         Ok(())

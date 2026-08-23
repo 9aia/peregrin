@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{Context, Error};
+use ac_runtime_modules::Module;
 
 use super::DateTimeModule;
 
@@ -38,11 +38,7 @@ fn start_of_day() {
 
 #[test]
 fn end_of_day() {
-    let result = call(
-        &DateTimeModule,
-        "end_of_day",
-        &[s("2021-06-15T10:30:45Z")],
-    );
+    let result = call(&DateTimeModule, "end_of_day", &[s("2021-06-15T10:30:45Z")]);
     assert_eq!(result.as_str(), Some("2021-06-15T23:59:59Z"));
 }
 
@@ -60,11 +56,7 @@ fn start_of_hour() {
 
 #[test]
 fn end_of_hour() {
-    let result = call(
-        &DateTimeModule,
-        "end_of_hour",
-        &[s("2021-06-15T10:30:45Z")],
-    );
+    let result = call(&DateTimeModule, "end_of_hour", &[s("2021-06-15T10:30:45Z")]);
     assert_eq!(result.as_str(), Some("2021-06-15T10:59:59Z"));
 }
 
@@ -134,11 +126,7 @@ fn start_of_year() {
 
 #[test]
 fn end_of_year() {
-    let result = call(
-        &DateTimeModule,
-        "end_of_year",
-        &[s("2021-06-15T10:30:45Z")],
-    );
+    let result = call(&DateTimeModule, "end_of_year", &[s("2021-06-15T10:30:45Z")]);
     assert_eq!(result.as_str(), Some("2021-12-31T23:59:59Z"));
 }
 
@@ -159,8 +147,8 @@ fn end_of_month_invalid_date_errors() {
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_modules::ModuleHost;
 use ac_runtime_canonical::{CanonicalContext, Host, Vm};
+use ac_runtime_modules::ModuleHost;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(DateTimeModule);

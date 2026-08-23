@@ -5,9 +5,9 @@
 //! that the generic config, rules, and lexer trait work end-to-end.
 
 use ac_lexer::{
-    CommentFactory, CommentTokenKind, DefaultLexError, FnRule, IdentFactory,
-    KindFactory, LexError, LexRule, Lexer, LexerConfig, NumberFactory, Span,
-    StringFactory, Token, TokenKind};
+    CommentFactory, CommentTokenKind, DefaultLexError, FnRule, IdentFactory, KindFactory, LexError,
+    LexRule, Lexer, LexerConfig, NumberFactory, Span, StringFactory, Token, TokenKind,
+};
 use std::fmt;
 
 // --- Test dialect ---
@@ -18,7 +18,8 @@ enum IntegKind {
     Num(f64),
     Str(String),
     Comment(String),
-    Eof}
+    Eof,
+}
 
 impl fmt::Display for IntegKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -27,37 +28,54 @@ impl fmt::Display for IntegKind {
             IntegKind::Num(n) => write!(f, "num({n})"),
             IntegKind::Str(s) => write!(f, "str({s:?})"),
             IntegKind::Comment(s) => write!(f, "comment({s:?})"),
-            IntegKind::Eof => write!(f, "eof")}
+            IntegKind::Eof => write!(f, "eof"),
+        }
     }
 }
 
 impl TokenKind for IntegKind {
     type Factory = IntegFactory;
-    fn is_eof(&self) -> bool { matches!(self, IntegKind::Eof) }
-    fn is_error(&self) -> bool { false }
+    fn is_eof(&self) -> bool {
+        matches!(self, IntegKind::Eof)
+    }
+    fn is_error(&self) -> bool {
+        false
+    }
 }
 
 impl CommentTokenKind for IntegKind {
-    fn is_comment(&self) -> bool { matches!(self, IntegKind::Comment(_)) }
+    fn is_comment(&self) -> bool {
+        matches!(self, IntegKind::Comment(_))
+    }
 }
 
 #[derive(Clone, Default)]
 struct IntegFactory;
 
 impl KindFactory<IntegKind> for IntegFactory {
-    fn string_kind(&self, v: String) -> IntegKind { IntegKind::Str(v) }
-    fn number_kind(&self, v: f64) -> IntegKind { IntegKind::Num(v) }
-    fn ident_kind(&self, t: String) -> IntegKind { IntegKind::Ident(t) }
-    fn eof_kind(&self) -> IntegKind { IntegKind::Eof }
+    fn string_kind(&self, v: String) -> IntegKind {
+        IntegKind::Str(v)
+    }
+    fn number_kind(&self, v: f64) -> IntegKind {
+        IntegKind::Num(v)
+    }
+    fn ident_kind(&self, t: String) -> IntegKind {
+        IntegKind::Ident(t)
+    }
+    fn eof_kind(&self) -> IntegKind {
+        IntegKind::Eof
+    }
 }
 
 impl CommentFactory<IntegKind> for IntegFactory {
-    fn comment_kind(&self, t: String) -> IntegKind { IntegKind::Comment(t) }
+    fn comment_kind(&self, t: String) -> IntegKind {
+        IntegKind::Comment(t)
+    }
 }
 
 // --- Local rules (since built-in rules live in ac-lexer-common) ---
 
-use ac_lexer::primitives::{lex_string, lex_number, is_ident_start, lex_ident};
+use ac_lexer::primitives::{is_ident_start, lex_ident, lex_number, lex_string};
 
 #[derive(Clone, Default)]
 struct StringRule;
@@ -74,19 +92,20 @@ where
         config: &LexerConfig<K, E>,
     ) -> Option<Result<Token<K>, E>> {
         match chars.peek() {
-            Some(&(_, '"' | '\'')) => {
-                Some(
-                    lex_string(chars)
-                        .map(|(value, span)| {
-                            Token::new(config.factory().string_kind(value), span)
-                        })
-                        .map_err(E::from)
-                )
-            }
-            _ => None}
+            Some(&(_, '"' | '\'')) => Some(
+                lex_string(chars)
+                    .map(|(value, span)| Token::new(config.factory().string_kind(value), span))
+                    .map_err(E::from),
+            ),
+            _ => None,
+        }
     }
-    fn name(&self) -> &'static str { "string" }
-    fn clone_box(&self) -> Box<dyn LexRule<K, E>> { Box::new(self.clone()) }
+    fn name(&self) -> &'static str {
+        "string"
+    }
+    fn clone_box(&self) -> Box<dyn LexRule<K, E>> {
+        Box::new(self.clone())
+    }
 }
 
 #[derive(Clone, Default)]
@@ -104,15 +123,11 @@ where
         config: &LexerConfig<K, E>,
     ) -> Option<Result<Token<K>, E>> {
         match chars.peek() {
-            Some(&(_, '0'..='9')) => {
-                Some(
-                    lex_number(chars)
-                        .map(|(value, span)| {
-                            Token::new(config.factory().number_kind(value), span)
-                        })
-                        .map_err(E::from)
-                )
-            }
+            Some(&(_, '0'..='9')) => Some(
+                lex_number(chars)
+                    .map(|(value, span)| Token::new(config.factory().number_kind(value), span))
+                    .map_err(E::from),
+            ),
             Some(&(_, '-')) => {
                 let mut peek = chars.clone();
                 peek.next();
@@ -122,16 +137,21 @@ where
                             .map(|(value, span)| {
                                 Token::new(config.factory().number_kind(value), span)
                             })
-                            .map_err(E::from)
+                            .map_err(E::from),
                     )
                 } else {
                     None
                 }
             }
-            _ => None}
+            _ => None,
+        }
     }
-    fn name(&self) -> &'static str { "number" }
-    fn clone_box(&self) -> Box<dyn LexRule<K, E>> { Box::new(self.clone()) }
+    fn name(&self) -> &'static str {
+        "number"
+    }
+    fn clone_box(&self) -> Box<dyn LexRule<K, E>> {
+        Box::new(self.clone())
+    }
 }
 
 #[derive(Clone, Default)]
@@ -149,29 +169,33 @@ where
         config: &LexerConfig<K, E>,
     ) -> Option<Result<Token<K>, E>> {
         match chars.peek() {
-            Some(&(_, ch)) if is_ident_start(ch) => {
-                Some(
-                    lex_ident(chars)
-                        .map(|(text, span)| {
-                            let kind = config
-                                .lookup_keyword(&text)
-                                .cloned()
-                                .unwrap_or_else(|| config.factory().ident_kind(text));
-                            Token::new(kind, span)
-                        })
-                        .map_err(E::from)
-                )
-            }
-            _ => None}
+            Some(&(_, ch)) if is_ident_start(ch) => Some(
+                lex_ident(chars)
+                    .map(|(text, span)| {
+                        let kind = config
+                            .lookup_keyword(&text)
+                            .cloned()
+                            .unwrap_or_else(|| config.factory().ident_kind(text));
+                        Token::new(kind, span)
+                    })
+                    .map_err(E::from),
+            ),
+            _ => None,
+        }
     }
-    fn name(&self) -> &'static str { "ident" }
-    fn clone_box(&self) -> Box<dyn LexRule<K, E>> { Box::new(self.clone()) }
+    fn name(&self) -> &'static str {
+        "ident"
+    }
+    fn clone_box(&self) -> Box<dyn LexRule<K, E>> {
+        Box::new(self.clone())
+    }
 }
 
 // --- A simple lexer using the generic infrastructure ---
 
 struct SimpleLexer {
-    config: LexerConfig<IntegKind, DefaultLexError>}
+    config: LexerConfig<IntegKind, DefaultLexError>,
+}
 
 impl Default for SimpleLexer {
     fn default() -> Self {
@@ -179,7 +203,8 @@ impl Default for SimpleLexer {
             config: LexerConfig::new(IntegFactory)
                 .with_rule(StringRule)
                 .with_rule(NumberRule)
-                .with_rule(IdentRule)}
+                .with_rule(IdentRule),
+        }
     }
 }
 
@@ -210,7 +235,8 @@ impl Lexer<IntegKind, DefaultLexError> for SimpleLexer {
                 chars.next();
                 return Err(DefaultLexError::UnexpectedChar {
                     span: Span::at(pos),
-                    char: ch});
+                    char: ch,
+                });
             }
         }
 
@@ -268,7 +294,8 @@ fn custom_fn_rule_works() {
                 let (pos, _) = chars.next().unwrap();
                 Some(Ok(Token::new(IntegKind::Ident("!".into()), Span::at(pos))))
             }
-            _ => None}
+            _ => None,
+        }
     }
 
     let config = LexerConfig::new(IntegFactory)
@@ -288,8 +315,7 @@ fn config_merge_combines_rules() {
     let base: LexerConfig<IntegKind, DefaultLexError> = LexerConfig::new(IntegFactory)
         .with_rule(StringRule)
         .with_rule(NumberRule);
-    let ext = LexerConfig::new(IntegFactory)
-        .with_rule(IdentRule);
+    let ext = LexerConfig::new(IntegFactory).with_rule(IdentRule);
 
     let merged = base.merge(ext);
     assert_eq!(merged.rules().len(), 3);
@@ -300,7 +326,8 @@ fn config_merge_combines_rules() {
 
 #[test]
 fn config_merge_dedups_by_name() {
-    let base: LexerConfig<IntegKind, DefaultLexError> = LexerConfig::new(IntegFactory).with_rule(StringRule);
+    let base: LexerConfig<IntegKind, DefaultLexError> =
+        LexerConfig::new(IntegFactory).with_rule(StringRule);
     let ext = LexerConfig::new(IntegFactory).with_rule(StringRule);
 
     let merged = base.merge(ext);

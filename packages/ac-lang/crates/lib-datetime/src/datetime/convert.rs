@@ -14,13 +14,13 @@ impl Function for FromUnix {
     ) -> Result<NonFunctionValue, Error> {
         let arg = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0})?;
+            got: 0,
+        })?;
         let ts = require_number(arg)?;
         let secs = ts.floor() as i64;
         let nanos = ((ts - ts.floor()) * 1e9) as u32;
-        let dt = chrono::DateTime::<chrono::Utc>::from_timestamp(secs, nanos).ok_or(
-            DatetimeError::InvalidUnixTimestamp { value: ts }.into_vm_error(),
-        )?;
+        let dt = chrono::DateTime::<chrono::Utc>::from_timestamp(secs, nanos)
+            .ok_or(DatetimeError::InvalidUnixTimestamp { value: ts }.into_vm_error())?;
         Ok(s(format_iso(&dt)))
     }
 }

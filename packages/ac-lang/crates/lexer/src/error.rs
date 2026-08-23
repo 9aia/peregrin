@@ -34,4 +34,5 @@ pub enum DefaultLexError {
 
     /// An unexpected character at the given span.
     #[error("unexpected character at {span}: {char}")]
-    UnexpectedChar { span: Span, char: char }}
+    UnexpectedChar { span: Span, char: char },
+}

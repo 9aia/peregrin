@@ -1,7 +1,7 @@
-use ac_lexer::{DefaultLexError, LexRule, Span};
-use crate::tokens::MockKind;
-use crate::empty_config as cfg;
 use super::BlockCommentRule;
+use crate::empty_config as cfg;
+use crate::tokens::MockKind;
+use ac_lexer::{DefaultLexError, LexRule, Span};
 
 const RULE: BlockCommentRule = BlockCommentRule;
 

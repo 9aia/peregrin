@@ -22,7 +22,10 @@ fn gauss_mean_shift() {
         sum += extract_num(&result);
     }
     let sample_mean = sum / count as f64;
-    assert!((sample_mean - mean).abs() < 10.0, "sample mean {sample_mean} too far from {mean}");
+    assert!(
+        (sample_mean - mean).abs() < 10.0,
+        "sample mean {sample_mean} too far from {mean}"
+    );
 }
 
 #[test]
@@ -40,7 +43,10 @@ fn gauss_negative_stddev_errors() {
 #[test]
 fn gauss_no_args_errors() {
     let result = call_err("gauss", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.exponential ─────────────────────────────────────────────
@@ -95,7 +101,10 @@ fn exponential_negative_lambda_errors() {
 #[test]
 fn exponential_no_args_errors() {
     let result = call_err("exponential", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.poisson ─────────────────────────────────────────────────
@@ -141,7 +150,10 @@ fn poisson_negative_lambda_errors() {
 #[test]
 fn poisson_no_args_errors() {
     let result = call_err("poisson", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }
 
 // ── rand.binomial ────────────────────────────────────────────────
@@ -151,7 +163,10 @@ fn binomial_in_range() {
     for _ in 0..100 {
         let result = call("binomial", &[n(10.0), n(0.5)]);
         let val = extract_num(&result) as i64;
-        assert!((0..=10).contains(&val), "binomial must be in [0, n], got {val}");
+        assert!(
+            (0..=10).contains(&val),
+            "binomial must be in [0, n], got {val}"
+        );
     }
 }
 
@@ -208,5 +223,8 @@ fn binomial_p_out_of_range_errors() {
 #[test]
 fn binomial_no_args_errors() {
     let result = call_err("binomial", &[]);
-    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
+    assert!(matches!(
+        result,
+        Err(ac_runtime::Error::ArgumentCount { .. })
+    ));
 }

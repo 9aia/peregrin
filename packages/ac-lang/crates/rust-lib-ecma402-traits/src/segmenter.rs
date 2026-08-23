@@ -8,7 +8,8 @@ pub enum Granularity {
     /// Sentence boundaries.
     Sentence,
     /// Line break boundaries.
-    Line}
+    Line,
+}
 
 /// Line-break strictness.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -21,7 +22,8 @@ pub enum LineBreakStyle {
     /// Loose line breaking.
     Loose,
     /// Break anywhere, disregarding any prohibition against line breaks.
-    Anywhere}
+    Anywhere,
+}
 
 /// Line-break word handling.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
@@ -32,7 +34,8 @@ pub enum LineBreakWord {
     /// Breaking is allowed within "words".
     BreakAll,
     /// Breaking is forbidden within "words".
-    KeepAll}
+    KeepAll,
+}
 
 /// Options used to construct a `Segmenter` instance.
 #[derive(Debug, Clone)]
@@ -42,7 +45,8 @@ pub struct SegmenterOptions {
     /// Line break style, relevant when `granularity` is `Line`.
     pub line_break_style: LineBreakStyle,
     /// Line break word handling, relevant when `granularity` is `Line`.
-    pub line_break_word: LineBreakWord}
+    pub line_break_word: LineBreakWord,
+}
 
 /// A single segment.
 #[derive(Debug, Clone)]
@@ -52,7 +56,8 @@ pub struct Segment {
     /// Byte index of the segment in the original string.
     pub index: usize,
     /// `true` if the segment is word-like, when known.
-    pub is_word_like: Option<bool>}
+    pub is_word_like: Option<bool>,
+}
 
 /// ECMA-402 `Intl.Segmenter` behavior, backend-agnostic.
 pub trait Segmenter {

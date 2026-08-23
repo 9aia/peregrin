@@ -1,0 +1,15 @@
+[package]
+name = "ac-lib-http-server-std"
+version.workspace = true
+edition.workspace = true
+
+[dev-dependencies]
+ureq = "2"
+
+[dependencies]
+ac-lib-http-server.workspace = true
+tokio = { version = "1", features = ["rt", "net", "sync", "macros", "time", "fs"] }
+hyper = { version = "1", features = ["server", "http1"] }
+hyper-util = { version = "0.1", features = ["tokio"] }
+http-body-util = "0.1"
+bytes = "1"

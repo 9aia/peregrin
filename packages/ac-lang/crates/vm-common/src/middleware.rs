@@ -5,14 +5,16 @@ use ac_runtime::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, O
 /// Useful for namespacing or versioning: `"math.add"` → `"add"`.
 pub struct MapHost {
     inner: Box<dyn Host>,
-    mapper: Box<dyn Fn(&str) -> String + 'static>}
+    mapper: Box<dyn Fn(&str) -> String + 'static>,
+}
 
 impl MapHost {
     /// Creates a host that maps names through `mapper`.
     pub fn new(inner: Box<dyn Host>, mapper: impl Fn(&str) -> String + 'static) -> Self {
         MapHost {
             inner,
-            mapper: Box::new(mapper)}
+            mapper: Box::new(mapper),
+        }
     }
 
     /// Convenience constructor that prepends a fixed prefix.
@@ -59,7 +61,8 @@ impl Host for MapHost {
 /// A host that logs every lookup it forwards.
 pub struct LoggingHost {
     inner: Box<dyn Host>,
-    log: Box<dyn Fn(&HostEvent<'_>) + 'static>}
+    log: Box<dyn Fn(&HostEvent<'_>) + 'static>,
+}
 
 /// What was looked up on a host.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -68,27 +71,33 @@ pub enum HostEventKind {
     AsyncFunction,
     Operation,
     LazyFunction,
-    GenericFunction}
+    GenericFunction,
+}
 
 /// A host-lookup event.
 #[derive(Debug)]
 pub struct HostEvent<'a> {
     pub kind: HostEventKind,
     pub name: &'a str,
-    pub found: bool}
+    pub found: bool,
+}
 
 impl LoggingHost {
     /// Creates a host that logs every lookup to `logger`.
     pub fn new(inner: Box<dyn Host>, logger: impl Fn(&HostEvent<'_>) + 'static) -> Self {
         LoggingHost {
             inner,
-            log: Box::new(logger)}
+            log: Box::new(logger),
+        }
     }
 
     /// Creates a host that prints every lookup to stderr.
     pub fn eprint(inner: Box<dyn Host>) -> Self {
         LoggingHost::new(inner, |event| {
-            eprintln!("[host] {:?} {} found={}", event.kind, event.name, event.found);
+            eprintln!(
+                "[host] {:?} {} found={}",
+                event.kind, event.name, event.found
+            );
         })
     }
 }
@@ -99,7 +108,8 @@ impl Host for LoggingHost {
         (self.log)(&HostEvent {
             kind: HostEventKind::Function,
             name,
-            found: result.is_some()});
+            found: result.is_some(),
+        });
         result
     }
 
@@ -108,7 +118,8 @@ impl Host for LoggingHost {
         (self.log)(&HostEvent {
             kind: HostEventKind::AsyncFunction,
             name,
-            found: result.is_some()});
+            found: result.is_some(),
+        });
         result
     }
 
@@ -117,7 +128,8 @@ impl Host for LoggingHost {
         (self.log)(&HostEvent {
             kind: HostEventKind::Operation,
             name,
-            found: result.is_some()});
+            found: result.is_some(),
+        });
         result
     }
 
@@ -126,7 +138,8 @@ impl Host for LoggingHost {
         (self.log)(&HostEvent {
             kind: HostEventKind::LazyFunction,
             name,
-            found: result.is_some()});
+            found: result.is_some(),
+        });
         result
     }
 
@@ -135,7 +148,8 @@ impl Host for LoggingHost {
         (self.log)(&HostEvent {
             kind: HostEventKind::GenericFunction,
             name,
-            found: result.is_some()});
+            found: result.is_some(),
+        });
         result
     }
 }
@@ -143,14 +157,16 @@ impl Host for LoggingHost {
 /// A host that only forwards a fixed set of allowed names.
 pub struct AllowHost {
     inner: Box<dyn Host>,
-    allowed: std::collections::HashSet<String>}
+    allowed: std::collections::HashSet<String>,
+}
 
 impl AllowHost {
     /// Creates a host that only resolves names in `allowed`.
     pub fn new(inner: Box<dyn Host>, allowed: impl IntoIterator<Item = impl Into<String>>) -> Self {
         AllowHost {
             inner,
-            allowed: allowed.into_iter().map(|s| s.into()).collect()}
+            allowed: allowed.into_iter().map(|s| s.into()).collect(),
+        }
     }
 }
 

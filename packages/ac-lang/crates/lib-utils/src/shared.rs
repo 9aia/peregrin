@@ -1,5 +1,5 @@
-use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_runtime::{Context, Error};
+use ac_runtime::{FunctionValue, NonFunctionValue};
 
 // ════════════════════════════════════════════════════════════════════
 // Tier 0: Shared helpers (replaces duplicated copies across modules)
@@ -10,7 +10,8 @@ use ac_runtime::{Context, Error};
 pub(crate) fn require_array(arg: &NonFunctionValue) -> Result<&[serde_json::Value], Error> {
     arg.as_array().ok_or(Error::TypeMismatch {
         expected: "array",
-        got: "non-array"})
+        got: "non-array",
+    })
 }
 
 pub(crate) fn require_object(
@@ -18,7 +19,8 @@ pub(crate) fn require_object(
 ) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
     arg.as_object().ok_or(Error::TypeMismatch {
         expected: "object",
-        got: "non-object"})
+        got: "non-object",
+    })
 }
 
 pub(crate) fn require_string(arg: &NonFunctionValue) -> Result<String, Error> {
@@ -26,13 +28,15 @@ pub(crate) fn require_string(arg: &NonFunctionValue) -> Result<String, Error> {
         .map(|s| s.to_string())
         .ok_or(Error::TypeMismatch {
             expected: "string",
-            got: "non-string"})
+            got: "non-string",
+        })
 }
 
 pub(crate) fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error> {
     arg.as_function().ok_or(Error::TypeMismatch {
         expected: "function value",
-        got: "non-function"})
+        got: "non-function",
+    })
 }
 
 // ── argument count requirements ────────────────────────────────────
@@ -40,7 +44,8 @@ pub(crate) fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionV
 pub(crate) fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0})
+        got: 0,
+    })
 }
 
 pub(crate) fn require_two_args(
@@ -49,7 +54,8 @@ pub(crate) fn require_two_args(
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len()});
+            got: args.len(),
+        });
     }
     Ok((&args[0], &args[1]))
 }
@@ -60,7 +66,8 @@ pub(crate) fn require_three_args(
     if args.len() < 3 {
         return Err(Error::ArgumentCount {
             expected: 3,
-            got: args.len()});
+            got: args.len(),
+        });
     }
     Ok((&args[0], &args[1], &args[2]))
 }
@@ -68,7 +75,8 @@ pub(crate) fn require_three_args(
 pub(crate) fn require_one_array(args: &[NonFunctionValue]) -> Result<&[serde_json::Value], Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0})?;
+        got: 0,
+    })?;
     require_array(arg)
 }
 
@@ -78,7 +86,8 @@ pub(crate) fn require_two_arrays(
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len()});
+            got: args.len(),
+        });
     }
     let a = require_array(&args[0])?;
     let b = require_array(&args[1])?;
@@ -91,7 +100,8 @@ pub(crate) fn require_function_and_array(
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len()});
+            got: args.len(),
+        });
     }
     let fn_val = require_function_value(&args[0])?;
     let array = require_array(&args[1])?;
@@ -102,7 +112,8 @@ pub(crate) fn require_functions(args: &[NonFunctionValue]) -> Result<Vec<Functio
     if args.is_empty() {
         return Err(Error::ArgumentCount {
             expected: 1,
-            got: 0});
+            got: 0,
+        });
     }
     args.iter().map(require_function_value).collect()
 }
@@ -223,7 +234,8 @@ pub(crate) fn value_to_string(value: &serde_json::Value) -> String {
         }
         serde_json::Value::Bool(b) => b.to_string(),
         serde_json::Value::Null => "null".to_string(),
-        _ => serde_json::to_string(value).unwrap_or_else(|_| "unknown".to_string())}
+        _ => serde_json::to_string(value).unwrap_or_else(|_| "unknown".to_string()),
+    }
 }
 
 // ════════════════════════════════════════════════════════════════════

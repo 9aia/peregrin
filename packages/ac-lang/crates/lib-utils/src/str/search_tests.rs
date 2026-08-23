@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
 
 use super::StrModule;
 
@@ -331,10 +331,7 @@ fn levenshtein_nonempty_to_empty() {
 
 #[test]
 fn levenshtein_both_empty() {
-    assert_eq!(
-        call("levenshtein", &[s(""), s("")]).as_number(),
-        Some(0.0)
-    );
+    assert_eq!(call("levenshtein", &[s(""), s("")]).as_number(), Some(0.0));
 }
 
 #[test]
@@ -383,10 +380,7 @@ fn similarity_identical() {
 
 #[test]
 fn similarity_both_empty() {
-    assert_eq!(
-        call("similarity", &[s(""), s("")]).as_number(),
-        Some(1.0)
-    );
+    assert_eq!(call("similarity", &[s(""), s("")]).as_number(), Some(1.0));
 }
 
 #[test]

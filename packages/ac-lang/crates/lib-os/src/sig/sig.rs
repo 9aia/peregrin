@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{Context, Error, Function};
+use ac_runtime_modules::Module;
 
 use crate::error::OsError;
 
@@ -19,14 +19,16 @@ pub trait Sig: Send + Sync {
 /// Module adapter for [`Sig`] — exposes `sig.*` functions.
 pub struct SigModule {
     send: SendFn,
-    list: ListFn}
+    list: ListFn,
+}
 
 impl SigModule {
     pub fn new(sig: impl Sig + 'static) -> Self {
         let sig = Arc::new(sig);
         SigModule {
             send: SendFn { sig: sig.clone() },
-            list: ListFn { sig }}
+            list: ListFn { sig },
+        }
     }
 }
 
@@ -39,34 +41,50 @@ impl Module for SigModule {
         match name {
             "send" => Some(&self.send),
             "list" => Some(&self.list),
-            _ => None}
+            _ => None,
+        }
     }
 }
 
 struct SendFn {
-    sig: Arc<dyn Sig>}
+    sig: Arc<dyn Sig>,
+}
 
 impl Function for SendFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
-            return Err(Error::ArgumentCount { expected: 2, got: args.len() });
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
         }
-        let process_id = args[0]
-            .as_number()
-            .ok_or(Error::TypeMismatch { expected: "number", got: "non-number" })? as i64;
+        let process_id = args[0].as_number().ok_or(Error::TypeMismatch {
+            expected: "number",
+            got: "non-number",
+        })? as i64;
         let signal = args[1].as_str().ok_or(Error::TypeMismatch {
             expected: "string",
-            got: "non-string"})?;
+            got: "non-string",
+        })?;
         self.sig.send(process_id, signal)?;
         Ok(NonFunctionValue::default())
     }
 }
 
 struct ListFn {
-    sig: Arc<dyn Sig>}
+    sig: Arc<dyn Sig>,
+}
 
 impl Function for ListFn {
-    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        _args: &[NonFunctionValue],
+        _ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let signals = self.sig.list()?;
         let arr: Vec<serde_json::Value> =
             signals.into_iter().map(serde_json::Value::String).collect();

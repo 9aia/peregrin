@@ -1,7 +1,9 @@
 use ac_runtime::NonFunctionValue;
 use ac_runtime::{Context, Error, Function};
 
-use super::common::{format_iso, parse_iso, parse_offset, require_one_string, require_two_strings, s};
+use super::common::{
+    format_iso, parse_iso, parse_offset, require_one_string, require_two_strings, s,
+};
 use chrono::Utc;
 
 #[derive(Clone, Copy)]
@@ -23,7 +25,11 @@ impl Function for ToTimezone {
             let frac_trimmed = frac.trim_end_matches('0');
             Ok(s(format!("{}{}{}", base, frac_trimmed, offset)))
         } else {
-            Ok(s(format!("{}{}", converted.format("%Y-%m-%dT%H:%M:%S"), offset)))
+            Ok(s(format!(
+                "{}{}",
+                converted.format("%Y-%m-%dT%H:%M:%S"),
+                offset
+            )))
         }
     }
 }

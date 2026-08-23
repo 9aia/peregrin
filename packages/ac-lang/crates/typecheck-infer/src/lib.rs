@@ -33,8 +33,9 @@ pub use table::{FunctionTable, HostFunctionSigs, RawFnSig};
 pub type ParseCache = HashMap<String, Option<Rc<ExprAst>>>;
 
 use ac_typecheck_core::{
-    CallCheckError, CallErrorKind, FunctionType, TraitRegistry, Type, TypeEnv,
-    TypeError, is_compatible, check_bounds, substitute, unify};
+    CallCheckError, CallErrorKind, FunctionType, TraitRegistry, Type, TypeEnv, TypeError,
+    check_bounds, is_compatible, substitute, unify,
+};
 
 /// The conventional name of the default namespace used for shorthand
 /// path resolution in type inference (bare `name` → `DEFAULT_NAMESPACE.name`).
@@ -243,7 +244,12 @@ pub fn check_call_with_expected(
     // Return-type-driven inference: unify expected return against declared
     // return type to bind any type variables that only appear in return position.
     if let Some(expected) = expected_return {
-        if !unify(expected, &fn_type.return_type, &mut subst, &fn_type.type_params) {
+        if !unify(
+            expected,
+            &fn_type.return_type,
+            &mut subst,
+            &fn_type.type_params,
+        ) {
             // If return-type unification fails, don't fail the whole call —
             // the argument-driven inference may still be correct. Just skip
             // the return-type binding.
@@ -280,7 +286,9 @@ pub fn check_call_detailed(
             function: fn_name.to_string(),
             kind: CallErrorKind::ArgCount {
                 expected: fn_type.params.len(),
-                got: arg_types.len()}});
+                got: arg_types.len(),
+            },
+        });
     }
 
     if fn_type.type_params.is_empty() {
@@ -292,7 +300,9 @@ pub fn check_call_detailed(
                         param: pname.clone(),
                         index: i,
                         expected: param_ty.clone(),
-                        actual: arg_ty.clone()}});
+                        actual: arg_ty.clone(),
+                    },
+                });
             }
         }
         return Ok((*fn_type.return_type).clone());
@@ -307,7 +317,9 @@ pub fn check_call_detailed(
                     param: pname.clone(),
                     index: i,
                     expected: param_ty.clone(),
-                    actual: arg_ty.clone()}});
+                    actual: arg_ty.clone(),
+                },
+            });
         }
     }
     for tp in &fn_type.type_params {
@@ -320,10 +332,17 @@ pub fn check_call_detailed(
         return Err(CallCheckError {
             function: fn_name.to_string(),
             kind: CallErrorKind::UnificationFailed {
-                param: fn_type.type_params.iter().map(|tp| tp.name.clone()).collect::<Vec<_>>().join(", "),
+                param: fn_type
+                    .type_params
+                    .iter()
+                    .map(|tp| tp.name.clone())
+                    .collect::<Vec<_>>()
+                    .join(", "),
                 index: 0,
                 expected: Type::Unknown,
-                actual: Type::Unknown}});
+                actual: Type::Unknown,
+            },
+        });
     }
     Ok(substitute(&fn_type.return_type, &subst))
 }
@@ -429,7 +448,8 @@ pub struct InferenceWithTypeArgs {
     /// Resolved type argument strings for the top-level call, if it was
     /// a generic function call. Empty for non-call expressions or
     /// monomorphic calls.
-    pub type_args: Vec<String>}
+    pub type_args: Vec<String>,
+}
 
 /// Infer the type of an expression string, also resolving type arguments
 /// for the top-level call if it is a generic function call.
@@ -446,7 +466,8 @@ pub fn infer_with_type_args(
     let Some(ast) = parse_expr(expr, dialect) else {
         return InferenceWithTypeArgs {
             return_type: Type::Unknown,
-            type_args: Vec::new()};
+            type_args: Vec::new(),
+        };
     };
     infer_ast_with_type_args(&ast, env, functions, dialect)
 }
@@ -466,30 +487,33 @@ pub fn infer_ast_with_type_args(
                 .collect();
 
             if let Some(fn_type) = functions.lookup(name) {
-                let (ret, type_args) =
-                    check_call_with_type_args(fn_type, &arg_types, None);
+                let (ret, type_args) = check_call_with_type_args(fn_type, &arg_types, None);
                 return InferenceWithTypeArgs {
                     return_type: ret,
-                    type_args};
+                    type_args,
+                };
             }
 
             let ty = resolve_path_type(name, env, dialect);
             if let Type::Function(fn_type) = ty {
-                let (ret, type_args) =
-                    check_call_with_type_args(&fn_type, &arg_types, None);
+                let (ret, type_args) = check_call_with_type_args(&fn_type, &arg_types, None);
                 return InferenceWithTypeArgs {
                     return_type: ret,
-                    type_args};
+                    type_args,
+                };
             }
 
             InferenceWithTypeArgs {
                 return_type: Type::Unknown,
-                type_args: Vec::new()}
+                type_args: Vec::new(),
+            }
         }
 
         _ => InferenceWithTypeArgs {
             return_type: infer_ast(ast, env, functions, dialect),
-            type_args: Vec::new()}}
+            type_args: Vec::new(),
+        },
+    }
 }
 
 /// Like [`check_call_with_expected`] but also returns resolved type
@@ -524,7 +548,12 @@ pub fn check_call_with_type_args(
     }
 
     if let Some(expected) = expected_return {
-        if !unify(expected, &fn_type.return_type, &mut subst, &fn_type.type_params) {
+        if !unify(
+            expected,
+            &fn_type.return_type,
+            &mut subst,
+            &fn_type.type_params,
+        ) {
             // Graceful degradation — skip return-type binding.
         }
     }

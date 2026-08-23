@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use ac_runtime::NonFunctionValue;
-use ac_runtime::{AsyncFunction, Context, Error, Function, GenericFunction, Host, LazyFunction, Operation};
+use ac_runtime::{
+    AsyncFunction, Context, Error, Function, GenericFunction, Host, LazyFunction, Operation,
+};
 
 use super::call_cache::{CallCache, CallKey};
 
@@ -14,10 +16,15 @@ use super::call_cache::{CallCache, CallKey};
 struct CachedFunction {
     inner: Box<dyn Function>,
     cache: Arc<Mutex<CallCache>>,
-    name: String}
+    name: String,
+}
 
 impl Function for CachedFunction {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut dyn Context,
+    ) -> Result<NonFunctionValue, Error> {
         let key = CallKey::new(&self.name, args);
         if let Some(cached) = self.cache.lock().unwrap().get_by_key(&key) {
             return Ok(cached.clone());
@@ -72,7 +79,8 @@ impl Function for CachedFunction {
 pub struct CacheHost<H: Host> {
     inner: H,
     registered: HashMap<String, CachedFunction>,
-    cache: Arc<Mutex<CallCache>>}
+    cache: Arc<Mutex<CallCache>>,
+}
 
 impl<H: Host> CacheHost<H> {
     /// Creates a new `CacheHost` wrapping `inner` with an empty cache.
@@ -80,7 +88,8 @@ impl<H: Host> CacheHost<H> {
         CacheHost {
             inner,
             registered: HashMap::new(),
-            cache: Arc::new(Mutex::new(CallCache::new()))}
+            cache: Arc::new(Mutex::new(CallCache::new())),
+        }
     }
 
     /// Creates a new `CacheHost` wrapping `inner` with a pre-populated
@@ -93,7 +102,8 @@ impl<H: Host> CacheHost<H> {
         CacheHost {
             inner,
             registered: HashMap::new(),
-            cache: Arc::new(Mutex::new(cache))}
+            cache: Arc::new(Mutex::new(cache)),
+        }
     }
 
     /// Registers a function under the given name for caching.
@@ -108,7 +118,8 @@ impl<H: Host> CacheHost<H> {
             CachedFunction {
                 inner: function,
                 cache: self.cache.clone(),
-                name},
+                name,
+            },
         );
     }
 
@@ -164,6 +175,7 @@ impl<H: Host + Clone> Clone for CacheHost<H> {
         CacheHost {
             inner: self.inner.clone(),
             registered: HashMap::new(),
-            cache: self.cache.clone()}
+            cache: self.cache.clone(),
+        }
     }
 }

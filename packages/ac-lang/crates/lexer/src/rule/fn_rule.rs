@@ -1,7 +1,7 @@
 //! [`FnRule`] — a rule backed by a function pointer.
 
-use crate::{LexError, LexerConfig, Token, TokenKind};
 use crate::rule::LexRule;
+use crate::{LexError, LexerConfig, Token, TokenKind};
 
 /// A rule backed by a function pointer.
 ///
@@ -54,7 +54,8 @@ pub struct FnRule<K: TokenKind, E: LexError> {
     func: fn(
         &mut std::iter::Peekable<std::str::CharIndices<'_>>,
         &LexerConfig<K, E>,
-    ) -> Option<Result<Token<K>, E>>}
+    ) -> Option<Result<Token<K>, E>>,
+}
 
 impl<K: TokenKind, E: LexError> FnRule<K, E> {
     /// Creates a named function-pointer rule.
@@ -73,7 +74,8 @@ impl<K: TokenKind, E: LexError> Clone for FnRule<K, E> {
     fn clone(&self) -> Self {
         FnRule {
             name: self.name,
-            func: self.func}
+            func: self.func,
+        }
     }
 }
 

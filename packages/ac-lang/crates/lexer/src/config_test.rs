@@ -1,6 +1,5 @@
-use crate::{
-    DefaultLexError, FnRule, LexRule, LexerConfig, Token};
 use crate::rule::test_utils::{BangRule, TestKind, cfg};
+use crate::{DefaultLexError, FnRule, LexRule, LexerConfig, Token};
 
 #[test]
 fn new_is_empty() {

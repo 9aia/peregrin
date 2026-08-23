@@ -1,19 +1,23 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_modules::Module;
 use ac_runtime::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
 
 use super::module::IntlModule;
 
 fn call_canonical(args: &[NonFunctionValue]) -> NonFunctionValue {
     let module = IntlModule::new();
-    let func = module.function("get_canonical_locales").expect("function exists");
+    let func = module
+        .function("get_canonical_locales")
+        .expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_supported(args: &[NonFunctionValue]) -> NonFunctionValue {
     let module = IntlModule::new();
-    let func = module.function("supported_locales_of").expect("function exists");
+    let func = module
+        .function("supported_locales_of")
+        .expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
@@ -71,9 +75,13 @@ fn supported_locales_no_args_returns_all() {
 
 // ── Blob provider tests ───────────────────────────────────────────
 
-fn call_supported_with_blob(args: &[NonFunctionValue]) -> Result<NonFunctionValue, ac_runtime::Error> {
+fn call_supported_with_blob(
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, ac_runtime::Error> {
     let module = IntlModule::with_blob_provider(vec![0u8; 10]);
-    let func = module.function("supported_locales_of").expect("function exists");
+    let func = module
+        .function("supported_locales_of")
+        .expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
@@ -81,11 +89,17 @@ fn call_supported_with_blob(args: &[NonFunctionValue]) -> Result<NonFunctionValu
 #[test]
 fn supported_locales_with_invalid_blob_errors_not_hardcoded() {
     let result = call_supported_with_blob(&[s("en")]);
-    assert!(result.is_err(), "invalid blob should error, not return hardcoded list");
+    assert!(
+        result.is_err(),
+        "invalid blob should error, not return hardcoded list"
+    );
 }
 
 #[test]
 fn supported_locales_no_args_with_invalid_blob_errors_not_hardcoded() {
     let result = call_supported_with_blob(&[]);
-    assert!(result.is_err(), "invalid blob with no args should error, not return hardcoded list");
+    assert!(
+        result.is_err(),
+        "invalid blob with no args should error, not return hardcoded list"
+    );
 }

@@ -24,8 +24,10 @@ members = [
   "crates/lib-kv-hashmap",
   "crates/lib-os",
   "crates/lib-os-std",
-  "crates/lib-http",
-  "crates/lib-http-std",
+  "crates/lib-http-client",
+  "crates/lib-http-client-std",
+  "crates/lib-http-server",
+  "crates/lib-http-server-std",
   "crates/vm",
   "crates/vm-common",
   "crates/vm-canonical",
@@ -108,8 +110,10 @@ ac-lib-kv = { path = "crates/lib-kv" }
 ac-lib-kv-hashmap = { path = "crates/lib-kv-hashmap" }
 ac-lib-os = { path = "crates/lib-os" }
 ac-lib-os-std = { path = "crates/lib-os-std" }
-ac-lib-http = { path = "crates/lib-http" }
-ac-lib-http-std = { path = "crates/lib-http-std" }
+ac-lib-http-client = { path = "crates/lib-http-client" }
+ac-lib-http-client-std = { path = "crates/lib-http-client-std" }
+ac-lib-http-server = { path = "crates/lib-http-server" }
+ac-lib-http-server-std = { path = "crates/lib-http-server-std" }
 ac-runtime = { path = "crates/vm" }
 ac-runtime-common = { path = "crates/vm-common" }
 ac-runtime-canonical = { path = "crates/vm-canonical" }
@@ -201,8 +205,10 @@ default = [
   "lib-kv-hashmap",
   "lib-os",
   "lib-os-std",
-  "lib-http",
-  "lib-http-std",
+  "lib-http-client",
+  "lib-http-client-std",
+  "lib-http-server",
+  "lib-http-server-std",
   "store",
   "codebase",
 ]
@@ -243,8 +249,10 @@ lib-kv = ["dep:ac-lib-kv", "vm", "dep:ac-runtime-modules"]
 lib-kv-hashmap = ["dep:ac-lib-kv-hashmap", "lib-kv"]
 lib-os = ["dep:ac-lib-os", "vm", "dep:ac-runtime-modules"]
 lib-os-std = ["dep:ac-lib-os-std", "lib-os"]
-lib-http = ["dep:ac-lib-http", "vm", "dep:ac-runtime-modules"]
-lib-http-std = ["dep:ac-lib-http-std", "lib-http"]
+lib-http-client = ["dep:ac-lib-http-client", "vm", "dep:ac-runtime-modules"]
+lib-http-client-std = ["dep:ac-lib-http-client-std", "lib-http-client"]
+lib-http-server = ["dep:ac-lib-http-server", "vm", "dep:ac-runtime-modules"]
+lib-http-server-std = ["dep:ac-lib-http-server-std", "lib-http-server"]
 store = ["dep:ac-store"]
 codebase = ["dep:ac-codebase", "store"]
 
@@ -284,8 +292,10 @@ ac-lib-kv = { workspace = true, optional = true }
 ac-lib-kv-hashmap = { workspace = true, optional = true }
 ac-lib-os = { workspace = true, optional = true }
 ac-lib-os-std = { workspace = true, optional = true }
-ac-lib-http = { workspace = true, optional = true }
-ac-lib-http-std = { workspace = true, optional = true }
+ac-lib-http-client = { workspace = true, optional = true }
+ac-lib-http-client-std = { workspace = true, optional = true }
+ac-lib-http-server = { workspace = true, optional = true }
+ac-lib-http-server-std = { workspace = true, optional = true }
 ac-store = { workspace = true, optional = true }
 ac-codebase = { workspace = true, optional = true }
 ac-runtime-sandbox = { workspace = true, optional = true }

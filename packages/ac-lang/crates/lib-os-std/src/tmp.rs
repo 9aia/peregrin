@@ -17,7 +17,8 @@ impl Tmp for StdTmp {
         let dir = std::env::temp_dir();
         let path = dir.join(format!("ac-dir-{}-{}", std::process::id(), unique_suffix()));
         fs::create_dir_all(&path).map_err(|e| OsError::Io {
-            message: e.to_string()})?;
+            message: e.to_string(),
+        })?;
         Ok(path.to_string_lossy().into_owned())
     }
 }

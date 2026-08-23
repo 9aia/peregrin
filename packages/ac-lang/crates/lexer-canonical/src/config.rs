@@ -2,8 +2,8 @@
 
 use ac_lexer::{DefaultLexError, LexerConfig};
 use ac_lexer_common::{
-    BlockCommentRule, DelimiterRule, IdentRule, LineCommentRule, NumberRule,
-    StringRule};
+    BlockCommentRule, DelimiterRule, IdentRule, LineCommentRule, NumberRule, StringRule,
+};
 
 use crate::kind::{CanonicalFactory, CanonicalKind};
 

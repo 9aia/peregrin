@@ -15,7 +15,8 @@ pub fn is_compatible_function_value() -> FunctionValue {
             ("expected".to_string(), JsonValue::Null),
         ],
         return_schema: Some(JsonValue::Bool(true)),
-        body: IS_COMPATIBLE_BODY.to_string()}
+        body: IS_COMPATIBLE_BODY.to_string(),
+    }
 }
 
 /// The expression body for `is_compatible`.

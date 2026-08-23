@@ -23,12 +23,15 @@ use icu_provider_blob::BlobDataProvider;
 /// bytes, which requires copying into a `Box<[u8]>` (ICU4X API requirement).
 #[derive(Clone)]
 pub struct IntlProvider {
-    blob: Arc<[u8]>}
+    blob: Arc<[u8]>,
+}
 
 impl IntlProvider {
     /// Create a provider from a blob of ICU4X postcard data.
     pub fn from_blob(blob: Vec<u8>) -> Self {
-        Self { blob: Arc::from(blob) }
+        Self {
+            blob: Arc::from(blob),
+        }
     }
 
     /// Create a `BlobDataProvider` from the stored bytes.

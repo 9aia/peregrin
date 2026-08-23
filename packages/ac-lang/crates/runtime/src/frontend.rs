@@ -30,7 +30,10 @@ pub trait Frontend {
     /// Default implementation calls [`parse`](Self::parse) and returns
     /// an empty `SourceMap`. Frontends override this to provide
     /// format-specific location tracking.
-    fn parse_with_locations(&self, input: &str) -> Result<(NonFunctionValue, SourceMap), Self::Error> {
+    fn parse_with_locations(
+        &self,
+        input: &str,
+    ) -> Result<(NonFunctionValue, SourceMap), Self::Error> {
         let value = self.parse(input)?;
         Ok((value, SourceMap::new()))
     }

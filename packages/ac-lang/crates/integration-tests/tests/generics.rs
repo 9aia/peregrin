@@ -8,20 +8,21 @@
 use ac_ast_canonical::Expr;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, Namespaces};
-use ac_runtime_example_1::DefaultHost;
 use ac_lib_utils::ArrayModule;
 use ac_runtime::NonFunctionValue;
+use ac_runtime_canonical::{CanonicalContext, Context, Error, Eval, Vm};
+use ac_runtime_example_1::DefaultHost;
 use ac_runtime_modules::ModuleHost;
 use ac_typecheck_core::{SchemaInterpreter, Type};
 use ac_typecheck_infer::{FunctionTable, HostFunctionSigs};
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
-use ac_runtime_canonical::{CanonicalContext, Context, Error, Eval, Vm};
 use serde_json::json;
 
 /// Minimal [`Eval`] implementation for integration tests.
 struct TestEval {
     host: DefaultHost,
-    namespaces: Namespaces}
+    namespaces: Namespaces,
+}
 
 impl TestEval {
     fn new(host: DefaultHost, namespaces: Namespaces) -> Self {
@@ -39,9 +40,8 @@ impl Eval for TestEval {
             .iter()
             .map(|(n, v)| (n.clone(), v.clone().into_inner()))
             .collect();
-        let result =
-            ac_fields::eval_body(expr, &params, &self.namespaces, &self.host, &AC_DIALECT)
-                .ok_or_else(|| Error::PrimitiveError(format!("failed to evaluate: {expr}")))?;
+        let result = ac_fields::eval_body(expr, &params, &self.namespaces, &self.host, &AC_DIALECT)
+            .ok_or_else(|| Error::PrimitiveError(format!("failed to evaluate: {expr}")))?;
         Ok(NonFunctionValue::new(result))
     }
 }
@@ -69,8 +69,13 @@ fn typecheck_resolves_type_args_for_array_map() {
     // Note: The typechecker's parser may not parse function-value literals
     // directly, so we test the signature resolution via check_call_with_type_args
     // on the FunctionTable directly.
-    let fn_type = table.lookup("array.map").expect("array.map should be in table");
-    assert!(!fn_type.type_params.is_empty(), "array.map should be generic");
+    let fn_type = table
+        .lookup("array.map")
+        .expect("array.map should be in table");
+    assert!(
+        !fn_type.type_params.is_empty(),
+        "array.map should be generic"
+    );
 
     // Simulate: map(fn: (Number) -> Number, arr: Array<Number>)
     // The arg types are [Function(Number -> Number), Array(Number)]
@@ -79,7 +84,8 @@ fn typecheck_resolves_type_args_for_array_map() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::Number)],
-            return_type: Box::new(Type::Number)}),
+            return_type: Box::new(Type::Number),
+        }),
         Type::Array(Box::new(Type::Number)),
     ];
 
@@ -96,8 +102,13 @@ fn typecheck_resolves_type_args_for_array_map() {
 #[test]
 fn typecheck_resolves_type_args_for_array_filter() {
     let table = build_function_table();
-    let fn_type = table.lookup("array.filter").expect("array.filter should be in table");
-    assert!(!fn_type.type_params.is_empty(), "array.filter should be generic");
+    let fn_type = table
+        .lookup("array.filter")
+        .expect("array.filter should be in table");
+    assert!(
+        !fn_type.type_params.is_empty(),
+        "array.filter should be generic"
+    );
 
     // filter(fn: (String) -> Boolean, arr: Array<String>)
     use ac_typecheck_core::FunctionType;
@@ -105,7 +116,8 @@ fn typecheck_resolves_type_args_for_array_filter() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::String)],
-            return_type: Box::new(Type::Boolean)}),
+            return_type: Box::new(Type::Boolean),
+        }),
         Type::Array(Box::new(Type::String)),
     ];
 
@@ -121,8 +133,13 @@ fn typecheck_resolves_type_args_for_array_filter() {
 #[test]
 fn typecheck_resolves_type_args_for_array_reduce() {
     let table = build_function_table();
-    let fn_type = table.lookup("array.reduce").expect("array.reduce should be in table");
-    assert!(!fn_type.type_params.is_empty(), "array.reduce should be generic");
+    let fn_type = table
+        .lookup("array.reduce")
+        .expect("array.reduce should be in table");
+    assert!(
+        !fn_type.type_params.is_empty(),
+        "array.reduce should be generic"
+    );
 
     // reduce(fn: (Number, String) -> Number, arr: Array<String>, init: Number)
     use ac_typecheck_core::FunctionType;
@@ -133,7 +150,8 @@ fn typecheck_resolves_type_args_for_array_reduce() {
                 ("acc".to_string(), Type::Number),
                 ("x".to_string(), Type::String),
             ],
-            return_type: Box::new(Type::Number)}),
+            return_type: Box::new(Type::Number),
+        }),
         Type::Array(Box::new(Type::String)),
         Type::Number,
     ];
@@ -223,7 +241,10 @@ fn vm_dispatches_array_filter_with_type_args() {
 
     match result {
         Ok(val) => {
-            assert!(val.as_array().is_some(), "array.filter should return an array");
+            assert!(
+                val.as_array().is_some(),
+                "array.filter should return an array"
+            );
         }
         Err(e) => {
             assert!(
@@ -290,7 +311,11 @@ fn full_pipeline_generic_type_args_resolution() {
     assert_eq!(fn_type.type_params.len(), 2, "array.map has T, U");
 
     // Verify type arg names
-    let tp_names: Vec<&str> = fn_type.type_params.iter().map(|tp| tp.name.as_str()).collect();
+    let tp_names: Vec<&str> = fn_type
+        .type_params
+        .iter()
+        .map(|tp| tp.name.as_str())
+        .collect();
     assert_eq!(tp_names, vec!["T", "U"]);
 
     // Resolve type args for a concrete instantiation
@@ -299,7 +324,8 @@ fn full_pipeline_generic_type_args_resolution() {
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::String)],
-            return_type: Box::new(Type::Number)}),
+            return_type: Box::new(Type::Number),
+        }),
         Type::Array(Box::new(Type::String)),
     ];
 
@@ -355,15 +381,24 @@ fn module_host_resolves_generic_function() {
 
     // array.map should resolve to a GenericFunction via ModuleHost
     let generic = host.generic_function("array.map");
-    assert!(generic.is_some(), "ModuleHost should resolve array.map as generic");
+    assert!(
+        generic.is_some(),
+        "ModuleHost should resolve array.map as generic"
+    );
 
     // array.filter should also resolve
     let generic = host.generic_function("array.filter");
-    assert!(generic.is_some(), "ModuleHost should resolve array.filter as generic");
+    assert!(
+        generic.is_some(),
+        "ModuleHost should resolve array.filter as generic"
+    );
 
     // array.reduce should also resolve
     let generic = host.generic_function("array.reduce");
-    assert!(generic.is_some(), "ModuleHost should resolve array.reduce as generic");
+    assert!(
+        generic.is_some(),
+        "ModuleHost should resolve array.reduce as generic"
+    );
 
     // Non-generic function should return None
     let generic = host.generic_function("array.length");
@@ -566,7 +601,10 @@ fn e2e_unknown_type_args_fall_back_gracefully() {
     );
 
     // Type args should be empty (graceful fallback for unknown types)
-    assert!(result.type_args.is_empty(), "unknown types should produce empty type_args");
+    assert!(
+        result.type_args.is_empty(),
+        "unknown types should produce empty type_args"
+    );
 
     // VM should still evaluate the call (falls back to Function::call)
     let vm = ac_runtime_canonical::Vm::new(host);
@@ -584,12 +622,17 @@ fn e2e_unknown_type_args_fall_back_gracefully() {
     });
     let arr = serde_json::json!([1, 2, 3]);
 
-    let expr = Expr::call("array.map", vec![
-        Expr::value(NonFunctionValue::new(fn_val)),
-        Expr::value(NonFunctionValue::new(arr)),
-    ]);
+    let expr = Expr::call(
+        "array.map",
+        vec![
+            Expr::value(NonFunctionValue::new(fn_val)),
+            Expr::value(NonFunctionValue::new(arr)),
+        ],
+    );
 
-    let result_val = vm.eval(&expr, &mut ctx).expect("VM eval should succeed even without type_args");
+    let result_val = vm
+        .eval(&expr, &mut ctx)
+        .expect("VM eval should succeed even without type_args");
     assert_eq!(result_val.into_inner(), serde_json::json!([1, 2, 3]));
 }
 
@@ -618,11 +661,7 @@ fn e2e_all_generic_functions_resolve_in_function_table() {
 
     for name in &generic_fns {
         let fn_type = table.lookup(name);
-        assert!(
-            fn_type.is_some(),
-            "{} should be in FunctionTable",
-            name
-        );
+        assert!(fn_type.is_some(), "{} should be in FunctionTable", name);
         let fn_type = fn_type.unwrap();
         assert!(
             !fn_type.type_params.is_empty(),

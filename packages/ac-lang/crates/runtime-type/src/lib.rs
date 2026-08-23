@@ -15,11 +15,13 @@ pub mod eval;
 pub mod host;
 
 pub use compatibility::{
-    eval_is_compatible_ac_lang, is_compatible_function_value, is_compatible_json};
+    eval_is_compatible_ac_lang, is_compatible_function_value, is_compatible_json,
+};
 pub use eval::TypeEval;
 pub use host::{
     AppArgsCompatible, FuncParamsCompatible, ObjEvery, PairSecond, TypeHelpersModule, TypeHost,
-    TypeKind, TypeName, ZipAll};
+    TypeKind, TypeName, ZipAll,
+};
 
 #[cfg(test)]
 mod tests;

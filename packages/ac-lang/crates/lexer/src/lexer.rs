@@ -44,6 +44,7 @@ pub trait Lexer<K: TokenKind, E: LexError>: Send + Sync {
     ) -> Box<dyn Iterator<Item = Result<Token<K>, E>> + 'a> {
         match self.lex(input) {
             Ok(tokens) => Box::new(tokens.into_iter().map(Ok)),
-            Err(e) => Box::new(std::iter::once(Err(e)))}
+            Err(e) => Box::new(std::iter::once(Err(e))),
+        }
     }
 }

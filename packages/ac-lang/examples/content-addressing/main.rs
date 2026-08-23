@@ -20,12 +20,14 @@ fn main() {
     let double = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
         return_schema: Some(serde_json::json!({"type": "number"})),
-        body: "mul(x, 2)".to_string()};
+        body: "mul(x, 2)".to_string(),
+    };
 
     let increment = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
         return_schema: Some(serde_json::json!({"type": "number"})),
-        body: "add(x, 1)".to_string()};
+        body: "add(x, 1)".to_string(),
+    };
 
     // Store them — each gets a content-addressed hash
     let double_hash = store.insert(double.clone());

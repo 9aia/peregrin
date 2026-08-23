@@ -29,7 +29,8 @@ fn split_parts_one_item_exact() {
         split_parts(&["x"], &formatted),
         vec![ListFormatPart {
             part_type: ListFormatPartType::Element,
-            value: "x".to_string()}]
+            value: "x".to_string()
+        }]
     );
 }
 
@@ -41,13 +42,16 @@ fn split_parts_two_items_with_separator() {
         vec![
             ListFormatPart {
                 part_type: ListFormatPartType::Element,
-                value: "a".to_string()},
+                value: "a".to_string()
+            },
             ListFormatPart {
                 part_type: ListFormatPartType::Literal,
-                value: ", ".to_string()},
+                value: ", ".to_string()
+            },
             ListFormatPart {
                 part_type: ListFormatPartType::Element,
-                value: "b".to_string()},
+                value: "b".to_string()
+            },
         ]
     );
 }
@@ -64,19 +68,24 @@ fn split_parts_with_leading_and_trailing() {
         vec![
             ListFormatPart {
                 part_type: ListFormatPartType::Literal,
-                value: "start: ".to_string()},
+                value: "start: ".to_string()
+            },
             ListFormatPart {
                 part_type: ListFormatPartType::Element,
-                value: "a".to_string()},
+                value: "a".to_string()
+            },
             ListFormatPart {
                 part_type: ListFormatPartType::Literal,
-                value: " and ".to_string()},
+                value: " and ".to_string()
+            },
             ListFormatPart {
                 part_type: ListFormatPartType::Element,
-                value: "b".to_string()},
+                value: "b".to_string()
+            },
             ListFormatPart {
                 part_type: ListFormatPartType::Literal,
-                value: " end".to_string()},
+                value: " end".to_string()
+            },
         ]
     );
 }
@@ -87,7 +96,8 @@ fn split_parts_missing_first_marker_non_empty_remaining() {
         split_parts(&["a", "b"], "no markers"),
         vec![ListFormatPart {
             part_type: ListFormatPartType::Literal,
-            value: "no markers".to_string()}]
+            value: "no markers".to_string()
+        }]
     );
 }
 
@@ -105,10 +115,12 @@ fn split_parts_missing_later_marker_non_empty_remaining() {
         vec![
             ListFormatPart {
                 part_type: ListFormatPartType::Element,
-                value: "a".to_string()},
+                value: "a".to_string()
+            },
             ListFormatPart {
                 part_type: ListFormatPartType::Literal,
-                value: " tail".to_string()},
+                value: " tail".to_string()
+            },
         ]
     );
 }
@@ -120,6 +132,7 @@ fn split_parts_missing_later_marker_empty_remaining() {
         split_parts(&["a", "b"], &ph),
         vec![ListFormatPart {
             part_type: ListFormatPartType::Element,
-            value: "a".to_string()}]
+            value: "a".to_string()
+        }]
     );
 }
