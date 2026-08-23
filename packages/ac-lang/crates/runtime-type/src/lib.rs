@@ -1,4 +1,4 @@
-//! # ac-host-type
+//! # ac-runtime-type
 //!
 //! Proof-of-concept: type checking with types represented as JSON values
 //! and `is_compatible` implemented as an AC-Lang function (a

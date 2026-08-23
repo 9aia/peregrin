@@ -1,4 +1,4 @@
-//! # ac-host-sandbox
+//! # ac-runtime-sandbox
 //!
 //! A [`Host`] for running untrusted AC expressions in a sandbox.
 //!

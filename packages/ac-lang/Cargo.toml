@@ -73,8 +73,8 @@ members = [
   "crates/store",
   "crates/codebase",
   "crates/integration-tests",
-  "crates/host-type",
-  "crates/host-sandbox",
+  "crates/runtime-type",
+  "crates/runtime-sandbox",
   "crates/lexer",
   "crates/lexer-canonical",
   "crates/lexer-common",
@@ -155,8 +155,8 @@ ac-meta = { path = "crates/meta" }
 ac-store = { path = "crates/store" }
 ac-codebase = { path = "crates/codebase" }
 ac-integration-tests = { path = "crates/integration-tests" }
-ac-host-type = { path = "crates/host-type" }
-ac-runtime-sandbox = { path = "crates/host-sandbox" }
+ac-runtime-type = { path = "crates/runtime-type" }
+ac-runtime-sandbox = { path = "crates/runtime-sandbox" }
 ac-lexer = { path = "crates/lexer" }
 ac-lexer-canonical = { path = "crates/lexer-canonical" }
 ac-lexer-common = { path = "crates/lexer-common" }

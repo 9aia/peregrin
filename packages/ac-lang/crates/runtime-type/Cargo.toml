@@ -1,5 +1,5 @@
 [package]
-name = "ac-host-type"
+name = "ac-runtime-type"
 version.workspace = true
 edition.workspace = true
 

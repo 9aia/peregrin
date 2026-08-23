@@ -288,6 +288,10 @@ dependencies = [
  "ac-ast-canonical",
  "ac-dialect",
  "ac-dialect-canonical",
+ "ac-lexer",
+ "ac-lexer-canonical",
+ "ac-parser",
+ "ac-parser-canonical",
  "ac-runtime",
  "ac-runtime-canonical",
  "ac-runtime-example-1",
@@ -366,25 +370,6 @@ dependencies = [
  "ac-runtime-canonical",
  "ac-runtime-example-1",
  "ac-runtime-values",
- "serde_json",
-]
-
-[[package]]
-name = "ac-host-type"
-version = "0.1.0"
-dependencies = [
- "ac-ast",
- "ac-ast-canonical",
- "ac-dialect",
- "ac-dialect-canonical",
- "ac-fields",
- "ac-lib-utils",
- "ac-runtime",
- "ac-runtime-canonical",
- "ac-runtime-example-1",
- "ac-runtime-modules",
- "ac-runtime-values",
- "ac-typecheck-core",
  "serde_json",
 ]
 
@@ -794,6 +779,25 @@ dependencies = [
  "ac-runtime-canonical",
  "ac-runtime-example-1",
  "ac-runtime-modules",
+]
+
+[[package]]
+name = "ac-runtime-type"
+version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-ast-canonical",
+ "ac-dialect",
+ "ac-dialect-canonical",
+ "ac-fields",
+ "ac-lib-utils",
+ "ac-runtime",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-values",
+ "ac-typecheck-core",
+ "serde_json",
 ]
 
 [[package]]
