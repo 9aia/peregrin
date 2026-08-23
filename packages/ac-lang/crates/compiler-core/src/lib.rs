@@ -18,6 +18,7 @@
 mod compilation;
 mod config;
 mod diagnostic;
+pub mod driver;
 mod error;
 mod pass_meta;
 mod pipeline;
@@ -31,6 +32,13 @@ pub use error::PassError;
 pub use pass_meta::{PassCategory, PassMetadata};
 pub use pipeline::{Pass, PassGroup, Pipeline};
 pub use visitor::{Folder, Visitor, walk_expr, walk_extracted, walk_field, fold_expr, fold_field};
+
+// New framework-backed types
+pub use driver::{
+    CheckedDoc, DriverDiagnostic, DriverError, DriverPipeline, DriverSeverity, ExtractedDoc,
+    OptPass, OptPassError, Outcome, ParsedDoc, PassManager, PassRun, Report, ResolvedDoc,
+    Session, Stage, Then, TypecheckResult,
+};
 
 #[cfg(test)]
 mod compilation_tests;

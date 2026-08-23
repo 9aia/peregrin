@@ -2,6 +2,10 @@
 //!
 //! Pipeline pass: generate output from the resolved `TypegenContext`.
 
+mod stage;
+
+pub use stage::{GenerateFromResolvedStage, GenerateStage};
+
 use ac_compiler_core::{Compilation, Config, Pass, PassError};
 
 /// Generate output from the resolved `TypegenContext`.

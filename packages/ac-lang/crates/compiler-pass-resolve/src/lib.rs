@@ -2,6 +2,10 @@
 //!
 //! Pipeline pass: resolve imports and build a `TypegenContext`.
 
+mod stage;
+
+pub use stage::ResolveStage;
+
 use ac_compiler_core::{Compilation, Config, Pass, PassError};
 
 /// Resolve imports and build a `TypegenContext`.

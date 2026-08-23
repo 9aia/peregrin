@@ -2,6 +2,10 @@
 //!
 //! Pipeline pass: extract fields, functions, and data from parsed document.
 
+mod stage;
+
+pub use stage::ExtractStage;
+
 use ac_compiler_core::{Compilation, Config, Pass, PassError};
 use ac_dialect_canonical::AC_DIALECT;
 

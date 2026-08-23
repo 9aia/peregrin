@@ -3,6 +3,9 @@
 //! Pipeline pass: typecheck all AC keys and cross-module imports.
 
 mod runner;
+mod stage;
+
+pub use stage::{TypecheckOnlyStage, TypecheckStage};
 
 use ac_compiler_core::{Compilation, Config, Pass, PassError};
 

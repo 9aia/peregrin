@@ -2,6 +2,10 @@
 //!
 //! Pipeline pass: parse source text into a `NonFunctionValue`.
 
+mod stage;
+
+pub use stage::ParseStage;
+
 use ac_compiler_core::{Compilation, Config, Pass, PassError};
 
 /// Parse the source text into a `NonFunctionValue`.
