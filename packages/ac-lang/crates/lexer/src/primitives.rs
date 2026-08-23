@@ -30,8 +30,7 @@ pub fn lex_string(
         match chars.next() {
             None => {
                 return Err(DefaultLexError::UnterminatedString {
-                    span: Span::new(start, end),
-                });
+                    span: Span::new(start, end)});
             }
             Some((pos, ch)) if ch == quote => {
                 end = pos + 1;
@@ -51,8 +50,7 @@ pub fn lex_string(
                     }
                     None => {
                         return Err(DefaultLexError::UnterminatedString {
-                            span: Span::new(start, end),
-                        });
+                            span: Span::new(start, end)});
                     }
                 }
             }
@@ -91,8 +89,7 @@ pub fn lex_number(
     }
 
     let value: f64 = text.parse().map_err(|_| DefaultLexError::InvalidNumber {
-        span: Span::new(start, end),
-    })?;
+        span: Span::new(start, end)})?;
 
     Ok((value, Span::new(start, end)))
 }
@@ -156,8 +153,7 @@ pub fn lex_block_comment(
         match chars.next() {
             None => {
                 return Err(DefaultLexError::UnterminatedString {
-                    span: Span::new(start, end),
-                });
+                    span: Span::new(start, end)});
             }
             Some((pos, '*')) => {
                 end = pos + 1;
@@ -167,8 +163,7 @@ pub fn lex_block_comment(
                         end += 1;
                         break;
                     }
-                    _ => text.push('*'),
-                }
+                    _ => text.push('*')}
             }
             Some((pos, ch)) => {
                 text.push(ch);

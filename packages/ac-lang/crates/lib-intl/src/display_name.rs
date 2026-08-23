@@ -1,10 +1,9 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use icu::locale::names::{
     LanguageDisplay, LanguageIdentifierDisplayName, LanguageIdentifierDisplayNameOptions,
     RegionDisplayName, ScriptDisplayName,
-    VariantDisplayName,
-};
+    VariantDisplayName};
 use icu::experimental::dimension::provider::currency::displayname::CurrencyDisplaynameV1;
 use icu::locale::DataLocale;
 use icu_provider::buf::AsDeserializingBufferProvider;
@@ -40,8 +39,7 @@ use super::provider::IntlProvider;
 /// - `intl.display_name("fonipa", "variant", "en")` → `"IPA Phonetics"`
 #[derive(Clone)]
 pub struct DisplayName {
-    provider: Option<IntlProvider>,
-}
+    provider: Option<IntlProvider>}
 
 impl DisplayName {
     pub fn new() -> Self {
@@ -60,7 +58,7 @@ impl Default for DisplayName {
 }
 
 impl Function for DisplayName {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let code = require_string(args, 0)?;
         let name_type = require_string(args, 1)?;
         let locale = optional_locale(args, 2)?;
@@ -73,8 +71,7 @@ impl Function for DisplayName {
 
         let language_display = match opt_str(opts, "languageDisplay").unwrap_or("dialect") {
             "standard" => LanguageDisplay::Standard,
-            _ => LanguageDisplay::Dialect,
-        };
+            _ => LanguageDisplay::Dialect};
         let mut dn_opts = LanguageIdentifierDisplayNameOptions::default();
         dn_opts.language_display = Some(language_display);
 
@@ -90,30 +87,25 @@ impl Function for DisplayName {
                         ),
                         None => LanguageIdentifierDisplayName::try_new_short_light(
                             locale.into(), lang_id, dn_opts,
-                        ),
-                    },
+                        )},
                     "narrow" => match dp.as_buffer_provider() {
                         Some(p) => LanguageIdentifierDisplayName::try_new_light_with_buffer_provider(
                             p, locale.into(), lang_id, dn_opts,
                         ),
                         None => LanguageIdentifierDisplayName::try_new_light(
                             locale.into(), lang_id, dn_opts,
-                        ),
-                    },
+                        )},
                     _ => match dp.as_buffer_provider() {
                         Some(p) => LanguageIdentifierDisplayName::try_new_long_light_with_buffer_provider(
                             p, locale.into(), lang_id, dn_opts,
                         ),
                         None => LanguageIdentifierDisplayName::try_new_long_light(
                             locale.into(), lang_id, dn_opts,
-                        ),
-                    },
-                };
+                        )}};
                 match result {
                     Ok(display) => display.as_borrowed().write_to_string().into_owned(),
                     Err(e) if no_fallback => return Err(IntlError::Formatting { message: e.to_string() }.into_vm_error()),
-                    Err(_) => code.to_string(),
-                }
+                    Err(_) => code.to_string()}
             }
             "region" => {
                 let region = code.parse()
@@ -123,30 +115,25 @@ impl Function for DisplayName {
                     "short" => {
                         let r = match dp.as_buffer_provider() {
                             Some(p) => RegionDisplayName::try_new_short_tiny_with_buffer_provider(p, locale.into(), region),
-                            None => RegionDisplayName::try_new_short_tiny(locale.into(), region),
-                        };
+                            None => RegionDisplayName::try_new_short_tiny(locale.into(), region)};
                         r.map(|d| d.write_to_string().into_owned())
                     },
                     "narrow" => {
                         let r = match dp.as_buffer_provider() {
                             Some(p) => RegionDisplayName::try_new_tiny_with_buffer_provider(p, locale.into(), region),
-                            None => RegionDisplayName::try_new_tiny(locale.into(), region),
-                        };
+                            None => RegionDisplayName::try_new_tiny(locale.into(), region)};
                         r.map(|d| d.write_to_string().into_owned())
                     },
                     _ => {
                         let r = match dp.as_buffer_provider() {
                             Some(p) => RegionDisplayName::try_new_light_with_buffer_provider(p, locale.into(), region),
-                            None => RegionDisplayName::try_new_light(locale.into(), region),
-                        };
+                            None => RegionDisplayName::try_new_light(locale.into(), region)};
                         r.map(|d| d.write_to_string().into_owned())
-                    },
-                };
+                    }};
                 match display {
                     Ok(name) => name,
                     Err(e) if no_fallback => return Err(IntlError::Formatting { message: e.to_string() }.into_vm_error()),
-                    Err(_) => code.to_string(),
-                }
+                    Err(_) => code.to_string()}
             }
             "script" => {
                 let script = code.parse()
@@ -156,43 +143,36 @@ impl Function for DisplayName {
                     "short" => {
                         let r = match dp.as_buffer_provider() {
                             Some(p) => ScriptDisplayName::try_new_short_heavy_with_buffer_provider(p, locale.into(), script),
-                            None => ScriptDisplayName::try_new_short_heavy(locale.into(), script),
-                        };
+                            None => ScriptDisplayName::try_new_short_heavy(locale.into(), script)};
                         r.map(|d| d.write_to_string().into_owned())
                     },
                     "narrow" => {
                         let r = match dp.as_buffer_provider() {
                             Some(p) => ScriptDisplayName::try_new_light_with_buffer_provider(p, locale.into(), script),
-                            None => ScriptDisplayName::try_new_light(locale.into(), script),
-                        };
+                            None => ScriptDisplayName::try_new_light(locale.into(), script)};
                         r.map(|d| d.write_to_string().into_owned())
                     },
                     _ => {
                         let r = match dp.as_buffer_provider() {
                             Some(p) => ScriptDisplayName::try_new_heavy_with_buffer_provider(p, locale.into(), script),
-                            None => ScriptDisplayName::try_new_heavy(locale.into(), script),
-                        };
+                            None => ScriptDisplayName::try_new_heavy(locale.into(), script)};
                         r.map(|d| d.write_to_string().into_owned())
-                    },
-                };
+                    }};
                 match display {
                     Ok(name) => name,
                     Err(e) if no_fallback => return Err(IntlError::Formatting { message: e.to_string() }.into_vm_error()),
-                    Err(_) => code.to_string(),
-                }
+                    Err(_) => code.to_string()}
             }
             "variant" => {
                 let variant = code.parse()
                     .map_err(|e| IntlError::InvalidArgument { message: format!("invalid variant code: {e}") }.into_vm_error())?;
                 let result = match dp.as_buffer_provider() {
                     Some(p) => VariantDisplayName::try_new_heavy_with_buffer_provider(p, locale.into(), variant),
-                    None => VariantDisplayName::try_new_heavy(locale.into(), variant),
-                };
+                    None => VariantDisplayName::try_new_heavy(locale.into(), variant)};
                 match result {
                     Ok(display) => display.write_to_string().into_owned(),
                     Err(e) if no_fallback => return Err(IntlError::Formatting { message: e.to_string() }.into_vm_error()),
-                    Err(_) => code.to_string(),
-                }
+                    Err(_) => code.to_string()}
             }
             "currency" => {
                 let code_upper = code.to_uppercase();
@@ -213,8 +193,7 @@ impl Function for DisplayName {
                             id: DataIdentifierBorrowed::for_marker_attributes_and_locale(attrs, &data_locale),
                             ..Default::default()
                         },
-                    ),
-                }
+                    )}
                 .allow_identifier_not_found()
                 .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
                 match response_opt {
@@ -223,30 +202,25 @@ impl Function for DisplayName {
                         display_name.to_string()
                     }
                     None if no_fallback => return Err(IntlError::Formatting { message: format!("no display name for currency: {code}") }.into_vm_error()),
-                    None => code.to_string(),
-                }
+                    None => code.to_string()}
             }
             "calendar" => {
                 let name = calendar_display_name(code, style);
                 match name {
                     Some(n) => n,
                     None if no_fallback => return Err(IntlError::Formatting { message: format!("no display name for calendar: {code}") }.into_vm_error()),
-                    None => code.to_string(),
-                }
+                    None => code.to_string()}
             }
             "dateTimeField" => {
                 let name = datetime_field_display_name(code, style);
                 match name {
                     Some(n) => n,
                     None if no_fallback => return Err(IntlError::Formatting { message: format!("no display name for dateTimeField: {code}") }.into_vm_error()),
-                    None => code.to_string(),
-                }
+                    None => code.to_string()}
             }
             _ => return Err(IntlError::InvalidType {
                 type_name: name_type.to_string(),
-                valid: "language, region, script, variant, currency, calendar, dateTimeField".into(),
-            }.into_vm_error()),
-        };
+                valid: "language, region, script, variant, currency, calendar, dateTimeField".into()}.into_vm_error())};
 
         Ok(s(formatted))
     }
@@ -274,8 +248,7 @@ fn calendar_display_name(code: &str, _style: &str) -> Option<String> {
         "japanese" => "Japanese Calendar",
         "persian" => "Persian Calendar",
         "roc" => "Republic of China Calendar",
-        _ => return None,
-    };
+        _ => return None};
     Some(name.to_string())
 }
 
@@ -296,7 +269,6 @@ fn datetime_field_display_name(code: &str, _style: &str) -> Option<String> {
         "minute" => "minute",
         "second" => "second",
         "timeZoneName" => "time zone name",
-        _ => return None,
-    };
+        _ => return None};
     Some(name.to_string())
 }

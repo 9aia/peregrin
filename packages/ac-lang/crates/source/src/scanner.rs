@@ -13,8 +13,7 @@ use serde_json::Value;
 /// lookups are possible from any byte offset.
 pub struct LineIndex {
     starts: Vec<usize>,
-    source_len: usize,
-}
+    source_len: usize}
 
 impl LineIndex {
     /// Build a line index from source text.
@@ -27,8 +26,7 @@ impl LineIndex {
         }
         LineIndex {
             starts,
-            source_len: source.len(),
-        }
+            source_len: source.len()}
     }
 
     /// Convert a byte offset into a 1-indexed `SourceLocation`.
@@ -120,14 +118,12 @@ pub struct KeyFound {
     /// Byte offset of the value start (after the separator).
     pub value_offset: usize,
     /// Indentation level (leading whitespace) of the line.
-    pub indent: usize,
-}
+    pub indent: usize}
 
 /// Configuration for key matching on a line.
 pub struct KeyMatcher {
     /// The separator character after the key (`:` for YAML/JSON, `=` for TOML).
-    pub separator: char,
-}
+    pub separator: char}
 
 impl KeyMatcher {
     /// Match a key at the start of a line, supporting unquoted,
@@ -218,8 +214,7 @@ impl KeyMatcher {
                 return Some(KeyFound {
                     key_offset: line_start + indent,
                     value_offset: line_start + indent + key_len,
-                    indent,
-                });
+                    indent});
             }
         }
 

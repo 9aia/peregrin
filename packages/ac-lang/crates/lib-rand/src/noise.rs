@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{num, require_number};
 
@@ -114,7 +114,7 @@ fn perlin_3d(x: f64, y: f64, z: f64) -> f64 {
 pub struct Perlin1D;
 
 impl Function for Perlin1D {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let x = require_number(args, 0)?;
         Ok(num(perlin_1d(x)))
     }
@@ -134,7 +134,7 @@ impl Function for Perlin1D {
 pub struct Perlin2D;
 
 impl Function for Perlin2D {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let x = require_number(args, 0)?;
         let y = require_number(args, 1)?;
         Ok(num(perlin_2d(x, y)))
@@ -155,7 +155,7 @@ impl Function for Perlin2D {
 pub struct Perlin3D;
 
 impl Function for Perlin3D {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let x = require_number(args, 0)?;
         let y = require_number(args, 1)?;
         let z = require_number(args, 2)?;
@@ -321,7 +321,7 @@ fn simplex_3d(x: f64, y: f64, z: f64) -> f64 {
 pub struct Simplex2D;
 
 impl Function for Simplex2D {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let x = require_number(args, 0)?;
         let y = require_number(args, 1)?;
         Ok(num(simplex_2d(x, y)))
@@ -342,7 +342,7 @@ impl Function for Simplex2D {
 pub struct Simplex3D;
 
 impl Function for Simplex3D {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let x = require_number(args, 0)?;
         let y = require_number(args, 1)?;
         let z = require_number(args, 2)?;

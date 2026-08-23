@@ -11,8 +11,7 @@ fn test_config() -> Config {
         backend: Some(Box::new(ac_typegen_backend_json_schema::JsonSchemaBackend)),
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
-        extensions: Default::default(),
-    }
+        extensions: Default::default()}
 }
 
 fn parse_extract_resolve(yaml: &str) -> Compilation {

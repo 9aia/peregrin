@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error, Function};
+use ac_runtime_modules::Module;
+use ac_runtime::{Context, Error, Function};
 
 use crate::error::PlatformError;
 
@@ -18,8 +18,7 @@ pub enum HttpMethod {
     Patch,
     Delete,
     Head,
-    Options,
-}
+    Options}
 
 impl HttpMethod {
     pub fn as_str(&self) -> &'static str {
@@ -30,8 +29,7 @@ impl HttpMethod {
             Self::Patch => "PATCH",
             Self::Delete => "DELETE",
             Self::Head => "HEAD",
-            Self::Options => "OPTIONS",
-        }
+            Self::Options => "OPTIONS"}
     }
 
     pub fn parse(s: &str) -> Option<Self> {
@@ -43,8 +41,7 @@ impl HttpMethod {
             "DELETE" => Some(Self::Delete),
             "HEAD" => Some(Self::Head),
             "OPTIONS" => Some(Self::Options),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -55,8 +52,7 @@ pub struct HttpRequest {
     pub url: String,
     pub body: Option<String>,
     pub headers: HashMap<String, String>,
-    pub timeout_ms: Option<u64>,
-}
+    pub timeout_ms: Option<u64>}
 
 impl HttpRequest {
     pub fn new(method: HttpMethod, url: impl Into<String>) -> Self {
@@ -65,8 +61,7 @@ impl HttpRequest {
             url: url.into(),
             body: None,
             headers: HashMap::new(),
-            timeout_ms: None,
-        }
+            timeout_ms: None}
     }
 
     pub fn with_body(mut self, body: impl Into<String>) -> Self {
@@ -92,8 +87,7 @@ pub struct HttpResponse {
     pub status_text: String,
     pub body: String,
     pub headers: HashMap<String, String>,
-    pub url: String,
-}
+    pub url: String}
 
 impl HttpResponse {
     pub fn new(status: u16, body: impl Into<String>) -> Self {
@@ -102,8 +96,7 @@ impl HttpResponse {
             status_text: String::new(),
             body: body.into(),
             headers: HashMap::new(),
-            url: String::new(),
-        }
+            url: String::new()}
     }
 
     pub fn with_header(mut self, name: impl Into<String>, value: impl Into<String>) -> Self {
@@ -165,33 +158,25 @@ pub struct HttpClientModule {
     patch: PatchFn,
     delete: DeleteFn,
     head: HeadFn,
-    request: RequestFn,
-}
+    request: RequestFn}
 
 impl HttpClientModule {
     pub fn new(client: impl HttpClient + 'static) -> Self {
         let client = Arc::new(client);
         HttpClientModule {
             get: GetFn {
-                client: client.clone(),
-            },
+                client: client.clone()},
             post: PostFn {
-                client: client.clone(),
-            },
+                client: client.clone()},
             put: PutFn {
-                client: client.clone(),
-            },
+                client: client.clone()},
             patch: PatchFn {
-                client: client.clone(),
-            },
+                client: client.clone()},
             delete: DeleteFn {
-                client: client.clone(),
-            },
+                client: client.clone()},
             head: HeadFn {
-                client: client.clone(),
-            },
-            request: RequestFn { client },
-        }
+                client: client.clone()},
+            request: RequestFn { client }}
     }
 }
 
@@ -209,8 +194,7 @@ impl Module for HttpClientModule {
             "delete" => Some(&self.delete),
             "head" => Some(&self.head),
             "request" => Some(&self.request),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -220,13 +204,11 @@ fn require_string_at(args: &[NonFunctionValue], idx: usize) -> Result<&str, Erro
     args.get(idx)
         .ok_or(Error::ArgumentCount {
             expected: idx + 1,
-            got: args.len(),
-        })?
+            got: args.len()})?
         .as_str()
         .ok_or(Error::TypeMismatch {
             expected: "string",
-            got: "non-string",
-        })
+            got: "non-string"})
 }
 
 fn extract_headers(args: &[NonFunctionValue], idx: usize) -> Result<HashMap<String, String>, Error> {
@@ -236,14 +218,12 @@ fn extract_headers(args: &[NonFunctionValue], idx: usize) -> Result<HashMap<Stri
         Some(v) => {
             let obj = v.as_object().ok_or(Error::TypeMismatch {
                 expected: "object",
-                got: "non-object",
-            })?;
+                got: "non-object"})?;
             let mut headers = HashMap::new();
             for (key, val) in obj {
                 let value = val.as_str().ok_or(Error::TypeMismatch {
                     expected: "string",
-                    got: "non-string",
-                })?;
+                    got: "non-string"})?;
                 headers.insert(key.clone(), value.to_string());
             }
             Ok(headers)
@@ -264,8 +244,7 @@ fn response_to_value(resp: HttpResponse) -> NonFunctionValue {
         "ok": ok,
         "body": resp.body,
         "headers": serde_json::Value::Object(headers),
-        "url": resp.url,
-    }))
+        "url": resp.url}))
 }
 
 // ── Verb function structs ───────────────────────────────────────────
@@ -273,14 +252,13 @@ fn response_to_value(resp: HttpResponse) -> NonFunctionValue {
 macro_rules! bodyless_fn {
     ($name:ident, $method:expr) => {
         struct $name {
-            client: Arc<dyn HttpClient>,
-        }
+            client: Arc<dyn HttpClient>}
 
         impl Function for $name {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut Context,
+                _ctx: &mut dyn Context,
             ) -> Result<NonFunctionValue, Error> {
                 let url = require_string_at(args, 0)?;
                 let headers = extract_headers(args, 1)?;
@@ -289,8 +267,7 @@ macro_rules! bodyless_fn {
                     url: url.to_string(),
                     body: None,
                     headers,
-                    timeout_ms: None,
-                };
+                    timeout_ms: None};
                 self.client
                     .request(&req)
                     .map(response_to_value)
@@ -303,14 +280,13 @@ macro_rules! bodyless_fn {
 macro_rules! body_fn {
     ($name:ident, $method:expr) => {
         struct $name {
-            client: Arc<dyn HttpClient>,
-        }
+            client: Arc<dyn HttpClient>}
 
         impl Function for $name {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut Context,
+                _ctx: &mut dyn Context,
             ) -> Result<NonFunctionValue, Error> {
                 let url = require_string_at(args, 0)?;
                 let body = require_string_at(args, 1)?;
@@ -320,8 +296,7 @@ macro_rules! body_fn {
                     url: url.to_string(),
                     body: Some(body.to_string()),
                     headers,
-                    timeout_ms: None,
-                };
+                    timeout_ms: None};
                 self.client
                     .request(&req)
                     .map(response_to_value)
@@ -340,11 +315,10 @@ body_fn!(PutFn, HttpMethod::Put);
 body_fn!(PatchFn, HttpMethod::Patch);
 
 struct RequestFn {
-    client: Arc<dyn HttpClient>,
-}
+    client: Arc<dyn HttpClient>}
 
 impl Function for RequestFn {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let method_str = require_string_at(args, 0)?;
         let method = HttpMethod::parse(method_str)
             .ok_or_else(|| Error::PrimitiveError(format!("unknown HTTP method: {method_str}")))?;
@@ -356,19 +330,16 @@ impl Function for RequestFn {
                 v.as_str()
                     .ok_or(Error::TypeMismatch {
                         expected: "string",
-                        got: "non-string",
-                    })?
+                        got: "non-string"})?
                     .to_string(),
-            ),
-        };
+            )};
         let headers = extract_headers(args, 3)?;
         let req = HttpRequest {
             method,
             url: url.to_string(),
             body,
             headers,
-            timeout_ms: None,
-        };
+            timeout_ms: None};
         self.client
             .request(&req)
             .map(response_to_value)

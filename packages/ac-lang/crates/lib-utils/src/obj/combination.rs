@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{deep_merge_values, obj_value, require_array, require_object, require_one_arg};
 
@@ -11,13 +11,12 @@ impl Function for Merge {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let a = require_object(&args[0])?;
         let b = require_object(&args[1])?;
@@ -37,13 +36,12 @@ impl Function for DeepMerge {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let a = require_object(&args[0])?;
         let b = require_object(&args[1])?;
@@ -63,7 +61,7 @@ impl Function for FromEntries {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let entries = require_array(arg)?;
@@ -71,18 +69,15 @@ impl Function for FromEntries {
         for entry in entries {
             let pair = entry.as_array().ok_or(Error::TypeMismatch {
                 expected: "array pair [key, value]",
-                got: "non-array",
-            })?;
+                got: "non-array"})?;
             if pair.len() < 2 {
                 return Err(Error::TypeMismatch {
                     expected: "pair with at least 2 elements",
-                    got: "short pair",
-                });
+                    got: "short pair"});
             }
             let key = pair[0].as_str().ok_or(Error::TypeMismatch {
                 expected: "string key",
-                got: "non-string",
-            })?;
+                got: "non-string"})?;
             result.insert(key.to_string(), pair[1].clone());
         }
         Ok(obj_value(result))

@@ -7,8 +7,7 @@ use clap::{Args, Parser, Subcommand};
 )]
 pub struct Cli {
     #[command(subcommand)]
-    pub command: Command,
-}
+    pub command: Command}
 
 #[derive(Subcommand)]
 pub enum Command {
@@ -23,8 +22,7 @@ pub enum Command {
     /// Generate type definitions from `$:` declarations.
     Typegen(TypegenArgs),
     /// Static type checking of `$:` declarations.
-    Typecheck(TypecheckArgs),
-}
+    Typecheck(TypecheckArgs)}
 
 #[derive(Args)]
 pub struct ParseArgs {
@@ -34,8 +32,7 @@ pub struct ParseArgs {
 
     /// Input format (yaml, json, or toml). Defaults to yaml.
     #[arg(short = 'f', long, default_value = "yaml")]
-    pub format: String,
-}
+    pub format: String}
 
 #[derive(Args)]
 pub struct EvalArgs {
@@ -49,8 +46,7 @@ pub struct EvalArgs {
 
     /// Output format (yaml, json, or toml). Defaults to yaml.
     #[arg(short = 'o', long, default_value = "yaml")]
-    pub output: String,
-}
+    pub output: String}
 
 #[derive(Args)]
 pub struct ValidateArgs {
@@ -64,8 +60,7 @@ pub struct ValidateArgs {
 
     /// JSON Schema file path.
     #[arg(short, long)]
-    pub schema: std::path::PathBuf,
-}
+    pub schema: std::path::PathBuf}
 
 #[derive(Args)]
 pub struct FieldsArgs {
@@ -75,8 +70,7 @@ pub struct FieldsArgs {
 
     /// Input format (yaml, json, or toml). Defaults to yaml.
     #[arg(short = 'f', long, default_value = "yaml")]
-    pub format: String,
-}
+    pub format: String}
 
 #[derive(Args)]
 pub struct TypegenArgs {
@@ -98,8 +92,7 @@ pub struct TypegenArgs {
 
     /// Output directory for generated schema files.
     #[arg(long, default_value = ".ac/generated/schemas")]
-    pub output_dir: std::path::PathBuf,
-}
+    pub output_dir: std::path::PathBuf}
 
 #[derive(Args)]
 pub struct TypecheckArgs {
@@ -109,5 +102,4 @@ pub struct TypecheckArgs {
 
     /// Input format (yaml, json, or toml). Defaults to yaml.
     #[arg(short = 'f', long, default_value = "yaml")]
-    pub format: String,
-}
+    pub format: String}

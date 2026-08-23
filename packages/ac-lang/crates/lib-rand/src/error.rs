@@ -1,6 +1,6 @@
 use std::fmt;
 
-use ac_vm::Error as VmError;
+use ac_runtime::Error as VmError;
 
 #[derive(Debug, Clone)]
 pub enum RandError {
@@ -12,8 +12,7 @@ pub enum RandError {
     NonNumericWeight { index: usize },
     InvalidStringLength { length: i64 },
     InvalidByteLength { length: i64 },
-    InvalidCharset { name: String },
-}
+    InvalidCharset { name: String }}
 
 impl fmt::Display for RandError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

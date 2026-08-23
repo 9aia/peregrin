@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{arr, num, require_object, require_one_arg};
 
@@ -11,7 +11,7 @@ impl Function for Keys {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
@@ -31,7 +31,7 @@ impl Function for Values {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
@@ -48,7 +48,7 @@ impl Function for Entries {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
@@ -68,7 +68,7 @@ impl Function for Size {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let size = if arg.is_null() {
@@ -82,8 +82,7 @@ impl Function for Size {
         } else {
             return Err(Error::TypeMismatch {
                 expected: "array, object, string, or null",
-                got: "non-sized type",
-            });
+                got: "non-sized type"});
         };
         Ok(num(size))
     }

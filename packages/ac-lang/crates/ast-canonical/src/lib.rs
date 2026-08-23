@@ -1,12 +1,11 @@
 //! # ac-ast-canonical
 //!
-//! The canonical AST for the AC language — expressions, handler clauses,
-//! and fields. Re-exports the generic `ac-ast-common` machinery so
-//! consumers only need one dependency.
+//! Concrete canonical AC AST nodes and factories.
+//!
+//! Re-exports the generic `ac-ast` and `ac-ast-common` machinery, plus
+//! concrete `Expr`, `Field`, `Stmt`, `Type` and their canonical factories.
 
-pub use ac_ast_common::{
-    Attrs, Both, ExprFactory, Node, NodeMetadata, Span, StmtFactory, TypeFactory,
-};
+pub use ac_ast_common::*;
 
 mod expr;
 mod field;

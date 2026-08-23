@@ -1,11 +1,9 @@
 [package]
-name = "ac-vm-canonical"
+name = "ac-runtime-canonical"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-ac-vm.workspace = true
+ac-runtime.workspace = true
+ac-runtime-common.workspace = true
 serde_json = "1"
-
-[dev-dependencies]
-ac-vm-common.workspace = true

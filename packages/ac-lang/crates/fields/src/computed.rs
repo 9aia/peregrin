@@ -1,7 +1,7 @@
 use crate::expression::eval_expression;
 use crate::types::{ArgSpec, ComputedField, DEFAULT_NAMESPACE, Namespaces};
 use ac_dialect::Dialect;
-use ac_vm::Host;
+use ac_runtime::Host;
 use serde_json::Value as JsonValue;
 
 /// Evaluates computed field expressions and inserts results into `data`.
@@ -108,8 +108,7 @@ fn check_arg_type(value: &JsonValue, schema: &JsonValue) -> Result<(), String> {
             JsonValue::Number(_) => "number",
             JsonValue::String(_) => "string",
             JsonValue::Array(_) => "array",
-            JsonValue::Object(_) => "object",
-        };
+            JsonValue::Object(_) => "object"};
         if type_name == "integer" {
             if let JsonValue::Number(n) = value
                 && n.as_f64().is_some_and(|f| f.fract() == 0.0)

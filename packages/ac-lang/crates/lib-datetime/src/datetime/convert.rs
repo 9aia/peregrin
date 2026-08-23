@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{format_iso, n, parse_iso, require_number, require_one_string, s};
 use crate::DatetimeError;
@@ -10,12 +10,11 @@ impl Function for FromUnix {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?;
+            got: 0})?;
         let ts = require_number(arg)?;
         let secs = ts.floor() as i64;
         let nanos = ((ts - ts.floor()) * 1e9) as u32;
@@ -32,7 +31,7 @@ impl Function for ToUnix {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;

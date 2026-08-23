@@ -62,8 +62,7 @@ pub enum CanonicalKind {
     Comment(String),
 
     /// End of input.
-    Eof,
-}
+    Eof}
 
 impl fmt::Display for CanonicalKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -84,8 +83,7 @@ impl fmt::Display for CanonicalKind {
             CanonicalKind::Comma => write!(f, ","),
             CanonicalKind::Colon => write!(f, ":"),
             CanonicalKind::Comment(s) => write!(f, "comment({s:?})"),
-            CanonicalKind::Eof => write!(f, "eof"),
-        }
+            CanonicalKind::Eof => write!(f, "eof")}
     }
 }
 

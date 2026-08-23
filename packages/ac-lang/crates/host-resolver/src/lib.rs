@@ -2,7 +2,7 @@
 //!
 //! Module-resolver-backed host for the AC VM.
 //!
-//! Wraps any [`Host`](ac_vm::Host) and adds an `import()` function
+//! Wraps any [`Host`](ac_runtime::Host) and adds an `import()` function
 //! that delegates to a [`ModuleResolver`](ac_module_resolver_core::ModuleResolver).
 //! This enables programs to import external modules at runtime —
 //! not just at type-check time.
@@ -20,10 +20,10 @@
 //! ## Example
 //!
 //! ```ignore
-//! use ac_host::DefaultHost;
-//! use ac_host_resolver::ResolverHost;
+//! use ac_runtime_example_1::DefaultHost;
+//! use ac_runtime_example_1_resolver::ResolverHost;
 //! use ac_module_resolver_virtual::VirtualResolver;
-//! use ac_vm::{Vm, Context};
+//! use ac_runtime_canonical::{CanonicalContext, Vm, Context};
 //! use ac_ast_canonical::Expr;
 //!
 //! let mut resolver = VirtualResolver::new();
@@ -37,7 +37,7 @@
 //!     Box::new(resolver),
 //! );
 //! let vm = Vm::new(host);
-//! let mut ctx = Context::new();
+//! let mut ctx = CanonicalContext::new();
 //!
 //! let expr = Expr::call("import", vec![Expr::value("config.yml")]);
 //! let result = vm.eval(&expr, &mut ctx).unwrap();

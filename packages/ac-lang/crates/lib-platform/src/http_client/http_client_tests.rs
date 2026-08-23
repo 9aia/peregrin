@@ -1,13 +1,13 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::Context;
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context};
 
 use super::http_client::{HttpClientModule, HttpResponse};
 use super::http_client_stub::StubHttpClient;
 
 fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
@@ -182,7 +182,7 @@ fn request_case_insensitive_method() {
 fn request_unknown_method() {
     let module = HttpClientModule::new(StubHttpClient::default());
     let func = module.function("request").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let err = func
         .call(
             &[s("BOGUS"), s("https://example.com"), null(), null()],
@@ -190,9 +190,8 @@ fn request_unknown_method() {
         )
         .unwrap_err();
     match err {
-        ac_vm::Error::PrimitiveError(msg) => assert!(msg.contains("unknown HTTP method")),
-        other => panic!("expected PrimitiveError, got {other:?}"),
-    }
+        ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("unknown HTTP method")),
+        other => panic!("expected PrimitiveError, got {other:?}")}
 }
 
 #[test]
@@ -239,12 +238,11 @@ fn response_status_text_and_url() {
 fn get_not_found() {
     let module = HttpClientModule::new(StubHttpClient::default());
     let func = module.function("get").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let err = func.call(&[s("https://nope.com")], &mut ctx).unwrap_err();
     match err {
-        ac_vm::Error::PrimitiveError(msg) => assert!(msg.contains("no canned response")),
-        other => panic!("expected PrimitiveError, got {other:?}"),
-    }
+        ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("no canned response")),
+        other => panic!("expected PrimitiveError, got {other:?}")}
 }
 
 #[test]

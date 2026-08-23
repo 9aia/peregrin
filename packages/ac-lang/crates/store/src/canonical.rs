@@ -17,8 +17,7 @@ pub fn canonicalize_json(value: &JsonValue) -> JsonValue {
             JsonValue::Object(sorted)
         }
         JsonValue::Array(arr) => JsonValue::Array(arr.iter().map(canonicalize_json).collect()),
-        other => other.clone(),
-    }
+        other => other.clone()}
 }
 
 /// Serialize a JSON value to a canonical string (sorted keys, no

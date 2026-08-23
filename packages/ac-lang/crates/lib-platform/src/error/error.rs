@@ -1,10 +1,10 @@
 use std::fmt;
 
-use ac_vm::Error as VmError;
+use ac_runtime::Error as VmError;
 
 /// Errors produced by platform service implementations.
 ///
-/// Converts to [`ac_vm::Error`] via `From`, so service methods can return
+/// Converts to [`ac_runtime::Error`] via `From`, so service methods can return
 /// `Result<T, PlatformError>` and the adapter handles the conversion.
 #[derive(Debug, Clone)]
 pub enum PlatformError {
@@ -13,8 +13,7 @@ pub enum PlatformError {
     AlreadyExists { path: String },
     Network { message: String },
     InvalidArgument { message: String },
-    Io { message: String },
-}
+    Io { message: String }}
 
 impl fmt::Display for PlatformError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -24,8 +23,7 @@ impl fmt::Display for PlatformError {
             Self::AlreadyExists { path } => write!(f, "already exists: {path}"),
             Self::Network { message } => write!(f, "network error: {message}"),
             Self::InvalidArgument { message } => write!(f, "invalid argument: {message}"),
-            Self::Io { message } => write!(f, "io error: {message}"),
-        }
+            Self::Io { message } => write!(f, "io error: {message}")}
     }
 }
 

@@ -45,7 +45,7 @@
 //! ## Usage
 //!
 //! ```ignore
-//! use ac_runtime_core::ModuleHost;
+//! use ac_runtime_modules::ModuleHost;
 //! use ac_lib_datetime::DateTimeModule;
 //!
 //! let host = ModuleHost::new()

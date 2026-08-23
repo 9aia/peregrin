@@ -1,18 +1,18 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error};
+use ac_runtime_modules::Module;
+use ac_runtime::{Context, Error};
 
 use super::module::CryptoModule;
 
 fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 
@@ -113,13 +113,13 @@ fn md5_no_args_errors() {
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_core::ModuleHost;
-use ac_vm::{Host, Vm};
+use ac_runtime_modules::ModuleHost;
+use ac_runtime_canonical::{CanonicalContext, Host, Vm};
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(CryptoModule);
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     vm.eval(expr, &mut ctx).expect("eval succeeds")
 }
 

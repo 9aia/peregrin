@@ -15,9 +15,7 @@ impl Fs for StdFs {
                 PlatformError::PermissionDenied { path: path.into() }
             }
             _ => PlatformError::Io {
-                message: e.to_string(),
-            },
-        })
+                message: e.to_string()}})
     }
 
     fn write_file(&self, path: &str, content: &str) -> Result<(), PlatformError> {
@@ -27,9 +25,7 @@ impl Fs for StdFs {
             }
             std::io::ErrorKind::AlreadyExists => PlatformError::AlreadyExists { path: path.into() },
             _ => PlatformError::Io {
-                message: e.to_string(),
-            },
-        })
+                message: e.to_string()}})
     }
 
     fn exists(&self, path: &str) -> Result<bool, PlatformError> {
@@ -40,9 +36,7 @@ impl Fs for StdFs {
         let meta = fs::metadata(path).map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => PlatformError::NotFound { path: path.into() },
             _ => PlatformError::Io {
-                message: e.to_string(),
-            },
-        })?;
+                message: e.to_string()}})?;
 
         if meta.is_dir() {
             fs::remove_dir(path)
@@ -50,23 +44,19 @@ impl Fs for StdFs {
             fs::remove_file(path)
         }
         .map_err(|e| PlatformError::Io {
-            message: e.to_string(),
-        })
+            message: e.to_string()})
     }
 
     fn list_dir(&self, path: &str) -> Result<Vec<String>, PlatformError> {
         let entries = fs::read_dir(path).map_err(|e| match e.kind() {
             std::io::ErrorKind::NotFound => PlatformError::NotFound { path: path.into() },
             _ => PlatformError::Io {
-                message: e.to_string(),
-            },
-        })?;
+                message: e.to_string()}})?;
 
         let mut names = Vec::new();
         for entry in entries {
             let entry = entry.map_err(|e| PlatformError::Io {
-                message: e.to_string(),
-            })?;
+                message: e.to_string()})?;
             names.push(entry.file_name().to_string_lossy().into_owned());
         }
         Ok(names)

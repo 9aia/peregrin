@@ -1,8 +1,7 @@
 use super::{Error, NumberFormat, NumberFormatOptions};
 use ecma402_traits::number_format::{
     CompactDisplay, CurrencyDisplay, CurrencySign, Notation, NumberFormat as NumberFormatTrait,
-    NumberFormatPartType, NumberFormatStyle, RoundingMode, SignDisplay, UnitDisplay, UseGrouping,
-};
+    NumberFormatPartType, NumberFormatStyle, RoundingMode, SignDisplay, UnitDisplay, UseGrouping};
 
 fn en_decimal_opts() -> NumberFormatOptions {
     NumberFormatOptions {

@@ -35,14 +35,12 @@ pub fn yaml_to_json(v: serde_yaml::Value) -> Result<JsonValue, crate::error::Yam
                     other => serde_yaml::to_string(&other)
                         .map_err(crate::error::YamlError::from)?
                         .trim()
-                        .to_string(),
-                };
+                        .to_string()};
                 obj.insert(key, yaml_to_json(v)?);
             }
             Ok(JsonValue::Object(obj))
         }
-        serde_yaml::Value::Tagged(tagged) => yaml_to_json(tagged.value),
-    }
+        serde_yaml::Value::Tagged(tagged) => yaml_to_json(tagged.value)}
 }
 
 pub fn json_to_yaml(value: &JsonValue) -> serde_yaml::Value {

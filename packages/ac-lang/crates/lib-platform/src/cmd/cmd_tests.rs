@@ -1,13 +1,13 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::Context;
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context};
 
 use super::cmd::{CmdModule, CmdOutput};
 use super::cmd_stub::StubCmd;
 
 fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
@@ -28,8 +28,7 @@ fn run() {
         CmdOutput {
             exit_code: 0,
             stdout: "hello".into(),
-            stderr: "".into(),
-        },
+            stderr: "".into()},
     );
     let module = CmdModule::new(cmd);
     let result = call(&module, "run", &[s("echo"), s("hello")]);
@@ -46,8 +45,7 @@ fn run_with_args() {
         CmdOutput {
             exit_code: 0,
             stdout: "file1\nfile2".into(),
-            stderr: "".into(),
-        },
+            stderr: "".into()},
     );
     let module = CmdModule::new(cmd);
     let result = call(&module, "run", &[s("ls"), s("-la"), s("/tmp")]);
@@ -62,8 +60,7 @@ fn run_nonzero_exit() {
         CmdOutput {
             exit_code: 1,
             stdout: "".into(),
-            stderr: "error".into(),
-        },
+            stderr: "error".into()},
     );
     let module = CmdModule::new(cmd);
     let result = call(&module, "run", &[s("false")]);
@@ -76,12 +73,11 @@ fn run_nonzero_exit() {
 fn run_not_found() {
     let module = CmdModule::new(StubCmd::default());
     let func = module.function("run").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let err = func.call(&[s("nope")], &mut ctx).unwrap_err();
     match err {
-        ac_vm::Error::PrimitiveError(msg) => assert!(msg.contains("not found")),
-        other => panic!("expected PrimitiveError, got {other:?}"),
-    }
+        ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("not found")),
+        other => panic!("expected PrimitiveError, got {other:?}")}
 }
 
 #[test]
@@ -94,13 +90,12 @@ fn unknown_function() {
 fn missing_program_arg() {
     let module = CmdModule::new(StubCmd::default());
     let func = module.function("run").unwrap();
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let err = func.call(&[], &mut ctx).unwrap_err();
     assert_eq!(
         err,
-        ac_vm::Error::ArgumentCount {
+        ac_runtime::Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        }
+            got: 0}
     );
 }

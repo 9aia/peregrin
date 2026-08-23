@@ -3,9 +3,9 @@ use std::pin::Pin;
 
 use crate::Error;
 use crate::Operation;
-use crate::RuntimeContext;
+use crate::Context;
 use ac_ast_canonical::Expr;
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 
 /// Provides functions to the VM.
 ///
@@ -113,7 +113,7 @@ pub trait Function {
     /// # Returns
     ///
     /// The result value, or an [`Error`] if execution failed.
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>;
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error>;
 }
 
 /// A generic function that receives resolved type arguments at runtime.
@@ -138,7 +138,7 @@ pub trait Function {
 ///         &self,
 ///         args: &[NonFunctionValue],
 ///         type_args: &[String],
-///         _ctx: &mut dyn RuntimeContext,
+///         _ctx: &mut dyn Context,
 ///     ) -> Result<NonFunctionValue, Error> {
 ///         // type_args[0] might be "string" or "number"
 ///         Ok(args[0].clone())
@@ -155,7 +155,7 @@ pub trait GenericFunction: Function {
         &self,
         args: &[NonFunctionValue],
         type_args: &[String],
-        ctx: &mut dyn RuntimeContext,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error>;
 }
 
@@ -179,7 +179,7 @@ pub trait GenericFunction: Function {
 ///     fn call<'a>(
 ///         &'a self,
 ///         args: &'a [NonFunctionValue],
-///         _ctx: &'a mut (dyn RuntimeContext + 'a),
+///         _ctx: &'a mut (dyn Context + 'a),
 ///     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
 ///         Box::pin(async {
 ///             // async work here
@@ -207,7 +207,7 @@ pub trait AsyncFunction {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        ctx: &'a mut (dyn RuntimeContext + 'a),
+        ctx: &'a mut (dyn Context + 'a),
     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>>;
 }
 
@@ -241,8 +241,8 @@ pub trait AsyncFunction {
 ///     fn call(
 ///         &self,
 ///         args: &[Expr<NonFunctionValue>],
-///         ctx: &mut dyn RuntimeContext,
-///         evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>,
+///         ctx: &mut dyn Context,
+///         evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut dyn Context) -> Result<NonFunctionValue, Error>,
 ///     ) -> Result<NonFunctionValue, Error> {
 ///         let cond = evaluate(&args[0], ctx)?.as_bool().unwrap_or(false);
 ///         if cond {
@@ -270,8 +270,8 @@ pub trait LazyFunction {
     fn call(
         &self,
         args: &[Expr<NonFunctionValue>],
-        ctx: &mut dyn RuntimeContext,
-        evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>,
+        ctx: &mut dyn Context,
+        evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut dyn Context) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error>;
 }
 

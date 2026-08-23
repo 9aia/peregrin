@@ -10,28 +10,26 @@ use std::path::PathBuf;
 
 use ac_ast_canonical::Expr;
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function, Host, Vm};
+use ac_vm_canonical::{CanonicalContext, Context, Error, Function, Host, Vm};
 
 // ── functions ───────────────────────────────────────────────────
 
 struct Mul;
 
 impl Function for Mul {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let a = args
             .first()
             .and_then(|v| v.as_number())
             .ok_or(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            })?;
+                got: args.len()})?;
         let b = args
             .get(1)
             .and_then(|v| v.as_number())
             .ok_or(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            })?;
+                got: args.len()})?;
         Ok(NonFunctionValue::new(serde_json::json!(a * b)))
     }
 }
@@ -39,21 +37,19 @@ impl Function for Mul {
 struct Add;
 
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let a = args
             .first()
             .and_then(|v| v.as_number())
             .ok_or(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            })?;
+                got: args.len()})?;
         let b = args
             .get(1)
             .and_then(|v| v.as_number())
             .ok_or(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            })?;
+                got: args.len()})?;
         Ok(NonFunctionValue::new(serde_json::json!(a + b)))
     }
 }
@@ -62,16 +58,14 @@ impl Function for Add {
 
 struct MathHost {
     add: Add,
-    mul: Mul,
-}
+    mul: Mul}
 
 impl Host for MathHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "add" => Some(&self.add),
             "mul" => Some(&self.mul),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -79,7 +73,7 @@ impl Host for MathHost {
 
 fn main() {
     let vm = Vm::new(MathHost { add: Add, mul: Mul });
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     // Parse YAML input from examples/functions/input.yml
     let yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/functions/input.yml");

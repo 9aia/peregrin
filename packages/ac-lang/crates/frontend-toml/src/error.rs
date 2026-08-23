@@ -9,5 +9,4 @@ pub enum TomlError {
 
     /// The underlying TOML serializer returned an error.
     #[error("toml serialize error: {0}")]
-    Serialize(#[from] toml::ser::Error),
-}
+    Serialize(#[from] toml::ser::Error)}

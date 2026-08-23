@@ -19,15 +19,13 @@ use crate::hash::DefinitionHash;
 /// reproducible builds.
 #[derive(Debug, Clone, Default)]
 pub struct DefinitionStore {
-    defs: HashMap<DefinitionHash, FunctionValue>,
-}
+    defs: HashMap<DefinitionHash, FunctionValue>}
 
 impl DefinitionStore {
     /// Creates an empty store.
     pub fn new() -> Self {
         DefinitionStore {
-            defs: HashMap::new(),
-        }
+            defs: HashMap::new()}
     }
 
     /// Inserts a function definition and returns its hash.
@@ -101,15 +99,13 @@ impl DefinitionStore {
 /// so the VM sees hash-encoded strings.
 #[derive(Debug, Clone, Default)]
 pub struct NameRegistry {
-    names: HashMap<String, DefinitionHash>,
-}
+    names: HashMap<String, DefinitionHash>}
 
 impl NameRegistry {
     /// Creates an empty registry.
     pub fn new() -> Self {
         NameRegistry {
-            names: HashMap::new(),
-        }
+            names: HashMap::new()}
     }
 
     /// Registers a name → hash mapping.

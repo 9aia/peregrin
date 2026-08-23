@@ -1,7 +1,7 @@
 use super::*;
 use ac_ast_canonical::Expr;
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Eval, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Eval, Vm};
 
 // ── typeof ──────────────────────────────────────────────────
 
@@ -111,7 +111,7 @@ fn eval_with_callback() {
             &self,
             _expr: &str,
             vars: &[(String, NonFunctionValue)],
-        ) -> Result<NonFunctionValue, ac_vm::Error> {
+        ) -> Result<NonFunctionValue, ac_runtime::Error> {
             // Simple: just return the first var's value doubled
             let val = vars
                 .first()
@@ -122,7 +122,7 @@ fn eval_with_callback() {
     }
 
     let vm = Vm::new(MetaHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.set_eval(Box::new(SimpleEval));
     ctx.define("x", NonFunctionValue::new(21));
 
@@ -134,7 +134,7 @@ fn eval_with_callback() {
 #[test]
 fn eval_without_callback_errors() {
     let vm = Vm::new(MetaHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call("eval", vec![Expr::value(NonFunctionValue::new("add(1, 2)"))]);
     let result = vm.eval(&expr, &mut ctx);
@@ -144,7 +144,7 @@ fn eval_without_callback_errors() {
 #[test]
 fn eval_non_string_errors() {
     let vm = Vm::new(MetaHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call("eval", vec![Expr::value(NonFunctionValue::new(42))]);
     let result = vm.eval(&expr, &mut ctx);
@@ -527,9 +527,9 @@ fn call_meta(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     try_call_meta(name, args).expect("call should succeed")
 }
 
-fn try_call_meta(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, ac_vm::Error> {
+fn try_call_meta(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, ac_runtime::Error> {
     let vm = Vm::new(MetaHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let expr_args: Vec<Expr<NonFunctionValue>> = args.iter().map(|a| Expr::value(a.clone())).collect();
     let expr = Expr::call(name, expr_args);
     vm.eval(&expr, &mut ctx)

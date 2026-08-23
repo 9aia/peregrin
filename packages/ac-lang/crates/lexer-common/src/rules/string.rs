@@ -29,8 +29,7 @@ where
                         .map_err(E::from)
                 )
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     fn name(&self) -> &'static str {

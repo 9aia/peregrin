@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{format_iso, parse_iso, require_one_string, s};
 use chrono::{Datelike, Duration, Timelike, Utc};
@@ -12,7 +12,7 @@ macro_rules! bound_fn {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut Context,
+                _ctx: &mut dyn Context,
             ) -> Result<NonFunctionValue, Error> {
                 let input = require_one_string(args)?;
                 let dt = parse_iso(input)?;

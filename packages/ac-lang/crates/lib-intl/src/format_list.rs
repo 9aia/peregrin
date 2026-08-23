@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use icu::list::{ListFormatter, options::{ListFormatterOptions, ListLength}};
 
 use super::common::{make_provider, opt_str, optional_locale, optional_object, require_array, s};
@@ -20,8 +20,7 @@ use super::provider::IntlProvider;
 /// - `intl.format_list(["5", "7"], "en", {type: "unit"})` → `"5, 7"`
 #[derive(Clone)]
 pub struct FormatList {
-    provider: Option<IntlProvider>,
-}
+    provider: Option<IntlProvider>}
 
 impl FormatList {
     pub fn new() -> Self {
@@ -40,7 +39,7 @@ impl Default for FormatList {
 }
 
 impl Function for FormatList {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let items = require_array(args, 0)?;
         let locale = optional_locale(args, 1)?;
         let opts = optional_object(args, 2)?;
@@ -52,8 +51,7 @@ impl Function for FormatList {
         let length = match style {
             "short" => ListLength::Short,
             "narrow" => ListLength::Narrow,
-            _ => ListLength::Wide,
-        };
+            _ => ListLength::Wide};
         let options = ListFormatterOptions::default().with_length(length);
 
         let formatter = match (list_type, dp.as_buffer_provider()) {
@@ -62,8 +60,7 @@ impl Function for FormatList {
             ("unit", Some(p)) => ListFormatter::try_new_unit_with_buffer_provider(p, locale.into(), options),
             ("unit", None) => ListFormatter::try_new_unit(locale.into(), options),
             (_, Some(p)) => ListFormatter::try_new_and_with_buffer_provider(p, locale.into(), options),
-            (_, None) => ListFormatter::try_new_and(locale.into(), options),
-        }
+            (_, None) => ListFormatter::try_new_and(locale.into(), options)}
         .map_err(|e| IntlError::Formatting { message: e.to_string() }.into_vm_error())?;
 
         let strings: Vec<&str> = items

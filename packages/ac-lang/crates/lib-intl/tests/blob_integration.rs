@@ -6,8 +6,8 @@
 
 use ac_lib_intl::IntlModule;
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::Context;
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context};
 
 fn blob() -> Vec<u8> {
     let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
@@ -23,7 +23,7 @@ fn module() -> IntlModule {
 
 fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
@@ -330,7 +330,7 @@ fn blob_format_duration_returns_graceful_error() {
     ]);
     let module = module();
     let func = module.function("format_duration").expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[dur, s("en")], &mut ctx);
     assert!(result.is_err(), "expected graceful error, not panic");
     let err = result.unwrap_err();
@@ -449,7 +449,7 @@ fn blob_supported_locales_of_subset_of_compiled() {
 fn blob_invalid_blob_returns_error() {
     let module = IntlModule::with_blob_provider(vec![0u8; 10]);
     let func = module.function("format_number").expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[n(1.0)], &mut ctx);
     assert!(result.is_err(), "expected error with invalid blob");
 }
@@ -458,7 +458,7 @@ fn blob_invalid_blob_returns_error() {
 fn blob_empty_blob_returns_error() {
     let module = IntlModule::with_blob_provider(vec![]);
     let func = module.function("format_number").expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = func.call(&[n(1.0)], &mut ctx);
     assert!(result.is_err(), "expected error with empty blob");
 }

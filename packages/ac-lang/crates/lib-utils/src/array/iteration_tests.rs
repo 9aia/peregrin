@@ -1,11 +1,10 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::Error;
+use ac_runtime::Error;
 
 use serde_json::json;
 
 use super::test_helpers::{
-    arr, call, call_err, call_err_with_eval, call_with_eval, fn_value, n, s,
-};
+    arr, call, call_err, call_err_with_eval, call_with_eval, fn_value, n, s};
 
 // ── take ───────────────────────────────────────────────────────────
 

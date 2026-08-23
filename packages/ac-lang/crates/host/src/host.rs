@@ -1,4 +1,4 @@
-use ac_vm::{Function, Host};
+use ac_runtime::{Function, Host};
 
 use crate::functions::{Add, Apply, Array, Concat, Len, Mul, Resolve, Var};
 
@@ -11,8 +11,7 @@ pub struct DefaultHost {
     pub var: Var,
     pub resolve: Resolve,
     pub apply: Apply,
-    pub array: Array,
-}
+    pub array: Array}
 
 impl Default for DefaultHost {
     fn default() -> Self {
@@ -24,8 +23,7 @@ impl Default for DefaultHost {
             var: Var,
             resolve: Resolve,
             apply: Apply,
-            array: Array,
-        }
+            array: Array}
     }
 }
 
@@ -40,7 +38,6 @@ impl Host for DefaultHost {
             "resolve" => Some(&self.resolve),
             "apply" => Some(&self.apply),
             "array" => Some(&self.array),
-            _ => None,
-        }
+            _ => None}
     }
 }

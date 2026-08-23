@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{n, parse_iso, require_two_strings};
 
@@ -16,7 +16,7 @@ impl Function for DurationBetween {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let dt_a = parse_iso(a)?;
@@ -37,7 +37,7 @@ impl Function for DurationSeconds {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let dt_a = parse_iso(a)?;
@@ -52,7 +52,7 @@ impl Function for DurationMinutes {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let dt_a = parse_iso(a)?;
@@ -67,7 +67,7 @@ impl Function for DurationHours {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let dt_a = parse_iso(a)?;
@@ -82,7 +82,7 @@ impl Function for DurationDays {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let dt_a = parse_iso(a)?;

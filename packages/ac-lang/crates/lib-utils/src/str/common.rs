@@ -1,18 +1,16 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::Error;
+use ac_runtime::Error;
 
 pub(super) fn require_string(arg: &NonFunctionValue) -> Result<&str, Error> {
     arg.as_str().ok_or(Error::TypeMismatch {
         expected: "string",
-        got: "non-string",
-    })
+        got: "non-string"})
 }
 
 pub(super) fn require_one_string(args: &[NonFunctionValue]) -> Result<&str, Error> {
     let arg = args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0,
-    })?;
+        got: 0})?;
     require_string(arg)
 }
 
@@ -20,8 +18,7 @@ pub(super) fn require_two_strings(args: &[NonFunctionValue]) -> Result<(&str, &s
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
-            got: args.len(),
-        });
+            got: args.len()});
     }
     let a = require_string(&args[0])?;
     let b = require_string(&args[1])?;
@@ -44,12 +41,12 @@ macro_rules! string_unary_fn {
     ($struct_name:ident, $body:expr) => {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
-        impl ac_vm::Function for $struct_name {
+        impl ac_runtime::Function for $struct_name {
             fn call(
                 &self,
                 args: &[ac_runtime::NonFunctionValue],
-                _ctx: &mut ac_vm::Context,
-            ) -> Result<ac_runtime::NonFunctionValue, ac_vm::Error> {
+                _ctx: &mut dyn ac_runtime::Context,
+            ) -> Result<ac_runtime::NonFunctionValue, ac_runtime::Error> {
                 let input = $crate::r#str::common::require_one_string(args)?;
                 Ok($crate::r#str::common::s($body(input)))
             }
@@ -62,12 +59,12 @@ macro_rules! string_predicate_fn {
     ($struct_name:ident, $body:expr) => {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
-        impl ac_vm::Function for $struct_name {
+        impl ac_runtime::Function for $struct_name {
             fn call(
                 &self,
                 args: &[ac_runtime::NonFunctionValue],
-                _ctx: &mut ac_vm::Context,
-            ) -> Result<ac_runtime::NonFunctionValue, ac_vm::Error> {
+                _ctx: &mut dyn ac_runtime::Context,
+            ) -> Result<ac_runtime::NonFunctionValue, ac_runtime::Error> {
                 let (input, pattern) = $crate::r#str::common::require_two_strings(args)?;
                 Ok($crate::r#str::common::b($body(input, pattern)))
             }

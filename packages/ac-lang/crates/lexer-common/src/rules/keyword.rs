@@ -28,8 +28,7 @@ where
                     Ok(Token::new(kind, span))
                 })
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     fn name(&self) -> &'static str {

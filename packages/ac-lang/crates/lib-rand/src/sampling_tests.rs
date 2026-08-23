@@ -25,7 +25,7 @@ fn pick_empty_array_errors() {
 #[test]
 fn pick_no_args_errors() {
     let result = call_err("pick", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.choice ─────────────────────────────────────────────────
@@ -76,7 +76,7 @@ fn choice_negative_count_errors() {
 #[test]
 fn choice_no_args_errors() {
     let result = call_err("choice", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.sample ──────────────────────────────────────────────────

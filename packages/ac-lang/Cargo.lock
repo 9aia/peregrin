@@ -10,6 +10,7 @@ version = "0.1.0"
 name = "ac-ast-canonical"
 version = "0.1.0"
 dependencies = [
+ "ac-ast",
  "ac-ast-common",
 ]
 
@@ -26,10 +27,7 @@ version = "0.1.0"
 dependencies = [
  "ac-ast-common",
  "ac-compiler",
- "ac-compiler-core",
- "ac-compiler-pass-extract",
- "ac-compiler-pass-parse",
- "ac-compiler-pass-typecheck",
+ "ac-compiler-common",
  "ac-dialect",
  "ac-dialect-canonical",
  "ac-fields",
@@ -40,6 +38,7 @@ dependencies = [
  "ac-parser-canonical",
  "ac-parser-common",
  "ac-runtime",
+ "ac-runtime-values",
  "ac-typecheck-core",
  "ac-typecheck-infer",
  "ac-typecheck-key-arg",
@@ -58,7 +57,7 @@ dependencies = [
 name = "ac-cli"
 version = "0.1.0"
 dependencies = [
- "ac-compiler",
+ "ac-compiler-canonical",
  "ac-typecheck-core",
  "clap",
  "serde_json",
@@ -69,6 +68,7 @@ name = "ac-codebase"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
+ "ac-runtime-values",
  "ac-store",
  "hex",
  "serde_json",
@@ -79,23 +79,38 @@ dependencies = [
 name = "ac-compiler"
 version = "0.1.0"
 dependencies = [
+ "ac-ast-canonical",
+ "ac-dialect",
+ "ac-fields",
+ "ac-module-resolver-core",
+ "ac-runtime",
+ "ac-runtime-values",
+ "ac-source",
+ "ac-typecheck-core",
+ "ac-typegen-core",
+ "driver-lang",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-compiler-canonical"
+version = "0.1.0"
+dependencies = [
  "ac-ast",
  "ac-ast-canonical",
- "ac-compiler-core",
- "ac-compiler-pass-extract",
- "ac-compiler-pass-generate",
- "ac-compiler-pass-parse",
- "ac-compiler-pass-resolve",
- "ac-compiler-pass-typecheck",
+ "ac-compiler",
+ "ac-compiler-common",
  "ac-dialect",
  "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend",
- "ac-host",
  "ac-module-resolver-core",
  "ac-module-resolver-file",
  "ac-module-resolver-memory",
  "ac-runtime",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-values",
  "ac-source",
  "ac-typecheck-core",
  "ac-typecheck-infer",
@@ -104,39 +119,26 @@ dependencies = [
  "ac-typegen-core",
  "ac-typegen-import",
  "ac-typegen-key-set-special",
- "ac-vm",
  "serde_json",
 ]
 
 [[package]]
-name = "ac-compiler-core"
+name = "ac-compiler-common"
 version = "0.1.0"
 dependencies = [
- "ac-ast",
- "ac-ast-canonical",
- "ac-dialect",
- "ac-dialect-canonical",
- "ac-fields",
- "ac-module-resolver-core",
- "ac-module-resolver-virtual",
- "ac-runtime",
- "ac-source",
- "ac-typecheck-core",
- "ac-typecheck-schema-json",
- "ac-typegen-backend-json-schema",
- "ac-typegen-core",
- "ac-typegen-import",
- "ac-typegen-key-set-special",
- "driver-lang",
- "pass-lang",
- "serde_json",
+ "ac-compiler",
+ "ac-compiler-pass-extract",
+ "ac-compiler-pass-generate",
+ "ac-compiler-pass-parse",
+ "ac-compiler-pass-resolve",
+ "ac-compiler-pass-typecheck",
 ]
 
 [[package]]
 name = "ac-compiler-pass-extract"
 version = "0.1.0"
 dependencies = [
- "ac-compiler-core",
+ "ac-compiler",
  "ac-compiler-pass-parse",
  "ac-dialect",
  "ac-dialect-canonical",
@@ -152,7 +154,7 @@ dependencies = [
 name = "ac-compiler-pass-generate"
 version = "0.1.0"
 dependencies = [
- "ac-compiler-core",
+ "ac-compiler",
  "ac-compiler-pass-extract",
  "ac-compiler-pass-parse",
  "ac-compiler-pass-resolve",
@@ -171,7 +173,7 @@ dependencies = [
 name = "ac-compiler-pass-parse"
 version = "0.1.0"
 dependencies = [
- "ac-compiler-core",
+ "ac-compiler",
  "ac-dialect-canonical",
  "ac-frontend",
  "ac-module-resolver-virtual",
@@ -184,7 +186,7 @@ dependencies = [
 name = "ac-compiler-pass-resolve"
 version = "0.1.0"
 dependencies = [
- "ac-compiler-core",
+ "ac-compiler",
  "ac-compiler-pass-extract",
  "ac-compiler-pass-parse",
  "ac-dialect-canonical",
@@ -201,7 +203,7 @@ dependencies = [
 name = "ac-compiler-pass-typecheck"
 version = "0.1.0"
 dependencies = [
- "ac-compiler-core",
+ "ac-compiler",
  "ac-compiler-pass-extract",
  "ac-compiler-pass-parse",
  "ac-dialect-canonical",
@@ -230,7 +232,7 @@ version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-compiler",
- "ac-compiler-core",
+ "ac-compiler-canonical",
  "ac-compiler-pass-extract",
  "ac-compiler-pass-generate",
  "ac-compiler-pass-parse",
@@ -243,15 +245,16 @@ dependencies = [
  "ac-frontend-json",
  "ac-frontend-toml",
  "ac-frontend-yaml",
- "ac-host",
  "ac-module-resolver-virtual",
  "ac-runtime",
+ "ac-runtime-example-1",
+ "ac-runtime-values",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
  "ac-typegen-import",
  "ac-typegen-key-set-special",
- "ac-vm",
+ "pass-lang",
  "serde_json",
 ]
 
@@ -260,6 +263,7 @@ name = "ac-dialect"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
+ "ac-runtime-values",
  "ac-source",
  "serde_json",
 ]
@@ -270,6 +274,7 @@ version = "0.1.0"
 dependencies = [
  "ac-dialect",
  "ac-runtime",
+ "ac-runtime-values",
  "ac-source",
  "jsonschema",
  "serde_json",
@@ -283,9 +288,10 @@ dependencies = [
  "ac-ast-canonical",
  "ac-dialect",
  "ac-dialect-canonical",
- "ac-host",
  "ac-runtime",
- "ac-vm",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -297,6 +303,7 @@ dependencies = [
  "ac-frontend-toml",
  "ac-frontend-yaml",
  "ac-runtime",
+ "ac-runtime-values",
  "ac-source",
 ]
 
@@ -305,6 +312,7 @@ name = "ac-frontend-json"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
+ "ac-runtime-values",
  "ac-source",
  "serde_json",
  "thiserror",
@@ -315,6 +323,7 @@ name = "ac-frontend-toml"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
+ "ac-runtime-values",
  "ac-source",
  "serde_json",
  "thiserror",
@@ -326,19 +335,11 @@ name = "ac-frontend-yaml"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
+ "ac-runtime-values",
  "ac-source",
  "serde_json",
  "serde_yaml",
  "thiserror",
-]
-
-[[package]]
-name = "ac-host"
-version = "0.1.0"
-dependencies = [
- "ac-runtime",
- "ac-vm",
- "serde_json",
 ]
 
 [[package]]
@@ -348,7 +349,8 @@ dependencies = [
  "ac-ast",
  "ac-ast-canonical",
  "ac-runtime",
- "ac-vm",
+ "ac-runtime-canonical",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -358,27 +360,13 @@ version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-ast-canonical",
- "ac-host",
  "ac-module-resolver-core",
  "ac-module-resolver-virtual",
  "ac-runtime",
- "ac-vm",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-values",
  "serde_json",
-]
-
-[[package]]
-name = "ac-host-sandbox"
-version = "0.1.0"
-dependencies = [
- "ac-host",
- "ac-lib-crypto",
- "ac-lib-datetime",
- "ac-lib-intl",
- "ac-lib-kv",
- "ac-lib-kv-hashmap",
- "ac-lib-utils",
- "ac-runtime-core",
- "ac-vm",
 ]
 
 [[package]]
@@ -390,12 +378,13 @@ dependencies = [
  "ac-dialect",
  "ac-dialect-canonical",
  "ac-fields",
- "ac-host",
  "ac-lib-utils",
  "ac-runtime",
- "ac-runtime-core",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-values",
  "ac-typecheck-core",
- "ac-vm",
  "serde_json",
 ]
 
@@ -406,19 +395,20 @@ dependencies = [
  "ac-ast",
  "ac-ast-canonical",
  "ac-codebase",
- "ac-compiler",
+ "ac-compiler-canonical",
  "ac-dialect-canonical",
  "ac-fields",
- "ac-host",
  "ac-host-cache",
  "ac-lib-utils",
  "ac-runtime",
- "ac-runtime-core",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-values",
  "ac-store",
  "ac-typecheck-core",
  "ac-typecheck-infer",
  "ac-typecheck-schema-json",
- "ac-vm",
  "serde_json",
 ]
 
@@ -430,15 +420,13 @@ dependencies = [
  "ac-ast-canonical",
  "ac-codebase",
  "ac-compiler",
- "ac-compiler-core",
+ "ac-compiler-canonical",
  "ac-dialect",
  "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend-json",
  "ac-frontend-toml",
  "ac-frontend-yaml",
- "ac-host",
- "ac-host-sandbox",
  "ac-lib-crypto",
  "ac-lib-datetime",
  "ac-lib-intl",
@@ -454,14 +442,17 @@ dependencies = [
  "ac-module-resolver-noop",
  "ac-module-resolver-virtual",
  "ac-runtime",
- "ac-runtime-core",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-sandbox",
+ "ac-runtime-values",
  "ac-source",
  "ac-store",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
  "ac-typegen-core",
- "ac-vm",
  "serde_json",
 ]
 
@@ -494,10 +485,11 @@ version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-ast-canonical",
- "ac-host",
  "ac-runtime",
- "ac-runtime-core",
- "ac-vm",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-values",
  "base64",
  "hex",
  "md-5",
@@ -511,10 +503,11 @@ version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-ast-canonical",
- "ac-host",
  "ac-runtime",
- "ac-runtime-core",
- "ac-vm",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-values",
  "chrono",
  "serde_json",
 ]
@@ -525,10 +518,11 @@ version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-ast-canonical",
- "ac-host",
  "ac-runtime",
- "ac-runtime-core",
- "ac-vm",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-values",
  "fixed_decimal",
  "icu",
  "icu_provider",
@@ -542,8 +536,8 @@ name = "ac-lib-kv"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
- "ac-runtime-core",
- "ac-vm",
+ "ac-runtime-modules",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -553,8 +547,8 @@ version = "0.1.0"
 dependencies = [
  "ac-lib-kv",
  "ac-runtime",
- "ac-runtime-core",
- "ac-vm",
+ "ac-runtime-modules",
+ "ac-runtime-values",
 ]
 
 [[package]]
@@ -562,8 +556,8 @@ name = "ac-lib-platform"
 version = "0.1.0"
 dependencies = [
  "ac-runtime",
- "ac-runtime-core",
- "ac-vm",
+ "ac-runtime-modules",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -582,10 +576,11 @@ version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-ast-canonical",
- "ac-host",
  "ac-runtime",
- "ac-runtime-core",
- "ac-vm",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-values",
  "rand",
  "serde_json",
 ]
@@ -596,10 +591,11 @@ version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-ast-canonical",
- "ac-host",
  "ac-runtime",
- "ac-runtime-core",
- "ac-vm",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -611,9 +607,10 @@ dependencies = [
  "ac-ast-canonical",
  "ac-dialect",
  "ac-dialect-canonical",
- "ac-host",
  "ac-runtime",
- "ac-vm",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -696,6 +693,7 @@ dependencies = [
  "ac-frontend-yaml",
  "ac-module-resolver-core",
  "ac-runtime",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -703,10 +701,10 @@ dependencies = [
 name = "ac-parser"
 version = "0.1.0"
 dependencies = [
- "ac-ast",
  "ac-ast-canonical",
  "ac-lexer",
  "ac-runtime",
+ "ac-runtime-values",
  "thiserror",
 ]
 
@@ -721,6 +719,7 @@ dependencies = [
  "ac-parser",
  "ac-parser-common",
  "ac-runtime",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -738,18 +737,71 @@ dependencies = [
 name = "ac-runtime"
 version = "0.1.0"
 dependencies = [
- "ac-source",
+ "ac-ast-canonical",
+ "ac-runtime-values",
+ "indexmap",
  "serde_json",
 ]
 
 [[package]]
-name = "ac-runtime-core"
+name = "ac-runtime-canonical"
+version = "0.1.0"
+dependencies = [
+ "ac-runtime",
+ "ac-runtime-common",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-runtime-common"
+version = "0.1.0"
+dependencies = [
+ "ac-runtime",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-runtime-example-1"
+version = "0.1.0"
+dependencies = [
+ "ac-runtime",
+ "ac-runtime-values",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-runtime-modules"
 version = "0.1.0"
 dependencies = [
  "ac-ast",
  "ac-ast-canonical",
  "ac-runtime",
- "ac-vm",
+ "ac-runtime-canonical",
+ "ac-runtime-values",
+]
+
+[[package]]
+name = "ac-runtime-sandbox"
+version = "0.1.0"
+dependencies = [
+ "ac-lib-crypto",
+ "ac-lib-datetime",
+ "ac-lib-intl",
+ "ac-lib-kv",
+ "ac-lib-kv-hashmap",
+ "ac-lib-utils",
+ "ac-runtime",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+]
+
+[[package]]
+name = "ac-runtime-values"
+version = "0.1.0"
+dependencies = [
+ "ac-source",
+ "serde_json",
 ]
 
 [[package]]
@@ -766,6 +818,7 @@ dependencies = [
  "ac-ast",
  "ac-ast-canonical",
  "ac-runtime",
+ "ac-runtime-values",
  "hex",
  "serde_json",
  "sha2",
@@ -788,6 +841,7 @@ dependencies = [
  "ac-module-resolver-core",
  "ac-module-resolver-virtual",
  "ac-runtime",
+ "ac-runtime-values",
  "ac-typecheck-core",
  "ac-typecheck-infer",
  "ac-typecheck-key-expr",
@@ -875,6 +929,7 @@ dependencies = [
  "ac-dialect-canonical",
  "ac-fields",
  "ac-runtime",
+ "ac-runtime-values",
  "ac-typegen-core",
  "indexmap",
  "serde_json",
@@ -900,6 +955,7 @@ dependencies = [
  "ac-module-resolver-core",
  "ac-module-resolver-virtual",
  "ac-runtime",
+ "ac-runtime-values",
  "ac-typegen-core",
  "serde_json",
 ]
@@ -911,32 +967,6 @@ dependencies = [
  "ac-dialect",
  "ac-typegen-core",
  "serde_json",
-]
-
-[[package]]
-name = "ac-vm"
-version = "0.1.0"
-dependencies = [
- "ac-ast-canonical",
- "ac-runtime",
- "indexmap",
- "serde_json",
-]
-
-[[package]]
-name = "ac-vm-canonical"
-version = "0.1.0"
-dependencies = [
- "ac-vm",
- "ac-vm-common",
- "serde_json",
-]
-
-[[package]]
-name = "ac-vm-common"
-version = "0.1.0"
-dependencies = [
- "ac-vm",
 ]
 
 [[package]]
@@ -1418,14 +1448,15 @@ dependencies = [
 name = "experiment-host-sugar"
 version = "0.1.0"
 dependencies = [
- "ac-compiler",
+ "ac-compiler-canonical",
  "ac-dialect-canonical",
  "ac-fields",
- "ac-host",
  "ac-module-resolver-core",
  "ac-module-resolver-file",
  "ac-module-resolver-memory",
  "ac-runtime",
+ "ac-runtime-example-1",
+ "ac-runtime-values",
  "serde_json",
 ]
 

@@ -91,26 +91,22 @@ fn function_compatibility() {
     let a_fn = FunctionType {
         type_params: vec![],
         params: vec![("x".to_string(), Type::String)],
-        return_type: Box::new(Type::Number),
-    };
+        return_type: Box::new(Type::Number)};
     let e_fn = FunctionType {
         type_params: vec![],
         params: vec![("y".to_string(), Type::String)],
-        return_type: Box::new(Type::Number),
-    };
+        return_type: Box::new(Type::Number)};
     check(Type::Function(a_fn), Type::Function(e_fn));
 
     let e_fn2 = FunctionType {
         type_params: vec![],
         params: vec![("y".to_string(), Type::Number)],
-        return_type: Box::new(Type::Number),
-    };
+        return_type: Box::new(Type::Number)};
     check(
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::String)],
-            return_type: Box::new(Type::Number),
-        }),
+            return_type: Box::new(Type::Number)}),
         Type::Function(e_fn2),
     );
 }
@@ -243,26 +239,22 @@ fn ac_lang_function_compatibility() {
     let a_fn = FunctionType {
         type_params: vec![],
         params: vec![("x".to_string(), Type::String)],
-        return_type: Box::new(Type::Number),
-    };
+        return_type: Box::new(Type::Number)};
     let e_fn = FunctionType {
         type_params: vec![],
         params: vec![("y".to_string(), Type::String)],
-        return_type: Box::new(Type::Number),
-    };
+        return_type: Box::new(Type::Number)};
     check_ac_lang(Type::Function(a_fn), Type::Function(e_fn));
 
     let e_fn2 = FunctionType {
         type_params: vec![],
         params: vec![("y".to_string(), Type::Number)],
-        return_type: Box::new(Type::Number),
-    };
+        return_type: Box::new(Type::Number)};
     check_ac_lang(
         Type::Function(FunctionType {
             type_params: vec![],
             params: vec![("x".to_string(), Type::String)],
-            return_type: Box::new(Type::Number),
-        }),
+            return_type: Box::new(Type::Number)}),
         Type::Function(e_fn2),
     );
 }

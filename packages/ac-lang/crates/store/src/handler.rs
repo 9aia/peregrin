@@ -86,8 +86,7 @@ fn expr_to_json(expr: &RuntimeExpr) -> JsonValue {
                         .collect(),
                 ),
             ),
-        ])),
-    }
+        ]))}
 }
 
 /// Compute the content hash of a handler clause.

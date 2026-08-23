@@ -1,5 +1,5 @@
 [package]
-name = "ac-runtime"
+name = "ac-runtime-values"
 version.workspace = true
 edition.workspace = true
 

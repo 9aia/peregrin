@@ -1,9 +1,8 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{
-    b, num, require_one_string, require_two_strings, s, string_predicate_fn, string_unary_fn,
-};
+    b, num, require_one_string, require_two_strings, s, string_predicate_fn, string_unary_fn};
 
 string_unary_fn!(Upper, |input: &str| input.to_uppercase());
 string_unary_fn!(Lower, |input: &str| input.to_lowercase());
@@ -21,7 +20,7 @@ impl Function for Length {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         Ok(num(input.chars().count() as f64))
@@ -34,13 +33,12 @@ impl Function for Concat {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let mut result = String::new();
         for arg in args {
@@ -59,7 +57,7 @@ impl Function for IsEmpty {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         Ok(b(input.is_empty()))
@@ -72,7 +70,7 @@ impl Function for TrimMatches {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, chars) = require_two_strings(args)?;
         if chars.is_empty() {
@@ -89,7 +87,7 @@ impl Function for Bytes {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         Ok(num(input.len() as f64))
@@ -102,7 +100,7 @@ impl Function for IsAlpha {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         Ok(b(!input.is_empty() && input.chars().all(|c| c.is_alphabetic())))
@@ -115,7 +113,7 @@ impl Function for IsNumeric {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         Ok(b(!input.is_empty() && input.chars().all(|c| c.is_numeric())))
@@ -128,7 +126,7 @@ impl Function for IsAlphanumeric {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         Ok(b(

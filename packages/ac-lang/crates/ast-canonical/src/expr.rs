@@ -1,6 +1,6 @@
 use ac_ast_common::ExprFactory;
 
-/// An expression in the language.
+/// An expression in the AC language.
 ///
 /// Expressions form a tree that the VM evaluates to produce a
 /// value. Five kinds:
@@ -10,14 +10,6 @@ use ac_ast_common::ExprFactory;
 /// - [`Expr::Handle`] — a handler expression that intercepts operations.
 /// - [`Expr::Array`] — an array literal with element expressions.
 /// - [`Expr::Object`] — an object literal with key-value expression pairs.
-///
-/// `Expr` is generic over the value type `V`, keeping `ac-ast-canonical`
-/// dependency-free. The concrete value type (`NonFunctionValue`) is
-/// chosen by the consumer — typically the VM.
-///
-/// The expression tree is the sole description of computation.
-/// The core does not define how expressions are evaluated — that
-/// is the VM's responsibility.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Expr<V> {
     /// A literal value.
@@ -32,26 +24,10 @@ pub enum Expr<V> {
         args: Vec<Expr<V>>,
 
         /// Resolved type arguments for generic function calls.
-        ///
-        /// Populated by the typechecker during monomorphization. Empty for
-        /// monomorphic calls. Each entry is a string representation of the
-        /// concrete type (e.g. `"string"`, `"number"`, `"array<string>"`).
-        ///
-        /// Host functions can inspect this via the `GenericFunction` trait
-        /// to implement type-aware behavior at runtime.
         type_args: Vec<String>,
     },
 
     /// A handler expression — intercepts operations performed in `body`.
-    ///
-    /// When an operation signals during evaluation of `body`, the VM
-    /// checks each handler clause in order. If a clause's `op_name`
-    /// matches the operation name, the handler body is evaluated with
-    /// the operation's arguments bound to `params` and a resumable
-    /// continuation bound to `continuation_name`.
-    ///
-    /// If no clause matches, the operation propagates to the next
-    /// enclosing handler (or to the caller if there is none).
     Handle {
         /// The computation to run under this handler.
         body: Box<Expr<V>>,
@@ -61,24 +37,13 @@ pub enum Expr<V> {
     },
 
     /// An array literal — `[expr, expr, ...]`.
-    ///
-    /// Each element is an expression that is evaluated and collected
-    /// into a JSON array at runtime.
     Array(Vec<Expr<V>>),
 
     /// An object literal — `{key: expr, key: expr, ...}`.
-    ///
-    /// Keys are string literals; values are expressions that are
-    /// evaluated and collected into a JSON object at runtime.
     Object(Vec<(String, Expr<V>)>),
 }
 
 /// A single handler clause in a [`Expr::Handle`] expression.
-///
-/// Matches operations by name. When an operation with `op_name` signals,
-/// the handler `body` is evaluated with:
-/// - `params` bound to the operation's evaluated arguments
-/// - `continuation_name` bound to a resumable continuation value
 #[derive(Debug, Clone, PartialEq)]
 pub struct HandlerClause<V> {
     /// The operation name to match (e.g. `"fetch"`).
@@ -110,9 +75,6 @@ impl<V> Expr<V> {
     }
 
     /// Creates a call expression with resolved type arguments.
-    ///
-    /// Used by the typechecker during monomorphization to attach
-    /// concrete type information to generic call sites.
     pub fn call_with_type_args(
         name: impl Into<String>,
         args: Vec<Expr<V>>,

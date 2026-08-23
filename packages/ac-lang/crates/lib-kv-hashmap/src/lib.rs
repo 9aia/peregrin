@@ -8,7 +8,7 @@
 //! ## Usage
 //!
 //! ```ignore
-//! use ac_runtime_core::ModuleHost;
+//! use ac_runtime_modules::ModuleHost;
 //! use ac_lib_kv::{KeyValueStoreModule};
 //! use ac_lib_kv_hashmap::HashKeyValueStore;
 //!
@@ -27,8 +27,7 @@ use ac_lib_kv::{KeyValueStore, KvError};
 /// sled or SQLite backend.
 #[derive(Default)]
 pub struct HashKeyValueStore {
-    data: Mutex<HashMap<String, String>>,
-}
+    data: Mutex<HashMap<String, String>>}
 
 impl HashKeyValueStore {
     pub fn new() -> Self {
@@ -39,8 +38,7 @@ impl HashKeyValueStore {
         let mut data = HashMap::new();
         data.insert(key.into(), value.into());
         HashKeyValueStore {
-            data: Mutex::new(data),
-        }
+            data: Mutex::new(data)}
     }
 }
 
@@ -77,14 +75,14 @@ impl KeyValueStore for HashKeyValueStore {
 mod tests {
     use ac_lib_kv::KeyValueStoreModule;
     use ac_runtime::NonFunctionValue;
-    use ac_runtime_core::Module;
-    use ac_vm::Context;
+    use ac_runtime_modules::Module;
+    use ac_runtime::{CanonicalContext, Context};
 
     use super::HashKeyValueStore;
 
     fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
         let func = module.function(name).expect("function exists");
-        let mut ctx = Context::new();
+        let mut ctx = CanonicalContext::new();
         func.call(args, &mut ctx).expect("call succeeds")
     }
 

@@ -1,7 +1,7 @@
 //! driver-lang Stage implementation for the resolve phase.
 
-use ac_compiler_core::driver::{DriverError, ExtractedDoc, ResolvedDoc, Session, Stage};
-use ac_compiler_core::Config;
+use ac_compiler::driver::{DriverError, ExtractedDoc, ResolvedDoc, Session, Stage};
+use ac_compiler::Config;
 
 /// Resolve phase: `ExtractedDoc → ResolvedDoc`.
 ///
@@ -48,7 +48,6 @@ impl Stage<Config> for ResolveStage {
             extracted: doc.extracted,
             typegen_ctx: ctx,
             source_map: doc.source_map,
-            base_path: doc.base_path,
-        })
+            base_path: doc.base_path})
     }
 }

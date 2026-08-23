@@ -20,16 +20,14 @@ array_unary_fn!(Min, |input: &[serde_json::Value]| {
     let numbers: Vec<f64> = input.iter().filter_map(|v| v.as_f64()).collect();
     match numbers.iter().copied().min_by(|a, c| a.total_cmp(c)) {
         Some(m) => num(m),
-        None => NonFunctionValue::new(serde_json::Value::Null),
-    }
+        None => NonFunctionValue::new(serde_json::Value::Null)}
 });
 
 array_unary_fn!(Max, |input: &[serde_json::Value]| {
     let numbers: Vec<f64> = input.iter().filter_map(|v| v.as_f64()).collect();
     match numbers.iter().copied().max_by(|a, c| a.total_cmp(c)) {
         Some(m) => num(m),
-        None => NonFunctionValue::new(serde_json::Value::Null),
-    }
+        None => NonFunctionValue::new(serde_json::Value::Null)}
 });
 
 array_unary_fn!(Product, |input: &[serde_json::Value]| {

@@ -13,8 +13,7 @@ use crate::fs::Fs;
 /// prefix.
 #[derive(Default)]
 pub struct StubFs {
-    pub(crate) files: Mutex<HashMap<String, String>>,
-}
+    pub(crate) files: Mutex<HashMap<String, String>>}
 
 impl StubFs {
     pub fn new() -> Self {
@@ -25,8 +24,7 @@ impl StubFs {
         let mut files = HashMap::new();
         files.insert(path.into(), content.into());
         StubFs {
-            files: Mutex::new(files),
-        }
+            files: Mutex::new(files)}
     }
 }
 

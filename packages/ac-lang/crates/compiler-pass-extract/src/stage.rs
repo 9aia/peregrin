@@ -1,7 +1,7 @@
 //! driver-lang Stage implementation for the extract phase.
 
-use ac_compiler_core::driver::{DriverError, ExtractedDoc, ParsedDoc, Session, Stage};
-use ac_compiler_core::Config;
+use ac_compiler::driver::{DriverError, ExtractedDoc, ParsedDoc, Session, Stage};
+use ac_compiler::Config;
 
 /// Extract phase: `ParsedDoc → ExtractedDoc`.
 ///
@@ -32,7 +32,6 @@ impl Stage<Config> for ExtractStage {
         Ok(ExtractedDoc {
             extracted,
             source_map: parsed.source_map,
-            base_path: parsed.base_path,
-        })
+            base_path: parsed.base_path})
     }
 }

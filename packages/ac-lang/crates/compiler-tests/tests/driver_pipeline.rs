@@ -1,9 +1,10 @@
 //! Integration tests for the driver-lang pipeline (type-checked phase chains).
 //!
-//! These tests exercise the new `DriverPipeline` backed by `driver-lang`,
+//! These tests exercise `DriverPipeline` backed by `driver-lang`,
 //! which enforces at compile time that phases connect correctly.
 
-use ac_compiler::{Session, Source};
+use ac_compiler::{DriverError, DriverPipeline, ExtractedDoc, Session, Source, Stage};
+use ac_compiler_canonical::{default_cli_config, full_pipeline, typecheck_only_config, typecheck_pipeline, typegen_pipeline};
 use ac_compiler_pass_extract::ExtractStage;
 use ac_compiler_pass_generate::GenerateFromResolvedStage;
 use ac_compiler_pass_parse::ParseStage;
@@ -11,17 +12,17 @@ use ac_compiler_pass_resolve::ResolveStage;
 use ac_compiler_pass_typecheck::TypecheckOnlyStage;
 
 fn default_config() -> ac_compiler::Config {
-    ac_compiler::default_cli_config()
+    default_cli_config()
 }
 
 fn typecheck_config() -> ac_compiler::Config {
-    ac_compiler::typecheck_only_config()
+    typecheck_only_config()
 }
 
-// --- typegen_driver pipeline ---
+// --- typegen pipeline ---
 
 #[test]
-fn typegen_driver_generates_json_schema() {
+fn typegen_pipeline_generates_json_schema() {
     let yaml = r#"
 $:
   host:
@@ -34,7 +35,7 @@ port: 8080
 "#;
     let source = Source::new(yaml, "yaml");
 
-    let mut driver = ac_compiler::typegen_driver();
+    let mut driver = typegen_pipeline();
     let mut session = Session::new(default_config());
     let output = driver.run(source, &mut session).unwrap();
 
@@ -44,30 +45,30 @@ port: 8080
 }
 
 #[test]
-fn typegen_driver_invalid_format_returns_error() {
+fn typegen_pipeline_invalid_format_returns_error() {
     let source = Source::new("not valid yaml: : :", "yaml");
-    let mut driver = ac_compiler::typegen_driver();
+    let mut driver = typegen_pipeline();
     let mut session = Session::new(default_config());
     let err = driver.run(source, &mut session).unwrap_err();
     assert_eq!(err.stage(), "parse");
 }
 
 #[test]
-fn typegen_driver_no_fields_returns_error() {
+fn typegen_pipeline_no_fields_returns_error() {
     let yaml = r#"
 just: some-data
 "#;
     let source = Source::new(yaml, "yaml");
-    let mut driver = ac_compiler::typegen_driver();
+    let mut driver = typegen_pipeline();
     let mut session = Session::new(default_config());
     let err = driver.run(source, &mut session).unwrap_err();
     assert_eq!(err.stage(), "extract");
 }
 
-// --- typecheck_driver pipeline ---
+// --- typecheck pipeline ---
 
 #[test]
-fn typecheck_driver_valid_fields_no_errors() {
+fn typecheck_pipeline_valid_fields_no_errors() {
     let yaml = r#"
 $:
   host:
@@ -80,7 +81,7 @@ port: 8080
 "#;
     let source = Source::new(yaml, "yaml");
 
-    let mut driver = ac_compiler::typecheck_driver();
+    let mut driver = typecheck_pipeline();
     let mut session = Session::new(typecheck_config());
     let result = driver.run(source, &mut session).unwrap();
 
@@ -88,7 +89,7 @@ port: 8080
 }
 
 #[test]
-fn typecheck_driver_type_mismatch_reports_error() {
+fn typecheck_pipeline_type_mismatch_reports_error() {
     let yaml = r#"
 $:
   _base:
@@ -102,17 +103,17 @@ host: example.com
 "#;
     let source = Source::new(yaml, "yaml");
 
-    let mut driver = ac_compiler::typecheck_driver();
+    let mut driver = typecheck_pipeline();
     let mut session = Session::new(typecheck_config());
     let result = driver.run(source, &mut session).unwrap();
 
     assert!(!result.type_errors.is_empty());
 }
 
-// --- full_driver pipeline ---
+// --- full pipeline ---
 
 #[test]
-fn full_driver_generates_with_typecheck() {
+fn full_pipeline_generates_with_typecheck() {
     let yaml = r#"
 $:
   host:
@@ -125,7 +126,7 @@ port: 8080
 "#;
     let source = Source::new(yaml, "yaml");
 
-    let mut driver = ac_compiler::full_driver();
+    let mut driver = full_pipeline();
     let mut session = Session::new(default_config());
     let output = driver.run(source, &mut session).unwrap();
 
@@ -138,8 +139,6 @@ port: 8080
 
 #[test]
 fn custom_stage_inserted_between_phases() {
-    use ac_compiler::{DriverError, ExtractedDoc, Stage};
-
     struct CountFieldsStage;
     impl Stage<ac_compiler::Config> for CountFieldsStage {
         type Input = ExtractedDoc;
@@ -166,7 +165,7 @@ host: example.com
 "#;
     let source = Source::new(yaml, "yaml");
 
-    let mut driver = ac_compiler::DriverPipeline::new(ParseStage)
+    let mut driver = DriverPipeline::new(ParseStage)
         .then(ExtractStage)
         .then(CountFieldsStage)
         .then(ResolveStage)
@@ -179,20 +178,20 @@ host: example.com
     assert_eq!(output["properties"]["host"]["type"], "string");
 }
 
-// --- pass-lang optimization layer ---
+// --- pass-lang optimization layer (still available for custom passes) ---
 
 #[test]
 fn pass_manager_runs_optimization_passes() {
-    use ac_compiler::{OptPass, Outcome, PassManager};
+    use pass_lang::{Pass as OptPass, PassError as OptPassError, PassManager};
+    use pass_lang::Outcome;
 
     struct SquaredFieldsCount {
-        count: usize,
-    }
+        count: usize}
     impl OptPass<Vec<String>> for SquaredFieldsCount {
         fn name(&self) -> &'static str {
             "count-squared"
         }
-        fn run(&mut self, unit: &mut Vec<String>) -> Result<Outcome, ac_compiler::OptPassError> {
+        fn run(&mut self, unit: &mut Vec<String>) -> Result<Outcome, OptPassError> {
             let before = unit.len();
             unit.retain(|s| !s.is_empty());
             Ok(Outcome::from_changed(unit.len() != before))
@@ -223,12 +222,12 @@ fn driver_pipeline_type_checks_at_compile_time() {
     // If the stages were wired incorrectly (e.g. GenerateStage after ParseStage),
     // the code would not compile. The fact that this function compiles is the test.
 
-    let _typegen = ac_compiler::typegen_driver();
-    let _typecheck = ac_compiler::typecheck_driver();
-    let _full = ac_compiler::full_driver();
+    let _typegen = typegen_pipeline();
+    let _typecheck = typecheck_pipeline();
+    let _full = full_pipeline();
 
     // Also verify custom composition compiles
-    let _custom = ac_compiler::DriverPipeline::new(ParseStage)
+    let _custom = DriverPipeline::new(ParseStage)
         .then(ExtractStage)
         .then(TypecheckOnlyStage);
 }

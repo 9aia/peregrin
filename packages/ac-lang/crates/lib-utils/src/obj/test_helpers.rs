@@ -1,12 +1,12 @@
 use ac_runtime::NonFunctionValue;
-pub(super) use ac_runtime_core::Module;
-use ac_vm::{Context, Error, Eval};
+pub(super) use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context, Error, Eval};
 
 pub(super) use super::module::ObjModule;
 
 pub(super) fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
@@ -16,7 +16,7 @@ pub(super) fn call_err(
     args: &[NonFunctionValue],
 ) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 
@@ -51,8 +51,8 @@ pub(super) fn obj(pairs: &[(&str, serde_json::Value)]) -> NonFunctionValue {
 // ── eval infrastructure for higher-order functions ─────────────────
 
 use ac_ast_canonical::Expr;
-use ac_host::DefaultHost;
-use ac_vm::Vm;
+use ac_runtime_example_1::DefaultHost;
+use ac_runtime_canonical::Vm;
 
 struct TestEval;
 impl Eval for TestEval {
@@ -80,7 +80,7 @@ impl Eval for TestEval {
                 args.push(Expr::Value(arg_val));
             }
             let vm = Vm::new(DefaultHost::default());
-            let mut ctx = Context::new();
+            let mut ctx = CanonicalContext::new();
             let call_expr = Expr::call(name.trim(), args);
             return vm.eval(&call_expr, &mut ctx);
         }
@@ -111,8 +111,7 @@ fn split_args(s: &str) -> Vec<String> {
                 result.push(current.trim().to_string());
                 current.clear();
             }
-            _ => current.push(ch),
-        }
+            _ => current.push(ch)}
     }
     if !current.trim().is_empty() {
         result.push(current.trim().to_string());
@@ -160,7 +159,7 @@ pub(super) fn call_with_eval(
     args: &[NonFunctionValue],
 ) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.set_eval(Box::new(TestEval));
     func.call(args, &mut ctx).expect("call succeeds")
 }
@@ -171,7 +170,7 @@ pub(super) fn call_err_with_eval(
     args: &[NonFunctionValue],
 ) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.set_eval(Box::new(TestEval));
     func.call(args, &mut ctx)
 }
@@ -183,7 +182,6 @@ pub(super) fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
         .collect();
     NonFunctionValue::new(serde_json::json!({
         "params": params_json,
-        "body": body,
-    }))
+        "body": body}))
 }
 

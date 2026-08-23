@@ -1,16 +1,14 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::Error;
+use ac_runtime::Error;
 
 /// Require a number argument at `idx`.
 pub(super) fn require_number(args: &[NonFunctionValue], idx: usize) -> Result<f64, Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
-        got: args.len(),
-    })?;
+        got: args.len()})?;
     arg.as_number().ok_or(Error::TypeMismatch {
         expected: "number",
-        got: "non-number",
-    })
+        got: "non-number"})
 }
 
 /// Require an integer argument at `idx`.
@@ -19,8 +17,7 @@ pub(super) fn require_int(args: &[NonFunctionValue], idx: usize) -> Result<i64, 
     if !n.is_finite() || n.fract() != 0.0 {
         return Err(Error::TypeMismatch {
             expected: "integer",
-            got: "non-integer number",
-        });
+            got: "non-integer number"});
     }
     Ok(n as i64)
 }
@@ -32,12 +29,10 @@ pub(super) fn require_array(
 ) -> Result<&[serde_json::Value], Error> {
     let arg = args.get(idx).ok_or(Error::ArgumentCount {
         expected: idx + 1,
-        got: args.len(),
-    })?;
+        got: args.len()})?;
     arg.as_array().ok_or(Error::TypeMismatch {
         expected: "array",
-        got: "non-array",
-    })
+        got: "non-array"})
 }
 
 pub(super) fn num(value: impl Into<f64>) -> NonFunctionValue {

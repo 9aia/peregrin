@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{format_iso, s};
 use crate::DatetimeError;
@@ -11,10 +11,8 @@ fn get_number(args: &[NonFunctionValue], index: usize, default: f64) -> Result<f
             .as_number()
             .ok_or(Error::TypeMismatch {
                 expected: "number",
-                got: "non-number",
-            }),
-        None => Ok(default),
-    }
+                got: "non-number"}),
+        None => Ok(default)}
 }
 
 #[derive(Clone, Copy)]
@@ -23,13 +21,12 @@ impl Function for FromComponents {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let year = get_number(args, 0, 0.0)? as i32;
         let month = get_number(args, 1, 0.0)? as u32;
@@ -47,8 +44,7 @@ impl Function for FromComponents {
                 day,
                 hour,
                 minute,
-                second,
-            }.into_vm_error())?;
+                second}.into_vm_error())?;
 
         Ok(s(format_iso(&dt)))
     }

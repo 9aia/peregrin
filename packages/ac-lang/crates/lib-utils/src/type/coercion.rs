@@ -1,11 +1,10 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0,
-    })
+        got: 0})
 }
 
 fn number_to_string(n: f64) -> String {
@@ -18,7 +17,7 @@ impl Function for ToString {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let result = if let Some(s) = arg.as_str() {
@@ -42,7 +41,7 @@ impl Function for ToNumber {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let result = if let Some(n) = arg.as_number() {
@@ -53,8 +52,7 @@ impl Function for ToNumber {
             let trimmed = s.trim();
             match trimmed.parse::<f64>() {
                 Ok(parsed) if parsed.is_finite() => parsed,
-                _ => 0.0,
-            }
+                _ => 0.0}
         } else if arg.is_null() {
             0.0
         } else {
@@ -70,7 +68,7 @@ impl Function for ToBool {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let result = if let Some(b) = arg.as_bool() {

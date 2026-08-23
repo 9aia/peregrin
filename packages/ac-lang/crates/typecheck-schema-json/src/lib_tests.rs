@@ -171,8 +171,7 @@ fn interprets_function_type() {
             assert_eq!(fn_type.params[1].0, "y");
             assert_eq!(*fn_type.return_type, Type::Number);
         }
-        _ => panic!("expected function type"),
-    }
+        _ => panic!("expected function type")}
 }
 
 #[test]
@@ -187,8 +186,7 @@ fn interprets_function_without_return() {
             assert_eq!(fn_type.params.len(), 1);
             assert_eq!(*fn_type.return_type, Type::Unknown);
         }
-        _ => panic!("expected function type"),
-    }
+        _ => panic!("expected function type")}
 }
 
 #[test]
@@ -205,8 +203,7 @@ fn infer_json_type_detects_function_value() {
             assert_eq!(fn_type.params[0].0, "x");
             assert_eq!(*fn_type.return_type, Type::Number);
         }
-        _ => panic!("expected function type"),
-    }
+        _ => panic!("expected function type")}
 }
 
 #[test]
@@ -251,8 +248,7 @@ fn interprets_generic_function_with_type_params() {
             assert_eq!(fn_type.params[0].1, Type::Var("T".to_string()));
             assert_eq!(*fn_type.return_type, Type::Var("T".to_string()));
         }
-        _ => panic!("expected function type"),
-    }
+        _ => panic!("expected function type")}
 }
 
 #[test]
@@ -297,8 +293,7 @@ fn interprets_generic_function_with_multiple_type_params() {
                 Type::Array(Box::new(Type::Var("U".to_string())))
             );
         }
-        _ => panic!("expected function type"),
-    }
+        _ => panic!("expected function type")}
 }
 
 #[test]

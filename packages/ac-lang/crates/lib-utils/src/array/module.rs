@@ -1,18 +1,15 @@
-use ac_runtime_core::Module;
-use ac_vm::{Function, GenericFunction};
+use ac_runtime_modules::Module;
+use ac_runtime::{Function, GenericFunction};
 
 use super::basic_operations::{
     At, Concat, Contains, DeepFlatten, Fill, First, Flatten, IndexOf, Last, Length, Pop, Push,
-    Reverse, Shift, Slice, Sort,
-};
+    Reverse, Shift, Slice, Sort};
 use super::higher_order::{
     Chunk, Compact, CountBy, Every, Filter, Find, FlatMap, GroupBy, Map, MaxBy, MinBy, Partition,
-    Pluck, Range, Reduce, SomeFn, SortBy, SortByDesc, Zip,
-};
+    Pluck, Range, Reduce, SomeFn, SortBy, SortByDesc, Zip};
 use super::iteration::{
     Dedupe, Drop, DropWhile, Enumerate, FindIndex, FindLast, FindLastIndex, Foldr, InsertAt,
-    Intercalate, Intersperse, Prepend, RemoveAt, Scan, Take, TakeWhile, Transpose, Unzip, Windows,
-};
+    Intercalate, Intersperse, Prepend, RemoveAt, Scan, Take, TakeWhile, Transpose, Unzip, Windows};
 use super::numeric_aggregates::{Avg, Max, Mean, Median, Min, Product, Stddev, Sum};
 
 /// The `array` module — array utility functions.
@@ -95,8 +92,7 @@ impl Module for ArrayModule {
             "min_by" => Some(&MinBy),
             "max_by" => Some(&MaxBy),
             "count_by" => Some(&CountBy),
-            _ => None,
-        }
+            _ => None}
     }
 
     fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
@@ -117,7 +113,6 @@ impl Module for ArrayModule {
             "min_by" => Some(&MinBy),
             "max_by" => Some(&MaxBy),
             "count_by" => Some(&CountBy),
-            _ => None,
-        }
+            _ => None}
     }
 }

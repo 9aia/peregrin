@@ -20,8 +20,7 @@ fn mock_lex_returns_tokens() {
 fn mock_lex_returns_error() {
     let lexer = MockLexer::<DefaultLexError>::err(DefaultLexError::UnexpectedChar {
         span: Span::at(0),
-        char: '@',
-    });
+        char: '@'});
 
     let result = lexer.lex("ignored");
     assert!(result.is_err());
@@ -51,8 +50,7 @@ fn default_lex_iter_yields_tokens() {
 fn default_lex_iter_yields_error_then_stops() {
     let lexer = MockLexer::<DefaultLexError>::err(DefaultLexError::UnexpectedChar {
         span: Span::at(5),
-        char: '!',
-    });
+        char: '!'});
 
     let mut iter = lexer.lex_iter("ignored");
     let first = iter.next();
@@ -97,8 +95,7 @@ fn dyn_lex_iter_works() {
 #[test]
 fn dyn_lex_error_works() {
     let lexer: Box<dyn Lexer<TestKind, DefaultLexError>> = Box::new(MockLexer::<DefaultLexError>::err(DefaultLexError::InvalidNumber {
-        span: Span::new(0, 3),
-    }));
+        span: Span::new(0, 3)}));
 
     let result = lexer.lex("ignored");
     assert!(result.is_err());

@@ -9,28 +9,26 @@ use std::path::PathBuf;
 
 use ac_ast_canonical::Expr;
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function, Host, Vm};
+use ac_vm_canonical::{CanonicalContext, Context, Error, Function, Host, Vm};
 
 // ── functions ───────────────────────────────────────────────────
 
 struct Add;
 
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let a = args
             .first()
             .and_then(|v| v.as_number())
             .ok_or(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            })?;
+                got: args.len()})?;
         let b = args
             .get(1)
             .and_then(|v| v.as_number())
             .ok_or(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            })?;
+                got: args.len()})?;
         Ok(NonFunctionValue::new(serde_json::json!(a + b)))
     }
 }
@@ -38,7 +36,7 @@ impl Function for Add {
 struct Concat;
 
 impl Function for Concat {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let mut result = String::new();
         for arg in args {
             match arg.inner() {
@@ -46,8 +44,7 @@ impl Function for Concat {
                 _ => {
                     return Err(Error::TypeMismatch {
                         expected: "string",
-                        got: "non-string",
-                    });
+                        got: "non-string"});
                 }
             }
         }
@@ -59,16 +56,14 @@ impl Function for Concat {
 
 struct DemoHost {
     add: Add,
-    concat: Concat,
-}
+    concat: Concat}
 
 impl Host for DemoHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "add" => Some(&self.add),
             "concat" => Some(&self.concat),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -77,9 +72,8 @@ impl Host for DemoHost {
 fn main() {
     let vm = Vm::new(DemoHost {
         add: Add,
-        concat: Concat,
-    });
-    let mut ctx = Context::new();
+        concat: Concat});
+    let mut ctx = CanonicalContext::new();
 
     // Parse YAML input from examples/basic/input.yml
     let yaml_path = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("examples/basic/input.yml");

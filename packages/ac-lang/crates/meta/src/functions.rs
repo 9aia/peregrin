@@ -1,7 +1,7 @@
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use serde_json::Value as JsonValue;
 
 // ── reflection ──────────────────────────────────────────────
@@ -14,11 +14,10 @@ use serde_json::Value as JsonValue;
 pub struct TypeOf;
 
 impl Function for TypeOf {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let v = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?;
+            got: 0})?;
         let type_name = match v.inner() {
             JsonValue::Null => "null",
             JsonValue::Bool(_) => "boolean",
@@ -42,15 +41,13 @@ impl Function for TypeOf {
 pub struct Keys;
 
 impl Function for Keys {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let v = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?;
+            got: 0})?;
         let obj = v.as_object().ok_or(Error::TypeMismatch {
             expected: "object",
-            got: "non-object",
-        })?;
+            got: "non-object"})?;
         let keys: Vec<JsonValue> = obj.keys().map(|k| JsonValue::String(k.clone())).collect();
         Ok(NonFunctionValue::new(keys))
     }
@@ -62,11 +59,10 @@ impl Function for Keys {
 pub struct IsFunction;
 
 impl Function for IsFunction {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let v = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?;
+            got: 0})?;
         Ok(NonFunctionValue::new(v.is_function()))
     }
 }
@@ -83,14 +79,13 @@ impl Function for IsFunction {
 pub struct Eval;
 
 impl Function for Eval {
-    fn call(&self, args: &[NonFunctionValue], ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let expr_str = args
             .first()
             .and_then(|v| v.as_str())
             .ok_or(Error::TypeMismatch {
                 expected: "string",
-                got: "non-string",
-            })?;
+                got: "non-string"})?;
         let vars = ctx.collect_vars();
         ctx.eval_expr(expr_str, &vars)
     }
@@ -109,14 +104,13 @@ impl Function for Eval {
 pub struct Parse;
 
 impl Function for Parse {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let expr_str = args
             .first()
             .and_then(|v| v.as_str())
             .ok_or(Error::TypeMismatch {
                 expected: "string",
-                got: "non-string",
-            })?;
+                got: "non-string"})?;
         let ast = parse_expr_to_json(expr_str, &AC_DIALECT).ok_or(Error::PrimitiveError(
             format!("parse(): failed to parse expression: {expr_str}"),
         ))?;
@@ -130,11 +124,10 @@ impl Function for Parse {
 pub struct AstToString;
 
 impl Function for AstToString {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?;
+            got: 0})?;
         let s = ast_to_string_inner(ast.inner(), &AC_DIALECT).ok_or(Error::PrimitiveError(
             "ast_to_string(): invalid AST structure".to_string(),
         ))?;
@@ -148,15 +141,13 @@ impl Function for AstToString {
 pub struct AstName;
 
 impl Function for AstName {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?;
+            got: 0})?;
         let obj = ast.as_object().ok_or(Error::TypeMismatch {
             expected: "object",
-            got: "non-object",
-        })?;
+            got: "non-object"})?;
         let kind = obj.get("kind").and_then(|k| k.as_str());
         if kind != Some("call") {
             return Ok(NonFunctionValue::new(JsonValue::Null));
@@ -177,15 +168,13 @@ impl Function for AstName {
 pub struct AstArgs;
 
 impl Function for AstArgs {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?;
+            got: 0})?;
         let obj = ast.as_object().ok_or(Error::TypeMismatch {
             expected: "object",
-            got: "non-object",
-        })?;
+            got: "non-object"})?;
         let kind = obj.get("kind").and_then(|k| k.as_str());
         if kind != Some("call") {
             return Ok(NonFunctionValue::new(Vec::<JsonValue>::new()));
@@ -206,11 +195,10 @@ impl Function for AstArgs {
 pub struct AstIsCall;
 
 impl Function for AstIsCall {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?;
+            got: 0})?;
         let is_call = ast
             .as_object()
             .is_some_and(|obj| obj.get("kind").is_some_and(|k| k.as_str() == Some("call")));
@@ -384,8 +372,7 @@ fn ast_to_string_inner(ast: &JsonValue, dialect: &dyn Dialect) -> Option<String>
                 }
                 "number" | "boolean" => Some(value.to_string()),
                 "null" => Some("null".to_string()),
-                _ => None,
-            }
+                _ => None}
         }
         "path" => {
             let path = obj.get("path")?.as_str()?;
@@ -429,6 +416,5 @@ fn ast_to_string_inner(ast: &JsonValue, dialect: &dyn Dialect) -> Option<String>
                 .collect();
             Some(format!("handle({body_str}) {{ {} }}", handler_strs.join(", ")))
         }
-        _ => None,
-    }
+        _ => None}
 }

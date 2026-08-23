@@ -9,8 +9,7 @@ pub enum ImportKind {
     /// `import(arg)` — path comes from the field's data value.
     DataDriven,
     /// No import detected, or dynamic expression that can't be resolved statically.
-    None,
-}
+    None}
 
 /// Detect import patterns in an expression string.
 ///

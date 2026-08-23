@@ -17,15 +17,13 @@ use crate::document::Document;
 /// identical documents are automatically deduplicated.
 #[derive(Debug, Clone, Default)]
 pub struct DocumentStore {
-    docs: HashMap<DefinitionHash, Document>,
-}
+    docs: HashMap<DefinitionHash, Document>}
 
 impl DocumentStore {
     /// Creates an empty store.
     pub fn new() -> Self {
         DocumentStore {
-            docs: HashMap::new(),
-        }
+            docs: HashMap::new()}
     }
 
     /// Inserts a document and returns its hash.

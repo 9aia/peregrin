@@ -29,7 +29,7 @@ fn perlin_1d_in_range() {
 #[test]
 fn perlin_1d_no_args_errors() {
     let result = call_err("perlin_1d", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.perlin_2d ──────────────────────────────────────────────
@@ -71,13 +71,13 @@ fn perlin_2d_integer_coords_zero() {
 #[test]
 fn perlin_2d_no_args_errors() {
     let result = call_err("perlin_2d", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 #[test]
 fn perlin_2d_one_arg_errors() {
     let result = call_err("perlin_2d", &[n(1.0)]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.perlin_3d ──────────────────────────────────────────────
@@ -115,13 +115,13 @@ fn perlin_3d_in_range() {
 #[test]
 fn perlin_3d_no_args_errors() {
     let result = call_err("perlin_3d", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 #[test]
 fn perlin_3d_one_arg_errors() {
     let result = call_err("perlin_3d", &[n(1.0)]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.simplex_2d ──────────────────────────────────────────────
@@ -163,13 +163,13 @@ fn simplex_2d_origin_zero() {
 #[test]
 fn simplex_2d_no_args_errors() {
     let result = call_err("simplex_2d", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 #[test]
 fn simplex_2d_one_arg_errors() {
     let result = call_err("simplex_2d", &[n(1.0)]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.simplex_3d ──────────────────────────────────────────────
@@ -214,11 +214,11 @@ fn simplex_3d_origin_zero() {
 #[test]
 fn simplex_3d_no_args_errors() {
     let result = call_err("simplex_3d", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 #[test]
 fn simplex_3d_one_arg_errors() {
     let result = call_err("simplex_3d", &[n(1.0)]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }

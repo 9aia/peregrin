@@ -5,7 +5,7 @@ use rand::rngs::StdRng;
 use serde_json::Value;
 
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{array, bool_val, num, require_array, require_int, require_number, s};
 use crate::error::RandError;
@@ -14,8 +14,7 @@ fn seeded_rng(seed: f64) -> Result<StdRng, Error> {
     if !seed.is_finite() {
         return Err(RandError::InvalidRange {
             min: seed,
-            max: seed,
-        }
+            max: seed}
         .into());
     }
     let seed_u64 = if seed < 0.0 {
@@ -38,15 +37,14 @@ fn seeded_rng(seed: f64) -> Result<StdRng, Error> {
 pub struct SeededInt;
 
 impl Function for SeededInt {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let min = require_int(args, 1)?;
         let max = require_int(args, 2)?;
         if min > max {
             return Err(RandError::InvalidRange {
                 min: min as f64,
-                max: max as f64,
-            }
+                max: max as f64}
             .into());
         }
         let mut rng = seeded_rng(seed)?;
@@ -65,7 +63,7 @@ impl Function for SeededInt {
 pub struct SeededFloat;
 
 impl Function for SeededFloat {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let min = require_number(args, 1)?;
         let max = require_number(args, 2)?;
@@ -94,7 +92,7 @@ impl Function for SeededFloat {
 pub struct SeededBool;
 
 impl Function for SeededBool {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let mut rng = seeded_rng(seed)?;
         Ok(bool_val(rng.random()))
@@ -111,7 +109,7 @@ impl Function for SeededBool {
 pub struct SeededPick;
 
 impl Function for SeededPick {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let arr = require_array(args, 1)?;
         if arr.is_empty() {
@@ -134,7 +132,7 @@ impl Function for SeededPick {
 pub struct SeededChoice;
 
 impl Function for SeededChoice {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let arr = require_array(args, 1)?;
         let count = require_int(args, 2)?;
@@ -145,8 +143,7 @@ impl Function for SeededChoice {
         if count < 0 {
             return Err(RandError::InvalidSampleCount {
                 requested: count as usize,
-                available: arr.len(),
-            }
+                available: arr.len()}
             .into());
         }
 
@@ -169,7 +166,7 @@ impl Function for SeededChoice {
 pub struct SeededSample;
 
 impl Function for SeededSample {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let arr = require_array(args, 1)?;
         let count = require_int(args, 2)?;
@@ -177,16 +174,14 @@ impl Function for SeededSample {
         if count < 0 {
             return Err(RandError::InvalidSampleCount {
                 requested: count as usize,
-                available: arr.len(),
-            }
+                available: arr.len()}
             .into());
         }
         let count = count as usize;
         if count > arr.len() {
             return Err(RandError::InvalidSampleCount {
                 requested: count,
-                available: arr.len(),
-            }
+                available: arr.len()}
             .into());
         }
 
@@ -211,7 +206,7 @@ impl Function for SeededSample {
 pub struct SeededShuffle;
 
 impl Function for SeededShuffle {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let arr = require_array(args, 1)?;
         let mut rng = seeded_rng(seed)?;
@@ -231,7 +226,7 @@ impl Function for SeededShuffle {
 pub struct SeededString;
 
 impl Function for SeededString {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let length = require_int(args, 1)?;
         if length < 0 {
@@ -243,18 +238,15 @@ impl Function for SeededString {
             3 => {
                 let val = args.get(2).ok_or(Error::ArgumentCount {
                     expected: 3,
-                    got: 2,
-                })?;
+                    got: 2})?;
                 val.as_str().ok_or(Error::TypeMismatch {
                     expected: "string",
-                    got: "non-string",
-                })?
+                    got: "non-string"})?
             }
             n => {
                 return Err(Error::ArgumentCount {
                     expected: 3,
-                    got: n,
-                })
+                    got: n})
             }
         };
 
@@ -267,8 +259,7 @@ impl Function for SeededString {
             "upper" => b"ABCDEFGHIJKLMNOPQRSTUVWXYZ",
             _ => {
                 return Err(RandError::InvalidCharset {
-                    name: charset_name.to_string(),
-                }
+                    name: charset_name.to_string()}
                 .into())
             }
         };
@@ -295,22 +286,20 @@ impl Function for SeededString {
 pub struct SeededGauss;
 
 impl Function for SeededGauss {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let mean = require_number(args, 1)?;
         let stddev = require_number(args, 2)?;
         if !stddev.is_finite() || !mean.is_finite() {
             return Err(RandError::InvalidRange {
                 min: mean,
-                max: stddev,
-            }
+                max: stddev}
             .into());
         }
         if stddev < 0.0 {
             return Err(RandError::InvalidRange {
                 min: mean,
-                max: stddev,
-            }
+                max: stddev}
             .into());
         }
 

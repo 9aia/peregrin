@@ -9,7 +9,7 @@ pub fn run(args: EvalArgs) -> i32 {
             return 1;
         }
     };
-    match ac_compiler::eval::run(&input, &args.format, &args.output) {
+    match ac_compiler_canonical::eval::run(&input, &args.format, &args.output) {
         Ok(output) => {
             print!("{output}");
             0

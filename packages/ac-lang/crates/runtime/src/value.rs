@@ -16,8 +16,7 @@ pub struct FunctionValue {
     /// Raw schema value for the return type, if declared.
     pub return_schema: Option<JsonValue>,
     /// The body expression string (e.g. `"mul(x, 2)"`).
-    pub body: String,
-}
+    pub body: String}
 
 impl FunctionValue {
     /// Encodes this function value as a plain JSON object.
@@ -31,8 +30,7 @@ impl FunctionValue {
                 .map(|(name, schema)| {
                     serde_json::json!({
                         "name": name,
-                        "schema": schema,
-                    })
+                        "schema": schema})
                 })
                 .collect(),
         );
@@ -89,8 +87,7 @@ impl FunctionValue {
         Some(FunctionValue {
             params,
             return_schema,
-            body,
-        })
+            body})
     }
 }
 

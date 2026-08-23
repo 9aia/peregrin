@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{num, require_two_strings, string_predicate_fn};
 
@@ -13,7 +13,7 @@ impl Function for Count {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         Ok(num(input.matches(pattern).count() as f64))
@@ -26,7 +26,7 @@ impl Function for Find {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         let idx = input
@@ -44,7 +44,7 @@ impl Function for RFind {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         let idx = input
@@ -78,7 +78,7 @@ impl Function for Levenshtein {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let a_chars: Vec<char> = a.chars().collect();
@@ -94,7 +94,7 @@ impl Function for Similarity {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let a_chars: Vec<char> = a.chars().collect();

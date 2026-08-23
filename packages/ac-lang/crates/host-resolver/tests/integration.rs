@@ -1,10 +1,10 @@
 use ac_ast_canonical::Expr;
-use ac_host::DefaultHost;
-use ac_host_resolver::ResolverHost;
+use ac_runtime_example_1::DefaultHost;
+use ac_runtime_example_1_resolver::ResolverHost;
 use ac_module_resolver_core::ModuleResolver;
 use ac_module_resolver_virtual::VirtualResolver;
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Error, Vm};
 use serde_json::json;
 
 // ── helpers ──────────────────────────────────────────────────────
@@ -42,7 +42,7 @@ fn import_resolves_module_data() {
     let resolver = make_resolver();
     let host = ResolverHost::new(DefaultHost::default(), Box::new(resolver));
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call("import", vec![Expr::value(val("config.yml"))]);
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -59,8 +59,7 @@ fn import_returns_cached_on_second_call() {
 
     struct CountingResolver {
         modules: VirtualResolver,
-        resolve_count: Arc<AtomicUsize>,
-    }
+        resolve_count: Arc<AtomicUsize>}
 
     impl ModuleResolver for CountingResolver {
         fn resolve(
@@ -78,12 +77,11 @@ fn import_returns_cached_on_second_call() {
     let inner = make_resolver();
     let resolver = CountingResolver {
         modules: inner,
-        resolve_count: resolve_count.clone(),
-    };
+        resolve_count: resolve_count.clone()};
 
     let host = ResolverHost::new(DefaultHost::default(), Box::new(resolver));
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call("import", vec![Expr::value(val("config.yml"))]);
 
@@ -99,7 +97,7 @@ fn import_errors_on_missing_module() {
     let resolver = VirtualResolver::new();
     let host = ResolverHost::new(DefaultHost::default(), Box::new(resolver));
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call("import", vec![Expr::value(val("nonexistent.yml"))]);
     let result = vm.eval(&expr, &mut ctx);
@@ -108,8 +106,7 @@ fn import_errors_on_missing_module() {
     let err = result.unwrap_err();
     match err {
         Error::PrimitiveError(msg) => assert!(msg.contains("nonexistent.yml")),
-        other => panic!("expected PrimitiveError, got {other:?}"),
-    }
+        other => panic!("expected PrimitiveError, got {other:?}")}
 }
 
 #[test]
@@ -117,7 +114,7 @@ fn import_errors_on_non_string_argument() {
     let resolver = make_resolver();
     let host = ResolverHost::new(DefaultHost::default(), Box::new(resolver));
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call("import", vec![Expr::value(val(42))]);
     let result = vm.eval(&expr, &mut ctx);
@@ -125,8 +122,7 @@ fn import_errors_on_non_string_argument() {
     assert!(result.is_err());
     match result.unwrap_err() {
         Error::TypeMismatch { expected, .. } => assert_eq!(expected, "string"),
-        other => panic!("expected TypeMismatch, got {other:?}"),
-    }
+        other => panic!("expected TypeMismatch, got {other:?}")}
 }
 
 #[test]
@@ -134,7 +130,7 @@ fn import_errors_on_no_arguments() {
     let resolver = make_resolver();
     let host = ResolverHost::new(DefaultHost::default(), Box::new(resolver));
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call("import", vec![]);
     let result = vm.eval(&expr, &mut ctx);
@@ -145,8 +141,7 @@ fn import_errors_on_no_arguments() {
             assert_eq!(expected, 1);
             assert_eq!(got, 0);
         }
-        other => panic!("expected ArgumentCount, got {other:?}"),
-    }
+        other => panic!("expected ArgumentCount, got {other:?}")}
 }
 
 // ── delegation tests ─────────────────────────────────────────────
@@ -156,7 +151,7 @@ fn inner_host_functions_still_work() {
     let resolver = make_resolver();
     let host = ResolverHost::new(DefaultHost::default(), Box::new(resolver));
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call(
         "add",
@@ -172,7 +167,7 @@ fn inner_host_functions_and_import_coexist() {
     let resolver = make_resolver();
     let host = ResolverHost::new(DefaultHost::default(), Box::new(resolver));
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let import_expr = Expr::call("import", vec![Expr::value(val("config.yml"))]);
     let imported = vm.eval(&import_expr, &mut ctx).unwrap();
@@ -207,7 +202,7 @@ fn import_with_base_path() {
     .with_base_path(std::path::PathBuf::from("/some/dir"));
 
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call("import", vec![Expr::value(val("base.yml"))]);
     let result = vm.eval(&expr, &mut ctx).unwrap();
@@ -222,7 +217,7 @@ fn import_empty_module() {
     let resolver = make_resolver();
     let host = ResolverHost::new(DefaultHost::default(), Box::new(resolver));
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call("import", vec![Expr::value(val("empty.yml"))]);
     let result = vm.eval(&expr, &mut ctx).unwrap();

@@ -18,12 +18,10 @@ pub enum Stmt<V> {
         name: String,
 
         /// The value assigned to the name.
-        value: Expr<V>,
-    },
+        value: Expr<V>},
 
     /// A sequence of statements evaluated in order.
-    Block(Vec<Stmt<V>>),
-}
+    Block(Vec<Stmt<V>>)}
 
 impl<V> Stmt<V> {
     /// Creates an expression statement.
@@ -35,8 +33,7 @@ impl<V> Stmt<V> {
     pub fn let_(name: impl Into<String>, value: Expr<V>) -> Self {
         Stmt::Let {
             name: name.into(),
-            value,
-        }
+            value}
     }
 
     /// Creates a block of statements.

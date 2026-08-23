@@ -1,7 +1,7 @@
 use crate::expression::eval_expression;
 use crate::types::{DEFAULT_NAMESPACE, Namespaces};
 use ac_dialect::Dialect;
-use ac_vm::Host;
+use ac_runtime::Host;
 use serde_json::Value as JsonValue;
 
 /// Recursively interpolates expressions in string values.
@@ -13,7 +13,7 @@ use serde_json::Value as JsonValue;
 /// - Nested calls: `${add(mul(2, 3), 4)}`
 ///
 /// Function calls are resolved via `host`. If no functions are needed,
-/// use `ac_host::DefaultHost`.
+/// use `ac_runtime_example_1::DefaultHost`.
 pub fn interpolate<H: Host + Clone + 'static>(
     value: &JsonValue,
     namespaces: &Namespaces,
@@ -35,8 +35,7 @@ pub fn interpolate<H: Host + Clone + 'static>(
                 .map(|(k, v)| (k.clone(), interpolate(v, namespaces, host, dialect)))
                 .collect(),
         ),
-        _ => value.clone(),
-    }
+        _ => value.clone()}
 }
 
 /// Recursively interpolates expressions in string values with scope inheritance.
@@ -131,8 +130,7 @@ fn interpolate_with_scope<H: Host + Clone + 'static>(
                 })
                 .collect(),
         ),
-        _ => value.clone(),
-    }
+        _ => value.clone()}
 }
 
 /// Checks if `s` is exactly a single interpolation expression (nothing before or after).
@@ -182,8 +180,7 @@ fn resolve_interpolation<H: Host + Clone + 'static>(
                 Some(JsonValue::Bool(b)) => result.push_str(&b.to_string()),
                 Some(JsonValue::Null) => result.push_str("null"),
                 Some(v) => result.push_str(&v.to_string()),
-                None => result.push_str(&format!("{prefix}{expr}{suffix}")),
-            }
+                None => result.push_str(&format!("{prefix}{expr}{suffix}"))}
             remaining = &after_start[end + suffix.len()..];
         } else {
             result.push_str(prefix);

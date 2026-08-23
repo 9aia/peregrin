@@ -12,17 +12,14 @@ pub enum ParseError {
     #[error("unexpected token at {span}: {expected}")]
     UnexpectedToken {
         span: Span,
-        expected: String,
-    },
+        expected: String},
 
     /// An unexpected end of input.
     #[error("unexpected end of input at {span}: {expected}")]
     UnexpectedEof {
         span: Span,
-        expected: String,
-    },
+        expected: String},
 
     /// A lexing error occurred during `parse_text`.
     #[error("lexing error: {message}")]
-    LexError { message: String },
-}
+    LexError { message: String }}

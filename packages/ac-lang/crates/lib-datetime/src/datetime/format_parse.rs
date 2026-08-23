@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{format_iso, parse_iso, parse_with_format_and_offset, require_one_string, require_string, s};
 
@@ -9,7 +9,7 @@ impl Function for Format {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -29,7 +29,7 @@ impl Function for Parse {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = if args.len() >= 2 {

@@ -9,8 +9,7 @@ use crate::error::PlatformError;
 /// A simple in-memory environment for tests.
 #[derive(Default)]
 pub struct StubEnv {
-    pub(crate) vars: Mutex<HashMap<String, String>>,
-}
+    pub(crate) vars: Mutex<HashMap<String, String>>}
 
 impl StubEnv {
     pub fn new() -> Self {
@@ -21,8 +20,7 @@ impl StubEnv {
         let mut vars = HashMap::new();
         vars.insert(key.into(), value.into());
         StubEnv {
-            vars: Mutex::new(vars),
-        }
+            vars: Mutex::new(vars)}
     }
 }
 

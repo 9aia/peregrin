@@ -40,7 +40,7 @@ fn gauss_negative_stddev_errors() {
 #[test]
 fn gauss_no_args_errors() {
     let result = call_err("gauss", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.exponential ─────────────────────────────────────────────
@@ -95,7 +95,7 @@ fn exponential_negative_lambda_errors() {
 #[test]
 fn exponential_no_args_errors() {
     let result = call_err("exponential", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.poisson ─────────────────────────────────────────────────
@@ -141,7 +141,7 @@ fn poisson_negative_lambda_errors() {
 #[test]
 fn poisson_no_args_errors() {
     let result = call_err("poisson", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.binomial ────────────────────────────────────────────────
@@ -208,5 +208,5 @@ fn binomial_p_out_of_range_errors() {
 #[test]
 fn binomial_no_args_errors() {
     let result = call_err("binomial", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }

@@ -12,13 +12,11 @@ impl Cmd for StdCmd {
             .args(args)
             .output()
             .map_err(|e| PlatformError::Io {
-                message: e.to_string(),
-            })?;
+                message: e.to_string()})?;
 
         Ok(CmdOutput {
             exit_code: output.status.code().unwrap_or(-1),
             stdout: String::from_utf8_lossy(&output.stdout).into_owned(),
-            stderr: String::from_utf8_lossy(&output.stderr).into_owned(),
-        })
+            stderr: String::from_utf8_lossy(&output.stderr).into_owned()})
     }
 }

@@ -1,12 +1,10 @@
 use std::fmt;
 
 use ecma402_traits::list_format::{
-    ListFormat as ListFormatTrait, ListFormatPart, ListStyle, ListType,
-};
+    ListFormat as ListFormatTrait, ListFormatPart, ListStyle, ListType};
 use icu::list::{
     ListFormatter,
-    options::{ListFormatterOptions, ListLength},
-};
+    options::{ListFormatterOptions, ListLength}};
 use icu::locale::Locale;
 use icu_provider::DataError;
 use icu_provider_blob::BlobDataProvider;
@@ -16,22 +14,19 @@ use icu4x_extra::list::{placeholders, split_parts};
 
 /// ICU4X-backed ECMA-402 `Intl.ListFormat`.
 pub struct ListFormat {
-    formatter: ListFormatter,
-}
+    formatter: ListFormatter}
 
 /// Errors that can occur when constructing or using a `ListFormat`.
 #[derive(Debug)]
 pub enum Error {
     InvalidLocale(String),
-    Data(DataError),
-}
+    Data(DataError)}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::InvalidLocale(s) => write!(f, "invalid locale: {s}"),
-            Self::Data(e) => write!(f, "data provider error: {e}"),
-        }
+            Self::Data(e) => write!(f, "data provider error: {e}")}
     }
 }
 
@@ -52,8 +47,7 @@ impl ListFormat {
         let length = match options.style {
             ListStyle::Short => ListLength::Short,
             ListStyle::Narrow => ListLength::Narrow,
-            _ => ListLength::Wide,
-        };
+            _ => ListLength::Wide};
         ListFormatterOptions::default().with_length(length)
     }
 
@@ -65,8 +59,7 @@ impl ListFormat {
         let formatter = match options.list_type {
             ListType::Disjunction => ListFormatter::try_new_or(locale.into(), icu_options),
             ListType::Unit => ListFormatter::try_new_unit(locale.into(), icu_options),
-            _ => ListFormatter::try_new_and(locale.into(), icu_options),
-        }?;
+            _ => ListFormatter::try_new_and(locale.into(), icu_options)}?;
 
         Ok(Self { formatter })
     }
@@ -93,8 +86,7 @@ impl ListFormat {
                 provider,
                 locale.into(),
                 icu_options,
-            ),
-        }?;
+            )}?;
 
         Ok(Self { formatter })
     }
@@ -120,8 +112,7 @@ impl ListFormatTrait for ListFormat {
         if items.len() == 1 {
             return Ok(vec![ListFormatPart {
                 part_type: ecma402_traits::list_format::ListFormatPartType::Element,
-                value: items[0].to_string(),
-            }]);
+                value: items[0].to_string()}]);
         }
 
         let ph = placeholders(items.len());

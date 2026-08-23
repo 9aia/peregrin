@@ -1,10 +1,9 @@
 use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use crate::shared::{
     arr, apply_fn, apply_fn2, bind_all_params, is_truthy_fn, require_array, require_function_value,
-    require_functions,
-};
+    require_functions};
 
 fn substitute_param(body: &str, param: &str, replacement: &str) -> String {
     let wrapped = format!("({replacement})");
@@ -70,8 +69,7 @@ fn inline_chain(fns: &[FunctionValue]) -> Result<FunctionValue, Error> {
     if fns.is_empty() {
         return Err(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        });
+            got: 0});
     }
     let first_fn = &fns[0];
     let input_param = first_fn
@@ -93,8 +91,7 @@ fn inline_chain(fns: &[FunctionValue]) -> Result<FunctionValue, Error> {
     Ok(FunctionValue {
         params: vec![(input_param.to_string(), serde_json::Value::Null)],
         return_schema: None,
-        body,
-    })
+        body})
 }
 
 // ── pipe ───────────────────────────────────────────────────────────
@@ -105,13 +102,12 @@ impl Function for Pipe {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let mut value = args[0].clone();
         for fn_arg in &args[1..] {
@@ -130,7 +126,7 @@ impl Function for Flow {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let fns = require_functions(args)?;
         let composed = inline_chain(&fns)?;
@@ -144,7 +140,7 @@ impl Function for Compose {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let fns = require_functions(args)?;
         let reversed: Vec<FunctionValue> = fns.into_iter().rev().collect();
@@ -161,13 +157,12 @@ impl Function for Fanout {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let value = args[0].clone();
         let inner = value.into_inner();
@@ -189,13 +184,12 @@ impl Function for Choice {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 4 {
             return Err(Error::ArgumentCount {
                 expected: 4,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let value = &args[0];
         let predicate = require_function_value(&args[1])?;
@@ -217,13 +211,12 @@ impl Function for Apply {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let fn_val = require_function_value(&args[0])?;
         let call_args = require_array(&args[1])?;
@@ -240,13 +233,12 @@ impl Function for Tap {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let fn_val = require_function_value(&args[0])?;
         let value = &args[1];
@@ -264,18 +256,16 @@ impl Function for Constantly {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let value = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?;
+            got: 0})?;
         let captured = value.inner().clone();
         let fn_val = FunctionValue {
             params: vec![("_".to_string(), serde_json::Value::Null)],
             return_schema: None,
-            body: serde_json::to_string(&captured).unwrap_or_else(|_| "null".to_string()),
-        };
+            body: serde_json::to_string(&captured).unwrap_or_else(|_| "null".to_string())};
         Ok(NonFunctionValue::new_function(fn_val))
     }
 }
@@ -288,25 +278,22 @@ impl Function for Flip {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let fn_val = require_function_value(args.first().ok_or(Error::ArgumentCount {
             expected: 1,
-            got: 0,
-        })?)?;
+            got: 0})?)?;
         if fn_val.params.len() < 2 {
             return Err(Error::TypeMismatch {
                 expected: "function with at least 2 parameters",
-                got: "function with fewer than 2 parameters",
-            });
+                got: "function with fewer than 2 parameters"});
         }
         let mut swapped_params = fn_val.params.clone();
         swapped_params.swap(0, 1);
         let flipped = FunctionValue {
             params: swapped_params,
             return_schema: None,
-            body: fn_val.body.clone(),
-        };
+            body: fn_val.body.clone()};
         Ok(NonFunctionValue::new_function(flipped))
     }
 }
@@ -319,13 +306,12 @@ impl Function for Partial {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let fn_val = require_function_value(&args[0])?;
         let bound_args = require_array(&args[1])?;
@@ -347,8 +333,7 @@ impl Function for Partial {
         let partial_fn = FunctionValue {
             params: remaining_params,
             return_schema: None,
-            body,
-        };
+            body};
         Ok(NonFunctionValue::new_function(partial_fn))
     }
 }
@@ -361,13 +346,12 @@ impl Function for When {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let value = &args[0];
         let predicate = require_function_value(&args[1])?;
@@ -387,13 +371,12 @@ impl Function for Unless {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let value = &args[0];
         let predicate = require_function_value(&args[1])?;
@@ -415,13 +398,12 @@ impl Function for Converge {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let value = &args[0];
         let combiner = require_function_value(&args[1])?;

@@ -10,15 +10,14 @@ use ac_ast_canonical::{Expr, HandlerClause};
 use ac_runtime::NonFunctionValue;
 use ac_store::DefinitionHash;
 use ac_store::canonicalize_json;
-use ac_vm::{Continuation, Frame};
+use ac_runtime_canonical::{Continuation, Frame};
 use serde_json::Value as JsonValue;
 
 // ── helpers ───────────────────────────────────────────────────────
 
 /// Simple deterministic PRNG (xorshift64) — no external dependency.
 struct Rng {
-    state: u64,
-}
+    state: u64}
 
 impl Rng {
     fn new(seed: u64) -> Self {
@@ -66,8 +65,7 @@ fn random_json(rng: &mut Rng, depth: usize) -> JsonValue {
             0 => JsonValue::Null,
             1 => JsonValue::Bool(rng.next_bool()),
             2 => serde_json::json!(rng.next_f64()),
-            _ => JsonValue::String(rng.next_string()),
-        };
+            _ => JsonValue::String(rng.next_string())};
     }
     match rng.next_usize(5) {
         0 => JsonValue::Null,
@@ -95,22 +93,19 @@ fn random_expr(rng: &mut Rng, depth: usize) -> Expr<NonFunctionValue> {
         return Expr::Value(NonFunctionValue::new(match rng.next_usize(3) {
             0 => serde_json::json!(rng.next_f64()),
             1 => serde_json::json!(rng.next_string()),
-            _ => serde_json::json!(rng.next_bool()),
-        }));
+            _ => serde_json::json!(rng.next_bool())}));
     }
     match rng.next_usize(3) {
         0 => Expr::Value(NonFunctionValue::new(match rng.next_usize(3) {
             0 => serde_json::json!(rng.next_f64()),
             1 => serde_json::json!(rng.next_string()),
-            _ => serde_json::json!(rng.next_bool()),
-        })),
+            _ => serde_json::json!(rng.next_bool())})),
         1 => {
             let name = match rng.next_usize(4) {
                 0 => "add",
                 1 => "mul",
                 2 => "concat",
-                _ => &rng.next_string()[..],
-            };
+                _ => &rng.next_string()[..]};
             let n_args = rng.next_usize(4);
             Expr::call(
                 name,
@@ -124,16 +119,14 @@ fn random_expr(rng: &mut Rng, depth: usize) -> Expr<NonFunctionValue> {
                     op_name: match rng.next_usize(3) {
                         0 => "fetch".to_string(),
                         1 => "log".to_string(),
-                        _ => rng.next_string(),
-                    },
+                        _ => rng.next_string()},
                     params: if rng.next_bool() {
                         vec!["url".to_string()]
                     } else {
                         vec![]
                     },
                     continuation_name: "k".to_string(),
-                    body: random_expr(rng, depth - 1),
-                })
+                    body: random_expr(rng, depth - 1)})
                 .collect();
             Expr::handle(random_expr(rng, depth - 1), handlers)
         }
@@ -148,14 +141,12 @@ fn random_frame(rng: &mut Rng) -> Frame {
         name: match rng.next_usize(3) {
             0 => "add".to_string(),
             1 => "fetch".to_string(),
-            _ => rng.next_string(),
-        },
+            _ => rng.next_string()},
         evaluated: (0..n_evaluated)
             .map(|_| NonFunctionValue::new(random_json(rng, 2)))
             .collect(),
         pending: (0..n_pending).map(|_| random_expr(rng, 2)).collect(),
-        handlers: vec![],
-    }
+        handlers: vec![]}
 }
 
 // ── property: canonicalization is idempotent ──────────────────────
@@ -185,8 +176,7 @@ fn fuzz_canonicalize_preserves_value_semantics() {
             (JsonValue::Bool(a), JsonValue::Bool(b)) => assert_eq!(a, b),
             (JsonValue::Number(a), JsonValue::Number(b)) => assert_eq!(a, b),
             (JsonValue::String(a), JsonValue::String(b)) => assert_eq!(a, b),
-            _ => panic!("type changed during canonicalization"),
-        }
+            _ => panic!("type changed during canonicalization")}
     }
 }
 

@@ -14,8 +14,7 @@ fn hash_rule(
                 Span::at(start),
             )))
         }
-        _ => None,
-    }
+        _ => None}
 }
 
 #[test]

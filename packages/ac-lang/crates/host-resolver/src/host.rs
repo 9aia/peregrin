@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use ac_module_resolver_core::{IMPORT_FUNCTION, ModuleResolver};
-use ac_vm::{AsyncFunction, Function, Host, LazyFunction, Operation};
+use ac_runtime::{AsyncFunction, Function, Host, LazyFunction, Operation};
 
 use crate::import_function::ImportFunction;
 
@@ -18,10 +18,10 @@ use crate::import_function::ImportFunction;
 /// # Example
 ///
 /// ```ignore
-/// use ac_host::DefaultHost;
-/// use ac_host_resolver::ResolverHost;
+/// use ac_runtime_example_1::DefaultHost;
+/// use ac_runtime_example_1_resolver::ResolverHost;
 /// use ac_module_resolver_virtual::VirtualResolver;
-/// use ac_vm::{Vm, Context};
+/// use ac_runtime_canonical::{CanonicalContext, Vm, Context};
 /// use ac_ast_canonical::Expr;
 ///
 /// let mut resolver = VirtualResolver::new();
@@ -35,15 +35,14 @@ use crate::import_function::ImportFunction;
 ///     Box::new(resolver),
 /// );
 /// let vm = Vm::new(host);
-/// let mut ctx = Context::new();
+/// let mut ctx = CanonicalContext::new();
 ///
 /// let expr = Expr::call("import", vec![Expr::value("config.yml")]);
 /// let result = vm.eval(&expr, &mut ctx).unwrap();
 /// ```
 pub struct ResolverHost<H: Host> {
     inner: H,
-    import_fn: ImportFunction,
-}
+    import_fn: ImportFunction}
 
 impl<H: Host> ResolverHost<H> {
     /// Creates a new `ResolverHost` wrapping the given inner host.
@@ -53,8 +52,7 @@ impl<H: Host> ResolverHost<H> {
     pub fn new(inner: H, resolver: Box<dyn ModuleResolver>) -> Self {
         ResolverHost {
             inner,
-            import_fn: ImportFunction::new(resolver),
-        }
+            import_fn: ImportFunction::new(resolver)}
     }
 
     /// Sets the base path for relative import resolution.

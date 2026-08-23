@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{require_one_string, require_string, require_two_strings, s};
 
@@ -9,7 +9,7 @@ impl Function for Split {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, sep) = require_two_strings(args)?;
         let parts: Vec<serde_json::Value> = input
@@ -26,25 +26,22 @@ impl Function for Join {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let sep = require_string(&args[1])?;
         let arr = args[0].as_array().ok_or(Error::TypeMismatch {
             expected: "array",
-            got: "non-array",
-        })?;
+            got: "non-array"})?;
         let parts: Vec<&str> = arr
             .iter()
             .map(|v| v.as_str().ok_or(Error::TypeMismatch {
                 expected: "string",
-                got: "non-string",
-            }))
+                got: "non-string"}))
             .collect::<Result<Vec<_>, _>>()?;
         Ok(s(parts.join(sep)))
     }
@@ -56,13 +53,12 @@ impl Function for Replace {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let input = require_string(&args[0])?;
         let from = require_string(&args[1])?;
@@ -77,13 +73,12 @@ impl Function for ReplaceFirst {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let input = require_string(&args[0])?;
         let from = require_string(&args[1])?;
@@ -98,30 +93,26 @@ impl Function for Repeat {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let input = require_string(&args[0])?;
         let count = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if count < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         if !count.is_finite() || count > 1_000_000.0 {
             return Err(Error::TypeMismatch {
                 expected: "finite number <= 1_000_000",
-                got: "non-finite or excessively large number",
-            });
+                got: "non-finite or excessively large number"});
         }
         Ok(s(input.repeat(count as usize)))
     }
@@ -133,24 +124,21 @@ impl Function for CharAt {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let input = require_string(&args[0])?;
         let index = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if index < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         let char_count = input.chars().count();
         if (index as usize) >= char_count {
@@ -174,28 +162,24 @@ impl Function for Slice {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let input = require_string(&args[0])?;
         let start = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         let end = args[2].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if start < 0.0 || end < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         let chars: Vec<char> = input.chars().collect();
         let end = (end as usize).min(chars.len());
@@ -225,30 +209,26 @@ impl Function for PadLeft {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let input = require_string(&args[0])?;
         let target_len = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if target_len < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         if !target_len.is_finite() || target_len > 1_000_000.0 {
             return Err(Error::TypeMismatch {
                 expected: "finite number <= 1_000_000",
-                got: "non-finite or excessively large number",
-            });
+                got: "non-finite or excessively large number"});
         }
         let pad_char = require_string(&args[2])?;
         Ok(s(pad_to_len(input, target_len as usize, pad_char, true)))
@@ -261,30 +241,26 @@ impl Function for PadRight {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
                 expected: 3,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let input = require_string(&args[0])?;
         let target_len = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if target_len < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         if !target_len.is_finite() || target_len > 1_000_000.0 {
             return Err(Error::TypeMismatch {
                 expected: "finite number <= 1_000_000",
-                got: "non-finite or excessively large number",
-            });
+                got: "non-finite or excessively large number"});
         }
         let pad_char = require_string(&args[2])?;
         Ok(s(pad_to_len(input, target_len as usize, pad_char, false)))
@@ -297,7 +273,7 @@ impl Function for StripPrefix {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, prefix) = require_two_strings(args)?;
         Ok(s(input.strip_prefix(prefix).unwrap_or(input).to_string()))
@@ -310,7 +286,7 @@ impl Function for StripSuffix {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, suffix) = require_two_strings(args)?;
         Ok(s(input.strip_suffix(suffix).unwrap_or(input).to_string()))
@@ -323,7 +299,7 @@ impl Function for Lines {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let lines: Vec<serde_json::Value> = if input.is_empty() {
@@ -344,24 +320,21 @@ impl Function for SplitAt {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let input = require_string(&args[0])?;
         let index = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if index < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         let chars: Vec<char> = input.chars().collect();
         let mid = (index as usize).min(chars.len());
@@ -381,7 +354,7 @@ impl Function for SplitWhitespace {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let parts: Vec<serde_json::Value> = input
@@ -398,24 +371,21 @@ impl Function for Truncate {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let input = require_string(&args[0])?;
         let max_len = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if max_len < 0.0 {
             return Err(Error::TypeMismatch {
                 expected: "non-negative number",
-                got: "negative number",
-            });
+                got: "negative number"});
         }
         let max_len = max_len as usize;
         let suffix = if args.len() >= 3 {
@@ -444,7 +414,7 @@ impl Function for Slugify {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let slug: String = input
@@ -486,7 +456,7 @@ impl Function for EscapeHtml {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let escaped: String = input
@@ -498,8 +468,7 @@ impl Function for EscapeHtml {
                 '"' => "&quot;".to_string(),
                 '\'' => "&#x27;".to_string(),
                 '/' => "&#x2F;".to_string(),
-                _ => c.to_string(),
-            })
+                _ => c.to_string()})
             .collect();
         Ok(s(escaped))
     }
@@ -511,7 +480,7 @@ impl Function for UnescapeHtml {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let unescaped = input
@@ -537,7 +506,7 @@ impl Function for EscapeUrl {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let escaped: String = input
@@ -560,7 +529,7 @@ impl Function for UnescapeUrl {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let bytes = input.as_bytes();
@@ -580,8 +549,7 @@ impl Function for UnescapeUrl {
         }
         let decoded = String::from_utf8(result).map_err(|_| Error::TypeMismatch {
             expected: "valid UTF-8 after URL decoding",
-            got: "invalid UTF-8 sequence",
-        })?;
+            got: "invalid UTF-8 sequence"})?;
         Ok(s(decoded))
     }
 }
@@ -592,24 +560,21 @@ impl Function for WordWrap {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
                 expected: 2,
-                got: args.len(),
-            });
+                got: args.len()});
         }
         let input = require_string(&args[0])?;
         let width = args[1].as_number().ok_or(Error::TypeMismatch {
             expected: "number",
-            got: "non-number",
-        })?;
+            got: "non-number"})?;
         if width < 1.0 {
             return Err(Error::TypeMismatch {
                 expected: "positive number",
-                got: "non-positive number",
-            });
+                got: "non-positive number"});
         }
         let width = width as usize;
         let mut result = String::new();

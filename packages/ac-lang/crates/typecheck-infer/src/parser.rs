@@ -14,8 +14,7 @@ pub struct HandlerClauseAst {
     pub continuation_name: String,
 
     /// The handler body expression.
-    pub body: Box<ExprAst>,
-}
+    pub body: Box<ExprAst>}
 
 /// A parsed expression AST — the intermediate representation for type inference.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -29,9 +28,7 @@ pub enum ExprAst {
     /// A handle expression: body + handler clauses.
     Handle {
         body: Box<ExprAst>,
-        handlers: Vec<HandlerClauseAst>,
-    },
-}
+        handlers: Vec<HandlerClauseAst>}}
 
 /// Parse an expression string into an [`ExprAst`].
 ///
@@ -76,8 +73,7 @@ pub fn parse_expr(s: &str, dialect: &dyn Dialect) -> Option<ExprAst> {
                     op_name: parsed.op_name,
                     params: parsed.params,
                     continuation_name: parsed.continuation_name,
-                    body,
-                })
+                    body})
             })
             .collect();
 

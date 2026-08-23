@@ -12,8 +12,7 @@ impl Time for StdTime {
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_err(|e| PlatformError::Io {
-                    message: e.to_string(),
-                })?;
+                    message: e.to_string()})?;
         Ok(duration.as_millis() as i64)
     }
 
@@ -22,8 +21,7 @@ impl Time for StdTime {
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
                 .map_err(|e| PlatformError::Io {
-                    message: e.to_string(),
-                })?;
+                    message: e.to_string()})?;
         Ok(duration.as_secs() as i64)
     }
 }

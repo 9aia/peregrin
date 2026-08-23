@@ -1,8 +1,8 @@
 use crate::AsyncEval;
 use crate::Error;
 use crate::Eval;
-use crate::RuntimeContext;
-use ac_runtime::NonFunctionValue;
+use crate::Context;
+use ac_runtime_values::NonFunctionValue;
 use indexmap::IndexMap;
 use serde_json::Value as JsonValue;
 use std::cell::Cell;
@@ -24,26 +24,24 @@ use std::pin::Pin;
 /// functions to evaluate expression strings (e.g. function bodies).
 /// The callback is optional — when not set, [`Context::eval_expr`]
 /// returns an error.
-pub struct Context {
+pub struct CanonicalContext {
     scopes: Vec<IndexMap<String, NonFunctionValue>>,
     eval: Option<Box<dyn Eval>>,
     async_eval: Option<Box<dyn AsyncEval>>,
     max_depth: Option<usize>,
     max_calls: Option<usize>,
-    call_count: Cell<usize>,
-}
+    call_count: Cell<usize>}
 
-impl Context {
+impl CanonicalContext {
     /// Creates a new context with a single empty global scope.
     pub fn new() -> Self {
-        Context {
+        CanonicalContext {
             scopes: vec![IndexMap::new()],
             eval: None,
             async_eval: None,
             max_depth: None,
             max_calls: None,
-            call_count: Cell::new(0),
-        }
+            call_count: Cell::new(0)}
     }
 
     /// Creates a context with each namespace root bound as a variable.
@@ -127,8 +125,7 @@ impl Context {
             Some(eval) => eval.eval_expr_async(expr, vars),
             None => Box::pin(std::future::ready(Err(Error::PrimitiveError(
                 "no async eval callback set".to_string(),
-            )))),
-        }
+            ))))}
     }
 
     /// Pushes a new empty scope onto the scope stack.
@@ -256,13 +253,13 @@ impl Context {
     }
 }
 
-impl Default for Context {
+impl Default for CanonicalContext {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl RuntimeContext for Context {
+impl Context for CanonicalContext {
     fn define(&mut self, name: &str, value: NonFunctionValue) {
         self.define(name, value);
     }

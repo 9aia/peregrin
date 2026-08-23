@@ -1,20 +1,20 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error};
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context, Error};
 
 use super::module::IntlModule;
 
 fn call(args: &[NonFunctionValue]) -> NonFunctionValue {
     let module = IntlModule::new();
     let func = module.function("segment").expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_err(args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let module = IntlModule::new();
     let func = module.function("segment").expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 
@@ -118,13 +118,13 @@ fn segment_grapheme_unicode() {
 }
 
 use ac_ast_canonical::Expr;
-use ac_runtime_core::ModuleHost;
-use ac_vm::Vm;
+use ac_runtime_modules::ModuleHost;
+use ac_runtime_canonical::Vm;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule::new());
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     vm.eval(expr, &mut ctx).expect("eval succeeds")
 }
 

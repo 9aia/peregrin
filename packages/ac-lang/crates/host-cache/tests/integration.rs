@@ -1,7 +1,7 @@
 use ac_ast_canonical::Expr;
-use ac_host_cache::{CacheHost, CallCache};
+use ac_runtime_example_1_cache::{CacheHost, CallCache};
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, EvalResult, Function, Host, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Error, EvalResult, Function, Host, Vm};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct EmptyHost;
@@ -15,17 +15,16 @@ impl Host for EmptyHost {
 
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
 }
 
 struct CountingFetch {
-    calls: AtomicUsize,
-}
+    calls: AtomicUsize}
 impl Function for CountingFetch {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let n = self.calls.fetch_add(1, Ordering::SeqCst);
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("?");
         Ok(NonFunctionValue::new(format!("result_{input}_{n}")))
@@ -34,7 +33,7 @@ impl Function for CountingFetch {
 
 struct YieldingFetch;
 impl Function for YieldingFetch {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("?");
         Err(Error::Yield(NonFunctionValue::new(format!("yield:{input}"))))
     }
@@ -109,13 +108,12 @@ fn cache_empty_serialization() {
 fn cache_host_caches_successful_calls() {
     let mut host = CacheHost::new(EmptyHost);
     let fetch = CountingFetch {
-        calls: AtomicUsize::new(0),
-    };
+        calls: AtomicUsize::new(0)};
     host.register("fetch", Box::new(fetch));
     host.register("add", Box::new(Add));
 
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     // First call: cache miss, dispatches to function
     let expr = Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("a"))]);
@@ -138,7 +136,7 @@ fn cache_host_does_not_cache_yields() {
     host.register("add", Box::new(Add));
 
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let expr = Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("a"))]);
     let result = vm.eval(&expr, &mut ctx);
@@ -168,16 +166,14 @@ fn end_to_end_server_to_client_migration() {
     server_host.register("fetch", Box::new(YieldingFetch));
 
     let mut server_vm = Vm::new(server_host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
 
     let result = server_vm.eval_resumable(&expr, &mut ctx, None);
     let (yielded_value, continuation) = match result {
         EvalResult::Yielded {
             value,
-            continuation,
-        } => (value, continuation),
-        other => panic!("expected Yielded, got {other:?}"),
-    };
+            continuation} => (value, continuation),
+        other => panic!("expected Yielded, got {other:?}")};
     assert_eq!(yielded_value.as_str(), Some("yield:data"));
 
     // Serialize continuation + cache
@@ -200,11 +196,10 @@ fn end_to_end_server_to_client_migration() {
     client_host.register("fetch", Box::new(YieldingFetch));
 
     let mut client_vm = Vm::new(client_host);
-    let restored_cont = ac_vm::Continuation::from_json(&cont_json).unwrap();
+    let restored_cont = ac_runtime_canonical::Continuation::from_json(&cont_json).unwrap();
 
     let result = client_vm.eval_resumable(&expr, &mut ctx, Some(restored_cont));
     match result {
         EvalResult::Done(value) => assert_eq!(value.as_number(), Some(52.0)),
-        other => panic!("expected Done, got {other:?}"),
-    }
+        other => panic!("expected Done, got {other:?}")}
 }

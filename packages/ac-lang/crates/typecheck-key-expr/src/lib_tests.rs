@@ -18,8 +18,7 @@ impl SchemaInterpreter for JsonInterpreter {
                     .map(|i| self.interpret(i))
                     .unwrap_or(Type::Unknown),
             )),
-            _ => Type::Unknown,
-        }
+            _ => Type::Unknown}
     }
 }
 
@@ -36,8 +35,7 @@ fn make_env() -> (TypeEnv, FunctionTable) {
                 ("x".to_string(), Type::Number),
                 ("y".to_string(), Type::Number),
             ],
-            return_type: Box::new(Type::Number),
-        },
+            return_type: Box::new(Type::Number)},
     );
 
     (env, funcs)

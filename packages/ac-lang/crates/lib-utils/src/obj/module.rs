@@ -1,5 +1,5 @@
-use ac_runtime_core::Module;
-use ac_vm::Function;
+use ac_runtime_modules::Module;
+use ac_runtime::Function;
 
 use super::access::{DeepGet, Get, GetOr, HasKey, PathOr};
 use super::combination::{DeepMerge, FromEntries, Merge};
@@ -47,7 +47,6 @@ impl Module for ObjModule {
             "update_path" => Some(&UpdatePath),
             "size" => Some(&Size),
             "clone_deep" => Some(&CloneDeep),
-            _ => None,
-        }
+            _ => None}
     }
 }

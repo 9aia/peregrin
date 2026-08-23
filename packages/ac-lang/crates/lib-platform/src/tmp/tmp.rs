@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error, Function};
+use ac_runtime_modules::Module;
+use ac_runtime::{Context, Error, Function};
 
 use crate::error::PlatformError;
 
@@ -19,16 +19,14 @@ pub trait Tmp: Send + Sync {
 /// Module adapter for [`Tmp`] — exposes `tmp.*` functions.
 pub struct TmpModule {
     file: FileFn,
-    dir: DirFn,
-}
+    dir: DirFn}
 
 impl TmpModule {
     pub fn new(tmp: impl Tmp + 'static) -> Self {
         let tmp = Arc::new(tmp);
         TmpModule {
             file: FileFn { tmp: tmp.clone() },
-            dir: DirFn { tmp },
-        }
+            dir: DirFn { tmp }}
     }
 }
 
@@ -41,27 +39,24 @@ impl Module for TmpModule {
         match name {
             "file" => Some(&self.file),
             "dir" => Some(&self.dir),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
 struct FileFn {
-    tmp: Arc<dyn Tmp>,
-}
+    tmp: Arc<dyn Tmp>}
 
 impl Function for FileFn {
-    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         self.tmp.file().map(NonFunctionValue::new).map_err(Into::into)
     }
 }
 
 struct DirFn {
-    tmp: Arc<dyn Tmp>,
-}
+    tmp: Arc<dyn Tmp>}
 
 impl Function for DirFn {
-    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         self.tmp.dir().map(NonFunctionValue::new).map_err(Into::into)
     }
 }

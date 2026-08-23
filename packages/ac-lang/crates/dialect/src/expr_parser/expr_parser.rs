@@ -12,8 +12,7 @@ pub struct ParsedHandlerClause {
     pub continuation_name: String,
 
     /// The handler body expression string (unparsed).
-    pub body: String,
-}
+    pub body: String}
 
 /// Expression parsing operations for AC expressions.
 ///

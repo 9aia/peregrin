@@ -1,4 +1,4 @@
-use crate::RuntimeContext;
+use crate::CanonicalContext;
 use crate::Context;
 use crate::{Continuation, EvalResult, Frame};
 use crate::Error;
@@ -11,7 +11,7 @@ use crate::NonFunctionValue;
 #[derive(Clone)]
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -20,7 +20,7 @@ impl Function for Add {
 #[derive(Clone)]
 struct Mul;
 impl Function for Mul {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let product: f64 = args.iter().filter_map(|v| v.as_number()).product();
         Ok(NonFunctionValue::new(product))
     }
@@ -30,7 +30,7 @@ impl Function for Mul {
 #[derive(Clone)]
 struct YieldingFetch;
 impl Function for YieldingFetch {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("unknown");
         Err(Error::Yield(NonFunctionValue::new(format!("yield:{input}"))))
     }
@@ -40,10 +40,9 @@ impl Function for YieldingFetch {
 /// and yields for uncached arguments.
 #[derive(Clone)]
 struct CachingFetch {
-    cache: std::collections::HashMap<String, NonFunctionValue>,
-}
+    cache: std::collections::HashMap<String, NonFunctionValue>}
 impl Function for CachingFetch {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let key = args.first().and_then(|v| v.as_str()).unwrap_or("unknown");
         if let Some(cached) = self.cache.get(key) {
             Ok(cached.clone())
@@ -59,8 +58,7 @@ impl Function for CachingFetch {
 struct ServerHost {
     add: Add,
     mul: Mul,
-    fetch: YieldingFetch,
-}
+    fetch: YieldingFetch}
 
 impl Host for ServerHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
@@ -68,8 +66,7 @@ impl Host for ServerHost {
             "add" => Some(&self.add),
             "mul" => Some(&self.mul),
             "fetch" => Some(&self.fetch),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -78,8 +75,7 @@ impl Default for ServerHost {
         ServerHost {
             add: Add,
             mul: Mul,
-            fetch: YieldingFetch,
-        }
+            fetch: YieldingFetch}
     }
 }
 
@@ -87,8 +83,7 @@ impl Default for ServerHost {
 struct ClientHost {
     add: Add,
     mul: Mul,
-    fetch: CachingFetch,
-}
+    fetch: CachingFetch}
 
 impl Host for ClientHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
@@ -96,8 +91,7 @@ impl Host for ClientHost {
             "add" => Some(&self.add),
             "mul" => Some(&self.mul),
             "fetch" => Some(&self.fetch),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -107,8 +101,7 @@ impl ClientHost {
         ClientHost {
             add: Add,
             mul: Mul,
-            fetch: CachingFetch { cache },
-        }
+            fetch: CachingFetch { cache }}
     }
 }
 
@@ -117,7 +110,7 @@ impl ClientHost {
 #[test]
 fn resumable_eval_value() {
     let vm = crate::Vm::new(ServerHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let expr = Expr::value(NonFunctionValue::new(42));
     let result = vm.eval_resumable(&expr, &mut ctx, None);
     assert!(matches!(result, EvalResult::Done(ref v) if v.as_number() == Some(42.0)));
@@ -126,7 +119,7 @@ fn resumable_eval_value() {
 #[test]
 fn resumable_eval_simple_call() {
     let vm = crate::Vm::new(ServerHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let expr = Expr::call(
         "add",
         vec![
@@ -141,7 +134,7 @@ fn resumable_eval_simple_call() {
 #[test]
 fn resumable_eval_nested_calls() {
     let vm = crate::Vm::new(ServerHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let expr = Expr::call(
         "mul",
         vec![
@@ -165,19 +158,17 @@ fn resumable_eval_nested_calls() {
 #[test]
 fn resumable_eval_yields_on_fetch() {
     let vm = crate::Vm::new(ServerHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let expr = Expr::call("fetch", vec![Expr::value(NonFunctionValue::new("hello"))]);
     let result = vm.eval_resumable(&expr, &mut ctx, None);
     match result {
         EvalResult::Yielded {
             value,
-            continuation,
-        } => {
+            continuation} => {
             assert_eq!(value.as_str(), Some("yield:hello"));
             assert!(!continuation.is_empty());
         }
-        other => panic!("expected Yielded, got {other:?}"),
-    }
+        other => panic!("expected Yielded, got {other:?}")}
 }
 
 #[test]
@@ -192,15 +183,13 @@ fn resumable_eval_resume_with_different_host() {
 
     // Server: starts evaluation, fetch yields
     let server_vm = crate::Vm::new(ServerHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = server_vm.eval_resumable(&expr, &mut ctx, None);
     let (yielded_value, continuation) = match result {
         EvalResult::Yielded {
             value,
-            continuation,
-        } => (value, continuation),
-        other => panic!("expected Yielded, got {other:?}"),
-    };
+            continuation} => (value, continuation),
+        other => panic!("expected Yielded, got {other:?}")};
 
     assert_eq!(yielded_value.as_str(), Some("yield:data"));
 
@@ -216,8 +205,7 @@ fn resumable_eval_resume_with_different_host() {
     // fetch returns 5, add(5, 10) = 15
     match result {
         EvalResult::Done(value) => assert_eq!(value.as_number(), Some(15.0)),
-        other => panic!("expected Done, got {other:?}"),
-    }
+        other => panic!("expected Done, got {other:?}")}
 }
 
 #[test]
@@ -240,15 +228,13 @@ fn resumable_eval_resume_after_nested_yield() {
 
     // Server: first yield at fetch("a")
     let server_vm = crate::Vm::new(ServerHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = server_vm.eval_resumable(&expr, &mut ctx, None);
     let (yielded_a, cont_a) = match result {
         EvalResult::Yielded {
             value,
-            continuation,
-        } => (value, continuation),
-        other => panic!("expected first Yielded, got {other:?}"),
-    };
+            continuation} => (value, continuation),
+        other => panic!("expected first Yielded, got {other:?}")};
     assert_eq!(yielded_a.as_str(), Some("yield:a"));
 
     // Client with cache for "a"=3: resume, then fetch("b") yields
@@ -257,10 +243,8 @@ fn resumable_eval_resume_after_nested_yield() {
     let (yielded_b, cont_b) = match result {
         EvalResult::Yielded {
             value,
-            continuation,
-        } => (value, continuation),
-        other => panic!("expected second Yielded, got {other:?}"),
-    };
+            continuation} => (value, continuation),
+        other => panic!("expected second Yielded, got {other:?}")};
     assert_eq!(yielded_b.as_str(), Some("yield:b"));
 
     // Client2 with cache for "b"=20: resume, should complete
@@ -269,8 +253,7 @@ fn resumable_eval_resume_after_nested_yield() {
     let result = client2_vm.eval_resumable(&expr, &mut ctx, Some(cont_b));
     match result {
         EvalResult::Done(value) => assert_eq!(value.as_number(), Some(90.0)),
-        other => panic!("expected Done, got {other:?}"),
-    }
+        other => panic!("expected Done, got {other:?}")}
 }
 
 // ── tests: serialization ─────────────────────────────────────────
@@ -285,9 +268,7 @@ fn continuation_serialization_roundtrip() {
                 "fetch",
                 vec![Expr::value(NonFunctionValue::new("x"))],
             )],
-            handlers: vec![],
-        }],
-    };
+            handlers: vec![]}]};
 
     let json = cont.to_json();
     let restored = Continuation::from_json(&json).unwrap();
@@ -314,7 +295,7 @@ fn continuation_from_invalid_json_errors() {
 #[test]
 fn resumable_eval_unknown_function() {
     let vm = crate::Vm::new(ServerHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let expr = Expr::call("nonexistent", vec![]);
     let result = vm.eval_resumable(&expr, &mut ctx, None);
     assert!(matches!(
@@ -326,7 +307,7 @@ fn resumable_eval_unknown_function() {
 #[test]
 fn resumable_eval_resume_empty_continuation_errors() {
     let vm = crate::Vm::new(ServerHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let expr = Expr::value(NonFunctionValue::new(1));
     let result = vm.eval_resumable(&expr, &mut ctx, Some(Continuation::empty()));
     assert!(matches!(result, EvalResult::Error(_)));

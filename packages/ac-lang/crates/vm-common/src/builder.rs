@@ -1,7 +1,4 @@
-use ac_vm::{
-    AsyncFunction, Error, Function, GenericFunction, LazyFunction, NonFunctionValue, Operation,
-    OperationSig, RuntimeContext,
-};
+use ac_runtime::{AsyncFunction, Error, Function, GenericFunction, LazyFunction, NonFunctionValue, Operation, OperationSig, Context};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -17,13 +14,13 @@ impl<F> FnFunction<F> {
 
 impl<F> Function for FnFunction<F>
 where
-    F: Fn(&[NonFunctionValue], &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>
+    F: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error>
         + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn RuntimeContext,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         (self.0)(args, ctx)
     }
@@ -32,7 +29,7 @@ where
 /// Creates a synchronous function from a closure.
 pub fn fn_function<F>(f: F) -> Box<dyn Function>
 where
-    F: Fn(&[NonFunctionValue], &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>
+    F: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error>
         + 'static,
 {
     Box::new(FnFunction::new(f))
@@ -41,8 +38,7 @@ where
 /// An operation backed by closures for its signature and behavior.
 pub struct FnOperation<S, P> {
     signature: S,
-    perform: P,
-}
+    perform: P}
 
 impl<S, P> FnOperation<S, P> {
     /// Creates a new operation from a signature closure and a perform closure.
@@ -54,7 +50,7 @@ impl<S, P> FnOperation<S, P> {
 impl<S, P> Operation for FnOperation<S, P>
 where
     S: Fn() -> OperationSig + 'static,
-    P: Fn(&[NonFunctionValue], &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>
+    P: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error>
         + 'static,
 {
     fn signature(&self) -> OperationSig {
@@ -64,7 +60,7 @@ where
     fn perform(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn RuntimeContext,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         (self.perform)(args, ctx)
     }
@@ -74,7 +70,7 @@ where
 pub fn fn_operation<S, P>(signature: S, perform: P) -> Box<dyn Operation>
 where
     S: Fn() -> OperationSig + 'static,
-    P: Fn(&[NonFunctionValue], &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>
+    P: Fn(&[NonFunctionValue], &mut dyn Context) -> Result<NonFunctionValue, Error>
         + 'static,
 {
     Box::new(FnOperation::new(signature, perform))
@@ -93,22 +89,22 @@ impl<F> FnLazy<F> {
 impl<F> LazyFunction for FnLazy<F>
 where
     F: Fn(
-            &[ac_vm::Expr<NonFunctionValue>],
-            &mut dyn RuntimeContext,
+            &[ac_runtime::Expr<NonFunctionValue>],
+            &mut dyn Context,
             &mut dyn FnMut(
-                &ac_vm::Expr<NonFunctionValue>,
-                &mut dyn RuntimeContext,
+                &ac_runtime::Expr<NonFunctionValue>,
+                &mut dyn Context,
             ) -> Result<NonFunctionValue, Error>,
         ) -> Result<NonFunctionValue, Error>
         + 'static,
 {
     fn call(
         &self,
-        args: &[ac_vm::Expr<NonFunctionValue>],
-        ctx: &mut dyn RuntimeContext,
+        args: &[ac_runtime::Expr<NonFunctionValue>],
+        ctx: &mut dyn Context,
         evaluate: &mut dyn FnMut(
-            &ac_vm::Expr<NonFunctionValue>,
-            &mut dyn RuntimeContext,
+            &ac_runtime::Expr<NonFunctionValue>,
+            &mut dyn Context,
         ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
         (self.0)(args, ctx, evaluate)
@@ -119,11 +115,11 @@ where
 pub fn fn_lazy<F>(f: F) -> Box<dyn LazyFunction>
 where
     F: Fn(
-            &[ac_vm::Expr<NonFunctionValue>],
-            &mut dyn RuntimeContext,
+            &[ac_runtime::Expr<NonFunctionValue>],
+            &mut dyn Context,
             &mut dyn FnMut(
-                &ac_vm::Expr<NonFunctionValue>,
-                &mut dyn RuntimeContext,
+                &ac_runtime::Expr<NonFunctionValue>,
+                &mut dyn Context,
             ) -> Result<NonFunctionValue, Error>,
         ) -> Result<NonFunctionValue, Error>
         + 'static,
@@ -143,13 +139,13 @@ impl<F> FnGeneric<F> {
 
 impl<F> Function for FnGeneric<F>
 where
-    F: Fn(&[NonFunctionValue], &[String], &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>
+    F: Fn(&[NonFunctionValue], &[String], &mut dyn Context) -> Result<NonFunctionValue, Error>
         + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn RuntimeContext,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         (self.0)(args, &[], ctx)
     }
@@ -157,14 +153,14 @@ where
 
 impl<F> GenericFunction for FnGeneric<F>
 where
-    F: Fn(&[NonFunctionValue], &[String], &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>
+    F: Fn(&[NonFunctionValue], &[String], &mut dyn Context) -> Result<NonFunctionValue, Error>
         + 'static,
 {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         type_args: &[String],
-        ctx: &mut dyn RuntimeContext,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         (self.0)(args, type_args, ctx)
     }
@@ -173,7 +169,7 @@ where
 /// Creates a generic function from a closure.
 pub fn fn_generic<F>(f: F) -> Box<dyn GenericFunction>
 where
-    F: Fn(&[NonFunctionValue], &[String], &mut dyn RuntimeContext) -> Result<NonFunctionValue, Error>
+    F: Fn(&[NonFunctionValue], &[String], &mut dyn Context) -> Result<NonFunctionValue, Error>
         + 'static,
 {
     Box::new(FnGeneric::new(f))
@@ -193,14 +189,14 @@ impl<F> AsyncFunction for FnAsync<F>
 where
     F: for<'a> Fn(
             &'a [NonFunctionValue],
-            &'a mut (dyn RuntimeContext + 'a),
+            &'a mut (dyn Context + 'a),
         ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>>
         + 'static,
 {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        ctx: &'a mut (dyn RuntimeContext + 'a),
+        ctx: &'a mut (dyn Context + 'a),
     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         (self.0)(args, ctx)
     }
@@ -211,7 +207,7 @@ pub fn fn_async<F>(f: F) -> Box<dyn AsyncFunction>
 where
     F: for<'a> Fn(
             &'a [NonFunctionValue],
-            &'a mut (dyn RuntimeContext + 'a),
+            &'a mut (dyn Context + 'a),
         ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>>
         + 'static,
 {

@@ -1,11 +1,10 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
         expected: 1,
-        got: 0,
-    })
+        got: 0})
 }
 
 fn b(value: bool) -> NonFunctionValue {
@@ -24,7 +23,7 @@ macro_rules! type_predicate {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut Context,
+                _ctx: &mut dyn Context,
             ) -> Result<NonFunctionValue, Error> {
                 let arg = require_one_arg(args)?;
                 Ok(b($predicate(arg)))
@@ -46,7 +45,7 @@ impl Function for TypeOf {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let type_name = if arg.is_null() {
@@ -74,7 +73,7 @@ impl Function for IsEmpty {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let empty = if arg.is_null() {
@@ -98,7 +97,7 @@ impl Function for IsTruthy {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let truthy = if let Some(b_val) = arg.as_bool() {

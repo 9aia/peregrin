@@ -8,13 +8,13 @@
 
 use ac_ast_canonical::Expr;
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, EvalResult, Function, Host, Operation, OperationSig, Vm};
+use ac_vm_canonical::{CanonicalContext, Context, Error, EvalResult, Function, Host, Operation, OperationSig, Vm};
 
 // ── functions ─────────────────────────────────────────────────────
 
 struct Add;
 impl Function for Add {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -28,14 +28,12 @@ impl Operation for FetchOp {
         OperationSig {
             name: "fetch".to_string(),
             params: vec![("url".to_string(), serde_json::json!({"type": "string"}))],
-            return_schema: Some(serde_json::json!({"type": "string"})),
-        }
+            return_schema: Some(serde_json::json!({"type": "string"}))}
     }
-    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "fetch".to_string(),
-            args: args.to_vec(),
-        })
+            args: args.to_vec()})
     }
 }
 
@@ -46,10 +44,9 @@ impl Operation for CachingFetch {
         OperationSig {
             name: "fetch".to_string(),
             params: vec![],
-            return_schema: None,
-        }
+            return_schema: None}
     }
-    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn perform(&self, _args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         Ok(NonFunctionValue::new(42.0))
     }
 }
@@ -58,55 +55,47 @@ impl Operation for CachingFetch {
 
 struct ServerHost {
     add: Add,
-    fetch: FetchOp,
-}
+    fetch: FetchOp}
 impl Host for ServerHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "add" => Some(&self.add),
-            _ => None,
-        }
+            _ => None}
     }
     fn operation(&self, name: &str) -> Option<&dyn Operation> {
         match name {
             "fetch" => Some(&self.fetch),
-            _ => None,
-        }
+            _ => None}
     }
 }
 impl Default for ServerHost {
     fn default() -> Self {
         ServerHost {
             add: Add,
-            fetch: FetchOp,
-        }
+            fetch: FetchOp}
     }
 }
 
 struct ClientHost {
     add: Add,
-    fetch: CachingFetch,
-}
+    fetch: CachingFetch}
 impl Host for ClientHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
         match name {
             "add" => Some(&self.add),
-            _ => None,
-        }
+            _ => None}
     }
     fn operation(&self, name: &str) -> Option<&dyn Operation> {
         match name {
             "fetch" => Some(&self.fetch),
-            _ => None,
-        }
+            _ => None}
     }
 }
 impl Default for ClientHost {
     fn default() -> Self {
         ClientHost {
             add: Add,
-            fetch: CachingFetch,
-        }
+            fetch: CachingFetch}
     }
 }
 
@@ -127,16 +116,14 @@ fn main() {
 
     // ── Server: start evaluation ────────────────────────────────
     let server_vm = Vm::new(ServerHost::default());
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = server_vm.eval_resumable(&expr, &mut ctx, None);
 
     let (yielded_value, continuation) = match result {
         EvalResult::Yielded {
             value,
-            continuation,
-        } => (value, continuation),
-        other => panic!("expected Yielded, got {other:?}"),
-    };
+            continuation} => (value, continuation),
+        other => panic!("expected Yielded, got {other:?}")};
     println!("\n[Server] fetch operation signaled");
     println!("[Server] Yielded value: {:?}", yielded_value);
     println!(
@@ -153,7 +140,7 @@ fn main() {
     );
 
     // ── Client: resume evaluation ───────────────────────────────
-    let restored = ac_vm::Continuation::from_json(&cont_json).unwrap();
+    let restored = ac_vm_canonical::Continuation::from_json(&cont_json).unwrap();
     let client_vm = Vm::new(ClientHost::default());
     let result = client_vm.eval_resumable(&expr, &mut ctx, Some(restored));
 
@@ -165,8 +152,7 @@ fn main() {
                 value.as_number().unwrap()
             );
         }
-        other => panic!("expected Done, got {other:?}"),
-    }
+        other => panic!("expected Done, got {other:?}")}
 
     println!("\nResumable evaluation demo passed.");
 }

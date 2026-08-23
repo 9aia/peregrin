@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use ac_module_resolver_core::ModuleResolver;
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 /// A [`Function`] that resolves module imports via a [`ModuleResolver`].
 ///
@@ -24,8 +24,7 @@ use ac_vm::{Context, Error, Function};
 pub struct ImportFunction {
     resolver: Box<dyn ModuleResolver>,
     base_path: Option<PathBuf>,
-    cache: Mutex<HashMap<String, NonFunctionValue>>,
-}
+    cache: Mutex<HashMap<String, NonFunctionValue>>}
 
 impl ImportFunction {
     /// Creates a new import function with the given resolver and no
@@ -37,8 +36,7 @@ impl ImportFunction {
         ImportFunction {
             resolver,
             base_path: None,
-            cache: Mutex::new(HashMap::new()),
-        }
+            cache: Mutex::new(HashMap::new())}
     }
 
     /// Sets the base path for relative import resolution.
@@ -52,21 +50,18 @@ impl ImportFunction {
 }
 
 impl Function for ImportFunction {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let path_value = args.first().ok_or_else(|| Error::ArgumentCount {
             expected: 1,
-            got: args.len(),
-        })?;
+            got: args.len()})?;
 
         let path = path_value.as_str().ok_or_else(|| Error::TypeMismatch {
             expected: "string",
-            got: "non-string",
-        })?;
+            got: "non-string"})?;
 
         let cache_key = match &self.base_path {
             Some(base) => base.join(path).to_string_lossy().to_string(),
-            None => path.to_string(),
-        };
+            None => path.to_string()};
 
         {
             let cache = self.cache.lock().unwrap();

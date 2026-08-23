@@ -10,14 +10,12 @@ use crate::kind::CanonicalKind;
 /// (the canonical AC syntax) unless configured otherwise.
 #[derive(Clone)]
 pub struct CanonicalLexer {
-    config: LexerConfig<CanonicalKind, DefaultLexError>,
-}
+    config: LexerConfig<CanonicalKind, DefaultLexError>}
 
 impl Default for CanonicalLexer {
     fn default() -> Self {
         CanonicalLexer {
-            config: canonical_config(),
-        }
+            config: canonical_config()}
     }
 }
 
@@ -55,8 +53,7 @@ impl Lexer<CanonicalKind, DefaultLexError> for CanonicalLexer {
                 chars.next();
                 return Err(DefaultLexError::UnexpectedChar {
                     span: Span::at(pos),
-                    char: ch,
-                });
+                    char: ch});
             }
         }
 
@@ -75,8 +72,7 @@ impl Lexer<CanonicalKind, DefaultLexError> for CanonicalLexer {
             chars: input.char_indices().peekable(),
             config: &self.config,
             input_len: input.len(),
-            done: false,
-        })
+            done: false})
     }
 }
 
@@ -89,8 +85,7 @@ pub struct TokenIter<'a> {
     chars: std::iter::Peekable<std::str::CharIndices<'a>>,
     config: &'a LexerConfig<CanonicalKind, DefaultLexError>,
     input_len: usize,
-    done: bool,
-}
+    done: bool}
 
 impl<'a> Iterator for TokenIter<'a> {
     type Item = Result<Token<CanonicalKind>, DefaultLexError>;
@@ -138,8 +133,7 @@ impl<'a> Iterator for TokenIter<'a> {
                     self.done = true;
                     return Some(Err(DefaultLexError::UnexpectedChar {
                         span: Span::at(pos),
-                        char: ch,
-                    }));
+                        char: ch}));
                 }
             }
         }

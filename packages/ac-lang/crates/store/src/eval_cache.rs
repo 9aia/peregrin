@@ -14,8 +14,7 @@ pub struct EvalKey {
     /// The content hash of the definition.
     pub hash: DefinitionHash,
     /// Arguments serialized as a JSON array string.
-    pub args_json: String,
-}
+    pub args_json: String}
 
 impl EvalKey {
     /// Creates a cache key from a definition hash and evaluated arguments.
@@ -29,8 +28,7 @@ impl EvalKey {
         .unwrap_or_else(|_| "[]".to_string());
         EvalKey {
             hash: hash.clone(),
-            args_json,
-        }
+            args_json}
     }
 }
 
@@ -48,15 +46,13 @@ impl EvalKey {
 /// runs and sharing across machines.
 #[derive(Debug, Clone, Default)]
 pub struct EvalCache {
-    entries: HashMap<EvalKey, NonFunctionValue>,
-}
+    entries: HashMap<EvalKey, NonFunctionValue>}
 
 impl EvalCache {
     /// Creates an empty cache.
     pub fn new() -> Self {
         EvalCache {
-            entries: HashMap::new(),
-        }
+            entries: HashMap::new()}
     }
 
     /// Looks up a cached result by definition hash and arguments.
@@ -112,8 +108,7 @@ impl EvalCache {
                 if let Some((hash_str, args_json)) = composite_key.split_once('|') {
                     let key = EvalKey {
                         hash: DefinitionHash::from_hex(hash_str.to_string()),
-                        args_json: args_json.to_string(),
-                    };
+                        args_json: args_json.to_string()};
                     entries.insert(key, NonFunctionValue::new(result.clone()));
                 }
             }

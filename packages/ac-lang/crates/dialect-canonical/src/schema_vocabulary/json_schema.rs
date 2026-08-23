@@ -10,8 +10,7 @@ use serde_json::Value as JsonValue;
 #[derive(Debug, Clone)]
 pub struct JsonSchema {
     /// The raw schema document.
-    pub raw: JsonValue,
-}
+    pub raw: JsonValue}
 
 impl JsonSchema {
     /// Creates a JSON schema from a `serde_json::Value`.
@@ -22,8 +21,7 @@ impl JsonSchema {
     /// Creates a JSON schema by parsing a JSON string.
     pub fn parse(s: &str) -> Result<Self, serde_json::Error> {
         Ok(JsonSchema {
-            raw: serde_json::from_str(s)?,
-        })
+            raw: serde_json::from_str(s)?})
     }
 
     /// Returns the schema's declared type, if any.
@@ -36,8 +34,7 @@ impl JsonSchema {
         match self.raw.get("type") {
             Some(JsonValue::String(s)) => Some(s.as_str()),
             Some(JsonValue::Array(arr)) => arr.first().and_then(|v| v.as_str()),
-            _ => None,
-        }
+            _ => None}
     }
 }
 
@@ -46,15 +43,13 @@ impl Schema<NonFunctionValue> for JsonSchema {
         let validator = jsonschema::draft202012::new(&self.raw).map_err(|e| ValidationError {
             message: format!("invalid JSON schema: {e}"),
             path: String::new(),
-            location: None,
-        })?;
+            location: None})?;
 
         validator
             .validate(value.inner())
             .map_err(|e| ValidationError {
                 message: e.to_string(),
                 path: e.instance_path().to_string(),
-                location: None,
-            })
+                location: None})
     }
 }

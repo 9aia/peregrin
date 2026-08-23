@@ -19,8 +19,7 @@ pub struct GitTarget {
     /// Git reference (branch, tag, or commit hash).
     pub reference: String,
     /// Path to the file within the repository.
-    pub path: String,
-}
+    pub path: String}
 
 /// Parse a `git+` URL into [`GitTarget`].
 ///
@@ -46,6 +45,5 @@ pub fn parse_git_url(input: &str) -> Option<GitTarget> {
     Some(GitTarget {
         repo_url,
         reference,
-        path: file_path,
-    })
+        path: file_path})
 }

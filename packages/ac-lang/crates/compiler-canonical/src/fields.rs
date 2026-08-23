@@ -1,0 +1,147 @@
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::path::Path;
+use std::rc::Rc;
+
+use ac_dialect::Dialect;
+use ac_dialect::Schema;
+use ac_dialect_canonical::AC_DIALECT;
+use ac_fields;
+use ac_frontend::frontend_for;
+use ac_runtime_example_1::DefaultHost;
+use ac_runtime::NonFunctionValue;
+
+use crate::resolver::{CompilerHost, Import};
+
+/// Report from a fields validation run.
+pub struct FieldsReport {
+    /// `(field_name, type_name)` pairs for declared fields (excluding merge fields).
+    pub field_types: Vec<(String, String)>,
+    /// Field names that validated successfully.
+    pub ok: Vec<String>,
+    /// Validation error messages.
+    pub errors: Vec<String>,
+    /// Undeclared field names found in the data.
+    pub undeclared: Vec<String>}
+
+impl FieldsReport {
+    pub fn error_count(&self) -> usize {
+        self.errors.len() + self.undeclared.len()
+    }
+
+    pub fn is_valid(&self) -> bool {
+        self.error_count() == 0
+    }
+}
+
+pub fn run(input: &str, format: &str, base_path: Option<&Path>) -> Result<FieldsReport, String> {
+    let frontend = frontend_for(format)?;
+    let value = frontend.parse(input)?;
+
+    let extracted = ac_fields::extract_fields(value, &AC_DIALECT)?;
+
+    if extracted.schemas.is_empty() {
+        return Err("no `$:` section found in input".to_string());
+    }
+
+    let field_schemas = extracted.schemas;
+    let inheritable = extracted.inheritable;
+    let immutable = extracted.immutable;
+    let computed = extracted.computed;
+    let merge = extracted.merge;
+    let data = extracted.data;
+
+    let mut namespaces = ac_fields::Namespaces::new();
+    namespaces.insert(
+        ac_fields::DEFAULT_NAMESPACE.to_string(),
+        ac_fields::build_doc_namespace(&data),
+    );
+    namespaces.insert("env".to_string(), ac_fields::build_env_namespace());
+
+    let host = DefaultHost::default();
+    let file_resolver = ac_module_resolver_file::FileResolver::with_cache(
+        ac_module_resolver_memory::MemoryModuleCache::new(),
+    );
+
+    let import = Import::new(
+        base_path.map(|p| p.to_path_buf()),
+        Rc::new(Box::new(file_resolver) as Box<dyn ac_module_resolver_core::ModuleResolver>),
+        Rc::new(RefCell::new(HashMap::new())),
+    );
+    let host = CompilerHost::new(host, import, &namespaces);
+
+    let interpolated = ac_fields::interpolate_scoped(
+        data.inner(),
+        &namespaces,
+        &inheritable,
+        &host,
+        &AC_DIALECT,
+    );
+    let mut data = NonFunctionValue::new(interpolated);
+
+    let mut errors = Vec::new();
+
+    let compute_errors = ac_fields::compute_fields(
+        data.inner_mut(),
+        &computed,
+        &mut namespaces,
+        &host,
+        &AC_DIALECT,
+    );
+    errors.extend(compute_errors);
+
+    let merge_errors = ac_fields::merge_fields(data.inner_mut(), &merge);
+    errors.extend(merge_errors);
+
+    let vocab = AC_DIALECT.schema_vocabulary();
+    let schemas: Vec<(String, Box<dyn Schema<NonFunctionValue>>)> = field_schemas
+        .iter()
+        .filter(|(name, _)| !merge.iter().any(|m| m == name))
+        .map(|(name, raw)| {
+            let compiled = vocab
+                .compile(raw)
+                .map_err(|e| format!("{name}: invalid schema — {e}"))?;
+            Ok::<_, String>((name.clone(), compiled))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    let mut field_types = Vec::new();
+    let mut ok = Vec::new();
+
+    for (name, schema) in &schemas {
+        let type_name = ac_dialect_canonical::JsonSchema::new(
+            field_schemas
+                .iter()
+                .find(|(n, _)| n == name)
+                .unwrap()
+                .1
+                .clone(),
+        )
+        .type_name()
+        .unwrap_or("any")
+        .to_string();
+        field_types.push((name.clone(), type_name));
+
+        let field_value = data.get(name).unwrap_or(&serde_json::Value::Null);
+        let field_rv = NonFunctionValue::new(field_value.clone());
+        match schema.validate(&field_rv) {
+            Ok(()) => ok.push(name.clone()),
+            Err(e) => errors.push(format!("{name}: INVALID — {e}"))}
+    }
+
+    let declared: Vec<&str> = schemas.iter().map(|(n, _)| n.as_str()).collect();
+    let undeclared: Vec<String> = ac_fields::undeclared_fields(&data, &declared)
+        .into_iter()
+        .map(|name| format!("{name}: UNDECLARED — not in $:"))
+        .collect();
+
+    for msg in ac_fields::validate_mutable(data.inner(), &immutable) {
+        errors.push(msg);
+    }
+
+    Ok(FieldsReport {
+        field_types,
+        ok,
+        errors,
+        undeclared})
+}

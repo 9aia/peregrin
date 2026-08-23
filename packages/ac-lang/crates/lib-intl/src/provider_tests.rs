@@ -1,6 +1,6 @@
 use super::module::IntlModule;
 use super::provider::IntlProvider;
-use ac_runtime_core::Module;
+use ac_runtime_modules::Module;
 
 #[test]
 fn provider_from_blob() {

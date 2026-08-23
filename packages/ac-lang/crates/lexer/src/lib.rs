@@ -35,5 +35,4 @@ pub use rule::{FnRule, LexRule};
 pub use span::Span;
 pub use token::{
     CommentFactory, CommentTokenKind, EofFactory, IdentFactory, KeywordFactory, KindFactory,
-    NumberFactory, OperatorFactory, StringFactory, Token, TokenKind,
-};
+    NumberFactory, OperatorFactory, StringFactory, Token, TokenKind};

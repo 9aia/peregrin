@@ -1,23 +1,21 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function, Host};
+use ac_runtime::{Context, Error, Function, Host};
 use serde_json::Value as JsonValue;
 
-pub use ac_host::DefaultHost;
+pub use ac_runtime_example_1::DefaultHost;
 
 /// A `Host` that extends [`DefaultHost`] with a `double` helper for
 /// tests that exercise user-defined function values.
 #[derive(Clone)]
 pub struct MathHost {
     default: DefaultHost,
-    double: Double,
-}
+    double: Double}
 
 impl MathHost {
     pub fn new() -> Self {
         MathHost {
             default: DefaultHost::default(),
-            double: Double,
-        }
+            double: Double}
     }
 }
 
@@ -42,7 +40,7 @@ impl Function for Double {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let x = args
             .first()

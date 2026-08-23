@@ -7,8 +7,7 @@
 use ac_lexer::{
     CommentFactory, CommentTokenKind, DefaultLexError, FnRule, IdentFactory,
     KindFactory, LexError, LexRule, Lexer, LexerConfig, NumberFactory, Span,
-    StringFactory, Token, TokenKind,
-};
+    StringFactory, Token, TokenKind};
 use std::fmt;
 
 // --- Test dialect ---
@@ -19,8 +18,7 @@ enum IntegKind {
     Num(f64),
     Str(String),
     Comment(String),
-    Eof,
-}
+    Eof}
 
 impl fmt::Display for IntegKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -29,8 +27,7 @@ impl fmt::Display for IntegKind {
             IntegKind::Num(n) => write!(f, "num({n})"),
             IntegKind::Str(s) => write!(f, "str({s:?})"),
             IntegKind::Comment(s) => write!(f, "comment({s:?})"),
-            IntegKind::Eof => write!(f, "eof"),
-        }
+            IntegKind::Eof => write!(f, "eof")}
     }
 }
 
@@ -86,8 +83,7 @@ where
                         .map_err(E::from)
                 )
             }
-            _ => None,
-        }
+            _ => None}
     }
     fn name(&self) -> &'static str { "string" }
     fn clone_box(&self) -> Box<dyn LexRule<K, E>> { Box::new(self.clone()) }
@@ -132,8 +128,7 @@ where
                     None
                 }
             }
-            _ => None,
-        }
+            _ => None}
     }
     fn name(&self) -> &'static str { "number" }
     fn clone_box(&self) -> Box<dyn LexRule<K, E>> { Box::new(self.clone()) }
@@ -167,8 +162,7 @@ where
                         .map_err(E::from)
                 )
             }
-            _ => None,
-        }
+            _ => None}
     }
     fn name(&self) -> &'static str { "ident" }
     fn clone_box(&self) -> Box<dyn LexRule<K, E>> { Box::new(self.clone()) }
@@ -177,8 +171,7 @@ where
 // --- A simple lexer using the generic infrastructure ---
 
 struct SimpleLexer {
-    config: LexerConfig<IntegKind, DefaultLexError>,
-}
+    config: LexerConfig<IntegKind, DefaultLexError>}
 
 impl Default for SimpleLexer {
     fn default() -> Self {
@@ -186,8 +179,7 @@ impl Default for SimpleLexer {
             config: LexerConfig::new(IntegFactory)
                 .with_rule(StringRule)
                 .with_rule(NumberRule)
-                .with_rule(IdentRule),
-        }
+                .with_rule(IdentRule)}
     }
 }
 
@@ -218,8 +210,7 @@ impl Lexer<IntegKind, DefaultLexError> for SimpleLexer {
                 chars.next();
                 return Err(DefaultLexError::UnexpectedChar {
                     span: Span::at(pos),
-                    char: ch,
-                });
+                    char: ch});
             }
         }
 
@@ -277,8 +268,7 @@ fn custom_fn_rule_works() {
                 let (pos, _) = chars.next().unwrap();
                 Some(Ok(Token::new(IntegKind::Ident("!".into()), Span::at(pos))))
             }
-            _ => None,
-        }
+            _ => None}
     }
 
     let config = LexerConfig::new(IntegFactory)

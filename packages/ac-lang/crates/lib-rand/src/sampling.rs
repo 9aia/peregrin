@@ -4,7 +4,7 @@ use rand::Rng;
 use serde_json::Value;
 
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{array, require_array, require_int};
 use crate::error::RandError;
@@ -21,7 +21,7 @@ use crate::error::RandError;
 pub struct Pick;
 
 impl Function for Pick {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let arr = require_array(args, 0)?;
         if arr.is_empty() {
             return Err(RandError::EmptyArray.into());
@@ -44,7 +44,7 @@ impl Function for Pick {
 pub struct Choice;
 
 impl Function for Choice {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let arr = require_array(args, 0)?;
         let count = require_int(args, 1)?;
 
@@ -54,8 +54,7 @@ impl Function for Choice {
         if count < 0 {
             return Err(RandError::InvalidSampleCount {
                 requested: count as usize,
-                available: arr.len(),
-            }
+                available: arr.len()}
             .into());
         }
 
@@ -81,23 +80,21 @@ impl Function for Choice {
 pub struct Sample;
 
 impl Function for Sample {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let arr = require_array(args, 0)?;
         let count = require_int(args, 1)?;
 
         if count < 0 {
             return Err(RandError::InvalidSampleCount {
                 requested: count as usize,
-                available: arr.len(),
-            }
+                available: arr.len()}
             .into());
         }
         let count = count as usize;
         if count > arr.len() {
             return Err(RandError::InvalidSampleCount {
                 requested: count,
-                available: arr.len(),
-            }
+                available: arr.len()}
             .into());
         }
 
@@ -122,7 +119,7 @@ impl Function for Sample {
 pub struct Shuffle;
 
 impl Function for Shuffle {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let arr = require_array(args, 0)?;
         let mut shuffled: Vec<Value> = arr.to_vec();
         shuffled.shuffle(&mut rand::rng());
@@ -144,7 +141,7 @@ impl Function for Shuffle {
 pub struct WeightedPick;
 
 impl Function for WeightedPick {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let items = require_array(args, 0)?;
         let weights = require_array(args, 1)?;
 
@@ -154,8 +151,7 @@ impl Function for WeightedPick {
         if items.len() != weights.len() {
             return Err(RandError::WeightsLengthMismatch {
                 items: items.len(),
-                weights: weights.len(),
-            }
+                weights: weights.len()}
             .into());
         }
 

@@ -7,8 +7,7 @@ use std::cmp::Ordering;
 
 use rust_lib_ecma402_traits::collator::Collator;
 use rust_lib_ecma402_traits::date_time_format::{
-    DateTimeFormat, DateTimeFormatPart, DateTimeFormatPartType,
-};
+    DateTimeFormat, DateTimeFormatPart, DateTimeFormatPartType};
 use rust_lib_ecma402_traits::display_names::{DisplayNames, DisplayNamesOptions, Type};
 use rust_lib_ecma402_traits::list_format::{ListFormat, ListFormatPart, ListFormatPartType};
 use rust_lib_ecma402_traits::locale::{Locale, LocaleInfo, LocaleOverrides};
@@ -50,8 +49,7 @@ impl DateTimeFormat for MockDateTimeFormat {
     fn format_to_parts(&self, value: &str) -> Result<Vec<DateTimeFormatPart>, Self::Error> {
         Ok(vec![DateTimeFormatPart {
             part_type: DateTimeFormatPartType::Literal,
-            value: value.to_string(),
-        }])
+            value: value.to_string()}])
     }
 }
 
@@ -63,8 +61,7 @@ fn date_time_format() {
         formatter.format_to_parts("2024-01-15").unwrap(),
         vec![DateTimeFormatPart {
             part_type: DateTimeFormatPartType::Literal,
-            value: "2024-01-15".to_string(),
-        }]
+            value: "2024-01-15".to_string()}]
     );
 }
 
@@ -114,13 +111,11 @@ impl ListFormat for MockListFormat {
                 if i > 0 {
                     v.push(ListFormatPart {
                         part_type: ListFormatPartType::Literal,
-                        value: ", ".to_string(),
-                    });
+                        value: ", ".to_string()});
                 }
                 v.push(ListFormatPart {
                     part_type: ListFormatPartType::Element,
-                    value: (*item).to_string(),
-                });
+                    value: (*item).to_string()});
                 v
             })
             .collect())
@@ -147,8 +142,7 @@ impl Locale for MockLocale {
             region: None,
             calendar: None,
             numbering_system: None,
-            hour_cycle: None,
-        })
+            hour_cycle: None})
     }
 }
 
@@ -212,8 +206,7 @@ impl NumberFormat for MockNumberFormat {
     fn format_to_parts(&self, value: f64) -> Result<Vec<NumberFormatPart>, Self::Error> {
         Ok(vec![NumberFormatPart {
             part_type: NumberFormatPartType::Literal,
-            value: format!("{value}"),
-        }])
+            value: format!("{value}")}])
     }
 }
 
@@ -261,17 +254,14 @@ impl RelativeTimeFormat for MockRelativeTimeFormat {
         let mut parts = Vec::new();
         parts.push(RelativeTimeFormatPart {
             part_type: NumberFormatPartType::Integer,
-            value: text[..pos].to_string(),
-        });
+            value: text[..pos].to_string()});
         if pos < text.len() {
             parts.push(RelativeTimeFormatPart {
                 part_type: NumberFormatPartType::Decimal,
-                value: ".".to_string(),
-            });
+                value: ".".to_string()});
             parts.push(RelativeTimeFormatPart {
                 part_type: NumberFormatPartType::Fraction,
-                value: text[pos + 1..].to_string(),
-            });
+                value: text[pos + 1..].to_string()});
         }
         Ok(parts)
     }
@@ -293,8 +283,7 @@ impl Segmenter for MockSegmenter {
         Ok(vec![Segment {
             text: text.to_string(),
             index: 0,
-            is_word_like: None,
-        }])
+            is_word_like: None}])
     }
 }
 

@@ -96,7 +96,7 @@ fn string_invalid_charset_errors() {
 #[test]
 fn string_non_string_charset_errors() {
     let result = call_err("string", &[n(10.0), n(42.0)]);
-    assert!(matches!(result, Err(ac_vm::Error::TypeMismatch { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::TypeMismatch { .. })));
 }
 
 // ── rand.bytes ───────────────────────────────────────────────────

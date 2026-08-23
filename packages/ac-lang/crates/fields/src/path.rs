@@ -7,8 +7,7 @@ pub(crate) fn resolve_segment<'a>(value: &'a JsonValue, part: &str) -> Option<&'
     match value {
         JsonValue::Object(obj) => obj.get(part),
         JsonValue::Array(arr) => part.parse::<usize>().ok().and_then(|i| arr.get(i)),
-        _ => None,
-    }
+        _ => None}
 }
 
 /// Resolves a path like `doc.name` or `env.HOME` or `name` (shorthand).

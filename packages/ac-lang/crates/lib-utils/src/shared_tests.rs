@@ -1,13 +1,13 @@
 use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_vm::{Context, Error, Eval};
+use ac_runtime::{CanonicalContext, Context, Error, Eval};
 
 use crate::shared;
 
 // ── test eval infrastructure ───────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_host::DefaultHost;
-use ac_vm::Vm;
+use ac_runtime_example_1::DefaultHost;
+use ac_runtime_canonical::Vm;
 
 struct TestEval;
 impl Eval for TestEval {
@@ -35,7 +35,7 @@ impl Eval for TestEval {
                 args.push(Expr::Value(arg_val));
             }
             let vm = Vm::new(DefaultHost::default());
-            let mut ctx = Context::new();
+            let mut ctx = CanonicalContext::new();
             let call_expr = Expr::call(name.trim(), args);
             return vm.eval(&call_expr, &mut ctx);
         }
@@ -66,8 +66,7 @@ fn split_args(s: &str) -> Vec<String> {
                 result.push(current.trim().to_string());
                 current.clear();
             }
-            _ => current.push(ch),
-        }
+            _ => current.push(ch)}
     }
     if !current.trim().is_empty() {
         result.push(current.trim().to_string());
@@ -110,7 +109,7 @@ fn eval_arg(arg: &str, vars: &[(String, NonFunctionValue)]) -> Result<NonFunctio
 }
 
 fn ctx_with_eval() -> Context {
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     ctx.set_eval(Box::new(TestEval));
     ctx
 }
@@ -122,8 +121,7 @@ fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
         .collect();
     NonFunctionValue::new(serde_json::json!({
         "params": params_json,
-        "body": body,
-    }))
+        "body": body}))
 }
 
 fn n(v: f64) -> NonFunctionValue {
@@ -368,8 +366,7 @@ fn bind_param_binds_first_param() {
     let fv = FunctionValue {
         params: vec![("x".to_string(), serde_json::Value::Null)],
         return_schema: None,
-        body: "add(x, 1)".to_string(),
-    };
+        body: "add(x, 1)".to_string()};
     let vars = shared::bind_param(&fv, &serde_json::json!(42));
     assert_eq!(vars.len(), 1);
     assert_eq!(vars[0].0, "x");
@@ -381,8 +378,7 @@ fn bind_param_empty_params_returns_empty() {
     let fv = FunctionValue {
         params: vec![],
         return_schema: None,
-        body: "1".to_string(),
-    };
+        body: "1".to_string()};
     let vars = shared::bind_param(&fv, &serde_json::json!(42));
     assert!(vars.is_empty());
 }
@@ -397,8 +393,7 @@ fn bind_two_params_binds_both() {
             ("item".to_string(), serde_json::Value::Null),
         ],
         return_schema: None,
-        body: "add(acc, item)".to_string(),
-    };
+        body: "add(acc, item)".to_string()};
     let vars = shared::bind_two_params(&fv, &serde_json::json!(10), &serde_json::json!(5));
     assert_eq!(vars.len(), 2);
     assert_eq!(vars[0].0, "acc");
@@ -412,8 +407,7 @@ fn bind_two_params_defaults_when_missing() {
     let fv = FunctionValue {
         params: vec![],
         return_schema: None,
-        body: "1".to_string(),
-    };
+        body: "1".to_string()};
     let vars = shared::bind_two_params(&fv, &serde_json::json!(10), &serde_json::json!(5));
     assert_eq!(vars.len(), 2);
     assert_eq!(vars[0].0, "acc");
@@ -430,8 +424,7 @@ fn bind_all_params_binds_all() {
             ("b".to_string(), serde_json::Value::Null),
         ],
         return_schema: None,
-        body: "add(a, b)".to_string(),
-    };
+        body: "add(a, b)".to_string()};
     let vars = shared::bind_all_params(&fv, &[serde_json::json!(3), serde_json::json!(4)]);
     assert_eq!(vars.len(), 2);
     assert_eq!(vars[0].0, "a");
@@ -448,8 +441,7 @@ fn bind_all_params_fills_missing_with_null() {
             ("b".to_string(), serde_json::Value::Null),
         ],
         return_schema: None,
-        body: "add(a, b)".to_string(),
-    };
+        body: "add(a, b)".to_string()};
     let vars = shared::bind_all_params(&fv, &[serde_json::json!(3)]);
     assert_eq!(vars.len(), 2);
     assert_eq!(vars[0].1.as_number(), Some(3.0));
@@ -617,7 +609,7 @@ fn apply_fn_evaluates_single_param() {
 
 #[test]
 fn apply_fn_without_eval_errors() {
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let fv = shared::require_function_value(&fn_value("add(x, 10)", &["x"])).unwrap();
     let result = shared::apply_fn(&mut ctx, &fv, &serde_json::json!(5));
     assert!(matches!(result, Err(Error::PrimitiveError(_))));
@@ -648,8 +640,7 @@ fn apply_fn2_defaults_param_names() {
     let fv = FunctionValue {
         params: vec![],
         return_schema: None,
-        body: "add(acc, x)".to_string(),
-    };
+        body: "add(acc, x)".to_string()};
     let result = shared::apply_fn2(&mut ctx, &fv, &serde_json::json!(10), &serde_json::json!(5)).unwrap();
     assert_eq!(result.as_number(), Some(15.0));
 }

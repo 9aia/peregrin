@@ -8,8 +8,7 @@ use crate::tmp::Tmp;
 /// A stub that returns sequential temporary paths.
 #[derive(Default)]
 pub struct StubTmp {
-    counter: AtomicUsize,
-}
+    counter: AtomicUsize}
 
 impl Tmp for StubTmp {
     fn file(&self) -> Result<String, PlatformError> {

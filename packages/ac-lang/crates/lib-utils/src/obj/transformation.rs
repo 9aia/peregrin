@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{obj_value, require_function_value, require_object, require_two_args};
 use crate::shared::{apply_fn, is_truthy_fn, require_one_arg, value_to_string};
@@ -12,7 +12,7 @@ impl Function for MapValues {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_arg, obj_arg) = require_two_args(args)?;
         let fn_val = require_function_value(fn_arg)?;
@@ -34,7 +34,7 @@ impl Function for MapKeys {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_arg, obj_arg) = require_two_args(args)?;
         let fn_val = require_function_value(fn_arg)?;
@@ -57,7 +57,7 @@ impl Function for FilterKeys {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_arg, obj_arg) = require_two_args(args)?;
         let fn_val = require_function_value(fn_arg)?;
@@ -80,7 +80,7 @@ impl Function for FilterValues {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut Context,
+        ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_arg, obj_arg) = require_two_args(args)?;
         let fn_val = require_function_value(fn_arg)?;
@@ -103,7 +103,7 @@ impl Function for Invert {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
@@ -124,7 +124,7 @@ impl Function for CloneDeep {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         Ok(NonFunctionValue::new(arg.inner().clone()))

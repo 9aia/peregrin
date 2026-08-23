@@ -6,8 +6,7 @@ fn opts(style: Style, fallback: Fallback, language_display: LanguageDisplay) -> 
     Options {
         style,
         fallback,
-        language_display,
-    }
+        language_display}
 }
 
 #[test]

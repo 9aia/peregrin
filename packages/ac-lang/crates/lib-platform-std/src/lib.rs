@@ -9,7 +9,7 @@
 //! ## Usage
 //!
 //! ```ignore
-//! use ac_runtime_core::ModuleHost;
+//! use ac_runtime_modules::ModuleHost;
 //! use ac_lib_platform::{FsModule, EnvModule, PathModule, TimeModule, HttpClientModule, CmdModule, TmpModule};
 //! use ac_lib_platform_std::{StdFs, StdEnv, StdPath, StdTime, StdHttpClient, StdCmd, StdTmp};
 //!

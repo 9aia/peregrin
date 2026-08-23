@@ -5,15 +5,13 @@ use ecma402_traits::relative_time::RelativeTimeFormatPart;
 fn np(t: NumberFormatPartType, v: &str) -> NumberFormatPart {
     NumberFormatPart {
         part_type: t,
-        value: v.to_string(),
-    }
+        value: v.to_string()}
 }
 
 fn rnp(t: NumberFormatPartType, v: &str) -> RelativeTimeFormatPart {
     RelativeTimeFormatPart {
         part_type: t,
-        value: v.to_string(),
-    }
+        value: v.to_string()}
 }
 
 #[test]

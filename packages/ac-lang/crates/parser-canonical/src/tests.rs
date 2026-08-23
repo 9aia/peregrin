@@ -9,8 +9,7 @@ use serde_json::json;
 
 fn parse(input: &str) -> Result<Expr<NonFunctionValue>, ParseError> {
     let tokens = CanonicalLexer::default().lex(input).map_err(|e| ParseError::LexError {
-        message: e.to_string(),
-    })?;
+        message: e.to_string()})?;
     CanonicalParser.parse(tokens)
 }
 
@@ -94,8 +93,7 @@ fn parse_handle_expression() {
             // body is the handler clause's body
             let _ = body;
         }
-        other => panic!("expected Handle, got {other:?}"),
-    }
+        other => panic!("expected Handle, got {other:?}")}
 }
 
 #[test]

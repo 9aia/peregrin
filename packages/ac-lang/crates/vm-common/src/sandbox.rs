@@ -1,19 +1,19 @@
-use ac_vm::RuntimeContext;
+use ac_runtime::Context;
 
 /// Sets the maximum scope depth on a context.
-pub fn with_max_depth<C: RuntimeContext>(ctx: &mut C, max: usize) -> &mut C {
+pub fn with_max_depth<C: Context>(ctx: &mut C, max: usize) -> &mut C {
     ctx.set_max_depth(max);
     ctx
 }
 
 /// Sets the maximum call count on a context.
-pub fn with_max_calls<C: RuntimeContext>(ctx: &mut C, max: usize) -> &mut C {
+pub fn with_max_calls<C: Context>(ctx: &mut C, max: usize) -> &mut C {
     ctx.set_max_calls(max);
     ctx
 }
 
 /// Sets both resource limits on a context.
-pub fn with_limits<C: RuntimeContext>(
+pub fn with_limits<C: Context>(
     ctx: &mut C,
     max_depth: Option<usize>,
     max_calls: Option<usize>,

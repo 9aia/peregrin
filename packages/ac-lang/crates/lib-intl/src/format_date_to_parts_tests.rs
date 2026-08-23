@@ -1,20 +1,20 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error};
+use ac_runtime_modules::Module;
+use ac_runtime::{Context, Error};
 
 use super::module::IntlModule;
 
 fn call(args: &[NonFunctionValue]) -> NonFunctionValue {
     let module = IntlModule::new();
     let func = module.function("format_date_to_parts").expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
 fn call_err(args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let module = IntlModule::new();
     let func = module.function("format_date_to_parts").expect("function exists");
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
 }
 
@@ -148,7 +148,7 @@ fn date_to_parts_matches_format_date() {
     let module = IntlModule::new();
     let formatted = module.function("format_date").unwrap().call(
         &[s("2024-05-08"), s("en"), obj(&[("year", "numeric"), ("month", "long"), ("day", "numeric")])],
-        &mut Context::new(),
+        &mut CanonicalContext::new(),
     ).expect("format_date succeeds");
     let parts_result = call(&[s("2024-05-08"), s("en"), obj(&[("year", "numeric"), ("month", "long"), ("day", "numeric")])]);
     let parts_str = parts_to_string(&extract_parts(parts_result));
@@ -164,7 +164,7 @@ fn date_to_parts_matches_format_date_datetime() {
     let module = IntlModule::new();
     let formatted = module.function("format_date").unwrap().call(
         &[s("2024-05-08T14:30:00"), s("en"), obj(&[("type", "datetime")])],
-        &mut Context::new(),
+        &mut CanonicalContext::new(),
     ).expect("format_date succeeds");
     let parts_result = call(&[s("2024-05-08T14:30:00"), s("en"), obj(&[("type", "datetime")])]);
     let parts_str = parts_to_string(&extract_parts(parts_result));
@@ -178,15 +178,15 @@ fn date_to_parts_matches_format_date_datetime() {
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_core::ModuleHost;
-use ac_vm::{Host, Vm};
+use ac_runtime_modules::ModuleHost;
+use ac_runtime_canonical::{CanonicalContext, Host, Vm};
 
 #[test]
 fn vm_format_date_to_parts() {
     let expr = Expr::call("intl.format_date_to_parts", vec![Expr::value(s("2024-05-08"))]);
     let host = ModuleHost::new().with(IntlModule::new());
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     let result = vm.eval(&expr, &mut ctx).expect("eval succeeds");
     assert!(result.is_array(), "result should be an array");
 }

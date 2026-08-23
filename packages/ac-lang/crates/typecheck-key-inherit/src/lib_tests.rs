@@ -19,8 +19,7 @@ impl SchemaInterpreter for JsonInterpreter {
                 }
                 Type::Object(props)
             }
-            _ => Type::Unknown,
-        }
+            _ => Type::Unknown}
     }
 }
 

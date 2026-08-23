@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::{Module, ModuleHost};
-use ac_vm::{Context, Host, Vm};
+use ac_runtime_modules::{Module, ModuleHost};
+use ac_runtime_canonical::{CanonicalContext, Context, Host, Vm};
 
 use super::module::RandModule;
 use super::test_helpers::*;
@@ -63,7 +63,7 @@ fn unknown_function_returns_none() {
 fn eval_expr(expr: &ac_ast_canonical::Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(RandModule);
     let vm = Vm::new(host);
-    let mut ctx = Context::new();
+    let mut ctx = CanonicalContext::new();
     vm.eval(expr, &mut ctx).expect("eval succeeds")
 }
 

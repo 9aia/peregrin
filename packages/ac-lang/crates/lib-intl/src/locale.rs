@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use icu::locale::Locale;
 use icu::locale::extensions::unicode::{Key, Value};
 use icu::locale::subtags::{Language, Script, Region};
@@ -44,7 +44,7 @@ impl Default for LocaleInfo {
 }
 
 impl Function for LocaleInfo {
-    fn call(&self, args: &[NonFunctionValue], _ctx: &mut Context) -> Result<NonFunctionValue, Error> {
+    fn call(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
         let tag = require_string(args, 0)?;
         let opts = optional_object(args, 1)?;
 

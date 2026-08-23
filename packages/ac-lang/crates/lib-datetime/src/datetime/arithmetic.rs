@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{format_iso, parse_iso, require_string_and_number, s};
 use crate::DatetimeError;
@@ -11,7 +11,7 @@ impl Function for AddSeconds {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -28,7 +28,7 @@ impl Function for AddMinutes {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -46,7 +46,7 @@ impl Function for AddHours {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -64,7 +64,7 @@ impl Function for AddDays {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -82,7 +82,7 @@ impl Function for AddWeeks {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -123,8 +123,7 @@ fn add_months_to_date(dt: DateTime<Utc>, months: i64) -> Result<DateTime<Utc>, E
         .ok_or_else(|| DatetimeError::InvalidDateAfterArithmetic {
             year: new_year,
             month: new_month,
-            day: clamped_day,
-        }.into_vm_error())?;
+            day: clamped_day}.into_vm_error())?;
     Ok(Utc.from_utc_datetime(&naive))
 }
 
@@ -134,7 +133,7 @@ impl Function for AddMonths {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -149,7 +148,7 @@ impl Function for AddYears {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut Context,
+        _ctx: &mut dyn Context,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;

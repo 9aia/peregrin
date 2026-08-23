@@ -35,8 +35,7 @@ pub fn is_compatible_json(actual: &JsonValue, expected: &JsonValue) -> bool {
                         && a.len() == e.len()
                         && a.iter().zip(e).all(|(a, e)| is_compatible_json(a, e))
                 }
-                _ => false,
-            }
+                _ => false}
         }
         ("string", "string") | ("number", "number") | ("boolean", "boolean") | ("null", "null") => {
             true
@@ -49,12 +48,10 @@ pub fn is_compatible_json(actual: &JsonValue, expected: &JsonValue) -> bool {
         ("object", "object") => {
             let e_props = match field(expected, "properties").and_then(|v| v.as_object()) {
                 Some(p) => p,
-                None => return false,
-            };
+                None => return false};
             let a_props = match field(actual, "properties").and_then(|v| v.as_object()) {
                 Some(p) => p,
-                None => return false,
-            };
+                None => return false};
             e_props.iter().all(|(key, e_ty)| {
                 a_props
                     .get(key)
@@ -78,11 +75,9 @@ pub fn is_compatible_json(actual: &JsonValue, expected: &JsonValue) -> bool {
                         is_compatible_json(e_ty, a_ty)
                     }) && is_compatible_json(a_ret, e_ret)
                 }
-                _ => false,
-            }
+                _ => false}
         }
-        _ => false,
-    }
+        _ => false}
 }
 
 fn kind_of(v: &JsonValue) -> &str {
