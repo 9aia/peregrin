@@ -1228,6 +1228,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "ecma402-icu4x"
+version = "0.1.0"
+dependencies = [
+ "ecma402-traits",
+ "fixed_decimal",
+ "icu",
+ "icu_decimal_data",
+ "icu_locale_fallback",
+ "icu_provider",
+ "icu_provider_blob",
+ "writeable",
+ "zerovec",
+]
+
+[[package]]
+name = "ecma402-traits"
+version = "0.1.0"
+
+[[package]]
 name = "either"
 version = "1.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"

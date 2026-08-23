@@ -1,0 +1,4 @@
+[package]
+name = "ecma402-traits"
+version.workspace = true
+edition.workspace = true

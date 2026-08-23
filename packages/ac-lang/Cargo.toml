@@ -13,6 +13,8 @@ members = [
   "crates/lib-utils",
   "crates/lib-datetime",
   "crates/lib-intl",
+  "crates/ecma402-traits",
+  "crates/ecma402-icu4x",
   "crates/lib-crypto",
   "crates/lib-rand",
   "crates/lib-kv",
@@ -82,6 +84,8 @@ ac-runtime-core = { path = "crates/runtime-core" }
 ac-lib-utils = { path = "crates/lib-utils" }
 ac-lib-datetime = { path = "crates/lib-datetime" }
 ac-lib-intl = { path = "crates/lib-intl" }
+ecma402-traits = { path = "crates/ecma402-traits" }
+ecma402-icu4x = { path = "crates/ecma402-icu4x" }
 ac-lib-crypto = { path = "crates/lib-crypto" }
 ac-lib-rand = { path = "crates/lib-rand" }
 ac-lib-kv = { path = "crates/lib-kv" }
