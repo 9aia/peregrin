@@ -15,6 +15,7 @@ members = [
   "crates/lib-intl",
   "crates/ecma402-traits",
   "crates/ecma402-icu4x",
+  "crates/icu4x-extra",
   "crates/lib-crypto",
   "crates/lib-rand",
   "crates/lib-kv",
@@ -86,6 +87,7 @@ ac-lib-datetime = { path = "crates/lib-datetime" }
 ac-lib-intl = { path = "crates/lib-intl" }
 ecma402-traits = { path = "crates/ecma402-traits" }
 ecma402-icu4x = { path = "crates/ecma402-icu4x" }
+icu4x-extra = { path = "crates/icu4x-extra" }
 ac-lib-crypto = { path = "crates/lib-crypto" }
 ac-lib-rand = { path = "crates/lib-rand" }
 ac-lib-kv = { path = "crates/lib-kv" }
@@ -146,6 +148,8 @@ rayon = "1"
 sha2 = "0.10"
 thiserror = "2"
 chrono = { version = "0.4", features = ["serde"] }
+pass-lang = "1"
+driver-lang = "1"
 
 [features]
 default = [

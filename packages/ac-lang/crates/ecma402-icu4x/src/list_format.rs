@@ -1,6 +1,6 @@
 use std::fmt;
 
-use ecma402_traits::list_format::{ListFormat as ListFormatTrait, ListStyle, ListType};
+use ecma402_traits::list_format::{ListFormat as ListFormatTrait, ListFormatPart, ListStyle, ListType};
 use icu::list::{
     ListFormatter,
     options::{ListFormatterOptions, ListLength},
@@ -10,6 +10,7 @@ use icu_provider::DataError;
 use icu_provider_blob::BlobDataProvider;
 
 pub use ecma402_traits::list_format::ListFormatOptions as Options;
+use icu4x_extra::list::{placeholders, split_parts};
 
 /// ICU4X-backed ECMA-402 `Intl.ListFormat`.
 pub struct ListFormat {
@@ -108,5 +109,24 @@ impl ListFormatTrait for ListFormat {
             return Ok(items[0].to_string());
         }
         Ok(self.formatter.format_to_string(items.iter().copied()))
+    }
+
+    fn format_to_parts(&self, items: &[&str]) -> Result<Vec<ListFormatPart>, Self::Error> {
+        if items.is_empty() {
+            return Ok(Vec::new());
+        }
+        if items.len() == 1 {
+            return Ok(vec![ListFormatPart {
+                part_type: ecma402_traits::list_format::ListFormatPartType::Element,
+                value: items[0].to_string(),
+            }]);
+        }
+
+        let ph = placeholders(items.len());
+        let formatted = self
+            .formatter
+            .format_to_string(ph.iter().map(|s| s.as_str()));
+
+        Ok(split_parts(items, &formatted))
     }
 }

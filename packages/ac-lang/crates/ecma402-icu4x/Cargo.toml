@@ -5,6 +5,7 @@ edition.workspace = true
 
 [dependencies]
 ecma402-traits = { path = "../ecma402-traits" }
+icu4x-extra = { path = "../icu4x-extra" }
 icu = { version = "2", features = ["unstable", "serde"] }
 icu_decimal_data = "2"
 icu_locale_fallback = { version = "2", features = ["compiled_data"] }

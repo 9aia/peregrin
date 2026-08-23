@@ -10,7 +10,7 @@ use ecma402_traits::date_time_format::{
     DateTimeFormat, DateTimeFormatPart, DateTimeFormatPartType,
 };
 use ecma402_traits::display_names::{DisplayNames, DisplayNamesOptions, Type};
-use ecma402_traits::list_format::ListFormat;
+use ecma402_traits::list_format::{ListFormat, ListFormatPart, ListFormatPartType};
 use ecma402_traits::locale::{Locale, LocaleInfo, LocaleOverrides};
 use ecma402_traits::locale_match::{CanonicalLocales, SupportedLocalesOf};
 use ecma402_traits::number_format::{NumberFormat, NumberFormatPart, NumberFormatPartType};
@@ -103,6 +103,27 @@ impl ListFormat for MockListFormat {
 
     fn format(&self, items: &[&str]) -> Result<String, Self::Error> {
         Ok(items.join(", "))
+    }
+
+    fn format_to_parts(&self, items: &[&str]) -> Result<Vec<ListFormatPart>, Self::Error> {
+        Ok(items
+            .iter()
+            .enumerate()
+            .flat_map(|(i, item)| {
+                let mut v = Vec::new();
+                if i > 0 {
+                    v.push(ListFormatPart {
+                        part_type: ListFormatPartType::Literal,
+                        value: ", ".to_string(),
+                    });
+                }
+                v.push(ListFormatPart {
+                    part_type: ListFormatPartType::Element,
+                    value: (*item).to_string(),
+                });
+                v
+            })
+            .collect())
     }
 }
 

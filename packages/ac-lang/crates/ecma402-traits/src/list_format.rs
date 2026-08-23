@@ -1,3 +1,44 @@
+/// The type of a formatted list part, as returned by `format_to_parts`.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum ListFormatPartType {
+    /// A list element.
+    Element,
+    /// Separator text or other literal.
+    Literal,
+    /// An unrecognized part type produced by the backend.
+    Other(String),
+}
+
+impl ListFormatPartType {
+    /// Returns the ECMA-402 `ListFormat` part type string.
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Element => "element",
+            Self::Literal => "literal",
+            Self::Other(s) => s.as_str(),
+        }
+    }
+}
+
+impl From<&str> for ListFormatPartType {
+    fn from(value: &str) -> Self {
+        match value {
+            "element" => Self::Element,
+            "literal" => Self::Literal,
+            _ => Self::Other(value.to_string()),
+        }
+    }
+}
+
+/// A single part of a formatted list, as returned by `format_to_parts`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListFormatPart {
+    /// The part type.
+    pub part_type: ListFormatPartType,
+    /// The formatted text for this part.
+    pub value: String,
+}
+
 /// The kind of list to format.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
 pub enum ListType {
@@ -38,4 +79,7 @@ pub trait ListFormat {
 
     /// Format `items` as a locale-aware list string.
     fn format(&self, items: &[&str]) -> Result<String, Self::Error>;
+
+    /// Format `items` and return the structured parts.
+    fn format_to_parts(&self, items: &[&str]) -> Result<Vec<ListFormatPart>, Self::Error>;
 }
