@@ -1,0 +1,15 @@
+[package]
+name = "ac-host-sandbox"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-host.workspace = true
+ac-runtime-core.workspace = true
+ac-vm.workspace = true
+ac-lib-utils.workspace = true
+ac-lib-crypto.workspace = true
+ac-lib-datetime.workspace = true
+ac-lib-intl.workspace = true
+ac-lib-kv.workspace = true
+ac-lib-kv-hashmap.workspace = true
