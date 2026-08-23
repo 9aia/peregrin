@@ -1,6 +1,6 @@
 use ac_ast_canonical::Expr;
 use ac_runtime_example_1::DefaultHost;
-use ac_runtime_example_1_resolver::ResolverHost;
+use super::ResolverHost;
 use ac_module_resolver_core::ModuleResolver;
 use ac_module_resolver_virtual::VirtualResolver;
 use ac_runtime::NonFunctionValue;

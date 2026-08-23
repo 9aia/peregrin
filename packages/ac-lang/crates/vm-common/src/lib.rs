@@ -9,6 +9,7 @@
 
 pub mod adapter;
 pub mod builder;
+pub mod capabilities;
 pub mod combinator;
 pub mod lego;
 pub mod machine;

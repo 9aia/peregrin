@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use ac_runtime::NonFunctionValue;
 use ac_runtime::{AsyncFunction, Context, Error, Function, GenericFunction, Host, LazyFunction, Operation};
 
-use crate::cache::{CallCache, CallKey};
+use super::call_cache::{CallCache, CallKey};
 
 /// A function wrapper that checks the cache before dispatching.
 ///

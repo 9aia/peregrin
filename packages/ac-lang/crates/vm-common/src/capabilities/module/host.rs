@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use ac_module_resolver_core::{IMPORT_FUNCTION, ModuleResolver};
 use ac_runtime::{AsyncFunction, Function, Host, LazyFunction, Operation};
 
-use crate::import_function::ImportFunction;
+use super::import_function::ImportFunction;
 
 /// A [`Host`] wrapper that adds runtime `import()` support.
 ///

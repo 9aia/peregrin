@@ -1,4 +1,4 @@
-//! # ac-host-cache
+//! # ac-runtime-common::capabilities::cache
 //!
 //! Caching host decorator for cross-machine resumability.
 //!
@@ -59,8 +59,11 @@
 //! let result = vm.eval_resumable(&expr, &mut ctx, Some(cont));
 //! ```
 
-mod cache;
+mod call_cache;
 mod host;
 
-pub use cache::{CallCache, CallKey, call_key};
+#[cfg(test)]
+mod tests;
+
+pub use call_cache::{CallCache, CallKey, call_key};
 pub use host::CacheHost;

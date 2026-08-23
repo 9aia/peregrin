@@ -1,5 +1,5 @@
 use ac_ast_canonical::Expr;
-use ac_runtime_example_1_cache::{CacheHost, CallCache};
+use super::{CacheHost, CallCache};
 use ac_runtime::NonFunctionValue;
 use ac_runtime_canonical::{CanonicalContext, Context, Error, EvalResult, Function, Host, Vm};
 use std::sync::atomic::{AtomicUsize, Ordering};

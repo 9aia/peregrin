@@ -1,6 +1,6 @@
 //! # ac-module-resolver-core
 //!
-//! Module resolution abstraction — decoupled from typegen.
+//! Module resolution abstraction.
 //!
 //! Defines the [`ModuleResolver`] trait and [`ResolvedModule`] struct.
 //! Implementations live in separate crates:

@@ -57,7 +57,6 @@ crates/
 ├── runtime-core/         # Module trait + ModuleHost — qualified function namespaces
 ├── vm/                   # Vm, Host, Function, AsyncFunction, LazyFunction, Operation, Context, Continuation
 ├── host/                 # Default host: add, mul, concat, len
-├── host-cache/           # CacheHost + CallCache — cross-machine resumability
 ├── store/                # DefinitionStore, NameRegistry, EvalCache — content-addressed storage
 ├── dialect/              # Dialect/Syntax/ExprParser/DocumentVocabulary/SchemaVocabulary traits
 ├── dialect-canonical/    # Canonical AC dialect (JSON Schema, ${...} syntax)

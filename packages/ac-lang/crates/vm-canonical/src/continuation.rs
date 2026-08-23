@@ -369,7 +369,7 @@ impl<H: Host> crate::CanonicalVm<H> {
     ///
     /// The host function that yielded will **not** be called again
     /// on resume — its result is expected to be provided by the
-    /// new host (e.g. via a cache). See the `ac-host-cache` crate.
+    /// new host (e.g. via a cache). See the `cache` capability of `ac-runtime-common`.
     pub fn eval_resumable(
         &self,
         expr: &RuntimeExpr,

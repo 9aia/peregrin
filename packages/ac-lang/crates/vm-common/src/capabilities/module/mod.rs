@@ -1,4 +1,4 @@
-//! # ac-host-resolver
+//! # ac-runtime-common::capabilities::module
 //!
 //! Module-resolver-backed host for the AC VM.
 //!
@@ -45,6 +45,9 @@
 
 mod host;
 mod import_function;
+
+#[cfg(test)]
+mod tests;
 
 pub use host::ResolverHost;
 pub use import_function::ImportFunction;
