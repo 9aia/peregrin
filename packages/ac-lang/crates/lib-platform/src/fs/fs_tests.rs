@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context};
 
 use super::fs::FsModule;
 use super::fs_stub::StubFs;
@@ -11,7 +11,7 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> ac_vm::Error {
+fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> ac_runtime::Error {
     let func = module.function(name).expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).unwrap_err()
@@ -42,7 +42,7 @@ fn read_file_not_found() {
     let module = FsModule::new(StubFs::default());
     let err = call_err(&module, "read", &[s("missing.txt")]);
     match err {
-        ac_vm::Error::PrimitiveError(msg) => assert!(msg.contains("not found")),
+        ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("not found")),
         other => panic!("expected PrimitiveError, got {other:?}")}
 }
 
@@ -107,7 +107,7 @@ fn argument_count() {
     let err = call_err(&module, "read", &[]);
     assert_eq!(
         err,
-        ac_vm::Error::ArgumentCount {
+        ac_runtime::Error::ArgumentCount {
             expected: 1,
             got: 0}
     );

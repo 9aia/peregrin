@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context};
 
 use super::cmd::{CmdModule, CmdOutput};
 use super::cmd_stub::StubCmd;
@@ -76,7 +76,7 @@ fn run_not_found() {
     let mut ctx = CanonicalContext::new();
     let err = func.call(&[s("nope")], &mut ctx).unwrap_err();
     match err {
-        ac_vm::Error::PrimitiveError(msg) => assert!(msg.contains("not found")),
+        ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("not found")),
         other => panic!("expected PrimitiveError, got {other:?}")}
 }
 
@@ -94,7 +94,7 @@ fn missing_program_arg() {
     let err = func.call(&[], &mut ctx).unwrap_err();
     assert_eq!(
         err,
-        ac_vm::Error::ArgumentCount {
+        ac_runtime::Error::ArgumentCount {
             expected: 1,
             got: 0}
     );

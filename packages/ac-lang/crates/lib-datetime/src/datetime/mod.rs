@@ -25,8 +25,8 @@ pub use format_parse::{Format, Parse};
 pub use timezone::{ToTimezone, ToUtc};
 pub use validate::IsValid;
 
-use ac_runtime_core::Module;
-use ac_vm::Function;
+use ac_runtime_modules::Module;
+use ac_runtime::Function;
 
 /// The `datetime` module — date and time utility functions.
 ///

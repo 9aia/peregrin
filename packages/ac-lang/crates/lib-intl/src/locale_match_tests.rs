@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context};
 
 use super::module::IntlModule;
 
@@ -71,7 +71,7 @@ fn supported_locales_no_args_returns_all() {
 
 // ── Blob provider tests ───────────────────────────────────────────
 
-fn call_supported_with_blob(args: &[NonFunctionValue]) -> Result<NonFunctionValue, ac_vm::Error> {
+fn call_supported_with_blob(args: &[NonFunctionValue]) -> Result<NonFunctionValue, ac_runtime::Error> {
     let module = IntlModule::with_blob_provider(vec![0u8; 10]);
     let func = module.function("supported_locales_of").expect("function exists");
     let mut ctx = CanonicalContext::new();

@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{CanonicalContext, Context, Error, Eval};
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context, Error, Eval};
 
 use super::module::ArrayModule;
 
@@ -45,8 +45,8 @@ pub(super) fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
 // ── TestEval infrastructure ────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_host::DefaultHost;
-use ac_vm_canonical::Vm;
+use ac_runtime_example_1::DefaultHost;
+use ac_runtime_canonical::Vm;
 
 struct TestEval;
 impl Eval for TestEval {

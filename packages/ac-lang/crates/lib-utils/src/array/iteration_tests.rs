@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::Error;
+use ac_runtime::Error;
 
 use serde_json::json;
 

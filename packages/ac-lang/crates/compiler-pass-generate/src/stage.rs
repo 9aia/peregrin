@@ -1,8 +1,8 @@
 //! driver-lang Stage implementations for the generate phase.
 
-use ac_compiler_core::driver::{
+use ac_compiler::driver::{
     CheckedDoc, DriverError, ResolvedDoc, Session, Stage};
-use ac_compiler_core::Config;
+use ac_compiler::Config;
 use serde_json::Value as JsonValue;
 
 /// Generate phase: `CheckedDoc → JsonValue`.

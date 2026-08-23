@@ -1,7 +1,7 @@
 use ac_ast_canonical::Expr;
-use ac_host_cache::{CacheHost, CallCache};
+use ac_runtime_example_1_cache::{CacheHost, CallCache};
 use ac_runtime::NonFunctionValue;
-use ac_vm_canonical::{CanonicalContext, Context, Error, EvalResult, Function, Host, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Error, EvalResult, Function, Host, Vm};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct EmptyHost;
@@ -196,7 +196,7 @@ fn end_to_end_server_to_client_migration() {
     client_host.register("fetch", Box::new(YieldingFetch));
 
     let mut client_vm = Vm::new(client_host);
-    let restored_cont = ac_vm_canonical::Continuation::from_json(&cont_json).unwrap();
+    let restored_cont = ac_runtime_canonical::Continuation::from_json(&cont_json).unwrap();
 
     let result = client_vm.eval_resumable(&expr, &mut ctx, Some(restored_cont));
     match result {

@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use ac_vm::{Function, GenericFunction, Host, LazyFunction};
+use ac_runtime::{Function, GenericFunction, Host, LazyFunction};
 
 use crate::module::Module;
 

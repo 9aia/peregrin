@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use ac_typegen_backend_json_schema::{inject_schema_comment, write_schema_file};
 
-use crate::{PassError, Source};
+use crate::{DriverError, Session, Source, default_cli_config, typegen_pipeline};
 
 /// Input parameters for a typegen run.
 pub struct TypegenInput<'a> {
@@ -20,21 +20,18 @@ pub enum TypegenResult {
     /// Schema was written to a file (the file path).
     FileWritten(PathBuf)}
 
-pub fn run(args: &TypegenInput) -> Result<TypegenResult, PassError> {
+pub fn run(args: &TypegenInput) -> Result<TypegenResult, DriverError> {
     let source = Source::new(args.input, args.format).with_path(args.input_path);
 
-    let pipeline = crate::typegen_pipeline(crate::default_cli_config());
-    let compilation = pipeline.run(source)?;
-
-    let output = compilation
-        .output
-        .ok_or_else(|| PassError::new("typegen", "no output generated"))?;
+    let mut driver = typegen_pipeline();
+    let mut session = Session::new(default_cli_config());
+    let output = driver.run(source, &mut session)?;
 
     match args.output_format {
         "json-schema" => {
             if args.stdout {
                 let json = serde_json::to_string_pretty(&output)
-                    .map_err(|e| PassError::new("typegen", e.to_string()))?;
+                    .map_err(|e| DriverError::new(e.to_string()))?;
                 return Ok(TypegenResult::Stdout(json));
             }
 
@@ -46,19 +43,19 @@ pub fn run(args: &TypegenInput) -> Result<TypegenResult, PassError> {
             let schema_rel = format!("{filename}.json");
 
             let schema_path = args.output_dir.join(&schema_rel);
-            write_schema_file(&output, &schema_path).map_err(|e| PassError::new("typegen", e.to_string()))?;
+            write_schema_file(&output, &schema_path).map_err(DriverError::new)?;
 
             let rel_for_hint = Path::new(".ac")
                 .join("generated")
                 .join("schemas")
                 .join(&schema_rel);
             inject_schema_comment(args.input_path, &rel_for_hint.to_string_lossy())
-                .map_err(|e| PassError::new("typegen", e.to_string()))?;
+                .map_err(DriverError::new)?;
 
             Ok(TypegenResult::FileWritten(schema_path))
         }
-        other => Err(PassError::new(
-            "typegen",
-            format!("unknown output format: {other}\n  available: json-schema"),
-        ))}
+        other => Err(DriverError::new(format!(
+            "unknown output format: {other}\n  available: json-schema"
+        ))),
+    }
 }

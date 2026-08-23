@@ -1,8 +1,8 @@
 //! driver-lang Stage implementations for the typecheck phase.
 
-use ac_compiler_core::driver::{
+use ac_compiler::driver::{
     CheckedDoc, DriverError, ExtractedDoc, ResolvedDoc, Session, Stage, TypecheckResult};
-use ac_compiler_core::Config;
+use ac_compiler::Config;
 use ac_typecheck_core::{Type, TypeParam, Variance};
 use serde_json::Value as JsonValue;
 

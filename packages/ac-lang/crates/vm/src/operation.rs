@@ -26,7 +26,7 @@
 
 use crate::Error;
 use crate::Context;
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 
 /// The signature of an operation — its name and parameter types.
 ///

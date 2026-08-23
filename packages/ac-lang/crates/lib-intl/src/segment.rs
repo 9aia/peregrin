@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use icu::segmenter::{
     GraphemeClusterSegmenter, LineSegmenter, SentenceSegmenter, WordSegmenter};
 use icu::segmenter::options::{LineBreakOptions, LineBreakStrictness, LineBreakWordOption};

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use std::rc::Rc;
 
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
 use icu::decimal::options::{DecimalFormatterOptions, GroupingStrategy};
 use icu::experimental::dimension::currency::CurrencyType;

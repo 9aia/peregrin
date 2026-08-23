@@ -37,7 +37,7 @@ fn seeded_int_min_greater_than_max_errors() {
 #[test]
 fn seeded_int_no_args_errors() {
     let result = call_err("seeded_int", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.seeded_float ────────────────────────────────────────────
@@ -65,7 +65,7 @@ fn seeded_float_min_equals_max() {
 #[test]
 fn seeded_float_no_args_errors() {
     let result = call_err("seeded_float", &[]);
-    assert!(matches!(result, Err(ac_vm::Error::ArgumentCount { .. })));
+    assert!(matches!(result, Err(ac_runtime::Error::ArgumentCount { .. })));
 }
 
 // ── rand.seeded_bool ─────────────────────────────────────────────

@@ -1,4 +1,4 @@
-use ac_vm::{Function, GenericFunction, LazyFunction};
+use ac_runtime::{Function, GenericFunction, LazyFunction};
 
 /// A named group of functions.
 ///

@@ -14,5 +14,6 @@ ac-typecheck-infer.workspace = true
 ac-typecheck-key-expr.workspace = true
 ac-module-resolver-virtual.workspace = true
 ac-fields.workspace = true
+ac-runtime-values.workspace = true
 ac-runtime.workspace = true
 ac-frontend-yaml.workspace = true

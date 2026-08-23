@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use icu::locale::Locale;
 use icu::locale::extensions::unicode::{Key, Value};
 use icu::locale::subtags::{Language, Script, Region};

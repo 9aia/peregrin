@@ -1,5 +1,5 @@
-use ac_runtime_core::Module;
-use ac_vm::{Function, GenericFunction};
+use ac_runtime_modules::Module;
+use ac_runtime::{Function, GenericFunction};
 
 use super::basic_operations::{
     At, Concat, Contains, DeepFlatten, Fill, First, Flatten, IndexOf, Last, Length, Pop, Push,

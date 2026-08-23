@@ -1,4 +1,4 @@
-use ac_vm::Error;
+use ac_runtime::Error;
 
 use super::test_helpers::*;
 

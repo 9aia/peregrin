@@ -8,7 +8,7 @@ use ac_dialect::Schema;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields;
 use ac_frontend::frontend_for;
-use ac_host::DefaultHost;
+use ac_runtime_example_1::DefaultHost;
 use ac_runtime::NonFunctionValue;
 
 use crate::resolver::{CompilerHost, Import};

@@ -1,7 +1,7 @@
 use ac_ast_canonical::Expr;
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error, Function, LazyFunction};
+use ac_runtime_modules::Module;
+use ac_runtime::{Context, Error, Function, LazyFunction};
 
 /// The `bool` module — boolean utility functions.
 ///

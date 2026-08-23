@@ -1,7 +1,7 @@
 //! driver-lang Stage implementation for the parse phase.
 
-use ac_compiler_core::driver::{DriverError, ParsedDoc, Session, Stage};
-use ac_compiler_core::{Config, Source};
+use ac_compiler::driver::{DriverError, ParsedDoc, Session, Stage};
+use ac_compiler::{Config, Source};
 
 /// Parse phase: `Source → ParsedDoc`.
 ///

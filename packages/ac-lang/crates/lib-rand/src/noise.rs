@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{num, require_number};
 

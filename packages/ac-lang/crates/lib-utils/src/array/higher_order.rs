@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function, GenericFunction};
+use ac_runtime::{Context, Error, Function, GenericFunction};
 
 use super::helpers::{
     arr, b, key_to_string, require_array, require_function_and_array, require_function_value,

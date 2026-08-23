@@ -3,7 +3,7 @@
 //! Caching host decorator for cross-machine resumability.
 //!
 //! When a VM evaluation yields (via `Error::Yield`), the caller
-//! captures a [`Continuation`][ac_vm_canonical::Continuation] and the yielded
+//! captures a [`Continuation`][ac_runtime_canonical::Continuation] and the yielded
 //! value. To resume on another machine, the new host needs to
 //! return results for calls that were already made — without
 //! re-executing them.
@@ -13,15 +13,15 @@
 //! - [`CallCache`] — a serializable cache mapping `(function, args)`
 //!   keys to result values. Can be serialized to JSON and sent
 //!   across machines.
-//! - [`CacheHost`] — a decorator [`Host`][ac_vm::Host] that wraps an
+//! - [`CacheHost`] — a decorator [`Host`][ac_runtime::Host] that wraps an
 //!   inner host and caches results for registered functions.
 //!   Unregistered function lookups delegate to the inner host.
 //!
 //! ## Example: composition with `DefaultHost`
 //!
 //! ```ignore
-//! use ac_host::DefaultHost;
-//! use ac_host_cache::{CacheHost, CallCache};
+//! use ac_runtime_example_1::DefaultHost;
+//! use ac_runtime_example_1_cache::{CacheHost, CallCache};
 //!
 //! let mut host = CacheHost::new(DefaultHost::default());
 //! host.register("fetch", Box::new(FetchFunction)); // cached
@@ -31,9 +31,9 @@
 //! ## Example: server → client migration
 //!
 //! ```ignore
-//! use ac_host::DefaultHost;
-//! use ac_host_cache::{CacheHost, CallCache};
-//! use ac_vm_canonical::{Vm, Context, EvalResult, Continuation};
+//! use ac_runtime_example_1::DefaultHost;
+//! use ac_runtime_example_1_cache::{CacheHost, CallCache};
+//! use ac_runtime_canonical::{Vm, Context, EvalResult, Continuation};
 //! use ac_runtime::NonFunctionValue;
 //!
 //! // Server: wrap DefaultHost, register fetch for caching, evaluate

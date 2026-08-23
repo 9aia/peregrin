@@ -1,7 +1,7 @@
 use crate::expression::eval_expression;
 use crate::types::{DEFAULT_NAMESPACE, Namespaces};
 use ac_dialect::Dialect;
-use ac_vm::Host;
+use ac_runtime::Host;
 use serde_json::Value as JsonValue;
 
 /// Recursively interpolates expressions in string values.
@@ -13,7 +13,7 @@ use serde_json::Value as JsonValue;
 /// - Nested calls: `${add(mul(2, 3), 4)}`
 ///
 /// Function calls are resolved via `host`. If no functions are needed,
-/// use `ac_host::DefaultHost`.
+/// use `ac_runtime_example_1::DefaultHost`.
 pub fn interpolate<H: Host + Clone + 'static>(
     value: &JsonValue,
     namespaces: &Namespaces,

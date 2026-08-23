@@ -1,20 +1,20 @@
 //! Expression evaluator for higher-order functions.
 //!
-//! [`ExprEval`] implements [`ac_vm::Eval`] by bridging to the fields-layer
+//! [`ExprEval`] implements [`ac_runtime::Eval`] by bridging to the fields-layer
 //! `eval_body` function. It allows VM host functions like `fp.map` to
 //! evaluate function body expressions with bound parameters.
 //!
 //! This type is fully owned (`'static`) so it can be stored in a
-//! [`ac_vm::Context`] as a `Box<dyn Eval>`.
+//! [`ac_runtime::Context`] as a `Box<dyn Eval>`.
 
 use std::cell::{Cell, RefCell};
 
 use ac_ast_canonical::Expr;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, APPLY_FUNCTION, FunctionResolver, Namespaces};
-use ac_host::DefaultHost;
+use ac_runtime_example_1::DefaultHost;
 use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_vm_canonical::{CanonicalContext, Context, Error, Eval, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Error, Eval, Vm};
 
 /// Fallback depth limit for non-cyclic deep recursion.
 ///

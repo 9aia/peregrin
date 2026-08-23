@@ -1,5 +1,5 @@
 use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_vm::{Context, Error};
+use ac_runtime::{Context, Error};
 
 // ════════════════════════════════════════════════════════════════════
 // Tier 0: Shared helpers (replaces duplicated copies across modules)

@@ -1,5 +1,5 @@
 use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_vm::Error;
+use ac_runtime::Error;
 
 pub(super) fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
@@ -160,7 +160,7 @@ pub(super) fn update_path_recursive(
     value: serde_json::Value,
     segments: &[&str],
     fn_val: &FunctionValue,
-    ctx: &mut dyn ac_vm::Context,
+    ctx: &mut dyn ac_runtime::Context,
 ) -> Result<serde_json::Value, Error> {
     if segments.is_empty() {
         let vars = bind_param(fn_val, &value);

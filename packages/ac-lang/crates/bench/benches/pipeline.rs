@@ -1,13 +1,11 @@
 //! End-to-end pipeline benchmarks: parse → extract → typecheck.
 //!
 //! Measures the full typecheck pipeline at varying document sizes and
-//! feature mixes, as well as individual pass costs.
+//! feature mixes, as well as individual stage costs.
 
 use ac_bench::*;
-use ac_compiler_core::{Compilation, Config, Pass, Source};
-use ac_compiler_pass_extract::ExtractPass;
-use ac_compiler_pass_parse::ParsePass;
-use ac_compiler_pass_typecheck::TypecheckPass;
+use ac_compiler::{Config, DriverPipeline, Session, Source};
+use ac_compiler_common::{ExtractStage, ParseStage, TypecheckOnlyStage};
 use ac_module_resolver_virtual::VirtualResolver;
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
@@ -21,34 +19,40 @@ fn typecheck_config() -> Config {
         key_handler: Box::new(ac_typegen_key_set_special::SpecialKeyHandler),
         import_resolver: Box::new(ac_typegen_import::DefaultImportResolver),
         extensions: Default::default()}
+    .with_extension(ac_typecheck_infer::HostFunctionSigs::default_host())
 }
 
 fn run_pipeline(yaml: &str) {
     let source = Source::new(yaml, "yaml");
-    let mut compilation = Compilation::new(source);
     let config = typecheck_config();
-    ParsePass.run(&mut compilation, &config).unwrap();
-    ExtractPass.run(&mut compilation, &config).unwrap();
-    TypecheckPass.run(&mut compilation, &config).unwrap();
-    compilation.resolve_error_locations();
-    black_box(compilation);
+    let mut session = Session::new(config);
+    let result = DriverPipeline::new(ParseStage)
+        .then(ExtractStage)
+        .then(TypecheckOnlyStage)
+        .run(source, &mut session)
+        .unwrap();
+    black_box(result);
 }
 
 fn run_parse_only(yaml: &str) {
     let source = Source::new(yaml, "yaml");
-    let mut compilation = Compilation::new(source);
     let config = typecheck_config();
-    ParsePass.run(&mut compilation, &config).unwrap();
-    black_box(compilation);
+    let mut session = Session::new(config);
+    let result = DriverPipeline::new(ParseStage)
+        .run(source, &mut session)
+        .unwrap();
+    black_box(result);
 }
 
 fn run_parse_extract(yaml: &str) {
     let source = Source::new(yaml, "yaml");
-    let mut compilation = Compilation::new(source);
     let config = typecheck_config();
-    ParsePass.run(&mut compilation, &config).unwrap();
-    ExtractPass.run(&mut compilation, &config).unwrap();
-    black_box(compilation);
+    let mut session = Session::new(config);
+    let result = DriverPipeline::new(ParseStage)
+        .then(ExtractStage)
+        .run(source, &mut session)
+        .unwrap();
+    black_box(result);
 }
 
 /// Full pipeline: parse → extract → typecheck on flat documents.
@@ -103,7 +107,7 @@ fn bench_mixed_pipeline(c: &mut Criterion) {
     group.finish();
 }
 
-/// Individual pass cost: parse only.
+/// Individual stage cost: parse only.
 fn bench_parse_only(c: &mut Criterion) {
     let mut group = c.benchmark_group("pipeline/parse_only");
     for n in [100, 500, 1000] {
@@ -115,7 +119,7 @@ fn bench_parse_only(c: &mut Criterion) {
     group.finish();
 }
 
-/// Individual pass cost: parse + extract (no typecheck).
+/// Individual stage cost: parse + extract (no typecheck).
 fn bench_parse_extract(c: &mut Criterion) {
     let mut group = c.benchmark_group("pipeline/parse_extract");
     for n in [100, 500, 1000] {

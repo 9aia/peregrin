@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use icu::list::{ListFormatter, options::{ListFormatterOptions, ListLength}};
 
 use super::common::{make_provider, opt_str, optional_locale, optional_object, require_array, s};

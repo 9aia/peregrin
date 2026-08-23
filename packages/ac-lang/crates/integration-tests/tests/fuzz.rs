@@ -10,7 +10,7 @@ use ac_ast_canonical::{Expr, HandlerClause};
 use ac_runtime::NonFunctionValue;
 use ac_store::DefinitionHash;
 use ac_store::canonicalize_json;
-use ac_vm_canonical::{Continuation, Frame};
+use ac_runtime_canonical::{Continuation, Frame};
 use serde_json::Value as JsonValue;
 
 // ── helpers ───────────────────────────────────────────────────────

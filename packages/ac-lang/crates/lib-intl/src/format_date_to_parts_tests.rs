@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error};
+use ac_runtime_modules::Module;
+use ac_runtime::{Context, Error};
 
 use super::module::IntlModule;
 
@@ -178,8 +178,8 @@ fn date_to_parts_matches_format_date_datetime() {
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_core::ModuleHost;
-use ac_vm_canonical::{CanonicalContext, Host, Vm};
+use ac_runtime_modules::ModuleHost;
+use ac_runtime_canonical::{CanonicalContext, Host, Vm};
 
 #[test]
 fn vm_format_date_to_parts() {

@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-pub(super) use ac_runtime_core::Module;
-use ac_vm::{CanonicalContext, Context, Error, Eval};
+pub(super) use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context, Error, Eval};
 
 pub(super) use super::module::ObjModule;
 
@@ -51,8 +51,8 @@ pub(super) fn obj(pairs: &[(&str, serde_json::Value)]) -> NonFunctionValue {
 // ── eval infrastructure for higher-order functions ─────────────────
 
 use ac_ast_canonical::Expr;
-use ac_host::DefaultHost;
-use ac_vm_canonical::Vm;
+use ac_runtime_example_1::DefaultHost;
+use ac_runtime_canonical::Vm;
 
 struct TestEval;
 impl Eval for TestEval {

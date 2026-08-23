@@ -21,8 +21,8 @@ mod context_tests;
 #[cfg(test)]
 mod error_tests;
 
-pub use ac_ast_canonical::{Expr, HandlerClause};
-pub use ac_runtime::NonFunctionValue;
+pub use ac_ast_canonical::{Expr, ExprFactory, HandlerClause};
+pub use ac_runtime_values::{Frontend, FunctionValue, HostValue, NonFunctionValue};
 pub use context::CanonicalContext;
 pub use runtime::{Context, VirtualMachine};
 pub use error::Error;

@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use icu::plurals::{PluralCategory, PluralRules, PluralRulesOptions, PluralRuleType};
 
 use super::common::{apply_fraction_digits, apply_minimum_integer_digits, apply_significant_digits, decimal_from_f64, make_provider, opt_str, optional_locale, optional_object, require_number, s};

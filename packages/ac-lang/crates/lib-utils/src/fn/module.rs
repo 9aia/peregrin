@@ -1,5 +1,5 @@
-use ac_runtime_core::Module;
-use ac_vm::Function;
+use ac_runtime_modules::Module;
+use ac_runtime::Function;
 
 use crate::r#fn::combinators::{
     Apply, Choice, Compose, Converge, Constantly, Fanout, Flip, Flow, Partial, Pipe, Tap, Unless,

@@ -5,7 +5,7 @@ use crate::Error;
 use crate::Operation;
 use crate::Context;
 use ac_ast_canonical::Expr;
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 
 /// Provides functions to the VM.
 ///

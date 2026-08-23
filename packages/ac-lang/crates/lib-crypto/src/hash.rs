@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use md5::Md5 as Md5Hasher;
 use sha2::{Digest, Sha256 as Sha256Hasher};
 

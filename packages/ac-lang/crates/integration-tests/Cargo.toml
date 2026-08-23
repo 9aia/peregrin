@@ -6,9 +6,9 @@ edition.workspace = true
 [dependencies]
 ac-ast.workspace = true
 ac-ast-canonical.workspace = true
+ac-runtime-values.workspace = true
 ac-runtime.workspace = true
-ac-vm.workspace = true
-ac-vm-canonical.workspace = true
+ac-runtime-canonical.workspace = true
 ac-host-cache.workspace = true
 ac-store.workspace = true
 ac-codebase.workspace = true
@@ -16,11 +16,11 @@ serde_json = "1"
 
 [dev-dependencies]
 ac-lib-utils.workspace = true
-ac-runtime-core.workspace = true
+ac-runtime-modules.workspace = true
 ac-typecheck-infer.workspace = true
 ac-typecheck-core.workspace = true
 ac-typecheck-schema-json.workspace = true
 ac-dialect-canonical.workspace = true
-ac-compiler.workspace = true
+ac-compiler-canonical.workspace = true
 ac-fields.workspace = true
-ac-host.workspace = true
+ac-runtime-example-1.workspace = true

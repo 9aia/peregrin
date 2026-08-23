@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::Error;
+use ac_runtime::Error;
 
 /// Require a number argument at `idx`.
 pub(super) fn require_number(args: &[NonFunctionValue], idx: usize) -> Result<f64, Error> {

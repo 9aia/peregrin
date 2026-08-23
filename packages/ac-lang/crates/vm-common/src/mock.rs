@@ -1,4 +1,4 @@
-use ac_vm::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, NonFunctionValue, Operation};
+use ac_runtime::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, NonFunctionValue, Operation};
 use std::collections::HashMap;
 
 /// A host that resolves nothing.
@@ -116,14 +116,14 @@ impl<F> CaptureFn<F> {
 
 impl<F> Function for CaptureFn<F>
 where
-    F: Fn(&[NonFunctionValue], &mut dyn ac_vm::Context) -> Result<NonFunctionValue, ac_vm::Error>
+    F: Fn(&[NonFunctionValue], &mut dyn ac_runtime::Context) -> Result<NonFunctionValue, ac_runtime::Error>
         + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn ac_vm::Context,
-    ) -> Result<NonFunctionValue, ac_vm::Error> {
+        ctx: &mut dyn ac_runtime::Context,
+    ) -> Result<NonFunctionValue, ac_runtime::Error> {
         self.calls.borrow_mut().push(args.to_vec());
         (self.inner)(args, ctx)
     }

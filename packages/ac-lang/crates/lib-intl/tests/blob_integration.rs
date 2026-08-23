@@ -6,8 +6,8 @@
 
 use ac_lib_intl::IntlModule;
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context};
 
 fn blob() -> Vec<u8> {
     let path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))

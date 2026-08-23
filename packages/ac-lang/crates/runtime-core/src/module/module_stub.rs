@@ -1,7 +1,7 @@
 //! Shared test stub for the module interface.
 
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use crate::module::Module;
 

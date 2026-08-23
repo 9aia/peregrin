@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{format_iso, parse_iso, parse_with_format_and_offset, require_one_string, require_string, s};
 

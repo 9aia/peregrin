@@ -1,4 +1,4 @@
-use ac_vm::{AsyncFunction, Error, Function, GenericFunction, LazyFunction, NonFunctionValue, Operation, OperationSig, Context};
+use ac_runtime::{AsyncFunction, Error, Function, GenericFunction, LazyFunction, NonFunctionValue, Operation, OperationSig, Context};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -89,10 +89,10 @@ impl<F> FnLazy<F> {
 impl<F> LazyFunction for FnLazy<F>
 where
     F: Fn(
-            &[ac_vm::Expr<NonFunctionValue>],
+            &[ac_runtime::Expr<NonFunctionValue>],
             &mut dyn Context,
             &mut dyn FnMut(
-                &ac_vm::Expr<NonFunctionValue>,
+                &ac_runtime::Expr<NonFunctionValue>,
                 &mut dyn Context,
             ) -> Result<NonFunctionValue, Error>,
         ) -> Result<NonFunctionValue, Error>
@@ -100,10 +100,10 @@ where
 {
     fn call(
         &self,
-        args: &[ac_vm::Expr<NonFunctionValue>],
+        args: &[ac_runtime::Expr<NonFunctionValue>],
         ctx: &mut dyn Context,
         evaluate: &mut dyn FnMut(
-            &ac_vm::Expr<NonFunctionValue>,
+            &ac_runtime::Expr<NonFunctionValue>,
             &mut dyn Context,
         ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
@@ -115,10 +115,10 @@ where
 pub fn fn_lazy<F>(f: F) -> Box<dyn LazyFunction>
 where
     F: Fn(
-            &[ac_vm::Expr<NonFunctionValue>],
+            &[ac_runtime::Expr<NonFunctionValue>],
             &mut dyn Context,
             &mut dyn FnMut(
-                &ac_vm::Expr<NonFunctionValue>,
+                &ac_runtime::Expr<NonFunctionValue>,
                 &mut dyn Context,
             ) -> Result<NonFunctionValue, Error>,
         ) -> Result<NonFunctionValue, Error>

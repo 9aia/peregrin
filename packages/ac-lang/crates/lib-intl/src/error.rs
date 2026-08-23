@@ -1,6 +1,6 @@
 use std::fmt;
 
-use ac_vm::Error as VmError;
+use ac_runtime::Error as VmError;
 
 #[derive(Debug, Clone)]
 pub enum IntlError {

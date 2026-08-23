@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::Error;
+use ac_runtime::Error;
 
 pub(super) fn require_string(arg: &NonFunctionValue) -> Result<&str, Error> {
     arg.as_str().ok_or(Error::TypeMismatch {
@@ -41,12 +41,12 @@ macro_rules! string_unary_fn {
     ($struct_name:ident, $body:expr) => {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
-        impl ac_vm::Function for $struct_name {
+        impl ac_runtime::Function for $struct_name {
             fn call(
                 &self,
                 args: &[ac_runtime::NonFunctionValue],
-                _ctx: &mut dyn ac_vm::Context,
-            ) -> Result<ac_runtime::NonFunctionValue, ac_vm::Error> {
+                _ctx: &mut dyn ac_runtime::Context,
+            ) -> Result<ac_runtime::NonFunctionValue, ac_runtime::Error> {
                 let input = $crate::r#str::common::require_one_string(args)?;
                 Ok($crate::r#str::common::s($body(input)))
             }
@@ -59,12 +59,12 @@ macro_rules! string_predicate_fn {
     ($struct_name:ident, $body:expr) => {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
-        impl ac_vm::Function for $struct_name {
+        impl ac_runtime::Function for $struct_name {
             fn call(
                 &self,
                 args: &[ac_runtime::NonFunctionValue],
-                _ctx: &mut dyn ac_vm::Context,
-            ) -> Result<ac_runtime::NonFunctionValue, ac_vm::Error> {
+                _ctx: &mut dyn ac_runtime::Context,
+            ) -> Result<ac_runtime::NonFunctionValue, ac_runtime::Error> {
                 let (input, pattern) = $crate::r#str::common::require_two_strings(args)?;
                 Ok($crate::r#str::common::b($body(input, pattern)))
             }

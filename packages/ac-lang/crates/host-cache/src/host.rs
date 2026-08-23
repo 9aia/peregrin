@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
 use ac_runtime::NonFunctionValue;
-use ac_vm::{AsyncFunction, Context, Error, Function, GenericFunction, Host, LazyFunction, Operation};
+use ac_runtime::{AsyncFunction, Context, Error, Function, GenericFunction, Host, LazyFunction, Operation};
 
 use crate::cache::{CallCache, CallKey};
 
@@ -61,8 +61,8 @@ impl Function for CachedFunction {
 /// # Example: composition with `DefaultHost`
 ///
 /// ```ignore
-/// use ac_host::DefaultHost;
-/// use ac_host_cache::CacheHost;
+/// use ac_runtime_example_1::DefaultHost;
+/// use ac_runtime_example_1_cache::CacheHost;
 ///
 /// let host = CacheHost::new(DefaultHost::default());
 /// // add, mul, etc. delegate to DefaultHost (uncached)

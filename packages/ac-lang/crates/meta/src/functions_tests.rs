@@ -1,7 +1,7 @@
 use super::*;
 use ac_ast_canonical::Expr;
 use ac_runtime::NonFunctionValue;
-use ac_vm_canonical::{CanonicalContext, Context, Eval, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Eval, Vm};
 
 // ── typeof ──────────────────────────────────────────────────
 
@@ -111,7 +111,7 @@ fn eval_with_callback() {
             &self,
             _expr: &str,
             vars: &[(String, NonFunctionValue)],
-        ) -> Result<NonFunctionValue, ac_vm::Error> {
+        ) -> Result<NonFunctionValue, ac_runtime::Error> {
             // Simple: just return the first var's value doubled
             let val = vars
                 .first()
@@ -527,7 +527,7 @@ fn call_meta(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     try_call_meta(name, args).expect("call should succeed")
 }
 
-fn try_call_meta(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, ac_vm::Error> {
+fn try_call_meta(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, ac_runtime::Error> {
     let vm = Vm::new(MetaHost::default());
     let mut ctx = CanonicalContext::new();
     let expr_args: Vec<Expr<NonFunctionValue>> = args.iter().map(|a| Expr::value(a.clone())).collect();

@@ -7,7 +7,7 @@
 use ac_ast_canonical::{Expr, HandlerClause};
 use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_store::{DefinitionHash, DefinitionStore, EvalCache, NameRegistry};
-use ac_vm_canonical::{CanonicalContext, Context, Continuation, Error, EvalResult, Function, Host, Operation, OperationSig, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Continuation, Error, EvalResult, Function, Host, Operation, OperationSig, Vm};
 
 // ── test infrastructure ───────────────────────────────────────────
 

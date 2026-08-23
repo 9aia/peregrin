@@ -84,7 +84,7 @@ pub trait Context {
 ///
 /// Implementors transform an [`Expr`] tree into a runtime value inside a
 /// [`Context`]. The canonical tree-walking implementation is
-/// `ac_vm_canonical::CanonicalVm`.
+/// `ac_runtime_canonical::CanonicalVm`.
 pub trait VirtualMachine {
     /// Evaluates an expression synchronously.
     fn eval(

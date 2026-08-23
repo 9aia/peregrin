@@ -1,7 +1,7 @@
 //! driver-lang Stage implementation for the extract phase.
 
-use ac_compiler_core::driver::{DriverError, ExtractedDoc, ParsedDoc, Session, Stage};
-use ac_compiler_core::Config;
+use ac_compiler::driver::{DriverError, ExtractedDoc, ParsedDoc, Session, Stage};
+use ac_compiler::Config;
 
 /// Extract phase: `ParsedDoc → ExtractedDoc`.
 ///

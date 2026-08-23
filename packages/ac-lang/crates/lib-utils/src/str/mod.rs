@@ -14,8 +14,8 @@ pub use transform::{
     Slice, Slugify, Split, SplitAt, SplitWhitespace, StripPrefix, StripSuffix, Truncate,
     UnescapeHtml, UnescapeUrl, WordWrap};
 
-use ac_runtime_core::Module;
-use ac_vm::Function;
+use ac_runtime_modules::Module;
+use ac_runtime::Function;
 
 /// The `str` module — string utility functions.
 ///

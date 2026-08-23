@@ -11,7 +11,7 @@
 
 use ac_ast_canonical::{Expr, Field};
 use ac_fields::ExtractedFields;
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 
 // ---------------------------------------------------------------------------
 // Visitor (read-only traversal)

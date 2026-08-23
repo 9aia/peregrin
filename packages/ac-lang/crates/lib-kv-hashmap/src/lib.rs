@@ -8,7 +8,7 @@
 //! ## Usage
 //!
 //! ```ignore
-//! use ac_runtime_core::ModuleHost;
+//! use ac_runtime_modules::ModuleHost;
 //! use ac_lib_kv::{KeyValueStoreModule};
 //! use ac_lib_kv_hashmap::HashKeyValueStore;
 //!
@@ -75,8 +75,8 @@ impl KeyValueStore for HashKeyValueStore {
 mod tests {
     use ac_lib_kv::KeyValueStoreModule;
     use ac_runtime::NonFunctionValue;
-    use ac_runtime_core::Module;
-    use ac_vm::{CanonicalContext, Context};
+    use ac_runtime_modules::Module;
+    use ac_runtime::{CanonicalContext, Context};
 
     use super::HashKeyValueStore;
 

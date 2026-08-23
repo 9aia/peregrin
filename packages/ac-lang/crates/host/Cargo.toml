@@ -1,9 +1,9 @@
 [package]
-name = "ac-host"
+name = "ac-runtime-example-1"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
+ac-runtime-values.workspace = true
 ac-runtime.workspace = true
-ac-vm.workspace = true
 serde_json = "1"

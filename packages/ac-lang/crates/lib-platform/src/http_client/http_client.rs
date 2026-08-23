@@ -2,8 +2,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error, Function};
+use ac_runtime_modules::Module;
+use ac_runtime::{Context, Error, Function};
 
 use crate::error::PlatformError;
 

@@ -7,6 +7,6 @@ edition.workspace = true
 ac-lib-kv.workspace = true
 
 [dev-dependencies]
+ac-runtime-values.workspace = true
+ac-runtime-modules.workspace = true
 ac-runtime.workspace = true
-ac-runtime-core.workspace = true
-ac-vm.workspace = true

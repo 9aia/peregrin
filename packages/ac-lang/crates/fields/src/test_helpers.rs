@@ -1,8 +1,8 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function, Host};
+use ac_runtime::{Context, Error, Function, Host};
 use serde_json::Value as JsonValue;
 
-pub use ac_host::DefaultHost;
+pub use ac_runtime_example_1::DefaultHost;
 
 /// A `Host` that extends [`DefaultHost`] with a `double` helper for
 /// tests that exercise user-defined function values.

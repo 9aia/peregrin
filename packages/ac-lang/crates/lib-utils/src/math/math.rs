@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error, Function};
+use ac_runtime_modules::Module;
+use ac_runtime::{Context, Error, Function};
 
 /// The `math` module — numeric utility functions.
 ///

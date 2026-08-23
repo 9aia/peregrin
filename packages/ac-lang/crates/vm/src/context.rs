@@ -2,7 +2,7 @@ use crate::AsyncEval;
 use crate::Error;
 use crate::Eval;
 use crate::Context;
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 use indexmap::IndexMap;
 use serde_json::Value as JsonValue;
 use std::cell::Cell;

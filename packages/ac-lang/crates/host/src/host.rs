@@ -1,4 +1,4 @@
-use ac_vm::{Function, Host};
+use ac_runtime::{Function, Host};
 
 use crate::functions::{Add, Apply, Array, Concat, Len, Mul, Resolve, Var};
 

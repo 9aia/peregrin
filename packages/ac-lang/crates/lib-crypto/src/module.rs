@@ -1,5 +1,5 @@
-use ac_runtime_core::Module;
-use ac_vm::Function;
+use ac_runtime_modules::Module;
+use ac_runtime::Function;
 
 use super::encoding::{Base64Decode, Base64Encode, HexDecode, HexEncode};
 use super::hash::{Md5, Sha256};

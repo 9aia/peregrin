@@ -17,7 +17,7 @@
 //!
 //! ```ignore
 //! use ac_meta::MetaHost;
-//! use ac_vm_canonical::{CanonicalContext, Vm, Context};
+//! use ac_runtime_canonical::{CanonicalContext, Vm, Context};
 //!
 //! let vm = Vm::new(MetaHost::default());
 //! let mut ctx = CanonicalContext::new();

@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error, Function};
+use ac_runtime_modules::Module;
+use ac_runtime::{Context, Error, Function};
 
 /// The `set` module — set-theoretic operations on arrays.
 ///

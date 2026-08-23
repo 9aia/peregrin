@@ -8,7 +8,7 @@ use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{APPLY_FUNCTION, DEFAULT_NAMESPACE, Namespaces, eval_expression};
 use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_vm_canonical::{CanonicalContext, Context, Error, Eval, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Error, Eval, Vm};
 use serde_json::Value as JsonValue;
 
 use crate::host::TypeHost;

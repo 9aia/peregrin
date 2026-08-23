@@ -1,9 +1,9 @@
 //! Composite `TypeHost` bundling the standard library helpers and type helpers.
 
-use ac_host::DefaultHost;
+use ac_runtime_example_1::DefaultHost;
 use ac_lib_utils::{ArrayModule, BoolModule, FnModule, ObjModule, StrModule};
-use ac_runtime_core::ModuleHost;
-use ac_vm::{Function, Host};
+use ac_runtime_modules::ModuleHost;
+use ac_runtime::{Function, Host};
 
 use super::functions::{
     AppArgsCompatible, FuncParamsCompatible, ObjEvery, PairSecond, TypeKind, TypeName, ZipAll};
@@ -43,11 +43,11 @@ impl Host for TypeHost {
             .or_else(|| self.default.function(name))
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn ac_vm::LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn ac_runtime::LazyFunction> {
         self.inner.lazy_function(name)
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn ac_vm::GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn ac_runtime::GenericFunction> {
         self.inner.generic_function(name)
     }
 }
@@ -56,7 +56,7 @@ impl Host for TypeHost {
 #[derive(Clone, Copy)]
 pub struct TypeHelpersModule;
 
-impl ac_runtime_core::Module for TypeHelpersModule {
+impl ac_runtime_modules::Module for TypeHelpersModule {
     fn name(&self) -> &str {
         "type"
     }

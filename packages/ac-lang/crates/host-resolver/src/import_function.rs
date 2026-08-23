@@ -4,7 +4,7 @@ use std::sync::Mutex;
 
 use ac_module_resolver_core::ModuleResolver;
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 /// A [`Function`] that resolves module imports via a [`ModuleResolver`].
 ///

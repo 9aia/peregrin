@@ -9,12 +9,12 @@ macro_rules! array_unary_fn {
     ($struct_name:ident, $body:expr) => {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
-        impl ac_vm::Function for $struct_name {
+        impl ac_runtime::Function for $struct_name {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut dyn ac_vm::Context,
-            ) -> Result<NonFunctionValue, ac_vm::Error> {
+                _ctx: &mut dyn ac_runtime::Context,
+            ) -> Result<NonFunctionValue, ac_runtime::Error> {
                 let input = $crate::shared::require_one_array(args)?;
                 Ok($body(input))
             }

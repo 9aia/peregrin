@@ -1,4 +1,4 @@
-use ac_vm::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, Operation};
+use ac_runtime::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, Operation};
 
 /// A host that queries a list of child hosts in order and returns the
 /// first match found.

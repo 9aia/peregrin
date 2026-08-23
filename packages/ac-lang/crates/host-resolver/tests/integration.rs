@@ -1,10 +1,10 @@
 use ac_ast_canonical::Expr;
-use ac_host::DefaultHost;
-use ac_host_resolver::ResolverHost;
+use ac_runtime_example_1::DefaultHost;
+use ac_runtime_example_1_resolver::ResolverHost;
 use ac_module_resolver_core::ModuleResolver;
 use ac_module_resolver_virtual::VirtualResolver;
 use ac_runtime::NonFunctionValue;
-use ac_vm_canonical::{CanonicalContext, Context, Error, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Error, Vm};
 use serde_json::json;
 
 // ── helpers ──────────────────────────────────────────────────────

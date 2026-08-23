@@ -33,7 +33,7 @@ pub enum Error {
     /// In the async VM, implicit yields also occur at `.await` points
     /// when a host future is not yet ready — these are handled by the
     /// executor and do not produce this variant.
-    Yield(ac_runtime::NonFunctionValue),
+    Yield(ac_runtime_values::NonFunctionValue),
 
     /// A typed operation was performed and signaled.
     ///
@@ -48,7 +48,7 @@ pub enum Error {
         /// The operation name (e.g. `"fetch"`).
         name: String,
         /// The evaluated arguments passed to the operation.
-        args: Vec<ac_runtime::NonFunctionValue>},
+        args: Vec<ac_runtime_values::NonFunctionValue>},
 
     /// A resource limit was exceeded during evaluation.
     ///

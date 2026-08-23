@@ -1,6 +1,6 @@
 use base64::{engine::general_purpose, Engine as _};
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{byte_array, extract_bytes, require_string, s};
 use crate::error::CryptoError;

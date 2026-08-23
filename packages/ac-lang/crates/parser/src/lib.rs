@@ -12,8 +12,8 @@
 //! > **The parser consumes tokens and produces `Expr`.**
 //!
 //! The parser is the bridge between the lexer and the VM. It depends on
-//! `ac-lexer` (for `Token`/`TokenKind`) and `ac-ast` (for `Expr`), but
-//! not on the VM. This keeps the parsing pipeline independent of
+//! `ac-lexer` (for `Token`/`TokenKind`) and `ac-ast-canonical` (for `Expr`),
+//! but not on the VM. This keeps the parsing pipeline independent of
 //! evaluation strategy.
 
 mod error;
@@ -22,7 +22,7 @@ pub use error::ParseError;
 
 use ac_ast_canonical::Expr;
 use ac_lexer::{LexError, Lexer, Token, TokenKind};
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 
 /// A parser that converts a token stream into an expression AST.
 ///
@@ -51,7 +51,8 @@ pub trait Parser<K: TokenKind, E: LexError>: Send + Sync {
         lexer: &dyn Lexer<K, E>,
     ) -> Result<Expr<NonFunctionValue>, ParseError> {
         let tokens = lexer.lex(input).map_err(|e| ParseError::LexError {
-            message: e.to_string()})?;
+            message: e.to_string(),
+        })?;
         self.parse(tokens)
     }
 }

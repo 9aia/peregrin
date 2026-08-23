@@ -5,7 +5,7 @@ edition.workspace = true
 
 [dependencies]
 ac-lexer.workspace = true
-ac-ast.workspace = true
 ac-ast-canonical.workspace = true
+ac-runtime-values.workspace = true
 ac-runtime.workspace = true
 thiserror.workspace = true

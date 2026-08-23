@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use ac_module_resolver_core::{IMPORT_FUNCTION, ModuleResolver};
-use ac_vm::{AsyncFunction, Function, Host, LazyFunction, Operation};
+use ac_runtime::{AsyncFunction, Function, Host, LazyFunction, Operation};
 
 use crate::import_function::ImportFunction;
 
@@ -18,10 +18,10 @@ use crate::import_function::ImportFunction;
 /// # Example
 ///
 /// ```ignore
-/// use ac_host::DefaultHost;
-/// use ac_host_resolver::ResolverHost;
+/// use ac_runtime_example_1::DefaultHost;
+/// use ac_runtime_example_1_resolver::ResolverHost;
 /// use ac_module_resolver_virtual::VirtualResolver;
-/// use ac_vm_canonical::{CanonicalContext, Vm, Context};
+/// use ac_runtime_canonical::{CanonicalContext, Vm, Context};
 /// use ac_ast_canonical::Expr;
 ///
 /// let mut resolver = VirtualResolver::new();

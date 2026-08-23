@@ -14,7 +14,7 @@ pub fn run(args: TypecheckArgs) -> i32 {
         .as_ref()
         .and_then(|p| p.parent().map(|d| d.to_path_buf()));
 
-    match ac_compiler::typecheck::run(&input, &args.format, base_path.as_deref()) {
+    match ac_compiler_canonical::typecheck::run(&input, &args.format, base_path.as_deref()) {
         Ok(report) => {
             if report.is_valid() {
                 println!("all types valid");

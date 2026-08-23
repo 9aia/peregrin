@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context};
 
 use super::env::EnvModule;
 use super::env_stub::StubEnv;

@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context, Error};
 
 use super::module::TypeModule;
 

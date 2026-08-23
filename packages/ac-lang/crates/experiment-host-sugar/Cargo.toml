@@ -10,9 +10,10 @@ path = "src/main.rs"
 [dependencies]
 ac-fields.workspace = true
 ac-dialect-canonical.workspace = true
+ac-runtime-values.workspace = true
 ac-runtime.workspace = true
-ac-compiler.workspace = true
-ac-host.workspace = true
+ac-compiler-canonical.workspace = true
+ac-runtime-example-1.workspace = true
 ac-module-resolver-file.workspace = true
 ac-module-resolver-memory.workspace = true
 ac-module-resolver-core.workspace = true

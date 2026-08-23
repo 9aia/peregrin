@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use icu::decimal::provider::DecimalSymbolsV1;
 use icu_provider::{DataMarker, IterableDynamicDataProvider};
 

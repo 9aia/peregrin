@@ -30,8 +30,8 @@
 //! ## Usage
 //!
 //! ```ignore
-//! use ac_host_sandbox::{SandboxHost, SandboxLimits};
-//! use ac_vm_canonical::Vm;
+//! use ac_runtime_sandbox::{SandboxHost, SandboxLimits};
+//! use ac_runtime_canonical::Vm;
 //!
 //! let host = SandboxHost::new(SandboxLimits::default());
 //! let ctx = host.new_context();
@@ -41,7 +41,7 @@
 //! With custom limits:
 //!
 //! ```ignore
-//! use ac_host_sandbox::{SandboxHost, SandboxLimits};
+//! use ac_runtime_sandbox::{SandboxHost, SandboxLimits};
 //!
 //! let limits = SandboxLimits {
 //!     max_depth: Some(50),
@@ -51,7 +51,7 @@
 //! let ctx = host.new_context();
 //! ```
 
-use ac_host::DefaultHost;
+use ac_runtime_example_1::DefaultHost;
 use ac_lib_crypto::CryptoModule;
 use ac_lib_datetime::DateTimeModule;
 use ac_lib_intl::IntlModule;
@@ -60,14 +60,14 @@ use ac_lib_kv_hashmap::HashKeyValueStore;
 use ac_lib_utils::{
     ArrayModule, BoolModule, FnModule, MathModule, ObjModule, SetModule, StrModule,
     TypeModule};
-use ac_runtime_core::ModuleHost;
-use ac_vm::{CanonicalContext, Context, Function, GenericFunction, Host, LazyFunction};
+use ac_runtime_modules::ModuleHost;
+use ac_runtime::{CanonicalContext, Context, Function, GenericFunction, Host, LazyFunction};
 
 /// Resource limits for sandboxed evaluation.
 ///
 /// Configured on the [`SandboxHost`] and applied to every [`Context`]
 /// created via [`SandboxHost::new_context`]. The VM enforces these
-/// limits during evaluation — see [`Error::ResourceLimit`](ac_vm::Error::ResourceLimit).
+/// limits during evaluation — see [`Error::ResourceLimit`](ac_runtime::Error::ResourceLimit).
 #[derive(Clone, Debug)]
 pub struct SandboxLimits {
     /// Maximum scope depth (function call nesting).
@@ -80,7 +80,7 @@ pub struct SandboxLimits {
     ///
     /// `None` means no limit. Each `Call` expression increments the
     /// counter; exceeding the limit returns
-    /// [`Error::ResourceLimit`](ac_vm::Error::ResourceLimit).
+    /// [`Error::ResourceLimit`](ac_runtime::Error::ResourceLimit).
     pub max_calls: Option<usize>}
 
 impl Default for SandboxLimits {
@@ -130,7 +130,7 @@ impl SandboxHost {
     /// Creates a [`Context`] with the sandbox limits applied.
     ///
     /// The VM will enforce `max_depth` and `max_calls` during evaluation,
-    /// returning [`Error::ResourceLimit`](ac_vm::Error::ResourceLimit) if
+    /// returning [`Error::ResourceLimit`](ac_runtime::Error::ResourceLimit) if
     /// either limit is exceeded.
     pub fn new_context(&self) -> CanonicalContext {
         let mut ctx = CanonicalContext::new();

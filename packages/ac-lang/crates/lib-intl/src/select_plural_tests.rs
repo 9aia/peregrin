@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{CanonicalContext, Context, Error};
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context, Error};
 
 use super::module::IntlModule;
 
@@ -225,8 +225,8 @@ fn select_plural_ar_with_fraction_digits() {
 // ── VM integration ───────────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_core::ModuleHost;
-use ac_vm_canonical::Vm;
+use ac_runtime_modules::ModuleHost;
+use ac_runtime_canonical::Vm;
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(IntlModule::new());

@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{format_iso, n, parse_iso, require_number, require_one_string, s};
 use crate::DatetimeError;

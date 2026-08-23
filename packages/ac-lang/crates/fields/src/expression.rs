@@ -1,6 +1,6 @@
 use ac_dialect::Dialect;
 use ac_runtime::NonFunctionValue;
-use ac_vm_canonical::{CanonicalContext, Context, Eval, Error, Host, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Eval, Error, Host, Vm};
 use serde_json::Value as JsonValue;
 
 use crate::parser::parse_expr_to_tree;

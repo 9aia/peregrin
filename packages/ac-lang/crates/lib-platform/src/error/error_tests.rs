@@ -45,8 +45,8 @@ fn io_display() {
 #[test]
 fn converts_to_vm_error() {
     let err = PlatformError::NotFound { path: "/x".into() };
-    let vm_err: ac_vm::Error = err.into();
+    let vm_err: ac_runtime::Error = err.into();
     match vm_err {
-        ac_vm::Error::PrimitiveError(msg) => assert!(msg.contains("not found")),
+        ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("not found")),
         other => panic!("expected PrimitiveError, got {other:?}")}
 }

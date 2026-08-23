@@ -1,10 +1,10 @@
 use std::fmt;
 
-use ac_vm::Error as VmError;
+use ac_runtime::Error as VmError;
 
 /// Errors produced by platform service implementations.
 ///
-/// Converts to [`ac_vm::Error`] via `From`, so service methods can return
+/// Converts to [`ac_runtime::Error`] via `From`, so service methods can return
 /// `Result<T, PlatformError>` and the adapter handles the conversion.
 #[derive(Debug, Clone)]
 pub enum PlatformError {

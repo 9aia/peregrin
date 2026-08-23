@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{CanonicalContext, Context};
+use ac_runtime_modules::Module;
+use ac_runtime::{CanonicalContext, Context};
 
 use super::http_client::{HttpClientModule, HttpResponse};
 use super::http_client_stub::StubHttpClient;
@@ -190,7 +190,7 @@ fn request_unknown_method() {
         )
         .unwrap_err();
     match err {
-        ac_vm::Error::PrimitiveError(msg) => assert!(msg.contains("unknown HTTP method")),
+        ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("unknown HTTP method")),
         other => panic!("expected PrimitiveError, got {other:?}")}
 }
 
@@ -241,7 +241,7 @@ fn get_not_found() {
     let mut ctx = CanonicalContext::new();
     let err = func.call(&[s("https://nope.com")], &mut ctx).unwrap_err();
     match err {
-        ac_vm::Error::PrimitiveError(msg) => assert!(msg.contains("no canned response")),
+        ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("no canned response")),
         other => panic!("expected PrimitiveError, got {other:?}")}
 }
 

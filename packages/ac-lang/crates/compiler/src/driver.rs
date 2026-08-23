@@ -32,7 +32,7 @@
 //!
 //! ```ignore
 //! use driver_lang::{Pipeline, Session, Stage};
-//! use ac_compiler_core::driver::*;
+//! use ac_compiler::driver::*;
 //!
 //! struct MyLintStage;
 //! impl Stage<Config> for MyLintStage {
@@ -57,7 +57,7 @@
 use std::path::PathBuf;
 
 use ac_fields::ExtractedFields;
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 use ac_source::SourceMap;
 use ac_typecheck_core::TypeError;
 use ac_typegen_core::TypegenContext;
@@ -66,10 +66,6 @@ use ac_typegen_core::TypegenContext;
 pub use driver_lang::{
     Diagnostic as DriverDiagnostic, DriverError, Pipeline as DriverPipeline, Session,
     Severity as DriverSeverity, Stage, Then};
-
-// Re-export pass-lang types (for the optimization layer)
-pub use pass_lang::{
-    Outcome, Pass as OptPass, PassError as OptPassError, PassManager, PassRun, Report};
 
 // ---------------------------------------------------------------------------
 // Artifact types — typed inputs/outputs for each phase

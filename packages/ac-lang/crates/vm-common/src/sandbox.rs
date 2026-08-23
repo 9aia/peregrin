@@ -1,4 +1,4 @@
-use ac_vm::Context;
+use ac_runtime::Context;
 
 /// Sets the maximum scope depth on a context.
 pub fn with_max_depth<C: Context>(ctx: &mut C, max: usize) -> &mut C {

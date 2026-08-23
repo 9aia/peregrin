@@ -8,14 +8,14 @@
 use ac_ast_canonical::Expr;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, Namespaces};
-use ac_host::DefaultHost;
+use ac_runtime_example_1::DefaultHost;
 use ac_lib_utils::ArrayModule;
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::ModuleHost;
+use ac_runtime_modules::ModuleHost;
 use ac_typecheck_core::{SchemaInterpreter, Type};
 use ac_typecheck_infer::{FunctionTable, HostFunctionSigs};
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
-use ac_vm_canonical::{CanonicalContext, Context, Error, Eval, Vm};
+use ac_runtime_canonical::{CanonicalContext, Context, Error, Eval, Vm};
 use serde_json::json;
 
 /// Minimal [`Eval`] implementation for integration tests.
@@ -193,7 +193,7 @@ fn vm_dispatches_array_map_with_type_args() {
         Err(e) => {
             // Error should NOT be UnknownFunction — that would mean dispatch failed
             assert!(
-                !matches!(e, ac_vm::Error::UnknownFunction(_)),
+                !matches!(e, ac_runtime::Error::UnknownFunction(_)),
                 "should not get UnknownFunction — generic dispatch should have worked: {e:?}"
             );
         }
@@ -227,7 +227,7 @@ fn vm_dispatches_array_filter_with_type_args() {
         }
         Err(e) => {
             assert!(
-                !matches!(e, ac_vm::Error::UnknownFunction(_)),
+                !matches!(e, ac_runtime::Error::UnknownFunction(_)),
                 "should not get UnknownFunction — generic dispatch should have worked: {e:?}"
             );
         }
@@ -260,7 +260,7 @@ fn vm_array_map_without_type_args_uses_regular_function() {
         }
         Err(e) => {
             assert!(
-                !matches!(e, ac_vm::Error::UnknownFunction(_)),
+                !matches!(e, ac_runtime::Error::UnknownFunction(_)),
                 "should not get UnknownFunction: {e:?}"
             );
         }
@@ -338,7 +338,7 @@ fn full_pipeline_generic_type_args_resolution() {
         }
         Err(e) => {
             assert!(
-                !matches!(e, ac_vm::Error::UnknownFunction(_)),
+                !matches!(e, ac_runtime::Error::UnknownFunction(_)),
                 "generic dispatch should have reached GenericFunction: {e:?}"
             );
         }
@@ -349,7 +349,7 @@ fn full_pipeline_generic_type_args_resolution() {
 
 #[test]
 fn module_host_resolves_generic_function() {
-    use ac_vm::{GenericFunction, Host};
+    use ac_runtime::{GenericFunction, Host};
 
     let host = build_host();
 
@@ -419,12 +419,12 @@ fn e2e_vm_evaluates_generic_map_with_type_args() {
         &ac_dialect_canonical::AC_DIALECT,
     );
 
-    let vm = ac_vm_canonical::Vm::new(host);
-    let mut ctx = ac_vm::CanonicalContext::new();
+    let vm = ac_runtime_canonical::Vm::new(host);
+    let mut ctx = ac_runtime::CanonicalContext::new();
 
     // Set up eval callback for higher-order function body evaluation
     let eval = Box::new(TestEval::new(
-        ac_host::DefaultHost::default(),
+        ac_runtime_example_1::DefaultHost::default(),
         ac_fields::Namespaces::new(),
     ));
     ctx.set_eval(eval);
@@ -467,11 +467,11 @@ fn e2e_vm_evaluates_generic_filter_with_type_args() {
         &ac_dialect_canonical::AC_DIALECT,
     );
 
-    let vm = ac_vm_canonical::Vm::new(host);
-    let mut ctx = ac_vm::CanonicalContext::new();
+    let vm = ac_runtime_canonical::Vm::new(host);
+    let mut ctx = ac_runtime::CanonicalContext::new();
 
     let eval = Box::new(TestEval::new(
-        ac_host::DefaultHost::default(),
+        ac_runtime_example_1::DefaultHost::default(),
         ac_fields::Namespaces::new(),
     ));
     ctx.set_eval(eval);
@@ -514,11 +514,11 @@ fn e2e_vm_evaluates_generic_reduce_with_type_args() {
         &ac_dialect_canonical::AC_DIALECT,
     );
 
-    let vm = ac_vm_canonical::Vm::new(host);
-    let mut ctx = ac_vm::CanonicalContext::new();
+    let vm = ac_runtime_canonical::Vm::new(host);
+    let mut ctx = ac_runtime::CanonicalContext::new();
 
     let eval = Box::new(TestEval::new(
-        ac_host::DefaultHost::default(),
+        ac_runtime_example_1::DefaultHost::default(),
         ac_fields::Namespaces::new(),
     ));
     ctx.set_eval(eval);
@@ -569,11 +569,11 @@ fn e2e_unknown_type_args_fall_back_gracefully() {
     assert!(result.type_args.is_empty(), "unknown types should produce empty type_args");
 
     // VM should still evaluate the call (falls back to Function::call)
-    let vm = ac_vm_canonical::Vm::new(host);
-    let mut ctx = ac_vm::CanonicalContext::new();
+    let vm = ac_runtime_canonical::Vm::new(host);
+    let mut ctx = ac_runtime::CanonicalContext::new();
 
     let eval = Box::new(TestEval::new(
-        ac_host::DefaultHost::default(),
+        ac_runtime_example_1::DefaultHost::default(),
         ac_fields::Namespaces::new(),
     ));
     ctx.set_eval(eval);
@@ -634,7 +634,7 @@ fn e2e_all_generic_functions_resolve_in_function_table() {
 
 #[test]
 fn e2e_module_host_resolves_all_generic_functions() {
-    use ac_vm::Host;
+    use ac_runtime::Host;
 
     let host = build_host();
 

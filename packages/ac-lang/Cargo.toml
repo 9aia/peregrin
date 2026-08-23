@@ -57,7 +57,8 @@ members = [
   "crates/host",
   "crates/host-cache",
   "crates/host-resolver",
-  "crates/compiler-core",
+  "crates/compiler-common",
+  "crates/compiler-canonical",
   "crates/compiler-pass-parse",
   "crates/compiler-pass-extract",
   "crates/compiler-pass-resolve",
@@ -93,8 +94,8 @@ ac-dialect-canonical = { path = "crates/dialect-canonical" }
 ac-ast = { path = "crates/ast" }
 ac-ast-canonical = { path = "crates/ast-canonical" }
 ac-ast-common = { path = "crates/ast-common" }
-ac-runtime = { path = "crates/runtime" }
-ac-runtime-core = { path = "crates/runtime-core" }
+ac-runtime-values = { path = "crates/runtime" }
+ac-runtime-modules = { path = "crates/runtime-core" }
 ac-lib-utils = { path = "crates/lib-utils" }
 ac-lib-datetime = { path = "crates/lib-datetime" }
 ac-lib-intl = { path = "crates/lib-intl" }
@@ -107,9 +108,9 @@ ac-lib-kv = { path = "crates/lib-kv" }
 ac-lib-kv-hashmap = { path = "crates/lib-kv-hashmap" }
 ac-lib-platform = { path = "crates/lib-platform" }
 ac-lib-platform-std = { path = "crates/lib-platform-std" }
-ac-vm = { path = "crates/vm" }
-ac-vm-common = { path = "crates/vm-common" }
-ac-vm-canonical = { path = "crates/vm-canonical" }
+ac-runtime = { path = "crates/vm" }
+ac-runtime-common = { path = "crates/vm-common" }
+ac-runtime-canonical = { path = "crates/vm-canonical" }
 ac-frontend-json = { path = "crates/frontend-json" }
 ac-frontend-yaml = { path = "crates/frontend-yaml" }
 ac-frontend-toml = { path = "crates/frontend-toml" }
@@ -117,10 +118,11 @@ ac-source = { path = "crates/source" }
 ac-fields = { path = "crates/fields" }
 ac-cli = { path = "crates/cli" }
 ac-frontend = { path = "crates/frontend" }
-ac-host = { path = "crates/host" }
+ac-runtime-example-1 = { path = "crates/host" }
 ac-host-cache = { path = "crates/host-cache" }
 ac-host-resolver = { path = "crates/host-resolver" }
-ac-compiler-core = { path = "crates/compiler-core" }
+ac-compiler-common = { path = "crates/compiler-common" }
+ac-compiler-canonical = { path = "crates/compiler-canonical" }
 ac-compiler-pass-parse = { path = "crates/compiler-pass-parse" }
 ac-compiler-pass-extract = { path = "crates/compiler-pass-extract" }
 ac-compiler-pass-resolve = { path = "crates/compiler-pass-resolve" }
@@ -154,7 +156,7 @@ ac-store = { path = "crates/store" }
 ac-codebase = { path = "crates/codebase" }
 ac-integration-tests = { path = "crates/integration-tests" }
 ac-host-type = { path = "crates/host-type" }
-ac-host-sandbox = { path = "crates/host-sandbox" }
+ac-runtime-sandbox = { path = "crates/host-sandbox" }
 ac-lexer = { path = "crates/lexer" }
 ac-lexer-canonical = { path = "crates/lexer-canonical" }
 ac-lexer-common = { path = "crates/lexer-common" }
@@ -182,7 +184,6 @@ default = [
   "toml",
   "fields",
   "dialect-canonical",
-  "compiler-core",
   "compiler",
   "typecheck",
   "typegen",
@@ -204,17 +205,16 @@ default = [
   "codebase",
 ]
 
-vm = ["ac-vm", "ac-vm-canonical"]
-host = ["dep:ac-host", "vm"]
+vm = ["ac-runtime", "ac-runtime-canonical"]
+host = ["dep:ac-runtime-example-1", "vm"]
 json = ["dep:ac-frontend-json"]
 yaml = ["dep:ac-frontend-yaml"]
 toml = ["dep:ac-frontend-toml"]
 fields = ["dep:ac-fields"]
 dialect-canonical = ["dep:ac-dialect-canonical"]
-compiler-core = ["dep:ac-compiler-core"]
 compiler = [
   "dep:ac-compiler",
-  "compiler-core",
+  "dep:ac-compiler-canonical",
   "vm",
   "host",
   "fields",
@@ -232,14 +232,14 @@ resolver-memory = ["dep:ac-module-resolver-memory", "resolver-core"]
 resolver-noop = ["dep:ac-module-resolver-noop", "resolver-core"]
 resolver-file = ["dep:ac-module-resolver-file", "resolver-core"]
 resolver-virtual = ["dep:ac-module-resolver-virtual", "resolver-core"]
-lib-utils = ["dep:ac-lib-utils", "vm", "dep:ac-runtime-core"]
-lib-datetime = ["dep:ac-lib-datetime", "vm", "dep:ac-runtime-core"]
-lib-intl = ["dep:ac-lib-intl", "vm", "dep:ac-runtime-core"]
-lib-crypto = ["dep:ac-lib-crypto", "vm", "dep:ac-runtime-core"]
-lib-rand = ["dep:ac-lib-rand", "vm", "dep:ac-runtime-core"]
-lib-kv = ["dep:ac-lib-kv", "vm", "dep:ac-runtime-core"]
+lib-utils = ["dep:ac-lib-utils", "vm", "dep:ac-runtime-modules"]
+lib-datetime = ["dep:ac-lib-datetime", "vm", "dep:ac-runtime-modules"]
+lib-intl = ["dep:ac-lib-intl", "vm", "dep:ac-runtime-modules"]
+lib-crypto = ["dep:ac-lib-crypto", "vm", "dep:ac-runtime-modules"]
+lib-rand = ["dep:ac-lib-rand", "vm", "dep:ac-runtime-modules"]
+lib-kv = ["dep:ac-lib-kv", "vm", "dep:ac-runtime-modules"]
 lib-kv-hashmap = ["dep:ac-lib-kv-hashmap", "lib-kv"]
-lib-platform = ["dep:ac-lib-platform", "vm", "dep:ac-runtime-core"]
+lib-platform = ["dep:ac-lib-platform", "vm", "dep:ac-runtime-modules"]
 lib-platform-std = ["dep:ac-lib-platform-std", "lib-platform"]
 store = ["dep:ac-store"]
 codebase = ["dep:ac-codebase", "store"]
@@ -248,20 +248,20 @@ codebase = ["dep:ac-codebase", "store"]
 ac-ast.workspace = true
 ac-ast-canonical.workspace = true
 ac-dialect.workspace = true
-ac-runtime.workspace = true
+ac-runtime-values.workspace = true
 ac-source.workspace = true
 
 ac-dialect-canonical = { workspace = true, optional = true }
-ac-runtime-core = { workspace = true, optional = true }
-ac-vm = { workspace = true, optional = true }
-ac-vm-canonical = { workspace = true, optional = true }
-ac-host = { workspace = true, optional = true }
+ac-runtime-modules = { workspace = true, optional = true }
+ac-runtime = { workspace = true, optional = true }
+ac-runtime-canonical = { workspace = true, optional = true }
+ac-runtime-example-1 = { workspace = true, optional = true }
 ac-frontend-json = { workspace = true, optional = true }
 ac-frontend-yaml = { workspace = true, optional = true }
 ac-frontend-toml = { workspace = true, optional = true }
 ac-fields = { workspace = true, optional = true }
 ac-compiler = { workspace = true, optional = true }
-ac-compiler-core = { workspace = true, optional = true }
+ac-compiler-canonical = { workspace = true, optional = true }
 ac-module-resolver-core = { workspace = true, optional = true }
 ac-module-resolver-memory = { workspace = true, optional = true }
 ac-module-resolver-noop = { workspace = true, optional = true }
@@ -282,7 +282,7 @@ ac-lib-platform = { workspace = true, optional = true }
 ac-lib-platform-std = { workspace = true, optional = true }
 ac-store = { workspace = true, optional = true }
 ac-codebase = { workspace = true, optional = true }
-ac-host-sandbox = { workspace = true, optional = true }
+ac-runtime-sandbox = { workspace = true, optional = true }
 
 [dev-dependencies]
 serde_json = "1"

@@ -1,5 +1,5 @@
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{obj_value, require_function_value, require_object, require_two_args};
 use crate::shared::{apply_fn, is_truthy_fn, require_one_arg, value_to_string};

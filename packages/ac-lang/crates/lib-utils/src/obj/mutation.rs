@@ -1,5 +1,5 @@
 use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use super::common::{
     obj_value, require_function_value, require_object, require_string,

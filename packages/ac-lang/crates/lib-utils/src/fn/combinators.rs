@@ -1,5 +1,5 @@
 use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 
 use crate::shared::{
     arr, apply_fn, apply_fn2, bind_all_params, is_truthy_fn, require_array, require_function_value,

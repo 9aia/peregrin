@@ -1,6 +1,6 @@
 use ac_runtime::NonFunctionValue;
-use ac_runtime_core::Module;
-use ac_vm::{Context, Error};
+use ac_runtime_modules::Module;
+use ac_runtime::{Context, Error};
 
 use super::DateTimeModule;
 
@@ -155,8 +155,8 @@ fn to_unix_extra_args_ignored() {
 // ── VM integration tests ─────────────────────────────────────────
 
 use ac_ast_canonical::Expr;
-use ac_runtime_core::ModuleHost;
-use ac_vm_canonical::{CanonicalContext, Host, Vm};
+use ac_runtime_modules::ModuleHost;
+use ac_runtime_canonical::{CanonicalContext, Host, Vm};
 
 fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let host = ModuleHost::new().with(DateTimeModule);

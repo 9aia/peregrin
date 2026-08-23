@@ -1,12 +1,12 @@
 [package]
-name = "ac-runtime-core"
+name = "ac-runtime-modules"
 version.workspace = true
 edition.workspace = true
 
 [dependencies]
-ac-vm.workspace = true
-ac-vm-canonical.workspace = true
 ac-runtime.workspace = true
+ac-runtime-canonical.workspace = true
+ac-runtime-values.workspace = true
 
 [dev-dependencies]
 ac-ast.workspace = true

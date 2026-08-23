@@ -1,7 +1,7 @@
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_runtime::NonFunctionValue;
-use ac_vm::{Context, Error, Function};
+use ac_runtime::{Context, Error, Function};
 use serde_json::Value as JsonValue;
 
 // ── reflection ──────────────────────────────────────────────

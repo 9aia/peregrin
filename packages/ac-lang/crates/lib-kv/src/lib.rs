@@ -15,7 +15,7 @@
 //! ## Usage
 //!
 //! ```ignore
-//! use ac_runtime_core::ModuleHost;
+//! use ac_runtime_modules::ModuleHost;
 //! use ac_lib_kv::KeyValueStoreModule;
 //! use ac_lib_kv_hashmap::HashKeyValueStore;
 //!
