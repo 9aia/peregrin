@@ -7,4 +7,11 @@ edition.workspace = true
 ac-lib-os.workspace = true
 
 [target."cfg(unix)".dependencies]
+mio = { version = "1", features = ["net", "os-poll"] }
 nix = { version = "0.29", features = ["signal", "process"] }
+
+[dev-dependencies]
+ac-ast-canonical.workspace = true
+ac-runtime.workspace = true
+ac-runtime-canonical.workspace = true
+ac-runtime-modules.workspace = true

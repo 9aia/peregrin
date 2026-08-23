@@ -34,10 +34,15 @@ mod socket;
 mod time;
 mod tmp;
 
+#[cfg(unix)]
+mod mio_socket;
+
 #[cfg(test)]
 mod sig_tests;
 #[cfg(test)]
 mod socket_tests;
+#[cfg(all(test, unix))]
+mod mio_socket_tests;
 
 pub use cmd::StdCmd;
 pub use env::StdEnv;
@@ -45,5 +50,7 @@ pub use fs::StdFs;
 pub use path::StdPath;
 pub use sig::StdSig;
 pub use socket::StdSocket;
+#[cfg(unix)]
+pub use mio_socket::MioSocket;
 pub use time::StdTime;
 pub use tmp::StdTmp;

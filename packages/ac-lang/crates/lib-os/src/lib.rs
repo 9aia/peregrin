@@ -99,6 +99,7 @@ pub use tmp::TmpModule;
 
 pub use socket::Socket;
 pub use socket::SocketModule;
+pub use socket::{AsyncSocket, AsyncSocketModule};
 
 pub use sig::Sig;
 pub use sig::SigModule;

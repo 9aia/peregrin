@@ -564,7 +564,12 @@ dependencies = [
 name = "ac-lib-os-std"
 version = "0.1.0"
 dependencies = [
+ "ac-ast-canonical",
  "ac-lib-os",
+ "ac-runtime",
+ "ac-runtime-canonical",
+ "ac-runtime-modules",
+ "mio",
  "nix",
 ]
 
@@ -2540,6 +2545,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "30d65c71f1ce40ab09135ce117d742b9f8a19ff91a41a8b57ed50bc2de59c427"
 dependencies = [
  "libc",
+ "log",
  "wasi",
  "windows-sys 0.61.2",
 ]
