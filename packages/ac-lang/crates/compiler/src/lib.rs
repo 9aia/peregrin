@@ -22,7 +22,6 @@
 //! > **The engine knows nothing about how input is read or how output
 //! > is presented.** Callers handle I/O; the engine handles logic.
 
-mod expr_eval;
 mod resolver;
 
 pub mod eval;
@@ -33,11 +32,13 @@ pub mod typegen;
 pub mod validate;
 
 pub use ac_compiler_core::{
-    Compilation, Config, Diagnostic, DiagnosticSink, Folder, Pass, PassCategory, PassError,
-    PassGroup, PassMetadata, Pipeline, Severity, Source, Visitor,
+    CheckedDoc, Compilation, Config, Diagnostic, DiagnosticSink, DriverDiagnostic, DriverError,
+    DriverPipeline, DriverSeverity, ExtractedDoc, Folder, OptPass, OptPassError, Outcome,
+    Pass, PassCategory, PassError, PassGroup, PassManager, PassMetadata, PassRun, ParsedDoc,
+    Pipeline, Report, ResolvedDoc, Session, Severity, Source, Stage, Then, TypecheckResult,
+    Visitor,
 };
-pub use expr_eval::ExprEval;
-pub use resolver::VmResolver;
+pub use resolver::{CompilerHost, Import};
 
 /// Default configuration for CLI usage:
 /// - `FileResolver` with `MemoryModuleCache` for filesystem imports
@@ -100,4 +101,66 @@ pub fn full_pipeline(config: Config) -> Pipeline {
         .with_pass(ac_compiler_pass_resolve::ResolvePass)
         .with_pass(ac_compiler_pass_typecheck::TypecheckPass)
         .with_pass(ac_compiler_pass_generate::GeneratePass)
+}
+
+// ---------------------------------------------------------------------------
+// driver-lang pipelines — type-checked phase chains
+// ---------------------------------------------------------------------------
+
+/// Typegen driver pipeline: `Source → ParsedDoc → ExtractedDoc → ResolvedDoc → JsonValue`.
+///
+/// Compile-time guarantee that phases connect correctly.
+/// Returns a `DriverPipeline<Config, ...>` that you run with a `Session<Config>`.
+pub fn typegen_driver() -> DriverPipeline<
+    Config,
+    Then<
+        Then<
+            Then<ac_compiler_pass_parse::ParseStage, ac_compiler_pass_extract::ExtractStage>,
+            ac_compiler_pass_resolve::ResolveStage,
+        >,
+        ac_compiler_pass_generate::GenerateFromResolvedStage,
+    >,
+> {
+    DriverPipeline::new(ac_compiler_pass_parse::ParseStage)
+        .then(ac_compiler_pass_extract::ExtractStage)
+        .then(ac_compiler_pass_resolve::ResolveStage)
+        .then(ac_compiler_pass_generate::GenerateFromResolvedStage)
+}
+
+/// Typecheck driver pipeline: `Source → ParsedDoc → ExtractedDoc → TypecheckResult`.
+///
+/// Standalone type checking without import resolution.
+pub fn typecheck_driver() -> DriverPipeline<
+    Config,
+    Then<
+        Then<ac_compiler_pass_parse::ParseStage, ac_compiler_pass_extract::ExtractStage>,
+        ac_compiler_pass_typecheck::TypecheckOnlyStage,
+    >,
+> {
+    DriverPipeline::new(ac_compiler_pass_parse::ParseStage)
+        .then(ac_compiler_pass_extract::ExtractStage)
+        .then(ac_compiler_pass_typecheck::TypecheckOnlyStage)
+}
+
+/// Full driver pipeline: `Source → ParsedDoc → ExtractedDoc → ResolvedDoc → CheckedDoc → JsonValue`.
+///
+/// Full compilation with type checking before generation.
+pub fn full_driver() -> DriverPipeline<
+    Config,
+    Then<
+        Then<
+            Then<
+                Then<ac_compiler_pass_parse::ParseStage, ac_compiler_pass_extract::ExtractStage>,
+                ac_compiler_pass_resolve::ResolveStage,
+            >,
+            ac_compiler_pass_typecheck::TypecheckStage,
+        >,
+        ac_compiler_pass_generate::GenerateStage,
+    >,
+> {
+    DriverPipeline::new(ac_compiler_pass_parse::ParseStage)
+        .then(ac_compiler_pass_extract::ExtractStage)
+        .then(ac_compiler_pass_resolve::ResolveStage)
+        .then(ac_compiler_pass_typecheck::TypecheckStage)
+        .then(ac_compiler_pass_generate::GenerateStage)
 }

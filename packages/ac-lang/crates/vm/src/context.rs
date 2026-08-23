@@ -3,6 +3,8 @@ use crate::Error;
 use crate::Eval;
 use ac_runtime::NonFunctionValue;
 use indexmap::IndexMap;
+use serde_json::Value as JsonValue;
+use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
 
@@ -34,6 +36,30 @@ impl Context {
             eval: None,
             async_eval: None,
         }
+    }
+
+    /// Creates a context with each namespace root bound as a variable.
+    ///
+    /// Also promotes the top-level keys of every object-valued namespace
+    /// (conventionally `doc`) to variables, so shorthand references like
+    /// `transform` resolve directly.
+    pub fn from_namespaces(namespaces: &HashMap<String, JsonValue>) -> Self {
+        let mut ctx = Self::new();
+        for (name, value) in namespaces {
+            ctx.define(name.clone(), NonFunctionValue::new(value.clone()));
+        }
+        for (name, value) in namespaces {
+            if let Some(obj) = value.as_object() {
+                for (key, val) in obj {
+                    // The key shadows the namespace name if they collide;
+                    // this mirrors "name" being a shorthand for "doc.name".
+                    if key != name {
+                        ctx.define(key.clone(), NonFunctionValue::new(val.clone()));
+                    }
+                }
+            }
+        }
+        ctx
     }
 
     /// Sets the [`Eval`] callback for this context.

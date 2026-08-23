@@ -274,3 +274,35 @@ pub trait LazyFunction {
         evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut Context) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error>;
 }
+
+/// A borrowed reference to a [`Host`] that itself implements [`Host`].
+///
+/// This lets the generic [`Vm`] run against a `&dyn Host` without
+/// needing ownership of the host value.
+#[derive(Clone, Copy)]
+pub struct HostRef<'a>(pub &'a dyn Host);
+
+impl<'a> HostRef<'a> {
+    /// Wraps a `&dyn Host` for use with the VM.
+    pub fn new(host: &'a dyn Host) -> Self {
+        HostRef(host)
+    }
+}
+
+impl<'a> Host for HostRef<'a> {
+    fn function(&self, name: &str) -> Option<&dyn Function> {
+        self.0.function(name)
+    }
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+        self.0.async_function(name)
+    }
+    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+        self.0.operation(name)
+    }
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+        self.0.lazy_function(name)
+    }
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+        self.0.generic_function(name)
+    }
+}

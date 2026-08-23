@@ -1,6 +1,6 @@
 use ac_vm::{Function, Host};
 
-use crate::functions::{Add, Concat, Len, Mul};
+use crate::functions::{Add, Apply, Array, Concat, Len, Mul, Resolve, Var};
 
 #[derive(Clone)]
 pub struct DefaultHost {
@@ -8,6 +8,10 @@ pub struct DefaultHost {
     pub mul: Mul,
     pub concat: Concat,
     pub len: Len,
+    pub var: Var,
+    pub resolve: Resolve,
+    pub apply: Apply,
+    pub array: Array,
 }
 
 impl Default for DefaultHost {
@@ -17,6 +21,10 @@ impl Default for DefaultHost {
             mul: Mul,
             concat: Concat,
             len: Len,
+            var: Var,
+            resolve: Resolve,
+            apply: Apply,
+            array: Array,
         }
     }
 }
@@ -28,6 +36,10 @@ impl Host for DefaultHost {
             "mul" => Some(&self.mul),
             "concat" => Some(&self.concat),
             "len" => Some(&self.len),
+            "var" => Some(&self.var),
+            "resolve" => Some(&self.resolve),
+            "apply" => Some(&self.apply),
+            "array" => Some(&self.array),
             _ => None,
         }
     }

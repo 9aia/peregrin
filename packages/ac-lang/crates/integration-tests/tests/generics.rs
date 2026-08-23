@@ -6,14 +6,46 @@
 //! 3. Host module (lib-utils ArrayModule) responds to generic dispatch
 
 use ac_ast::Expr;
+use ac_dialect_canonical::AC_DIALECT;
+use ac_fields::{self, Namespaces};
+use ac_host::DefaultHost;
 use ac_lib_utils::ArrayModule;
 use ac_runtime::NonFunctionValue;
 use ac_runtime_core::ModuleHost;
 use ac_typecheck_core::{SchemaInterpreter, Type};
 use ac_typecheck_infer::{FunctionTable, HostFunctionSigs};
 use ac_typecheck_schema_json::JsonSchemaInterpreter;
-use ac_vm::{Context, Vm};
+use ac_vm::{Context, Error, Eval, Vm};
 use serde_json::json;
+
+/// Minimal [`Eval`] implementation for integration tests.
+struct TestEval {
+    host: DefaultHost,
+    namespaces: Namespaces,
+}
+
+impl TestEval {
+    fn new(host: DefaultHost, namespaces: Namespaces) -> Self {
+        TestEval { host, namespaces }
+    }
+}
+
+impl Eval for TestEval {
+    fn eval_expr(
+        &self,
+        expr: &str,
+        vars: &[(String, NonFunctionValue)],
+    ) -> Result<NonFunctionValue, Error> {
+        let params: Vec<(String, serde_json::Value)> = vars
+            .iter()
+            .map(|(n, v)| (n.clone(), v.clone().into_inner()))
+            .collect();
+        let result =
+            ac_fields::eval_body(expr, &params, &self.namespaces, &self.host, &AC_DIALECT)
+                .ok_or_else(|| Error::PrimitiveError(format!("failed to evaluate: {expr}")))?;
+        Ok(NonFunctionValue::new(result))
+    }
+}
 
 fn build_host() -> ModuleHost {
     ModuleHost::new().with(ArrayModule)
@@ -396,11 +428,11 @@ fn e2e_vm_evaluates_generic_map_with_type_args() {
     let mut ctx = ac_vm::Context::new();
 
     // Set up eval callback for higher-order function body evaluation
-    let eval = ac_compiler::ExprEval::new(
+    let eval = Box::new(TestEval::new(
         ac_host::DefaultHost::default(),
         ac_fields::Namespaces::new(),
-    );
-    ctx.set_eval(Box::new(eval));
+    ));
+    ctx.set_eval(eval);
 
     // Create a function value: { body: "mul(x, 2)", params: [{name: "x", schema: {type: number}}] }
     let fn_val = serde_json::json!({
@@ -443,11 +475,11 @@ fn e2e_vm_evaluates_generic_filter_with_type_args() {
     let vm = ac_vm::Vm::new(host);
     let mut ctx = ac_vm::Context::new();
 
-    let eval = ac_compiler::ExprEval::new(
+    let eval = Box::new(TestEval::new(
         ac_host::DefaultHost::default(),
         ac_fields::Namespaces::new(),
-    );
-    ctx.set_eval(Box::new(eval));
+    ));
+    ctx.set_eval(eval);
 
     // Filter with identity function — all numbers are truthy
     let fn_val = serde_json::json!({
@@ -490,11 +522,11 @@ fn e2e_vm_evaluates_generic_reduce_with_type_args() {
     let vm = ac_vm::Vm::new(host);
     let mut ctx = ac_vm::Context::new();
 
-    let eval = ac_compiler::ExprEval::new(
+    let eval = Box::new(TestEval::new(
         ac_host::DefaultHost::default(),
         ac_fields::Namespaces::new(),
-    );
-    ctx.set_eval(Box::new(eval));
+    ));
+    ctx.set_eval(eval);
 
     // Reduce: add(acc, x) with init 0
     let fn_val = serde_json::json!({
@@ -545,11 +577,11 @@ fn e2e_unknown_type_args_fall_back_gracefully() {
     let vm = ac_vm::Vm::new(host);
     let mut ctx = ac_vm::Context::new();
 
-    let eval = ac_compiler::ExprEval::new(
+    let eval = Box::new(TestEval::new(
         ac_host::DefaultHost::default(),
         ac_fields::Namespaces::new(),
-    );
-    ctx.set_eval(Box::new(eval));
+    ));
+    ctx.set_eval(eval);
 
     let fn_val = serde_json::json!({
         "body": "x",

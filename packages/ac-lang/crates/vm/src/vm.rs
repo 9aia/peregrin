@@ -117,12 +117,21 @@ impl<H: Host> Vm<H> {
                     }
                 }
 
-                let function = self
-                    .host
-                    .function(name)
-                    .ok_or_else(|| Error::UnknownFunction(name.clone()))?;
+                if let Some(function) = self.host.function(name) {
+                    return function.call(&evaluated_args, ctx);
+                }
 
-                function.call(&evaluated_args, ctx)
+                if let Ok(value) = ctx.get(name) && value.is_function() {
+                    let apply = self
+                        .host
+                        .function("apply")
+                        .ok_or_else(|| Error::UnknownFunction("apply".to_string()))?;
+                    let mut apply_args = vec![value];
+                    apply_args.extend(evaluated_args);
+                    return apply.call(&apply_args, ctx);
+                }
+
+                Err(Error::UnknownFunction(name.clone()))
             }
         }
     }
@@ -208,6 +217,16 @@ impl<H: Host> Vm<H> {
 
                 if let Some(function) = self.host.function(name) {
                     return function.call(&evaluated_args, ctx);
+                }
+
+                if let Ok(value) = ctx.get(name) && value.is_function() {
+                    let apply = self
+                        .host
+                        .function("apply")
+                        .ok_or_else(|| Error::UnknownFunction("apply".to_string()))?;
+                    let mut apply_args = vec![value];
+                    apply_args.extend(evaluated_args);
+                    return apply.call(&apply_args, ctx);
                 }
 
                 if let Some(async_function) = self.host.async_function(name) {

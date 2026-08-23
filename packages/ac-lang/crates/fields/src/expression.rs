@@ -1,7 +1,10 @@
-use crate::path::resolve_path;
-use crate::types::{APPLY_FUNCTION, DEFAULT_NAMESPACE, FunctionResolver, Namespaces};
 use ac_dialect::Dialect;
+use ac_runtime::NonFunctionValue;
+use ac_vm::{Context, Eval, Error, Host, Vm};
 use serde_json::Value as JsonValue;
+
+use crate::parser::parse_expr_to_tree;
+use crate::types::{DEFAULT_NAMESPACE, Namespaces};
 
 /// Evaluates a single expression to a `JsonValue`.
 ///
@@ -11,34 +14,39 @@ use serde_json::Value as JsonValue;
 /// - Literals: `"string"`, `123`, `true`, `false`, `null`
 ///
 /// Returns `None` if the expression cannot be resolved.
-pub fn eval_expression(
+pub fn eval_expression<H: Host + Clone + 'static>(
     expr: &str,
     namespaces: &Namespaces,
-    resolver: &dyn FunctionResolver,
-    dialect: &dyn Dialect,
+    host: &H,
+    dialect: &'static dyn Dialect,
 ) -> Option<JsonValue> {
     let expr = expr.trim();
     if expr.is_empty() {
         return None;
     }
 
-    eval_expr_inner(expr, namespaces, resolver, dialect)
+    let tree = parse_expr_to_tree(expr, dialect, namespaces)?;
+    let mut ctx = Context::from_namespaces(namespaces);
+    let eval = VmEval::new(host.clone(), namespaces.clone(), dialect);
+    ctx.set_eval(Box::new(eval.clone()));
+    let vm = Vm::new(host.clone());
+    vm.eval(&tree, &mut ctx).ok().map(|v| v.into_inner())
 }
 
 /// Evaluates a user-defined function body expression.
 ///
 /// Params are merged into the default namespace (shadowing fields
 /// with the same name), so bare names like `x` resolve via shorthand.
-/// The resolver is passed through, so the body can call host primitives
+/// The host is passed through, so the body can call host primitives
 /// and other user-defined functions.
 ///
 /// Returns `None` if the body cannot be evaluated.
-pub fn eval_body(
+pub fn eval_body<H: Host + Clone + 'static>(
     body: &str,
     params: &[(String, JsonValue)],
     namespaces: &Namespaces,
-    resolver: &dyn FunctionResolver,
-    dialect: &dyn Dialect,
+    host: &H,
+    dialect: &'static dyn Dialect,
 ) -> Option<JsonValue> {
     let mut merged = namespaces.clone();
     let mut doc_obj = merged
@@ -50,134 +58,54 @@ pub fn eval_body(
         doc_obj.insert(name.clone(), value.clone());
     }
     merged.insert(DEFAULT_NAMESPACE.to_string(), JsonValue::Object(doc_obj));
-    eval_expression(body, &merged, resolver, dialect)
+    eval_expression(body, &merged, host, dialect)
 }
 
-/// Internal expression evaluator shared by `eval_expression` and interpolation.
-pub(crate) fn eval_expr_inner(
-    expr: &str,
-    namespaces: &Namespaces,
-    resolver: &dyn FunctionResolver,
-    dialect: &dyn Dialect,
-) -> Option<JsonValue> {
-    let expr = expr.trim();
-    if expr.is_empty() {
-        return None;
+#[derive(Clone)]
+struct VmEval<H: Host + Clone + 'static> {
+    host: H,
+    namespaces: Namespaces,
+    dialect: &'static dyn Dialect,
+}
+
+impl<H: Host + Clone + 'static> VmEval<H> {
+    fn new(host: H, namespaces: Namespaces, dialect: &'static dyn Dialect) -> Self {
+        VmEval {
+            host,
+            namespaces,
+            dialect,
+        }
     }
+}
 
-    // Function call: name(args)
-    if let Some(paren_pos) = dialect.parser().find_call_open(expr)
-        && expr.ends_with(dialect.syntax().call_close())
-        && paren_pos < expr.len() - 1
-        && !expr[..paren_pos].trim().is_empty()
-    {
-        let name = &expr[..paren_pos];
-        let args_str = &expr[paren_pos + 1..expr.len() - 1];
-        let args = parse_args(args_str, namespaces, resolver, dialect)?;
-
-        let name_trimmed = name.trim();
-
-        // Try resolving the name as a path. If it resolves to a
-        // function value, dispatch via `apply`. If it resolves to
-        // a non-function (e.g. a field named "import" that holds
-        // a string), apply fails and we fall through to the host
-        // function call. If it doesn't resolve at all, fall through.
-        if let Some(val) = resolve_path(name_trimmed, namespaces, dialect.syntax().path_separator())
-        {
-            let mut apply_args = vec![val];
-            apply_args.extend(args.iter().cloned());
-            if let Ok(result) = resolver.call(APPLY_FUNCTION, &apply_args) {
-                return Some(result);
+impl<H: Host + Clone + 'static> Eval for VmEval<H> {
+    fn eval_expr(
+        &self,
+        expr: &str,
+        vars: &[(String, NonFunctionValue)],
+    ) -> Result<NonFunctionValue, Error> {
+        let mut doc = self
+            .namespaces
+            .get(DEFAULT_NAMESPACE)
+            .cloned()
+            .unwrap_or(JsonValue::Object(serde_json::Map::new()));
+        if let Some(obj) = doc.as_object_mut() {
+            for (name, value) in vars {
+                obj.insert(name.clone(), value.inner().clone());
             }
         }
 
-        // Resolve type arguments for generic calls via the typechecker.
-        let type_args = resolver.type_args_for(expr);
-        resolver
-            .call_with_type_args(name_trimmed, &args, &type_args)
-            .ok()
-    } else {
-        // Path lookup: ns.key.subkey or shorthand key
-        resolve_path(expr, namespaces, dialect.syntax().path_separator())
+        let mut ctx = Context::from_namespaces(&self.namespaces);
+        ctx.define(DEFAULT_NAMESPACE, NonFunctionValue::new(doc));
+        for (name, value) in vars {
+            ctx.define(name.clone(), value.clone());
+        }
+
+        let tree = parse_expr_to_tree(expr, self.dialect, &self.namespaces)
+            .ok_or_else(|| Error::PrimitiveError(format!("failed to parse expression: {expr}")))?;
+
+        ctx.set_eval(Box::new(self.clone()));
+        let vm = Vm::new(self.host.clone());
+        vm.eval(&tree, &mut ctx)
     }
-}
-
-/// Parses function call arguments, evaluating each one.
-fn parse_args(
-    args_str: &str,
-    namespaces: &Namespaces,
-    resolver: &dyn FunctionResolver,
-    dialect: &dyn Dialect,
-) -> Option<Vec<JsonValue>> {
-    let args_str = args_str.trim();
-    if args_str.is_empty() {
-        return Some(Vec::new());
-    }
-
-    let mut args = Vec::new();
-    for arg in dialect.parser().split_args(args_str) {
-        let arg = arg.trim();
-        let val = eval_arg(arg, namespaces, resolver, dialect)?;
-        args.push(val);
-    }
-    Some(args)
-}
-
-/// Evaluates a single argument value.
-///
-/// - `"literal"` → string literal
-/// - `123` / `1.5` → number literal
-/// - `true` / `false` → boolean literal
-/// - `${...}` → nested interpolation (recursive)
-/// - `ns.path` or `shorthand` → path lookup
-fn eval_arg(
-    arg: &str,
-    namespaces: &Namespaces,
-    resolver: &dyn FunctionResolver,
-    dialect: &dyn Dialect,
-) -> Option<JsonValue> {
-    let arg = arg.trim();
-
-    // Nested interpolation (e.g. ${...} for canonical dialect)
-    let prefix = dialect.syntax().interpolation_prefix();
-    let suffix = dialect.syntax().interpolation_suffix();
-    if arg.starts_with(prefix) && arg.ends_with(suffix) && arg.len() > prefix.len() + suffix.len() {
-        let inner = &arg[prefix.len()..arg.len() - suffix.len()];
-        return eval_expr_inner(inner, namespaces, resolver, dialect);
-    }
-
-    // String literal
-    if let Some(s) = dialect.parser().parse_string_literal(arg) {
-        return Some(JsonValue::String(s));
-    }
-
-    // Number literal
-    if let Some(n) = dialect.parser().parse_number_literal(arg) {
-        return serde_json::Number::from_f64(n).map(JsonValue::Number);
-    }
-
-    // Boolean literal
-    if let Some(b) = dialect.parser().parse_bool_literal(arg) {
-        return Some(JsonValue::Bool(b));
-    }
-
-    // Null literal
-    if dialect.parser().is_null_literal(arg) {
-        return Some(JsonValue::Null);
-    }
-
-    // Array literal: [a, b, c]
-    if arg.starts_with('[') && arg.ends_with(']') && arg.len() >= 2 {
-        let inner = &arg[1..arg.len() - 1];
-        let items = parse_args(inner, namespaces, resolver, dialect)?;
-        return Some(JsonValue::Array(items));
-    }
-
-    // Nested function call
-    if dialect.parser().find_call_open(arg).is_some() {
-        return eval_expr_inner(arg, namespaces, resolver, dialect);
-    }
-
-    // Path lookup (namespace or shorthand)
-    resolve_path(arg, namespaces, dialect.syntax().path_separator())
 }

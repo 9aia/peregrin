@@ -1,10 +1,11 @@
 //! Minimal demo: functions as host sugar.
 //! Run: `cargo run -p experiment-host-sugar`
 
-use std::cell::Cell;
+use std::cell::RefCell;
 use std::collections::HashMap;
+use std::rc::Rc;
 
-use ac_compiler::VmResolver;
+use ac_compiler::{CompilerHost, Import};
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{DEFAULT_NAMESPACE, build_doc_namespace, eval_expression};
 use ac_host::DefaultHost;
@@ -49,22 +50,17 @@ n: 5
     ns.insert(DEFAULT_NAMESPACE.to_string(), build_doc_namespace(&doc));
 
     let fr = FileResolver::with_cache(MemoryModuleCache::new());
-    let resolver = VmResolver {
-        host: DefaultHost::default(),
-        namespaces: ns.clone(),
-        depth: Cell::new(0),
-        call_chain: std::cell::RefCell::new(Vec::new()),
-        base_path: None,
-        import_cache: std::cell::RefCell::new(HashMap::new()),
-        resolver: Some(&fr),
-        type_env: None,
-        function_table: None,
-    };
+    let import = Import::new(
+        None,
+        Rc::new(Box::new(fr) as Box<dyn ac_module_resolver_core::ModuleResolver>),
+        Rc::new(RefCell::new(HashMap::new())),
+    );
+    let host = CompilerHost::new(DefaultHost::default(), import, &ns);
 
     println!("\n--- expression ---\n");
 
     // double(5) → host sugar finds doc.functions.double (has body) → apply → mul(5, 2) = 10
-    let r = eval_expression("double(n)", &ns, &resolver, &AC_DIALECT).unwrap();
+    let r = eval_expression("double(n)", &ns, &host, &AC_DIALECT).unwrap();
     println!("double(n)");
     println!("  → doc.functions.double has 'body' → dispatch via apply");
     println!("  → apply binds x=5, evaluates mul(x, 2)");

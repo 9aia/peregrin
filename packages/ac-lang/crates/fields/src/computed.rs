@@ -1,6 +1,7 @@
 use crate::expression::eval_expression;
-use crate::types::{ArgSpec, ComputedField, DEFAULT_NAMESPACE, FunctionResolver, Namespaces};
+use crate::types::{ArgSpec, ComputedField, DEFAULT_NAMESPACE, Namespaces};
 use ac_dialect::Dialect;
+use ac_vm::Host;
 use serde_json::Value as JsonValue;
 
 /// Evaluates computed field expressions and inserts results into `data`.
@@ -16,12 +17,12 @@ use serde_json::Value as JsonValue;
 ///
 /// Returns a list of error messages for any computed fields that could not
 /// be evaluated after all passes.
-pub fn compute_fields(
+pub fn compute_fields<H: Host + Clone + 'static>(
     data: &mut JsonValue,
     computed: &[ComputedField],
     namespaces: &mut Namespaces,
-    resolver: &dyn FunctionResolver,
-    dialect: &dyn Dialect,
+    host: &H,
+    dialect: &'static dyn Dialect,
 ) -> Vec<String> {
     if computed.is_empty() {
         return Vec::new();
@@ -61,7 +62,7 @@ pub fn compute_fields(
                 arg_bound = true;
             }
 
-            if let Some(val) = eval_expression(&field.expr, namespaces, resolver, dialect) {
+            if let Some(val) = eval_expression(&field.expr, namespaces, host, dialect) {
                 if let Some(obj) = data.as_object_mut() {
                     obj.insert(field.name.clone(), val.clone());
                 }

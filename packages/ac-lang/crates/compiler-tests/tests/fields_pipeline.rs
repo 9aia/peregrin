@@ -7,33 +7,13 @@ use ac_dialect::Schema;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_dialect_canonical::JsonSchema;
 use ac_fields::{
-    self, FunctionResolver, Namespaces, build_doc_namespace, compute_fields, extract_fields,
-    interpolate, merge_fields,
+    self, Namespaces, build_doc_namespace, compute_fields, extract_fields, interpolate,
+    merge_fields,
 };
 use ac_frontend_yaml;
+use ac_host::DefaultHost;
 use ac_runtime::NonFunctionValue;
 use serde_json::Value as JsonValue;
-
-struct AddResolver;
-impl FunctionResolver for AddResolver {
-    fn call(&self, name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
-        match name {
-            "add" => {
-                let sum: f64 = args.iter().filter_map(|v| v.as_f64()).sum();
-                serde_json::Number::from_f64(sum)
-                    .map(JsonValue::Number)
-                    .ok_or("NaN".to_string())
-            }
-            "mul" => {
-                let product: f64 = args.iter().filter_map(|v| v.as_f64()).product();
-                serde_json::Number::from_f64(product)
-                    .map(JsonValue::Number)
-                    .ok_or("NaN".to_string())
-            }
-            _ => Err(format!("unknown function: {name}")),
-        }
-    }
-}
 
 #[test]
 fn full_pipeline_parse_extract_interpolate_compute_validate() {
@@ -63,7 +43,7 @@ version: 3
     let interpolated = interpolate(
         extracted.data.inner(),
         &namespaces,
-        &AddResolver,
+        &DefaultHost::default(),
         &AC_DIALECT,
     );
     let mut data = NonFunctionValue::new(interpolated);
@@ -72,7 +52,7 @@ version: 3
         data.inner_mut(),
         &extracted.computed,
         &mut namespaces,
-        &AddResolver,
+        &DefaultHost::default(),
         &AC_DIALECT,
     );
     assert!(compute_errors.is_empty());

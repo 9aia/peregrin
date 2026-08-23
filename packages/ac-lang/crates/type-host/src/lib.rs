@@ -16,9 +16,8 @@ use std::collections::HashMap;
 use ac_ast::Expr;
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
-use ac_fields::{
-    eval_expression, APPLY_FUNCTION, DEFAULT_NAMESPACE, FunctionResolver, Namespaces,
-};
+use ac_fields::{eval_expression, APPLY_FUNCTION, DEFAULT_NAMESPACE, Namespaces};
+use ac_host::DefaultHost;
 use ac_lib_utils::{ArrayModule, BoolModule, FnModule, ObjModule, StrModule};
 use ac_runtime::{FunctionValue, NonFunctionValue};
 use ac_runtime_core::ModuleHost;
@@ -450,10 +449,11 @@ impl Function for AppArgsCompatible {
 // ── TypeHost: composite host with lib-utils + type helpers ──────────
 
 /// A host that provides type-checking helper functions alongside
-/// the standard `lib-utils` modules.
+/// the standard `lib-utils` modules and default `var`/`resolve`.
 #[derive(Clone)]
 pub struct TypeHost {
     inner: ModuleHost,
+    default: DefaultHost,
 }
 
 impl TypeHost {
@@ -465,7 +465,10 @@ impl TypeHost {
             .with(ArrayModule)
             .with(FnModule)
             .with(TypeHelpersModule);
-        TypeHost { inner }
+        TypeHost {
+            inner,
+            default: DefaultHost::default(),
+        }
     }
 }
 
@@ -477,7 +480,9 @@ impl Default for TypeHost {
 
 impl Host for TypeHost {
     fn function(&self, name: &str) -> Option<&dyn Function> {
-        self.inner.function(name)
+        self.inner
+            .function(name)
+            .or_else(|| self.default.function(name))
     }
 
     fn lazy_function(&self, name: &str) -> Option<&dyn ac_vm::LazyFunction> {
@@ -617,9 +622,7 @@ impl TypeEval {
         }
 
         // Delegate to ac_fields for everything else
-        // Update self.namespaces so FunctionResolver::call sees the same merged ns
-        *self.namespaces.borrow_mut() = namespaces.clone();
-        eval_expression(expr, namespaces, self, &AC_DIALECT)
+        eval_expression(expr, namespaces, &self.host, &AC_DIALECT)
     }
 
     fn eval_bool_if(&self, args: &[String], namespaces: &Namespaces) -> Option<JsonValue> {
@@ -698,30 +701,7 @@ impl TypeEval {
     }
 }
 
-impl FunctionResolver for TypeEval {
-    fn call(&self, name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {
-        let depth = self.depth.get();
-        if depth >= MAX_DEPTH {
-            return Err(format!(
-                "maximum recursion depth ({MAX_DEPTH}) exceeded calling '{name}'"
-            ));
-        }
-        self.check_cycle(name)?;
-        self.enter_call(name);
-        let result = self.call_inner(name, args);
-        self.exit_call(depth);
-        result
-    }
 
-    fn call_with_type_args(
-        &self,
-        name: &str,
-        args: &[JsonValue],
-        _type_args: &[String],
-    ) -> Result<JsonValue, String> {
-        self.call(name, args)
-    }
-}
 
 impl TypeEval {
     fn call_inner(&self, name: &str, args: &[JsonValue]) -> Result<JsonValue, String> {

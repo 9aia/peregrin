@@ -10,5 +10,5 @@
 mod functions;
 mod host;
 
-pub use functions::{Add, Concat, Len, Mul};
+pub use functions::{Add, Apply, Array, Concat, Len, Mul, Resolve, Var};
 pub use host::DefaultHost;

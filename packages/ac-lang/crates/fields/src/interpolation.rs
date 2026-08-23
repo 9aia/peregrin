@@ -1,6 +1,7 @@
-use crate::expression::eval_expr_inner;
-use crate::types::{DEFAULT_NAMESPACE, FunctionResolver, Namespaces};
+use crate::expression::eval_expression;
+use crate::types::{DEFAULT_NAMESPACE, Namespaces};
 use ac_dialect::Dialect;
+use ac_vm::Host;
 use serde_json::Value as JsonValue;
 
 /// Recursively interpolates expressions in string values.
@@ -11,27 +12,27 @@ use serde_json::Value as JsonValue;
 /// - Function calls: `${now()}`, `${add(1, 2)}`, `${concat(doc.name, "!")}`
 /// - Nested calls: `${add(mul(2, 3), 4)}`
 ///
-/// Function calls are resolved via `resolver`. If no resolver is needed,
-/// use `NoFunctions`.
-pub fn interpolate(
+/// Function calls are resolved via `host`. If no functions are needed,
+/// use `ac_host::DefaultHost`.
+pub fn interpolate<H: Host + Clone + 'static>(
     value: &JsonValue,
     namespaces: &Namespaces,
-    resolver: &dyn FunctionResolver,
-    dialect: &dyn Dialect,
+    host: &H,
+    dialect: &'static dyn Dialect,
 ) -> JsonValue {
     let prefix = dialect.syntax().interpolation_prefix();
     match value {
         JsonValue::String(s) if s.contains(prefix) => {
-            resolve_interpolation(s, namespaces, resolver, dialect)
+            resolve_interpolation(s, namespaces, host, dialect)
         }
         JsonValue::Array(arr) => JsonValue::Array(
             arr.iter()
-                .map(|v| interpolate(v, namespaces, resolver, dialect))
+                .map(|v| interpolate(v, namespaces, host, dialect))
                 .collect(),
         ),
         JsonValue::Object(obj) => JsonValue::Object(
             obj.iter()
-                .map(|(k, v)| (k.clone(), interpolate(v, namespaces, resolver, dialect)))
+                .map(|(k, v)| (k.clone(), interpolate(v, namespaces, host, dialect)))
                 .collect(),
         ),
         _ => value.clone(),
@@ -46,15 +47,15 @@ pub fn interpolate(
 /// locally — the override applies to that subtree only.
 ///
 /// If `inheritable` is empty, this is equivalent to [`interpolate`].
-pub fn interpolate_scoped(
+pub fn interpolate_scoped<H: Host + Clone + 'static>(
     value: &JsonValue,
     namespaces: &Namespaces,
     inheritable: &[String],
-    resolver: &dyn FunctionResolver,
-    dialect: &dyn Dialect,
+    host: &H,
+    dialect: &'static dyn Dialect,
 ) -> JsonValue {
     if inheritable.is_empty() {
-        return interpolate(value, namespaces, resolver, dialect);
+        return interpolate(value, namespaces, host, dialect);
     }
     let inheritable_set: std::collections::HashSet<String> = inheritable.iter().cloned().collect();
     let empty_scope = serde_json::Map::new();
@@ -63,7 +64,7 @@ pub fn interpolate_scoped(
         namespaces,
         &inheritable_set,
         &empty_scope,
-        resolver,
+        host,
         dialect,
     )
 }
@@ -71,13 +72,13 @@ pub fn interpolate_scoped(
 /// Internal: scope-aware interpolation. Carries a `scope` (inheritable field
 /// values from parent objects) and merges it into the default namespace at each
 /// object level.
-fn interpolate_with_scope(
+fn interpolate_with_scope<H: Host + Clone + 'static>(
     value: &JsonValue,
     namespaces: &Namespaces,
     inheritable: &std::collections::HashSet<String>,
     scope: &serde_json::Map<String, JsonValue>,
-    resolver: &dyn FunctionResolver,
-    dialect: &dyn Dialect,
+    host: &H,
+    dialect: &'static dyn Dialect,
 ) -> JsonValue {
     let prefix = dialect.syntax().interpolation_prefix();
     match value {
@@ -112,7 +113,7 @@ fn interpolate_with_scope(
                                 &child_ns,
                                 inheritable,
                                 &current_scope,
-                                resolver,
+                                host,
                                 dialect,
                             ),
                         )
@@ -121,12 +122,12 @@ fn interpolate_with_scope(
             )
         }
         JsonValue::String(s) if s.contains(prefix) => {
-            resolve_interpolation(s, namespaces, resolver, dialect)
+            resolve_interpolation(s, namespaces, host, dialect)
         }
         JsonValue::Array(arr) => JsonValue::Array(
             arr.iter()
                 .map(|v| {
-                    interpolate_with_scope(v, namespaces, inheritable, scope, resolver, dialect)
+                    interpolate_with_scope(v, namespaces, inheritable, scope, host, dialect)
                 })
                 .collect(),
         ),
@@ -149,18 +150,18 @@ fn extract_single_expr<'a>(s: &'a str, prefix: &str, suffix: &str) -> Option<&'a
 /// Replaces all interpolation patterns in a string, returning a `JsonValue`.
 /// If the string is a single expression, the raw value is returned (preserving type).
 /// Otherwise, all patterns are stringified and concatenated.
-fn resolve_interpolation(
+fn resolve_interpolation<H: Host + Clone + 'static>(
     s: &str,
     namespaces: &Namespaces,
-    resolver: &dyn FunctionResolver,
-    dialect: &dyn Dialect,
+    host: &H,
+    dialect: &'static dyn Dialect,
 ) -> JsonValue {
     let prefix = dialect.syntax().interpolation_prefix();
     let suffix = dialect.syntax().interpolation_suffix();
 
     // Single expression → return raw value
     if let Some(inner) = extract_single_expr(s, prefix, suffix)
-        && let Some(val) = eval_expr_inner(inner, namespaces, resolver, dialect)
+        && let Some(val) = eval_expression(inner, namespaces, host, dialect)
     {
         return val;
     }
@@ -174,7 +175,7 @@ fn resolve_interpolation(
         let after_start = &remaining[start + prefix.len()..];
         if let Some(end) = after_start.find(suffix) {
             let expr = &after_start[..end];
-            let val = eval_expr_inner(expr, namespaces, resolver, dialect);
+            let val = eval_expression(expr, namespaces, host, dialect);
             match val {
                 Some(JsonValue::String(t)) => result.push_str(&t),
                 Some(JsonValue::Number(n)) => result.push_str(&n.to_string()),

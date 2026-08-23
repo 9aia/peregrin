@@ -106,6 +106,8 @@ dependencies = [
  "ac-typegen-core",
  "ac-typegen-import",
  "ac-typegen-key-set-special",
+ "driver-lang",
+ "pass-lang",
  "serde_json",
 ]
 
@@ -141,6 +143,7 @@ dependencies = [
  "ac-typegen-core",
  "ac-typegen-import",
  "ac-typegen-key-set-special",
+ "serde_json",
 ]
 
 [[package]]
@@ -208,7 +211,10 @@ dependencies = [
  "ac-compiler",
  "ac-compiler-core",
  "ac-compiler-pass-extract",
+ "ac-compiler-pass-generate",
  "ac-compiler-pass-parse",
+ "ac-compiler-pass-resolve",
+ "ac-compiler-pass-typecheck",
  "ac-dialect",
  "ac-dialect-canonical",
  "ac-fields",
@@ -216,11 +222,14 @@ dependencies = [
  "ac-frontend-json",
  "ac-frontend-toml",
  "ac-frontend-yaml",
+ "ac-host",
  "ac-module-resolver-virtual",
  "ac-runtime",
  "ac-typecheck-core",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
+ "ac-typegen-import",
+ "ac-typegen-key-set-special",
  "ac-vm",
  "serde_json",
 ]
@@ -249,9 +258,12 @@ dependencies = [
 name = "ac-fields"
 version = "0.1.0"
 dependencies = [
+ "ac-ast",
  "ac-dialect",
  "ac-dialect-canonical",
+ "ac-host",
  "ac-runtime",
+ "ac-vm",
  "serde_json",
 ]
 
@@ -641,6 +653,7 @@ dependencies = [
  "ac-dialect",
  "ac-dialect-canonical",
  "ac-fields",
+ "ac-host",
  "ac-lib-utils",
  "ac-runtime",
  "ac-runtime-core",
@@ -1228,12 +1241,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "driver-lang"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b7e7f9ee4b331a8737c5bd91b266130f67db7d86db26dc756dbb8e8313aa0ac"
+
+[[package]]
 name = "ecma402-icu4x"
 version = "0.1.0"
 dependencies = [
  "ecma402-traits",
  "fixed_decimal",
  "icu",
+ "icu4x-extra",
  "icu_decimal_data",
  "icu_locale_fallback",
  "icu_provider",
@@ -1540,6 +1560,13 @@ dependencies = [
  "icu_provider",
  "icu_segmenter",
  "icu_time",
+]
+
+[[package]]
+name = "icu4x-extra"
+version = "0.1.0"
+dependencies = [
+ "ecma402-traits",
 ]
 
 [[package]]
@@ -2363,6 +2390,12 @@ dependencies = [
  "smallvec",
  "windows-link",
 ]
+
+[[package]]
+name = "pass-lang"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c8f333d4b341022d2247969db2139998851a49819ba066ba4b326c3e7f8d16c1"
 
 [[package]]
 name = "percent-encoding"

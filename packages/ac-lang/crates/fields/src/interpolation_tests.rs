@@ -1,6 +1,6 @@
 use super::*;
-use crate::test_helpers::{AddResolver, DoubleResolver, LenResolver, MathResolver};
-use crate::types::{Namespaces, NoFunctions};
+use crate::test_helpers::{DefaultHost, MathHost};
+use crate::types::Namespaces;
 use ac_dialect_canonical::AC_DIALECT;
 
 #[test]
@@ -16,7 +16,7 @@ fn interpolate_basic() {
         "greeting": "hello, ${doc.name}!",
         "home": "${env.HOME}"
     });
-    let result = interpolate(&value, &ns, &NoFunctions, &AC_DIALECT);
+    let result = interpolate(&value, &ns, &DefaultHost::default(), &AC_DIALECT);
     assert_eq!(result["greeting"], "hello, alice!");
     assert_eq!(result["home"], "/home/alice");
 }
@@ -30,7 +30,7 @@ fn interpolate_nested() {
     );
 
     let value = serde_json::json!("${doc.author.email}");
-    let result = interpolate(&value, &ns, &NoFunctions, &AC_DIALECT);
+    let result = interpolate(&value, &ns, &DefaultHost::default(), &AC_DIALECT);
     assert_eq!(result, "alice@example.com");
 }
 
@@ -38,7 +38,7 @@ fn interpolate_nested() {
 fn interpolate_unresolved() {
     let ns = Namespaces::new();
     let value = serde_json::json!("${unknown.key}");
-    let result = interpolate(&value, &ns, &NoFunctions, &AC_DIALECT);
+    let result = interpolate(&value, &ns, &DefaultHost::default(), &AC_DIALECT);
     assert_eq!(result, "${unknown.key}");
 }
 
@@ -48,7 +48,7 @@ fn interpolate_shorthand() {
     ns.insert("doc".to_string(), serde_json::json!({"name": "alice"}));
 
     let value = serde_json::json!("${name}");
-    let result = interpolate(&value, &ns, &NoFunctions, &AC_DIALECT);
+    let result = interpolate(&value, &ns, &DefaultHost::default(), &AC_DIALECT);
     assert_eq!(result, "alice");
 }
 
@@ -58,7 +58,7 @@ fn interpolate_function_call() {
     ns.insert("doc".to_string(), serde_json::json!({"version": 3}));
 
     let value = serde_json::json!("${add(1, 2)}");
-    let result = interpolate(&value, &ns, &AddResolver, &AC_DIALECT);
+    let result = interpolate(&value, &ns, &DefaultHost::default(), &AC_DIALECT);
     assert_eq!(result, 3.0);
 }
 
@@ -68,7 +68,7 @@ fn interpolate_function_with_path_arg() {
     ns.insert("doc".to_string(), serde_json::json!({"version": 3}));
 
     let value = serde_json::json!("${double(version)}");
-    let result = interpolate(&value, &ns, &DoubleResolver, &AC_DIALECT);
+    let result = interpolate(&value, &ns, &MathHost::default(), &AC_DIALECT);
     assert_eq!(result, 6.0);
 }
 
@@ -77,7 +77,7 @@ fn interpolate_nested_function_calls() {
     let ns = Namespaces::new();
 
     let value = serde_json::json!("${add(mul(2, 3), 4)}");
-    let result = interpolate(&value, &ns, &MathResolver, &AC_DIALECT);
+    let result = interpolate(&value, &ns, &MathHost::default(), &AC_DIALECT);
     assert_eq!(result, 10.0);
 }
 
@@ -86,7 +86,7 @@ fn interpolate_function_preserves_type() {
     let ns = Namespaces::new();
 
     let value = serde_json::json!("${len(\"hello\")}");
-    let result = interpolate(&value, &ns, &LenResolver, &AC_DIALECT);
+    let result = interpolate(&value, &ns, &DefaultHost::default(), &AC_DIALECT);
     assert_eq!(result, 5);
     assert!(result.is_number());
 }
@@ -116,7 +116,7 @@ fn interpolate_scoped_inheritance() {
     });
 
     let inheritable = vec!["permission_mode".to_string()];
-    let result = interpolate_scoped(&value, &ns, &inheritable, &NoFunctions, &AC_DIALECT);
+    let result = interpolate_scoped(&value, &ns, &inheritable, &DefaultHost::default(), &AC_DIALECT);
 
     assert_eq!(result["config"]["message"], "read-only");
     assert_eq!(result["config"]["server"]["message"], "read-write");
@@ -130,7 +130,7 @@ fn interpolate_scoped_empty_inheritable_matches_interpolate() {
     ns.insert("doc".to_string(), serde_json::json!({"name": "alice"}));
 
     let value = serde_json::json!({"greeting": "hello, ${doc.name}!"});
-    let result_scoped = interpolate_scoped(&value, &ns, &[], &NoFunctions, &AC_DIALECT);
-    let result_plain = interpolate(&value, &ns, &NoFunctions, &AC_DIALECT);
+    let result_scoped = interpolate_scoped(&value, &ns, &[], &DefaultHost::default(), &AC_DIALECT);
+    let result_plain = interpolate(&value, &ns, &DefaultHost::default(), &AC_DIALECT);
     assert_eq!(result_scoped, result_plain);
 }

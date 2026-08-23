@@ -37,7 +37,8 @@ mod extraction;
 mod interpolation;
 mod merge;
 mod namespace;
-mod path;
+mod parser;
+
 mod scope;
 mod types;
 mod validation;
@@ -49,10 +50,10 @@ pub use extraction::{extract_fields, undeclared_fields};
 pub use interpolation::{interpolate, interpolate_scoped};
 pub use merge::merge_fields;
 pub use namespace::{build_doc_namespace, build_env_namespace};
+pub use parser::parse_expr_to_tree;
 pub use scope::validate_mutable;
 pub use types::{
-    APPLY_FUNCTION, ArgSpec, ComputedField, DEFAULT_NAMESPACE, ExtractedFields, FunctionResolver,
-    Namespaces, NoFunctions,
+    APPLY_FUNCTION, ArgSpec, ComputedField, DEFAULT_NAMESPACE, ExtractedFields, Namespaces,
 };
 pub use validation::{validate_args, validate_return};
 

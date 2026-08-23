@@ -874,6 +874,17 @@ impl<H: Host> crate::Vm<H> {
             return function.call(args, ctx);
         }
 
+        // Allow function values stored in the context to be called by name.
+        if let Ok(value) = ctx.get(name) && value.is_function() {
+            let apply = self
+                .host()
+                .function("apply")
+                .ok_or_else(|| Error::UnknownFunction("apply".to_string()))?;
+            let mut apply_args = vec![value];
+            apply_args.extend_from_slice(args);
+            return apply.call(&apply_args, ctx);
+        }
+
         Err(Error::UnknownFunction(name.to_string()))
     }
 
