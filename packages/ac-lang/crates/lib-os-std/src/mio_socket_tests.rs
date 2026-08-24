@@ -2,8 +2,8 @@ use ac_runtime_values::NonFunctionValue;
 use std::future::Future;
 use std::io::{Read, Write};
 use std::net::TcpListener;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::task::{Context as TaskContext, Poll, RawWaker, RawWakerVTable, Waker};
 use std::thread;
 
@@ -59,7 +59,9 @@ fn mio_socket_connect_send_recv_close() {
     let handle = block_on(vm.eval_async(
         &Expr::call(
             "socket.connect",
-            vec![Expr::value(NonFunctionValue::new(format!("127.0.0.1:{port}")))],
+            vec![Expr::value(NonFunctionValue::new(format!(
+                "127.0.0.1:{port}"
+            )))],
         ),
         &mut ctx,
     ))
@@ -97,7 +99,10 @@ fn mio_socket_connect_send_recv_close() {
     assert_eq!(received, "hello");
 
     block_on(vm.eval_async(
-        &Expr::call("socket.close", vec![Expr::value(NonFunctionValue::new(handle))]),
+        &Expr::call(
+            "socket.close",
+            vec![Expr::value(NonFunctionValue::new(handle))],
+        ),
         &mut ctx,
     ))
     .unwrap();

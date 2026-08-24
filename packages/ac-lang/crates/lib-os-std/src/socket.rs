@@ -26,8 +26,8 @@ impl Socket for StdSocket {
         let addr = addrs.first().ok_or(OsError::InvalidArgument {
             message: "invalid address: no addresses found".into(),
         })?;
-        let stream = TcpStream::connect_timeout(addr, DEFAULT_TIMEOUT)
-            .map_err(io_error_to_os_error)?;
+        let stream =
+            TcpStream::connect_timeout(addr, DEFAULT_TIMEOUT).map_err(io_error_to_os_error)?;
         stream
             .set_read_timeout(Some(DEFAULT_TIMEOUT))
             .map_err(io_error_to_os_error)?;
@@ -46,9 +46,7 @@ impl Socket for StdSocket {
         let stream = sockets.get_mut(&handle).ok_or(OsError::NotFound {
             path: format!("socket handle: {handle}"),
         })?;
-        stream
-            .write(data.as_bytes())
-            .map_err(io_error_to_os_error)
+        stream.write(data.as_bytes()).map_err(io_error_to_os_error)
     }
 
     fn recv(&self, handle: i64, length: usize) -> Result<String, OsError> {

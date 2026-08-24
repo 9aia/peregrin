@@ -1,6 +1,6 @@
 use ac_runtime::{Context, Error, Expr, Host};
-use ac_runtime_values::{FunctionValue, NonFunctionValue};
 use ac_runtime_common::{ExprHandler, LegoVm};
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
 use serde_json::Value as JsonValue;
 
 use crate::pattern::{define_pattern, pattern_to_json};
@@ -48,7 +48,10 @@ impl ExprHandler for CallHandler {
         expr: &RuntimeExpr,
         ctx: &mut dyn Context<NonFunctionValue>,
         host: &dyn Host<NonFunctionValue>,
-        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+        dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
     ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let Expr::Call {
             name,
@@ -166,7 +169,10 @@ impl ExprHandler for ArrayHandler {
         expr: &RuntimeExpr,
         ctx: &mut dyn Context<NonFunctionValue>,
         _host: &dyn Host<NonFunctionValue>,
-        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+        dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
     ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let Expr::Array(elements) = expr else {
             return Err(Error::PrimitiveError("expected array".to_string()));
@@ -194,7 +200,10 @@ impl ExprHandler for ObjectHandler {
         expr: &RuntimeExpr,
         ctx: &mut dyn Context<NonFunctionValue>,
         _host: &dyn Host<NonFunctionValue>,
-        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+        dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
     ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let Expr::Object(entries) = expr else {
             return Err(Error::PrimitiveError("expected object".to_string()));
@@ -243,12 +252,15 @@ impl ExprHandler for IndexHandler {
                 return Err(Error::TypeMismatch {
                     expected: "array, object, or string",
                     got: json_kind(other),
-                })
+                });
             }
         };
 
         let Some(function) = host.function(name) else {
-            return Err(Error::TypeMismatch { expected: "indexable", got });
+            return Err(Error::TypeMismatch {
+                expected: "indexable",
+                got,
+            });
         };
 
         ctx.increment_call_count()?;
@@ -400,7 +412,10 @@ impl ExprHandler for AssignHandler {
         expr: &RuntimeExpr,
         ctx: &mut dyn Context<NonFunctionValue>,
         host: &dyn Host<NonFunctionValue>,
-        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+        dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
     ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let Expr::Assign { target, value } = expr else {
             return Err(Error::PrimitiveError("expected assignment".to_string()));
@@ -431,7 +446,10 @@ impl ExprHandler for FunctionHandler {
         expr: &RuntimeExpr,
         ctx: &mut dyn Context<NonFunctionValue>,
         _host: &dyn Host<NonFunctionValue>,
-        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+        dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
     ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let Expr::Function {
             type_params: _,

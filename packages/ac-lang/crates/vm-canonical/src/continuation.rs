@@ -139,7 +139,12 @@ fn expr_to_json(expr: &RuntimeExpr) -> serde_json::Value {
             "type": "assign",
             "target": pattern_to_json(target),
             "value": expr_to_json(value)}),
-        Expr::Function { type_params, params, ret, body } => serde_json::json!({
+        Expr::Function {
+            type_params,
+            params,
+            ret,
+            body,
+        } => serde_json::json!({
             "type": "function",
             "type_params": type_params,
             "params": params.iter().map(|(p, t)| {
@@ -238,14 +243,9 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error<NonFun
                             "function param must be a [pattern, schema] array".to_string(),
                         )
                     })?;
-                    let pattern = arr
-                        .get(0)
-                        .and_then(pattern_from_json)
-                        .ok_or_else(|| {
-                            Error::PrimitiveError(
-                                "function param missing pattern".to_string(),
-                            )
-                        })?;
+                    let pattern = arr.get(0).and_then(pattern_from_json).ok_or_else(|| {
+                        Error::PrimitiveError("function param missing pattern".to_string())
+                    })?;
                     let ty = arr
                         .get(1)
                         .filter(|v| !v.is_null())
@@ -341,7 +341,9 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error<NonFun
             let target = obj
                 .get("target")
                 .ok_or_else(|| {
-                    Error::PrimitiveError("field access expression missing 'target' field".to_string())
+                    Error::PrimitiveError(
+                        "field access expression missing 'target' field".to_string(),
+                    )
                 })
                 .and_then(expr_from_json)
                 .map(Box::new)?;
@@ -349,7 +351,9 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error<NonFun
                 .get("field")
                 .and_then(|v| v.as_str())
                 .ok_or_else(|| {
-                    Error::PrimitiveError("field access expression missing 'field' field".to_string())
+                    Error::PrimitiveError(
+                        "field access expression missing 'field' field".to_string(),
+                    )
                 })?
                 .to_string();
             Ok(Expr::FieldAccess { target, field })
@@ -428,7 +432,9 @@ fn handler_clause_to_json(clause: &RuntimeHandlerClause) -> serde_json::Value {
         "body": expr_to_json(&clause.body)})
 }
 
-fn handler_clause_from_json(value: &serde_json::Value) -> Result<RuntimeHandlerClause, Error<NonFunctionValue>> {
+fn handler_clause_from_json(
+    value: &serde_json::Value,
+) -> Result<RuntimeHandlerClause, Error<NonFunctionValue>> {
     let obj = value
         .as_object()
         .ok_or_else(|| Error::PrimitiveError("handler clause must be a JSON object".to_string()))?;
@@ -928,12 +934,15 @@ impl<H: Host<NonFunctionValue>> crate::CanonicalVm<H> {
                 return StepResult::Error(Error::TypeMismatch {
                     expected: "array, object, or string",
                     got: Self::json_kind(other),
-                })
+                });
             }
         };
 
         if self.host().function(name).is_none() {
-            return StepResult::Error(Error::TypeMismatch { expected: "indexable", got });
+            return StepResult::Error(Error::TypeMismatch {
+                expected: "indexable",
+                got,
+            });
         }
 
         let mut frame = Frame {
@@ -1031,10 +1040,12 @@ impl<H: Host<NonFunctionValue>> crate::CanonicalVm<H> {
                     }
                 }
                 match self.eval_step_with_handlers(value, ctx, stack, inherited_handlers) {
-                    StepResult::Done(evaluated) => match define_pattern(ctx, target, evaluated.clone()) {
-                        Ok(_) => StepResult::Done(evaluated),
-                        Err(err) => StepResult::Error(err),
-                    },
+                    StepResult::Done(evaluated) => {
+                        match define_pattern(ctx, target, evaluated.clone()) {
+                            Ok(_) => StepResult::Done(evaluated),
+                            Err(err) => StepResult::Error(err),
+                        }
+                    }
                     other => other,
                 }
             }
@@ -1094,13 +1105,14 @@ impl<H: Host<NonFunctionValue>> crate::CanonicalVm<H> {
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host().lazy_function(name) {
                     let handlers = inherited_handlers.to_vec();
-                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| match self
-                        .eval_step_with_handlers(sub, c, stack, &handlers)
-                    {
-                        StepResult::Done(v) => Ok(v),
-                        StepResult::Yield { value, .. } => Err(Error::Yield(value)),
-                        StepResult::Error(err) => Err(err),
-                    };
+                    let mut evaluate =
+                        |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| match self
+                            .eval_step_with_handlers(sub, c, stack, &handlers)
+                        {
+                            StepResult::Done(v) => Ok(v),
+                            StepResult::Yield { value, .. } => Err(Error::Yield(value)),
+                            StepResult::Error(err) => Err(err),
+                        };
                     match lazy.call(args, ctx, &mut evaluate) {
                         Ok(v) => StepResult::Done(v),
                         Err(Error::Yield(value)) => StepResult::Yield {
@@ -1236,7 +1248,8 @@ impl<H: Host<NonFunctionValue>> crate::CanonicalVm<H> {
                                 frames: std::mem::take(stack),
                             },
                             Err(Error::Operation { name, args }) => {
-                                let matching_clause = handlers.iter().rev().find(|h| h.op_name == name);
+                                let matching_clause =
+                                    handlers.iter().rev().find(|h| h.op_name == name);
                                 if let Some(clause) = matching_clause {
                                     self.handle_operation(name, args, clause, handlers, ctx, stack)
                                 } else {
@@ -1291,10 +1304,12 @@ impl<H: Host<NonFunctionValue>> crate::CanonicalVm<H> {
                 let mut pattern_json = Vec::new();
                 for (pattern, ty) in params {
                     let schema = match ty {
-                        Some(type_expr) => match self.eval_handle(type_expr, handlers, ctx, stack) {
-                            StepResult::Done(v) => v.into_inner(),
-                            other => return other,
-                        },
+                        Some(type_expr) => {
+                            match self.eval_handle(type_expr, handlers, ctx, stack) {
+                                StepResult::Done(v) => v.into_inner(),
+                                other => return other,
+                            }
+                        }
                         None => JsonValue::Null,
                     };
                     for name in pattern.bound_names() {
@@ -1326,13 +1341,14 @@ impl<H: Host<NonFunctionValue>> crate::CanonicalVm<H> {
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host().lazy_function(name) {
                     let handlers_vec = handlers.to_vec();
-                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| match self
-                        .eval_step_with_handlers(sub, c, stack, &handlers_vec)
-                    {
-                        StepResult::Done(v) => Ok(v),
-                        StepResult::Yield { value, .. } => Err(Error::Yield(value)),
-                        StepResult::Error(err) => Err(err),
-                    };
+                    let mut evaluate =
+                        |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| match self
+                            .eval_step_with_handlers(sub, c, stack, &handlers_vec)
+                        {
+                            StepResult::Done(v) => Ok(v),
+                            StepResult::Yield { value, .. } => Err(Error::Yield(value)),
+                            StepResult::Error(err) => Err(err),
+                        };
                     match lazy.call(args, ctx, &mut evaluate) {
                         Ok(v) => StepResult::Done(v),
                         Err(Error::Yield(value)) => StepResult::Yield {
@@ -1425,9 +1441,7 @@ impl<H: Host<NonFunctionValue>> crate::CanonicalVm<H> {
                 StepResult::Done(NonFunctionValue::new(serde_json::Value::Object(map)))
             }
 
-            Expr::Index { target, index } => {
-                self.eval_index(target, index, ctx, stack, handlers)
-            }
+            Expr::Index { target, index } => self.eval_index(target, index, ctx, stack, handlers),
 
             Expr::FieldAccess { target, field } => {
                 self.eval_field(target, field, ctx, stack, handlers)

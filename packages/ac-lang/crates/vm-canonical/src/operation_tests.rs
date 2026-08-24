@@ -16,7 +16,10 @@ impl Operation<NonFunctionValue> for FetchOp {
     fn signature(&self) -> OperationSig<NonFunctionValue> {
         OperationSig {
             name: "fetch".to_string(),
-            params: vec![("url".to_string(), NonFunctionValue::new(serde_json::json!({"type": "string"})))],
+            params: vec![(
+                "url".to_string(),
+                NonFunctionValue::new(serde_json::json!({"type": "string"})),
+            )],
             return_schema: Some(NonFunctionValue::new(serde_json::json!({"type": "string"}))),
         }
     }
@@ -54,7 +57,10 @@ impl Operation<NonFunctionValue> for CachingFetch {
     fn signature(&self) -> OperationSig<NonFunctionValue> {
         OperationSig {
             name: "fetch".to_string(),
-            params: vec![("url".to_string(), NonFunctionValue::new(serde_json::json!({"type": "string"})))],
+            params: vec![(
+                "url".to_string(),
+                NonFunctionValue::new(serde_json::json!({"type": "string"})),
+            )],
             return_schema: Some(NonFunctionValue::new(serde_json::json!({"type": "string"}))),
         }
     }

@@ -76,8 +76,8 @@ impl KeyValueStore for HashKeyValueStore {
 #[cfg(test)]
 mod tests {
     use ac_lib_kv::KeyValueStoreModule;
-    use ac_runtime_values::{CanonicalContext, NonFunctionValue};
     use ac_runtime_modules::Module;
+    use ac_runtime_values::{CanonicalContext, NonFunctionValue};
 
     use super::HashKeyValueStore;
 

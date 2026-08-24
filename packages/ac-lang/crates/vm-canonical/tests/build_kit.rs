@@ -1,7 +1,7 @@
 use ac_runtime::{Error, Expr, Operation};
-use ac_runtime_values::NonFunctionValue;
 use ac_runtime_canonical::CanonicalVm;
 use ac_runtime_common::prelude::*;
+use ac_runtime_values::NonFunctionValue;
 use std::cell::RefCell;
 use std::future::Future;
 use std::rc::Rc;

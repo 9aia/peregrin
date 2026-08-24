@@ -3,14 +3,14 @@ use std::future::Future;
 use std::io::{self, Read, Write};
 use std::net::{Shutdown, ToSocketAddrs};
 use std::pin::Pin;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 use std::task::{Context, Poll, Waker};
 use std::thread;
 use std::time::Duration;
 
-use mio::{Events, Interest, Poll as MioPoll, Token};
 use mio::net::TcpStream;
+use mio::{Events, Interest, Poll as MioPoll, Token};
 
 use ac_lib_os::{AsyncSocket, OsError};
 

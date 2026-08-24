@@ -171,7 +171,10 @@ impl<H: Host<NonFunctionValue>> CanonicalVm<H> {
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host.lazy_function(name) {
-                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| self.eval(sub, c);
+                    let mut evaluate =
+                        |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| {
+                            self.eval(sub, c)
+                        };
                     return lazy.call(args, ctx, &mut evaluate);
                 }
 
@@ -256,12 +259,15 @@ impl<H: Host<NonFunctionValue>> CanonicalVm<H> {
                         return Err(Error::TypeMismatch {
                             expected: "array, object, or string",
                             got: json_kind(other),
-                        })
+                        });
                     }
                 };
 
                 let Some(function) = self.host.function(name) else {
-                    return Err(Error::TypeMismatch { expected: "indexable", got });
+                    return Err(Error::TypeMismatch {
+                        expected: "indexable",
+                        got,
+                    });
                 };
 
                 ctx.increment_call_count()?;
@@ -370,9 +376,9 @@ impl<H: Host<NonFunctionValue>> CanonicalVm<H> {
                 let mut pattern_json = Vec::new();
                 for (pattern, ty) in params {
                     let schema = match ty {
-                        Some(type_expr) => {
-                            Box::pin(self.eval_async(type_expr, ctx)).await?.into_inner()
-                        }
+                        Some(type_expr) => Box::pin(self.eval_async(type_expr, ctx))
+                            .await?
+                            .into_inner(),
                         None => JsonValue::Null,
                     };
                     for name in pattern.bound_names() {
@@ -382,9 +388,11 @@ impl<H: Host<NonFunctionValue>> CanonicalVm<H> {
                 }
 
                 let return_schema = match ret {
-                    Some(type_expr) => {
-                        Some(Box::pin(self.eval_async(type_expr, ctx)).await?.into_inner())
-                    }
+                    Some(type_expr) => Some(
+                        Box::pin(self.eval_async(type_expr, ctx))
+                            .await?
+                            .into_inner(),
+                    ),
                     None => None,
                 };
 
@@ -438,7 +446,10 @@ impl<H: Host<NonFunctionValue>> CanonicalVm<H> {
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host.lazy_function(name) {
-                    let mut eval_sync = |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| self.eval(sub, c);
+                    let mut eval_sync =
+                        |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| {
+                            self.eval(sub, c)
+                        };
                     return lazy.call(args, ctx, &mut eval_sync);
                 }
 
@@ -495,12 +506,15 @@ impl<H: Host<NonFunctionValue>> CanonicalVm<H> {
                         return Err(Error::TypeMismatch {
                             expected: "array, object, or string",
                             got: json_kind(other),
-                        })
+                        });
                     }
                 };
 
                 let Some(function) = self.host.function(name) else {
-                    return Err(Error::TypeMismatch { expected: "indexable", got });
+                    return Err(Error::TypeMismatch {
+                        expected: "indexable",
+                        got,
+                    });
                 };
 
                 ctx.increment_call_count()?;
@@ -586,7 +600,11 @@ impl<H: Host<NonFunctionValue>> CanonicalVm<H> {
 }
 
 impl<H: Host<NonFunctionValue>> VirtualMachine<NonFunctionValue> for CanonicalVm<H> {
-    fn eval(&self, expr: &RuntimeExpr, ctx: &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
+    fn eval(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         Self::eval(self, expr, ctx)
     }
 
