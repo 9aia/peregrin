@@ -52,8 +52,6 @@
 //! let ctx = host.new_context();
 //! ```
 
-use ac_runtime_canonical::CanonicalEval;
-use ac_runtime_values::{CanonicalContext, Function, GenericFunction, Host, LazyFunction, NonFunctionValue};
 use ac_lib_crypto::CryptoModule;
 use ac_lib_datetime::DateTimeModule;
 use ac_lib_intl::IntlModule;
@@ -63,8 +61,12 @@ use ac_lib_utils::{
     ArrayModule, BoolModule, CmpModule, FnModule, MathModule, ObjModule, SetModule, StrModule,
     TypeModule,
 };
+use ac_runtime_canonical::CanonicalEval;
 use ac_runtime_example_1::DefaultHost;
 use ac_runtime_modules::ModuleHost;
+use ac_runtime_values::{
+    CanonicalContext, Function, GenericFunction, Host, LazyFunction, NonFunctionValue,
+};
 
 /// Resource limits for sandboxed evaluation.
 ///

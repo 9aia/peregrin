@@ -22,3 +22,4 @@ ac-lib-http-server.workspace = true
 ac-lib-http-server-std.workspace = true
 ac-lib-http-client.workspace = true
 ac-lib-http-client-std.workspace = true
+ac-lib-otlp-std.workspace = true

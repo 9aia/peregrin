@@ -51,7 +51,10 @@ impl Host<NonFunctionValue> for TypeHost {
         self.inner.lazy_function(name)
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn ac_runtime::GenericFunction<NonFunctionValue>> {
+    fn generic_function(
+        &self,
+        name: &str,
+    ) -> Option<&dyn ac_runtime::GenericFunction<NonFunctionValue>> {
         self.inner.generic_function(name)
     }
 }

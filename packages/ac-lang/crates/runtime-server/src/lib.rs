@@ -19,6 +19,7 @@ use ac_lib_http_client::HttpClientModule;
 use ac_lib_http_client_std::StdHttpClient;
 use ac_lib_http_server_std::std_http_server_module;
 use ac_lib_intl::IntlModule;
+use ac_lib_otlp_std::std_otlp_module;
 use ac_lib_kv::KeyValueStoreModule;
 use ac_lib_kv_hashmap::HashKeyValueStore;
 use ac_lib_os::{
@@ -100,7 +101,8 @@ impl ServerHost {
             .with(SocketModule::new(StdSocket::default()))
             .with(SigModule::new(StdSig))
             .with(std_http_server_module())
-            .with(HttpClientModule::new(StdHttpClient));
+            .with(HttpClientModule::new(StdHttpClient))
+            .with(std_otlp_module());
 
         ServerHost {
             default: DefaultHost::default(),

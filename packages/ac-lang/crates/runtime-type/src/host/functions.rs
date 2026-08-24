@@ -1,7 +1,7 @@
 //! Type-checking helper host functions.
 
-use ac_runtime_values::{Error, FunctionValue, NonFunctionValue};
 use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error, FunctionValue, NonFunctionValue};
 
 use serde_json::Value as JsonValue;
 

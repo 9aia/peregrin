@@ -10,8 +10,8 @@ use ac_fields::{APPLY_FUNCTION, DEFAULT_NAMESPACE, Namespaces, eval_expression};
 use ac_runtime_values::{FunctionValue, NonFunctionValue};
 
 use ac_runtime::{Context, Eval};
+use ac_runtime_canonical::Vm;
 use ac_runtime_values::{CanonicalContext, Error};
-use ac_runtime_canonical::{Vm};
 
 use serde_json::Value as JsonValue;
 

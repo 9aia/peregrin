@@ -9,9 +9,9 @@
 //! Both have default implementations that recurse, so passes override
 //! only the nodes they care about.
 
-use ac_runtime_values::NonFunctionValue;
 use ac_ast_canonical::{Expr, Field};
 use ac_fields::ExtractedFields;
+use ac_runtime_values::NonFunctionValue;
 
 // ---------------------------------------------------------------------------
 // Visitor (read-only traversal)
