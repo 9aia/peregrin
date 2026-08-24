@@ -1,6 +1,5 @@
 use ac_runtime::{Context, Function};
 use ac_runtime_values::{Error, FunctionValue, NonFunctionValue};
-use serde_json::Value as JsonValue;
 
 fn resolve_path(value: &NonFunctionValue, path: &[&str]) -> Result<NonFunctionValue, Error> {
     let mut current = value.inner().clone();
@@ -56,53 +55,31 @@ fn require_path(args: &[NonFunctionValue]) -> Result<Vec<&str>, Error> {
 }
 
 #[derive(Clone)]
-pub struct Concat;
-impl Function<NonFunctionValue> for Concat {
+pub struct Apply;
+impl Function<NonFunctionValue> for Apply {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context<NonFunctionValue>,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
-        let mut result = String::new();
-        for arg in args {
-            match arg.inner() {
-                serde_json::Value::String(s) => result.push_str(s),
-                _ => {
-                    return Err(Error::TypeMismatch {
-                        expected: "string",
-                        got: "non-string",
-                    });
-                }
-            }
-        }
-        Ok(NonFunctionValue::new(result))
-    }
-}
-
-#[derive(Clone)]
-pub struct Len;
-impl Function<NonFunctionValue> for Len {
-    fn call(
-        &self,
-        args: &[NonFunctionValue],
-        _ctx: &mut dyn Context<NonFunctionValue>,
-    ) -> Result<NonFunctionValue, Error> {
-        let arg = args.first().ok_or(Error::ArgumentCount {
+        let fn_value = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
             got: 0,
         })?;
-        let len = match arg.inner() {
-            serde_json::Value::String(s) => s.len(),
-            serde_json::Value::Array(a) => a.len(),
-            serde_json::Value::Object(o) => o.len(),
-            _ => {
-                return Err(Error::TypeMismatch {
-                    expected: "string, array, or object",
-                    got: "other",
-                });
-            }
-        };
-        Ok(NonFunctionValue::new(serde_json::json!(len)))
+        let fn_val = FunctionValue::from_json(fn_value.inner()).ok_or(Error::TypeMismatch {
+            expected: "function",
+            got: "non-function",
+        })?;
+
+        let fn_args = &args[1..];
+        let vars: Vec<(String, NonFunctionValue)> = fn_val
+            .params
+            .iter()
+            .zip(fn_args.iter())
+            .map(|((pname, _), arg)| (pname.clone(), arg.clone()))
+            .collect();
+
+        ctx.eval_expr(&fn_val.body, &vars)
     }
 }
 
@@ -142,44 +119,4 @@ impl Function<NonFunctionValue> for Resolve {
     }
 }
 
-#[derive(Clone)]
-pub struct Apply;
-impl Function<NonFunctionValue> for Apply {
-    fn call(
-        &self,
-        args: &[NonFunctionValue],
-        ctx: &mut dyn Context<NonFunctionValue>,
-    ) -> Result<NonFunctionValue, Error> {
-        let fn_value = args.first().ok_or(Error::ArgumentCount {
-            expected: 1,
-            got: 0,
-        })?;
-        let fn_val = FunctionValue::from_json(fn_value.inner()).ok_or(Error::TypeMismatch {
-            expected: "function",
-            got: "non-function",
-        })?;
 
-        let fn_args = &args[1..];
-        let vars: Vec<(String, NonFunctionValue)> = fn_val
-            .params
-            .iter()
-            .zip(fn_args.iter())
-            .map(|((pname, _), arg)| (pname.clone(), arg.clone()))
-            .collect();
-
-        ctx.eval_expr(&fn_val.body, &vars)
-    }
-}
-
-#[derive(Clone)]
-pub struct Array;
-impl Function<NonFunctionValue> for Array {
-    fn call(
-        &self,
-        args: &[NonFunctionValue],
-        _ctx: &mut dyn Context<NonFunctionValue>,
-    ) -> Result<NonFunctionValue, Error> {
-        let arr: Vec<JsonValue> = args.iter().map(|v| v.inner().clone()).collect();
-        Ok(NonFunctionValue::new(JsonValue::Array(arr)))
-    }
-}

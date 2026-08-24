@@ -296,11 +296,13 @@ dependencies = [
  "ac-dialect-canonical",
  "ac-lexer",
  "ac-lexer-canonical",
+ "ac-lib-utils",
  "ac-parser",
  "ac-parser-canonical",
  "ac-runtime",
  "ac-runtime-canonical",
  "ac-runtime-example-1",
+ "ac-runtime-modules",
  "ac-runtime-values",
  "serde_json",
 ]

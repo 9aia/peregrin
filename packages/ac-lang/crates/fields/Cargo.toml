@@ -19,3 +19,5 @@ serde_json = "1"
 [dev-dependencies]
 ac-dialect-canonical.workspace = true
 ac-runtime-example-1.workspace = true
+ac-runtime-modules.workspace = true
+ac-lib-utils.workspace = true

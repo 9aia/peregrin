@@ -1,9 +1,43 @@
 use ac_runtime_values::NonFunctionValue;
 use ac_runtime_values::{Error};
 use ac_runtime::{Context, Function, Host};
+use ac_runtime_modules::Module;
 use serde_json::Value as JsonValue;
 
-pub use ac_runtime_example_1::DefaultHost;
+use ac_runtime_example_1::DefaultHost as BaseHost;
+
+/// A test host that mirrors the builtins no longer in `ac_runtime_example_1::DefaultHost`
+/// by delegating arithmetic and string operations to `ac-lib-utils` modules.
+#[derive(Clone)]
+pub struct DefaultHost {
+    base: BaseHost,
+    math: ac_lib_utils::MathModule,
+    str: ac_lib_utils::StrModule,
+}
+
+impl Default for DefaultHost {
+    fn default() -> Self {
+        DefaultHost {
+            base: BaseHost::default(),
+            math: ac_lib_utils::MathModule,
+            str: ac_lib_utils::StrModule,
+        }
+    }
+}
+
+impl Host<NonFunctionValue> for DefaultHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
+        match name {
+            "add" => self.math.function("add"),
+            "sub" => self.math.function("sub"),
+            "mul" => self.math.function("mul"),
+            "div" => self.math.function("div"),
+            "concat" => self.str.function("concat"),
+            "len" => self.str.function("length"),
+            _ => self.base.function(name),
+        }
+    }
+}
 
 /// A `Host` that extends [`DefaultHost`] with a `double` helper for
 /// tests that exercise user-defined function values.

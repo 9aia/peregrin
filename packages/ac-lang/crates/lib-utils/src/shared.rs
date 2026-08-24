@@ -428,6 +428,9 @@ use ac_runtime_example_1::DefaultHost;
 pub(crate) struct TestHost {
     default: DefaultHost,
     math: crate::MathModule,
+    str: crate::StrModule,
+    array: crate::ArrayModule,
+    r#fn: crate::FnModule,
 }
 
 #[cfg(test)]
@@ -436,6 +439,9 @@ impl Default for TestHost {
         TestHost {
             default: DefaultHost::default(),
             math: crate::MathModule,
+            str: crate::StrModule,
+            array: crate::ArrayModule,
+            r#fn: crate::FnModule,
         }
     }
 }
@@ -446,6 +452,9 @@ impl Clone for TestHost {
         TestHost {
             default: self.default.clone(),
             math: self.math,
+            str: self.str,
+            array: self.array,
+            r#fn: self.r#fn,
         }
     }
 }
@@ -458,6 +467,10 @@ impl Host<NonFunctionValue> for TestHost {
             "sub" => self.math.function("sub"),
             "mul" => self.math.function("mul"),
             "div" => self.math.function("div"),
+            "concat" => self.str.function("concat"),
+            "len" => self.str.function("length"),
+            "apply" => self.r#fn.function("apply"),
+            "array" => self.array.function("array"),
             _ => self.default.function(name),
         }
     }

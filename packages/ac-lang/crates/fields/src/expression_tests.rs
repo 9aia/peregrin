@@ -76,6 +76,7 @@ fn call_function_value_from_param() {
     let mut ns = Namespaces::new();
     let fn_val = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
+        patterns: vec![],
         return_schema: None,
         body: "mul(x, 2)".to_string(),
     };
@@ -91,6 +92,7 @@ fn call_function_value_from_shorthand() {
     let mut ns = Namespaces::new();
     let fn_val = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
+        patterns: vec![],
         return_schema: None,
         body: "mul(x, 3)".to_string(),
     };
@@ -108,6 +110,7 @@ fn call_function_value_nested_in_body() {
     let mut ns = Namespaces::new();
     let double_fn = FunctionValue {
         params: vec![("x".to_string(), serde_json::json!({"type": "number"}))],
+        patterns: vec![],
         return_schema: None,
         body: "mul(x, 2)".to_string(),
     };
