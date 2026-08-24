@@ -90,10 +90,13 @@ members = [
   "crates/parser",
   "crates/parser-canonical",
   "crates/parser-common",
+  "crates/lib-websocket",
   "crates/lib-compress",
   "crates/lib-compress-gzip",
   "crates/lib-archive",
   "crates/lib-archive-tar",
+  "crates/lib-otlp",
+  "crates/lib-otlp-std",
 ]
 resolver = "3"
 
@@ -130,6 +133,8 @@ ac-lib-http-client = { path = "crates/lib-http-client" }
 ac-lib-http-client-std = { path = "crates/lib-http-client-std" }
 ac-lib-http-server = { path = "crates/lib-http-server" }
 ac-lib-http-server-std = { path = "crates/lib-http-server-std" }
+ac-lib-otlp = { path = "crates/lib-otlp" }
+ac-lib-otlp-std = { path = "crates/lib-otlp-std" }
 ac-lib-compress = { path = "crates/lib-compress" }
 ac-lib-compress-gzip = { path = "crates/lib-compress-gzip" }
 ac-lib-archive = { path = "crates/lib-archive" }
@@ -234,6 +239,8 @@ default = [
   "lib-http-client-std",
   "lib-http-server",
   "lib-http-server-std",
+  "lib-otlp",
+  "lib-otlp-std",
   "lib-unicode",
   "store",
   "codebase",
@@ -280,6 +287,8 @@ lib-http-client = ["dep:ac-lib-http-client", "vm", "dep:ac-runtime-modules"]
 lib-http-client-std = ["dep:ac-lib-http-client-std", "lib-http-client"]
 lib-http-server = ["dep:ac-lib-http-server", "vm", "dep:ac-runtime-modules"]
 lib-http-server-std = ["dep:ac-lib-http-server-std", "lib-http-server"]
+lib-otlp = ["dep:ac-lib-otlp", "vm", "dep:ac-runtime-modules"]
+lib-otlp-std = ["dep:ac-lib-otlp-std", "lib-otlp"]
 lib-unicode = ["dep:ac-lib-unicode", "vm", "dep:ac-runtime-modules"]
 store = ["dep:ac-store"]
 codebase = ["dep:ac-codebase", "store"]
@@ -325,6 +334,8 @@ ac-lib-http-client = { workspace = true, optional = true }
 ac-lib-http-client-std = { workspace = true, optional = true }
 ac-lib-http-server = { workspace = true, optional = true }
 ac-lib-http-server-std = { workspace = true, optional = true }
+ac-lib-otlp = { workspace = true, optional = true }
+ac-lib-otlp-std = { workspace = true, optional = true }
 ac-lib-unicode = { workspace = true, optional = true }
 ac-store = { workspace = true, optional = true }
 ac-codebase = { workspace = true, optional = true }

@@ -33,12 +33,6 @@ pub use snapshot::SnapshotModule;
 pub use test::TestModule;
 
 #[cfg(test)]
-mod assert_tests;
+pub mod test_helpers;
 #[cfg(test)]
-mod benchmark_tests;
-#[cfg(test)]
-mod property_tests;
-#[cfg(test)]
-mod shared_tests;
-#[cfg(test)]
-mod test_tests;
+mod tests;

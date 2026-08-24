@@ -17,20 +17,6 @@ pub(crate) fn require_len(
     Ok(())
 }
 
-pub(crate) fn require_number(
-    args: &[NonFunctionValue],
-    expected: usize,
-) -> Result<(), Error> {
-    if args.len() < expected {
-        return Err(TestError::ArgumentCount {
-            expected,
-            got: args.len(),
-        }
-        .into());
-    }
-    Ok(())
-}
-
 pub(crate) fn require_number(value: &NonFunctionValue) -> Result<f64, Error> {
     value
         .as_number()
@@ -135,20 +121,12 @@ pub(crate) fn call_function(
     ctx.eval_expr(&func.body, &vars)
 }
 
-pub(crate) fn num(v: f64) -> NonFunctionValue {
-    NonFunctionValue::new(v)
-}
-
 pub(crate) fn b(v: bool) -> NonFunctionValue {
     NonFunctionValue::new(v)
 }
 
 pub(crate) fn str(v: impl Into<String>) -> NonFunctionValue {
     NonFunctionValue::new(v.into())
-}
-
-pub(crate) fn json(v: impl Into<serde_json::Value>) -> NonFunctionValue {
-    NonFunctionValue::new(v)
 }
 
 pub(crate) fn obj(values: &[(&str, serde_json::Value)]) -> NonFunctionValue {

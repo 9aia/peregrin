@@ -419,6 +419,8 @@ dependencies = [
  "ac-lib-kv-hashmap",
  "ac-lib-os",
  "ac-lib-os-std",
+ "ac-lib-otlp",
+ "ac-lib-otlp-std",
  "ac-lib-rand",
  "ac-lib-test",
  "ac-lib-unicode",
@@ -655,6 +657,28 @@ dependencies = [
  "ac-runtime-values",
  "mio",
  "nix",
+]
+
+[[package]]
+name = "ac-lib-otlp"
+version = "0.1.0"
+dependencies = [
+ "ac-runtime",
+ "ac-runtime-modules",
+ "ac-runtime-values",
+ "hex",
+ "rand",
+ "serde_json",
+ "thiserror",
+]
+
+[[package]]
+name = "ac-lib-otlp-std"
+version = "0.1.0"
+dependencies = [
+ "ac-lib-otlp",
+ "serde_json",
+ "ureq",
 ]
 
 [[package]]
