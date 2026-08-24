@@ -1,7 +1,13 @@
 use crate::cli::TypegenArgs;
+use crate::commands::ensure_input_format;
 use crate::io;
 
 pub fn run(args: TypegenArgs) -> i32 {
+    if let Err(e) = ensure_input_format(&args.format) {
+        eprintln!("error: {e}");
+        return 1;
+    }
+
     let input = match io::read_input(&Some(args.input.clone())) {
         Ok(s) => s,
         Err(e) => {
