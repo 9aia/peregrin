@@ -482,6 +482,15 @@
         "vite-plus": "catalog:",
       },
     },
+    "packages/vm-js": {
+      "name": "@ac-lang/vm-js",
+      "version": "0.0.0",
+      "devDependencies": {
+        "@types/node": "^24.13.3",
+        "typescript": "~6.0.2",
+        "vite-plus": "catalog:",
+      },
+    },
   },
   "overrides": {
     "vite": "catalog:",
@@ -491,6 +500,8 @@
     "vite-plus": "0.2.9",
   },
   "packages": {
+    "@ac-lang/vm-js": ["@ac-lang/vm-js@workspace:packages/vm-js"],
+
     "@ac/tests": ["@ac/tests@workspace:packages/tests"],
 
     "@algolia/abtesting": ["@algolia/abtesting@1.22.0", "", { "dependencies": { "@algolia/client-common": "5.56.0", "@algolia/requester-browser-xhr": "5.56.0", "@algolia/requester-fetch": "5.56.0", "@algolia/requester-node-http": "5.56.0" } }, "sha512-BFR6zNowNKcY7Ou7TaJc9QWexES4YKPbmf/OTFofpdsdhz4x6q0lbxp3duO0EHnyrN7rE4ba/TSXuY+BDGu4+g=="],
