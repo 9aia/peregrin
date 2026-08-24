@@ -15,6 +15,7 @@ members = [
   "crates/runtime-core",
   "crates/lib-utils",
   "crates/lib-utils/bytes",
+  "crates/lib-unicode",
   "crates/lib-collections",
   "crates/lib-datetime",
   "crates/lib-intl",
@@ -106,6 +107,7 @@ ac-runtime-config = { path = "crates/runtime-config" }
 ac-runtime-modules = { path = "crates/runtime-core" }
 ac-lib-utils = { path = "crates/lib-utils" }
 ac-lib-utils-bytes = { path = "crates/lib-utils/bytes" }
+ac-lib-unicode = { path = "crates/lib-unicode" }
 ac-lib-collections = { path = "crates/lib-collections" }
 ac-lib-datetime = { path = "crates/lib-datetime" }
 ac-lib-intl = { path = "crates/lib-intl" }
@@ -219,6 +221,7 @@ default = [
   "lib-http-client-std",
   "lib-http-server",
   "lib-http-server-std",
+  "lib-unicode",
   "store",
   "codebase",
 ]
@@ -263,6 +266,7 @@ lib-http-client = ["dep:ac-lib-http-client", "vm", "dep:ac-runtime-modules"]
 lib-http-client-std = ["dep:ac-lib-http-client-std", "lib-http-client"]
 lib-http-server = ["dep:ac-lib-http-server", "vm", "dep:ac-runtime-modules"]
 lib-http-server-std = ["dep:ac-lib-http-server-std", "lib-http-server"]
+lib-unicode = ["dep:ac-lib-unicode", "vm", "dep:ac-runtime-modules"]
 store = ["dep:ac-store"]
 codebase = ["dep:ac-codebase", "store"]
 
@@ -306,6 +310,7 @@ ac-lib-http-client = { workspace = true, optional = true }
 ac-lib-http-client-std = { workspace = true, optional = true }
 ac-lib-http-server = { workspace = true, optional = true }
 ac-lib-http-server-std = { workspace = true, optional = true }
+ac-lib-unicode = { workspace = true, optional = true }
 ac-store = { workspace = true, optional = true }
 ac-codebase = { workspace = true, optional = true }
 ac-runtime-sandbox = { workspace = true, optional = true }
