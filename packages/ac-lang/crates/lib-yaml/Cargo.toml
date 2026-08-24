@@ -1,0 +1,8 @@
+[package]
+name = "ac-lib-yaml"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-lib-serialize = { path = "../lib-serialize" }
+serde_yaml = "0.9"

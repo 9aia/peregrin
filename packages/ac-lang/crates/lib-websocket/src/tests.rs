@@ -18,8 +18,14 @@ fn opcode_roundtrip() {
 
 #[test]
 fn opcode_invalid() {
-    assert!(matches!(OpCode::from_u8(0x0B), Err(Error::InvalidOpCode(0x0B))));
-    assert!(matches!(OpCode::from_u8(0xFF), Err(Error::InvalidOpCode(0xFF))));
+    assert!(matches!(
+        OpCode::from_u8(0x0B),
+        Err(Error::InvalidOpCode(0x0B))
+    ));
+    assert!(matches!(
+        OpCode::from_u8(0xFF),
+        Err(Error::InvalidOpCode(0xFF))
+    ));
 }
 
 #[test]
@@ -64,7 +70,10 @@ fn close_code_bytes_roundtrip() {
 fn close_frame_roundtrip() {
     let original = CloseFrame::new(CloseCode::NORMAL, "goodbye");
     let bytes = original.encode();
-    assert_eq!(bytes, [0x03, 0xE8, b'g', b'o', b'o', b'd', b'p', b'y', b'e']);
+    assert_eq!(
+        bytes,
+        [0x03, 0xE8, b'g', b'o', b'o', b'd', b'b', b'y', b'e']
+    );
     let decoded = CloseFrame::decode(&bytes).unwrap();
     assert_eq!(decoded, original);
 }
@@ -79,13 +88,19 @@ fn close_frame_empty_reason() {
 
 #[test]
 fn close_frame_too_short() {
-    assert!(matches!(CloseFrame::decode(&[0x03]), Err(Error::InvalidCloseFrame)));
+    assert!(matches!(
+        CloseFrame::decode(&[0x03]),
+        Err(Error::InvalidCloseFrame)
+    ));
 }
 
 #[test]
 fn close_frame_invalid_utf8() {
     let bytes = vec![0x03, 0xE8, 0xC0, 0x80];
-    assert!(matches!(CloseFrame::decode(&bytes), Err(Error::InvalidUtf8)));
+    assert!(matches!(
+        CloseFrame::decode(&bytes),
+        Err(Error::InvalidUtf8)
+    ));
 }
 
 // ── Mask ────────────────────────────────────────────────────────────
@@ -228,20 +243,29 @@ fn frame_fragmented_control_rejected() {
     let payload = vec![0u8; 126];
     let frame = Frame::new(OpCode::Ping, payload);
     let bytes = frame.encode();
-    assert!(matches!(Frame::decode(&bytes), Err(Error::FragmentedControl)));
+    assert!(matches!(
+        Frame::decode(&bytes),
+        Err(Error::FragmentedControl)
+    ));
 }
 
 #[test]
 fn frame_non_final_control_rejected() {
     let frame = Frame::new(OpCode::Ping, vec![]).with_fin(false);
     let bytes = frame.encode();
-    assert!(matches!(Frame::decode(&bytes), Err(Error::FragmentedControl)));
+    assert!(matches!(
+        Frame::decode(&bytes),
+        Err(Error::FragmentedControl)
+    ));
 }
 
 #[test]
 fn frame_invalid_opcode_rejected() {
     let bytes = [0x8B, 0x80, 0x00, 0x00, 0x00, 0x00];
-    assert!(matches!(Frame::decode(&bytes), Err(Error::InvalidOpCode(0x0B))));
+    assert!(matches!(
+        Frame::decode(&bytes),
+        Err(Error::InvalidOpCode(0x0B))
+    ));
 }
 
 // ── Message ─────────────────────────────────────────────────────────
@@ -305,13 +329,19 @@ fn message_close_roundtrip_no_reason() {
 fn message_invalid_utf8_rejected() {
     let invalid = vec![0x80, 0x81, 0x82];
     let frame = Frame::new(OpCode::Text, invalid);
-    assert!(matches!(Message::from_frame(&frame), Err(Error::InvalidUtf8)));
+    assert!(matches!(
+        Message::from_frame(&frame),
+        Err(Error::InvalidUtf8)
+    ));
 }
 
 #[test]
 fn message_unfragmented_continuation_rejected() {
     let frame = Frame::new(OpCode::Continuation, b"x".to_vec());
-    assert!(matches!(Message::from_frame(&frame), Err(Error::UnexpectedContinuation)));
+    assert!(matches!(
+        Message::from_frame(&frame),
+        Err(Error::UnexpectedContinuation)
+    ));
 }
 
 // ── Reassembler ─────────────────────────────────────────────────────
@@ -333,7 +363,10 @@ fn reassembler_fragmented_text() {
     let cont = Frame::new(OpCode::Continuation, b"lo".to_vec());
 
     assert_eq!(asm.feed(&start).unwrap(), None);
-    assert_eq!(asm.feed(&cont).unwrap(), Some(Message::Text("hello".to_string())));
+    assert_eq!(
+        asm.feed(&cont).unwrap(),
+        Some(Message::Text("hello".to_string()))
+    );
 }
 
 #[test]
@@ -343,7 +376,10 @@ fn reassembler_fragmented_binary() {
     let cont = Frame::new(OpCode::Continuation, vec![3, 4, 5]);
 
     assert_eq!(asm.feed(&start).unwrap(), None);
-    assert_eq!(asm.feed(&cont).unwrap(), Some(Message::Binary(vec![0, 1, 2, 3, 4, 5])));
+    assert_eq!(
+        asm.feed(&cont).unwrap(),
+        Some(Message::Binary(vec![0, 1, 2, 3, 4, 5]))
+    );
 }
 
 #[test]
@@ -355,14 +391,20 @@ fn reassembler_interleaved_control() {
 
     assert_eq!(asm.feed(&start).unwrap(), None);
     assert_eq!(asm.feed(&ping).unwrap(), Some(Message::Ping(vec![0x01])));
-    assert_eq!(asm.feed(&cont).unwrap(), Some(Message::Text("hello".to_string())));
+    assert_eq!(
+        asm.feed(&cont).unwrap(),
+        Some(Message::Text("hello".to_string()))
+    );
 }
 
 #[test]
 fn reassembler_unexpected_continuation() {
     let mut asm = Reassembler::new();
     let cont = Frame::new(OpCode::Continuation, b"x".to_vec());
-    assert!(matches!(asm.feed(&cont), Err(Error::UnexpectedContinuation)));
+    assert!(matches!(
+        asm.feed(&cont),
+        Err(Error::UnexpectedContinuation)
+    ));
 }
 
 #[test]

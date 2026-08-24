@@ -16,6 +16,7 @@ members = [
   "crates/lib-utils",
   "crates/lib-utils/bytes",
   "crates/lib-unicode",
+  "crates/lib-ip",
   "crates/lib-collections",
   "crates/lib-datetime",
   "crates/lib-intl",
@@ -97,6 +98,10 @@ members = [
   "crates/lib-archive-tar",
   "crates/lib-otlp",
   "crates/lib-otlp-std",
+  "crates/lib-serialize",
+  "crates/lib-json",
+  "crates/lib-toml",
+  "crates/lib-yaml",
 ]
 resolver = "3"
 
@@ -116,6 +121,7 @@ ac-runtime-modules = { path = "crates/runtime-core" }
 ac-lib-utils = { path = "crates/lib-utils" }
 ac-lib-utils-bytes = { path = "crates/lib-utils/bytes" }
 ac-lib-unicode = { path = "crates/lib-unicode" }
+ac-lib-ip = { path = "crates/lib-ip" }
 ac-lib-collections = { path = "crates/lib-collections" }
 ac-lib-datetime = { path = "crates/lib-datetime" }
 ac-lib-intl = { path = "crates/lib-intl" }
@@ -242,6 +248,7 @@ default = [
   "lib-otlp",
   "lib-otlp-std",
   "lib-unicode",
+  "lib-ip",
   "store",
   "codebase",
 ]
@@ -290,6 +297,7 @@ lib-http-server-std = ["dep:ac-lib-http-server-std", "lib-http-server"]
 lib-otlp = ["dep:ac-lib-otlp", "vm", "dep:ac-runtime-modules"]
 lib-otlp-std = ["dep:ac-lib-otlp-std", "lib-otlp"]
 lib-unicode = ["dep:ac-lib-unicode", "vm", "dep:ac-runtime-modules"]
+lib-ip = ["dep:ac-lib-ip"]
 store = ["dep:ac-store"]
 codebase = ["dep:ac-codebase", "store"]
 
@@ -337,6 +345,7 @@ ac-lib-http-server-std = { workspace = true, optional = true }
 ac-lib-otlp = { workspace = true, optional = true }
 ac-lib-otlp-std = { workspace = true, optional = true }
 ac-lib-unicode = { workspace = true, optional = true }
+ac-lib-ip = { workspace = true, optional = true }
 ac-store = { workspace = true, optional = true }
 ac-codebase = { workspace = true, optional = true }
 ac-runtime-sandbox = { workspace = true, optional = true }

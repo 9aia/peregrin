@@ -1,0 +1,8 @@
+[package]
+name = "ac-lib-toml"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-lib-serialize = { path = "../lib-serialize" }
+toml = "0.8"

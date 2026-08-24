@@ -183,7 +183,12 @@ impl Frame {
             if input.len() < cursor + 4 {
                 return Err(Error::Incomplete);
             }
-            mask_key = Some([input[cursor], input[cursor + 1], input[cursor + 2], input[cursor + 3]]);
+            mask_key = Some([
+                input[cursor],
+                input[cursor + 1],
+                input[cursor + 2],
+                input[cursor + 3],
+            ]);
             cursor += 4;
         }
 

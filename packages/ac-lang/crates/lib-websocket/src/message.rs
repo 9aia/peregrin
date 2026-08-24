@@ -47,9 +47,7 @@ impl Message {
     /// `mask` should be provided by clients per RFC 6455. Servers omit it.
     pub fn into_frame(self, mask: Option<[u8; 4]>) -> Frame {
         match self {
-            Self::Text(text) => {
-                Frame::new(OpCode::Text, text.into_bytes()).with_mask_opt(mask)
-            }
+            Self::Text(text) => Frame::new(OpCode::Text, text.into_bytes()).with_mask_opt(mask),
             Self::Binary(bytes) => Frame::new(OpCode::Binary, bytes).with_mask_opt(mask),
             Self::Ping(data) => Frame::new(OpCode::Ping, data).with_mask_opt(mask),
             Self::Pong(data) => Frame::new(OpCode::Pong, data).with_mask_opt(mask),
