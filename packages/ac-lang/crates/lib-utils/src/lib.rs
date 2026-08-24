@@ -64,6 +64,9 @@
 //!   `type.is_null`, `type.is_bool`, `type.is_number`, `type.is_string`,
 //!   `type.is_array`, `type.is_object`, `type.type_of`, `type.is_empty`,
 //!   `type.is_truthy`, `type.identity`, `type.default`, `type.coalesce`
+//! - [`OptionModule`] — `option.some`, `option.none`, `option.is_some`,
+//!   `option.is_none`, `option.unwrap`, `option.unwrap_or`, `option.map`,
+//!   `option.flat_map`, `option.filter`, `option.or`, `option.and`, `option.xor`
 //! - [`ResultModule`] — `result.ok`, `result.err`, `result.is_ok`,
 //!   `result.is_err`
 //!
@@ -72,7 +75,7 @@
 //! ```ignore
 //! use ac_runtime_modules::ModuleHost;
 //! use ac_lib_utils::{MathModule, StrModule, ArrayModule, BoolModule, CmpModule,
-//!     ObjModule, FnModule, TypeModule, SetModule};
+//!     ObjModule, FnModule, TypeModule, OptionModule, SetModule};
 //!
 //! let host = ModuleHost::new()
 //!     .with(MathModule)
@@ -83,6 +86,7 @@
 //!     .with(ObjModule)
 //!     .with(FnModule)
 //!     .with(TypeModule)
+//!     .with(OptionModule)
 //!     .with(SetModule);
 //! ```
 //!
@@ -96,6 +100,7 @@ mod r#fn;
 mod math;
 mod mood;
 mod obj;
+mod option;
 mod result;
 mod set;
 pub(crate) mod shared;
@@ -109,6 +114,7 @@ pub use r#fn::FnModule;
 pub use math::MathModule;
 pub use mood::MoodModule;
 pub use obj::ObjModule;
+pub use option::OptionModule;
 pub use result::ResultModule;
 pub use set::SetModule;
 pub use r#str::StrModule;
