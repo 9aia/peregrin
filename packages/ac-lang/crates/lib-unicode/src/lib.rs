@@ -9,10 +9,14 @@
 //! - [`ident`] — identifier validation using `XID_Start` / `XID_Continue`
 //!   (UAX #31), suitable for lexers and parsers.
 //!
+//! Also exposes the `unicode` AC runtime module via [`UnicodeModule`].
+//!
 //! Future work: grapheme cluster iteration, normalization, and case folding.
 
 pub mod decode;
 pub mod ident;
+pub mod module;
 
 pub use decode::{decode_utf8, DecodeError, Utf8Iterator};
-pub use ident::{is_identifier_continue, is_identifier_start};
+pub use ident::{is_identifier, is_identifier_continue, is_identifier_start};
+pub use module::UnicodeModule;
