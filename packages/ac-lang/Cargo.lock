@@ -64,7 +64,6 @@ dependencies = [
  "ac-parser-canonical",
  "ac-typecheck-core",
  "clap",
- "serde_json",
 ]
 
 [[package]]
@@ -421,6 +420,7 @@ dependencies = [
  "ac-lib-os",
  "ac-lib-os-std",
  "ac-lib-rand",
+ "ac-lib-unicode",
  "ac-lib-utils",
  "ac-module-resolver-core",
  "ac-module-resolver-file",
@@ -468,6 +468,16 @@ dependencies = [
 [[package]]
 name = "ac-lib-collections"
 version = "0.1.0"
+dependencies = [
+ "ac-ast",
+ "ac-ast-canonical",
+ "ac-runtime",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-values",
+ "serde_json",
+]
 
 [[package]]
 name = "ac-lib-crypto"
@@ -625,6 +635,13 @@ dependencies = [
  "ac-runtime-values",
  "rand",
  "serde_json",
+]
+
+[[package]]
+name = "ac-lib-unicode"
+version = "0.1.0"
+dependencies = [
+ "unicode-ident",
 ]
 
 [[package]]
