@@ -64,6 +64,8 @@
 //!   `type.is_null`, `type.is_bool`, `type.is_number`, `type.is_string`,
 //!   `type.is_array`, `type.is_object`, `type.type_of`, `type.is_empty`,
 //!   `type.is_truthy`, `type.identity`, `type.default`, `type.coalesce`
+//! - [`ResultModule`] — `result.ok`, `result.err`, `result.is_ok`,
+//!   `result.is_err`, `result.match`
 //!
 //! ## Usage
 //!
@@ -93,6 +95,7 @@ mod cmp;
 mod r#fn;
 mod math;
 mod obj;
+mod result;
 mod set;
 pub(crate) mod shared;
 mod r#str;
@@ -104,6 +107,7 @@ pub use cmp::CmpModule;
 pub use r#fn::FnModule;
 pub use math::MathModule;
 pub use obj::ObjModule;
+pub use result::ResultModule;
 pub use set::SetModule;
 pub use r#str::StrModule;
 pub use r#type::TypeModule;
