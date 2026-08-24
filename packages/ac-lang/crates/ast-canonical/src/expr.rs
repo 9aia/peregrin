@@ -24,12 +24,8 @@ impl Pattern {
     pub fn bound_names(&self) -> Vec<String> {
         match self {
             Pattern::Identifier(name) => vec![name.clone()],
-            Pattern::Array(elements) => {
-                elements.iter().flat_map(Pattern::bound_names).collect()
-            }
-            Pattern::Object(entries) => {
-                entries.iter().flat_map(|(_, p)| p.bound_names()).collect()
-            }
+            Pattern::Array(elements) => elements.iter().flat_map(Pattern::bound_names).collect(),
+            Pattern::Object(entries) => entries.iter().flat_map(|(_, p)| p.bound_names()).collect(),
             Pattern::Rest(name) => vec![name.clone()],
         }
     }
