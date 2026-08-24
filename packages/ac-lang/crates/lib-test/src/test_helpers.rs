@@ -1,5 +1,5 @@
-use ac_runtime::{Error, Eval};
-use ac_runtime_values::NonFunctionValue;
+use ac_runtime::Eval;
+use ac_runtime_values::{Error, NonFunctionValue};
 
 /// An [`Eval`] that always returns `true`.
 pub struct TrueEval;

@@ -1,11 +1,11 @@
-use ac_runtime::Eval;
-use ac_runtime_values::{CanonicalContext, FunctionValue, NonFunctionValue};
+use ac_runtime_modules::Module;
+use ac_runtime_values::{CanonicalContext, Error, FunctionValue, NonFunctionValue};
 use serde_json::json;
 
 use crate::{
     AssertModule, BenchmarkModule, FuzzModule, PropertyModule, SnapshotModule, TestModule,
 };
-use crate::test_helpers::{ErrorEval, TrueEval, VarEval};
+use crate::test_helpers::{ErrorEval, TrueEval};
 
 fn ctx() -> CanonicalContext {
     let mut context = CanonicalContext::new();
@@ -16,12 +16,6 @@ fn ctx() -> CanonicalContext {
 fn err_ctx() -> CanonicalContext {
     let mut context = CanonicalContext::new();
     context.set_eval(Box::new(ErrorEval));
-    context
-}
-
-fn var_ctx() -> CanonicalContext {
-    let mut context = CanonicalContext::new();
-    context.set_eval(Box::new(VarEval));
     context
 }
 
@@ -64,7 +58,7 @@ fn call_err(
     name: &str,
     args: &[NonFunctionValue],
     context: &mut CanonicalContext,
-) -> Result<NonFunctionValue, ac_runtime_values::Error> {
+) -> Result<NonFunctionValue, Error> {
     module
         .function(name)
         .expect("function exists")
@@ -101,8 +95,8 @@ fn assert_false_passes_for_false() {
 }
 
 #[test]
-fn assert_contains_finds_value_in_array() {
-    let result = call(&AssertModule, "contains", &[NonFunctionValue::new(json!([1, 2, 3])), n(2.0)]);
+fn assert_contains_finds_substring() {
+    let result = call(&AssertModule, "contains", &[s("hello world"), s("world")]);
     assert_eq!(result, b(true));
 }
 
@@ -116,8 +110,8 @@ fn assert_throws_passes_when_function_errors() {
 #[test]
 fn test_run_reports_passing_cases() {
     let suite = NonFunctionValue::new(json!([
-        { "name": "one", "body": fn_value("true", &[]) },
-        { "name": "two", "body": fn_value("true", &[]) }
+        { "name": "one", "body": fn_value("true", &[]).into_inner() },
+        { "name": "two", "body": fn_value("true", &[]).into_inner() }
     ]));
     let report = call(&TestModule, "run", &[suite]);
     assert_eq!(report.get("passed").and_then(|v| v.as_u64()), Some(2));
@@ -127,9 +121,14 @@ fn test_run_reports_passing_cases() {
 #[test]
 fn test_run_reports_failing_cases() {
     let suite = NonFunctionValue::new(json!([
-        { "name": "bad", "body": fn_value("error", &[]) }
+        { "name": "bad", "body": fn_value("error", &[]).into_inner() }
     ]));
-    let report = call(&TestModule, "run", &[suite]);
+    let mut context = err_ctx();
+    let report = TestModule
+        .function("run")
+        .unwrap()
+        .call(&[suite], &mut context)
+        .unwrap();
     assert_eq!(report.get("passed").and_then(|v| v.as_u64()), Some(0));
     assert_eq!(report.get("failed").and_then(|v| v.as_u64()), Some(1));
 }
