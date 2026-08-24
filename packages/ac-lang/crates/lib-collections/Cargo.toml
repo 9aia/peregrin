@@ -1,0 +1,8 @@
+[package]
+name = "ac-lib-collections"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+
+[dev-dependencies]

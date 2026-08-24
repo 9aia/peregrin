@@ -14,6 +14,8 @@ members = [
   "crates/runtime-config",
   "crates/runtime-core",
   "crates/lib-utils",
+  "crates/lib-utils/bytes",
+  "crates/lib-collections",
   "crates/lib-datetime",
   "crates/lib-intl",
   "crates/rust-lib-ecma402-traits",
@@ -68,6 +70,7 @@ members = [
   "crates/compiler-pass-typecheck",
   "crates/compiler-pass-generate",
   "crates/compiler",
+  "crates/compiler-backend-js",
   "crates/compiler-tests",
   "crates/bench",
   "crates/cli",
@@ -102,6 +105,8 @@ ac-runtime-values = { path = "crates/runtime" }
 ac-runtime-config = { path = "crates/runtime-config" }
 ac-runtime-modules = { path = "crates/runtime-core" }
 ac-lib-utils = { path = "crates/lib-utils" }
+ac-lib-utils-bytes = { path = "crates/lib-utils/bytes" }
+ac-lib-collections = { path = "crates/lib-collections" }
 ac-lib-datetime = { path = "crates/lib-datetime" }
 ac-lib-intl = { path = "crates/lib-intl" }
 ecma402-traits = { package = "rust-lib-ecma402-traits", path = "crates/rust-lib-ecma402-traits" }
@@ -130,6 +135,7 @@ ac-frontend = { path = "crates/frontend" }
 ac-runtime-example-1 = { path = "crates/host" }
 ac-compiler-common = { path = "crates/compiler-common" }
 ac-compiler-canonical = { path = "crates/compiler-canonical" }
+ac-compiler-backend-js = { path = "crates/compiler-backend-js" }
 ac-compiler-pass-parse = { path = "crates/compiler-pass-parse" }
 ac-compiler-pass-extract = { path = "crates/compiler-pass-extract" }
 ac-compiler-pass-resolve = { path = "crates/compiler-pass-resolve" }
