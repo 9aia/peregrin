@@ -26,6 +26,34 @@ pub(super) fn require_one_array(args: &[NonFunctionValue]) -> Result<&[serde_jso
     require_array(args, 0)
 }
 
+/// Require an argument at `idx` to be an object.
+pub(super) fn require_object(
+    args: &[NonFunctionValue],
+    idx: usize,
+) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
+    let arg = args.get(idx).ok_or(Error::ArgumentCount {
+        expected: idx + 1,
+        got: args.len(),
+    })?;
+    arg.as_object().ok_or(Error::TypeMismatch {
+        expected: "object",
+        got: "non-object",
+    })
+}
+
+/// Require a single object argument.
+pub(super) fn require_one_object(
+    args: &[NonFunctionValue],
+) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
+    if args.is_empty() {
+        return Err(Error::ArgumentCount {
+            expected: 1,
+            got: 0,
+        });
+    }
+    require_object(args, 0)
+}
+
 pub(super) fn num(value: impl Into<f64>) -> NonFunctionValue {
     NonFunctionValue::new(serde_json::json!(value.into()))
 }
@@ -36,4 +64,8 @@ pub(super) fn b(value: bool) -> NonFunctionValue {
 
 pub(super) fn arr(values: &[serde_json::Value]) -> NonFunctionValue {
     NonFunctionValue::new(serde_json::Value::Array(values.to_vec()))
+}
+
+pub(super) fn obj(map: serde_json::Map<String, serde_json::Value>) -> NonFunctionValue {
+    NonFunctionValue::new(serde_json::Value::Object(map))
 }

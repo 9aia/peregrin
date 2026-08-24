@@ -2,6 +2,7 @@ use ac_runtime::Function;
 use ac_runtime_modules::Module;
 use ac_runtime_values::NonFunctionValue;
 
+use super::hash_map as hm;
 use super::ops::{End, From, IsEmpty, Len, New, Peek, Pop, Push, ToArray};
 
 static NEW: New = New;
@@ -33,9 +34,21 @@ static DEQUE_POP_FRONT: Pop = Pop { end: End::Front };
 static DEQUE_PEEK_BACK: Peek = Peek { end: End::Back };
 static DEQUE_PEEK_FRONT: Peek = Peek { end: End::Front };
 
+static HASH_MAP_NEW: hm::New = hm::New;
+static HASH_MAP_FROM: hm::From = hm::From;
+static HASH_MAP_TO_OBJECT: hm::ToObject = hm::ToObject;
+static HASH_MAP_LEN: hm::Len = hm::Len;
+static HASH_MAP_IS_EMPTY: hm::IsEmpty = hm::IsEmpty;
+static HASH_MAP_GET: hm::Get = hm::Get;
+static HASH_MAP_SET: hm::Set = hm::Set;
+static HASH_MAP_REMOVE: hm::Remove = hm::Remove;
+static HASH_MAP_HAS: hm::Has = hm::Has;
+static HASH_MAP_KEYS: hm::Keys = hm::Keys;
+static HASH_MAP_VALUES: hm::Values = hm::Values;
+
 /// The `collections` module — collection types for the AC runtime.
 ///
-/// Currently implemented: `vec`, `list`, `queue`, `stack`, `deque`.
+/// Currently implemented: `vec`, `list`, `queue`, `stack`, `deque`, `hash_map`.
 #[derive(Clone, Copy)]
 pub struct CollectionsModule;
 
@@ -94,6 +107,18 @@ impl Module for CollectionsModule {
             "deque.pop_front" => Some(&DEQUE_POP_FRONT),
             "deque.peek_back" => Some(&DEQUE_PEEK_BACK),
             "deque.peek_front" => Some(&DEQUE_PEEK_FRONT),
+            // hash_map
+            "hash_map.new" => Some(&HASH_MAP_NEW),
+            "hash_map.from" => Some(&HASH_MAP_FROM),
+            "hash_map.to_object" => Some(&HASH_MAP_TO_OBJECT),
+            "hash_map.len" => Some(&HASH_MAP_LEN),
+            "hash_map.is_empty" => Some(&HASH_MAP_IS_EMPTY),
+            "hash_map.get" => Some(&HASH_MAP_GET),
+            "hash_map.set" => Some(&HASH_MAP_SET),
+            "hash_map.remove" => Some(&HASH_MAP_REMOVE),
+            "hash_map.has" => Some(&HASH_MAP_HAS),
+            "hash_map.keys" => Some(&HASH_MAP_KEYS),
+            "hash_map.values" => Some(&HASH_MAP_VALUES),
             _ => None,
         }
     }
