@@ -1,0 +1,10 @@
+{
+  value: {
+    title: "example",
+    owner: { name: "luis" },
+    nums: [1, 2, 3],
+    active: true
+  },
+  text: toml.encode(value),
+  decoded: toml.decode(text)
+}

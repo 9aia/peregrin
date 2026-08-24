@@ -415,6 +415,7 @@ dependencies = [
  "ac-lib-http-server",
  "ac-lib-http-server-std",
  "ac-lib-intl",
+ "ac-lib-ip",
  "ac-lib-kv",
  "ac-lib-kv-hashmap",
  "ac-lib-os",
@@ -616,6 +617,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-lib-ip"
+version = "0.1.0"
+
+[[package]]
+name = "ac-lib-json"
+version = "0.1.0"
+dependencies = [
+ "ac-lib-serialize",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "ac-lib-kv"
 version = "0.1.0"
 dependencies = [
@@ -697,6 +711,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-lib-serialize"
+version = "0.1.0"
+dependencies = [
+ "thiserror",
+]
+
+[[package]]
 name = "ac-lib-test"
 version = "0.1.0"
 dependencies = [
@@ -704,15 +725,25 @@ dependencies = [
  "ac-runtime-modules",
  "ac-runtime-values",
  "rand",
- "rand_chacha",
- "rayon",
  "serde_json",
+]
+
+[[package]]
+name = "ac-lib-toml"
+version = "0.1.0"
+dependencies = [
+ "ac-lib-serialize",
+ "toml",
 ]
 
 [[package]]
 name = "ac-lib-unicode"
 version = "0.1.0"
 dependencies = [
+ "ac-runtime",
+ "ac-runtime-modules",
+ "ac-runtime-values",
+ "serde_json",
  "unicode-ident",
 ]
 
@@ -744,6 +775,18 @@ dependencies = [
  "base64",
  "hex",
  "serde_json",
+]
+
+[[package]]
+name = "ac-lib-websocket"
+version = "0.1.0"
+
+[[package]]
+name = "ac-lib-yaml"
+version = "0.1.0"
+dependencies = [
+ "ac-lib-serialize",
+ "serde_yaml",
 ]
 
 [[package]]
@@ -977,6 +1020,7 @@ dependencies = [
  "ac-lib-kv-hashmap",
  "ac-lib-os",
  "ac-lib-os-std",
+ "ac-lib-otlp-std",
  "ac-lib-rand",
  "ac-lib-utils",
  "ac-runtime",
