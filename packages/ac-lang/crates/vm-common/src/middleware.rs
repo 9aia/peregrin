@@ -11,7 +11,10 @@ pub struct MapHost {
 
 impl MapHost {
     /// Creates a host that maps names through `mapper`.
-    pub fn new(inner: Box<dyn Host<NonFunctionValue>>, mapper: impl Fn(&str) -> String + 'static) -> Self {
+    pub fn new(
+        inner: Box<dyn Host<NonFunctionValue>>,
+        mapper: impl Fn(&str) -> String + 'static,
+    ) -> Self {
         MapHost {
             inner,
             mapper: Box::new(mapper),
@@ -85,7 +88,10 @@ pub struct HostEvent<'a> {
 
 impl LoggingHost {
     /// Creates a host that logs every lookup to `logger`.
-    pub fn new(inner: Box<dyn Host<NonFunctionValue>>, logger: impl Fn(&HostEvent<'_>) + 'static) -> Self {
+    pub fn new(
+        inner: Box<dyn Host<NonFunctionValue>>,
+        logger: impl Fn(&HostEvent<'_>) + 'static,
+    ) -> Self {
         LoggingHost {
             inner,
             log: Box::new(logger),
@@ -163,7 +169,10 @@ pub struct AllowHost {
 
 impl AllowHost {
     /// Creates a host that only resolves names in `allowed`.
-    pub fn new(inner: Box<dyn Host<NonFunctionValue>>, allowed: impl IntoIterator<Item = impl Into<String>>) -> Self {
+    pub fn new(
+        inner: Box<dyn Host<NonFunctionValue>>,
+        allowed: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
         AllowHost {
             inner,
             allowed: allowed.into_iter().map(|s| s.into()).collect(),
@@ -221,7 +230,10 @@ pub struct DenyHost {
 
 impl DenyHost {
     /// Creates a host that denies names in `denied`.
-    pub fn new(inner: Box<dyn Host<NonFunctionValue>>, denied: impl IntoIterator<Item = impl Into<String>>) -> Self {
+    pub fn new(
+        inner: Box<dyn Host<NonFunctionValue>>,
+        denied: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Self {
         DenyHost {
             inner,
             denied: denied.into_iter().map(|s| s.into()).collect(),

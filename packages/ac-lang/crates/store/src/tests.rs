@@ -1,5 +1,5 @@
-use ac_runtime_values::NonFunctionValue;
 use ac_runtime_values::FunctionValue;
+use ac_runtime_values::NonFunctionValue;
 use serde_json::json;
 
 use ac_ast_canonical::{Expr, HandlerClause};

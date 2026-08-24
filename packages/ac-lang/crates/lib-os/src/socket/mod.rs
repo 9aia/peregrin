@@ -1,8 +1,8 @@
-mod socket;
 mod async_socket;
+mod socket;
 
-pub use socket::{Socket, SocketModule};
 pub use async_socket::{AsyncSocket, AsyncSocketModule};
+pub use socket::{Socket, SocketModule};
 
 pub mod socket_stub;
 

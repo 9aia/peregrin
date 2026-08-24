@@ -3,9 +3,7 @@ use std::future::Future;
 use std::pin::Pin;
 use std::rc::Rc;
 
-use ac_runtime::{
-    AsyncEval, Error, Eval, Expr, VirtualMachine,
-};
+use ac_runtime::{AsyncEval, Error, Eval, Expr, VirtualMachine};
 use ac_runtime_values::{CanonicalContext, NonFunctionValue};
 use serde_json::Value as JsonValue;
 
@@ -160,7 +158,10 @@ impl<V: VirtualMachine<NonFunctionValue>> Machine<V> {
     }
 
     /// Evaluates an expression synchronously.
-    pub fn eval(&self, expr: &Expr<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
+    pub fn eval(
+        &self,
+        expr: &Expr<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let mut ctx = self.context.build();
         self.vm.eval(expr, &mut ctx)
     }

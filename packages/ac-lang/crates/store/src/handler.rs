@@ -1,5 +1,5 @@
-use ac_runtime_values::NonFunctionValue;
 use ac_ast_canonical::{Expr, HandlerClause, Pattern};
+use ac_runtime_values::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
 use crate::canonical::canonical_string;
@@ -44,7 +44,10 @@ pub fn handler_clause_to_json(clause: &RuntimeHandlerClause) -> JsonValue {
 fn pattern_to_json(pattern: &Pattern) -> JsonValue {
     match pattern {
         Pattern::Identifier(name) => JsonValue::Object(serde_json::Map::from_iter([
-            ("type".to_string(), JsonValue::String("identifier".to_string())),
+            (
+                "type".to_string(),
+                JsonValue::String("identifier".to_string()),
+            ),
             ("name".to_string(), JsonValue::String(name.clone())),
         ])),
         Pattern::Array(elements) => JsonValue::Object(serde_json::Map::from_iter([
@@ -142,10 +145,18 @@ fn expr_to_json(expr: &RuntimeExpr) -> JsonValue {
             ret,
             body,
         } => JsonValue::Object(serde_json::Map::from_iter([
-            ("type".to_string(), JsonValue::String("function".to_string())),
+            (
+                "type".to_string(),
+                JsonValue::String("function".to_string()),
+            ),
             (
                 "type_params".to_string(),
-                JsonValue::Array(type_params.iter().map(|s| JsonValue::String(s.clone())).collect()),
+                JsonValue::Array(
+                    type_params
+                        .iter()
+                        .map(|s| JsonValue::String(s.clone()))
+                        .collect(),
+                ),
             ),
             (
                 "params".to_string(),

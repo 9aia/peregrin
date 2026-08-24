@@ -1,6 +1,4 @@
-use ac_runtime::{
-    AsyncFunction, Function, GenericFunction, Host, LazyFunction, Operation,
-};
+use ac_runtime::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, Operation};
 use ac_runtime_values::NonFunctionValue;
 use std::collections::HashMap;
 
@@ -47,31 +45,51 @@ impl MockHost {
     }
 
     /// Registers a synchronous function.
-    pub fn with_function(mut self, name: impl Into<String>, f: Box<dyn Function<NonFunctionValue>>) -> Self {
+    pub fn with_function(
+        mut self,
+        name: impl Into<String>,
+        f: Box<dyn Function<NonFunctionValue>>,
+    ) -> Self {
         self.functions.insert(name.into(), f);
         self
     }
 
     /// Registers an async function.
-    pub fn with_async(mut self, name: impl Into<String>, f: Box<dyn AsyncFunction<NonFunctionValue>>) -> Self {
+    pub fn with_async(
+        mut self,
+        name: impl Into<String>,
+        f: Box<dyn AsyncFunction<NonFunctionValue>>,
+    ) -> Self {
         self.async_functions.insert(name.into(), f);
         self
     }
 
     /// Registers an operation.
-    pub fn with_operation(mut self, name: impl Into<String>, f: Box<dyn Operation<NonFunctionValue>>) -> Self {
+    pub fn with_operation(
+        mut self,
+        name: impl Into<String>,
+        f: Box<dyn Operation<NonFunctionValue>>,
+    ) -> Self {
         self.operations.insert(name.into(), f);
         self
     }
 
     /// Registers a lazy function.
-    pub fn with_lazy(mut self, name: impl Into<String>, f: Box<dyn LazyFunction<NonFunctionValue>>) -> Self {
+    pub fn with_lazy(
+        mut self,
+        name: impl Into<String>,
+        f: Box<dyn LazyFunction<NonFunctionValue>>,
+    ) -> Self {
         self.lazy_functions.insert(name.into(), f);
         self
     }
 
     /// Registers a generic function.
-    pub fn with_generic(mut self, name: impl Into<String>, f: Box<dyn GenericFunction<NonFunctionValue>>) -> Self {
+    pub fn with_generic(
+        mut self,
+        name: impl Into<String>,
+        f: Box<dyn GenericFunction<NonFunctionValue>>,
+    ) -> Self {
         self.generic_functions.insert(name.into(), f);
         self
     }

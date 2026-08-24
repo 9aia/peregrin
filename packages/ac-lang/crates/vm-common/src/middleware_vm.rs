@@ -71,7 +71,9 @@ impl<V, M> MiddlewareVm<V, M> {
     }
 }
 
-impl<V: VirtualMachine<NonFunctionValue>, M: VmMiddleware> VirtualMachine<NonFunctionValue> for MiddlewareVm<V, M> {
+impl<V: VirtualMachine<NonFunctionValue>, M: VmMiddleware> VirtualMachine<NonFunctionValue>
+    for MiddlewareVm<V, M>
+{
     fn eval(
         &self,
         expr: &Expr<NonFunctionValue>,
@@ -201,7 +203,11 @@ fn summarize(expr: &Expr<NonFunctionValue>) -> String {
         Expr::Value(_) => "Value".to_string(),
         Expr::Var(name) => format!("Var({})", name),
         Expr::Assign { target, .. } => format!("Assign({})", target.bound_names().join(",")),
-        Expr::Function { type_params, params, .. } => {
+        Expr::Function {
+            type_params,
+            params,
+            ..
+        } => {
             let count: usize = params.iter().map(|(p, _)| p.bound_names().len()).sum();
             format!("Function<{}>({})", type_params.join(","), count)
         }

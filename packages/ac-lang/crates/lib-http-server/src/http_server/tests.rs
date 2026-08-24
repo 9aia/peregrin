@@ -1,8 +1,8 @@
 use ac_runtime_values::NonFunctionValue;
 use std::sync::Arc;
 
-use ac_runtime_values::CanonicalContext;
 use ac_runtime_modules::Module;
+use ac_runtime_values::CanonicalContext;
 
 use crate::http_method::HttpMethod;
 use crate::http_server::{HttpServer, HttpServerModule, StubHttpServer};

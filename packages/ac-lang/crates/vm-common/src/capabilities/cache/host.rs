@@ -111,7 +111,11 @@ impl<H: Host<NonFunctionValue>> CacheHost<H> {
     /// All calls to this function will be checked against the cache
     /// before dispatching. Function names not registered delegate to
     /// the inner host without caching.
-    pub fn register(&mut self, name: impl Into<String>, function: Box<dyn Function<NonFunctionValue>>) {
+    pub fn register(
+        &mut self,
+        name: impl Into<String>,
+        function: Box<dyn Function<NonFunctionValue>>,
+    ) {
         let name = name.into();
         self.registered.insert(
             name.clone(),

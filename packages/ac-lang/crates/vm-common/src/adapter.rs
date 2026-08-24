@@ -113,7 +113,10 @@ impl<F, T> MapResult<F, T> {
 impl<F, T> Function<NonFunctionValue> for MapResult<F, T>
 where
     F: Function<NonFunctionValue> + 'static,
-    T: Fn(Result<NonFunctionValue, Error<NonFunctionValue>>) -> Result<NonFunctionValue, Error<NonFunctionValue>> + 'static,
+    T: Fn(
+            Result<NonFunctionValue, Error<NonFunctionValue>>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>
+        + 'static,
 {
     fn call(
         &self,
@@ -128,7 +131,10 @@ where
 pub fn map_result<F, T>(inner: F, transform: T) -> Box<dyn Function<NonFunctionValue>>
 where
     F: Function<NonFunctionValue> + 'static,
-    T: Fn(Result<NonFunctionValue, Error<NonFunctionValue>>) -> Result<NonFunctionValue, Error<NonFunctionValue>> + 'static,
+    T: Fn(
+            Result<NonFunctionValue, Error<NonFunctionValue>>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>
+        + 'static,
 {
     Box::new(MapResult::new(inner, transform))
 }
@@ -282,7 +288,11 @@ where
 }
 
 /// Creates a function that times its calls.
-pub fn timed<F, L>(inner: F, label: impl Into<String>, logger: L) -> Box<dyn Function<NonFunctionValue>>
+pub fn timed<F, L>(
+    inner: F,
+    label: impl Into<String>,
+    logger: L,
+) -> Box<dyn Function<NonFunctionValue>>
 where
     F: Function<NonFunctionValue> + 'static,
     L: Fn(&str, &std::time::Duration, &Result<NonFunctionValue, Error<NonFunctionValue>>) + 'static,
@@ -448,7 +458,11 @@ where
 }
 
 /// Creates a conditional function.
-pub fn r#if<C, T, E>(condition: C, then_branch: T, else_branch: E) -> Box<dyn Function<NonFunctionValue>>
+pub fn r#if<C, T, E>(
+    condition: C,
+    then_branch: T,
+    else_branch: E,
+) -> Box<dyn Function<NonFunctionValue>>
 where
     C: Function<NonFunctionValue> + 'static,
     T: Function<NonFunctionValue> + 'static,

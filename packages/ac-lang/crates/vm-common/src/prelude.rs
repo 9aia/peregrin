@@ -1,10 +1,10 @@
 //! Convenience prelude for VM consumers and tests.
 
-pub use ac_runtime_values::{CanonicalContext, FunctionValue, NonFunctionValue};
 pub use ac_runtime::{
-    AsyncEval, AsyncFunction, Context, Error, Eval, Expr, Function, GenericFunction,
-    HandlerClause, Host, HostRef, LazyFunction, Operation, OperationSig, Value, VirtualMachine,
+    AsyncEval, AsyncFunction, Context, Error, Eval, Expr, Function, GenericFunction, HandlerClause,
+    Host, HostRef, LazyFunction, Operation, OperationSig, Value, VirtualMachine,
 };
+pub use ac_runtime_values::{CanonicalContext, FunctionValue, NonFunctionValue};
 
 pub use crate::{
     AllowHost, CaptureFn, ChainHost, Const, ContextBuilder, DenyHost, FilterHost, FnAsync,

@@ -118,5 +118,3 @@ impl Function<NonFunctionValue> for Resolve {
         resolve_path(value, &path)
     }
 }
-
-

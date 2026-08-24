@@ -10,8 +10,7 @@ use ac_runtime_modules::Module;
 use crate::error::OsError;
 
 /// A boxed, sendable future for async socket operations.
-pub type AsyncSocketFuture<'a, T> =
-    Pin<Box<dyn Future<Output = Result<T, OsError>> + Send + 'a>>;
+pub type AsyncSocketFuture<'a, T> = Pin<Box<dyn Future<Output = Result<T, OsError>> + Send + 'a>>;
 
 /// Abstract async socket service.
 ///
@@ -171,12 +170,10 @@ impl AsyncFunction<NonFunctionValue> for AsyncRecvFn {
                 });
             }
             let handle = require_number_arg(args)?;
-            let length = args[1]
-                .as_number()
-                .ok_or(Error::TypeMismatch {
-                    expected: "number",
-                    got: "non-number",
-                })? as usize;
+            let length = args[1].as_number().ok_or(Error::TypeMismatch {
+                expected: "number",
+                got: "non-number",
+            })? as usize;
             let data = self.socket.recv(handle, length).await?;
             Ok(NonFunctionValue::new(data))
         })

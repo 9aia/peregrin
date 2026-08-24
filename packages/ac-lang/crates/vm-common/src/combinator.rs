@@ -61,7 +61,10 @@ pub struct FilterHost {
 
 impl FilterHost {
     /// Creates a host that forwards only names allowed by `predicate`.
-    pub fn new(inner: Box<dyn Host<NonFunctionValue>>, predicate: impl Fn(&str) -> bool + 'static) -> Self {
+    pub fn new(
+        inner: Box<dyn Host<NonFunctionValue>>,
+        predicate: impl Fn(&str) -> bool + 'static,
+    ) -> Self {
         FilterHost {
             inner,
             predicate: Box::new(predicate),

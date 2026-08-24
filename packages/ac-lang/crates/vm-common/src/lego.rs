@@ -14,7 +14,10 @@ pub trait ExprHandler: Send + Sync + 'static {
         expr: &RuntimeExpr,
         ctx: &mut dyn Context<NonFunctionValue>,
         host: &dyn Host<NonFunctionValue>,
-        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+        dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
     ) -> Result<NonFunctionValue, Error<NonFunctionValue>>;
 }
 
@@ -50,7 +53,8 @@ impl<H: Host<NonFunctionValue>> LegoVm<H> {
         expr: &RuntimeExpr,
         ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
-        let mut dispatch = |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| self.eval(sub, c);
+        let mut dispatch =
+            |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| self.eval(sub, c);
 
         for handler in &self.handlers {
             if handler.can_handle(expr) {
@@ -65,7 +69,11 @@ impl<H: Host<NonFunctionValue>> LegoVm<H> {
 }
 
 impl<H: Host<NonFunctionValue>> VirtualMachine<NonFunctionValue> for LegoVm<H> {
-    fn eval(&self, expr: &RuntimeExpr, ctx: &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
+    fn eval(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         Self::eval(self, expr, ctx)
     }
 

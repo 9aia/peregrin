@@ -1,7 +1,6 @@
 use ac_runtime_values::NonFunctionValue;
 use std::collections::HashMap;
 
-
 use crate::hash::DefinitionHash;
 
 /// A cache key for an evaluation result.
