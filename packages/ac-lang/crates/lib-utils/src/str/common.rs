@@ -2,7 +2,6 @@ use ac_runtime_values::Error;
 
 use ac_runtime_values::NonFunctionValue;
 
-
 pub(super) fn require_string(arg: &NonFunctionValue) -> Result<&str, Error> {
     arg.as_str().ok_or(Error::TypeMismatch {
         expected: "string",

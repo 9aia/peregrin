@@ -2,7 +2,6 @@ use ac_runtime_values::Error;
 
 use ac_runtime_values::{FunctionValue, NonFunctionValue};
 
-
 pub(super) fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
         expected: 1,

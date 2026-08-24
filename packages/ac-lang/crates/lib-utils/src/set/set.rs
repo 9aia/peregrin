@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use ac_runtime::{Context, Function};
-use ac_runtime_values::{Error};
+use ac_runtime_values::Error;
 
 use ac_runtime_values::{FunctionValue, NonFunctionValue};
 

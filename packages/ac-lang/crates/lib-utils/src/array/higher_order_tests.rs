@@ -1,6 +1,6 @@
 use ac_runtime_values::NonFunctionValue;
 
-use ac_runtime::{Eval};
+use ac_runtime::Eval;
 use ac_runtime_values::{CanonicalContext, Error};
 
 use ac_runtime_modules::Module;
@@ -43,9 +43,9 @@ fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
 
 // ── TestEval infrastructure ────────────────────────────────────────
 
+use crate::shared::TestHost;
 use ac_ast_canonical::Expr;
 use ac_runtime_canonical::Vm;
-use crate::shared::TestHost;
 
 struct TestEval;
 impl Eval<NonFunctionValue> for TestEval {

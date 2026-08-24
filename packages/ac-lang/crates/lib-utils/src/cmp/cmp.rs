@@ -100,9 +100,7 @@ fn compare_nfv(a: &NonFunctionValue, b: &NonFunctionValue) -> Ordering {
     compare_values(a.inner(), b.inner())
 }
 
-fn require_two(
-    args: &[NonFunctionValue],
-) -> Result<(&NonFunctionValue, &NonFunctionValue), Error> {
+fn require_two(args: &[NonFunctionValue]) -> Result<(&NonFunctionValue, &NonFunctionValue), Error> {
     if args.len() < 2 {
         return Err(Error::ArgumentCount {
             expected: 2,
@@ -293,8 +291,9 @@ impl Function<NonFunctionValue> for Clamp {
 
 fn between_impl(args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let (x, lo, hi) = require_three(args)?;
-    Ok(to_bool(compare_nfv(lo, x) != Ordering::Greater
-        && compare_nfv(x, hi) != Ordering::Greater))
+    Ok(to_bool(
+        compare_nfv(lo, x) != Ordering::Greater && compare_nfv(x, hi) != Ordering::Greater,
+    ))
 }
 
 #[derive(Clone, Copy)]

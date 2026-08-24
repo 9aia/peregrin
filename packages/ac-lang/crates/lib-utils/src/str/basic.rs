@@ -1,8 +1,7 @@
 use ac_runtime_values::NonFunctionValue;
 
 use ac_runtime::{Context, Function};
-use ac_runtime_values::{Error};
-
+use ac_runtime_values::Error;
 
 use super::common::{
     b, num, require_one_string, require_two_strings, s, string_predicate_fn, string_unary_fn,

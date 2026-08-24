@@ -1,6 +1,9 @@
 //! Canonical token kind and factory.
 
-use ac_lexer::{CommentFactory, CommentTokenKind, EofFactory, IdentFactory, NumberFactory, StringFactory, TokenKind};
+use ac_lexer::{
+    CommentFactory, CommentTokenKind, EofFactory, IdentFactory, NumberFactory, StringFactory,
+    TokenKind,
+};
 use std::fmt;
 
 /// The canonical AC expression token kinds.
@@ -32,6 +35,27 @@ pub enum CanonicalKind {
     /// The `as` keyword (used in handler clauses).
     As,
 
+    /// The `is` keyword (interrogative mood).
+    Is,
+
+    /// The `must` keyword (normative mood).
+    Must,
+
+    /// The `may` keyword (potential mood).
+    May,
+
+    /// The `not` keyword (negative mood or logical negation).
+    Not,
+
+    /// The `when` keyword (conditional mood).
+    When,
+
+    /// The `else` keyword (conditional mood fallback).
+    Else,
+
+    /// The `match` keyword (pattern matching expression).
+    Match,
+
     /// Call-open delimiter — `(` in canonical.
     CallOpen,
 
@@ -58,6 +82,33 @@ pub enum CanonicalKind {
 
     /// Arrow — `->` (first-class function body introducer).
     Arrow,
+
+    /// Pipe forward — `|>` (left-to-right value threading).
+    Pipe,
+
+    /// Pipe backward — `<|` (right-to-left value threading).
+    BackwardPipe,
+
+    /// Flow / forward composition — `>>>` (arrow combinator).
+    Flow,
+
+    /// Composition / backward composition — `<<<` (arrow combinator).
+    Compose,
+
+    /// Fanout — `&&&` (arrow combinator).
+    Fanout,
+
+    /// Parallel / fanin — `||||` (arrow combinator).
+    Parallel,
+
+    /// Ternary / optional — `?`.
+    Question,
+
+    /// Range — `..`.
+    Range,
+
+    /// Spread — `...`.
+    Spread,
 
     /// Less-than — `<` (generic parameter list opener).
     LessThan,
@@ -90,6 +141,13 @@ impl fmt::Display for CanonicalKind {
             CanonicalKind::Null => write!(f, "null"),
             CanonicalKind::Handle => write!(f, "handle"),
             CanonicalKind::As => write!(f, "as"),
+            CanonicalKind::Is => write!(f, "is"),
+            CanonicalKind::Must => write!(f, "must"),
+            CanonicalKind::May => write!(f, "may"),
+            CanonicalKind::Not => write!(f, "not"),
+            CanonicalKind::When => write!(f, "when"),
+            CanonicalKind::Else => write!(f, "else"),
+            CanonicalKind::Match => write!(f, "match"),
             CanonicalKind::CallOpen => write!(f, "("),
             CanonicalKind::CallClose => write!(f, ")"),
             CanonicalKind::BlockOpen => write!(f, "{{"),
@@ -99,6 +157,15 @@ impl fmt::Display for CanonicalKind {
             CanonicalKind::Comma => write!(f, ","),
             CanonicalKind::Colon => write!(f, ":"),
             CanonicalKind::Arrow => write!(f, "->"),
+            CanonicalKind::Pipe => write!(f, "|>"),
+            CanonicalKind::BackwardPipe => write!(f, "<|"),
+            CanonicalKind::Flow => write!(f, ">>>"),
+            CanonicalKind::Compose => write!(f, "<<<"),
+            CanonicalKind::Fanout => write!(f, "&&&"),
+            CanonicalKind::Parallel => write!(f, "||||"),
+            CanonicalKind::Question => write!(f, "?"),
+            CanonicalKind::Range => write!(f, ".."),
+            CanonicalKind::Spread => write!(f, "..."),
             CanonicalKind::LessThan => write!(f, "<"),
             CanonicalKind::GreaterThan => write!(f, ">"),
             CanonicalKind::Equal => write!(f, "="),

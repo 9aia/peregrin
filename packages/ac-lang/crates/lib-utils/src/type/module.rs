@@ -1,6 +1,6 @@
-use ac_runtime_values::NonFunctionValue;
 use ac_runtime::Function;
 use ac_runtime_modules::Module;
+use ac_runtime_values::NonFunctionValue;
 
 use crate::r#type::coercion::{ToBool, ToNumber, ToString};
 use crate::r#type::predicates::{

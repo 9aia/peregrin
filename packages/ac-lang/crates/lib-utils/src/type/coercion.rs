@@ -1,8 +1,7 @@
 use ac_runtime_values::NonFunctionValue;
 
 use ac_runtime::{Context, Function};
-use ac_runtime_values::{Error};
-
+use ac_runtime_values::Error;
 
 fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {

@@ -65,7 +65,7 @@
 //!   `type.is_array`, `type.is_object`, `type.type_of`, `type.is_empty`,
 //!   `type.is_truthy`, `type.identity`, `type.default`, `type.coalesce`
 //! - [`ResultModule`] — `result.ok`, `result.err`, `result.is_ok`,
-//!   `result.is_err`, `result.match`
+//!   `result.is_err`
 //!
 //! ## Usage
 //!
@@ -94,6 +94,7 @@ mod bool;
 mod cmp;
 mod r#fn;
 mod math;
+mod mood;
 mod obj;
 mod result;
 mod set;
@@ -106,6 +107,7 @@ pub use bool::BoolModule;
 pub use cmp::CmpModule;
 pub use r#fn::FnModule;
 pub use math::MathModule;
+pub use mood::MoodModule;
 pub use obj::ObjModule;
 pub use result::ResultModule;
 pub use set::SetModule;

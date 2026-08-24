@@ -6,7 +6,7 @@ use super::arithmetic::{
     Add, Clamp, Div, Factorial, FloorDiv, Gcd, Lcm, Lerp, MapRange, Max, Min, Mod, Mul, Sub,
 };
 use super::constants::{E, Infinity, Nan, Pi, Tau};
-use super::exponential::{Cbrt, Exp, Log, Log10, Log2, Pow, Sqrt};
+use super::exponential::{Cbrt, Exp, Log, Log2, Log10, Pow, Sqrt};
 use super::predicates::{IsFinite, IsInfinite, IsInteger, IsNan};
 use super::rounding::{Abs, Ceil, Floor, Fract, Round, RoundTo, Sign, Trunc};
 use super::trigonometry::{

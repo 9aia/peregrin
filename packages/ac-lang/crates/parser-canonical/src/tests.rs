@@ -81,10 +81,7 @@ fn parse_namespaced_call() {
     let expr = parse("math.sqrt(16)").unwrap();
     assert_eq!(
         expr,
-        Expr::apply(
-            Expr::field_access(Expr::var("math"), "sqrt"),
-            vec![Expr::Value(NonFunctionValue::new(json!(16.0))),]
-        )
+        Expr::call("math.sqrt", vec![Expr::Value(NonFunctionValue::new(json!(16.0)))])
     );
 }
 

@@ -1,5 +1,5 @@
-use ac_runtime_values::NonFunctionValue;
 use ac_runtime::{Function, GenericFunction};
+use ac_runtime_values::NonFunctionValue;
 
 use ac_runtime_modules::Module;
 

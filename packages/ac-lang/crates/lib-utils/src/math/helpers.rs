@@ -31,10 +31,12 @@ macro_rules! unary_fn {
                 args: &[ac_runtime_values::NonFunctionValue],
                 _ctx: &mut dyn ac_runtime::Context<ac_runtime_values::NonFunctionValue>,
             ) -> Result<ac_runtime_values::NonFunctionValue, ac_runtime_values::Error> {
-                let arg = args.first().ok_or(ac_runtime_values::Error::ArgumentCount {
-                    expected: 1,
-                    got: 0,
-                })?;
+                let arg = args
+                    .first()
+                    .ok_or(ac_runtime_values::Error::ArgumentCount {
+                        expected: 1,
+                        got: 0,
+                    })?;
                 let x = require_number(arg)?;
                 Ok(num($body(x)))
             }
@@ -54,10 +56,12 @@ macro_rules! bool_unary_fn {
                 args: &[ac_runtime_values::NonFunctionValue],
                 _ctx: &mut dyn ac_runtime::Context<ac_runtime_values::NonFunctionValue>,
             ) -> Result<ac_runtime_values::NonFunctionValue, ac_runtime_values::Error> {
-                let arg = args.first().ok_or(ac_runtime_values::Error::ArgumentCount {
-                    expected: 1,
-                    got: 0,
-                })?;
+                let arg = args
+                    .first()
+                    .ok_or(ac_runtime_values::Error::ArgumentCount {
+                        expected: 1,
+                        got: 0,
+                    })?;
                 let x = require_number(arg)?;
                 Ok(b($body(x)))
             }

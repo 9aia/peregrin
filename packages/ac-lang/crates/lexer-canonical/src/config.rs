@@ -7,6 +7,9 @@ use ac_lexer_common::{
 
 use crate::kind::{CanonicalFactory, CanonicalKind};
 
+#[derive(Clone, Default)]
+struct OperatorRule;
+
 /// Returns the canonical AC expression syntax configuration.
 ///
 /// This is the preset used by [`CanonicalLexer::default`](crate::CanonicalLexer::default).
@@ -26,6 +29,13 @@ pub fn canonical_config() -> LexerConfig<CanonicalKind, DefaultLexError> {
         .with_keyword("null", CanonicalKind::Null)
         .with_keyword("handle", CanonicalKind::Handle)
         .with_keyword("as", CanonicalKind::As)
+        .with_keyword("is", CanonicalKind::Is)
+        .with_keyword("must", CanonicalKind::Must)
+        .with_keyword("may", CanonicalKind::May)
+        .with_keyword("not", CanonicalKind::Not)
+        .with_keyword("when", CanonicalKind::When)
+        .with_keyword("else", CanonicalKind::Else)
+        .with_keyword("match", CanonicalKind::Match)
         .with_delimiter('(', CanonicalKind::CallOpen)
         .with_delimiter(')', CanonicalKind::CallClose)
         .with_delimiter('{', CanonicalKind::BlockOpen)
@@ -38,7 +48,8 @@ pub fn canonical_config() -> LexerConfig<CanonicalKind, DefaultLexError> {
         .with_delimiter('>', CanonicalKind::GreaterThan)
         .with_delimiter('=', CanonicalKind::Equal)
         .with_delimiter('.', CanonicalKind::Dot)
-        .insert_rule(0, ArrowRule)
+        .with_delimiter('?', CanonicalKind::Question)
+        .insert_rule(0, OperatorRule)
         .with_rule(StringRule)
         .with_rule(NumberRule)
         .with_rule(LineCommentRule)
@@ -47,38 +58,105 @@ pub fn canonical_config() -> LexerConfig<CanonicalKind, DefaultLexError> {
         .with_rule(IdentRule)
 }
 
-/// Matches the two-character arrow token `->` before the number rule
-/// has a chance to consume the leading `-`.
-#[derive(Clone, Default)]
-struct ArrowRule;
+/// Matches multi-character operator tokens before they are split by
+/// the delimiter, string, or number rules.
+impl OperatorRule {
+    fn two_or_three(chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>) -> Option<(usize, usize, &'static str)> {
+        let &(start, first) = chars.peek()?;
 
-impl LexRule<CanonicalKind, DefaultLexError> for ArrowRule {
+        let mut clone = chars.clone();
+        clone.next();
+        let &(_, second) = clone.peek()?;
+
+        // Three-character operators must come before their two-character prefixes.
+        if matches!((first, second), ('.', '.') | ('>', '>') | ('<', '<') | ('|', '|') | ('&', '&')) {
+            let mut peek = clone.clone();
+            peek.next();
+            if let Some(&(_, third)) = peek.peek() {
+                let three = (first, second, third);
+                match three {
+                    ('.', '.', '.') => {
+                        let end = peek.next().unwrap().0;
+                        return Some((start, end + 1, "..."));
+                    }
+                    ('>', '>', '>') => {
+                        let end = peek.next().unwrap().0;
+                        return Some((start, end + 1, ">>>"));
+                    }
+                    ('<', '<', '<') => {
+                        let end = peek.next().unwrap().0;
+                        return Some((start, end + 1, "<<<"));
+                    }
+                    ('|', '|', '|') => {
+                        // Match `||||` (four pipes) before `|||`.
+                        let mut four = peek.clone();
+                        four.next();
+                        if matches!(four.peek(), Some(&(_, '|'))) {
+                            let end = four.next().unwrap().0;
+                            return Some((start, end + 1, "||||"));
+                        }
+                        let end = peek.next().unwrap().0;
+                        return Some((start, end + 1, "|||"));
+                    }
+                    ('&', '&', '&') => {
+                        let end = peek.next().unwrap().0;
+                        return Some((start, end + 1, "&&&"));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        let two = (first, second);
+        match two {
+            ('-', '>') => {
+                let end = clone.next().unwrap().0;
+                Some((start, end + 1, "->"))
+            }
+            ('|', '>') => {
+                let end = clone.next().unwrap().0;
+                Some((start, end + 1, "|>"))
+            }
+            ('<', '|') => {
+                let end = clone.next().unwrap().0;
+                Some((start, end + 1, "<|"))
+            }
+            ('.', '.') => {
+                let end = clone.next().unwrap().0;
+                Some((start, end + 1, ".."))
+            }
+            _ => None,
+        }
+    }
+}
+
+impl LexRule<CanonicalKind, DefaultLexError> for OperatorRule {
     fn try_lex(
         &self,
         chars: &mut std::iter::Peekable<std::str::CharIndices<'_>>,
         _config: &LexerConfig<CanonicalKind, DefaultLexError>,
     ) -> Option<Result<Token<CanonicalKind>, DefaultLexError>> {
-        let &(_, ch) = chars.peek()?;
-        if ch != '-' {
-            return None;
+        let (start, end, text) = Self::two_or_three(chars)?;
+        let kind = match text {
+            "->" => CanonicalKind::Arrow,
+            "|>" => CanonicalKind::Pipe,
+            "<|" => CanonicalKind::BackwardPipe,
+            ">>>" => CanonicalKind::Flow,
+            "<<<" => CanonicalKind::Compose,
+            "&&&" => CanonicalKind::Fanout,
+            "||||" => CanonicalKind::Parallel,
+            ".." => CanonicalKind::Range,
+            "..." => CanonicalKind::Spread,
+            _ => return None,
+        };
+        for _ in text.chars() {
+            chars.next();
         }
-
-        let mut peek = chars.clone();
-        peek.next();
-        if !matches!(peek.peek(), Some(&(_, '>'))) {
-            return None;
-        }
-
-        let (start, _) = chars.next().unwrap();
-        let (end, _) = chars.next().unwrap();
-        Some(Ok(Token::new(
-            CanonicalKind::Arrow,
-            Span::new(start, end + 1),
-        )))
+        Some(Ok(Token::new(kind, Span::new(start, end + 1))))
     }
 
     fn name(&self) -> &'static str {
-        "arrow"
+        "canonical_operator"
     }
 
     fn clone_box(&self) -> Box<dyn LexRule<CanonicalKind, DefaultLexError>> {

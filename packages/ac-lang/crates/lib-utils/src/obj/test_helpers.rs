@@ -1,6 +1,6 @@
 use ac_runtime_values::NonFunctionValue;
 
-use ac_runtime::{Eval};
+use ac_runtime::Eval;
 use ac_runtime_values::{CanonicalContext, Error};
 
 pub(super) use ac_runtime_modules::Module;
@@ -49,9 +49,9 @@ pub(super) fn obj(pairs: &[(&str, serde_json::Value)]) -> NonFunctionValue {
 
 // ── eval infrastructure for higher-order functions ─────────────────
 
+use crate::shared::TestHost;
 use ac_ast_canonical::Expr;
 use ac_runtime_canonical::Vm;
-use crate::shared::TestHost;
 
 struct TestEval;
 impl Eval<NonFunctionValue> for TestEval {

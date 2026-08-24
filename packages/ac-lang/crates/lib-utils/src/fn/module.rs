@@ -1,10 +1,10 @@
-use ac_runtime_values::NonFunctionValue;
-use ac_runtime::Function;
+use ac_runtime::{Function, LazyFunction};
 use ac_runtime_modules::Module;
+use ac_runtime_values::NonFunctionValue;
 
 use crate::r#fn::combinators::{
-    Apply, Choice, Compose, Constantly, Converge, Fanout, Flip, Flow, Partial, Pipe, Tap, Unless,
-    When,
+    Apply, Choice, Compose, Constantly, Converge, Fanout, Flip, Flow, IfLazy, Match, Partial, Pipe,
+    Tap, Unless, When,
 };
 
 /// The `fn` module — function combinator utilities.
@@ -28,12 +28,20 @@ impl Module for FnModule {
             "choice" => Some(&Choice),
             "apply" => Some(&Apply),
             "tap" => Some(&Tap),
+            "match" => Some(&Match),
             "constantly" => Some(&Constantly),
             "flip" => Some(&Flip),
             "partial" => Some(&Partial),
             "when" => Some(&When),
             "unless" => Some(&Unless),
             "converge" => Some(&Converge),
+            _ => None,
+        }
+    }
+
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
+        match name {
+            "if" => Some(&IfLazy),
             _ => None,
         }
     }

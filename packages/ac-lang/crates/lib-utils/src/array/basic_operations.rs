@@ -1,8 +1,7 @@
 use ac_runtime_values::NonFunctionValue;
 
 use ac_runtime::{Context, Function};
-use ac_runtime_values::{Error};
-
+use ac_runtime_values::Error;
 
 use super::helpers::array_unary_fn;
 use super::helpers::{arr, b, num, require_array, require_one_array, require_two_arrays};

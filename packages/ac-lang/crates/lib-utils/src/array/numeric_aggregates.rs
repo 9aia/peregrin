@@ -1,6 +1,5 @@
 use ac_runtime_values::NonFunctionValue;
 
-
 use super::helpers::{array_unary_fn, num};
 
 array_unary_fn!(Sum, |input: &[serde_json::Value]| {

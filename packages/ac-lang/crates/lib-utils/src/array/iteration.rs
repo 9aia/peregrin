@@ -1,8 +1,7 @@
 use ac_runtime_values::NonFunctionValue;
 
 use ac_runtime::{Context, Function};
-use ac_runtime_values::{Error};
-
+use ac_runtime_values::Error;
 
 use super::helpers::{arr, array_unary_fn, num, require_array, require_function_value};
 use crate::shared::{apply_fn2, find_index, is_truthy_fn};

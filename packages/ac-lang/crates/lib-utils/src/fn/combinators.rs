@@ -1,8 +1,9 @@
-use ac_runtime::{Context, Function};
-use ac_runtime_values::{Error};
+use ac_ast_canonical::Expr;
+use ac_runtime::{Context, Function, LazyFunction};
+use ac_runtime_values::Error;
 
 use ac_runtime_values::{FunctionValue, NonFunctionValue};
-
+use serde_json::Value as JsonValue;
 
 use crate::shared::{
     apply_fn, apply_fn2, arr, bind_function_params, is_truthy_fn, require_array,
@@ -450,5 +451,169 @@ impl Function<NonFunctionValue> for Converge {
             acc
         };
         Ok(NonFunctionValue::new(combined))
+    }
+}
+
+// ════════════════════════════════════════════════════════════════════
+// Pattern matching
+// ════════════════════════════════════════════════════════════════════
+
+fn match_pattern(
+    pattern: &JsonValue,
+    value: &JsonValue,
+    out: &mut Vec<(String, JsonValue)>,
+) -> Result<bool, Error> {
+    if let Some(obj) = pattern.as_object() {
+        if let Some(type_name) = obj.get("type").and_then(|v| v.as_str()) {
+            match type_name {
+                "wildcard" => return Ok(true),
+                "literal" => {
+                    let expected = pattern
+                        .get("value")
+                        .ok_or_else(|| Error::PrimitiveError("literal pattern missing `value`".into()))?;
+                    return Ok(expected == value);
+                }
+                "identifier" => {
+                    let name = pattern
+                        .get("name")
+                        .and_then(|v| v.as_str())
+                        .ok_or_else(|| Error::PrimitiveError("identifier pattern missing `name`".into()))?;
+                    out.push((name.to_string(), value.clone()));
+                    return Ok(true);
+                }
+                "array" => {
+                    let patterns = pattern
+                        .get("patterns")
+                        .and_then(|v| v.as_array())
+                        .ok_or_else(|| Error::PrimitiveError("array pattern missing `patterns`".into()))?;
+                    let arr = match value.as_array() {
+                        Some(a) => a,
+                        None => return Ok(false),
+                    };
+                    for (i, child_pattern) in patterns.iter().enumerate() {
+                        let child = arr.get(i).unwrap_or(&JsonValue::Null);
+                        if !match_pattern(child_pattern, child, out)? {
+                            return Ok(false);
+                        }
+                    }
+                    return Ok(true);
+                }
+                "object" => {
+                    let entries = pattern
+                        .get("entries")
+                        .and_then(|v| v.as_array())
+                        .ok_or_else(|| Error::PrimitiveError("object pattern missing `entries`".into()))?;
+                    let obj = match value.as_object() {
+                        Some(o) => o,
+                        None => return Ok(false),
+                    };
+                    for entry in entries {
+                        let arr = entry.as_array().ok_or_else(|| {
+                            Error::PrimitiveError("invalid object pattern entry".into())
+                        })?;
+                        let key = arr
+                            .get(0)
+                            .and_then(|v| v.as_str())
+                            .ok_or_else(|| Error::PrimitiveError("invalid object pattern key".into()))?;
+                        let child_pattern = arr.get(1).ok_or_else(|| {
+                            Error::PrimitiveError("invalid object pattern entry".into())
+                        })?;
+                        let child = obj.get(key).unwrap_or(&JsonValue::Null);
+                        if !match_pattern(child_pattern, child, out)? {
+                            return Ok(false);
+                        }
+                    }
+                    return Ok(true);
+                }
+                _ => {
+                    return Err(Error::PrimitiveError(format!(
+                        "unknown pattern type: {type_name}"
+                    )))
+                }
+            }
+        }
+    }
+    Ok(pattern == value)
+}
+
+// ── match ───────────────────────────────────────────────────────────
+
+#[derive(Clone, Copy)]
+pub struct Match;
+impl Function<NonFunctionValue> for Match {
+    fn call(
+        &self,
+        args: &[NonFunctionValue],
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 2 {
+            return Err(Error::ArgumentCount {
+                expected: 2,
+                got: args.len(),
+            });
+        }
+        let value = args[0].inner();
+        for branch_arg in &args[1..] {
+            let branch = branch_arg.as_array().ok_or(Error::TypeMismatch {
+                expected: "array [pattern, handler]",
+                got: "non-array branch",
+            })?;
+            if branch.len() < 2 {
+                return Err(Error::ArgumentCount {
+                    expected: 2,
+                    got: branch.len(),
+                });
+            }
+            let pattern = &branch[0];
+            let handler = &branch[1];
+            let mut bindings = Vec::new();
+            if match_pattern(pattern, value, &mut bindings)? {
+                let fn_val = FunctionValue::from_json(handler).ok_or(Error::TypeMismatch {
+                    expected: "function value",
+                    got: "non-function branch handler",
+                })?;
+                let vars: Vec<(String, NonFunctionValue)> = bindings
+                    .into_iter()
+                    .map(|(name, val)| (name, NonFunctionValue::new(val)))
+                    .collect();
+                return ctx.eval_expr(&fn_val.body, &vars);
+            }
+        }
+        Err(Error::PrimitiveError("no matching branch".into()))
+    }
+}
+
+// ── lazy control flow ───────────────────────────────────────────────
+
+/// Lazy `if(cond, then, else)` — only evaluates the chosen branch.
+#[derive(Clone, Copy)]
+pub struct IfLazy;
+
+impl LazyFunction<NonFunctionValue> for IfLazy {
+    fn call(
+        &self,
+        args: &[Expr<NonFunctionValue>],
+        ctx: &mut dyn Context<NonFunctionValue>,
+        evaluate: &mut dyn FnMut(
+            &Expr<NonFunctionValue>,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error>,
+    ) -> Result<NonFunctionValue, Error> {
+        if args.len() < 3 {
+            return Err(Error::ArgumentCount {
+                expected: 3,
+                got: args.len(),
+            });
+        }
+        let cond = evaluate(&args[0], ctx)?;
+        let cond = cond.as_bool().ok_or(Error::TypeMismatch {
+            expected: "boolean",
+            got: "non-boolean",
+        })?;
+        if cond {
+            evaluate(&args[1], ctx)
+        } else {
+            evaluate(&args[2], ctx)
+        }
     }
 }

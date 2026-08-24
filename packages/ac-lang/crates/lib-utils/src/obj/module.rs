@@ -1,6 +1,6 @@
-use ac_runtime_values::NonFunctionValue;
 use ac_runtime::Function;
 use ac_runtime_modules::Module;
+use ac_runtime_values::NonFunctionValue;
 
 use super::access::{DeepGet, Get, GetOr, HasKey, PathOr};
 use super::combination::{DeepMerge, FromEntries, Merge};

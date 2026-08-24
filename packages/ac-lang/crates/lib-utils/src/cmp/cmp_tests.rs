@@ -9,7 +9,11 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
+fn call_err(
+    module: &dyn Module,
+    name: &str,
+    args: &[NonFunctionValue],
+) -> Result<NonFunctionValue, Error> {
     let func = module.function(name).expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx)
@@ -61,16 +65,18 @@ fn eq_strings() {
 
 #[test]
 fn eq_objects_deep() {
-    assert!(call(
-        &CmpModule,
-        "eq",
-        &[
-            obj(&[("x", serde_json::json!(1.0))]),
-            obj(&[("x", serde_json::json!(1.0))]),
-        ]
-    )
-    .as_bool()
-    .unwrap());
+    assert!(
+        call(
+            &CmpModule,
+            "eq",
+            &[
+                obj(&[("x", serde_json::json!(1.0))]),
+                obj(&[("x", serde_json::json!(1.0))]),
+            ]
+        )
+        .as_bool()
+        .unwrap()
+    );
 }
 
 #[test]
@@ -196,68 +202,80 @@ fn clamp_inverted_bounds_errors() {
 
 #[test]
 fn between_true() {
-    assert!(call(&CmpModule, "between", &[n(5.0), n(0.0), n(10.0)])
-        .as_bool()
-        .unwrap());
+    assert!(
+        call(&CmpModule, "between", &[n(5.0), n(0.0), n(10.0)])
+            .as_bool()
+            .unwrap()
+    );
 }
 
 #[test]
 fn between_false() {
-    assert!(!call(&CmpModule, "between", &[n(15.0), n(0.0), n(10.0)])
-        .as_bool()
-        .unwrap());
+    assert!(
+        !call(&CmpModule, "between", &[n(15.0), n(0.0), n(10.0)])
+            .as_bool()
+            .unwrap()
+    );
 }
 
 #[test]
 fn in_range_aliased() {
-    assert!(call(&CmpModule, "in_range", &[n(0.0), n(-1.0), n(1.0)])
-        .as_bool()
-        .unwrap());
+    assert!(
+        call(&CmpModule, "in_range", &[n(0.0), n(-1.0), n(1.0)])
+            .as_bool()
+            .unwrap()
+    );
 }
 
 #[test]
 fn is_sorted_numbers_asc() {
-    assert!(call(
-        &CmpModule,
-        "is_sorted",
-        &[arr(&[
-            serde_json::json!(1.0),
-            serde_json::json!(2.0),
-            serde_json::json!(3.0)
-        ])]
-    )
-    .as_bool()
-    .unwrap());
+    assert!(
+        call(
+            &CmpModule,
+            "is_sorted",
+            &[arr(&[
+                serde_json::json!(1.0),
+                serde_json::json!(2.0),
+                serde_json::json!(3.0)
+            ])]
+        )
+        .as_bool()
+        .unwrap()
+    );
 }
 
 #[test]
 fn is_sorted_numbers_not() {
-    assert!(!call(
-        &CmpModule,
-        "is_sorted",
-        &[arr(&[
-            serde_json::json!(3.0),
-            serde_json::json!(1.0),
-            serde_json::json!(2.0)
-        ])]
-    )
-    .as_bool()
-    .unwrap());
+    assert!(
+        !call(
+            &CmpModule,
+            "is_sorted",
+            &[arr(&[
+                serde_json::json!(3.0),
+                serde_json::json!(1.0),
+                serde_json::json!(2.0)
+            ])]
+        )
+        .as_bool()
+        .unwrap()
+    );
 }
 
 #[test]
 fn is_sorted_desc() {
-    assert!(call(
-        &CmpModule,
-        "is_sorted_desc",
-        &[arr(&[
-            serde_json::json!(3.0),
-            serde_json::json!(2.0),
-            serde_json::json!(1.0)
-        ])]
-    )
-    .as_bool()
-    .unwrap());
+    assert!(
+        call(
+            &CmpModule,
+            "is_sorted_desc",
+            &[arr(&[
+                serde_json::json!(3.0),
+                serde_json::json!(2.0),
+                serde_json::json!(1.0)
+            ])]
+        )
+        .as_bool()
+        .unwrap()
+    );
 }
 
 #[test]
@@ -268,14 +286,17 @@ fn sort_numbers_asc() {
         &[arr(&[
             serde_json::json!(3.0),
             serde_json::json!(1.0),
-            serde_json::json!(2.0)
+            serde_json::json!(2.0),
         ])],
     );
-    assert_eq!(result.as_array().unwrap(), &[
-        serde_json::json!(1.0),
-        serde_json::json!(2.0),
-        serde_json::json!(3.0)
-    ]);
+    assert_eq!(
+        result.as_array().unwrap(),
+        &[
+            serde_json::json!(1.0),
+            serde_json::json!(2.0),
+            serde_json::json!(3.0)
+        ]
+    );
 }
 
 #[test]
@@ -286,14 +307,17 @@ fn sort_numbers_desc() {
         &[arr(&[
             serde_json::json!(3.0),
             serde_json::json!(1.0),
-            serde_json::json!(2.0)
+            serde_json::json!(2.0),
         ])],
     );
-    assert_eq!(result.as_array().unwrap(), &[
-        serde_json::json!(3.0),
-        serde_json::json!(2.0),
-        serde_json::json!(1.0)
-    ]);
+    assert_eq!(
+        result.as_array().unwrap(),
+        &[
+            serde_json::json!(3.0),
+            serde_json::json!(2.0),
+            serde_json::json!(1.0)
+        ]
+    );
 }
 
 #[test]

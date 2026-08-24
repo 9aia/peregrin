@@ -1,9 +1,8 @@
-use ac_runtime::{Context};
-use ac_runtime_values::{Error};
+use ac_runtime::Context;
+use ac_runtime_values::Error;
 use serde_json::Value as JsonValue;
 
 use ac_runtime_values::{FunctionValue, NonFunctionValue};
-
 
 // ════════════════════════════════════════════════════════════════════
 // Tier 0: Shared helpers (replaces duplicated copies across modules)
@@ -124,9 +123,10 @@ fn destructure_pattern(
             }
         }
         Some("array") => {
-            let patterns = pattern.get("patterns").and_then(|v| v.as_array()).ok_or(
-                Error::PrimitiveError("invalid array pattern".to_string()),
-            )?;
+            let patterns = pattern
+                .get("patterns")
+                .and_then(|v| v.as_array())
+                .ok_or(Error::PrimitiveError("invalid array pattern".to_string()))?;
             let arr = value.as_array().ok_or(Error::TypeMismatch {
                 expected: "array",
                 got: "non-array",
@@ -141,9 +141,10 @@ fn destructure_pattern(
                 expected: "object",
                 got: "non-object",
             })?;
-            let entries = pattern.get("entries").and_then(|v| v.as_array()).ok_or(
-                Error::PrimitiveError("invalid object pattern".to_string()),
-            )?;
+            let entries = pattern
+                .get("entries")
+                .and_then(|v| v.as_array())
+                .ok_or(Error::PrimitiveError("invalid object pattern".to_string()))?;
             for entry in entries {
                 let arr = entry.as_array().ok_or(Error::PrimitiveError(
                     "invalid object pattern entry".to_string(),

@@ -2,7 +2,7 @@ use ac_ast_canonical::Expr;
 use ac_runtime_values::NonFunctionValue;
 
 use ac_runtime::{Context, Function, LazyFunction};
-use ac_runtime_values::{Error};
+use ac_runtime_values::Error;
 
 use ac_runtime_modules::Module;
 
@@ -34,7 +34,6 @@ impl Module for BoolModule {
 
     fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         match name {
-            "if" => Some(&IfLazy),
             "and" => Some(&AndLazy),
             "or" => Some(&OrLazy),
             _ => None,
@@ -117,39 +116,6 @@ bool_binary_fn!(Implies, |a: bool, b: bool| !a || b);
 bool_binary_fn!(Eq, |a: bool, b: bool| a == b);
 
 // ── lazy functions (short-circuit evaluation) ──────────────────────
-
-/// Lazy `if(cond, then, else)` — only evaluates the chosen branch.
-#[derive(Clone, Copy)]
-pub struct IfLazy;
-
-impl LazyFunction<NonFunctionValue> for IfLazy {
-    fn call(
-        &self,
-        args: &[Expr<NonFunctionValue>],
-        ctx: &mut dyn Context<NonFunctionValue>,
-        evaluate: &mut dyn FnMut(
-            &Expr<NonFunctionValue>,
-            &mut dyn Context<NonFunctionValue>,
-        ) -> Result<NonFunctionValue, Error>,
-    ) -> Result<NonFunctionValue, Error> {
-        if args.len() < 3 {
-            return Err(Error::ArgumentCount {
-                expected: 3,
-                got: args.len(),
-            });
-        }
-        let cond = evaluate(&args[0], ctx)?;
-        let cond = cond.as_bool().ok_or(Error::TypeMismatch {
-            expected: "boolean",
-            got: "non-boolean",
-        })?;
-        if cond {
-            evaluate(&args[1], ctx)
-        } else {
-            evaluate(&args[2], ctx)
-        }
-    }
-}
 
 /// Lazy `and(a, b)` — stops at the first `false`.
 #[derive(Clone, Copy)]
