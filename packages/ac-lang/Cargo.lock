@@ -41,11 +41,7 @@ dependencies = [
  "ac-runtime-values",
  "ac-typecheck-core",
  "ac-typecheck-infer",
- "ac-typecheck-key-arg",
- "ac-typecheck-key-expr",
- "ac-typecheck-key-inherit",
- "ac-typecheck-key-merge",
- "ac-typecheck-key-mutable",
+ "ac-typecheck-keys",
  "ac-typecheck-schema-json",
  "ac-typegen-import",
  "ac-typegen-key-set-special",
@@ -234,12 +230,7 @@ dependencies = [
  "ac-typecheck-core",
  "ac-typecheck-import",
  "ac-typecheck-infer",
- "ac-typecheck-key-arg",
- "ac-typecheck-key-expr",
- "ac-typecheck-key-inherit",
- "ac-typecheck-key-merge",
- "ac-typecheck-key-mutable",
- "ac-typecheck-key-termination",
+ "ac-typecheck-keys",
  "ac-typecheck-schema-json",
  "ac-typegen-backend-json-schema",
  "ac-typegen-import",
@@ -924,6 +915,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "ac-reference-gen"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "rustdoc-types",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+]
+
+[[package]]
 name = "ac-runtime"
 version = "0.1.0"
 dependencies = [
@@ -1098,7 +1100,6 @@ dependencies = [
  "ac-runtime-values",
  "ac-typecheck-core",
  "ac-typecheck-infer",
- "ac-typecheck-key-expr",
  "ac-typecheck-schema-json",
  "serde_json",
 ]
@@ -1114,50 +1115,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "ac-typecheck-key-arg"
-version = "0.1.0"
-dependencies = [
- "ac-typecheck-core",
- "serde_json",
-]
-
-[[package]]
-name = "ac-typecheck-key-expr"
-version = "0.1.0"
-dependencies = [
- "ac-dialect",
- "ac-dialect-canonical",
- "ac-typecheck-core",
- "ac-typecheck-infer",
- "serde_json",
-]
-
-[[package]]
-name = "ac-typecheck-key-inherit"
-version = "0.1.0"
-dependencies = [
- "ac-typecheck-core",
- "serde_json",
-]
-
-[[package]]
-name = "ac-typecheck-key-merge"
-version = "0.1.0"
-dependencies = [
- "ac-typecheck-core",
- "serde_json",
-]
-
-[[package]]
-name = "ac-typecheck-key-mutable"
-version = "0.1.0"
-dependencies = [
- "ac-typecheck-core",
- "serde_json",
-]
-
-[[package]]
-name = "ac-typecheck-key-termination"
+name = "ac-typecheck-keys"
 version = "0.1.0"
 dependencies = [
  "ac-dialect",
@@ -1322,6 +1280,12 @@ dependencies = [
  "once_cell_polyfill",
  "windows-sys 0.61.2",
 ]
+
+[[package]]
+name = "anyhow"
+version = "1.0.104"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "330a5ed07fa54e4702c9d6c4174f74427fc0ef6e214bbd677ae50a5099946470"
 
 [[package]]
 name = "atomic-waker"
@@ -3304,6 +3268,16 @@ name = "rust-lib-icu4x-extra"
 version = "0.1.0"
 dependencies = [
  "rust-lib-ecma402-traits",
+]
+
+[[package]]
+name = "rustdoc-types"
+version = "0.61.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa251f75d3b9d5d5d8317ce526dfa4a040c15938d82fd3a5443d103f30a66932"
+dependencies = [
+ "serde",
+ "serde_derive",
 ]
 
 [[package]]

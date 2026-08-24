@@ -1,8 +1,8 @@
-//! # ac-typecheck-key-termination
+//! # termination
 //!
 //! Compile-time call-graph analysis to detect non-terminating functions.
 //!
-//! This crate builds a static call graph from document-declared function
+//! This module builds a static call graph from document-declared function
 //! bodies and detects cycles that would cause infinite recursion at
 //! runtime. Cycles through host builtins (like `add`, `mul`) are safe
 //! because host functions don't call back into user-defined functions.

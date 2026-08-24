@@ -99,7 +99,7 @@ pub const CANONICAL_DOCUMENT: DocumentConfig = DocumentConfig { ... };
 - `ac-compiler-pass-parse`
 - `ac-fields`
 - `ac-typecheck-infer`
-- `ac-typecheck-key-*`
+- `ac-typecheck-keys` modules
 - `ac-typegen-core`
 - `ac-typegen-key-set-special`
 - `ac-typegen-import`

@@ -1,9 +1,9 @@
-//! # ac-typecheck-key-inherit
+//! # inherit
 //!
 //! Typechecks the `inheritable` AC key.
 //!
 //! Fields with `inheritable: true` propagate their values into nested
-//! objects. This crate checks that override values in nested scopes have
+//! objects. This module checks that override values in nested scopes have
 //! types compatible with the parent declaration.
 //!
 //! ## Architectural rule

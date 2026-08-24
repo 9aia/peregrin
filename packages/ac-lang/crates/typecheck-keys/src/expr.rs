@@ -1,4 +1,4 @@
-//! # ac-typecheck-key-expr
+//! # expr
 //!
 //! Typechecks the `expr` AC key.
 //!

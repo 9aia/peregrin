@@ -1,9 +1,9 @@
-//! # ac-typecheck-key-merge
+//! # merge
 //!
 //! Typechecks the `merge` AC key.
 //!
 //! Fields with `merge: true` are objects whose properties are spread
-//! into the parent scope at runtime. This crate checks that:
+//! into the parent scope at runtime. This module checks that:
 //!
 //! - Merge fields have type `object` (merging a non-object is a type error).
 //! - Merged field types are compatible with the parent's declared types
@@ -17,7 +17,7 @@
 use ac_typecheck_core::{SchemaInterpreter, Type, TypeError, is_compatible};
 use serde_json::Value as JsonValue;
 
-/// The AC key this crate handles.
+/// The AC key this module handles.
 pub const KEY: &str = "merge";
 
 /// Check if a field schema has `merge: true`.

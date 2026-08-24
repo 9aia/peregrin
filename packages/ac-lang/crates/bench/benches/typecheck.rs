@@ -13,7 +13,7 @@ fn interpreter() -> JsonSchemaInterpreter {
     JsonSchemaInterpreter
 }
 
-/// `ac_typecheck_key_expr::check` at varying field counts.
+/// `ac_typecheck_keys::expr::check` at varying field counts.
 fn bench_key_expr(c: &mut Criterion) {
     let interp = interpreter();
     let mut group = c.benchmark_group("typecheck_key_expr/check");
@@ -23,7 +23,7 @@ fn bench_key_expr(c: &mut Criterion) {
         let functions = FunctionTable::new();
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let errors = ac_typecheck_key_expr::check(
+                let errors = ac_typecheck_keys::expr::check(
                     black_box(&schemas),
                     black_box(&env),
                     black_box(&functions),
@@ -36,7 +36,7 @@ fn bench_key_expr(c: &mut Criterion) {
     group.finish();
 }
 
-/// `ac_typecheck_key_arg::check` at varying field counts.
+/// `ac_typecheck_keys::arg::check` at varying field counts.
 fn bench_key_arg(c: &mut Criterion) {
     let interp = interpreter();
     let mut group = c.benchmark_group("typecheck_key_arg/check");
@@ -44,7 +44,7 @@ fn bench_key_arg(c: &mut Criterion) {
         let schemas = arg_schemas(n);
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let errors = ac_typecheck_key_arg::check(black_box(&schemas), black_box(&interp));
+                let errors = ac_typecheck_keys::arg::check(black_box(&schemas), black_box(&interp));
                 black_box(errors);
             });
         });
@@ -52,7 +52,7 @@ fn bench_key_arg(c: &mut Criterion) {
     group.finish();
 }
 
-/// `ac_typecheck_key_merge::check` at varying field counts.
+/// `ac_typecheck_keys::merge::check` at varying field counts.
 fn bench_key_merge(c: &mut Criterion) {
     let interp = interpreter();
     let mut group = c.benchmark_group("typecheck_key_merge/check");
@@ -61,7 +61,7 @@ fn bench_key_merge(c: &mut Criterion) {
         let env = TypeEnv::new();
         group.bench_with_input(BenchmarkId::from_parameter(n), &n, |b, _| {
             b.iter(|| {
-                let errors = ac_typecheck_key_merge::check(
+                let errors = ac_typecheck_keys::merge::check(
                     black_box(&schemas),
                     black_box(&interp),
                     black_box(&env),
@@ -73,7 +73,7 @@ fn bench_key_merge(c: &mut Criterion) {
     group.finish();
 }
 
-/// `ac_typecheck_key_inherit::check` at varying field counts and nesting depths.
+/// `ac_typecheck_keys::inherit::check` at varying field counts and nesting depths.
 fn bench_key_inherit(c: &mut Criterion) {
     let interp = interpreter();
     let mut group = c.benchmark_group("typecheck_key_inherit/check");
@@ -85,7 +85,7 @@ fn bench_key_inherit(c: &mut Criterion) {
             &(n, depth),
             |b, _| {
                 b.iter(|| {
-                    let errors = ac_typecheck_key_inherit::check(
+                    let errors = ac_typecheck_keys::inherit::check(
                         black_box(&schemas),
                         black_box(&data),
                         black_box(&interp),
@@ -98,7 +98,7 @@ fn bench_key_inherit(c: &mut Criterion) {
     group.finish();
 }
 
-/// `ac_typecheck_key_mutable::check` at varying field counts and nesting depths.
+/// `ac_typecheck_keys::mutable::check` at varying field counts and nesting depths.
 fn bench_key_mutable(c: &mut Criterion) {
     let mut group = c.benchmark_group("typecheck_key_mutable/check");
     for (n, depth) in [(10, 5), (20, 10), (50, 5), (50, 20), (100, 10)] {
@@ -110,7 +110,7 @@ fn bench_key_mutable(c: &mut Criterion) {
             |b, _| {
                 b.iter(|| {
                     let errors =
-                        ac_typecheck_key_mutable::check(black_box(&fields), black_box(&data));
+                        ac_typecheck_keys::mutable::check(black_box(&fields), black_box(&data));
                     black_box(errors);
                 });
             },

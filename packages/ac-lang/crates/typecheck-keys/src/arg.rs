@@ -1,10 +1,10 @@
-//! # ac-typecheck-key-arg
+//! # arg
 //!
 //! Typechecks the `arg` AC key.
 //!
 //! The `arg` key declares a parameter type for a computed field — the
 //! field's own data value is available as `${arg}` inside its `expr:`.
-//! This crate checks that:
+//! This module checks that:
 //!
 //! - The `arg` value is a valid schema fragment (has a `type` or is an
 //!   object with schema-like structure).
@@ -18,7 +18,7 @@
 use ac_typecheck_core::{SchemaInterpreter, TypeError, is_compatible};
 use serde_json::Value as JsonValue;
 
-/// The AC key this crate handles.
+/// The AC key this module handles.
 pub const KEY: &str = "arg";
 
 /// Check if a field schema has an `arg` key.

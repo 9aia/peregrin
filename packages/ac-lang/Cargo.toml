@@ -55,12 +55,7 @@ members = [
   "crates/typegen-backend-json-schema",
   "crates/typecheck-core",
   "crates/typecheck-infer",
-  "crates/typecheck-key-expr",
-  "crates/typecheck-key-arg",
-  "crates/typecheck-key-merge",
-  "crates/typecheck-key-inherit",
-  "crates/typecheck-key-mutable",
-  "crates/typecheck-key-termination",
+  "crates/typecheck-keys",
   "crates/typecheck-import",
   "crates/typecheck-schema-json",
   "crates/frontend",
@@ -102,6 +97,7 @@ members = [
   "crates/lib-json",
   "crates/lib-toml",
   "crates/lib-yaml",
+  "crates/ac-reference-gen",
 ]
 resolver = "3"
 
@@ -179,12 +175,7 @@ ac-typegen-import = { path = "crates/typegen-import" }
 ac-typegen-backend-json-schema = { path = "crates/typegen-backend-json-schema" }
 ac-typecheck-core = { path = "crates/typecheck-core" }
 ac-typecheck-infer = { path = "crates/typecheck-infer" }
-ac-typecheck-key-expr = { path = "crates/typecheck-key-expr" }
-ac-typecheck-key-arg = { path = "crates/typecheck-key-arg" }
-ac-typecheck-key-merge = { path = "crates/typecheck-key-merge" }
-ac-typecheck-key-inherit = { path = "crates/typecheck-key-inherit" }
-ac-typecheck-key-mutable = { path = "crates/typecheck-key-mutable" }
-ac-typecheck-key-termination = { path = "crates/typecheck-key-termination" }
+ac-typecheck-keys = { path = "crates/typecheck-keys" }
 ac-typecheck-import = { path = "crates/typecheck-import" }
 ac-typecheck-schema-json = { path = "crates/typecheck-schema-json" }
 ac-meta = { path = "crates/meta" }
@@ -363,32 +354,32 @@ opt-level = 1
 
 [[example]]
 name = "basic"
-path = "examples/basic/main.rs"
+path = "examples/rust/basic/main.rs"
 
 [[example]]
 name = "functions"
-path = "examples/functions/main.rs"
+path = "examples/rust/functions/main.rs"
 
 [[example]]
 name = "fields"
-path = "examples/fields/main.rs"
+path = "examples/rust/fields/main.rs"
 
 [[example]]
 name = "handlers"
-path = "examples/handlers/main.rs"
+path = "examples/rust/handlers/main.rs"
 
 [[example]]
 name = "resumable"
-path = "examples/resumable/main.rs"
+path = "examples/rust/resumable/main.rs"
 
 [[example]]
 name = "content-addressing"
-path = "examples/content-addressing/main.rs"
+path = "examples/rust/content-addressing/main.rs"
 
 [[example]]
 name = "multi-handler"
-path = "examples/multi-handler/main.rs"
+path = "examples/rust/multi-handler/main.rs"
 
 [[example]]
 name = "generics"
-path = "examples/generics/main.rs"
+path = "examples/rust/generics/main.rs"

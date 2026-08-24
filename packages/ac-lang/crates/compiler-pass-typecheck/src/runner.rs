@@ -122,7 +122,7 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
         || {
             let (mut expr_errors, ((arg_errors, merge_errors), termination_errors)) = rayon::join(
                 || {
-                    ac_typecheck_key_expr::check(
+                    ac_typecheck_keys::expr::check(
                         &extracted.schemas,
                         &env,
                         &function_table,
@@ -133,13 +133,13 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
                     rayon::join(
                         || {
                             rayon::join(
-                                || ac_typecheck_key_arg::check(&extracted.schemas, interpreter),
-                                || ac_typecheck_key_merge::check(&extracted.schemas, interpreter, &env),
+                                || ac_typecheck_keys::arg::check(&extracted.schemas, interpreter),
+                                || ac_typecheck_keys::merge::check(&extracted.schemas, interpreter, &env),
                             )
                         },
                         || {
-                            let bodies = ac_typecheck_key_termination::extract_function_bodies(&data);
-                            ac_typecheck_key_termination::check(&bodies, &ac_dialect_canonical::AC_DIALECT)
+                            let bodies = ac_typecheck_keys::termination::extract_function_bodies(&data);
+                            ac_typecheck_keys::termination::check(&bodies, &ac_dialect_canonical::AC_DIALECT)
                         },
                     )
                 },
@@ -151,10 +151,10 @@ pub fn run_typecheck(compilation: &mut Compilation, config: &Config) -> Result<(
         },
         || {
             let (mut inherit_errors, (mutable_errors, import_errors)) = rayon::join(
-                || ac_typecheck_key_inherit::check(&inheritable_schemas, &data, interpreter),
+                || ac_typecheck_keys::inherit::check(&inheritable_schemas, &data, interpreter),
                 || {
                     rayon::join(
-                        || ac_typecheck_key_mutable::check(&extracted.immutable, &data),
+                        || ac_typecheck_keys::mutable::check(&extracted.immutable, &data),
                         || {
                             ac_typecheck_import::check_imports(
                                 &extracted.schemas,

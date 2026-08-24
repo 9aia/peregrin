@@ -1,9 +1,9 @@
-//! # ac-typecheck-key-mutable
+//! # mutable
 //!
 //! Typechecks the `mutable` AC key.
 //!
 //! Fields with `mutable: false` cannot be overridden in nested scopes.
-//! This crate walks the data tree and reports any nested overrides of
+//! This module walks the data tree and reports any nested overrides of
 //! immutable fields as [`TypeError`]s.
 //!
 //! ## Architectural rule
@@ -13,7 +13,7 @@
 use ac_typecheck_core::TypeError;
 use serde_json::Value as JsonValue;
 
-/// The AC key this crate handles.
+/// The AC key this module handles.
 pub const KEY: &str = "mutable";
 
 /// Check if a field schema has `mutable: false`.

@@ -5,7 +5,7 @@ use ac_typecheck_core::{SchemaInterpreter, Type, TypeEnv, TypeError, is_compatib
 use ac_typecheck_infer::{FunctionTable, ParseCache, infer_cached_detailed};
 use serde_json::Value as JsonValue;
 
-/// The AC key this crate handles.
+/// The AC key this module handles.
 pub const KEY: &str = "expr";
 
 /// Get the expression string from a field schema, if present.

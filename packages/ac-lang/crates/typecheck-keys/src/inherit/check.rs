@@ -3,9 +3,9 @@ use std::collections::BTreeMap;
 use ac_typecheck_core::{SchemaInterpreter, Type, TypeError};
 use serde_json::Value as JsonValue;
 
-use crate::walker::check_in_children;
+use super::walker::check_in_children;
 
-/// The AC key this crate handles.
+/// The AC key this module handles.
 pub const KEY: &str = "inheritable";
 
 /// Check if a field schema has `inheritable: true`.
