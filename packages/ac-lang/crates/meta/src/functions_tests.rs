@@ -545,10 +545,7 @@ fn call_meta(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     try_call_meta(name, args).expect("call should succeed")
 }
 
-fn try_call_meta(
-    name: &str,
-    args: &[NonFunctionValue],
-) -> Result<NonFunctionValue, Error> {
+fn try_call_meta(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
     let vm = Vm::new(MetaHost::default());
     let mut ctx = CanonicalContext::new();
     let expr_args: Vec<Expr<NonFunctionValue>> =

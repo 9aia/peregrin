@@ -1,5 +1,5 @@
-use std::fmt;
 use ac_runtime_values::Error as VmError;
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub enum RandError {

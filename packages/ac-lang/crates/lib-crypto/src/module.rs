@@ -1,6 +1,6 @@
-use ac_runtime_values::NonFunctionValue;
-use ac_runtime_values::Function;
 use ac_runtime_modules::Module;
+use ac_runtime_values::Function;
+use ac_runtime_values::NonFunctionValue;
 
 use super::encoding::{Base64Decode, Base64Encode, HexDecode, HexEncode};
 use super::hash::{Md5, Sha256};

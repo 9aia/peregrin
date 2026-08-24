@@ -1,6 +1,6 @@
-use ac_runtime_values::NonFunctionValue;
-use ac_runtime_values::Function;
 use ac_runtime_modules::Module;
+use ac_runtime_values::Function;
+use ac_runtime_values::NonFunctionValue;
 
 use super::compare_strings::CompareStrings;
 use super::display_name::DisplayName;

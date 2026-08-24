@@ -1,7 +1,7 @@
+use ac_runtime_modules::Module;
+use ac_runtime_values::Context;
 use ac_runtime_values::NonFunctionValue;
 use ac_runtime_values::{CanonicalContext, Error};
-use ac_runtime_values::{Context};
-use ac_runtime_modules::Module;
 
 use super::module::IntlModule;
 

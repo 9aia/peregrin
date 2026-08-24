@@ -2,8 +2,8 @@ use ac_runtime_values::NonFunctionValue;
 use rand::Rng;
 use serde_json::Value;
 
-use ac_runtime_values::{Error};
 use ac_runtime::{Context, Function};
+use ac_runtime_values::Error;
 
 use super::common::{array, require_int, s};
 use crate::error::RandError;

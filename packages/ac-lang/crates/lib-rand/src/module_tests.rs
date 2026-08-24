@@ -1,6 +1,6 @@
-use ac_runtime_values::NonFunctionValue;
 use ac_runtime_canonical::{CanonicalContext, Context, Host, Vm};
 use ac_runtime_modules::{Module, ModuleHost};
+use ac_runtime_values::NonFunctionValue;
 
 use super::module::RandModule;
 use super::test_helpers::*;

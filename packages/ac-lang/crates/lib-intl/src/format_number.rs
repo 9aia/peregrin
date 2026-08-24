@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use ac_runtime_values::{Error};
+use ac_runtime_values::Error;
 use ac_runtime_values::{Context, Function};
 use icu::decimal::options::{DecimalFormatterOptions, GroupingStrategy};
 use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};

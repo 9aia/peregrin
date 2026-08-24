@@ -1,8 +1,8 @@
 use ac_runtime_values::NonFunctionValue;
 use rand::Rng;
 
-use ac_runtime_values::{Error};
 use ac_runtime::{Context, Function};
+use ac_runtime_values::Error;
 
 use super::common::{bool_val, num, require_int, require_number};
 use crate::error::RandError;

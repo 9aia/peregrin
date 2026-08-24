@@ -1,8 +1,8 @@
-use ac_runtime_values::NonFunctionValue;
 use crate::expression::eval_expression;
 use crate::types::{DEFAULT_NAMESPACE, Namespaces};
 use ac_dialect::Dialect;
 use ac_runtime::Host;
+use ac_runtime_values::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
 /// Recursively interpolates expressions in string values.

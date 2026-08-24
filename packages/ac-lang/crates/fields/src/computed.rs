@@ -1,8 +1,8 @@
-use ac_runtime_values::NonFunctionValue;
 use crate::expression::eval_expression;
 use crate::types::{ArgSpec, ComputedField, DEFAULT_NAMESPACE, Namespaces};
 use ac_dialect::Dialect;
 use ac_runtime::Host;
+use ac_runtime_values::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
 /// Evaluates computed field expressions and inserts results into `data`.

@@ -5,8 +5,8 @@ use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 use serde_json::Value;
 
-use ac_runtime_values::{Error};
 use ac_runtime::{Context, Function};
+use ac_runtime_values::Error;
 
 use super::common::{array, bool_val, num, require_array, require_int, require_number, s};
 use crate::error::RandError;
