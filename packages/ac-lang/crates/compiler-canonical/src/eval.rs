@@ -8,7 +8,10 @@ use ac_runtime_sandbox::{SandboxHost, SandboxLimits};
 use ac_runtime_server::{ServerHost, ServerLimits};
 use ac_runtime_values::NonFunctionValue;
 
-use crate::{Config, DriverError, DriverPipeline, ParsedDoc, Session, Source, Stage, default_cli_config, ParseStage};
+use crate::{
+    Config, DriverError, DriverPipeline, ParseStage, ParsedDoc, Session, Source, Stage,
+    default_cli_config,
+};
 
 /// Which VM host to use for evaluation.
 #[derive(Clone, Copy, Debug)]
@@ -45,10 +48,9 @@ impl Stage<Config> for EvalStage {
             .unwrap_or(VmMode::Sandbox);
 
         let (expr, defines) = if doc.format == "ac" {
-            let src = doc
-                .value
-                .as_str()
-                .ok_or_else(|| DriverError::new(".ac input did not parse as a string".to_string()))?;
+            let src = doc.value.as_str().ok_or_else(|| {
+                DriverError::new(".ac input did not parse as a string".to_string())
+            })?;
             let expr = CanonicalParser
                 .parse_text(src, &CanonicalLexer::default())
                 .map_err(|e| DriverError::new(e.to_string()))?;
@@ -90,7 +92,11 @@ impl Stage<Config> for EvalStage {
 
 /// Evaluate an AC document through the parse → VM pipeline.
 pub fn run(input: &str, format: &str, output_format: &str, vm: &str) -> Result<String, String> {
-    let vm_mode = if vm == "server" { VmMode::Server } else { VmMode::Sandbox };
+    let vm_mode = if vm == "server" {
+        VmMode::Server
+    } else {
+        VmMode::Sandbox
+    };
     let source = Source::new(input, format);
     let mut pipeline = DriverPipeline::new(ParseStage).then(EvalStage);
     let mut session = Session::new(default_cli_config().with_extension(vm_mode));

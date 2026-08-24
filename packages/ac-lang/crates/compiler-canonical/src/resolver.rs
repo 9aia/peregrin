@@ -13,10 +13,10 @@ use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, DEFAULT_NAMESPACE};
 use ac_module_resolver_core::{ModuleResolver, ResolvedModule};
-use ac_runtime_values::{Error};
 use ac_runtime::{Context, Function, Host};
-use ac_runtime_values::{FunctionValue, NonFunctionValue};
 use ac_runtime_example_1::DefaultHost;
+use ac_runtime_values::Error;
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
 use serde_json::Value as JsonValue;
 
 /// A host that combines the default AC primitives with compiler-specific
@@ -59,7 +59,9 @@ impl Host<NonFunctionValue> for CompilerHost {
         if let Some(function) = self.default.function(name) {
             return Some(function);
         }
-        self.data_functions.get(name).map(|f| f as &dyn Function<NonFunctionValue>)
+        self.data_functions
+            .get(name)
+            .map(|f| f as &dyn Function<NonFunctionValue>)
     }
 }
 

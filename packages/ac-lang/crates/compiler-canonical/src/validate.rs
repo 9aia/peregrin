@@ -3,8 +3,8 @@ use ac_dialect_canonical::AC_DIALECT;
 use serde_json::Value;
 
 use crate::{
-    Config, DriverError, DriverPipeline, ParsedDoc, Session, Source, Stage, default_cli_config,
-    ParseStage,
+    Config, DriverError, DriverPipeline, ParseStage, ParsedDoc, Session, Source, Stage,
+    default_cli_config,
 };
 
 /// Validate phase: `ParsedDoc → ()`.

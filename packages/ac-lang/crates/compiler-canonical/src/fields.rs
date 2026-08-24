@@ -9,11 +9,11 @@ use ac_fields;
 use ac_runtime_example_1::DefaultHost;
 use ac_runtime_values::NonFunctionValue;
 
-use crate::{
-    Config, DriverError, DriverPipeline, ExtractedDoc, Session, Source, Stage, default_cli_config,
-    ExtractStage, ParseStage,
-};
 use crate::resolver::{CompilerHost, Import};
+use crate::{
+    Config, DriverError, DriverPipeline, ExtractStage, ExtractedDoc, ParseStage, Session, Source,
+    Stage, default_cli_config,
+};
 
 /// Report from a fields validation run.
 pub struct FieldsReport {
@@ -53,7 +53,11 @@ impl Stage<Config> for FieldsStage {
         "fields"
     }
 
-    fn run(&mut self, doc: ExtractedDoc, _session: &mut Session<Config>) -> Result<FieldsReport, DriverError> {
+    fn run(
+        &mut self,
+        doc: ExtractedDoc,
+        _session: &mut Session<Config>,
+    ) -> Result<FieldsReport, DriverError> {
         if doc.extracted.schemas.is_empty() {
             return Err(DriverError::new("no `$:` section found in input"));
         }
@@ -84,8 +88,13 @@ impl Stage<Config> for FieldsStage {
         );
         let host = CompilerHost::new(host, import, &namespaces);
 
-        let interpolated =
-            ac_fields::interpolate_scoped(base_data.inner(), &namespaces, &inheritable, &host, &AC_DIALECT);
+        let interpolated = ac_fields::interpolate_scoped(
+            base_data.inner(),
+            &namespaces,
+            &inheritable,
+            &host,
+            &AC_DIALECT,
+        );
         let mut data = NonFunctionValue::new(interpolated);
 
         let mut errors = Vec::new();
