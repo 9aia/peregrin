@@ -1,6 +1,6 @@
-use ac_runtime_values::NonFunctionValue;
-use ac_runtime_values::CanonicalContext;
 use ac_runtime_modules::Module;
+use ac_runtime_values::CanonicalContext;
+use ac_runtime_values::NonFunctionValue;
 
 use super::sig::SigModule;
 use super::sig_stub::StubSig;
@@ -11,7 +11,7 @@ fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFuncti
     func.call(args, &mut ctx).expect("call succeeds")
 }
 
-fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> ac_runtime::Error {
+fn call_err(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> ac_runtime_values::Error {
     let func = module.function(name).expect("function exists");
     let mut ctx = CanonicalContext::new();
     func.call(args, &mut ctx).unwrap_err()
@@ -49,7 +49,7 @@ fn send_signal() {
 fn send_unknown_signal() {
     let module = SigModule::new(StubSig::default());
     let err = call_err(&module, "send", &[n(42), s("BOGUS")]);
-    assert!(matches!(err, ac_runtime::Error::PrimitiveError(_)));
+    assert!(matches!(err, ac_runtime_values::Error::PrimitiveError(_)));
 }
 
 #[test]
@@ -58,7 +58,7 @@ fn argument_count() {
     let err = call_err(&module, "send", &[n(42)]);
     assert_eq!(
         err,
-        ac_runtime::Error::ArgumentCount {
+        ac_runtime_values::Error::ArgumentCount {
             expected: 2,
             got: 1
         }

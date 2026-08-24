@@ -71,6 +71,7 @@ mod env;
 mod error;
 mod fs;
 mod path;
+mod process;
 mod sig;
 mod socket;
 mod time;
@@ -86,6 +87,10 @@ pub use env::EnvModule;
 
 pub use path::Path;
 pub use path::PathModule;
+
+pub use process::Process;
+pub use process::ProcessModule;
+pub use process::ProcessStatus;
 
 pub use time::Time;
 pub use time::TimeModule;
@@ -109,6 +114,7 @@ pub use cmd::cmd_stub::StubCmd;
 pub use env::env_stub::StubEnv;
 pub use fs::fs_stub::StubFs;
 pub use path::path_stub::StubPath;
+pub use process::process_stub::StubProcess;
 pub use sig::sig_stub::StubSig;
 pub use socket::socket_stub::StubSocket;
 pub use time::time_stub::StubTime;
