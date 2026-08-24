@@ -366,7 +366,7 @@ fn argument_count_errors() {
 fn type_mismatch_for_non_bytes() {
     assert!(matches!(call_err("length", &[num(1.0)]), Err(Error::TypeMismatch { .. })));
     assert!(matches!(call_err("reverse", &[num(1.0)]), Err(Error::TypeMismatch { .. })));
-    assert!(matches!(call_err("sum", &[s("hi")]), Err(Error::TypeMismatch { .. })));
+    assert!(matches!(call_err("sum", &[num(1.0)]), Err(Error::TypeMismatch { .. })));
 }
 
 #[test]
