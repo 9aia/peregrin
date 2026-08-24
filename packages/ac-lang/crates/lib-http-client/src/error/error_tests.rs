@@ -21,9 +21,9 @@ fn converts_to_vm_error() {
     let err = HttpError::Network {
         message: "timeout".into(),
     };
-    let vm_err: ac_runtime::Error = err.into();
+    let vm_err: ac_runtime_values::Error = err.into();
     match vm_err {
-        ac_runtime::Error::PrimitiveError(msg) => assert!(msg.contains("network error")),
+        ac_runtime_values::Error::PrimitiveError(msg) => assert!(msg.contains("network error")),
         other => panic!("expected PrimitiveError, got {other:?}"),
     }
 }

@@ -4,9 +4,9 @@ use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use ac_runtime_values::{Error};
 use ac_runtime::{Context, Function};
 use ac_runtime_modules::Module;
+use ac_runtime_values::{Error, FunctionValue};
 
 use crate::error::HttpServerError;
 use crate::http_method::HttpMethod;
@@ -37,6 +37,14 @@ pub trait HttpServer: Send + Sync {
         method: HttpMethod,
         path: &str,
         handler: Handler,
+    ) -> Result<(), HttpServerError>;
+
+    /// Register an AC `FunctionValue` as a handler for a method/path pattern.
+    fn route_function(
+        &self,
+        method: HttpMethod,
+        path: &str,
+        handler: FunctionValue,
     ) -> Result<(), HttpServerError>;
 
     /// Serve static files from `dir` under `path`.
@@ -114,6 +122,16 @@ impl HttpServer for StubHttpServer {
             .unwrap()
             .routes
             .insert((method, path.to_string()), handler);
+        Ok(())
+    }
+
+    fn route_function(
+        &self,
+        method: HttpMethod,
+        path: &str,
+        _handler: FunctionValue,
+    ) -> Result<(), HttpServerError> {
+        let _ = (method, path);
         Ok(())
     }
 
@@ -262,7 +280,9 @@ struct NewFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for NewFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue>
+    for NewFn<F>
+{
     fn call(
         &self,
         _args: &[NonFunctionValue],
@@ -277,7 +297,9 @@ struct StartFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for StartFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue>
+    for StartFn<F>
+{
     fn call(
         &self,
         args: &[NonFunctionValue],
@@ -296,7 +318,9 @@ struct StopFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for StopFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue>
+    for StopFn<F>
+{
     fn call(
         &self,
         args: &[NonFunctionValue],
@@ -314,7 +338,9 @@ struct JoinFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for JoinFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue>
+    for JoinFn<F>
+{
     fn call(
         &self,
         args: &[NonFunctionValue],
@@ -332,7 +358,9 @@ struct RouteFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for RouteFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue>
+    for RouteFn<F>
+{
     fn call(
         &self,
         args: &[NonFunctionValue],
@@ -343,14 +371,31 @@ impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctio
         let method = HttpMethod::parse(method_str)
             .ok_or_else(|| Error::PrimitiveError(format!("unknown HTTP method: {method_str}")))?;
         let path = require_string_at(args, 2)?;
-        let body = require_string_at(args, 3)?;
-        let body = body.to_string();
-        let handler: Handler =
-            Box::new(move |_req: HttpServerRequest| HttpServerResponse::new(200, body.clone()));
-        self.inner
-            .with_server(id, |server| server.route(method, path, handler))
-            .map_err(Into::into)
-            .map(|_| NonFunctionValue::new(serde_json::Value::Null))
+        let handler_arg = args.get(3).ok_or(Error::ArgumentCount {
+            expected: 4,
+            got: args.len(),
+        })?;
+
+        if let Some(function_value) = FunctionValue::from_json(handler_arg.inner()) {
+            self.inner
+                .with_server(id, |server| {
+                    server.route_function(method, path, function_value)
+                })
+                .map_err(Error::from)?;
+        } else {
+            let body = handler_arg.as_str().ok_or(Error::TypeMismatch {
+                expected: "string or function",
+                got: "non-string non-function",
+            })?;
+            let body = body.to_string();
+            let handler: Handler =
+                Box::new(move |_req: HttpServerRequest| HttpServerResponse::new(200, body.clone()));
+            self.inner
+                .with_server(id, |server| server.route(method, path, handler))
+                .map_err(Error::from)?;
+        }
+
+        Ok(NonFunctionValue::new(serde_json::Value::Null))
     }
 }
 
@@ -358,7 +403,9 @@ struct ServeStaticFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for ServeStaticFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue>
+    for ServeStaticFn<F>
+{
     fn call(
         &self,
         args: &[NonFunctionValue],

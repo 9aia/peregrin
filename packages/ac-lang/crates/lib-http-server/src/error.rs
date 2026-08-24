@@ -1,5 +1,5 @@
-use std::fmt;
 use ac_runtime_values::Error as VmError;
+use std::fmt;
 
 /// Errors produced by HTTP server implementations.
 #[derive(Debug, Clone)]
@@ -10,6 +10,8 @@ pub enum HttpServerError {
     AlreadyRunning,
     Handler { message: String },
     NotFound,
+    PayloadTooLarge { limit: usize },
+    Timeout { message: String },
 }
 
 impl fmt::Display for HttpServerError {
@@ -21,6 +23,10 @@ impl fmt::Display for HttpServerError {
             Self::AlreadyRunning => write!(f, "server is already running"),
             Self::Handler { message } => write!(f, "handler error: {message}"),
             Self::NotFound => write!(f, "not found"),
+            Self::PayloadTooLarge { limit } => {
+                write!(f, "payload too large: limit is {limit} bytes")
+            }
+            Self::Timeout { message } => write!(f, "timeout: {message}"),
         }
     }
 }

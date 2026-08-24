@@ -1,3 +1,4 @@
+use ac_runtime::Host;
 use ac_runtime_canonical::{CanonicalContext, Vm};
 use ac_runtime_values::NonFunctionValue;
 

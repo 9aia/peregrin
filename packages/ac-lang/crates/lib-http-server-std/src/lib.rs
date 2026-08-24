@@ -10,4 +10,4 @@ mod http_server;
 pub use ac_lib_http_server::{
     HttpMethod, HttpServer, HttpServerError, HttpServerRequest, HttpServerResponse,
 };
-pub use http_server::{StdHttpServer, StdHttpServerModule, std_http_server_module};
+pub use http_server::{ServerConfig, StdHttpServer, StdHttpServerModule, std_http_server_module};
