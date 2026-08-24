@@ -296,3 +296,115 @@ fn parse_unclosed_object_errors() {
     let result = parse("{a: 1");
     assert!(result.is_err());
 }
+
+// --- syntax sugar ---
+
+#[test]
+fn parse_partial_application() {
+    let expr = parse("add(_, 1)").unwrap();
+    match expr {
+        Expr::Function { params, body, .. } => {
+            assert_eq!(params.len(), 1);
+            assert!(body.starts_with("add(__p"));
+            assert!(body.contains("1"));
+        }
+        other => panic!("expected Function, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_pipe_forward() {
+    let expr = parse("5 |> add(_, 10)").unwrap();
+    match expr {
+        Expr::Call { name, args, .. } => {
+            assert_eq!(name, "fn.pipe");
+            assert_eq!(args.len(), 2);
+        }
+        other => panic!("expected Call, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_pipe_backward() {
+    let expr = parse("add(_, 10) <| 5").unwrap();
+    match expr {
+        Expr::Call { name, args, .. } => {
+            assert_eq!(name, "fn.apply");
+            assert_eq!(args.len(), 2);
+        }
+        other => panic!("expected Call, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_ternary() {
+    let expr = parse("x ? a : b").unwrap();
+    match expr {
+        Expr::Call { name, args, .. } => {
+            assert_eq!(name, "if");
+            assert_eq!(args.len(), 3);
+        }
+        other => panic!("expected Call, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_match_expression() {
+    let expr = parse(r#"match 1 { 1 -> "one", _ -> "other" }"#).unwrap();
+    match expr {
+        Expr::Call { name, args, .. } => {
+            assert_eq!(name, "fn.match");
+            assert_eq!(args.len(), 3);
+        }
+        other => panic!("expected Call, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_object_punning() {
+    let expr = parse("{a, b}").unwrap();
+    assert_eq!(
+        expr,
+        Expr::object(vec![
+            ("a".into(), Expr::var("a")),
+            ("b".into(), Expr::var("b")),
+        ])
+    );
+}
+
+#[test]
+fn parse_flow_combinator() {
+    let expr = parse("f >>> g").unwrap();
+    match expr {
+        Expr::Call { name, args, .. } => {
+            assert_eq!(name, "fn.flow");
+            assert_eq!(args.len(), 2);
+        }
+        other => panic!("expected Call, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_compose_combinator() {
+    let expr = parse("f <<< g").unwrap();
+    match expr {
+        Expr::Call { name, args, .. } => {
+            assert_eq!(name, "fn.compose");
+            assert_eq!(args.len(), 2);
+        }
+        other => panic!("expected Call, got {other:?}"),
+    }
+}
+
+#[test]
+fn parse_fanout_combinator() {
+    let expr = parse("f &&& g").unwrap();
+    match expr {
+        Expr::Function { params, body, .. } => {
+            assert_eq!(params.len(), 1);
+            assert!(body.contains("fn.apply"));
+            assert!(body.contains("__x"));
+        }
+        other => panic!("expected Function, got {other:?}"),
+    }
+}

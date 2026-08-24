@@ -6,6 +6,9 @@ use ac_parser_common::{DefaultParseError, Grammar, ParseError, Parser, ParserCon
 use ac_runtime_values::NonFunctionValue;
 
 use serde_json::json;
+use std::sync::atomic::{AtomicUsize, Ordering};
+
+static PLACEHOLDER_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 fn to_ac_parse_error(e: DefaultParseError) -> AcParseError {
     match e {
@@ -780,9 +783,13 @@ impl CanonicalGrammar {
         context: &mut ParserContext<CanonicalKind, Expr<NonFunctionValue>, DefaultParseError>,
     ) -> Result<String, DefaultParseError> {
         let start = context.peek_span().start;
-        self.parse_expr(context)?;
+        let expr = self.parse_expr(context)?;
         let end = context.peek_span().start;
-        Ok(context.source()[start..end].to_string())
+        let source = context.source();
+        if source.is_empty() || start > source.len() || end > source.len() {
+            return self.expr_to_canonical(&expr);
+        }
+        Ok(source[start..end].to_string())
     }
 
     fn parse_array(
@@ -1182,8 +1189,9 @@ impl CanonicalGrammar {
         &self,
         mut expr: Expr<NonFunctionValue>,
     ) -> Result<Expr<NonFunctionValue>, DefaultParseError> {
+        let nonce = PLACEHOLDER_COUNTER.fetch_add(1, Ordering::Relaxed);
         let mut params = Vec::new();
-        self.rename_placeholders(&mut expr, &mut params);
+        self.rename_placeholders(&mut expr, &mut params, nonce);
         let body = self.expr_to_canonical(&expr)?;
         let patterns = params
             .into_iter()
@@ -1210,24 +1218,25 @@ impl CanonicalGrammar {
         &self,
         expr: &mut Expr<NonFunctionValue>,
         params: &mut Vec<String>,
+        nonce: usize,
     ) {
         match expr {
             Expr::Var(name) if name == "_" => {
-                let new_name = format!("__p{}", params.len());
+                let new_name = format!("__p{}_{}", params.len(), nonce);
                 *name = new_name.clone();
                 params.push(new_name);
             }
             Expr::Call { args, .. } | Expr::Apply { args, .. } | Expr::Array { 0: args } => {
                 for a in args.iter_mut() {
-                    self.rename_placeholders(a, params);
+                    self.rename_placeholders(a, params, nonce);
                 }
             }
             Expr::FieldAccess { target, .. } | Expr::Index { target, .. } => {
-                self.rename_placeholders(target, params);
+                self.rename_placeholders(target, params, nonce);
             }
             Expr::Object(entries) => {
                 for (_, v) in entries.iter_mut() {
-                    self.rename_placeholders(v, params);
+                    self.rename_placeholders(v, params, nonce);
                 }
             }
             _ => {}
