@@ -1,10 +1,10 @@
+use ac_runtime_values::NonFunctionValue;
 use serde_json::json;
 
 use crate::{JsonSchemaBackend, compose_schema};
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
-use ac_runtime::NonFunctionValue;
 use ac_typegen_core::{TypegenBackend, TypegenContext};
 
 fn build_ctx(extracted: &ac_fields::ExtractedFields) -> TypegenContext {

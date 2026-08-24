@@ -1,5 +1,5 @@
 use ac_dialect::{Schema, SchemaVocabulary, ValidationError};
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 
 use super::json_schema::JsonSchema;
 

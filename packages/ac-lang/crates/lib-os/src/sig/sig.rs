@@ -1,7 +1,8 @@
+use ac_runtime_values::NonFunctionValue;
 use std::sync::Arc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::OsError;
@@ -37,7 +38,7 @@ impl Module for SigModule {
         "sig"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "send" => Some(&self.send),
             "list" => Some(&self.list),
@@ -50,11 +51,11 @@ struct SendFn {
     sig: Arc<dyn Sig>,
 }
 
-impl Function for SendFn {
+impl Function<NonFunctionValue> for SendFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -79,11 +80,11 @@ struct ListFn {
     sig: Arc<dyn Sig>,
 }
 
-impl Function for ListFn {
+impl Function<NonFunctionValue> for ListFn {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let signals = self.sig.list()?;
         let arr: Vec<serde_json::Value> =

@@ -1,8 +1,8 @@
-use ac_runtime::FunctionValue;
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::FunctionValue;
 use serde_json::json;
 
 use ac_ast_canonical::{Expr, HandlerClause};
-use ac_runtime::NonFunctionValue;
 
 use crate::canonical::canonicalize_json;
 use crate::eval_cache::{EvalCache, EvalKey};

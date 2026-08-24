@@ -2,7 +2,8 @@ use std::future::Future;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use ac_runtime::{Context, Error, Expr, NonFunctionValue, VirtualMachine};
+use ac_runtime::{Context, Error, Expr, VirtualMachine};
+use ac_runtime_values::NonFunctionValue;
 
 /// Whether an evaluation is synchronous or asynchronous.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -24,8 +25,8 @@ pub trait VmMiddleware: Send + Sync + 'static {
         &self,
         _kind: EvalKind,
         _expr: &Expr<NonFunctionValue>,
-        _ctx: &mut dyn Context,
-    ) -> Option<Result<NonFunctionValue, Error>> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Option<Result<NonFunctionValue, Error<NonFunctionValue>>> {
         None
     }
 
@@ -37,9 +38,9 @@ pub trait VmMiddleware: Send + Sync + 'static {
         &self,
         _kind: EvalKind,
         _expr: &Expr<NonFunctionValue>,
-        result: Result<NonFunctionValue, Error>,
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        result: Result<NonFunctionValue, Error<NonFunctionValue>>,
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         result
     }
 }
@@ -70,12 +71,12 @@ impl<V, M> MiddlewareVm<V, M> {
     }
 }
 
-impl<V: VirtualMachine, M: VmMiddleware> VirtualMachine for MiddlewareVm<V, M> {
+impl<V: VirtualMachine<NonFunctionValue>, M: VmMiddleware> VirtualMachine<NonFunctionValue> for MiddlewareVm<V, M> {
     fn eval(
         &self,
         expr: &Expr<NonFunctionValue>,
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let result = match self.middleware.before_eval(EvalKind::Sync, expr, ctx) {
             Some(cached) => cached,
             None => self.inner.eval(expr, ctx),
@@ -87,8 +88,8 @@ impl<V: VirtualMachine, M: VmMiddleware> VirtualMachine for MiddlewareVm<V, M> {
     fn eval_async(
         &self,
         expr: &Expr<NonFunctionValue>,
-        ctx: &mut dyn Context,
-    ) -> impl Future<Output = Result<NonFunctionValue, Error>> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> impl Future<Output = Result<NonFunctionValue, Error<NonFunctionValue>>> {
         async move {
             let result = match self.middleware.before_eval(EvalKind::Async, expr, ctx) {
                 Some(cached) => cached,
@@ -159,8 +160,8 @@ impl VmMiddleware for Chain {
         &self,
         kind: EvalKind,
         expr: &Expr<NonFunctionValue>,
-        ctx: &mut dyn Context,
-    ) -> Option<Result<NonFunctionValue, Error>> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Option<Result<NonFunctionValue, Error<NonFunctionValue>>> {
         for middleware in &self.middlewares {
             if let Some(result) = middleware.before_eval(kind, expr, ctx) {
                 return Some(result);
@@ -173,9 +174,9 @@ impl VmMiddleware for Chain {
         &self,
         kind: EvalKind,
         expr: &Expr<NonFunctionValue>,
-        result: Result<NonFunctionValue, Error>,
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        result: Result<NonFunctionValue, Error<NonFunctionValue>>,
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let mut result = result;
         for middleware in self.middlewares.iter().rev() {
             result = middleware.after_eval(kind, expr, result, ctx);
@@ -192,13 +193,22 @@ pub struct TraceEvent {
     /// A short summary of the evaluated expression.
     pub summary: String,
     /// The result produced by the wrapped VM.
-    pub result: Result<NonFunctionValue, Error>,
+    pub result: Result<NonFunctionValue, Error<NonFunctionValue>>,
 }
 
 fn summarize(expr: &Expr<NonFunctionValue>) -> String {
     match expr {
         Expr::Value(_) => "Value".to_string(),
+        Expr::Var(name) => format!("Var({})", name),
+        Expr::Assign { target, .. } => format!("Assign({})", target.bound_names().join(",")),
+        Expr::Function { type_params, params, .. } => {
+            let count: usize = params.iter().map(|(p, _)| p.bound_names().len()).sum();
+            format!("Function<{}>({})", type_params.join(","), count)
+        }
         Expr::Call { name, args, .. } => format!("Call({}, {})", name, args.len()),
+        Expr::Apply { args, .. } => format!("Apply({})", args.len()),
+        Expr::Index { .. } => "Index".to_string(),
+        Expr::FieldAccess { field, .. } => format!("FieldAccess({})", field),
         Expr::Handle { .. } => "Handle".to_string(),
         Expr::Array(elements) => format!("Array({})", elements.len()),
         Expr::Object(entries) => format!("Object({})", entries.len()),
@@ -249,9 +259,9 @@ impl VmMiddleware for Trace {
         &self,
         kind: EvalKind,
         expr: &Expr<NonFunctionValue>,
-        result: Result<NonFunctionValue, Error>,
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        result: Result<NonFunctionValue, Error<NonFunctionValue>>,
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         if let Ok(mut guard) = self.events.lock() {
             guard.push(TraceEvent {
                 kind,
@@ -288,9 +298,9 @@ impl VmMiddleware for Counter {
         &self,
         _kind: EvalKind,
         _expr: &Expr<NonFunctionValue>,
-        result: Result<NonFunctionValue, Error>,
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        result: Result<NonFunctionValue, Error<NonFunctionValue>>,
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         self.count.fetch_add(1, Ordering::Relaxed);
         result
     }
@@ -410,8 +420,8 @@ mod tests {
                 &self,
                 kind: EvalKind,
                 expr: &Expr<NonFunctionValue>,
-                _ctx: &mut dyn Context,
-            ) -> Option<Result<NonFunctionValue, Error>> {
+                _ctx: &mut dyn Context<NonFunctionValue>,
+            ) -> Option<Result<NonFunctionValue, Error<NonFunctionValue>>> {
                 if let Ok(mut guard) = self.0.lock() {
                     guard.push(format!("{:?} {}", kind, summarize(expr)));
                 }
@@ -438,8 +448,8 @@ mod tests {
                 &self,
                 _kind: EvalKind,
                 _expr: &Expr<NonFunctionValue>,
-                _ctx: &mut dyn Context,
-            ) -> Option<Result<NonFunctionValue, Error>> {
+                _ctx: &mut dyn Context<NonFunctionValue>,
+            ) -> Option<Result<NonFunctionValue, Error<NonFunctionValue>>> {
                 Some(Ok(NonFunctionValue::new(serde_json::json!(42.0))))
             }
         }
@@ -462,9 +472,9 @@ mod tests {
                 &self,
                 _kind: EvalKind,
                 _expr: &Expr<NonFunctionValue>,
-                result: Result<NonFunctionValue, Error>,
-                _ctx: &mut dyn Context,
-            ) -> Result<NonFunctionValue, Error> {
+                result: Result<NonFunctionValue, Error<NonFunctionValue>>,
+                _ctx: &mut dyn Context<NonFunctionValue>,
+            ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
                 let n = result?
                     .inner()
                     .as_f64()
@@ -491,9 +501,9 @@ mod tests {
                 &self,
                 _kind: EvalKind,
                 _expr: &Expr<NonFunctionValue>,
-                _result: Result<NonFunctionValue, Error>,
-                _ctx: &mut dyn Context,
-            ) -> Result<NonFunctionValue, Error> {
+                _result: Result<NonFunctionValue, Error<NonFunctionValue>>,
+                _ctx: &mut dyn Context<NonFunctionValue>,
+            ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
                 Err(Error::PrimitiveError("rejected".to_string()))
             }
         }

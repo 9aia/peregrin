@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use icu::collator::{
     Collator, CollatorPreferences,
     options::{AlternateHandling, CaseLevel, CollatorOptions, MaxVariable, Strength},
@@ -54,11 +55,11 @@ impl Default for CompareStrings {
     }
 }
 
-impl Function for CompareStrings {
+impl Function<NonFunctionValue> for CompareStrings {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let a = require_string(args, 0)?;
         let b = require_string(args, 1)?;

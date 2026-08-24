@@ -1,7 +1,8 @@
+use ac_runtime_values::NonFunctionValue;
 use std::sync::Arc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::KvError;
@@ -59,7 +60,7 @@ impl Module for KeyValueStoreModule {
         "kv"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "get" => Some(&self.get),
             "set" => Some(&self.set),
@@ -105,11 +106,11 @@ struct GetFn {
     store: Arc<dyn KeyValueStore>,
 }
 
-impl Function for GetFn {
+impl Function<NonFunctionValue> for GetFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         let value = self.store.get(key)?;
@@ -124,11 +125,11 @@ struct SetFn {
     store: Arc<dyn KeyValueStore>,
 }
 
-impl Function for SetFn {
+impl Function<NonFunctionValue> for SetFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (key, value) = require_two_strings(args)?;
         self.store.set(key, value)?;
@@ -140,11 +141,11 @@ struct RemoveFn {
     store: Arc<dyn KeyValueStore>,
 }
 
-impl Function for RemoveFn {
+impl Function<NonFunctionValue> for RemoveFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         self.store.remove(key)?;
@@ -156,11 +157,11 @@ struct ClearFn {
     store: Arc<dyn KeyValueStore>,
 }
 
-impl Function for ClearFn {
+impl Function<NonFunctionValue> for ClearFn {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.store.clear()?;
         Ok(NonFunctionValue::default())
@@ -171,11 +172,11 @@ struct HasFn {
     store: Arc<dyn KeyValueStore>,
 }
 
-impl Function for HasFn {
+impl Function<NonFunctionValue> for HasFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         self.store
@@ -189,11 +190,11 @@ struct SizeFn {
     store: Arc<dyn KeyValueStore>,
 }
 
-impl Function for SizeFn {
+impl Function<NonFunctionValue> for SizeFn {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.store
             .size()

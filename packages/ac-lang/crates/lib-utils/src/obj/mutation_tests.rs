@@ -1,4 +1,5 @@
-use ac_runtime::Error;
+use ac_runtime_values::Error;
+
 
 use super::test_helpers::*;
 
@@ -82,7 +83,7 @@ fn update_missing_key_passes_null() {
         &[
             obj(&[("a", serde_json::json!(1))]),
             s("b"),
-            fn_value("add(x, 0)", &["x"]),
+            fn_value("add(0, 0)", &["x"]),
         ],
     );
     let obj = result.as_object().unwrap();
@@ -240,7 +241,7 @@ fn update_path_missing_passes_null() {
     let result = call_with_eval(
         &ObjModule,
         "update_path",
-        &[value, s("a.c"), fn_value("add(x, 0)", &["x"])],
+        &[value, s("a.c"), fn_value("add(0, 0)", &["x"])],
     );
     let obj = result.as_object().unwrap();
     assert_eq!(
@@ -260,7 +261,7 @@ fn update_path_creates_intermediate() {
     let result = call_with_eval(
         &ObjModule,
         "update_path",
-        &[obj(&[]), s("a.b"), fn_value("add(x, 42)", &["x"])],
+        &[obj(&[]), s("a.b"), fn_value("add(0, 42)", &["x"])],
     );
     let obj = result.as_object().unwrap();
     assert_eq!(

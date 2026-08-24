@@ -1,6 +1,5 @@
 use std::fmt;
-
-use ac_runtime::Error as VmError;
+use ac_runtime_values::Error as VmError;
 
 /// Errors produced by HTTP server implementations.
 #[derive(Debug, Clone)]

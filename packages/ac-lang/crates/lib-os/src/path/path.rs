@@ -1,7 +1,8 @@
+use ac_runtime_values::NonFunctionValue;
 use std::sync::Arc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::OsError;
@@ -46,7 +47,7 @@ impl Module for PathModule {
         "path"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "join" => Some(&self.join),
             "resolve" => Some(&self.resolve),
@@ -90,11 +91,11 @@ struct JoinFn {
     path: Arc<dyn Path>,
 }
 
-impl Function for JoinFn {
+impl Function<NonFunctionValue> for JoinFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let parts = collect_string_args(args)?;
         self.path
@@ -108,11 +109,11 @@ struct ResolveFn {
     path: Arc<dyn Path>,
 }
 
-impl Function for ResolveFn {
+impl Function<NonFunctionValue> for ResolveFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let parts = collect_string_args(args)?;
         self.path
@@ -126,11 +127,11 @@ struct BasenameFn {
     path: Arc<dyn Path>,
 }
 
-impl Function for BasenameFn {
+impl Function<NonFunctionValue> for BasenameFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let path = require_one_string(args)?;
         self.path
@@ -144,11 +145,11 @@ struct DirnameFn {
     path: Arc<dyn Path>,
 }
 
-impl Function for DirnameFn {
+impl Function<NonFunctionValue> for DirnameFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let path = require_one_string(args)?;
         self.path
@@ -162,11 +163,11 @@ struct ExtnameFn {
     path: Arc<dyn Path>,
 }
 
-impl Function for ExtnameFn {
+impl Function<NonFunctionValue> for ExtnameFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let path = require_one_string(args)?;
         self.path

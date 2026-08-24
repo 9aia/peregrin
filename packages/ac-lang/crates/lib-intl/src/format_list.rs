@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use icu::list::{
     ListFormatter,
     options::{ListFormatterOptions, ListLength},
@@ -44,11 +45,11 @@ impl Default for FormatList {
     }
 }
 
-impl Function for FormatList {
+impl Function<NonFunctionValue> for FormatList {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let items = require_array(args, 0)?;
         let locale = optional_locale(args, 1)?;

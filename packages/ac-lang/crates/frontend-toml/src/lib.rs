@@ -17,7 +17,7 @@ mod scanner;
 pub use convert::{json_to_toml, toml_to_json};
 pub use error::TomlError;
 
-use ac_runtime::{Frontend, NonFunctionValue};
+use ac_runtime_values::{Frontend, NonFunctionValue};
 
 /// Parses a TOML string into a [`NonFunctionValue`].
 ///

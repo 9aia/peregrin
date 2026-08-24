@@ -1,14 +1,13 @@
-use crate::AsyncEval;
-use crate::Context;
-use crate::Error;
-use crate::Eval;
-use ac_runtime_values::NonFunctionValue;
-use indexmap::IndexMap;
-use serde_json::Value as JsonValue;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::future::Future;
 use std::pin::Pin;
+
+use ac_runtime::{AsyncEval, Context, Error, Eval};
+use indexmap::IndexMap;
+use serde_json::Value as JsonValue;
+
+use crate::NonFunctionValue;
 
 /// The execution context for a VM evaluation.
 ///
@@ -26,8 +25,8 @@ use std::pin::Pin;
 /// returns an error.
 pub struct CanonicalContext {
     scopes: Vec<IndexMap<String, NonFunctionValue>>,
-    eval: Option<Box<dyn Eval>>,
-    async_eval: Option<Box<dyn AsyncEval>>,
+    eval: Option<Box<dyn Eval<NonFunctionValue>>>,
+    async_eval: Option<Box<dyn AsyncEval<NonFunctionValue>>>,
     max_depth: Option<usize>,
     max_calls: Option<usize>,
     call_count: Cell<usize>,
@@ -75,7 +74,7 @@ impl CanonicalContext {
     /// When set, host functions can call [`Context::eval_expr`] to
     /// evaluate expression strings with variable bindings. This enables
     /// higher-order functions like `fp.map`, `fp.filter`, `fp.reduce`.
-    pub fn set_eval(&mut self, eval: Box<dyn Eval>) {
+    pub fn set_eval(&mut self, eval: Box<dyn Eval<NonFunctionValue>>) {
         self.eval = Some(eval);
     }
 
@@ -92,7 +91,7 @@ impl CanonicalContext {
         &self,
         expr: &str,
         vars: &[(String, NonFunctionValue)],
-    ) -> Result<NonFunctionValue, Error> {
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         self.eval
             .as_ref()
             .ok_or(Error::PrimitiveError("no eval callback set".to_string()))?
@@ -103,7 +102,7 @@ impl CanonicalContext {
     ///
     /// When set, async host functions can call [`Context::eval_expr_async`]
     /// to evaluate expression strings with variable bindings asynchronously.
-    pub fn set_async_eval(&mut self, eval: Box<dyn AsyncEval>) {
+    pub fn set_async_eval(&mut self, eval: Box<dyn AsyncEval<NonFunctionValue>>) {
         self.async_eval = Some(eval);
     }
 
@@ -122,7 +121,7 @@ impl CanonicalContext {
         &'a self,
         expr: &'a str,
         vars: &'a [(String, NonFunctionValue)],
-    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error<NonFunctionValue>>> + 'a>> {
         match self.async_eval.as_ref() {
             Some(eval) => eval.eval_expr_async(expr, vars),
             None => Box::pin(std::future::ready(Err(Error::PrimitiveError(
@@ -190,7 +189,7 @@ impl CanonicalContext {
     /// Increments the call counter. Called by the VM on each `Call`.
     ///
     /// Returns `Err(Error::ResourceLimit)` if the limit is exceeded.
-    pub fn increment_call_count(&self) -> Result<(), Error> {
+    pub fn increment_call_count(&self) -> Result<(), Error<NonFunctionValue>> {
         let count = self.call_count.get() + 1;
         self.call_count.set(count);
         if let Some(max) = self.max_calls {
@@ -205,7 +204,7 @@ impl CanonicalContext {
     ///
     /// Called by the VM before pushing a new scope for a function call.
     /// Returns `Err(Error::ResourceLimit)` if the limit would be exceeded.
-    pub fn check_depth(&self) -> Result<(), Error> {
+    pub fn check_depth(&self) -> Result<(), Error<NonFunctionValue>> {
         if let Some(max) = self.max_depth {
             if self.scopes.len() >= max {
                 return Err(Error::ResourceLimit(format!("depth limit exceeded: {max}")));
@@ -227,7 +226,7 @@ impl CanonicalContext {
     ///
     /// Returns a clone of the value if found, or
     /// [`Error::UnknownVariable`] if not.
-    pub fn get(&self, name: &str) -> Result<NonFunctionValue, Error> {
+    pub fn get(&self, name: &str) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         for scope in self.scopes.iter().rev() {
             if let Some(value) = scope.get(name) {
                 return Ok(value.clone());
@@ -258,12 +257,12 @@ impl Default for CanonicalContext {
     }
 }
 
-impl Context for CanonicalContext {
+impl Context<NonFunctionValue> for CanonicalContext {
     fn define(&mut self, name: &str, value: NonFunctionValue) {
         self.define(name, value);
     }
 
-    fn get(&self, name: &str) -> Result<NonFunctionValue, Error> {
+    fn get(&self, name: &str) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         self.get(name)
     }
 
@@ -283,11 +282,11 @@ impl Context for CanonicalContext {
         self.call_count()
     }
 
-    fn increment_call_count(&self) -> Result<(), Error> {
+    fn increment_call_count(&self) -> Result<(), Error<NonFunctionValue>> {
         self.increment_call_count()
     }
 
-    fn check_depth(&self) -> Result<(), Error> {
+    fn check_depth(&self) -> Result<(), Error<NonFunctionValue>> {
         self.check_depth()
     }
 
@@ -299,11 +298,11 @@ impl Context for CanonicalContext {
         self.has_async_eval()
     }
 
-    fn set_eval(&mut self, eval: Box<dyn Eval>) {
+    fn set_eval(&mut self, eval: Box<dyn Eval<NonFunctionValue>>) {
         self.set_eval(eval);
     }
 
-    fn set_async_eval(&mut self, eval: Box<dyn AsyncEval>) {
+    fn set_async_eval(&mut self, eval: Box<dyn AsyncEval<NonFunctionValue>>) {
         self.set_async_eval(eval);
     }
 
@@ -311,7 +310,7 @@ impl Context for CanonicalContext {
         &self,
         expr: &str,
         vars: &[(String, NonFunctionValue)],
-    ) -> Result<NonFunctionValue, Error> {
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         self.eval_expr(expr, vars)
     }
 
@@ -319,7 +318,7 @@ impl Context for CanonicalContext {
         &'a self,
         expr: &'a str,
         vars: &'a [(String, NonFunctionValue)],
-    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error<NonFunctionValue>>> + 'a>> {
         self.eval_expr_async(expr, vars)
     }
 

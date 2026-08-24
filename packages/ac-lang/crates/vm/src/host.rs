@@ -1,11 +1,9 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use crate::Context;
-use crate::Error;
-use crate::Operation;
 use ac_ast_canonical::Expr;
-use ac_runtime_values::NonFunctionValue;
+
+use crate::{Context, Error, Operation, Value};
 
 /// Provides functions to the VM.
 ///
@@ -20,12 +18,12 @@ use ac_runtime_values::NonFunctionValue;
 /// # Implementing a host
 ///
 /// ```ignore
-/// struct MyHost {
-///     functions: Vec<(String, Box<dyn Function>)>,
+/// struct MyHost<V: Value> {
+///     functions: Vec<(String, Box<dyn Function<V>>)>,
 /// }
 ///
-/// impl Host for MyHost {
-///     fn function(&self, name: &str) -> Option<&dyn Function> {
+/// impl<V: Value> Host<V> for MyHost<V> {
+///     fn function(&self, name: &str) -> Option<&dyn Function<V>> {
 ///         self.functions
 ///             .iter()
 ///             .find(|(n, _)| n == name)
@@ -33,18 +31,18 @@ use ac_runtime_values::NonFunctionValue;
 ///     }
 /// }
 /// ```
-pub trait Host {
+pub trait Host<V: Value> {
     /// Resolve a function name to a callable [`Function`].
     ///
     /// Returns `None` if the name is not recognized.
-    fn function(&self, name: &str) -> Option<&dyn Function>;
+    fn function(&self, name: &str) -> Option<&dyn Function<V>>;
 
     /// Resolve a function name to an async callable [`AsyncFunction`].
     ///
     /// Returns `None` by default. Override to provide async functions
     /// (network I/O, timers, cooperative yielding). The async VM
     /// checks this after [`Host::function`] returns `None`.
-    fn async_function(&self, _name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, _name: &str) -> Option<&dyn AsyncFunction<V>> {
         None
     }
 
@@ -59,7 +57,7 @@ pub trait Host {
     /// Operations enable algebraic effect handling: the VM captures
     /// the continuation when an operation signals, and a handler can
     /// intercept, inspect the arguments, and resume.
-    fn operation(&self, _name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, _name: &str) -> Option<&dyn Operation<V>> {
         None
     }
 
@@ -72,7 +70,7 @@ pub trait Host {
     /// [`Host::operation`]. If a name resolves to a lazy function,
     /// the VM passes the raw expression tree instead of pre-evaluated
     /// values, and the function decides which arguments to evaluate.
-    fn lazy_function(&self, _name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, _name: &str) -> Option<&dyn LazyFunction<V>> {
         None
     }
 
@@ -83,8 +81,20 @@ pub trait Host {
     /// non-empty `type_args`. If a generic function is registered, it
     /// receives the type arguments via [`GenericFunction::call_with_types`].
     /// Otherwise, the VM falls back to [`Host::function`].
-    fn generic_function(&self, _name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, _name: &str) -> Option<&dyn GenericFunction<V>> {
         None
+    }
+
+    /// Check whether a name is reserved and may not be shadowed by assignment.
+    ///
+    /// Reserved names are the installed modules and built-in functions the
+    /// host provides. Returning `true` here prevents users from rebinding them
+    /// and changing what expressions like `math.abs` or `add` resolve to.
+    ///
+    /// The default implementation returns `false`, preserving backwards
+    /// compatibility for existing hosts.
+    fn is_reserved(&self, _name: &str) -> bool {
+        false
     }
 }
 
@@ -92,7 +102,7 @@ pub trait Host {
 ///
 /// Functions implement the execution semantics for built-in
 /// operations. The VM evaluates arguments and passes the resulting
-/// [`NonFunctionValue`]s to the function's [`call`](Function::call) method.
+/// values to the function's [`call`](Function::call) method.
 ///
 /// Functions receive a mutable reference to the [`Context`],
 /// allowing them to read or modify variables in the current scope.
@@ -102,7 +112,7 @@ pub trait Host {
 /// The `call` method takes `&self`, not `&mut self`. If a function
 /// needs mutable internal state, use interior mutability (e.g.
 /// `RefCell`, `AtomicUsize`).
-pub trait Function {
+pub trait Function<V: Value> {
     /// Call this function with pre-evaluated arguments.
     ///
     /// # Arguments
@@ -113,11 +123,13 @@ pub trait Function {
     /// # Returns
     ///
     /// The result value, or an [`Error`] if execution failed.
-    fn call(
-        &self,
-        args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error>;
+    fn call(&self, args: &[V], ctx: &mut dyn Context<V>) -> Result<V, Error<V>>;
+}
+
+impl<V: Value> Function<V> for Box<dyn Function<V>> {
+    fn call(&self, args: &[V], ctx: &mut dyn Context<V>) -> Result<V, Error<V>> {
+        (**self).call(args, ctx)
+    }
 }
 
 /// A generic function that receives resolved type arguments at runtime.
@@ -137,19 +149,19 @@ pub trait Function {
 /// ```ignore
 /// struct TypedIdentity;
 ///
-/// impl GenericFunction for TypedIdentity {
+/// impl<V: Value> GenericFunction<V> for TypedIdentity {
 ///     fn call_with_types(
 ///         &self,
-///         args: &[NonFunctionValue],
+///         args: &[V],
 ///         type_args: &[String],
-///         _ctx: &mut dyn Context,
-///     ) -> Result<NonFunctionValue, Error> {
+///         _ctx: &mut dyn Context<V>,
+///     ) -> Result<V, Error<V>> {
 ///         // type_args[0] might be "string" or "number"
 ///         Ok(args[0].clone())
 ///     }
 /// }
 /// ```
-pub trait GenericFunction: Function {
+pub trait GenericFunction<V: Value>: Function<V> {
     /// Call this function with pre-evaluated arguments and resolved type arguments.
     ///
     /// - `args` — the evaluated argument values, in order.
@@ -157,10 +169,10 @@ pub trait GenericFunction: Function {
     /// - `ctx` — the execution context.
     fn call_with_types(
         &self,
-        args: &[NonFunctionValue],
+        args: &[V],
         type_args: &[String],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error>;
+        ctx: &mut dyn Context<V>,
+    ) -> Result<V, Error<V>>;
 }
 
 /// An async callable function provided by the host.
@@ -170,7 +182,7 @@ pub trait GenericFunction: Function {
 /// (network I/O, timers, cooperative yielding) without blocking the
 /// calling thread.
 ///
-/// The async VM ([`Vm::eval_async`](crate::Vm::eval_async)) checks
+/// The async VM ([`Vm::eval_async`](crate::VirtualMachine::eval_async)) checks
 /// [`Host::async_function`] after [`Host::function`] returns `None`.
 /// This means a host can provide both sync and async functions, and
 /// the VM will use whichever is available for a given name.
@@ -179,15 +191,15 @@ pub trait GenericFunction: Function {
 ///
 /// ```ignore
 /// struct Fetch;
-/// impl AsyncFunction for Fetch {
+/// impl<V: Value> AsyncFunction<V> for Fetch {
 ///     fn call<'a>(
 ///         &'a self,
-///         args: &'a [NonFunctionValue],
-///         _ctx: &'a mut (dyn Context + 'a),
-///     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
+///         args: &'a [V],
+///         _ctx: &'a mut (dyn Context<V> + 'a),
+///     ) -> Pin<Box<dyn Future<Output = Result<V, Error<V>>> + 'a>> {
 ///         Box::pin(async {
 ///             // async work here
-///             Ok(NonFunctionValue::new("result"))
+///             Ok(V::default())
 ///         })
 ///     }
 /// }
@@ -203,16 +215,16 @@ pub trait GenericFunction: Function {
 /// To yield a value to the caller (explicit yield), return
 /// `Err(Error::Yield(value))`. The caller can inspect the yielded
 /// value and decide whether to resume.
-pub trait AsyncFunction {
+pub trait AsyncFunction<V: Value> {
     /// Call this function with pre-evaluated arguments.
     ///
     /// Returns a boxed future that resolves to the result value or
     /// an [`Error`]. The lifetime is tied to `self`, `args`, and `ctx`.
     fn call<'a>(
         &'a self,
-        args: &'a [NonFunctionValue],
-        ctx: &'a mut (dyn Context + 'a),
-    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>>;
+        args: &'a [V],
+        ctx: &'a mut (dyn Context<V> + 'a),
+    ) -> Pin<Box<dyn Future<Output = Result<V, Error<V>>> + 'a>>;
 }
 
 /// A lazy function that receives unevaluated arguments.
@@ -241,13 +253,13 @@ pub trait AsyncFunction {
 /// ```ignore
 /// struct If;
 ///
-/// impl LazyFunction for If {
+/// impl<V: Value> LazyFunction<V> for If {
 ///     fn call(
 ///         &self,
-///         args: &[Expr<NonFunctionValue>],
-///         ctx: &mut dyn Context,
-///         evaluate: &mut dyn FnMut(&Expr<NonFunctionValue>, &mut dyn Context) -> Result<NonFunctionValue, Error>,
-///     ) -> Result<NonFunctionValue, Error> {
+///         args: &[Expr<V>],
+///         ctx: &mut dyn Context<V>,
+///         evaluate: &mut dyn FnMut(&Expr<V>, &mut dyn Context<V>) -> Result<V, Error<V>>,
+///     ) -> Result<V, Error<V>> {
 ///         let cond = evaluate(&args[0], ctx)?.as_bool().unwrap_or(false);
 ///         if cond {
 ///             evaluate(&args[1], ctx)
@@ -257,7 +269,7 @@ pub trait AsyncFunction {
 ///     }
 /// }
 /// ```
-pub trait LazyFunction {
+pub trait LazyFunction<V: Value> {
     /// Call this function with unevaluated arguments.
     ///
     /// # Arguments
@@ -273,43 +285,43 @@ pub trait LazyFunction {
     /// The result value, or an [`Error`] if execution failed.
     fn call(
         &self,
-        args: &[Expr<NonFunctionValue>],
-        ctx: &mut dyn Context,
-        evaluate: &mut dyn FnMut(
-            &Expr<NonFunctionValue>,
-            &mut dyn Context,
-        ) -> Result<NonFunctionValue, Error>,
-    ) -> Result<NonFunctionValue, Error>;
+        args: &[Expr<V>],
+        ctx: &mut dyn Context<V>,
+        evaluate: &mut dyn FnMut(&Expr<V>, &mut dyn Context<V>) -> Result<V, Error<V>>,
+    ) -> Result<V, Error<V>>;
 }
 
 /// A borrowed reference to a [`Host`] that itself implements [`Host`].
 ///
-/// This lets the generic [`Vm`] run against a `&dyn Host` without
+/// This lets the generic [`VirtualMachine`] run against a `&dyn Host` without
 /// needing ownership of the host value.
 #[derive(Clone, Copy)]
-pub struct HostRef<'a>(pub &'a dyn Host);
+pub struct HostRef<'a, V: Value>(pub &'a dyn Host<V>);
 
-impl<'a> HostRef<'a> {
+impl<'a, V: Value> HostRef<'a, V> {
     /// Wraps a `&dyn Host` for use with the VM.
-    pub fn new(host: &'a dyn Host) -> Self {
+    pub fn new(host: &'a dyn Host<V>) -> Self {
         HostRef(host)
     }
 }
 
-impl<'a> Host for HostRef<'a> {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl<'a, V: Value> Host<V> for HostRef<'a, V> {
+    fn function(&self, name: &str) -> Option<&dyn Function<V>> {
         self.0.function(name)
     }
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<V>> {
         self.0.async_function(name)
     }
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<V>> {
         self.0.operation(name)
     }
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<V>> {
         self.0.lazy_function(name)
     }
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<V>> {
         self.0.generic_function(name)
+    }
+    fn is_reserved(&self, name: &str) -> bool {
+        self.0.is_reserved(name)
     }
 }

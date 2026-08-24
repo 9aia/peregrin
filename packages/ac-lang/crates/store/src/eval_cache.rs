@@ -1,6 +1,6 @@
+use ac_runtime_values::NonFunctionValue;
 use std::collections::HashMap;
 
-use ac_runtime::NonFunctionValue;
 
 use crate::hash::DefinitionHash;
 

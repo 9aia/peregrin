@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 use super::common::{require_array, require_object};
 
@@ -7,11 +10,11 @@ use super::common::{require_array, require_object};
 
 #[derive(Clone, Copy)]
 pub struct Pick;
-impl Function for Pick {
+impl Function<NonFunctionValue> for Pick {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -37,11 +40,11 @@ impl Function for Pick {
 
 #[derive(Clone, Copy)]
 pub struct Omit;
-impl Function for Omit {
+impl Function<NonFunctionValue> for Omit {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {

@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 use super::common::{deep_merge_values, obj_value, require_array, require_object, require_one_arg};
 
@@ -7,11 +10,11 @@ use super::common::{deep_merge_values, obj_value, require_array, require_object,
 
 #[derive(Clone, Copy)]
 pub struct Merge;
-impl Function for Merge {
+impl Function<NonFunctionValue> for Merge {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -33,11 +36,11 @@ impl Function for Merge {
 
 #[derive(Clone, Copy)]
 pub struct DeepMerge;
-impl Function for DeepMerge {
+impl Function<NonFunctionValue> for DeepMerge {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -59,11 +62,11 @@ impl Function for DeepMerge {
 
 #[derive(Clone, Copy)]
 pub struct FromEntries;
-impl Function for FromEntries {
+impl Function<NonFunctionValue> for FromEntries {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let entries = require_array(arg)?;

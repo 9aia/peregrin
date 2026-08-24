@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 mod basic;
 mod case;
 mod common;
@@ -31,7 +32,7 @@ impl Module for StrModule {
         "str"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             // basic
             "upper" => Some(&Upper),

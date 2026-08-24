@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{CanonicalContext, Context, Error, Eval};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Eval};
+use ac_runtime_values::{CanonicalContext, Error};
+
 use ac_runtime_modules::Module;
 
 use super::module::ArrayModule;
@@ -46,10 +49,10 @@ pub(super) fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
 
 use ac_ast_canonical::Expr;
 use ac_runtime_canonical::Vm;
-use ac_runtime_example_1::DefaultHost;
+use crate::shared::TestHost;
 
 struct TestEval;
-impl Eval for TestEval {
+impl Eval<NonFunctionValue> for TestEval {
     fn eval_expr(
         &self,
         expr: &str,
@@ -73,7 +76,7 @@ impl Eval for TestEval {
                 let arg_val = eval_arg(&arg_str, vars)?;
                 args.push(Expr::Value(arg_val));
             }
-            let vm = Vm::new(DefaultHost::default());
+            let vm = Vm::new(TestHost::default());
             let mut ctx = CanonicalContext::new();
             let call_expr = Expr::call(name.trim(), args);
             return vm.eval(&call_expr, &mut ctx);

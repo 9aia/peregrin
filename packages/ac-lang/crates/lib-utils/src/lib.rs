@@ -46,6 +46,10 @@
 //!   `set.unique_by`
 //! - [`BoolModule`] — `bool.and`, `bool.or`, `bool.not`, `bool.xor`,
 //!   `bool.nand`, `bool.nor`, `bool.implies`, `bool.eq`
+//! - [`CmpModule`] — `cmp.eq`, `cmp.ne`, `cmp.lt`, `cmp.le`, `cmp.gt`,
+//!   `cmp.ge`, `cmp.compare`, `cmp.min`, `cmp.max`, `cmp.clamp`,
+//!   `cmp.between`, `cmp.in_range`, `cmp.is_sorted`, `cmp.is_sorted_desc`,
+//!   `cmp.sort`, `cmp.sort_desc`
 //! - [`ObjModule`] — `obj.keys`, `obj.values`, `obj.entries`,
 //!   `obj.from_entries`, `obj.pick`, `obj.omit`, `obj.merge`,
 //!   `obj.deep_get`, `obj.deep_merge`, `obj.get`, `obj.get_or`,
@@ -65,7 +69,7 @@
 //!
 //! ```ignore
 //! use ac_runtime_modules::ModuleHost;
-//! use ac_lib_utils::{MathModule, StrModule, ArrayModule, BoolModule,
+//! use ac_lib_utils::{MathModule, StrModule, ArrayModule, BoolModule, CmpModule,
 //!     ObjModule, FnModule, TypeModule, SetModule};
 //!
 //! let host = ModuleHost::new()
@@ -73,6 +77,7 @@
 //!     .with(StrModule)
 //!     .with(ArrayModule)
 //!     .with(BoolModule)
+//!     .with(CmpModule)
 //!     .with(ObjModule)
 //!     .with(FnModule)
 //!     .with(TypeModule)
@@ -84,6 +89,7 @@
 
 mod array;
 mod bool;
+mod cmp;
 mod r#fn;
 mod math;
 mod obj;
@@ -94,6 +100,7 @@ mod r#type;
 
 pub use array::ArrayModule;
 pub use bool::BoolModule;
+pub use cmp::CmpModule;
 pub use r#fn::FnModule;
 pub use math::MathModule;
 pub use obj::ObjModule;

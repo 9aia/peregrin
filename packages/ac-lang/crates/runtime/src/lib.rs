@@ -1,20 +1,23 @@
-//! # ac-runtime
+//! # ac-runtime-values
 //!
-//! The concrete runtime value representation.
+//! Re-exports the concrete configuration-language value types from
+//! `ac-runtime-config` and defines the format `Frontend` trait.
 //!
-//! `NonFunctionValue` is a transparent newtype around `serde_json::Value`.
-//! This crate is the only place that couples to `serde_json` —
-//! `ac-core` stays dependency-free by being generic over the value type.
-//!
-//! JSON Schema gives these values meaning ("this is a User",
-//! "this is a String", etc.). The VM evaluates expressions that
-//! produce `NonFunctionValue`s without knowing what the values mean.
+//! This is the concrete JSON-backed runtime façade. The underlying
+//! `ac-runtime` traits are generic over the value type; use
+//! `Eval<NonFunctionValue>` etc. to specify the concrete value type.
 
 mod frontend;
-mod value;
 
+pub use ac_runtime_config::{CanonicalContext, FunctionValue, HostValue, NonFunctionValue};
 pub use frontend::Frontend;
-pub use value::{FunctionValue, HostValue, NonFunctionValue};
 
-#[cfg(test)]
-mod value_tests;
+/// Concrete error type for the JSON-backed runtime.
+pub type Error = ac_runtime::Error<NonFunctionValue>;
+
+// Re-export the generic VM traits and value bound so consumers can write
+// `Eval<NonFunctionValue>`, `Context<NonFunctionValue>`, etc.
+pub use ac_runtime::{
+    AsyncEval, AsyncFunction, Context, Eval, Function, GenericFunction, Host, HostRef,
+    LazyFunction, Operation, OperationSig, Value, VirtualMachine,
+};

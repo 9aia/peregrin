@@ -1,11 +1,12 @@
+use ac_runtime_values::NonFunctionValue;
 use rand::prelude::IndexedRandom;
 use rand::rngs::StdRng;
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
 use serde_json::Value;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 
 use super::common::{array, bool_val, num, require_array, require_int, require_number, s};
 use crate::error::RandError;
@@ -37,11 +38,11 @@ fn seeded_rng(seed: f64) -> Result<StdRng, Error> {
 #[derive(Clone, Copy)]
 pub struct SeededInt;
 
-impl Function for SeededInt {
+impl Function<NonFunctionValue> for SeededInt {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let min = require_int(args, 1)?;
@@ -68,11 +69,11 @@ impl Function for SeededInt {
 #[derive(Clone, Copy)]
 pub struct SeededFloat;
 
-impl Function for SeededFloat {
+impl Function<NonFunctionValue> for SeededFloat {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let min = require_number(args, 1)?;
@@ -101,11 +102,11 @@ impl Function for SeededFloat {
 #[derive(Clone, Copy)]
 pub struct SeededBool;
 
-impl Function for SeededBool {
+impl Function<NonFunctionValue> for SeededBool {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let mut rng = seeded_rng(seed)?;
@@ -122,11 +123,11 @@ impl Function for SeededBool {
 #[derive(Clone, Copy)]
 pub struct SeededPick;
 
-impl Function for SeededPick {
+impl Function<NonFunctionValue> for SeededPick {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let arr = require_array(args, 1)?;
@@ -149,11 +150,11 @@ impl Function for SeededPick {
 #[derive(Clone, Copy)]
 pub struct SeededChoice;
 
-impl Function for SeededChoice {
+impl Function<NonFunctionValue> for SeededChoice {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let arr = require_array(args, 1)?;
@@ -188,11 +189,11 @@ impl Function for SeededChoice {
 #[derive(Clone, Copy)]
 pub struct SeededSample;
 
-impl Function for SeededSample {
+impl Function<NonFunctionValue> for SeededSample {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let arr = require_array(args, 1)?;
@@ -231,11 +232,11 @@ impl Function for SeededSample {
 #[derive(Clone, Copy)]
 pub struct SeededShuffle;
 
-impl Function for SeededShuffle {
+impl Function<NonFunctionValue> for SeededShuffle {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let arr = require_array(args, 1)?;
@@ -255,11 +256,11 @@ impl Function for SeededShuffle {
 #[derive(Clone, Copy)]
 pub struct SeededString;
 
-impl Function for SeededString {
+impl Function<NonFunctionValue> for SeededString {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let length = require_int(args, 1)?;
@@ -323,11 +324,11 @@ impl Function for SeededString {
 #[derive(Clone, Copy)]
 pub struct SeededGauss;
 
-impl Function for SeededGauss {
+impl Function<NonFunctionValue> for SeededGauss {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let seed = require_number(args, 0)?;
         let mean = require_number(args, 1)?;

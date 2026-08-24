@@ -1,6 +1,6 @@
-use super::*;
-use crate::CanonicalContext;
-use ac_runtime_values::NonFunctionValue;
+use ac_runtime::{AsyncEval, Eval};
+
+use crate::{CanonicalContext, Error, NonFunctionValue};
 use std::future::Future;
 use std::pin::Pin;
 
@@ -67,12 +67,12 @@ fn context_eval_expr_errors_without_callback() {
 #[test]
 fn context_eval_expr_with_callback() {
     struct DoubleEval;
-    impl crate::Eval for DoubleEval {
+    impl Eval<NonFunctionValue> for DoubleEval {
         fn eval_expr(
             &self,
             _expr: &str,
             vars: &[(String, NonFunctionValue)],
-        ) -> Result<NonFunctionValue, crate::Error> {
+        ) -> Result<NonFunctionValue, Error> {
             let val = vars
                 .first()
                 .map(|(_, v)| v.as_number().unwrap_or(0.0))
@@ -111,12 +111,12 @@ fn context_eval_expr_async_errors_without_callback() {
 #[test]
 fn context_eval_expr_async_with_callback() {
     struct DoubleAsyncEval;
-    impl crate::AsyncEval for DoubleAsyncEval {
+    impl AsyncEval<NonFunctionValue> for DoubleAsyncEval {
         fn eval_expr_async<'a>(
             &'a self,
             _expr: &'a str,
             vars: &'a [(String, NonFunctionValue)],
-        ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, crate::Error>> + 'a>> {
+        ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
             Box::pin(async {
                 let val = vars
                     .first()

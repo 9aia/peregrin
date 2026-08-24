@@ -1,9 +1,10 @@
+use ac_runtime_values::NonFunctionValue;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use icu::experimental::duration::{
     Duration, DurationFormatter, DurationSign, ValidatedDurationFormatterOptions,
     options::{
@@ -68,11 +69,11 @@ impl Default for FormatDuration {
     }
 }
 
-impl Function for FormatDuration {
+impl Function<NonFunctionValue> for FormatDuration {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let obj = require_object(args, 0)?;
         let locale = optional_locale(args, 1)?;

@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
@@ -22,11 +25,11 @@ fn require_two_args(
 
 #[derive(Clone, Copy)]
 pub struct Identity;
-impl Function for Identity {
+impl Function<NonFunctionValue> for Identity {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         Ok(arg.clone())
@@ -35,11 +38,11 @@ impl Function for Identity {
 
 #[derive(Clone, Copy)]
 pub struct Default;
-impl Function for Default {
+impl Function<NonFunctionValue> for Default {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (value, fallback) = require_two_args(args)?;
         if value.is_null() {
@@ -52,11 +55,11 @@ impl Function for Default {
 
 #[derive(Clone, Copy)]
 pub struct Coalesce;
-impl Function for Coalesce {
+impl Function<NonFunctionValue> for Coalesce {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         for arg in args {
             if !arg.is_null() {

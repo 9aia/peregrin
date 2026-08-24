@@ -12,7 +12,7 @@ mod field;
 mod stmt;
 mod type_;
 
-pub use expr::{CanonicalExprFactory, Expr, HandlerClause};
+pub use expr::{CanonicalExprFactory, Expr, HandlerClause, Pattern};
 pub use field::Field;
 pub use stmt::{CanonicalStmtFactory, Stmt};
 pub use type_::{CanonicalTypeFactory, Type};

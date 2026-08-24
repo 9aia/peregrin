@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function, GenericFunction};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function, GenericFunction};
+use ac_runtime_values::{Error};
+
 
 use super::helpers::{
     arr, b, key_to_string, require_array, require_function_and_array, require_function_value,
@@ -11,11 +14,11 @@ use crate::shared::{apply_fn, filter_iter, find_first, fold_iter, is_truthy_fn, 
 
 #[derive(Clone, Copy)]
 pub struct Range;
-impl Function for Range {
+impl Function<NonFunctionValue> for Range {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -66,11 +69,11 @@ impl Function for Range {
 
 #[derive(Clone, Copy)]
 pub struct Zip;
-impl Function for Zip {
+impl Function<NonFunctionValue> for Zip {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -92,11 +95,11 @@ impl Function for Zip {
 
 #[derive(Clone, Copy)]
 pub struct Chunk;
-impl Function for Chunk {
+impl Function<NonFunctionValue> for Chunk {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -128,11 +131,11 @@ impl Function for Chunk {
 
 #[derive(Clone, Copy)]
 pub struct Map;
-impl Function for Map {
+impl Function<NonFunctionValue> for Map {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let results = map_iter(ctx, &fn_val, array.iter())?;
@@ -140,12 +143,12 @@ impl Function for Map {
     }
 }
 
-impl GenericFunction for Map {
+impl GenericFunction<NonFunctionValue> for Map {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         // array.map delegates to the same logic regardless of type_args,
         // but the GenericFunction impl allows the VM to dispatch here
@@ -160,11 +163,11 @@ impl GenericFunction for Map {
 
 #[derive(Clone, Copy)]
 pub struct Filter;
-impl Function for Filter {
+impl Function<NonFunctionValue> for Filter {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let results = filter_iter(ctx, &fn_val, array.iter())?;
@@ -172,12 +175,12 @@ impl Function for Filter {
     }
 }
 
-impl GenericFunction for Filter {
+impl GenericFunction<NonFunctionValue> for Filter {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let results = filter_iter(ctx, &fn_val, array.iter())?;
@@ -189,11 +192,11 @@ impl GenericFunction for Filter {
 
 #[derive(Clone, Copy)]
 pub struct Reduce;
-impl Function for Reduce {
+impl Function<NonFunctionValue> for Reduce {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -209,12 +212,12 @@ impl Function for Reduce {
     }
 }
 
-impl GenericFunction for Reduce {
+impl GenericFunction<NonFunctionValue> for Reduce {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -234,11 +237,11 @@ impl GenericFunction for Reduce {
 
 #[derive(Clone, Copy)]
 pub struct FlatMap;
-impl Function for FlatMap {
+impl Function<NonFunctionValue> for FlatMap {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mapped = map_iter(ctx, &fn_val, array.iter())?;
@@ -254,12 +257,12 @@ impl Function for FlatMap {
     }
 }
 
-impl GenericFunction for FlatMap {
+impl GenericFunction<NonFunctionValue> for FlatMap {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -269,11 +272,11 @@ impl GenericFunction for FlatMap {
 
 #[derive(Clone, Copy)]
 pub struct Find;
-impl Function for Find {
+impl Function<NonFunctionValue> for Find {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let result = find_first(ctx, &fn_val, array.iter())?;
@@ -284,12 +287,12 @@ impl Function for Find {
     }
 }
 
-impl GenericFunction for Find {
+impl GenericFunction<NonFunctionValue> for Find {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -299,11 +302,11 @@ impl GenericFunction for Find {
 
 #[derive(Clone, Copy)]
 pub struct SomeFn;
-impl Function for SomeFn {
+impl Function<NonFunctionValue> for SomeFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         for item in array {
@@ -315,12 +318,12 @@ impl Function for SomeFn {
     }
 }
 
-impl GenericFunction for SomeFn {
+impl GenericFunction<NonFunctionValue> for SomeFn {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -328,11 +331,11 @@ impl GenericFunction for SomeFn {
 
 #[derive(Clone, Copy)]
 pub struct Every;
-impl Function for Every {
+impl Function<NonFunctionValue> for Every {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         for item in array {
@@ -344,12 +347,12 @@ impl Function for Every {
     }
 }
 
-impl GenericFunction for Every {
+impl GenericFunction<NonFunctionValue> for Every {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -359,11 +362,11 @@ impl GenericFunction for Every {
 
 #[derive(Clone, Copy)]
 pub struct GroupBy;
-impl Function for GroupBy {
+impl Function<NonFunctionValue> for GroupBy {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut groups: std::collections::BTreeMap<String, Vec<serde_json::Value>> =
@@ -381,12 +384,12 @@ impl Function for GroupBy {
     }
 }
 
-impl GenericFunction for GroupBy {
+impl GenericFunction<NonFunctionValue> for GroupBy {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -396,11 +399,11 @@ impl GenericFunction for GroupBy {
 
 #[derive(Clone, Copy)]
 pub struct Partition;
-impl Function for Partition {
+impl Function<NonFunctionValue> for Partition {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut matching = Vec::new();
@@ -419,12 +422,12 @@ impl Function for Partition {
     }
 }
 
-impl GenericFunction for Partition {
+impl GenericFunction<NonFunctionValue> for Partition {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -434,7 +437,7 @@ impl GenericFunction for Partition {
 
 fn sort_by_impl(
     args: &[NonFunctionValue],
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     descending: bool,
 ) -> Result<NonFunctionValue, Error> {
     let (fn_val, array) = require_function_and_array(args)?;
@@ -458,22 +461,22 @@ fn sort_by_impl(
 
 #[derive(Clone, Copy)]
 pub struct SortBy;
-impl Function for SortBy {
+impl Function<NonFunctionValue> for SortBy {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         sort_by_impl(args, ctx, false)
     }
 }
 
-impl GenericFunction for SortBy {
+impl GenericFunction<NonFunctionValue> for SortBy {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -481,22 +484,22 @@ impl GenericFunction for SortBy {
 
 #[derive(Clone, Copy)]
 pub struct SortByDesc;
-impl Function for SortByDesc {
+impl Function<NonFunctionValue> for SortByDesc {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         sort_by_impl(args, ctx, true)
     }
 }
 
-impl GenericFunction for SortByDesc {
+impl GenericFunction<NonFunctionValue> for SortByDesc {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -506,11 +509,11 @@ impl GenericFunction for SortByDesc {
 
 #[derive(Clone, Copy)]
 pub struct Compact;
-impl Function for Compact {
+impl Function<NonFunctionValue> for Compact {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_arg(args)?;
         let array = require_array(input)?;
@@ -520,12 +523,12 @@ impl Function for Compact {
     }
 }
 
-impl GenericFunction for Compact {
+impl GenericFunction<NonFunctionValue> for Compact {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -535,11 +538,11 @@ impl GenericFunction for Compact {
 
 #[derive(Clone, Copy)]
 pub struct Pluck;
-impl Function for Pluck {
+impl Function<NonFunctionValue> for Pluck {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -565,12 +568,12 @@ impl Function for Pluck {
     }
 }
 
-impl GenericFunction for Pluck {
+impl GenericFunction<NonFunctionValue> for Pluck {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -580,7 +583,7 @@ impl GenericFunction for Pluck {
 
 fn extremum_by_impl(
     args: &[NonFunctionValue],
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     pick_max: bool,
 ) -> Result<NonFunctionValue, Error> {
     let (fn_val, array) = require_function_and_array(args)?;
@@ -606,22 +609,22 @@ fn extremum_by_impl(
 
 #[derive(Clone, Copy)]
 pub struct MinBy;
-impl Function for MinBy {
+impl Function<NonFunctionValue> for MinBy {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         extremum_by_impl(args, ctx, false)
     }
 }
 
-impl GenericFunction for MinBy {
+impl GenericFunction<NonFunctionValue> for MinBy {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -629,22 +632,22 @@ impl GenericFunction for MinBy {
 
 #[derive(Clone, Copy)]
 pub struct MaxBy;
-impl Function for MaxBy {
+impl Function<NonFunctionValue> for MaxBy {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         extremum_by_impl(args, ctx, true)
     }
 }
 
-impl GenericFunction for MaxBy {
+impl GenericFunction<NonFunctionValue> for MaxBy {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }
@@ -654,11 +657,11 @@ impl GenericFunction for MaxBy {
 
 #[derive(Clone, Copy)]
 pub struct CountBy;
-impl Function for CountBy {
+impl Function<NonFunctionValue> for CountBy {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_val, array) = require_function_and_array(args)?;
         let mut counts: std::collections::BTreeMap<String, f64> = std::collections::BTreeMap::new();
@@ -675,12 +678,12 @@ impl Function for CountBy {
     }
 }
 
-impl GenericFunction for CountBy {
+impl GenericFunction<NonFunctionValue> for CountBy {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         _type_args: &[String],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.call(args, ctx)
     }

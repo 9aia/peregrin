@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function, Host};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function, Host};
 use serde_json::Value as JsonValue;
 
 pub use ac_runtime_example_1::DefaultHost;
@@ -27,8 +28,8 @@ impl Default for MathHost {
     }
 }
 
-impl Host for MathHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for MathHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         if name == "double" {
             return Some(&self.double);
         }
@@ -38,11 +39,11 @@ impl Host for MathHost {
 
 #[derive(Clone)]
 pub struct Double;
-impl Function for Double {
+impl Function<NonFunctionValue> for Double {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let x = args
             .first()

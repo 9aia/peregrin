@@ -1,6 +1,6 @@
 use super::*;
 use ac_dialect::Schema;
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 
 // ── combinatorial keywords ─────────────────────────────────────
 

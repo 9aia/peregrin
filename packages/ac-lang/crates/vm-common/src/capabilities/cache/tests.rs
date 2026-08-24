@@ -5,8 +5,8 @@ use ac_runtime_canonical::{CanonicalContext, Context, Error, EvalResult, Functio
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 struct EmptyHost;
-impl Host for EmptyHost {
-    fn function(&self, _name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for EmptyHost {
+    fn function(&self, _name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         None
     }
 }
@@ -14,12 +14,12 @@ impl Host for EmptyHost {
 // ── test functions ───────────────────────────────────────────────
 
 struct Add;
-impl Function for Add {
+impl Function<NonFunctionValue> for Add {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -28,12 +28,12 @@ impl Function for Add {
 struct CountingFetch {
     calls: AtomicUsize,
 }
-impl Function for CountingFetch {
+impl Function<NonFunctionValue> for CountingFetch {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let n = self.calls.fetch_add(1, Ordering::SeqCst);
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("?");
         Ok(NonFunctionValue::new(format!("result_{input}_{n}")))
@@ -41,12 +41,12 @@ impl Function for CountingFetch {
 }
 
 struct YieldingFetch;
-impl Function for YieldingFetch {
+impl Function<NonFunctionValue> for YieldingFetch {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("?");
         Err(Error::Yield(NonFunctionValue::new(format!(
             "yield:{input}"

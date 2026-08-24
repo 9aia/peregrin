@@ -15,7 +15,7 @@
 //!
 //! - **Built-ins** (`add`, `mul`, `concat`, `len`, `var`, `resolve`, `apply`, `array`)
 //! - **`math.*`**, **`str.*`**, **`array.*`**, **`set.*`**, **`bool.*`**,
-//!   **`obj.*`**, **`fn.*`**, **`type.*`** — from [`ac-lib-utils`]
+//!   **`cmp.*`**, **`obj.*`**, **`fn.*`**, **`type.*`** — from [`ac-lib-utils`]
 //! - **`crypto.*`** — SHA-256, MD5, Base64, hex — from [`ac-lib-crypto`]
 //! - **`datetime.*`** — parsing, formatting, arithmetic — from [`ac-lib-datetime`]
 //! - **`intl.*`** — locale-aware formatting (ICU4X) — from [`ac-lib-intl`]
@@ -52,15 +52,17 @@
 //! let ctx = host.new_context();
 //! ```
 
+use ac_runtime_canonical::CanonicalEval;
+use ac_runtime_values::{CanonicalContext, Function, GenericFunction, Host, LazyFunction, NonFunctionValue};
 use ac_lib_crypto::CryptoModule;
 use ac_lib_datetime::DateTimeModule;
 use ac_lib_intl::IntlModule;
 use ac_lib_kv::KeyValueStoreModule;
 use ac_lib_kv_hashmap::HashKeyValueStore;
 use ac_lib_utils::{
-    ArrayModule, BoolModule, FnModule, MathModule, ObjModule, SetModule, StrModule, TypeModule,
+    ArrayModule, BoolModule, CmpModule, FnModule, MathModule, ObjModule, SetModule, StrModule,
+    TypeModule,
 };
-use ac_runtime::{CanonicalContext, Context, Function, GenericFunction, Host, LazyFunction};
 use ac_runtime_example_1::DefaultHost;
 use ac_runtime_modules::ModuleHost;
 
@@ -117,6 +119,7 @@ impl SandboxHost {
             .with(ArrayModule)
             .with(SetModule)
             .with(BoolModule)
+            .with(CmpModule)
             .with(ObjModule)
             .with(FnModule)
             .with(TypeModule)
@@ -145,6 +148,11 @@ impl SandboxHost {
         if let Some(max) = self.limits.max_calls {
             ctx.set_max_calls(max);
         }
+        ctx.set_eval(Box::new(CanonicalEval::new(
+            self.clone(),
+            self.limits.max_depth,
+            self.limits.max_calls,
+        )));
         ctx
     }
 
@@ -172,22 +180,42 @@ impl Default for SandboxHost {
     }
 }
 
-impl Host for SandboxHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for SandboxHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         self.default
             .function(name)
             .or_else(|| self.modules.function(name))
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         self.default
             .lazy_function(name)
             .or_else(|| self.modules.lazy_function(name))
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         self.default
             .generic_function(name)
             .or_else(|| self.modules.generic_function(name))
+    }
+
+    fn is_reserved(&self, name: &str) -> bool {
+        self.default.is_reserved(name) || self.modules.is_reserved(name)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::SandboxHost;
+    use super::SandboxLimits;
+    use ac_runtime_values::Host;
+
+    #[test]
+    fn cmp_functions_are_available() {
+        let host = SandboxHost::new(SandboxLimits::default());
+        assert!(host.function("cmp.eq").is_some());
+        assert!(host.function("cmp.compare").is_some());
+        assert!(host.function("cmp.min").is_some());
+        assert!(host.function("cmp.sort").is_some());
     }
 }

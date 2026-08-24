@@ -1,16 +1,17 @@
 use ac_runtime::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, Operation};
+use ac_runtime_values::NonFunctionValue;
 
 /// A host that rewrites lookup names before forwarding them.
 ///
 /// Useful for namespacing or versioning: `"math.add"` → `"add"`.
 pub struct MapHost {
-    inner: Box<dyn Host>,
+    inner: Box<dyn Host<NonFunctionValue>>,
     mapper: Box<dyn Fn(&str) -> String + 'static>,
 }
 
 impl MapHost {
     /// Creates a host that maps names through `mapper`.
-    pub fn new(inner: Box<dyn Host>, mapper: impl Fn(&str) -> String + 'static) -> Self {
+    pub fn new(inner: Box<dyn Host<NonFunctionValue>>, mapper: impl Fn(&str) -> String + 'static) -> Self {
         MapHost {
             inner,
             mapper: Box::new(mapper),
@@ -18,13 +19,13 @@ impl MapHost {
     }
 
     /// Convenience constructor that prepends a fixed prefix.
-    pub fn with_prefix(inner: Box<dyn Host>, prefix: impl Into<String>) -> Self {
+    pub fn with_prefix(inner: Box<dyn Host<NonFunctionValue>>, prefix: impl Into<String>) -> Self {
         let prefix = prefix.into();
         MapHost::new(inner, move |name| format!("{prefix}{name}"))
     }
 
     /// Convenience constructor that strips a fixed prefix.
-    pub fn strip_prefix(inner: Box<dyn Host>, prefix: impl Into<String>) -> Self {
+    pub fn strip_prefix(inner: Box<dyn Host<NonFunctionValue>>, prefix: impl Into<String>) -> Self {
         let prefix = prefix.into();
         MapHost::new(inner, move |name| {
             name.strip_prefix(&prefix).unwrap_or(name).to_string()
@@ -36,31 +37,31 @@ impl MapHost {
     }
 }
 
-impl Host for MapHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for MapHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         self.inner.function(&self.map(name))
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         self.inner.async_function(&self.map(name))
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         self.inner.operation(&self.map(name))
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         self.inner.lazy_function(&self.map(name))
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         self.inner.generic_function(&self.map(name))
     }
 }
 
 /// A host that logs every lookup it forwards.
 pub struct LoggingHost {
-    inner: Box<dyn Host>,
+    inner: Box<dyn Host<NonFunctionValue>>,
     log: Box<dyn Fn(&HostEvent<'_>) + 'static>,
 }
 
@@ -84,7 +85,7 @@ pub struct HostEvent<'a> {
 
 impl LoggingHost {
     /// Creates a host that logs every lookup to `logger`.
-    pub fn new(inner: Box<dyn Host>, logger: impl Fn(&HostEvent<'_>) + 'static) -> Self {
+    pub fn new(inner: Box<dyn Host<NonFunctionValue>>, logger: impl Fn(&HostEvent<'_>) + 'static) -> Self {
         LoggingHost {
             inner,
             log: Box::new(logger),
@@ -92,7 +93,7 @@ impl LoggingHost {
     }
 
     /// Creates a host that prints every lookup to stderr.
-    pub fn eprint(inner: Box<dyn Host>) -> Self {
+    pub fn eprint(inner: Box<dyn Host<NonFunctionValue>>) -> Self {
         LoggingHost::new(inner, |event| {
             eprintln!(
                 "[host] {:?} {} found={}",
@@ -102,8 +103,8 @@ impl LoggingHost {
     }
 }
 
-impl Host for LoggingHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for LoggingHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         let result = self.inner.function(name);
         (self.log)(&HostEvent {
             kind: HostEventKind::Function,
@@ -113,7 +114,7 @@ impl Host for LoggingHost {
         result
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         let result = self.inner.async_function(name);
         (self.log)(&HostEvent {
             kind: HostEventKind::AsyncFunction,
@@ -123,7 +124,7 @@ impl Host for LoggingHost {
         result
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         let result = self.inner.operation(name);
         (self.log)(&HostEvent {
             kind: HostEventKind::Operation,
@@ -133,7 +134,7 @@ impl Host for LoggingHost {
         result
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         let result = self.inner.lazy_function(name);
         (self.log)(&HostEvent {
             kind: HostEventKind::LazyFunction,
@@ -143,7 +144,7 @@ impl Host for LoggingHost {
         result
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         let result = self.inner.generic_function(name);
         (self.log)(&HostEvent {
             kind: HostEventKind::GenericFunction,
@@ -156,13 +157,13 @@ impl Host for LoggingHost {
 
 /// A host that only forwards a fixed set of allowed names.
 pub struct AllowHost {
-    inner: Box<dyn Host>,
+    inner: Box<dyn Host<NonFunctionValue>>,
     allowed: std::collections::HashSet<String>,
 }
 
 impl AllowHost {
     /// Creates a host that only resolves names in `allowed`.
-    pub fn new(inner: Box<dyn Host>, allowed: impl IntoIterator<Item = impl Into<String>>) -> Self {
+    pub fn new(inner: Box<dyn Host<NonFunctionValue>>, allowed: impl IntoIterator<Item = impl Into<String>>) -> Self {
         AllowHost {
             inner,
             allowed: allowed.into_iter().map(|s| s.into()).collect(),
@@ -170,8 +171,8 @@ impl AllowHost {
     }
 }
 
-impl Host for AllowHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for AllowHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         if self.allowed.contains(name) {
             self.inner.function(name)
         } else {
@@ -179,7 +180,7 @@ impl Host for AllowHost {
         }
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         if self.allowed.contains(name) {
             self.inner.async_function(name)
         } else {
@@ -187,7 +188,7 @@ impl Host for AllowHost {
         }
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         if self.allowed.contains(name) {
             self.inner.operation(name)
         } else {
@@ -195,7 +196,7 @@ impl Host for AllowHost {
         }
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         if self.allowed.contains(name) {
             self.inner.lazy_function(name)
         } else {
@@ -203,7 +204,7 @@ impl Host for AllowHost {
         }
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         if self.allowed.contains(name) {
             self.inner.generic_function(name)
         } else {
@@ -214,13 +215,13 @@ impl Host for AllowHost {
 
 /// A host that blocks a fixed set of names.
 pub struct DenyHost {
-    inner: Box<dyn Host>,
+    inner: Box<dyn Host<NonFunctionValue>>,
     denied: std::collections::HashSet<String>,
 }
 
 impl DenyHost {
     /// Creates a host that denies names in `denied`.
-    pub fn new(inner: Box<dyn Host>, denied: impl IntoIterator<Item = impl Into<String>>) -> Self {
+    pub fn new(inner: Box<dyn Host<NonFunctionValue>>, denied: impl IntoIterator<Item = impl Into<String>>) -> Self {
         DenyHost {
             inner,
             denied: denied.into_iter().map(|s| s.into()).collect(),
@@ -228,8 +229,8 @@ impl DenyHost {
     }
 }
 
-impl Host for DenyHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for DenyHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         if self.denied.contains(name) {
             None
         } else {
@@ -237,7 +238,7 @@ impl Host for DenyHost {
         }
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         if self.denied.contains(name) {
             None
         } else {
@@ -245,7 +246,7 @@ impl Host for DenyHost {
         }
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         if self.denied.contains(name) {
             None
         } else {
@@ -253,7 +254,7 @@ impl Host for DenyHost {
         }
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         if self.denied.contains(name) {
             None
         } else {
@@ -261,7 +262,7 @@ impl Host for DenyHost {
         }
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         if self.denied.contains(name) {
             None
         } else {

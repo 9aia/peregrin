@@ -4,6 +4,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+ac-runtime-values.workspace = true
 ac-runtime-example-1.workspace = true
 ac-runtime-modules.workspace = true
 ac-runtime.workspace = true

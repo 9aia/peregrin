@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 use ac_runtime::Function;
 use ac_runtime_modules::Module;
 
@@ -41,7 +42,7 @@ impl Module for RandModule {
         "rand"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "int" => Some(&Int),
             "float" => Some(&Float),

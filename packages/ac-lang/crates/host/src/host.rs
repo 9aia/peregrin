@@ -1,11 +1,10 @@
 use ac_runtime::{Function, Host};
+use ac_runtime_values::NonFunctionValue;
 
-use crate::functions::{Add, Apply, Array, Concat, Len, Mul, Resolve, Var};
+use crate::functions::{Apply, Array, Concat, Len, Resolve, Var};
 
 #[derive(Clone)]
 pub struct DefaultHost {
-    pub add: Add,
-    pub mul: Mul,
     pub concat: Concat,
     pub len: Len,
     pub var: Var,
@@ -17,8 +16,6 @@ pub struct DefaultHost {
 impl Default for DefaultHost {
     fn default() -> Self {
         DefaultHost {
-            add: Add,
-            mul: Mul,
             concat: Concat,
             len: Len,
             var: Var,
@@ -29,11 +26,9 @@ impl Default for DefaultHost {
     }
 }
 
-impl Host for DefaultHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for DefaultHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
-            "add" => Some(&self.add),
-            "mul" => Some(&self.mul),
             "concat" => Some(&self.concat),
             "len" => Some(&self.len),
             "var" => Some(&self.var),
@@ -42,5 +37,9 @@ impl Host for DefaultHost {
             "array" => Some(&self.array),
             _ => None,
         }
+    }
+
+    fn is_reserved(&self, name: &str) -> bool {
+        self.function(name).is_some()
     }
 }

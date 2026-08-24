@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use base64::{Engine as _, engine::general_purpose};
 
 use super::common::{byte_array, extract_bytes, require_string, s};
@@ -18,11 +19,11 @@ use crate::error::CryptoError;
 #[derive(Clone, Copy)]
 pub struct Base64Encode;
 
-impl Function for Base64Encode {
+impl Function<NonFunctionValue> for Base64Encode {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let data = extract_bytes(args, 0)?;
         Ok(s(general_purpose::STANDARD.encode(&data)))
@@ -41,11 +42,11 @@ impl Function for Base64Encode {
 #[derive(Clone, Copy)]
 pub struct Base64Decode;
 
-impl Function for Base64Decode {
+impl Function<NonFunctionValue> for Base64Decode {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let encoded = require_string(args, 0)?;
         let decoded = general_purpose::STANDARD
@@ -70,11 +71,11 @@ impl Function for Base64Decode {
 #[derive(Clone, Copy)]
 pub struct HexEncode;
 
-impl Function for HexEncode {
+impl Function<NonFunctionValue> for HexEncode {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let data = extract_bytes(args, 0)?;
         Ok(s(hex::encode(&data)))
@@ -94,11 +95,11 @@ impl Function for HexEncode {
 #[derive(Clone, Copy)]
 pub struct HexDecode;
 
-impl Function for HexDecode {
+impl Function<NonFunctionValue> for HexDecode {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let encoded = require_string(args, 0)?;
         let decoded = hex::decode(encoded).map_err(|e| CryptoError::DecodeError {

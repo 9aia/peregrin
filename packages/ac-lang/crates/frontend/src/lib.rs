@@ -9,24 +9,27 @@
 //! This crate is interface-agnostic — usable from CLI, MCP, or any
 //! other consumer that needs to parse/serialize AC documents.
 
+mod ac;
 mod json;
 mod toml;
 mod yaml;
 
-use ac_runtime::Frontend;
+use ac_runtime_values::Frontend;
 
+pub use ac::AcFrontend;
 pub use json::JsonFrontend;
 pub use toml::TomlFrontend;
 pub use yaml::YamlFrontend;
 
 /// Return a `Frontend` for the given format name.
 ///
-/// Supported formats: `yaml`/`yml`, `json`, `toml`.
+/// Supported formats: `yaml`/`yml`, `json`, `toml`, `ac`.
 pub fn frontend_for(format: &str) -> Result<Box<dyn Frontend<Error = String>>, String> {
     match format {
         "yaml" | "yml" => Ok(Box::new(YamlFrontend)),
         "json" => Ok(Box::new(JsonFrontend)),
         "toml" => Ok(Box::new(TomlFrontend)),
+        "ac" => Ok(Box::new(AcFrontend)),
         other => Err(format!("unknown format: {other}")),
     }
 }

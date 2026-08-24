@@ -1,5 +1,5 @@
+use ac_runtime_values::NonFunctionValue;
 use ac_dialect::Schema;
-use ac_runtime::NonFunctionValue;
 
 /// Validates function call arguments against declared param schemas.
 ///

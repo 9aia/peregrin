@@ -1,9 +1,10 @@
+use ac_runtime_values::NonFunctionValue;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use icu::decimal::options::{DecimalFormatterOptions, GroupingStrategy};
 use icu::decimal::{CompactDecimalFormatter, DecimalFormatter};
 use icu::experimental::dimension::currency::CurrencyType;
@@ -83,11 +84,11 @@ impl Default for FormatNumber {
     }
 }
 
-impl Function for FormatNumber {
+impl Function<NonFunctionValue> for FormatNumber {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let n = require_number(args, 0)?;
         let mut locale = optional_locale(args, 1)?;
@@ -515,11 +516,11 @@ impl Default for FormatNumberToParts {
     }
 }
 
-impl Function for FormatNumberToParts {
+impl Function<NonFunctionValue> for FormatNumberToParts {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let n = require_number(args, 0)?;
         let mut locale = optional_locale(args, 1)?;

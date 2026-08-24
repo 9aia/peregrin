@@ -1,7 +1,8 @@
+use ac_runtime_values::NonFunctionValue;
 use std::sync::Arc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::OsError;
@@ -47,7 +48,7 @@ impl Module for FsModule {
         "fs"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "read" => Some(&self.read),
             "write" => Some(&self.write),
@@ -81,11 +82,11 @@ struct ReadFileFn {
     fs: Arc<dyn Fs>,
 }
 
-impl Function for ReadFileFn {
+impl Function<NonFunctionValue> for ReadFileFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         self.fs
@@ -99,11 +100,11 @@ struct WriteFileFn {
     fs: Arc<dyn Fs>,
 }
 
-impl Function for WriteFileFn {
+impl Function<NonFunctionValue> for WriteFileFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 2)?[0];
         let content = args[1].as_str().ok_or(Error::TypeMismatch {
@@ -119,11 +120,11 @@ struct ExistsFn {
     fs: Arc<dyn Fs>,
 }
 
-impl Function for ExistsFn {
+impl Function<NonFunctionValue> for ExistsFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         self.fs
@@ -137,11 +138,11 @@ struct RemoveFn {
     fs: Arc<dyn Fs>,
 }
 
-impl Function for RemoveFn {
+impl Function<NonFunctionValue> for RemoveFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         self.fs.remove(path)?;
@@ -153,11 +154,11 @@ struct ListDirFn {
     fs: Arc<dyn Fs>,
 }
 
-impl Function for ListDirFn {
+impl Function<NonFunctionValue> for ListDirFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let path = require_string_arg(args, 1)?[0];
         let entries = self.fs.list_dir(path)?;

@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 use std::collections::HashSet;
 
 use ac_ast_canonical::Expr;
@@ -6,7 +7,6 @@ use ac_lexer::Lexer;
 use ac_lexer_canonical::CanonicalLexer;
 use ac_parser::Parser;
 use ac_parser_canonical::CanonicalParser;
-use ac_runtime::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
 use crate::types::Namespaces;

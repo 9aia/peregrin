@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 use super::common::{num, require_two_strings, string_predicate_fn};
 
@@ -9,11 +12,11 @@ string_predicate_fn!(EndsWith, |input: &str, pat: &str| input.ends_with(pat));
 
 #[derive(Clone, Copy)]
 pub struct Count;
-impl Function for Count {
+impl Function<NonFunctionValue> for Count {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         Ok(num(input.matches(pattern).count() as f64))
@@ -22,11 +25,11 @@ impl Function for Count {
 
 #[derive(Clone, Copy)]
 pub struct Find;
-impl Function for Find {
+impl Function<NonFunctionValue> for Find {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         let idx = input
@@ -40,11 +43,11 @@ impl Function for Find {
 
 #[derive(Clone, Copy)]
 pub struct RFind;
-impl Function for RFind {
+impl Function<NonFunctionValue> for RFind {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, pattern) = require_two_strings(args)?;
         let idx = input
@@ -72,11 +75,11 @@ fn levenshtein(a: &[char], b: &[char]) -> usize {
 
 #[derive(Clone, Copy)]
 pub struct Levenshtein;
-impl Function for Levenshtein {
+impl Function<NonFunctionValue> for Levenshtein {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let a_chars: Vec<char> = a.chars().collect();
@@ -88,11 +91,11 @@ impl Function for Levenshtein {
 
 #[derive(Clone, Copy)]
 pub struct Similarity;
-impl Function for Similarity {
+impl Function<NonFunctionValue> for Similarity {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let a_chars: Vec<char> = a.chars().collect();

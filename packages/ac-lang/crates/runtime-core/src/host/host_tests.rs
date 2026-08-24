@@ -1,5 +1,5 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime_canonical::{CanonicalContext, Host, Vm};
+use ac_runtime_canonical::{CanonicalContext, Vm};
+use ac_runtime_values::NonFunctionValue;
 
 use crate::host::ModuleHost;
 use crate::module::module_stub::StubModule;

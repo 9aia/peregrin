@@ -2,8 +2,8 @@
 
 use std::pin::Pin;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{AsyncFunction, Context, Error, Function, Operation, OperationSig};
+use ac_runtime::{AsyncFunction, Context, Function, Operation, OperationSig};
+use ac_runtime_values::{Error, NonFunctionValue};
 
 use crate::module::Module;
 
@@ -16,21 +16,21 @@ impl Module for StubModule {
         "stub"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "echo" => Some(&Echo),
             _ => None,
         }
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         match name {
             "async_echo" => Some(&AsyncEcho),
             _ => None,
         }
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         match name {
             "raise" => Some(&Raise),
             _ => None,
@@ -42,11 +42,11 @@ impl Module for StubModule {
 #[allow(dead_code)]
 struct Echo;
 
-impl Function for Echo {
+impl Function<NonFunctionValue> for Echo {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         Ok(args.first().cloned().unwrap_or_default())
     }
@@ -56,11 +56,11 @@ impl Function for Echo {
 #[allow(dead_code)]
 struct AsyncEcho;
 
-impl AsyncFunction for AsyncEcho {
+impl AsyncFunction<NonFunctionValue> for AsyncEcho {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut (dyn Context + 'a),
+        _ctx: &'a mut (dyn Context<NonFunctionValue> + 'a),
     ) -> Pin<Box<dyn std::future::Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async { Ok(args.first().cloned().unwrap_or_default()) })
     }
@@ -70,8 +70,8 @@ impl AsyncFunction for AsyncEcho {
 #[allow(dead_code)]
 struct Raise;
 
-impl Operation for Raise {
-    fn signature(&self) -> OperationSig {
+impl Operation<NonFunctionValue> for Raise {
+    fn signature(&self) -> OperationSig<NonFunctionValue> {
         OperationSig {
             name: "raise".to_string(),
             params: Vec::new(),
@@ -82,7 +82,7 @@ impl Operation for Raise {
     fn perform(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         Err(Error::Operation {
             name: "raise".to_string(),

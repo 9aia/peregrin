@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
@@ -14,11 +17,11 @@ fn number_to_string(n: f64) -> String {
 
 #[derive(Clone, Copy)]
 pub struct ToString;
-impl Function for ToString {
+impl Function<NonFunctionValue> for ToString {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let result = if let Some(s) = arg.as_str() {
@@ -38,11 +41,11 @@ impl Function for ToString {
 
 #[derive(Clone, Copy)]
 pub struct ToNumber;
-impl Function for ToNumber {
+impl Function<NonFunctionValue> for ToNumber {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let result = if let Some(n) = arg.as_number() {
@@ -66,11 +69,11 @@ impl Function for ToNumber {
 
 #[derive(Clone, Copy)]
 pub struct ToBool;
-impl Function for ToBool {
+impl Function<NonFunctionValue> for ToBool {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let result = if let Some(b) = arg.as_bool() {

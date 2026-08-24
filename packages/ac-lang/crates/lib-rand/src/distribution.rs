@@ -1,7 +1,8 @@
+use ac_runtime_values::NonFunctionValue;
 use rand::Rng;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 
 use super::common::{num, require_number};
 use crate::error::RandError;
@@ -19,11 +20,11 @@ use crate::error::RandError;
 #[derive(Clone, Copy)]
 pub struct Gauss;
 
-impl Function for Gauss {
+impl Function<NonFunctionValue> for Gauss {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let mean = require_number(args, 0)?;
         let stddev = require_number(args, 1)?;
@@ -63,11 +64,11 @@ impl Function for Gauss {
 #[derive(Clone, Copy)]
 pub struct Exponential;
 
-impl Function for Exponential {
+impl Function<NonFunctionValue> for Exponential {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let lambda = require_number(args, 0)?;
         if !lambda.is_finite() || lambda <= 0.0 {
@@ -97,11 +98,11 @@ impl Function for Exponential {
 #[derive(Clone, Copy)]
 pub struct Poisson;
 
-impl Function for Poisson {
+impl Function<NonFunctionValue> for Poisson {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let lambda = require_number(args, 0)?;
         if !lambda.is_finite() || lambda < 0.0 {
@@ -146,11 +147,11 @@ impl Function for Poisson {
 #[derive(Clone, Copy)]
 pub struct Binomial;
 
-impl Function for Binomial {
+impl Function<NonFunctionValue> for Binomial {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let n_trials = require_number(args, 0)?;
         let p = require_number(args, 1)?;

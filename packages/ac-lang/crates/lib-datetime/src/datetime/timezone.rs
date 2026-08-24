@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 
 use super::common::{
     format_iso, parse_iso, parse_offset, require_one_string, require_two_strings, s,
@@ -8,11 +9,11 @@ use chrono::Utc;
 
 #[derive(Clone, Copy)]
 pub struct ToTimezone;
-impl Function for ToTimezone {
+impl Function<NonFunctionValue> for ToTimezone {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, offset_str) = require_two_strings(args)?;
         let dt = parse_iso(input)?;
@@ -36,11 +37,11 @@ impl Function for ToTimezone {
 
 #[derive(Clone, Copy)]
 pub struct ToUtc;
-impl Function for ToUtc {
+impl Function<NonFunctionValue> for ToUtc {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;

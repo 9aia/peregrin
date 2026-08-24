@@ -1,7 +1,8 @@
+use ac_runtime_values::NonFunctionValue;
 use std::sync::Arc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::OsError;
@@ -39,7 +40,7 @@ impl Module for TimeModule {
         "time"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "now" => Some(&self.now),
             "epoch" => Some(&self.epoch),
@@ -52,11 +53,11 @@ struct NowFn {
     time: Arc<dyn Time>,
 }
 
-impl Function for NowFn {
+impl Function<NonFunctionValue> for NowFn {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.time
             .now_millis()
@@ -69,11 +70,11 @@ struct EpochFn {
     time: Arc<dyn Time>,
 }
 
-impl Function for EpochFn {
+impl Function<NonFunctionValue> for EpochFn {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         self.time
             .now_seconds()

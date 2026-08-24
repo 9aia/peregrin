@@ -1,15 +1,16 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 
 use super::common::{b, n, parse_iso, require_three_strings, require_two_strings};
 
 #[derive(Clone, Copy)]
 pub struct Compare;
-impl Function for Compare {
+impl Function<NonFunctionValue> for Compare {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a_str, b_str) = require_two_strings(args)?;
         let dt_a = parse_iso(a_str)?;
@@ -26,11 +27,11 @@ impl Function for Compare {
 
 #[derive(Clone, Copy)]
 pub struct IsBefore;
-impl Function for IsBefore {
+impl Function<NonFunctionValue> for IsBefore {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a_str, b_str) = require_two_strings(args)?;
         let dt_a = parse_iso(a_str)?;
@@ -41,11 +42,11 @@ impl Function for IsBefore {
 
 #[derive(Clone, Copy)]
 pub struct IsAfter;
-impl Function for IsAfter {
+impl Function<NonFunctionValue> for IsAfter {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a_str, b_str) = require_two_strings(args)?;
         let dt_a = parse_iso(a_str)?;
@@ -56,11 +57,11 @@ impl Function for IsAfter {
 
 #[derive(Clone, Copy)]
 pub struct IsEqual;
-impl Function for IsEqual {
+impl Function<NonFunctionValue> for IsEqual {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a_str, b_str) = require_two_strings(args)?;
         let dt_a = parse_iso(a_str)?;
@@ -71,11 +72,11 @@ impl Function for IsEqual {
 
 #[derive(Clone, Copy)]
 pub struct IsBetween;
-impl Function for IsBetween {
+impl Function<NonFunctionValue> for IsBetween {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (target, start, end) = require_three_strings(args)?;
         let dt_target = parse_iso(target)?;
@@ -87,11 +88,11 @@ impl Function for IsBetween {
 
 #[derive(Clone, Copy)]
 pub struct IsBetweenInclusive;
-impl Function for IsBetweenInclusive {
+impl Function<NonFunctionValue> for IsBetweenInclusive {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (target, start, end) = require_three_strings(args)?;
         let dt_target = parse_iso(target)?;

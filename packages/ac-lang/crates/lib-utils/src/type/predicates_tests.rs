@@ -1,5 +1,7 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime_values::{Error};
+
 use ac_runtime_modules::Module;
 
 use super::TypeModule;
@@ -461,13 +463,6 @@ fn eval_expr(expr: &Expr<NonFunctionValue>) -> NonFunctionValue {
     let vm = Vm::new(host);
     let mut ctx = CanonicalContext::new();
     vm.eval(expr, &mut ctx).expect("eval succeeds")
-}
-
-fn eval_expr_result(expr: &Expr<NonFunctionValue>) -> Result<NonFunctionValue, Error> {
-    let host = ModuleHost::new().with(TypeModule);
-    let vm = Vm::new(host);
-    let mut ctx = CanonicalContext::new();
-    vm.eval(expr, &mut ctx)
 }
 
 #[test]

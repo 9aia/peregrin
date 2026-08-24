@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use md5::Md5 as Md5Hasher;
 use sha2::{Digest, Sha256 as Sha256Hasher};
 
@@ -19,11 +20,11 @@ use super::common::{extract_bytes, s};
 #[derive(Clone, Copy)]
 pub struct Sha256;
 
-impl Function for Sha256 {
+impl Function<NonFunctionValue> for Sha256 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let data = extract_bytes(args, 0)?;
         let hash = Sha256Hasher::digest(&data);
@@ -46,11 +47,11 @@ impl Function for Sha256 {
 #[derive(Clone, Copy)]
 pub struct Md5;
 
-impl Function for Md5 {
+impl Function<NonFunctionValue> for Md5 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let data = extract_bytes(args, 0)?;
         let hash = Md5Hasher::digest(&data);

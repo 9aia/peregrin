@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 mod arithmetic;
 mod bounds;
 mod common;
@@ -28,7 +29,7 @@ pub use format_parse::{Format, Parse};
 pub use timezone::{ToTimezone, ToUtc};
 pub use validate::IsValid;
 
-use ac_runtime::Function;
+use ac_runtime_values::Function;
 use ac_runtime_modules::Module;
 
 /// The `datetime` module — date and time utility functions.
@@ -46,7 +47,7 @@ impl Module for DateTimeModule {
         "datetime"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             // convert
             "from_unix" => Some(&FromUnix),

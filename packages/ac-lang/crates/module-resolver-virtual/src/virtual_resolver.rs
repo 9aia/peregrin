@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -6,7 +7,6 @@ use serde_json::Value as JsonValue;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::extract_fields;
 use ac_module_resolver_core::{ModuleResolver, ResolvedModule};
-use ac_runtime::NonFunctionValue;
 
 /// In-memory module resolver.
 ///

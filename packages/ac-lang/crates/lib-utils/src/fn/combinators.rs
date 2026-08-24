@@ -1,9 +1,12 @@
-use ac_runtime::{Context, Error, Function};
-use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
+
 
 use crate::shared::{
-    apply_fn, apply_fn2, arr, bind_all_params, is_truthy_fn, require_array, require_function_value,
-    require_functions,
+    apply_fn, apply_fn2, arr, bind_function_params, is_truthy_fn, require_array,
+    require_function_value, require_functions,
 };
 
 fn substitute_param(body: &str, param: &str, replacement: &str) -> String {
@@ -94,6 +97,7 @@ fn inline_chain(fns: &[FunctionValue]) -> Result<FunctionValue, Error> {
         params: vec![(input_param.to_string(), serde_json::Value::Null)],
         return_schema: None,
         body,
+        patterns: Vec::new(),
     })
 }
 
@@ -101,11 +105,11 @@ fn inline_chain(fns: &[FunctionValue]) -> Result<FunctionValue, Error> {
 
 #[derive(Clone, Copy)]
 pub struct Pipe;
-impl Function for Pipe {
+impl Function<NonFunctionValue> for Pipe {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -126,30 +130,30 @@ impl Function for Pipe {
 
 #[derive(Clone, Copy)]
 pub struct Flow;
-impl Function for Flow {
+impl Function<NonFunctionValue> for Flow {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let fns = require_functions(args)?;
         let composed = inline_chain(&fns)?;
-        Ok(NonFunctionValue::new_function(composed))
+        Ok(NonFunctionValue::new(composed))
     }
 }
 
 #[derive(Clone, Copy)]
 pub struct Compose;
-impl Function for Compose {
+impl Function<NonFunctionValue> for Compose {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let fns = require_functions(args)?;
         let reversed: Vec<FunctionValue> = fns.into_iter().rev().collect();
         let composed = inline_chain(&reversed)?;
-        Ok(NonFunctionValue::new_function(composed))
+        Ok(NonFunctionValue::new(composed))
     }
 }
 
@@ -157,11 +161,11 @@ impl Function for Compose {
 
 #[derive(Clone, Copy)]
 pub struct Fanout;
-impl Function for Fanout {
+impl Function<NonFunctionValue> for Fanout {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -185,11 +189,11 @@ impl Function for Fanout {
 
 #[derive(Clone, Copy)]
 pub struct Choice;
-impl Function for Choice {
+impl Function<NonFunctionValue> for Choice {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 4 {
             return Err(Error::ArgumentCount {
@@ -213,11 +217,11 @@ impl Function for Choice {
 
 #[derive(Clone, Copy)]
 pub struct Apply;
-impl Function for Apply {
+impl Function<NonFunctionValue> for Apply {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -227,7 +231,7 @@ impl Function for Apply {
         }
         let fn_val = require_function_value(&args[0])?;
         let call_args = require_array(&args[1])?;
-        let vars = bind_all_params(&fn_val, call_args);
+        let vars = bind_function_params(&fn_val, call_args)?;
         Ok(ctx.eval_expr(&fn_val.body, &vars)?)
     }
 }
@@ -236,11 +240,11 @@ impl Function for Apply {
 
 #[derive(Clone, Copy)]
 pub struct Tap;
-impl Function for Tap {
+impl Function<NonFunctionValue> for Tap {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -260,11 +264,11 @@ impl Function for Tap {
 
 #[derive(Clone, Copy)]
 pub struct Constantly;
-impl Function for Constantly {
+impl Function<NonFunctionValue> for Constantly {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let value = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
@@ -275,8 +279,9 @@ impl Function for Constantly {
             params: vec![("_".to_string(), serde_json::Value::Null)],
             return_schema: None,
             body: serde_json::to_string(&captured).unwrap_or_else(|_| "null".to_string()),
+            patterns: Vec::new(),
         };
-        Ok(NonFunctionValue::new_function(fn_val))
+        Ok(NonFunctionValue::new(fn_val))
     }
 }
 
@@ -284,11 +289,11 @@ impl Function for Constantly {
 
 #[derive(Clone, Copy)]
 pub struct Flip;
-impl Function for Flip {
+impl Function<NonFunctionValue> for Flip {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let fn_val = require_function_value(args.first().ok_or(Error::ArgumentCount {
             expected: 1,
@@ -306,8 +311,9 @@ impl Function for Flip {
             params: swapped_params,
             return_schema: None,
             body: fn_val.body.clone(),
+            patterns: Vec::new(),
         };
-        Ok(NonFunctionValue::new_function(flipped))
+        Ok(NonFunctionValue::new(flipped))
     }
 }
 
@@ -315,11 +321,11 @@ impl Function for Flip {
 
 #[derive(Clone, Copy)]
 pub struct Partial;
-impl Function for Partial {
+impl Function<NonFunctionValue> for Partial {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -331,7 +337,7 @@ impl Function for Partial {
         let bound_args = require_array(&args[1])?;
         let bound_count = bound_args.len().min(fn_val.params.len());
         if bound_count == 0 {
-            return Ok(NonFunctionValue::new_function(fn_val));
+            return Ok(NonFunctionValue::new(fn_val));
         }
         let remaining_params: Vec<(String, serde_json::Value)> = fn_val.params[bound_count..]
             .iter()
@@ -348,8 +354,9 @@ impl Function for Partial {
             params: remaining_params,
             return_schema: None,
             body,
+            patterns: Vec::new(),
         };
-        Ok(NonFunctionValue::new_function(partial_fn))
+        Ok(NonFunctionValue::new(partial_fn))
     }
 }
 
@@ -357,11 +364,11 @@ impl Function for Partial {
 
 #[derive(Clone, Copy)]
 pub struct When;
-impl Function for When {
+impl Function<NonFunctionValue> for When {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -383,11 +390,11 @@ impl Function for When {
 
 #[derive(Clone, Copy)]
 pub struct Unless;
-impl Function for Unless {
+impl Function<NonFunctionValue> for Unless {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -411,11 +418,11 @@ impl Function for Unless {
 
 #[derive(Clone, Copy)]
 pub struct Converge;
-impl Function for Converge {
+impl Function<NonFunctionValue> for Converge {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {

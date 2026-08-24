@@ -17,7 +17,7 @@ mod scanner;
 pub use convert::{json_to_yaml, yaml_to_json};
 pub use error::YamlError;
 
-use ac_runtime::{Frontend, NonFunctionValue};
+use ac_runtime_values::{Frontend, NonFunctionValue};
 use serde_json::Value as JsonValue;
 
 /// Parses a YAML string into a [`NonFunctionValue`].

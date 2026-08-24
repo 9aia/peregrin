@@ -1,7 +1,8 @@
 use super::*;
 use ac_ast_canonical::Expr;
-use ac_runtime::NonFunctionValue;
-use ac_runtime_canonical::{CanonicalContext, Context, Eval, Vm};
+use ac_runtime::{Context, Eval};
+use ac_runtime_canonical::Vm;
+use ac_runtime_values::{CanonicalContext, Error, NonFunctionValue};
 
 // ── typeof ──────────────────────────────────────────────────
 
@@ -106,12 +107,12 @@ fn is_function_false_for_string() {
 #[test]
 fn eval_with_callback() {
     struct SimpleEval;
-    impl Eval for SimpleEval {
+    impl Eval<NonFunctionValue> for SimpleEval {
         fn eval_expr(
             &self,
             _expr: &str,
             vars: &[(String, NonFunctionValue)],
-        ) -> Result<NonFunctionValue, ac_runtime::Error> {
+        ) -> Result<NonFunctionValue, Error> {
             // Simple: just return the first var's value doubled
             let val = vars
                 .first()
@@ -547,7 +548,7 @@ fn call_meta(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
 fn try_call_meta(
     name: &str,
     args: &[NonFunctionValue],
-) -> Result<NonFunctionValue, ac_runtime::Error> {
+) -> Result<NonFunctionValue, Error> {
     let vm = Vm::new(MetaHost::default());
     let mut ctx = CanonicalContext::new();
     let expr_args: Vec<Expr<NonFunctionValue>> =

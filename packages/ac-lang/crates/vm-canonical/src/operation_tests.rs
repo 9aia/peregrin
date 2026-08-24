@@ -12,20 +12,20 @@ use crate::{Operation, OperationSig};
 #[derive(Clone)]
 struct FetchOp;
 
-impl Operation for FetchOp {
-    fn signature(&self) -> OperationSig {
+impl Operation<NonFunctionValue> for FetchOp {
+    fn signature(&self) -> OperationSig<NonFunctionValue> {
         OperationSig {
             name: "fetch".to_string(),
-            params: vec![("url".to_string(), serde_json::json!({"type": "string"}))],
-            return_schema: Some(serde_json::json!({"type": "string"})),
+            params: vec![("url".to_string(), NonFunctionValue::new(serde_json::json!({"type": "string"})))],
+            return_schema: Some(NonFunctionValue::new(serde_json::json!({"type": "string"}))),
         }
     }
 
     fn perform(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         Err(Error::Operation {
             name: "fetch".to_string(),
             args: args.to_vec(),
@@ -36,12 +36,12 @@ impl Operation for FetchOp {
 #[derive(Clone)]
 struct Add;
 
-impl Function for Add {
+impl Function<NonFunctionValue> for Add {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -50,20 +50,20 @@ impl Function for Add {
 #[derive(Clone)]
 struct CachingFetch;
 
-impl Operation for CachingFetch {
-    fn signature(&self) -> OperationSig {
+impl Operation<NonFunctionValue> for CachingFetch {
+    fn signature(&self) -> OperationSig<NonFunctionValue> {
         OperationSig {
             name: "fetch".to_string(),
-            params: vec![("url".to_string(), serde_json::json!({"type": "string"}))],
-            return_schema: Some(serde_json::json!({"type": "string"})),
+            params: vec![("url".to_string(), NonFunctionValue::new(serde_json::json!({"type": "string"})))],
+            return_schema: Some(NonFunctionValue::new(serde_json::json!({"type": "string"}))),
         }
     }
 
     fn perform(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let url = args.first().and_then(|v| v.as_str()).unwrap_or("");
         if url == "cached" {
             Ok(NonFunctionValue::new("cached-result"))
@@ -93,15 +93,15 @@ impl Default for OpHost {
     }
 }
 
-impl Host for OpHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for OpHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "add" => Some(&self.add),
             _ => None,
         }
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         match name {
             "fetch" => Some(&self.fetch),
             _ => None,
@@ -124,15 +124,15 @@ impl Default for CachingHost {
     }
 }
 
-impl Host for CachingHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for CachingHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "add" => Some(&self.add),
             _ => None,
         }
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         match name {
             "fetch" => Some(&self.fetch),
             _ => None,
@@ -184,17 +184,17 @@ fn vm_eval_operation_signals_with_structured_data() {
 #[test]
 fn vm_eval_operation_takes_precedence_over_function() {
     struct DualFetch;
-    impl Function for DualFetch {
+    impl Function<NonFunctionValue> for DualFetch {
         fn call(
             &self,
             _args: &[NonFunctionValue],
-            _ctx: &mut dyn Context,
-        ) -> Result<NonFunctionValue, Error> {
+            _ctx: &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
             Ok(NonFunctionValue::new("from-function"))
         }
     }
-    impl Operation for DualFetch {
-        fn signature(&self) -> OperationSig {
+    impl Operation<NonFunctionValue> for DualFetch {
+        fn signature(&self) -> OperationSig<NonFunctionValue> {
             OperationSig {
                 name: "fetch".to_string(),
                 params: vec![],
@@ -204,8 +204,8 @@ fn vm_eval_operation_takes_precedence_over_function() {
         fn perform(
             &self,
             _args: &[NonFunctionValue],
-            _ctx: &mut dyn Context,
-        ) -> Result<NonFunctionValue, Error> {
+            _ctx: &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
             Err(Error::Operation {
                 name: "fetch".to_string(),
                 args: vec![],
@@ -216,14 +216,14 @@ fn vm_eval_operation_takes_precedence_over_function() {
     struct DualHost {
         fetch: DualFetch,
     }
-    impl Host for DualHost {
-        fn function(&self, name: &str) -> Option<&dyn Function> {
+    impl Host<NonFunctionValue> for DualHost {
+        fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
             match name {
                 "fetch" => Some(&self.fetch),
                 _ => None,
             }
         }
-        fn operation(&self, name: &str) -> Option<&dyn Operation> {
+        fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
             match name {
                 "fetch" => Some(&self.fetch),
                 _ => None,

@@ -1,6 +1,6 @@
+use ac_runtime_values::NonFunctionValue;
 use std::fmt;
 
-use ac_runtime::NonFunctionValue;
 use writeable::{Part, PartsWrite};
 
 /// A `PartsWrite` implementation that collects formatted output into

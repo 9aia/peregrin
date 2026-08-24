@@ -2,7 +2,8 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::time::Instant;
 
-use ac_runtime::{Context, Error, Function, NonFunctionValue, Operation};
+use ac_runtime::{Context, Error, Function, Operation};
+use ac_runtime_values::NonFunctionValue;
 use serde_json;
 
 /// Caches results of a function by the JSON representation of its args.
@@ -21,15 +22,15 @@ impl<F> Memoize<F> {
     }
 }
 
-impl<F> Function for Memoize<F>
+impl<F> Function<NonFunctionValue> for Memoize<F>
 where
-    F: Function + 'static,
+    F: Function<NonFunctionValue> + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let key = args_to_key(args);
 
         if let Some(cached) = self.cache.borrow().get(&key) {
@@ -52,9 +53,9 @@ fn args_to_key(args: &[NonFunctionValue]) -> String {
 }
 
 /// Creates a memoized function from another function.
-pub fn memoize<F>(inner: F) -> Box<dyn Function>
+pub fn memoize<F>(inner: F) -> Box<dyn Function<NonFunctionValue>>
 where
-    F: Function + 'static,
+    F: Function<NonFunctionValue> + 'static,
 {
     Box::new(Memoize::new(inner))
 }
@@ -72,25 +73,25 @@ impl<F, T> MapArgs<F, T> {
     }
 }
 
-impl<F, T> Function for MapArgs<F, T>
+impl<F, T> Function<NonFunctionValue> for MapArgs<F, T>
 where
-    F: Function + 'static,
+    F: Function<NonFunctionValue> + 'static,
     T: Fn(&[NonFunctionValue]) -> Vec<NonFunctionValue> + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let mapped = (self.transform)(args);
         self.inner.call(&mapped, ctx)
     }
 }
 
 /// Creates a function that transforms its arguments before evaluation.
-pub fn map_args<F, T>(inner: F, transform: T) -> Box<dyn Function>
+pub fn map_args<F, T>(inner: F, transform: T) -> Box<dyn Function<NonFunctionValue>>
 where
-    F: Function + 'static,
+    F: Function<NonFunctionValue> + 'static,
     T: Fn(&[NonFunctionValue]) -> Vec<NonFunctionValue> + 'static,
 {
     Box::new(MapArgs::new(inner, transform))
@@ -109,25 +110,25 @@ impl<F, T> MapResult<F, T> {
     }
 }
 
-impl<F, T> Function for MapResult<F, T>
+impl<F, T> Function<NonFunctionValue> for MapResult<F, T>
 where
-    F: Function + 'static,
-    T: Fn(Result<NonFunctionValue, Error>) -> Result<NonFunctionValue, Error> + 'static,
+    F: Function<NonFunctionValue> + 'static,
+    T: Fn(Result<NonFunctionValue, Error<NonFunctionValue>>) -> Result<NonFunctionValue, Error<NonFunctionValue>> + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         (self.transform)(self.inner.call(args, ctx))
     }
 }
 
 /// Creates a function that transforms its result.
-pub fn map_result<F, T>(inner: F, transform: T) -> Box<dyn Function>
+pub fn map_result<F, T>(inner: F, transform: T) -> Box<dyn Function<NonFunctionValue>>
 where
-    F: Function + 'static,
-    T: Fn(Result<NonFunctionValue, Error>) -> Result<NonFunctionValue, Error> + 'static,
+    F: Function<NonFunctionValue> + 'static,
+    T: Fn(Result<NonFunctionValue, Error<NonFunctionValue>>) -> Result<NonFunctionValue, Error<NonFunctionValue>> + 'static,
 {
     Box::new(MapResult::new(inner, transform))
 }
@@ -145,25 +146,25 @@ impl<F, H> Catch<F, H> {
     }
 }
 
-impl<F, H> Function for Catch<F, H>
+impl<F, H> Function<NonFunctionValue> for Catch<F, H>
 where
-    F: Function + 'static,
-    H: Fn(Error) -> Result<NonFunctionValue, Error> + 'static,
+    F: Function<NonFunctionValue> + 'static,
+    H: Fn(Error<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>> + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         self.inner.call(args, ctx).or_else(|e| (self.handler)(e))
     }
 }
 
 /// Creates a function that catches errors and applies a handler.
-pub fn catch<F, H>(inner: F, handler: H) -> Box<dyn Function>
+pub fn catch<F, H>(inner: F, handler: H) -> Box<dyn Function<NonFunctionValue>>
 where
-    F: Function + 'static,
-    H: Fn(Error) -> Result<NonFunctionValue, Error> + 'static,
+    F: Function<NonFunctionValue> + 'static,
+    H: Fn(Error<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>> + 'static,
 {
     Box::new(Catch::new(inner, handler))
 }
@@ -181,16 +182,16 @@ impl<F, G> Pipe<F, G> {
     }
 }
 
-impl<F, G> Function for Pipe<F, G>
+impl<F, G> Function<NonFunctionValue> for Pipe<F, G>
 where
-    F: Function + 'static,
-    G: Function + 'static,
+    F: Function<NonFunctionValue> + 'static,
+    G: Function<NonFunctionValue> + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let value = self.first.call(args, ctx)?;
         let v = vec![value];
         self.second.call(&v, ctx)
@@ -198,10 +199,10 @@ where
 }
 
 /// Creates a function that pipes `first` into `second`.
-pub fn pipe<F, G>(first: F, second: G) -> Box<dyn Function>
+pub fn pipe<F, G>(first: F, second: G) -> Box<dyn Function<NonFunctionValue>>
 where
-    F: Function + 'static,
-    G: Function + 'static,
+    F: Function<NonFunctionValue> + 'static,
+    G: Function<NonFunctionValue> + 'static,
 {
     Box::new(Pipe::new(first, second))
 }
@@ -219,16 +220,16 @@ impl<F, L> Logged<F, L> {
     }
 }
 
-impl<F, L> Function for Logged<F, L>
+impl<F, L> Function<NonFunctionValue> for Logged<F, L>
 where
-    F: Function + 'static,
-    L: Fn(&[NonFunctionValue], &Result<NonFunctionValue, Error>) + 'static,
+    F: Function<NonFunctionValue> + 'static,
+    L: Fn(&[NonFunctionValue], &Result<NonFunctionValue, Error<NonFunctionValue>>) + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let result = self.inner.call(args, ctx);
         (self.logger)(args, &result);
         result
@@ -236,10 +237,10 @@ where
 }
 
 /// Creates a function that logs its calls and results.
-pub fn logged<F, L>(inner: F, logger: L) -> Box<dyn Function>
+pub fn logged<F, L>(inner: F, logger: L) -> Box<dyn Function<NonFunctionValue>>
 where
-    F: Function + 'static,
-    L: Fn(&[NonFunctionValue], &Result<NonFunctionValue, Error>) + 'static,
+    F: Function<NonFunctionValue> + 'static,
+    L: Fn(&[NonFunctionValue], &Result<NonFunctionValue, Error<NonFunctionValue>>) + 'static,
 {
     Box::new(Logged::new(inner, logger))
 }
@@ -262,16 +263,16 @@ impl<F, L> Timed<F, L> {
     }
 }
 
-impl<F, L> Function for Timed<F, L>
+impl<F, L> Function<NonFunctionValue> for Timed<F, L>
 where
-    F: Function + 'static,
-    L: Fn(&str, &std::time::Duration, &Result<NonFunctionValue, Error>) + 'static,
+    F: Function<NonFunctionValue> + 'static,
+    L: Fn(&str, &std::time::Duration, &Result<NonFunctionValue, Error<NonFunctionValue>>) + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let start = Instant::now();
         let result = self.inner.call(args, ctx);
         let duration = start.elapsed();
@@ -281,10 +282,10 @@ where
 }
 
 /// Creates a function that times its calls.
-pub fn timed<F, L>(inner: F, label: impl Into<String>, logger: L) -> Box<dyn Function>
+pub fn timed<F, L>(inner: F, label: impl Into<String>, logger: L) -> Box<dyn Function<NonFunctionValue>>
 where
-    F: Function + 'static,
-    L: Fn(&str, &std::time::Duration, &Result<NonFunctionValue, Error>) + 'static,
+    F: Function<NonFunctionValue> + 'static,
+    L: Fn(&str, &std::time::Duration, &Result<NonFunctionValue, Error<NonFunctionValue>>) + 'static,
 {
     Box::new(Timed::new(inner, label, logger))
 }
@@ -302,29 +303,29 @@ impl<O, H> CatchOp<O, H> {
     }
 }
 
-impl<O, H> Operation for CatchOp<O, H>
+impl<O, H> Operation<NonFunctionValue> for CatchOp<O, H>
 where
-    O: Operation + 'static,
-    H: Fn(Error) -> Result<NonFunctionValue, Error> + 'static,
+    O: Operation<NonFunctionValue> + 'static,
+    H: Fn(Error<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>> + 'static,
 {
-    fn signature(&self) -> ac_runtime::OperationSig {
+    fn signature(&self) -> ac_runtime::OperationSig<NonFunctionValue> {
         self.inner.signature()
     }
 
     fn perform(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         self.inner.perform(args, ctx).or_else(|e| (self.handler)(e))
     }
 }
 
 /// Creates an operation that catches errors and applies a handler.
-pub fn catch_operation<O, H>(inner: O, handler: H) -> Box<dyn Operation>
+pub fn catch_operation<O, H>(inner: O, handler: H) -> Box<dyn Operation<NonFunctionValue>>
 where
-    O: Operation + 'static,
-    H: Fn(Error) -> Result<NonFunctionValue, Error> + 'static,
+    O: Operation<NonFunctionValue> + 'static,
+    H: Fn(Error<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>> + 'static,
 {
     Box::new(CatchOp::new(inner, handler))
 }
@@ -339,36 +340,36 @@ impl Const {
     }
 }
 
-impl Function for Const {
+impl Function<NonFunctionValue> for Const {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         Ok(self.0.clone())
     }
 }
 
 /// Creates a function that always returns `value`.
-pub fn r#const(value: NonFunctionValue) -> Box<dyn Function> {
+pub fn r#const(value: NonFunctionValue) -> Box<dyn Function<NonFunctionValue>> {
     Box::new(Const::new(value))
 }
 
 /// A function that returns its first argument unchanged.
 pub struct Identity;
 
-impl Function for Identity {
+impl Function<NonFunctionValue> for Identity {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         Ok(args.first().cloned().unwrap_or_default())
     }
 }
 
 /// Creates the identity function.
-pub fn identity() -> Box<dyn Function> {
+pub fn identity() -> Box<dyn Function<NonFunctionValue>> {
     Box::new(Identity)
 }
 
@@ -385,15 +386,15 @@ impl<F> Partial<F> {
     }
 }
 
-impl<F> Function for Partial<F>
+impl<F> Function<NonFunctionValue> for Partial<F>
 where
-    F: Function + 'static,
+    F: Function<NonFunctionValue> + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let mut full = self.bound.clone();
         full.extend_from_slice(args);
         self.inner.call(&full, ctx)
@@ -401,9 +402,9 @@ where
 }
 
 /// Creates a function with `bound` arguments prepended to every call.
-pub fn partial<F>(inner: F, bound: Vec<NonFunctionValue>) -> Box<dyn Function>
+pub fn partial<F>(inner: F, bound: Vec<NonFunctionValue>) -> Box<dyn Function<NonFunctionValue>>
 where
-    F: Function + 'static,
+    F: Function<NonFunctionValue> + 'static,
 {
     Box::new(Partial::new(inner, bound))
 }
@@ -426,17 +427,17 @@ impl<C, T, E> If<C, T, E> {
     }
 }
 
-impl<C, T, E> Function for If<C, T, E>
+impl<C, T, E> Function<NonFunctionValue> for If<C, T, E>
 where
-    C: Function + 'static,
-    T: Function + 'static,
-    E: Function + 'static,
+    C: Function<NonFunctionValue> + 'static,
+    T: Function<NonFunctionValue> + 'static,
+    E: Function<NonFunctionValue> + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let cond = self.condition.call(args, ctx)?;
         if cond.as_bool().unwrap_or(false) {
             self.then_branch.call(args, ctx)
@@ -447,11 +448,11 @@ where
 }
 
 /// Creates a conditional function.
-pub fn r#if<C, T, E>(condition: C, then_branch: T, else_branch: E) -> Box<dyn Function>
+pub fn r#if<C, T, E>(condition: C, then_branch: T, else_branch: E) -> Box<dyn Function<NonFunctionValue>>
 where
-    C: Function + 'static,
-    T: Function + 'static,
-    E: Function + 'static,
+    C: Function<NonFunctionValue> + 'static,
+    T: Function<NonFunctionValue> + 'static,
+    E: Function<NonFunctionValue> + 'static,
 {
     Box::new(If::new(condition, then_branch, else_branch))
 }

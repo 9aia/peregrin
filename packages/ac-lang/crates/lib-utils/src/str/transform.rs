@@ -1,15 +1,18 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 use super::common::{require_one_string, require_string, require_two_strings, s};
 
 #[derive(Clone, Copy)]
 pub struct Split;
-impl Function for Split {
+impl Function<NonFunctionValue> for Split {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, sep) = require_two_strings(args)?;
         let parts: Vec<serde_json::Value> = input
@@ -22,11 +25,11 @@ impl Function for Split {
 
 #[derive(Clone, Copy)]
 pub struct Join;
-impl Function for Join {
+impl Function<NonFunctionValue> for Join {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -54,11 +57,11 @@ impl Function for Join {
 
 #[derive(Clone, Copy)]
 pub struct Replace;
-impl Function for Replace {
+impl Function<NonFunctionValue> for Replace {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -75,11 +78,11 @@ impl Function for Replace {
 
 #[derive(Clone, Copy)]
 pub struct ReplaceFirst;
-impl Function for ReplaceFirst {
+impl Function<NonFunctionValue> for ReplaceFirst {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -96,11 +99,11 @@ impl Function for ReplaceFirst {
 
 #[derive(Clone, Copy)]
 pub struct Repeat;
-impl Function for Repeat {
+impl Function<NonFunctionValue> for Repeat {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -131,11 +134,11 @@ impl Function for Repeat {
 
 #[derive(Clone, Copy)]
 pub struct CharAt;
-impl Function for CharAt {
+impl Function<NonFunctionValue> for CharAt {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -166,11 +169,11 @@ impl Function for CharAt {
 
 #[derive(Clone, Copy)]
 pub struct Slice;
-impl Function for Slice {
+impl Function<NonFunctionValue> for Slice {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -217,11 +220,11 @@ fn pad_to_len(input: &str, target_len: usize, pad_char: &str, pad_left: bool) ->
 
 #[derive(Clone, Copy)]
 pub struct PadLeft;
-impl Function for PadLeft {
+impl Function<NonFunctionValue> for PadLeft {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -253,11 +256,11 @@ impl Function for PadLeft {
 
 #[derive(Clone, Copy)]
 pub struct PadRight;
-impl Function for PadRight {
+impl Function<NonFunctionValue> for PadRight {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -289,11 +292,11 @@ impl Function for PadRight {
 
 #[derive(Clone, Copy)]
 pub struct StripPrefix;
-impl Function for StripPrefix {
+impl Function<NonFunctionValue> for StripPrefix {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, prefix) = require_two_strings(args)?;
         Ok(s(input.strip_prefix(prefix).unwrap_or(input).to_string()))
@@ -302,11 +305,11 @@ impl Function for StripPrefix {
 
 #[derive(Clone, Copy)]
 pub struct StripSuffix;
-impl Function for StripSuffix {
+impl Function<NonFunctionValue> for StripSuffix {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, suffix) = require_two_strings(args)?;
         Ok(s(input.strip_suffix(suffix).unwrap_or(input).to_string()))
@@ -315,11 +318,11 @@ impl Function for StripSuffix {
 
 #[derive(Clone, Copy)]
 pub struct Lines;
-impl Function for Lines {
+impl Function<NonFunctionValue> for Lines {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let lines: Vec<serde_json::Value> = if input.is_empty() {
@@ -336,11 +339,11 @@ impl Function for Lines {
 
 #[derive(Clone, Copy)]
 pub struct SplitAt;
-impl Function for SplitAt {
+impl Function<NonFunctionValue> for SplitAt {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -373,11 +376,11 @@ impl Function for SplitAt {
 
 #[derive(Clone, Copy)]
 pub struct SplitWhitespace;
-impl Function for SplitWhitespace {
+impl Function<NonFunctionValue> for SplitWhitespace {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let parts: Vec<serde_json::Value> = input
@@ -390,11 +393,11 @@ impl Function for SplitWhitespace {
 
 #[derive(Clone, Copy)]
 pub struct Truncate;
-impl Function for Truncate {
+impl Function<NonFunctionValue> for Truncate {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -436,11 +439,11 @@ impl Function for Truncate {
 
 #[derive(Clone, Copy)]
 pub struct Slugify;
-impl Function for Slugify {
+impl Function<NonFunctionValue> for Slugify {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let slug: String = input
@@ -478,11 +481,11 @@ impl Function for Slugify {
 
 #[derive(Clone, Copy)]
 pub struct EscapeHtml;
-impl Function for EscapeHtml {
+impl Function<NonFunctionValue> for EscapeHtml {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let escaped: String = input
@@ -503,11 +506,11 @@ impl Function for EscapeHtml {
 
 #[derive(Clone, Copy)]
 pub struct UnescapeHtml;
-impl Function for UnescapeHtml {
+impl Function<NonFunctionValue> for UnescapeHtml {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let unescaped = input
@@ -529,11 +532,11 @@ fn is_url_unreserved(c: u8) -> bool {
 
 #[derive(Clone, Copy)]
 pub struct EscapeUrl;
-impl Function for EscapeUrl {
+impl Function<NonFunctionValue> for EscapeUrl {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let escaped: String = input
@@ -552,11 +555,11 @@ impl Function for EscapeUrl {
 
 #[derive(Clone, Copy)]
 pub struct UnescapeUrl;
-impl Function for UnescapeUrl {
+impl Function<NonFunctionValue> for UnescapeUrl {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let bytes = input.as_bytes();
@@ -584,11 +587,11 @@ impl Function for UnescapeUrl {
 
 #[derive(Clone, Copy)]
 pub struct WordWrap;
-impl Function for WordWrap {
+impl Function<NonFunctionValue> for WordWrap {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {

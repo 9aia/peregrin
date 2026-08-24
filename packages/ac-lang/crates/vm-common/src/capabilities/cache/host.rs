@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use ac_runtime::NonFunctionValue;
 use ac_runtime::{
     AsyncFunction, Context, Error, Function, GenericFunction, Host, LazyFunction, Operation,
 };
+use ac_runtime_values::NonFunctionValue;
 
 use super::call_cache::{CallCache, CallKey};
 
@@ -14,17 +14,17 @@ use super::call_cache::{CallCache, CallKey};
 /// Otherwise, it dispatches to the inner function and records
 /// the result in the cache.
 struct CachedFunction {
-    inner: Box<dyn Function>,
+    inner: Box<dyn Function<NonFunctionValue>>,
     cache: Arc<Mutex<CallCache>>,
     name: String,
 }
 
-impl Function for CachedFunction {
+impl Function<NonFunctionValue> for CachedFunction {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let key = CallKey::new(&self.name, args);
         if let Some(cached) = self.cache.lock().unwrap().get_by_key(&key) {
             return Ok(cached.clone());
@@ -76,13 +76,13 @@ impl Function for CachedFunction {
 /// // register expensive functions for caching:
 /// // host.register("fetch", Box::new(FetchFunction));
 /// ```
-pub struct CacheHost<H: Host> {
+pub struct CacheHost<H: Host<NonFunctionValue>> {
     inner: H,
     registered: HashMap<String, CachedFunction>,
     cache: Arc<Mutex<CallCache>>,
 }
 
-impl<H: Host> CacheHost<H> {
+impl<H: Host<NonFunctionValue>> CacheHost<H> {
     /// Creates a new `CacheHost` wrapping `inner` with an empty cache.
     pub fn new(inner: H) -> Self {
         CacheHost {
@@ -111,7 +111,7 @@ impl<H: Host> CacheHost<H> {
     /// All calls to this function will be checked against the cache
     /// before dispatching. Function names not registered delegate to
     /// the inner host without caching.
-    pub fn register(&mut self, name: impl Into<String>, function: Box<dyn Function>) {
+    pub fn register(&mut self, name: impl Into<String>, function: Box<dyn Function<NonFunctionValue>>) {
         let name = name.into();
         self.registered.insert(
             name.clone(),
@@ -139,38 +139,38 @@ impl<H: Host> CacheHost<H> {
     }
 }
 
-impl<H: Host + Default> Default for CacheHost<H> {
+impl<H: Host<NonFunctionValue> + Default> Default for CacheHost<H> {
     fn default() -> Self {
         Self::new(H::default())
     }
 }
 
-impl<H: Host> Host for CacheHost<H> {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl<H: Host<NonFunctionValue>> Host<NonFunctionValue> for CacheHost<H> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         if let Some(f) = self.registered.get(name) {
-            return Some(f as &dyn Function);
+            return Some(f as &dyn Function<NonFunctionValue>);
         }
         self.inner.function(name)
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         self.inner.async_function(name)
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         self.inner.operation(name)
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         self.inner.lazy_function(name)
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         self.inner.generic_function(name)
     }
 }
 
-impl<H: Host + Clone> Clone for CacheHost<H> {
+impl<H: Host<NonFunctionValue> + Clone> Clone for CacheHost<H> {
     fn clone(&self) -> Self {
         CacheHost {
             inner: self.inner.clone(),

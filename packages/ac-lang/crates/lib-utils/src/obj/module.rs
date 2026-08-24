@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 use ac_runtime::Function;
 use ac_runtime_modules::Module;
 
@@ -21,7 +22,7 @@ impl Module for ObjModule {
         "obj"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "keys" => Some(&Keys),
             "values" => Some(&Values),

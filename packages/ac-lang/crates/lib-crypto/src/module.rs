@@ -1,4 +1,5 @@
-use ac_runtime::Function;
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::Function;
 use ac_runtime_modules::Module;
 
 use super::encoding::{Base64Decode, Base64Encode, HexDecode, HexEncode};
@@ -25,7 +26,7 @@ impl Module for CryptoModule {
         "crypto"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "sha256" => Some(&Sha256),
             "md5" => Some(&Md5),

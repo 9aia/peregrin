@@ -1,5 +1,8 @@
-use ac_runtime::{Context, Error, Function};
-use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
+
 
 use super::common::{
     obj_value, require_function_value, require_object, require_string, require_three_args,
@@ -11,11 +14,11 @@ use crate::shared::apply_fn;
 
 #[derive(Clone, Copy)]
 pub struct Set;
-impl Function for Set {
+impl Function<NonFunctionValue> for Set {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, key_arg, value_arg) = require_three_args(args)?;
         let obj = require_object(obj_arg)?;
@@ -30,11 +33,11 @@ impl Function for Set {
 
 #[derive(Clone, Copy)]
 pub struct Update;
-impl Function for Update {
+impl Function<NonFunctionValue> for Update {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, key_arg, fn_arg) = require_three_args(args)?;
         let obj = require_object(obj_arg)?;
@@ -52,11 +55,11 @@ impl Function for Update {
 
 #[derive(Clone, Copy)]
 pub struct SetPath;
-impl Function for SetPath {
+impl Function<NonFunctionValue> for SetPath {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, path_arg, value_arg) = require_three_args(args)?;
         let path = require_string(path_arg)?;
@@ -74,11 +77,11 @@ impl Function for SetPath {
 
 #[derive(Clone, Copy)]
 pub struct UpdatePath;
-impl Function for UpdatePath {
+impl Function<NonFunctionValue> for UpdatePath {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, path_arg, fn_arg) = require_three_args(args)?;
         let path = require_string(path_arg)?;

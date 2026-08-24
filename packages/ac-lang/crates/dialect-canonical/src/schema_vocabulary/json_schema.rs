@@ -1,5 +1,5 @@
 use ac_dialect::{Schema, ValidationError};
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
 /// A JSON Schema document that can validate `NonFunctionValue`s.

@@ -1,19 +1,20 @@
 use ac_runtime::Context;
+use ac_runtime_values::NonFunctionValue;
 
 /// Sets the maximum scope depth on a context.
-pub fn with_max_depth<C: Context>(ctx: &mut C, max: usize) -> &mut C {
+pub fn with_max_depth<C: Context<NonFunctionValue>>(ctx: &mut C, max: usize) -> &mut C {
     ctx.set_max_depth(max);
     ctx
 }
 
 /// Sets the maximum call count on a context.
-pub fn with_max_calls<C: Context>(ctx: &mut C, max: usize) -> &mut C {
+pub fn with_max_calls<C: Context<NonFunctionValue>>(ctx: &mut C, max: usize) -> &mut C {
     ctx.set_max_calls(max);
     ctx
 }
 
 /// Sets both resource limits on a context.
-pub fn with_limits<C: Context>(
+pub fn with_limits<C: Context<NonFunctionValue>>(
     ctx: &mut C,
     max_depth: Option<usize>,
     max_calls: Option<usize>,

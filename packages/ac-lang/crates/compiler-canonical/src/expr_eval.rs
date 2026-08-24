@@ -13,7 +13,7 @@ use ac_ast_canonical::Expr;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, APPLY_FUNCTION, FunctionResolver, Namespaces};
 use ac_runtime_example_1::DefaultHost;
-use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
 use ac_runtime_canonical::{CanonicalContext, Context, Error, Eval, Vm};
 
 /// Fallback depth limit for non-cyclic deep recursion.
@@ -190,7 +190,7 @@ impl ExprEval {
     }
 }
 
-impl Eval for ExprEval {
+impl Eval<NonFunctionValue> for ExprEval {
     fn eval_expr(
         &self,
         expr: &str,

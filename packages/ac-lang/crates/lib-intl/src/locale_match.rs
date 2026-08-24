@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use icu::decimal::provider::DecimalSymbolsV1;
 use icu_provider::{DataMarker, IterableDynamicDataProvider};
 
@@ -22,11 +23,11 @@ impl Default for GetCanonicalLocales {
     }
 }
 
-impl Function for GetCanonicalLocales {
+impl Function<NonFunctionValue> for GetCanonicalLocales {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let locales = if args.is_empty() {
             return Err(IntlError::InvalidArgument {
@@ -149,11 +150,11 @@ fn blob_supported_languages(
     Ok(langs)
 }
 
-impl Function for SupportedLocalesOf {
+impl Function<NonFunctionValue> for SupportedLocalesOf {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let blob_langs = if let Some(provider) = &self.provider {
             Some(blob_supported_languages(provider)?)

@@ -4,8 +4,9 @@ use std::pin::Pin;
 use std::rc::Rc;
 
 use ac_runtime::{
-    AsyncEval, CanonicalContext, Error, Eval, Expr, NonFunctionValue, VirtualMachine,
+    AsyncEval, Error, Eval, Expr, VirtualMachine,
 };
+use ac_runtime_values::{CanonicalContext, NonFunctionValue};
 use serde_json::Value as JsonValue;
 
 /// Builds a canonical VM context from small, composable decisions.
@@ -17,42 +18,42 @@ pub struct ContextBuilder {
     namespaces: HashMap<String, JsonValue>,
     max_depth: Option<usize>,
     max_calls: Option<usize>,
-    eval: Option<Rc<dyn Eval>>,
-    async_eval: Option<Rc<dyn AsyncEval>>,
+    eval: Option<Rc<dyn Eval<NonFunctionValue>>>,
+    async_eval: Option<Rc<dyn AsyncEval<NonFunctionValue>>>,
 }
 
-struct EvalClone(Rc<dyn Eval>);
+struct EvalClone(Rc<dyn Eval<NonFunctionValue>>);
 
 impl EvalClone {
-    fn new(inner: Rc<dyn Eval>) -> Self {
+    fn new(inner: Rc<dyn Eval<NonFunctionValue>>) -> Self {
         EvalClone(inner)
     }
 }
 
-impl Eval for EvalClone {
+impl Eval<NonFunctionValue> for EvalClone {
     fn eval_expr(
         &self,
         expr: &str,
         vars: &[(String, NonFunctionValue)],
-    ) -> Result<NonFunctionValue, Error> {
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         self.0.eval_expr(expr, vars)
     }
 }
 
-struct AsyncEvalClone(Rc<dyn AsyncEval>);
+struct AsyncEvalClone(Rc<dyn AsyncEval<NonFunctionValue>>);
 
 impl AsyncEvalClone {
-    fn new(inner: Rc<dyn AsyncEval>) -> Self {
+    fn new(inner: Rc<dyn AsyncEval<NonFunctionValue>>) -> Self {
         AsyncEvalClone(inner)
     }
 }
 
-impl AsyncEval for AsyncEvalClone {
+impl AsyncEval<NonFunctionValue> for AsyncEvalClone {
     fn eval_expr_async<'a>(
         &'a self,
         expr: &'a str,
         vars: &'a [(String, NonFunctionValue)],
-    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error<NonFunctionValue>>> + 'a>> {
         AsyncEval::eval_expr_async(&*self.0, expr, vars)
     }
 }
@@ -94,14 +95,14 @@ impl ContextBuilder {
     }
 
     /// Sets the synchronous expression-evaluation callback.
-    pub fn with_eval(mut self, eval: impl Eval + 'static) -> Self {
-        self.eval = Some(Rc::new(eval) as Rc<dyn Eval>);
+    pub fn with_eval(mut self, eval: impl Eval<NonFunctionValue> + 'static) -> Self {
+        self.eval = Some(Rc::new(eval) as Rc<dyn Eval<NonFunctionValue>>);
         self
     }
 
     /// Sets the asynchronous expression-evaluation callback.
-    pub fn with_async_eval(mut self, eval: impl AsyncEval + 'static) -> Self {
-        self.async_eval = Some(Rc::new(eval) as Rc<dyn AsyncEval>);
+    pub fn with_async_eval(mut self, eval: impl AsyncEval<NonFunctionValue> + 'static) -> Self {
+        self.async_eval = Some(Rc::new(eval) as Rc<dyn AsyncEval<NonFunctionValue>>);
         self
     }
 
@@ -132,12 +133,12 @@ impl ContextBuilder {
 /// the canonical tree-walking VM or any future alternative implementation.
 /// The context is built fresh on each evaluation from a [`ContextBuilder`],
 /// keeping the VM stateless and concurrency-friendly.
-pub struct Machine<V: VirtualMachine> {
+pub struct Machine<V: VirtualMachine<NonFunctionValue>> {
     vm: V,
     context: ContextBuilder,
 }
 
-impl<V: VirtualMachine> Machine<V> {
+impl<V: VirtualMachine<NonFunctionValue>> Machine<V> {
     /// Creates a machine from a virtual-machine implementation.
     pub fn new(vm: V) -> Self {
         Machine {
@@ -159,7 +160,7 @@ impl<V: VirtualMachine> Machine<V> {
     }
 
     /// Evaluates an expression synchronously.
-    pub fn eval(&self, expr: &Expr<NonFunctionValue>) -> Result<NonFunctionValue, Error> {
+    pub fn eval(&self, expr: &Expr<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let mut ctx = self.context.build();
         self.vm.eval(expr, &mut ctx)
     }
@@ -168,7 +169,7 @@ impl<V: VirtualMachine> Machine<V> {
     pub async fn eval_async(
         &self,
         expr: &Expr<NonFunctionValue>,
-    ) -> Result<NonFunctionValue, Error> {
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let mut ctx = self.context.build();
         self.vm.eval_async(expr, &mut ctx).await
     }

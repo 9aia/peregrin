@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 
 use super::common::{b, n, parse_iso, require_one_string};
 use chrono::{Datelike, Timelike};
@@ -8,11 +9,11 @@ macro_rules! component_fn {
     ($struct_name:ident, $extract:expr) => {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
-        impl Function for $struct_name {
+        impl Function<NonFunctionValue> for $struct_name {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut dyn Context,
+                _ctx: &mut dyn Context<NonFunctionValue>,
             ) -> Result<NonFunctionValue, Error> {
                 let input = require_one_string(args)?;
                 let dt = parse_iso(input)?;
@@ -31,11 +32,11 @@ component_fn!(Second, |dt: &chrono::DateTime<chrono::Utc>| dt.second());
 
 #[derive(Clone, Copy)]
 pub struct Weekday;
-impl Function for Weekday {
+impl Function<NonFunctionValue> for Weekday {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -48,11 +49,11 @@ impl Function for Weekday {
 
 #[derive(Clone, Copy)]
 pub struct DayOfYear;
-impl Function for DayOfYear {
+impl Function<NonFunctionValue> for DayOfYear {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -62,11 +63,11 @@ impl Function for DayOfYear {
 
 #[derive(Clone, Copy)]
 pub struct WeekOfYear;
-impl Function for WeekOfYear {
+impl Function<NonFunctionValue> for WeekOfYear {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -76,11 +77,11 @@ impl Function for WeekOfYear {
 
 #[derive(Clone, Copy)]
 pub struct Quarter;
-impl Function for Quarter {
+impl Function<NonFunctionValue> for Quarter {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -92,11 +93,11 @@ impl Function for Quarter {
 
 #[derive(Clone, Copy)]
 pub struct IsLeapYear;
-impl Function for IsLeapYear {
+impl Function<NonFunctionValue> for IsLeapYear {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -108,11 +109,11 @@ impl Function for IsLeapYear {
 
 #[derive(Clone, Copy)]
 pub struct IsWeekend;
-impl Function for IsWeekend {
+impl Function<NonFunctionValue> for IsWeekend {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;

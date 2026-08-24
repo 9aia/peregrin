@@ -1,30 +1,31 @@
 use ac_runtime::{
-    AsyncFunction, Function, GenericFunction, Host, LazyFunction, NonFunctionValue, Operation,
+    AsyncFunction, Function, GenericFunction, Host, LazyFunction, Operation,
 };
+use ac_runtime_values::NonFunctionValue;
 use std::collections::HashMap;
 
 /// A host that resolves nothing.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct NoopHost;
 
-impl Host for NoopHost {
-    fn function(&self, _name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for NoopHost {
+    fn function(&self, _name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         None
     }
 
-    fn async_function(&self, _name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, _name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         None
     }
 
-    fn operation(&self, _name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, _name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         None
     }
 
-    fn lazy_function(&self, _name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, _name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         None
     }
 
-    fn generic_function(&self, _name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, _name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         None
     }
 }
@@ -32,11 +33,11 @@ impl Host for NoopHost {
 /// A host built from maps of named callables.
 #[derive(Default)]
 pub struct MockHost {
-    functions: HashMap<String, Box<dyn Function>>,
-    async_functions: HashMap<String, Box<dyn AsyncFunction>>,
-    operations: HashMap<String, Box<dyn Operation>>,
-    lazy_functions: HashMap<String, Box<dyn LazyFunction>>,
-    generic_functions: HashMap<String, Box<dyn GenericFunction>>,
+    functions: HashMap<String, Box<dyn Function<NonFunctionValue>>>,
+    async_functions: HashMap<String, Box<dyn AsyncFunction<NonFunctionValue>>>,
+    operations: HashMap<String, Box<dyn Operation<NonFunctionValue>>>,
+    lazy_functions: HashMap<String, Box<dyn LazyFunction<NonFunctionValue>>>,
+    generic_functions: HashMap<String, Box<dyn GenericFunction<NonFunctionValue>>>,
 }
 
 impl MockHost {
@@ -46,54 +47,54 @@ impl MockHost {
     }
 
     /// Registers a synchronous function.
-    pub fn with_function(mut self, name: impl Into<String>, f: Box<dyn Function>) -> Self {
+    pub fn with_function(mut self, name: impl Into<String>, f: Box<dyn Function<NonFunctionValue>>) -> Self {
         self.functions.insert(name.into(), f);
         self
     }
 
     /// Registers an async function.
-    pub fn with_async(mut self, name: impl Into<String>, f: Box<dyn AsyncFunction>) -> Self {
+    pub fn with_async(mut self, name: impl Into<String>, f: Box<dyn AsyncFunction<NonFunctionValue>>) -> Self {
         self.async_functions.insert(name.into(), f);
         self
     }
 
     /// Registers an operation.
-    pub fn with_operation(mut self, name: impl Into<String>, f: Box<dyn Operation>) -> Self {
+    pub fn with_operation(mut self, name: impl Into<String>, f: Box<dyn Operation<NonFunctionValue>>) -> Self {
         self.operations.insert(name.into(), f);
         self
     }
 
     /// Registers a lazy function.
-    pub fn with_lazy(mut self, name: impl Into<String>, f: Box<dyn LazyFunction>) -> Self {
+    pub fn with_lazy(mut self, name: impl Into<String>, f: Box<dyn LazyFunction<NonFunctionValue>>) -> Self {
         self.lazy_functions.insert(name.into(), f);
         self
     }
 
     /// Registers a generic function.
-    pub fn with_generic(mut self, name: impl Into<String>, f: Box<dyn GenericFunction>) -> Self {
+    pub fn with_generic(mut self, name: impl Into<String>, f: Box<dyn GenericFunction<NonFunctionValue>>) -> Self {
         self.generic_functions.insert(name.into(), f);
         self
     }
 }
 
-impl Host for MockHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for MockHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         self.functions.get(name).map(|f| f.as_ref())
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         self.async_functions.get(name).map(|f| f.as_ref())
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         self.operations.get(name).map(|f| f.as_ref())
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         self.lazy_functions.get(name).map(|f| f.as_ref())
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         self.generic_functions.get(name).map(|f| f.as_ref())
     }
 }
@@ -119,19 +120,19 @@ impl<F> CaptureFn<F> {
     }
 }
 
-impl<F> Function for CaptureFn<F>
+impl<F> Function<NonFunctionValue> for CaptureFn<F>
 where
     F: Fn(
             &[NonFunctionValue],
-            &mut dyn ac_runtime::Context,
-        ) -> Result<NonFunctionValue, ac_runtime::Error>
+            &mut dyn ac_runtime::Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, ac_runtime::Error<NonFunctionValue>>
         + 'static,
 {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn ac_runtime::Context,
-    ) -> Result<NonFunctionValue, ac_runtime::Error> {
+        ctx: &mut dyn ac_runtime::Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, ac_runtime::Error<NonFunctionValue>> {
         self.calls.borrow_mut().push(args.to_vec());
         (self.inner)(args, ctx)
     }

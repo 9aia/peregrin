@@ -32,6 +32,7 @@ impl Stage<Config> for ParseStage {
             value,
             source_map,
             base_path,
+            format: source.format.to_string(),
         })
     }
 }

@@ -1,4 +1,6 @@
+use ac_runtime_values::NonFunctionValue;
 use ac_runtime::{Function, GenericFunction};
+
 use ac_runtime_modules::Module;
 
 use super::basic_operations::{
@@ -27,7 +29,7 @@ impl Module for ArrayModule {
         "array"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             // basic_operations
             "length" => Some(&Length),
@@ -99,7 +101,7 @@ impl Module for ArrayModule {
         }
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         match name {
             "map" => Some(&Map),
             "filter" => Some(&Filter),

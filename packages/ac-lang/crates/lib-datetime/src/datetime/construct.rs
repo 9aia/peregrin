@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 
 use super::common::{format_iso, s};
 use crate::DatetimeError;
@@ -17,11 +18,11 @@ fn get_number(args: &[NonFunctionValue], index: usize, default: f64) -> Result<f
 
 #[derive(Clone, Copy)]
 pub struct FromComponents;
-impl Function for FromComponents {
+impl Function<NonFunctionValue> for FromComponents {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {

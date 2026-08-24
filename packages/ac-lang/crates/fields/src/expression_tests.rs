@@ -2,7 +2,7 @@ use super::*;
 use crate::test_helpers::{DefaultHost, MathHost};
 use crate::types::Namespaces;
 use ac_dialect_canonical::AC_DIALECT;
-use ac_runtime::FunctionValue;
+use ac_runtime_values::FunctionValue;
 
 #[test]
 fn eval_body_user_defined() {

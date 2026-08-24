@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use ac_runtime::{AsyncFunction, Function, GenericFunction, Host, LazyFunction, Operation};
+use ac_runtime_values::NonFunctionValue;
 
 use crate::module::Module;
 
@@ -63,8 +64,8 @@ impl Default for ModuleHost {
     }
 }
 
-impl Host for ModuleHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for ModuleHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         if let Some((module_name, func_name)) = name.split_once('.') {
             self.modules
                 .iter()
@@ -75,7 +76,7 @@ impl Host for ModuleHost {
         }
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         if let Some((module_name, func_name)) = name.split_once('.') {
             self.modules
                 .iter()
@@ -86,7 +87,7 @@ impl Host for ModuleHost {
         }
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         if let Some((module_name, func_name)) = name.split_once('.') {
             self.modules
                 .iter()
@@ -97,7 +98,7 @@ impl Host for ModuleHost {
         }
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         if let Some((module_name, func_name)) = name.split_once('.') {
             self.modules
                 .iter()
@@ -108,7 +109,7 @@ impl Host for ModuleHost {
         }
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         if let Some((module_name, func_name)) = name.split_once('.') {
             self.modules
                 .iter()
@@ -117,5 +118,19 @@ impl Host for ModuleHost {
         } else {
             self.modules.iter().find_map(|m| m.operation(name))
         }
+    }
+
+    fn is_reserved(&self, name: &str) -> bool {
+        if name.contains('.') {
+            return false;
+        }
+        if self.modules.iter().any(|m| m.name() == name) {
+            return true;
+        }
+        self.function(name).is_some()
+            || self.lazy_function(name).is_some()
+            || self.generic_function(name).is_some()
+            || self.async_function(name).is_some()
+            || self.operation(name).is_some()
     }
 }

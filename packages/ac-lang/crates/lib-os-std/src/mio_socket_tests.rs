@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 use std::future::Future;
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -8,7 +9,6 @@ use std::thread;
 
 use ac_ast_canonical::Expr;
 use ac_lib_os::AsyncSocketModule;
-use ac_runtime::NonFunctionValue;
 use ac_runtime_canonical::{CanonicalContext, Error, Vm};
 use ac_runtime_modules::ModuleHost;
 

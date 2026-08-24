@@ -2,7 +2,9 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
-use ac_runtime::{AsyncFunction, Context, Error, Function, NonFunctionValue};
+use ac_runtime_values::{Error, NonFunctionValue};
+
+use ac_runtime::{AsyncFunction, Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::OsError;
@@ -60,11 +62,11 @@ impl Module for AsyncSocketModule {
         "socket"
     }
 
-    fn function(&self, _name: &str) -> Option<&dyn Function> {
+    fn function(&self, _name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         None
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         match name {
             "connect" => Some(&self.connect),
             "send" => Some(&self.send),
@@ -106,11 +108,11 @@ struct AsyncConnectFn {
     socket: Arc<dyn AsyncSocket>,
 }
 
-impl AsyncFunction for AsyncConnectFn {
+impl AsyncFunction<NonFunctionValue> for AsyncConnectFn {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut (dyn Context + 'a),
+        _ctx: &'a mut (dyn Context<NonFunctionValue> + 'a),
     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async move {
             let address = require_string_arg(args)?;
@@ -124,11 +126,11 @@ struct AsyncSendFn {
     socket: Arc<dyn AsyncSocket>,
 }
 
-impl AsyncFunction for AsyncSendFn {
+impl AsyncFunction<NonFunctionValue> for AsyncSendFn {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut (dyn Context + 'a),
+        _ctx: &'a mut (dyn Context<NonFunctionValue> + 'a),
     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async move {
             if args.len() < 2 {
@@ -155,11 +157,11 @@ struct AsyncRecvFn {
     socket: Arc<dyn AsyncSocket>,
 }
 
-impl AsyncFunction for AsyncRecvFn {
+impl AsyncFunction<NonFunctionValue> for AsyncRecvFn {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut (dyn Context + 'a),
+        _ctx: &'a mut (dyn Context<NonFunctionValue> + 'a),
     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async move {
             if args.len() < 2 {
@@ -185,11 +187,11 @@ struct AsyncCloseFn {
     socket: Arc<dyn AsyncSocket>,
 }
 
-impl AsyncFunction for AsyncCloseFn {
+impl AsyncFunction<NonFunctionValue> for AsyncCloseFn {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut (dyn Context + 'a),
+        _ctx: &'a mut (dyn Context<NonFunctionValue> + 'a),
     ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
         Box::pin(async move {
             let handle = require_number_arg(args)?;

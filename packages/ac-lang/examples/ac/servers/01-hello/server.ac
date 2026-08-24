@@ -1,0 +1,8 @@
+fn.tap(
+  (s) -> [
+    http_server.route(s, "GET", "/hello", "Hello from AC"),
+    http_server.start(s, "127.0.0.1:8081"),
+    http_server.join(s)
+  ],
+  http_server.new()
+)

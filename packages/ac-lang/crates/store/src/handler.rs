@@ -1,5 +1,5 @@
-use ac_ast_canonical::{Expr, HandlerClause};
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
+use ac_ast_canonical::{Expr, HandlerClause, Pattern};
 use serde_json::Value as JsonValue;
 
 use crate::canonical::canonical_string;
@@ -40,6 +40,41 @@ pub fn handler_clause_to_json(clause: &RuntimeHandlerClause) -> JsonValue {
     ]))
 }
 
+/// Convert a pattern to canonical JSON for hashing.
+fn pattern_to_json(pattern: &Pattern) -> JsonValue {
+    match pattern {
+        Pattern::Identifier(name) => JsonValue::Object(serde_json::Map::from_iter([
+            ("type".to_string(), JsonValue::String("identifier".to_string())),
+            ("name".to_string(), JsonValue::String(name.clone())),
+        ])),
+        Pattern::Array(elements) => JsonValue::Object(serde_json::Map::from_iter([
+            ("type".to_string(), JsonValue::String("array".to_string())),
+            (
+                "elements".to_string(),
+                JsonValue::Array(elements.iter().map(pattern_to_json).collect()),
+            ),
+        ])),
+        Pattern::Object(entries) => JsonValue::Object(serde_json::Map::from_iter([
+            ("type".to_string(), JsonValue::String("object".to_string())),
+            (
+                "entries".to_string(),
+                JsonValue::Array(
+                    entries
+                        .iter()
+                        .map(|(k, v)| {
+                            JsonValue::Array(vec![JsonValue::String(k.clone()), pattern_to_json(v)])
+                        })
+                        .collect(),
+                ),
+            ),
+        ])),
+        Pattern::Rest(name) => JsonValue::Object(serde_json::Map::from_iter([
+            ("type".to_string(), JsonValue::String("rest".to_string())),
+            ("name".to_string(), JsonValue::String(name.clone())),
+        ])),
+    }
+}
+
 /// Convert an expression to canonical JSON for hashing.
 fn expr_to_json(expr: &RuntimeExpr) -> JsonValue {
     match expr {
@@ -50,6 +85,14 @@ fn expr_to_json(expr: &RuntimeExpr) -> JsonValue {
         Expr::Call { name, args, .. } => JsonValue::Object(serde_json::Map::from_iter([
             ("type".to_string(), JsonValue::String("call".to_string())),
             ("name".to_string(), JsonValue::String(name.clone())),
+            (
+                "args".to_string(),
+                JsonValue::Array(args.iter().map(expr_to_json).collect()),
+            ),
+        ])),
+        Expr::Apply { target, args } => JsonValue::Object(serde_json::Map::from_iter([
+            ("type".to_string(), JsonValue::String("apply".to_string())),
+            ("target".to_string(), expr_to_json(target)),
             (
                 "args".to_string(),
                 JsonValue::Array(args.iter().map(expr_to_json).collect()),
@@ -83,6 +126,46 @@ fn expr_to_json(expr: &RuntimeExpr) -> JsonValue {
                         .collect(),
                 ),
             ),
+        ])),
+        Expr::Var(name) => JsonValue::Object(serde_json::Map::from_iter([
+            ("type".to_string(), JsonValue::String("var".to_string())),
+            ("name".to_string(), JsonValue::String(name.clone())),
+        ])),
+        Expr::Assign { target, value } => JsonValue::Object(serde_json::Map::from_iter([
+            ("type".to_string(), JsonValue::String("assign".to_string())),
+            ("target".to_string(), pattern_to_json(target)),
+            ("value".to_string(), expr_to_json(value)),
+        ])),
+        Expr::Function {
+            type_params,
+            params,
+            ret,
+            body,
+        } => JsonValue::Object(serde_json::Map::from_iter([
+            ("type".to_string(), JsonValue::String("function".to_string())),
+            (
+                "type_params".to_string(),
+                JsonValue::Array(type_params.iter().map(|s| JsonValue::String(s.clone())).collect()),
+            ),
+            (
+                "params".to_string(),
+                JsonValue::Array(
+                    params
+                        .iter()
+                        .map(|(pat, t)| {
+                            JsonValue::Array(vec![
+                                pattern_to_json(pat),
+                                t.as_deref().map(expr_to_json).unwrap_or(JsonValue::Null),
+                            ])
+                        })
+                        .collect(),
+                ),
+            ),
+            (
+                "ret".to_string(),
+                ret.as_deref().map(expr_to_json).unwrap_or(JsonValue::Null),
+            ),
+            ("body".to_string(), JsonValue::String(body.clone())),
         ])),
     }
 }

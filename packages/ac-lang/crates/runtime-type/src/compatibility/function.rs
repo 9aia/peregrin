@@ -1,6 +1,7 @@
 //! `is_compatible` as an AC-Lang `FunctionValue`.
 
-use ac_runtime::FunctionValue;
+use ac_runtime_values::FunctionValue;
+
 use serde_json::Value as JsonValue;
 
 /// The AC-Lang `is_compatible` function as a `FunctionValue`.

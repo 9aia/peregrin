@@ -1,7 +1,10 @@
 use std::collections::HashSet;
 
-use ac_runtime::{Context, Error, Function};
-use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
+
 use ac_runtime_modules::Module;
 
 /// The `set` module — set-theoretic operations on arrays.
@@ -19,7 +22,7 @@ impl Module for SetModule {
         "set"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "unique" => Some(&Unique),
             "union" => Some(&Union),
@@ -69,7 +72,7 @@ fn arr(items: &[serde_json::Value]) -> NonFunctionValue {
 }
 
 fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error> {
-    arg.as_function().ok_or(Error::TypeMismatch {
+    FunctionValue::from_json(arg.inner()).ok_or(Error::TypeMismatch {
         expected: "function value",
         got: "non-function",
     })
@@ -117,11 +120,11 @@ fn dedup_ordered(items: &[serde_json::Value]) -> Vec<serde_json::Value> {
 
 #[derive(Clone, Copy)]
 pub struct Unique;
-impl Function for Unique {
+impl Function<NonFunctionValue> for Unique {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_array(args)?;
         Ok(arr(&dedup_ordered(input)))
@@ -132,11 +135,11 @@ impl Function for Unique {
 
 #[derive(Clone, Copy)]
 pub struct Union;
-impl Function for Union {
+impl Function<NonFunctionValue> for Union {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_arrays(args)?;
         let mut seen: HashSet<String> = HashSet::new();
@@ -155,11 +158,11 @@ impl Function for Union {
 
 #[derive(Clone, Copy)]
 pub struct Intersection;
-impl Function for Intersection {
+impl Function<NonFunctionValue> for Intersection {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_arrays(args)?;
         let b_set: HashSet<String> = b.iter().map(value_key).collect();
@@ -179,11 +182,11 @@ impl Function for Intersection {
 
 #[derive(Clone, Copy)]
 pub struct Difference;
-impl Function for Difference {
+impl Function<NonFunctionValue> for Difference {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_arrays(args)?;
         let b_set: HashSet<String> = b.iter().map(value_key).collect();
@@ -203,11 +206,11 @@ impl Function for Difference {
 
 #[derive(Clone, Copy)]
 pub struct SymmetricDifference;
-impl Function for SymmetricDifference {
+impl Function<NonFunctionValue> for SymmetricDifference {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_arrays(args)?;
         let a_set: HashSet<String> = a.iter().map(value_key).collect();
@@ -234,11 +237,11 @@ impl Function for SymmetricDifference {
 
 #[derive(Clone, Copy)]
 pub struct Without;
-impl Function for Without {
+impl Function<NonFunctionValue> for Without {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.is_empty() {
             return Err(Error::ArgumentCount {
@@ -264,11 +267,11 @@ impl Function for Without {
 
 #[derive(Clone, Copy)]
 pub struct UniqueBy;
-impl Function for UniqueBy {
+impl Function<NonFunctionValue> for UniqueBy {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {

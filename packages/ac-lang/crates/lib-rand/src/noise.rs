@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 
 use super::common::{num, require_number};
 
@@ -151,11 +152,11 @@ fn perlin_3d(x: f64, y: f64, z: f64) -> f64 {
 #[derive(Clone, Copy)]
 pub struct Perlin1D;
 
-impl Function for Perlin1D {
+impl Function<NonFunctionValue> for Perlin1D {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let x = require_number(args, 0)?;
         Ok(num(perlin_1d(x)))
@@ -175,11 +176,11 @@ impl Function for Perlin1D {
 #[derive(Clone, Copy)]
 pub struct Perlin2D;
 
-impl Function for Perlin2D {
+impl Function<NonFunctionValue> for Perlin2D {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let x = require_number(args, 0)?;
         let y = require_number(args, 1)?;
@@ -200,11 +201,11 @@ impl Function for Perlin2D {
 #[derive(Clone, Copy)]
 pub struct Perlin3D;
 
-impl Function for Perlin3D {
+impl Function<NonFunctionValue> for Perlin3D {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let x = require_number(args, 0)?;
         let y = require_number(args, 1)?;
@@ -419,11 +420,11 @@ fn simplex_3d(x: f64, y: f64, z: f64) -> f64 {
 #[derive(Clone, Copy)]
 pub struct Simplex2D;
 
-impl Function for Simplex2D {
+impl Function<NonFunctionValue> for Simplex2D {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let x = require_number(args, 0)?;
         let y = require_number(args, 1)?;
@@ -444,11 +445,11 @@ impl Function for Simplex2D {
 #[derive(Clone, Copy)]
 pub struct Simplex3D;
 
-impl Function for Simplex3D {
+impl Function<NonFunctionValue> for Simplex3D {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let x = require_number(args, 0)?;
         let y = require_number(args, 1)?;

@@ -54,14 +54,14 @@ pub trait ExprParser: Send + Sync {
     ///
     /// The keyword must be a standalone word — `handleIt(` does not match.
     /// String literals are skipped.
-    fn find_handle_open(&self, s: &str) -> Option<usize> {
+    fn find_handle_open(&self, _s: &str) -> Option<usize> {
         None
     }
 
     /// Find the position of the block-open token (`{` in canonical) in `s`.
     /// Used to locate the handler clause block in a handle expression.
     /// Returns the byte position of the first `{` outside of string literals.
-    fn find_block_open(&self, s: &str) -> Option<usize> {
+    fn find_block_open(&self, _s: &str) -> Option<usize> {
         None
     }
 

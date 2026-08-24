@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 
 use super::common::{format_iso, parse_iso, require_string_and_number, s};
 use crate::DatetimeError;
@@ -7,11 +8,11 @@ use chrono::{DateTime, Datelike, Duration, TimeZone, Timelike, Utc};
 
 #[derive(Clone, Copy)]
 pub struct AddSeconds;
-impl Function for AddSeconds {
+impl Function<NonFunctionValue> for AddSeconds {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -24,11 +25,11 @@ impl Function for AddSeconds {
 
 #[derive(Clone, Copy)]
 pub struct AddMinutes;
-impl Function for AddMinutes {
+impl Function<NonFunctionValue> for AddMinutes {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -42,11 +43,11 @@ impl Function for AddMinutes {
 
 #[derive(Clone, Copy)]
 pub struct AddHours;
-impl Function for AddHours {
+impl Function<NonFunctionValue> for AddHours {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -60,11 +61,11 @@ impl Function for AddHours {
 
 #[derive(Clone, Copy)]
 pub struct AddDays;
-impl Function for AddDays {
+impl Function<NonFunctionValue> for AddDays {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -78,11 +79,11 @@ impl Function for AddDays {
 
 #[derive(Clone, Copy)]
 pub struct AddWeeks;
-impl Function for AddWeeks {
+impl Function<NonFunctionValue> for AddWeeks {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -131,11 +132,11 @@ fn add_months_to_date(dt: DateTime<Utc>, months: i64) -> Result<DateTime<Utc>, E
 
 #[derive(Clone, Copy)]
 pub struct AddMonths;
-impl Function for AddMonths {
+impl Function<NonFunctionValue> for AddMonths {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;
@@ -146,11 +147,11 @@ impl Function for AddMonths {
 
 #[derive(Clone, Copy)]
 pub struct AddYears;
-impl Function for AddYears {
+impl Function<NonFunctionValue> for AddYears {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (input, amount) = require_string_and_number(args)?;
         let dt = parse_iso(input)?;

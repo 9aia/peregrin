@@ -1,6 +1,6 @@
 //! Shared test stub for the dialect facade.
 
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 
 use crate::dialect::Dialect;
 use crate::document_vocabulary::DocumentVocabulary;

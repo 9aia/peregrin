@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 use super::common::{obj_value, require_function_value, require_object, require_two_args};
 use crate::shared::{apply_fn, is_truthy_fn, require_one_arg, value_to_string};
@@ -8,11 +11,11 @@ use crate::shared::{apply_fn, is_truthy_fn, require_one_arg, value_to_string};
 
 #[derive(Clone, Copy)]
 pub struct MapValues;
-impl Function for MapValues {
+impl Function<NonFunctionValue> for MapValues {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_arg, obj_arg) = require_two_args(args)?;
         let fn_val = require_function_value(fn_arg)?;
@@ -30,11 +33,11 @@ impl Function for MapValues {
 
 #[derive(Clone, Copy)]
 pub struct MapKeys;
-impl Function for MapKeys {
+impl Function<NonFunctionValue> for MapKeys {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_arg, obj_arg) = require_two_args(args)?;
         let fn_val = require_function_value(fn_arg)?;
@@ -53,11 +56,11 @@ impl Function for MapKeys {
 
 #[derive(Clone, Copy)]
 pub struct FilterKeys;
-impl Function for FilterKeys {
+impl Function<NonFunctionValue> for FilterKeys {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_arg, obj_arg) = require_two_args(args)?;
         let fn_val = require_function_value(fn_arg)?;
@@ -76,11 +79,11 @@ impl Function for FilterKeys {
 
 #[derive(Clone, Copy)]
 pub struct FilterValues;
-impl Function for FilterValues {
+impl Function<NonFunctionValue> for FilterValues {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (fn_arg, obj_arg) = require_two_args(args)?;
         let fn_val = require_function_value(fn_arg)?;
@@ -99,11 +102,11 @@ impl Function for FilterValues {
 
 #[derive(Clone, Copy)]
 pub struct Invert;
-impl Function for Invert {
+impl Function<NonFunctionValue> for Invert {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
@@ -120,11 +123,11 @@ impl Function for Invert {
 
 #[derive(Clone, Copy)]
 pub struct CloneDeep;
-impl Function for CloneDeep {
+impl Function<NonFunctionValue> for CloneDeep {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         Ok(NonFunctionValue::new(arg.inner().clone()))

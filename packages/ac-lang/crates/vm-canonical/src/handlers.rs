@@ -1,6 +1,10 @@
-use ac_runtime::{Context, Error, Expr, Host, NonFunctionValue};
+use ac_runtime::{Context, Error, Expr, Host};
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
 use ac_runtime_common::{ExprHandler, LegoVm};
 use serde_json::Value as JsonValue;
+
+use crate::pattern::{define_pattern, pattern_to_json};
+use crate::vm::{json_kind, qualified_name};
 
 type RuntimeExpr = Expr<NonFunctionValue>;
 
@@ -16,13 +20,13 @@ impl ExprHandler for ValueHandler {
     fn eval(
         &self,
         expr: &RuntimeExpr,
-        _ctx: &mut dyn Context,
-        _host: &dyn Host,
+        _ctx: &mut dyn Context<NonFunctionValue>,
+        _host: &dyn Host<NonFunctionValue>,
         _dispatch: &mut dyn FnMut(
             &RuntimeExpr,
-            &mut dyn Context,
-        ) -> Result<NonFunctionValue, Error>,
-    ) -> Result<NonFunctionValue, Error> {
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         match expr {
             Expr::Value(value) => Ok(value.clone()),
             _ => Err(Error::PrimitiveError("expected value".to_string())),
@@ -42,10 +46,10 @@ impl ExprHandler for CallHandler {
     fn eval(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut dyn Context,
-        host: &dyn Host,
-        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context) -> Result<NonFunctionValue, Error>,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+        host: &dyn Host<NonFunctionValue>,
+        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let Expr::Call {
             name,
             args,
@@ -82,7 +86,7 @@ impl ExprHandler for CallHandler {
         }
 
         if let Ok(value) = ctx.get(name)
-            && value.is_function()
+            && FunctionValue::from_json(value.inner()).is_some()
         {
             let apply = host
                 .function("apply")
@@ -93,6 +97,58 @@ impl ExprHandler for CallHandler {
         }
 
         Err(Error::UnknownFunction(name.clone()))
+    }
+}
+
+/// Handles calls to an arbitrary function value.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ApplyHandler;
+
+impl ExprHandler for ApplyHandler {
+    fn can_handle(&self, expr: &RuntimeExpr) -> bool {
+        matches!(expr, Expr::Apply { .. })
+    }
+
+    fn eval(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn Context<NonFunctionValue>,
+        host: &dyn Host<NonFunctionValue>,
+        dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
+        let Expr::Apply { target, args } = expr else {
+            return Err(Error::PrimitiveError("expected apply".to_string()));
+        };
+
+        let fn_value = dispatch(target, ctx)?;
+        let evaluated_args: Vec<NonFunctionValue> = args
+            .iter()
+            .map(|arg| dispatch(arg, ctx))
+            .collect::<Result<Vec<_>, _>>()?;
+
+        if let Some(name) = fn_value.as_str() {
+            if let Some(function) = host.function(name) {
+                return function.call(&evaluated_args, ctx);
+            }
+            return Err(Error::UnknownFunction(name.to_string()));
+        }
+
+        if FunctionValue::from_json(fn_value.inner()).is_none() {
+            return Err(Error::TypeMismatch {
+                expected: "function",
+                got: "non-function",
+            });
+        }
+
+        let apply = host
+            .function("apply")
+            .ok_or_else(|| Error::UnknownFunction("apply".to_string()))?;
+        let mut apply_args = vec![fn_value];
+        apply_args.extend(evaluated_args);
+        apply.call(&apply_args, ctx)
     }
 }
 
@@ -108,10 +164,10 @@ impl ExprHandler for ArrayHandler {
     fn eval(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut dyn Context,
-        _host: &dyn Host,
-        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context) -> Result<NonFunctionValue, Error>,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+        _host: &dyn Host<NonFunctionValue>,
+        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let Expr::Array(elements) = expr else {
             return Err(Error::PrimitiveError("expected array".to_string()));
         };
@@ -136,10 +192,10 @@ impl ExprHandler for ObjectHandler {
     fn eval(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut dyn Context,
-        _host: &dyn Host,
-        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context) -> Result<NonFunctionValue, Error>,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+        _host: &dyn Host<NonFunctionValue>,
+        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let Expr::Object(entries) = expr else {
             return Err(Error::PrimitiveError("expected object".to_string()));
         };
@@ -150,6 +206,99 @@ impl ExprHandler for ObjectHandler {
             map.insert(key.clone(), value);
         }
         Ok(NonFunctionValue::new(JsonValue::Object(map)))
+    }
+}
+
+/// Handles postfix index expressions.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct IndexHandler;
+
+impl ExprHandler for IndexHandler {
+    fn can_handle(&self, expr: &RuntimeExpr) -> bool {
+        matches!(expr, Expr::Index { .. })
+    }
+
+    fn eval(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn Context<NonFunctionValue>,
+        host: &dyn Host<NonFunctionValue>,
+        dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
+        let Expr::Index { target, index } = expr else {
+            return Err(Error::PrimitiveError("expected index".to_string()));
+        };
+
+        let target_value = dispatch(target, ctx)?;
+        let index_value = dispatch(index, ctx)?;
+
+        let (name, got) = match target_value.inner() {
+            JsonValue::Array(_) => ("array.at", "array"),
+            JsonValue::Object(_) => ("obj.get", "object"),
+            JsonValue::String(_) => ("str.at", "string"),
+            other => {
+                return Err(Error::TypeMismatch {
+                    expected: "array, object, or string",
+                    got: json_kind(other),
+                })
+            }
+        };
+
+        let Some(function) = host.function(name) else {
+            return Err(Error::TypeMismatch { expected: "indexable", got });
+        };
+
+        ctx.increment_call_count()?;
+        ctx.check_depth()?;
+
+        function.call(&[target_value, index_value], ctx)
+    }
+}
+
+/// Handles postfix field access expressions.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FieldAccessHandler;
+
+impl ExprHandler for FieldAccessHandler {
+    fn can_handle(&self, expr: &RuntimeExpr) -> bool {
+        matches!(expr, Expr::FieldAccess { .. })
+    }
+
+    fn eval(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn Context<NonFunctionValue>,
+        _host: &dyn Host<NonFunctionValue>,
+        dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
+        let Expr::FieldAccess { target, field } = expr else {
+            return Err(Error::PrimitiveError("expected field access".to_string()));
+        };
+
+        let target_value = dispatch(target, ctx)?;
+        match target_value.inner() {
+            JsonValue::Object(map) => {
+                let value = map.get(field).cloned().unwrap_or(JsonValue::Null);
+                Ok(NonFunctionValue::new(value))
+            }
+            _ => {
+                if let Some(name) = qualified_name(target) {
+                    let qualified = format!("{name}.{field}");
+                    Ok(NonFunctionValue::new(JsonValue::String(qualified)))
+                } else {
+                    Err(Error::TypeMismatch {
+                        expected: "object",
+                        got: json_kind(target_value.inner()),
+                    })
+                }
+            }
+        }
     }
 }
 
@@ -165,13 +314,13 @@ impl ExprHandler for HandleHandler {
     fn eval(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut dyn Context,
-        host: &dyn Host,
+        ctx: &mut dyn Context<NonFunctionValue>,
+        host: &dyn Host<NonFunctionValue>,
         _dispatch: &mut dyn FnMut(
             &RuntimeExpr,
-            &mut dyn Context,
-        ) -> Result<NonFunctionValue, Error>,
-    ) -> Result<NonFunctionValue, Error> {
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let result =
             crate::CanonicalVm::new(crate::HostRef::new(host)).eval_resumable(expr, ctx, None);
 
@@ -201,12 +350,140 @@ impl ExprHandler for HandleHandler {
     }
 }
 
+/// Handles bare identifier values.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct VarHandler;
+
+impl ExprHandler for VarHandler {
+    fn can_handle(&self, expr: &RuntimeExpr) -> bool {
+        matches!(expr, Expr::Var(_))
+    }
+
+    fn eval(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn Context<NonFunctionValue>,
+        host: &dyn Host<NonFunctionValue>,
+        _dispatch: &mut dyn FnMut(
+            &RuntimeExpr,
+            &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
+        let Expr::Var(name) = expr else {
+            return Err(Error::PrimitiveError("expected variable".to_string()));
+        };
+
+        match ctx.get(name) {
+            Ok(value) => Ok(value),
+            Err(_) => {
+                if let Some(function) = host.function(name) {
+                    function.call(&[], ctx)
+                } else {
+                    Err(Error::UnknownVariable(name.clone()))
+                }
+            }
+        }
+    }
+}
+
+/// Handles assignment expressions.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct AssignHandler;
+
+impl ExprHandler for AssignHandler {
+    fn can_handle(&self, expr: &RuntimeExpr) -> bool {
+        matches!(expr, Expr::Assign { .. })
+    }
+
+    fn eval(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn Context<NonFunctionValue>,
+        host: &dyn Host<NonFunctionValue>,
+        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
+        let Expr::Assign { target, value } = expr else {
+            return Err(Error::PrimitiveError("expected assignment".to_string()));
+        };
+
+        for name in target.bound_names() {
+            if host.is_reserved(&name) {
+                return Err(Error::ReservedName(name));
+            }
+        }
+        let evaluated = dispatch(value, ctx)?;
+        define_pattern(ctx, target, evaluated.clone())?;
+        Ok(evaluated)
+    }
+}
+
+/// Handles first-class function literals.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct FunctionHandler;
+
+impl ExprHandler for FunctionHandler {
+    fn can_handle(&self, expr: &RuntimeExpr) -> bool {
+        matches!(expr, Expr::Function { .. })
+    }
+
+    fn eval(
+        &self,
+        expr: &RuntimeExpr,
+        ctx: &mut dyn Context<NonFunctionValue>,
+        _host: &dyn Host<NonFunctionValue>,
+        dispatch: &mut dyn FnMut(&RuntimeExpr, &mut dyn Context<NonFunctionValue>) -> Result<NonFunctionValue, Error<NonFunctionValue>>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
+        let Expr::Function {
+            type_params: _,
+            params,
+            ret,
+            body,
+        } = expr
+        else {
+            return Err(Error::PrimitiveError("expected function".to_string()));
+        };
+
+        let mut evaluated_params = Vec::new();
+        let mut pattern_json = Vec::new();
+        for (pattern, ty) in params {
+            let schema = match ty {
+                Some(type_expr) => dispatch(type_expr, ctx)?.into_inner(),
+                None => JsonValue::Null,
+            };
+            for name in pattern.bound_names() {
+                evaluated_params.push((name, schema.clone()));
+            }
+            pattern_json.push(pattern_to_json(pattern));
+        }
+
+        let return_schema = match ret {
+            Some(type_expr) => Some(dispatch(type_expr, ctx)?.into_inner()),
+            None => None,
+        };
+
+        let function_value = FunctionValue {
+            params: evaluated_params,
+            return_schema,
+            body: body.clone(),
+            patterns: pattern_json,
+        };
+
+        Ok(NonFunctionValue::new(function_value.to_json()))
+    }
+}
+
 /// Builds a canonical `LegoVm` with the default expression handlers.
-pub fn canonical_vm<H: Host>(host: H) -> LegoVm<H> {
+pub fn canonical_vm<H: Host<NonFunctionValue>>(host: H) -> LegoVm<H> {
     LegoVm::new(host)
         .with(ValueHandler)
+        .with(VarHandler)
+        .with(AssignHandler)
+        .with(FunctionHandler)
         .with(CallHandler)
+        .with(ApplyHandler)
         .with(ArrayHandler)
         .with(ObjectHandler)
+        .with(IndexHandler)
+        .with(FieldAccessHandler)
         .with(HandleHandler)
 }

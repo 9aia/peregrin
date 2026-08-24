@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 
 use super::common::{
     format_iso, parse_iso, parse_with_format_and_offset, require_one_string, require_string, s,
@@ -7,11 +8,11 @@ use super::common::{
 
 #[derive(Clone, Copy)]
 pub struct Format;
-impl Function for Format {
+impl Function<NonFunctionValue> for Format {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;
@@ -27,11 +28,11 @@ impl Function for Format {
 
 #[derive(Clone, Copy)]
 pub struct Parse;
-impl Function for Parse {
+impl Function<NonFunctionValue> for Parse {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = if args.len() >= 2 {

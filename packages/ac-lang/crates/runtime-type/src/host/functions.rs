@@ -1,7 +1,8 @@
 //! Type-checking helper host functions.
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error, FunctionValue, NonFunctionValue};
+use ac_runtime::{Context, Function};
+
 use serde_json::Value as JsonValue;
 
 /// Host function `type_kind(type_value)` → `string`.
@@ -10,11 +11,11 @@ use serde_json::Value as JsonValue;
 #[derive(Clone, Copy)]
 pub struct TypeKind;
 
-impl Function for TypeKind {
+impl Function<NonFunctionValue> for TypeKind {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.is_empty() {
             return Err(Error::ArgumentCount {
@@ -38,11 +39,11 @@ impl Function for TypeKind {
 #[derive(Clone, Copy)]
 pub struct TypeName;
 
-impl Function for TypeName {
+impl Function<NonFunctionValue> for TypeName {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.is_empty() {
             return Err(Error::ArgumentCount {
@@ -66,11 +67,11 @@ impl Function for TypeName {
 #[derive(Clone, Copy)]
 pub struct PairSecond;
 
-impl Function for PairSecond {
+impl Function<NonFunctionValue> for PairSecond {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.is_empty() {
             return Err(Error::ArgumentCount {
@@ -95,11 +96,11 @@ impl Function for PairSecond {
 #[derive(Clone, Copy)]
 pub struct ZipAll;
 
-impl Function for ZipAll {
+impl Function<NonFunctionValue> for ZipAll {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -115,7 +116,7 @@ impl Function for ZipAll {
             expected: "array",
             got: "non-array",
         })?;
-        let fn_val = args[2].as_function().ok_or(Error::TypeMismatch {
+        let fn_val = FunctionValue::from_json(args[2].inner()).ok_or(Error::TypeMismatch {
             expected: "function value",
             got: "non-function",
         })?;
@@ -148,11 +149,11 @@ impl Function for ZipAll {
 #[derive(Clone, Copy)]
 pub struct ObjEvery;
 
-impl Function for ObjEvery {
+impl Function<NonFunctionValue> for ObjEvery {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -168,7 +169,7 @@ impl Function for ObjEvery {
             expected: "object",
             got: "non-object",
         })?;
-        let fn_val = args[2].as_function().ok_or(Error::TypeMismatch {
+        let fn_val = FunctionValue::from_json(args[2].inner()).ok_or(Error::TypeMismatch {
             expected: "function value",
             got: "non-function",
         })?;
@@ -201,11 +202,11 @@ impl Function for ObjEvery {
 #[derive(Clone, Copy)]
 pub struct FuncParamsCompatible;
 
-impl Function for FuncParamsCompatible {
+impl Function<NonFunctionValue> for FuncParamsCompatible {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -221,7 +222,7 @@ impl Function for FuncParamsCompatible {
             expected: "array",
             got: "non-array",
         })?;
-        let fn_val = args[2].as_function().ok_or(Error::TypeMismatch {
+        let fn_val = FunctionValue::from_json(args[2].inner()).ok_or(Error::TypeMismatch {
             expected: "function value",
             got: "non-function",
         })?;
@@ -263,11 +264,11 @@ impl Function for FuncParamsCompatible {
 #[derive(Clone, Copy)]
 pub struct AppArgsCompatible;
 
-impl Function for AppArgsCompatible {
+impl Function<NonFunctionValue> for AppArgsCompatible {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -283,7 +284,7 @@ impl Function for AppArgsCompatible {
             expected: "array",
             got: "non-array",
         })?;
-        let fn_val = args[2].as_function().ok_or(Error::TypeMismatch {
+        let fn_val = FunctionValue::from_json(args[2].inner()).ok_or(Error::TypeMismatch {
             expected: "function value",
             got: "non-function",
         })?;

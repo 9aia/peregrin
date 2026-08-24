@@ -1,5 +1,6 @@
 use ac_runtime::{Function, Host};
 use ac_runtime_example_1::DefaultHost;
+use ac_runtime_values::NonFunctionValue;
 
 use crate::functions::{
     AstArgs, AstIsCall, AstName, AstToString, Eval, IsFunction, Keys, Parse, TypeOf,
@@ -49,8 +50,8 @@ impl Default for MetaHost {
     }
 }
 
-impl Host for MetaHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for MetaHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "typeof" => Some(&self.type_of),
             "keys" => Some(&self.keys),

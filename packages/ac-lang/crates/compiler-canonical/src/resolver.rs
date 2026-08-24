@@ -13,8 +13,9 @@ use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{self, DEFAULT_NAMESPACE};
 use ac_module_resolver_core::{ModuleResolver, ResolvedModule};
-use ac_runtime::{Context, Error, Function, Host};
-use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function, Host};
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
 use ac_runtime_example_1::DefaultHost;
 use serde_json::Value as JsonValue;
 
@@ -50,15 +51,15 @@ impl CompilerHost {
     }
 }
 
-impl Host for CompilerHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for CompilerHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         if name == "import" {
             return Some(&self.import);
         }
         if let Some(function) = self.default.function(name) {
             return Some(function);
         }
-        self.data_functions.get(name).map(|f| f as &dyn Function)
+        self.data_functions.get(name).map(|f| f as &dyn Function<NonFunctionValue>)
     }
 }
 
@@ -81,11 +82,11 @@ impl DataFunction {
     }
 }
 
-impl Function for DataFunction {
+impl Function<NonFunctionValue> for DataFunction {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let vars: Vec<(String, NonFunctionValue)> = self
             .params
@@ -139,11 +140,11 @@ impl Import {
     }
 }
 
-impl Function for Import {
+impl Function<NonFunctionValue> for Import {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let path = args
             .first()

@@ -1,5 +1,5 @@
+use ac_runtime_values::NonFunctionValue;
 use ac_dialect::Dialect;
-use ac_runtime::NonFunctionValue;
 
 use crate::types::{ArgSpec, ComputedField, ExtractedFields};
 

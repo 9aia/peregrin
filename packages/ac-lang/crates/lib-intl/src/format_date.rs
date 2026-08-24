@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use icu::datetime::fieldsets::builder::{DateFields, FieldSetBuilder, ZoneStyle};
 use icu::datetime::input::{Date, DateTime, Time, ZonedDateTime};
 use icu::datetime::options::{Length, SubsecondDigits, TimePrecision, YearStyle};
@@ -77,11 +78,11 @@ impl Default for FormatDate {
     }
 }
 
-impl Function for FormatDate {
+impl Function<NonFunctionValue> for FormatDate {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let date_str = require_string(args, 0)?;
         let mut locale = optional_locale(args, 1)?;
@@ -138,11 +139,11 @@ impl Default for FormatDateToParts {
     }
 }
 
-impl Function for FormatDateToParts {
+impl Function<NonFunctionValue> for FormatDateToParts {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let date_str = require_string(args, 0)?;
         let mut locale = optional_locale(args, 1)?;

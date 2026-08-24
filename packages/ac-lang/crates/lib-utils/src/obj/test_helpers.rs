@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{CanonicalContext, Context, Error, Eval};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Eval};
+use ac_runtime_values::{CanonicalContext, Error};
+
 pub(super) use ac_runtime_modules::Module;
 
 pub(super) use super::module::ObjModule;
@@ -28,10 +31,6 @@ pub(super) fn s(v: &str) -> NonFunctionValue {
     NonFunctionValue::new(v.to_string())
 }
 
-pub(super) fn b(v: bool) -> NonFunctionValue {
-    NonFunctionValue::new(v)
-}
-
 pub(super) fn null() -> NonFunctionValue {
     NonFunctionValue::new(serde_json::Value::Null)
 }
@@ -52,10 +51,10 @@ pub(super) fn obj(pairs: &[(&str, serde_json::Value)]) -> NonFunctionValue {
 
 use ac_ast_canonical::Expr;
 use ac_runtime_canonical::Vm;
-use ac_runtime_example_1::DefaultHost;
+use crate::shared::TestHost;
 
 struct TestEval;
-impl Eval for TestEval {
+impl Eval<NonFunctionValue> for TestEval {
     fn eval_expr(
         &self,
         expr: &str,
@@ -79,7 +78,7 @@ impl Eval for TestEval {
                 let arg_val = eval_arg(&arg_str, vars)?;
                 args.push(Expr::Value(arg_val));
             }
-            let vm = Vm::new(DefaultHost::default());
+            let vm = Vm::new(TestHost::default());
             let mut ctx = CanonicalContext::new();
             let call_expr = Expr::call(name.trim(), args);
             return vm.eval(&call_expr, &mut ctx);

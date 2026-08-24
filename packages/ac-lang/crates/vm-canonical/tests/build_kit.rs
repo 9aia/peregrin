@@ -1,4 +1,5 @@
-use ac_runtime::{Error, Expr, NonFunctionValue, Operation};
+use ac_runtime::{Error, Expr, Operation};
+use ac_runtime_values::NonFunctionValue;
 use ac_runtime_canonical::CanonicalVm;
 use ac_runtime_common::prelude::*;
 use std::cell::RefCell;
@@ -41,23 +42,23 @@ mod futures {
     }
 }
 
-fn add_fn() -> Box<dyn ac_runtime::Function> {
+fn add_fn() -> Box<dyn ac_runtime::Function<NonFunctionValue>> {
     fn_function(|args, _ctx| {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     })
 }
 
-fn mul_fn() -> Box<dyn ac_runtime::Function> {
+fn mul_fn() -> Box<dyn ac_runtime::Function<NonFunctionValue>> {
     fn_function(|args, _ctx| {
         let product: f64 = args.iter().filter_map(|v| v.as_number()).product();
         Ok(NonFunctionValue::new(product))
     })
 }
 
-fn fetch_op() -> Box<dyn Operation> {
+fn fetch_op() -> Box<dyn Operation<NonFunctionValue>> {
     fn_operation(
-        || ac_runtime::OperationSig {
+        || ac_runtime::OperationSig::<NonFunctionValue> {
             name: "fetch".to_string(),
             params: vec![],
             return_schema: None,
@@ -130,7 +131,7 @@ fn context_builder_sets_limits() {
 #[test]
 fn memoize_caches_function_calls() {
     let inner = CaptureFn::new(
-        |args: &[NonFunctionValue], _ctx: &mut dyn ac_runtime::Context| {
+        |args: &[NonFunctionValue], _ctx: &mut dyn ac_runtime::Context<NonFunctionValue>| {
             Ok(NonFunctionValue::new(args.len()))
         },
     );
@@ -386,7 +387,7 @@ fn noop_host_resolves_nothing() {
 #[test]
 fn capture_fn_records_calls() {
     let f = CaptureFn::new(
-        |args: &[NonFunctionValue], _ctx: &mut dyn ac_runtime::Context| {
+        |args: &[NonFunctionValue], _ctx: &mut dyn ac_runtime::Context<NonFunctionValue>| {
             let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
             Ok(NonFunctionValue::new(sum))
         },

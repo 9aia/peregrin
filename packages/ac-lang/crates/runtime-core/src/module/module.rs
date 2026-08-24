@@ -1,4 +1,5 @@
 use ac_runtime::{AsyncFunction, Function, GenericFunction, LazyFunction, Operation};
+use ac_runtime_values::NonFunctionValue;
 
 /// A named group of functions.
 ///
@@ -18,7 +19,7 @@ use ac_runtime::{AsyncFunction, Function, GenericFunction, LazyFunction, Operati
 ///
 /// impl Module for MathModule {
 ///     fn name(&self) -> &str { "math" }
-///     fn function(&self, name: &str) -> Option<&dyn Function> {
+///     fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
 ///         match name {
 ///             "abs" => Some(&Abs),
 ///             _ => None,
@@ -33,13 +34,13 @@ pub trait Module: Send + Sync {
     /// Resolve a function name (without the module prefix) to a callable.
     ///
     /// Returns `None` if the name is not recognized in this module.
-    fn function(&self, name: &str) -> Option<&dyn Function>;
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>>;
 
     /// Resolve a function name to a lazy callable.
     ///
     /// Returns `None` by default. Override to provide functions that
     /// need lazy (short-circuit) argument evaluation.
-    fn lazy_function(&self, _name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, _name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         None
     }
 
@@ -49,7 +50,7 @@ pub trait Module: Send + Sync {
     /// Returns `None` by default. Override to provide generic functions
     /// that need to inspect type arguments at runtime. The VM calls
     /// this when a call carries non-empty `type_args`.
-    fn generic_function(&self, _name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, _name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         None
     }
 
@@ -57,7 +58,7 @@ pub trait Module: Send + Sync {
     ///
     /// Returns `None` by default. Override to provide async functions
     /// (network I/O, timers, etc.) for this module.
-    fn async_function(&self, _name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, _name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         None
     }
 
@@ -65,7 +66,7 @@ pub trait Module: Send + Sync {
     ///
     /// Returns `None` by default. Override to provide algebraic-effect
     /// operations for this module.
-    fn operation(&self, _name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, _name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         None
     }
 }

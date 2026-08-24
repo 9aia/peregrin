@@ -1,0 +1,25 @@
+fn.tap(
+  (s) -> [
+    http_server.route(s, "GET", "/", "Try /port"),
+    http_server.route(
+      s,
+      "GET",
+      "/port",
+      bool.if(
+        env.has("PORT"),
+        str.concat("PORT=", env.get("PORT")),
+        "PORT not set"
+      )
+    ),
+    http_server.start(
+      s,
+      bool.if(
+        env.has("PORT"),
+        str.concat("127.0.0.1:", env.get("PORT")),
+        "127.0.0.1:8084"
+      )
+    ),
+    http_server.join(s)
+  ],
+  http_server.new()
+)

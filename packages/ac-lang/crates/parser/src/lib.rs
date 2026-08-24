@@ -16,13 +16,13 @@
 //! but not on the VM. This keeps the parsing pipeline independent of
 //! evaluation strategy.
 
+use ac_runtime_values::NonFunctionValue;
 mod error;
 
 pub use error::ParseError;
 
 use ac_ast_canonical::Expr;
 use ac_lexer::{LexError, Lexer, Token, TokenKind};
-use ac_runtime_values::NonFunctionValue;
 
 /// A parser that converts a token stream into an expression AST.
 ///

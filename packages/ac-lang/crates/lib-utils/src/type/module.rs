@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 use ac_runtime::Function;
 use ac_runtime_modules::Module;
 
@@ -27,7 +28,7 @@ impl Module for TypeModule {
         "type"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             // coercion
             "to_string" => Some(&ToString),

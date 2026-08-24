@@ -4,5 +4,6 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
-serde_json = "1"
+ac-runtime.workspace = true
+ac-runtime-config.workspace = true
 ac-source.workspace = true

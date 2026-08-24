@@ -1,8 +1,9 @@
+use ac_runtime_values::NonFunctionValue;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::HttpError;
@@ -200,7 +201,7 @@ impl Module for HttpClientModule {
         "http"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "get" => Some(&self.get),
             "post" => Some(&self.post),
@@ -278,11 +279,11 @@ macro_rules! bodyless_fn {
             client: Arc<dyn HttpClient>,
         }
 
-        impl Function for $name {
+        impl Function<NonFunctionValue> for $name {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut dyn Context,
+                _ctx: &mut dyn Context<NonFunctionValue>,
             ) -> Result<NonFunctionValue, Error> {
                 let url = require_string_at(args, 0)?;
                 let headers = extract_headers(args, 1)?;
@@ -308,11 +309,11 @@ macro_rules! body_fn {
             client: Arc<dyn HttpClient>,
         }
 
-        impl Function for $name {
+        impl Function<NonFunctionValue> for $name {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut dyn Context,
+                _ctx: &mut dyn Context<NonFunctionValue>,
             ) -> Result<NonFunctionValue, Error> {
                 let url = require_string_at(args, 0)?;
                 let body = require_string_at(args, 1)?;
@@ -345,11 +346,11 @@ struct RequestFn {
     client: Arc<dyn HttpClient>,
 }
 
-impl Function for RequestFn {
+impl Function<NonFunctionValue> for RequestFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let method_str = require_string_at(args, 0)?;
         let method = HttpMethod::parse(method_str)

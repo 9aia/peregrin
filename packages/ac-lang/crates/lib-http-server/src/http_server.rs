@@ -1,10 +1,11 @@
+use ac_runtime_values::NonFunctionValue;
 use std::collections::HashMap;
 use std::marker::PhantomData;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::HttpServerError;
@@ -176,7 +177,7 @@ impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Module for HttpServ
         "http_server"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "new" => Some(&self.new_fn),
             "start" => Some(&self.start_fn),
@@ -261,11 +262,11 @@ struct NewFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function for NewFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for NewFn<F> {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let id = self.inner.create_server();
         Ok(NonFunctionValue::new(id as f64))
@@ -276,11 +277,11 @@ struct StartFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function for StartFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for StartFn<F> {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let id = require_id_at(args, 0)?;
         let addr = require_string_at(args, 1)?;
@@ -295,11 +296,11 @@ struct StopFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function for StopFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for StopFn<F> {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let id = require_id_at(args, 0)?;
         self.inner
@@ -313,11 +314,11 @@ struct JoinFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function for JoinFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for JoinFn<F> {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let id = require_id_at(args, 0)?;
         self.inner
@@ -331,11 +332,11 @@ struct RouteFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function for RouteFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for RouteFn<F> {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let id = require_id_at(args, 0)?;
         let method_str = require_string_at(args, 1)?;
@@ -357,11 +358,11 @@ struct ServeStaticFn<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> {
     inner: Arc<Inner<F>>,
 }
 
-impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function for ServeStaticFn<F> {
+impl<F: Fn() -> Arc<dyn HttpServer> + Send + Sync + 'static> Function<NonFunctionValue> for ServeStaticFn<F> {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let id = require_id_at(args, 0)?;
         let path = require_string_at(args, 1)?;

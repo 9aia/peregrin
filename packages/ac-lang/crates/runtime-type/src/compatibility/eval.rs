@@ -3,7 +3,8 @@
 use std::collections::HashMap;
 
 use ac_fields::{DEFAULT_NAMESPACE, Namespaces};
-use ac_runtime::Error;
+use ac_runtime_values::Error;
+
 use serde_json::{Map, Value as JsonValue};
 
 use super::{IS_COMPATIBLE_BODY, is_compatible_function_value};

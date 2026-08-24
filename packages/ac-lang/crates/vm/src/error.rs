@@ -1,9 +1,13 @@
+use std::fmt;
+
+use crate::Value;
+
 /// Errors that can occur during evaluation.
 ///
 /// All errors are cloneable and comparable, making them suitable
 /// for testing and replay scenarios.
 #[derive(Debug, Clone, PartialEq)]
-pub enum Error {
+pub enum Error<V: Value> {
     /// The function name was not recognized by the host.
     UnknownFunction(String),
 
@@ -28,13 +32,13 @@ pub enum Error {
     /// The VM yielded control to the caller.
     ///
     /// A host function signalled a yield. The caller can inspect the
-    /// yielded [`NonFunctionValue`] and decide whether to resume evaluation
+    /// yielded value and decide whether to resume evaluation
     /// by calling `eval_async` again.
     ///
     /// In the async VM, implicit yields also occur at `.await` points
     /// when a host future is not yet ready — these are handled by the
     /// executor and do not produce this variant.
-    Yield(ac_runtime_values::NonFunctionValue),
+    Yield(V),
 
     /// A typed operation was performed and signaled.
     ///
@@ -49,7 +53,7 @@ pub enum Error {
         /// The operation name (e.g. `"fetch"`).
         name: String,
         /// The evaluated arguments passed to the operation.
-        args: Vec<ac_runtime_values::NonFunctionValue>,
+        args: Vec<V>,
     },
 
     /// A resource limit was exceeded during evaluation.
@@ -59,10 +63,13 @@ pub enum Error {
     /// untrusted code — such as a sandbox host — set these limits to
     /// prevent runaway recursion or excessive computation.
     ResourceLimit(String),
+
+    /// A name is reserved for a host module and may not be assigned to.
+    ReservedName(String),
 }
 
-impl std::fmt::Display for Error {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl<V: Value> fmt::Display for Error<V> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::UnknownFunction(name) => {
                 write!(f, "unknown function: {name}")
@@ -88,8 +95,11 @@ impl std::fmt::Display for Error {
             Error::ResourceLimit(msg) => {
                 write!(f, "resource limit exceeded: {msg}")
             }
+            Error::ReservedName(name) => {
+                write!(f, "reserved name: {name}")
+            }
         }
     }
 }
 
-impl std::error::Error for Error {}
+impl<V: Value> std::error::Error for Error<V> {}

@@ -43,7 +43,11 @@
 //! let result = vm.eval_resumable(&expr, &mut ctx, Some(cont));
 //! ```
 
-use crate::{Context, Error, Expr, HandlerClause, Host, NonFunctionValue};
+use crate::pattern::{define_pattern, pattern_from_json, pattern_to_json};
+use crate::vm::{json_kind, qualified_name};
+use crate::{Context, Error, Expr, HandlerClause, Host};
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
+use serde_json::Value as JsonValue;
 
 type RuntimeExpr = Expr<NonFunctionValue>;
 type RuntimeHandlerClause = HandlerClause<NonFunctionValue>;
@@ -109,7 +113,7 @@ impl Continuation {
     }
 
     /// Deserializes a continuation from a JSON value.
-    pub fn from_json(value: &serde_json::Value) -> Result<Self, Error> {
+    pub fn from_json(value: &serde_json::Value) -> Result<Self, Error<NonFunctionValue>> {
         let arr = value.as_array().ok_or_else(|| {
             Error::PrimitiveError("continuation must be a JSON array".to_string())
         })?;
@@ -128,10 +132,37 @@ fn expr_to_json(expr: &RuntimeExpr) -> serde_json::Value {
         Expr::Value(value) => serde_json::json!({
             "type": "value",
             "value": value.clone().into_inner()}),
+        Expr::Var(name) => serde_json::json!({
+            "type": "var",
+            "name": name}),
+        Expr::Assign { target, value } => serde_json::json!({
+            "type": "assign",
+            "target": pattern_to_json(target),
+            "value": expr_to_json(value)}),
+        Expr::Function { type_params, params, ret, body } => serde_json::json!({
+            "type": "function",
+            "type_params": type_params,
+            "params": params.iter().map(|(p, t)| {
+                serde_json::json!([pattern_to_json(p), t.as_deref().map(expr_to_json)])
+            }).collect::<Vec<_>>(),
+            "ret": ret.as_deref().map(expr_to_json),
+            "body": body}),
         Expr::Call { name, args, .. } => serde_json::json!({
             "type": "call",
             "name": name,
             "args": args.iter().map(expr_to_json).collect::<Vec<_>>()}),
+        Expr::Apply { target, args } => serde_json::json!({
+            "type": "apply",
+            "target": expr_to_json(target),
+            "args": args.iter().map(expr_to_json).collect::<Vec<_>>()}),
+        Expr::Index { target, index } => serde_json::json!({
+            "type": "index",
+            "target": expr_to_json(target),
+            "index": expr_to_json(index)}),
+        Expr::FieldAccess { target, field } => serde_json::json!({
+            "type": "field",
+            "target": expr_to_json(target),
+            "field": field}),
         Expr::Handle { body, handlers } => serde_json::json!({
             "type": "handle",
             "body": expr_to_json(body),
@@ -145,7 +176,7 @@ fn expr_to_json(expr: &RuntimeExpr) -> serde_json::Value {
     }
 }
 
-fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error> {
+fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error<NonFunctionValue>> {
     let obj = value
         .as_object()
         .ok_or_else(|| Error::PrimitiveError("expression must be a JSON object".to_string()))?;
@@ -156,6 +187,96 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error> {
                 Error::PrimitiveError("value expression missing 'value' field".to_string())
             })?;
             Ok(Expr::Value(NonFunctionValue::new(val.clone())))
+        }
+        Some("var") => {
+            let name = obj
+                .get("name")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    Error::PrimitiveError("var expression missing 'name' field".to_string())
+                })?
+                .to_string();
+            Ok(Expr::Var(name))
+        }
+        Some("assign") => {
+            let target = obj
+                .get("target")
+                .and_then(pattern_from_json)
+                .ok_or_else(|| {
+                    Error::PrimitiveError("assign expression missing 'target' field".to_string())
+                })?;
+            let value = obj
+                .get("value")
+                .ok_or_else(|| {
+                    Error::PrimitiveError("assign expression missing 'value' field".to_string())
+                })
+                .and_then(expr_from_json)
+                .map(Box::new)?;
+            Ok(Expr::Assign { target, value })
+        }
+        Some("function") => {
+            let type_params = obj
+                .get("type_params")
+                .and_then(|v| v.as_array())
+                .map(|arr| {
+                    arr.iter()
+                        .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+
+            let params = obj
+                .get("params")
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| {
+                    Error::PrimitiveError("function expression missing 'params' array".to_string())
+                })?
+                .iter()
+                .map(|entry| {
+                    let arr = entry.as_array().ok_or_else(|| {
+                        Error::PrimitiveError(
+                            "function param must be a [pattern, schema] array".to_string(),
+                        )
+                    })?;
+                    let pattern = arr
+                        .get(0)
+                        .and_then(pattern_from_json)
+                        .ok_or_else(|| {
+                            Error::PrimitiveError(
+                                "function param missing pattern".to_string(),
+                            )
+                        })?;
+                    let ty = arr
+                        .get(1)
+                        .filter(|v| !v.is_null())
+                        .map(expr_from_json)
+                        .transpose()?
+                        .map(Box::new);
+                    Ok((pattern, ty))
+                })
+                .collect::<Result<Vec<_>, _>>()?;
+
+            let ret = obj
+                .get("ret")
+                .filter(|v| !v.is_null())
+                .map(expr_from_json)
+                .transpose()?
+                .map(Box::new);
+
+            let body = obj
+                .get("body")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    Error::PrimitiveError("function expression missing 'body' string".to_string())
+                })?
+                .to_string();
+
+            Ok(Expr::Function {
+                type_params,
+                params,
+                ret,
+                body,
+            })
         }
         Some("call") => {
             let name = obj
@@ -179,6 +300,59 @@ fn expr_from_json(value: &serde_json::Value) -> Result<RuntimeExpr, Error> {
                 args,
                 type_args: Vec::new(),
             })
+        }
+        Some("apply") => {
+            let target = obj
+                .get("target")
+                .ok_or_else(|| {
+                    Error::PrimitiveError("apply expression missing 'target' field".to_string())
+                })
+                .and_then(expr_from_json)
+                .map(Box::new)?;
+            let args = obj
+                .get("args")
+                .and_then(|v| v.as_array())
+                .ok_or_else(|| {
+                    Error::PrimitiveError("apply expression missing 'args' array".to_string())
+                })?
+                .iter()
+                .map(expr_from_json)
+                .collect::<Result<Vec<_>, _>>()?;
+            Ok(Expr::Apply { target, args })
+        }
+        Some("index") => {
+            let target = obj
+                .get("target")
+                .ok_or_else(|| {
+                    Error::PrimitiveError("index expression missing 'target' field".to_string())
+                })
+                .and_then(expr_from_json)
+                .map(Box::new)?;
+            let index = obj
+                .get("index")
+                .ok_or_else(|| {
+                    Error::PrimitiveError("index expression missing 'index' field".to_string())
+                })
+                .and_then(expr_from_json)
+                .map(Box::new)?;
+            Ok(Expr::Index { target, index })
+        }
+        Some("field") => {
+            let target = obj
+                .get("target")
+                .ok_or_else(|| {
+                    Error::PrimitiveError("field access expression missing 'target' field".to_string())
+                })
+                .and_then(expr_from_json)
+                .map(Box::new)?;
+            let field = obj
+                .get("field")
+                .and_then(|v| v.as_str())
+                .ok_or_else(|| {
+                    Error::PrimitiveError("field access expression missing 'field' field".to_string())
+                })?
+                .to_string();
+            Ok(Expr::FieldAccess { target, field })
         }
         Some("handle") => {
             let body = obj
@@ -254,7 +428,7 @@ fn handler_clause_to_json(clause: &RuntimeHandlerClause) -> serde_json::Value {
         "body": expr_to_json(&clause.body)})
 }
 
-fn handler_clause_from_json(value: &serde_json::Value) -> Result<RuntimeHandlerClause, Error> {
+fn handler_clause_from_json(value: &serde_json::Value) -> Result<RuntimeHandlerClause, Error<NonFunctionValue>> {
     let obj = value
         .as_object()
         .ok_or_else(|| Error::PrimitiveError("handler clause must be a JSON object".to_string()))?;
@@ -294,7 +468,7 @@ fn handler_clause_from_json(value: &serde_json::Value) -> Result<RuntimeHandlerC
     })
 }
 
-fn frame_from_json(value: &serde_json::Value) -> Result<Frame, Error> {
+fn frame_from_json(value: &serde_json::Value) -> Result<Frame, Error<NonFunctionValue>> {
     let obj = value
         .as_object()
         .ok_or_else(|| Error::PrimitiveError("frame must be a JSON object".to_string()))?;
@@ -352,10 +526,10 @@ pub enum EvalResult {
         continuation: Continuation,
     },
     /// Evaluation failed with an error.
-    Error(Error),
+    Error(Error<NonFunctionValue>),
 }
 
-impl<H: Host> crate::CanonicalVm<H> {
+impl<H: Host<NonFunctionValue>> crate::CanonicalVm<H> {
     /// Evaluates an expression using an explicit frame stack.
     ///
     /// This is the resumable evaluation mode. Unlike [`eval`](crate::CanonicalVm::eval)
@@ -391,7 +565,7 @@ impl<H: Host> crate::CanonicalVm<H> {
     pub fn eval_resumable(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
         resume: Option<Continuation>,
     ) -> EvalResult {
         if let Some(cont) = resume {
@@ -408,7 +582,7 @@ impl<H: Host> crate::CanonicalVm<H> {
         }
     }
 
-    fn resume(&self, cont: Continuation, ctx: &mut dyn Context) -> EvalResult {
+    fn resume(&self, cont: Continuation, ctx: &mut dyn Context<NonFunctionValue>) -> EvalResult {
         let mut frames = cont.frames;
 
         // The bottom frame (index 0) is the innermost call — the
@@ -522,7 +696,7 @@ impl<H: Host> crate::CanonicalVm<H> {
         &self,
         mut frames: Vec<Frame>,
         value: NonFunctionValue,
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> EvalResult {
         if frames.is_empty() {
             return EvalResult::Done(value);
@@ -558,7 +732,7 @@ impl<H: Host> crate::CanonicalVm<H> {
     fn eval_frame(
         &self,
         frame: &mut Frame,
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
         stack: &mut Vec<Frame>,
     ) -> StepResult {
         // Evaluate remaining pending args one by one.
@@ -596,7 +770,7 @@ impl<H: Host> crate::CanonicalVm<H> {
             // Deserialize the captured frames.
             let frames_json = var.get("frames").and_then(|v| v.as_array());
             if let Some(frames_json) = frames_json {
-                let captured_frames: Result<Vec<Frame>, Error> =
+                let captured_frames: Result<Vec<Frame>, Error<NonFunctionValue>> =
                     frames_json.iter().map(frame_from_json).collect();
 
                 match captured_frames {
@@ -705,28 +879,222 @@ impl<H: Host> crate::CanonicalVm<H> {
     fn eval_step(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
         stack: &mut Vec<Frame>,
     ) -> StepResult {
         self.eval_step_with_handlers(expr, ctx, stack, &[])
     }
 
+    fn json_kind(v: &JsonValue) -> &'static str {
+        match v {
+            JsonValue::Array(_) => "array",
+            JsonValue::Object(_) => "object",
+            JsonValue::String(_) => "string",
+            JsonValue::Number(_) => "number",
+            JsonValue::Bool(_) => "boolean",
+            JsonValue::Null => "null",
+        }
+    }
+
+    fn eval_index(
+        &self,
+        target: &RuntimeExpr,
+        index: &RuntimeExpr,
+        ctx: &mut dyn Context<NonFunctionValue>,
+        stack: &mut Vec<Frame>,
+        handlers: &[RuntimeHandlerClause],
+    ) -> StepResult {
+        let target_value = match self.eval_step_with_handlers(target, ctx, stack, handlers) {
+            StepResult::Done(v) => v,
+            StepResult::Yield { value, frames } => {
+                return StepResult::Yield { value, frames };
+            }
+            StepResult::Error(err) => return StepResult::Error(err),
+        };
+
+        let index_value = match self.eval_step_with_handlers(index, ctx, stack, handlers) {
+            StepResult::Done(v) => v,
+            StepResult::Yield { value, frames } => {
+                return StepResult::Yield { value, frames };
+            }
+            StepResult::Error(err) => return StepResult::Error(err),
+        };
+
+        let (name, got) = match target_value.inner() {
+            JsonValue::Array(_) => ("array.at", "array"),
+            JsonValue::Object(_) => ("obj.get", "object"),
+            JsonValue::String(_) => ("str.at", "string"),
+            other => {
+                return StepResult::Error(Error::TypeMismatch {
+                    expected: "array, object, or string",
+                    got: Self::json_kind(other),
+                })
+            }
+        };
+
+        if self.host().function(name).is_none() {
+            return StepResult::Error(Error::TypeMismatch { expected: "indexable", got });
+        }
+
+        let mut frame = Frame {
+            name: name.to_string(),
+            evaluated: vec![target_value, index_value],
+            pending: vec![],
+            handlers: handlers.to_vec(),
+        };
+        self.eval_frame(&mut frame, ctx, stack)
+    }
+
+    fn eval_field(
+        &self,
+        target: &RuntimeExpr,
+        field: &str,
+        ctx: &mut dyn Context<NonFunctionValue>,
+        stack: &mut Vec<Frame>,
+        handlers: &[RuntimeHandlerClause],
+    ) -> StepResult {
+        let target_value = match self.eval_step_with_handlers(target, ctx, stack, handlers) {
+            StepResult::Done(v) => v,
+            StepResult::Yield { value, frames } => {
+                return StepResult::Yield { value, frames };
+            }
+            StepResult::Error(err) => return StepResult::Error(err),
+        };
+
+        match target_value.inner() {
+            JsonValue::Object(map) => {
+                let value = map.get(field).cloned().unwrap_or(JsonValue::Null);
+                StepResult::Done(NonFunctionValue::new(value))
+            }
+            _ => {
+                if let Some(name) = qualified_name(target) {
+                    let qualified = format!("{name}.{field}");
+                    StepResult::Done(NonFunctionValue::new(JsonValue::String(qualified)))
+                } else {
+                    StepResult::Error(Error::TypeMismatch {
+                        expected: "object",
+                        got: Self::json_kind(target_value.inner()),
+                    })
+                }
+            }
+        }
+    }
+
     fn eval_step_with_handlers(
         &self,
         expr: &RuntimeExpr,
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
         stack: &mut Vec<Frame>,
         inherited_handlers: &[RuntimeHandlerClause],
     ) -> StepResult {
         match expr {
             Expr::Value(value) => StepResult::Done(value.clone()),
 
+            Expr::Var(name) => match ctx.get(name) {
+                Ok(value) => StepResult::Done(value),
+                Err(_) => {
+                    if let Some(function) = self.host().function(name) {
+                        match function.call(&[], ctx) {
+                            Ok(value) => StepResult::Done(value),
+                            Err(Error::Yield(value)) => StepResult::Yield {
+                                value,
+                                frames: std::mem::take(stack),
+                            },
+                            Err(Error::Operation { name, args }) => {
+                                stack.push(Frame {
+                                    name: name.clone(),
+                                    evaluated: args.clone(),
+                                    pending: vec![],
+                                    handlers: inherited_handlers.to_vec(),
+                                });
+                                let op_value = NonFunctionValue::new(serde_json::json!({
+                                    "type": "operation",
+                                    "name": name,
+                                    "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>()}));
+                                StepResult::Yield {
+                                    value: op_value,
+                                    frames: std::mem::take(stack),
+                                }
+                            }
+                            Err(err) => StepResult::Error(err),
+                        }
+                    } else {
+                        StepResult::Error(Error::UnknownVariable(name.clone()))
+                    }
+                }
+            },
+
+            Expr::Assign { target, value } => {
+                for name in target.bound_names() {
+                    if self.host().is_reserved(&name) {
+                        return StepResult::Error(Error::ReservedName(name));
+                    }
+                }
+                match self.eval_step_with_handlers(value, ctx, stack, inherited_handlers) {
+                    StepResult::Done(evaluated) => match define_pattern(ctx, target, evaluated.clone()) {
+                        Ok(_) => StepResult::Done(evaluated),
+                        Err(err) => StepResult::Error(err),
+                    },
+                    other => other,
+                }
+            }
+
+            Expr::Function {
+                type_params: _,
+                params,
+                ret,
+                body,
+            } => {
+                let mut evaluated_params = Vec::new();
+                let mut pattern_json = Vec::new();
+                for (pattern, ty) in params {
+                    let schema = match ty {
+                        Some(type_expr) => match self.eval_step_with_handlers(
+                            type_expr,
+                            ctx,
+                            stack,
+                            inherited_handlers,
+                        ) {
+                            StepResult::Done(v) => v.into_inner(),
+                            other => return other,
+                        },
+                        None => JsonValue::Null,
+                    };
+                    for name in pattern.bound_names() {
+                        evaluated_params.push((name, schema.clone()));
+                    }
+                    pattern_json.push(pattern_to_json(pattern));
+                }
+
+                let return_schema = match ret {
+                    Some(type_expr) => match self.eval_step_with_handlers(
+                        type_expr,
+                        ctx,
+                        stack,
+                        inherited_handlers,
+                    ) {
+                        StepResult::Done(v) => Some(v.into_inner()),
+                        other => return other,
+                    },
+                    None => None,
+                };
+
+                let function_value = FunctionValue {
+                    params: evaluated_params,
+                    return_schema,
+                    body: body.clone(),
+                    patterns: pattern_json,
+                };
+
+                StepResult::Done(NonFunctionValue::new(function_value.to_json()))
+            }
+
             Expr::Call { name, args, .. } => {
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host().lazy_function(name) {
                     let handlers = inherited_handlers.to_vec();
-                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context| match self
+                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| match self
                         .eval_step_with_handlers(sub, c, stack, &handlers)
                     {
                         StepResult::Done(v) => Ok(v),
@@ -782,6 +1150,18 @@ impl<H: Host> crate::CanonicalVm<H> {
                 }
             }
 
+            Expr::Apply { target, args } => {
+                let mut pending = vec![target.as_ref().clone()];
+                pending.extend(args.iter().cloned());
+                let mut frame = Frame {
+                    name: "apply".to_string(),
+                    evaluated: Vec::with_capacity(pending.len()),
+                    pending,
+                    handlers: inherited_handlers.to_vec(),
+                };
+                self.eval_frame(&mut frame, ctx, stack)
+            }
+
             Expr::Handle { body, handlers } => {
                 // Merge inner handlers with inherited (outer) handlers.
                 // Inner handlers take precedence (checked first).
@@ -819,6 +1199,14 @@ impl<H: Host> crate::CanonicalVm<H> {
                 }
                 StepResult::Done(NonFunctionValue::new(serde_json::Value::Object(map)))
             }
+
+            Expr::Index { target, index } => {
+                self.eval_index(target, index, ctx, stack, inherited_handlers)
+            }
+
+            Expr::FieldAccess { target, field } => {
+                self.eval_field(target, field, ctx, stack, inherited_handlers)
+            }
         }
     }
 
@@ -831,18 +1219,114 @@ impl<H: Host> crate::CanonicalVm<H> {
         &self,
         body: &RuntimeExpr,
         handlers: &[RuntimeHandlerClause],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
         stack: &mut Vec<Frame>,
     ) -> StepResult {
         match body {
             Expr::Value(value) => StepResult::Done(value.clone()),
+
+            Expr::Var(name) => match ctx.get(name) {
+                Ok(value) => StepResult::Done(value),
+                Err(_) => {
+                    if let Some(function) = self.host().function(name) {
+                        match function.call(&[], ctx) {
+                            Ok(value) => StepResult::Done(value),
+                            Err(Error::Yield(value)) => StepResult::Yield {
+                                value,
+                                frames: std::mem::take(stack),
+                            },
+                            Err(Error::Operation { name, args }) => {
+                                let matching_clause = handlers.iter().rev().find(|h| h.op_name == name);
+                                if let Some(clause) = matching_clause {
+                                    self.handle_operation(name, args, clause, handlers, ctx, stack)
+                                } else {
+                                    stack.push(Frame {
+                                        name: name.clone(),
+                                        evaluated: args.clone(),
+                                        pending: vec![],
+                                        handlers: handlers.to_vec(),
+                                    });
+                                    let op_value = NonFunctionValue::new(serde_json::json!({
+                                        "type": "operation",
+                                        "name": name,
+                                        "args": args.iter().map(|v| v.clone().into_inner()).collect::<Vec<_>>()}));
+                                    StepResult::Yield {
+                                        value: op_value,
+                                        frames: std::mem::take(stack),
+                                    }
+                                }
+                            }
+                            Err(err) => StepResult::Error(err),
+                        }
+                    } else {
+                        StepResult::Error(Error::UnknownVariable(name.clone()))
+                    }
+                }
+            },
+
+            Expr::Assign { target, value } => {
+                for name in target.bound_names() {
+                    if self.host().is_reserved(&name) {
+                        return StepResult::Error(Error::ReservedName(name));
+                    }
+                }
+                match self.eval_handle(value, handlers, ctx, stack) {
+                    StepResult::Done(evaluated) => {
+                        match define_pattern(ctx, target, evaluated.clone()) {
+                            Ok(_) => StepResult::Done(evaluated),
+                            Err(err) => StepResult::Error(err),
+                        }
+                    }
+                    other => other,
+                }
+            }
+
+            Expr::Function {
+                type_params: _,
+                params,
+                ret,
+                body,
+            } => {
+                let mut evaluated_params = Vec::new();
+                let mut pattern_json = Vec::new();
+                for (pattern, ty) in params {
+                    let schema = match ty {
+                        Some(type_expr) => match self.eval_handle(type_expr, handlers, ctx, stack) {
+                            StepResult::Done(v) => v.into_inner(),
+                            other => return other,
+                        },
+                        None => JsonValue::Null,
+                    };
+                    for name in pattern.bound_names() {
+                        evaluated_params.push((name, schema.clone()));
+                    }
+                    pattern_json.push(pattern_to_json(pattern));
+                }
+
+                let return_schema = match ret {
+                    Some(type_expr) => match self.eval_handle(type_expr, handlers, ctx, stack) {
+                        StepResult::Done(v) => Some(v.into_inner()),
+                        other => return other,
+                    },
+                    None => None,
+                };
+
+                let function_value = FunctionValue {
+                    params: evaluated_params,
+                    return_schema,
+                    body: body.clone(),
+                    patterns: pattern_json,
+                };
+
+                StepResult::Done(NonFunctionValue::new(function_value.to_json()))
+            }
 
             Expr::Call { name, args, .. } => {
                 // Check lazy functions first — they receive unevaluated
                 // args and decide which to evaluate (short-circuit).
                 if let Some(lazy) = self.host().lazy_function(name) {
                     let handlers_vec = handlers.to_vec();
-                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context| match self
+                    let mut evaluate = |sub: &RuntimeExpr, c: &mut dyn Context<NonFunctionValue>| match self
                         .eval_step_with_handlers(sub, c, stack, &handlers_vec)
                     {
                         StepResult::Done(v) => Ok(v),
@@ -889,6 +1373,18 @@ impl<H: Host> crate::CanonicalVm<H> {
                 }
             }
 
+            Expr::Apply { target, args } => {
+                let mut pending = vec![target.as_ref().clone()];
+                pending.extend(args.iter().cloned());
+                let mut frame = Frame {
+                    name: "apply".to_string(),
+                    evaluated: Vec::with_capacity(pending.len()),
+                    pending,
+                    handlers: handlers.to_vec(),
+                };
+                self.eval_frame(&mut frame, ctx, stack)
+            }
+
             Expr::Handle {
                 body: inner_body,
                 handlers: inner_handlers,
@@ -928,6 +1424,14 @@ impl<H: Host> crate::CanonicalVm<H> {
                 }
                 StepResult::Done(NonFunctionValue::new(serde_json::Value::Object(map)))
             }
+
+            Expr::Index { target, index } => {
+                self.eval_index(target, index, ctx, stack, handlers)
+            }
+
+            Expr::FieldAccess { target, field } => {
+                self.eval_field(target, field, ctx, stack, handlers)
+            }
         }
     }
 
@@ -935,8 +1439,31 @@ impl<H: Host> crate::CanonicalVm<H> {
         &self,
         name: &str,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
+        // `apply` is special: the first argument is the function to call.
+        // If it is a string, dispatch directly to the named host function.
+        if name == "apply" && !args.is_empty() {
+            if let Some(fname) = args[0].as_str() {
+                if let Some(function) = self.host().function(fname) {
+                    return function.call(&args[1..], ctx);
+                }
+                return Err(Error::UnknownFunction(fname.to_string()));
+            }
+
+            if FunctionValue::from_json(args[0].inner()).is_some() {
+                if let Some(apply) = self.host().function("apply") {
+                    return apply.call(args, ctx);
+                }
+                return Err(Error::UnknownFunction("apply".to_string()));
+            }
+
+            return Err(Error::TypeMismatch {
+                expected: "function",
+                got: json_kind(args[0].inner()),
+            });
+        }
+
         // Check operations first — operations signal (yield) rather
         // than complete. If an operation is found and it signals
         // (returns Err(Error::Operation { ... })), the caller
@@ -951,7 +1478,7 @@ impl<H: Host> crate::CanonicalVm<H> {
 
         // Allow function values stored in the context to be called by name.
         if let Ok(value) = ctx.get(name)
-            && value.is_function()
+            && FunctionValue::from_json(value.inner()).is_some()
         {
             let apply = self
                 .host()
@@ -975,7 +1502,7 @@ impl<H: Host> crate::CanonicalVm<H> {
         args: Vec<NonFunctionValue>,
         clause: &RuntimeHandlerClause,
         all_handlers: &[RuntimeHandlerClause],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
         stack: &mut Vec<Frame>,
     ) -> StepResult {
         ctx.push_scope();
@@ -1021,5 +1548,5 @@ enum StepResult {
         frames: Vec<Frame>,
     },
     /// An error occurred.
-    Error(Error),
+    Error(Error<NonFunctionValue>),
 }

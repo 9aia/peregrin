@@ -2,6 +2,7 @@ use std::path::PathBuf;
 
 use ac_module_resolver_core::{IMPORT_FUNCTION, ModuleResolver};
 use ac_runtime::{AsyncFunction, Function, Host, LazyFunction, Operation};
+use ac_runtime_values::NonFunctionValue;
 
 use super::import_function::ImportFunction;
 
@@ -40,12 +41,12 @@ use super::import_function::ImportFunction;
 /// let expr = Expr::call("import", vec![Expr::value("config.yml")]);
 /// let result = vm.eval(&expr, &mut ctx).unwrap();
 /// ```
-pub struct ResolverHost<H: Host> {
+pub struct ResolverHost<H: Host<NonFunctionValue>> {
     inner: H,
     import_fn: ImportFunction,
 }
 
-impl<H: Host> ResolverHost<H> {
+impl<H: Host<NonFunctionValue>> ResolverHost<H> {
     /// Creates a new `ResolverHost` wrapping the given inner host.
     ///
     /// The resolver is used to resolve `import()` calls at runtime.
@@ -72,23 +73,23 @@ impl<H: Host> ResolverHost<H> {
     }
 }
 
-impl<H: Host> Host for ResolverHost<H> {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl<H: Host<NonFunctionValue>> Host<NonFunctionValue> for ResolverHost<H> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         if name == IMPORT_FUNCTION {
             return Some(&self.import_fn);
         }
         self.inner.function(name)
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         self.inner.async_function(name)
     }
 
-    fn operation(&self, name: &str) -> Option<&dyn Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn Operation<NonFunctionValue>> {
         self.inner.operation(name)
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         self.inner.lazy_function(name)
     }
 }

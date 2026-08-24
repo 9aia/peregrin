@@ -9,9 +9,9 @@
 //! Both have default implementations that recurse, so passes override
 //! only the nodes they care about.
 
+use ac_runtime_values::NonFunctionValue;
 use ac_ast_canonical::{Expr, Field};
 use ac_fields::ExtractedFields;
-use ac_runtime_values::NonFunctionValue;
 
 // ---------------------------------------------------------------------------
 // Visitor (read-only traversal)
@@ -38,10 +38,36 @@ pub trait Visitor {
 pub fn walk_expr<V: Visitor + ?Sized>(visitor: &mut V, expr: &Expr<NonFunctionValue>) {
     match expr {
         Expr::Value(v) => visitor.visit_value(v),
+        Expr::Var(_) => {}
+        Expr::Assign { value, .. } => visitor.visit_expr(value),
+        Expr::Function { params, ret, .. } => {
+            for (_, ty) in params {
+                if let Some(ty) = ty {
+                    visitor.visit_expr(ty);
+                }
+            }
+            if let Some(ret) = ret {
+                visitor.visit_expr(ret);
+            }
+        }
+
         Expr::Call { args, .. } => {
             for arg in args {
                 visitor.visit_expr(arg);
             }
+        }
+        Expr::Apply { target, args } => {
+            visitor.visit_expr(target);
+            for arg in args {
+                visitor.visit_expr(arg);
+            }
+        }
+        Expr::Index { target, index } => {
+            visitor.visit_expr(target);
+            visitor.visit_expr(index);
+        }
+        Expr::FieldAccess { target, .. } => {
+            visitor.visit_expr(target);
         }
         Expr::Handle { body, handlers } => {
             visitor.visit_expr(body);
@@ -113,6 +139,25 @@ fn fold_expr_inner<F: Folder + ?Sized>(
 ) -> Expr<NonFunctionValue> {
     match expr {
         Expr::Value(v) => Expr::Value(folder.fold_value(v)),
+        Expr::Var(name) => Expr::Var(name),
+        Expr::Assign { target, value } => Expr::Assign {
+            target,
+            value: Box::new(folder.fold_expr(*value)),
+        },
+        Expr::Function {
+            type_params,
+            params,
+            ret,
+            body,
+        } => Expr::Function {
+            type_params,
+            params: params
+                .into_iter()
+                .map(|(p, t)| (p, t.map(|t| Box::new(folder.fold_expr(*t)))))
+                .collect(),
+            ret: ret.map(|t| Box::new(folder.fold_expr(*t))),
+            body,
+        },
         Expr::Call {
             name,
             args,
@@ -121,6 +166,18 @@ fn fold_expr_inner<F: Folder + ?Sized>(
             name,
             args: args.into_iter().map(|a| folder.fold_expr(a)).collect(),
             type_args,
+        },
+        Expr::Apply { target, args } => Expr::Apply {
+            target: Box::new(folder.fold_expr(*target)),
+            args: args.into_iter().map(|a| folder.fold_expr(a)).collect(),
+        },
+        Expr::Index { target, index } => Expr::Index {
+            target: Box::new(folder.fold_expr(*target)),
+            index: Box::new(folder.fold_expr(*index)),
+        },
+        Expr::FieldAccess { target, field } => Expr::FieldAccess {
+            target: Box::new(folder.fold_expr(*target)),
+            field,
         },
         Expr::Handle { body, handlers } => Expr::Handle {
             body: Box::new(folder.fold_expr(*body)),

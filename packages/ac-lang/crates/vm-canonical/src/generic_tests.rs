@@ -11,23 +11,23 @@ use crate::{Function, GenericFunction, Host};
 #[derive(Clone)]
 struct TypedIdentity;
 
-impl Function for TypedIdentity {
+impl Function<NonFunctionValue> for TypedIdentity {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         Ok(args.first().cloned().unwrap_or_default())
     }
 }
 
-impl GenericFunction for TypedIdentity {
+impl GenericFunction<NonFunctionValue> for TypedIdentity {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         type_args: &[String],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         // Return a string describing the type args to prove dispatch worked.
         let type_str = type_args.join(", ");
         Ok(NonFunctionValue::new(format!(
@@ -48,15 +48,15 @@ struct GenericHost {
     identity: TypedIdentity,
 }
 
-impl Host for GenericHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for GenericHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "identity" => Some(&self.identity),
             _ => None,
         }
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         match name {
             "identity" => Some(&self.identity),
             _ => None,
@@ -141,12 +141,12 @@ fn generic_function_falls_back_to_function_when_not_registered() {
 #[derive(Clone)]
 struct TypedArrayify;
 
-impl Function for TypedArrayify {
+impl Function<NonFunctionValue> for TypedArrayify {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         // Default: wrap in array
         Ok(NonFunctionValue::new(serde_json::json!([args
             .first()
@@ -155,13 +155,13 @@ impl Function for TypedArrayify {
     }
 }
 
-impl GenericFunction for TypedArrayify {
+impl GenericFunction<NonFunctionValue> for TypedArrayify {
     fn call_with_types(
         &self,
         args: &[NonFunctionValue],
         type_args: &[String],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let val = args
             .first()
             .map(|v| v.inner().clone())
@@ -184,15 +184,15 @@ impl GenericFunction for TypedArrayify {
 #[derive(Clone)]
 struct ArrayifyHost;
 
-impl Host for ArrayifyHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for ArrayifyHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "arrayify" => Some(&TypedArrayify),
             _ => None,
         }
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
         match name {
             "arrayify" => Some(&TypedArrayify),
             _ => None,

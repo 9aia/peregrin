@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
@@ -20,11 +23,11 @@ macro_rules! type_predicate {
     ($struct_name:ident, $predicate:expr) => {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
-        impl Function for $struct_name {
+        impl Function<NonFunctionValue> for $struct_name {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut dyn Context,
+                _ctx: &mut dyn Context<NonFunctionValue>,
             ) -> Result<NonFunctionValue, Error> {
                 let arg = require_one_arg(args)?;
                 Ok(b($predicate(arg)))
@@ -42,11 +45,11 @@ type_predicate!(IsObject, |arg: &NonFunctionValue| arg.is_object());
 
 #[derive(Clone, Copy)]
 pub struct TypeOf;
-impl Function for TypeOf {
+impl Function<NonFunctionValue> for TypeOf {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let type_name = if arg.is_null() {
@@ -70,11 +73,11 @@ impl Function for TypeOf {
 
 #[derive(Clone, Copy)]
 pub struct IsEmpty;
-impl Function for IsEmpty {
+impl Function<NonFunctionValue> for IsEmpty {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let empty = if arg.is_null() {
@@ -94,11 +97,11 @@ impl Function for IsEmpty {
 
 #[derive(Clone, Copy)]
 pub struct IsTruthy;
-impl Function for IsTruthy {
+impl Function<NonFunctionValue> for IsTruthy {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let truthy = if let Some(b_val) = arg.as_bool() {

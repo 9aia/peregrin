@@ -1,7 +1,8 @@
+use ac_runtime_values::NonFunctionValue;
 use rand::Rng;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 
 use super::common::{bool_val, num, require_int, require_number};
 use crate::error::RandError;
@@ -20,11 +21,11 @@ use crate::error::RandError;
 #[derive(Clone, Copy)]
 pub struct Int;
 
-impl Function for Int {
+impl Function<NonFunctionValue> for Int {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (min, max) = match args.len() {
             1 => (0, require_int(args, 0)?),
@@ -61,11 +62,11 @@ impl Function for Int {
 #[derive(Clone, Copy)]
 pub struct Float;
 
-impl Function for Float {
+impl Function<NonFunctionValue> for Float {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         match args.len() {
             0 => {
@@ -115,11 +116,11 @@ impl Function for Float {
 #[derive(Clone, Copy)]
 pub struct Bool;
 
-impl Function for Bool {
+impl Function<NonFunctionValue> for Bool {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         Ok(bool_val(rand::rng().random()))
     }

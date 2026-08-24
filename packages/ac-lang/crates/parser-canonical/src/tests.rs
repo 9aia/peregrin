@@ -3,7 +3,7 @@ use ac_ast_canonical::Expr;
 use ac_lexer::Lexer;
 use ac_lexer_canonical::CanonicalLexer;
 use ac_parser::{ParseError, Parser};
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 
 use serde_json::json;
 
@@ -81,8 +81,8 @@ fn parse_namespaced_call() {
     let expr = parse("math.sqrt(16)").unwrap();
     assert_eq!(
         expr,
-        Expr::call(
-            "math.sqrt",
+        Expr::apply(
+            Expr::field_access(Expr::var("math"), "sqrt"),
             vec![Expr::Value(NonFunctionValue::new(json!(16.0))),]
         )
     );

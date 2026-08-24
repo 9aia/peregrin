@@ -1,7 +1,8 @@
+use ac_runtime_values::NonFunctionValue;
 use std::sync::Arc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::OsError;
@@ -46,7 +47,7 @@ impl Module for CmdModule {
         "cmd"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "run" => Some(&self.run),
             _ => None,
@@ -65,11 +66,11 @@ struct RunFn {
     command: Arc<dyn Cmd>,
 }
 
-impl Function for RunFn {
+impl Function<NonFunctionValue> for RunFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let program = args.first().ok_or(Error::ArgumentCount {
             expected: 1,

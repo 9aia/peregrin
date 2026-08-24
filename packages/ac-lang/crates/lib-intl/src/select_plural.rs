@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use icu::plurals::{PluralCategory, PluralRuleType, PluralRules, PluralRulesOptions};
 
 use super::common::{
@@ -52,11 +53,11 @@ impl Default for SelectPlural {
     }
 }
 
-impl Function for SelectPlural {
+impl Function<NonFunctionValue> for SelectPlural {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let n = require_number(args, 0)?;
         let locale = optional_locale(args, 1)?;

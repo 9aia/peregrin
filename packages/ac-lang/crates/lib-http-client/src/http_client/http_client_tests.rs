@@ -1,5 +1,5 @@
-use ac_runtime::CanonicalContext;
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::CanonicalContext;
 use ac_runtime_modules::Module;
 
 use super::http_client::{HttpClientModule, HttpResponse};

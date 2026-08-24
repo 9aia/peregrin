@@ -1,7 +1,8 @@
+use ac_runtime_values::NonFunctionValue;
 use std::sync::Arc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::OsError;
@@ -49,7 +50,7 @@ impl Module for SocketModule {
         "socket"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "connect" => Some(&self.connect),
             "send" => Some(&self.send),
@@ -92,11 +93,11 @@ struct ConnectFn {
     socket: Arc<dyn Socket>,
 }
 
-impl Function for ConnectFn {
+impl Function<NonFunctionValue> for ConnectFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let address = require_string_arg(args)?;
         self.socket
@@ -110,11 +111,11 @@ struct SendFn {
     socket: Arc<dyn Socket>,
 }
 
-impl Function for SendFn {
+impl Function<NonFunctionValue> for SendFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -138,11 +139,11 @@ struct RecvFn {
     socket: Arc<dyn Socket>,
 }
 
-impl Function for RecvFn {
+impl Function<NonFunctionValue> for RecvFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -166,11 +167,11 @@ struct CloseFn {
     socket: Arc<dyn Socket>,
 }
 
-impl Function for CloseFn {
+impl Function<NonFunctionValue> for CloseFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let handle = require_number_arg(args)?;
         self.socket.close(handle)?;

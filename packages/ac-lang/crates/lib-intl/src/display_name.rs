@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 use icu::experimental::dimension::provider::currency::displayname::CurrencyDisplaynameV1;
 use icu::locale::DataLocale;
 use icu::locale::names::{
@@ -62,11 +63,11 @@ impl Default for DisplayName {
     }
 }
 
-impl Function for DisplayName {
+impl Function<NonFunctionValue> for DisplayName {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let code = require_string(args, 0)?;
         let name_type = require_string(args, 1)?;

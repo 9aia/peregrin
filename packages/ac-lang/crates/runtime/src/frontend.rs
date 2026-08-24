@@ -10,7 +10,7 @@
 //! > trait formalizes this contract — any format that can parse into
 //! > `NonFunctionValue` and serialize back can implement it.
 
-use crate::NonFunctionValue;
+use ac_runtime_config::NonFunctionValue;
 use ac_source::SourceMap;
 
 /// A format frontend that parses and serializes `NonFunctionValue`s.

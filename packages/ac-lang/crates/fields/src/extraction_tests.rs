@@ -1,7 +1,7 @@
+use ac_runtime_values::NonFunctionValue;
 use super::*;
 use crate::types::ArgSpec;
 use ac_dialect_canonical::AC_DIALECT;
-use ac_runtime::NonFunctionValue;
 
 #[test]
 fn extract_fields_basic() {

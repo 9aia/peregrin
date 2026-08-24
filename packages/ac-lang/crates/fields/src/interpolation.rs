@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 use crate::expression::eval_expression;
 use crate::types::{DEFAULT_NAMESPACE, Namespaces};
 use ac_dialect::Dialect;
@@ -14,7 +15,7 @@ use serde_json::Value as JsonValue;
 ///
 /// Function calls are resolved via `host`. If no functions are needed,
 /// use `ac_runtime_example_1::DefaultHost`.
-pub fn interpolate<H: Host + Clone + 'static>(
+pub fn interpolate<H: Host<NonFunctionValue> + Clone + 'static>(
     value: &JsonValue,
     namespaces: &Namespaces,
     host: &H,
@@ -47,7 +48,7 @@ pub fn interpolate<H: Host + Clone + 'static>(
 /// locally — the override applies to that subtree only.
 ///
 /// If `inheritable` is empty, this is equivalent to [`interpolate`].
-pub fn interpolate_scoped<H: Host + Clone + 'static>(
+pub fn interpolate_scoped<H: Host<NonFunctionValue> + Clone + 'static>(
     value: &JsonValue,
     namespaces: &Namespaces,
     inheritable: &[String],
@@ -72,7 +73,7 @@ pub fn interpolate_scoped<H: Host + Clone + 'static>(
 /// Internal: scope-aware interpolation. Carries a `scope` (inheritable field
 /// values from parent objects) and merges it into the default namespace at each
 /// object level.
-fn interpolate_with_scope<H: Host + Clone + 'static>(
+fn interpolate_with_scope<H: Host<NonFunctionValue> + Clone + 'static>(
     value: &JsonValue,
     namespaces: &Namespaces,
     inheritable: &std::collections::HashSet<String>,
@@ -148,7 +149,7 @@ fn extract_single_expr<'a>(s: &'a str, prefix: &str, suffix: &str) -> Option<&'a
 /// Replaces all interpolation patterns in a string, returning a `JsonValue`.
 /// If the string is a single expression, the raw value is returned (preserving type).
 /// Otherwise, all patterns are stringified and concatenated.
-fn resolve_interpolation<H: Host + Clone + 'static>(
+fn resolve_interpolation<H: Host<NonFunctionValue> + Clone + 'static>(
     s: &str,
     namespaces: &Namespaces,
     host: &H,

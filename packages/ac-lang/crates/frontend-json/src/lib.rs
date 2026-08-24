@@ -12,7 +12,7 @@
 
 mod scanner;
 
-use ac_runtime::{Frontend, NonFunctionValue};
+use ac_runtime_values::{Frontend, NonFunctionValue};
 use thiserror::Error;
 
 /// Errors that can occur during JSON parsing.

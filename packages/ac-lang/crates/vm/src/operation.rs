@@ -24,22 +24,20 @@
 //! the continuation and yields. If `perform` returns `Ok(value)`, the
 //! operation completed without signaling (e.g. a no-op or cached result).
 
-use crate::Context;
-use crate::Error;
-use ac_runtime_values::NonFunctionValue;
+use crate::{Context, Error, Value};
 
 /// The signature of an operation — its name and parameter types.
 ///
 /// Used for introspection and handler matching. Parameter types are
-/// raw JSON schema values, consistent with `FunctionValue` params.
+/// raw schema values in the concrete value representation.
 #[derive(Debug, Clone, PartialEq)]
-pub struct OperationSig {
+pub struct OperationSig<V: Value> {
     /// The operation name (e.g. `"fetch"`, `"read_file"`).
     pub name: String,
     /// `(param_name, raw_schema)` pairs, in declaration order.
-    pub params: Vec<(String, serde_json::Value)>,
+    pub params: Vec<(String, V)>,
     /// Raw schema value for the return type, if declared.
-    pub return_schema: Option<serde_json::Value>,
+    pub return_schema: Option<V>,
 }
 
 /// A typed operation that signals instead of completing.
@@ -56,16 +54,16 @@ pub struct OperationSig {
 /// ```ignore
 /// struct Fetch;
 ///
-/// impl Operation for Fetch {
-///     fn signature(&self) -> OperationSig {
+/// impl Operation<MyValue> for Fetch {
+///     fn signature(&self) -> OperationSig<MyValue> {
 ///         OperationSig {
 ///             name: "fetch".to_string(),
-///             params: vec![("url".to_string(), serde_json::json!({"type": "string"}))],
-///             return_schema: Some(serde_json::json!({"type": "string"})),
+///             params: vec![],
+///             return_schema: None,
 ///         }
 ///     }
 ///
-///     fn perform(&self, args: &[NonFunctionValue], _ctx: &mut dyn Context) -> Result<NonFunctionValue, Error> {
+///     fn perform(&self, args: &[MyValue], _ctx: &mut dyn Context<MyValue>) -> Result<MyValue, Error<MyValue>> {
 ///         // Signal: yield to the caller with operation name + args
 ///         Err(Error::Operation {
 ///             name: "fetch".to_string(),
@@ -74,17 +72,13 @@ pub struct OperationSig {
 ///     }
 /// }
 /// ```
-pub trait Operation {
+pub trait Operation<V: Value> {
     /// Returns the signature of this operation.
-    fn signature(&self) -> OperationSig;
+    fn signature(&self) -> OperationSig<V>;
 
     /// Perform the operation with pre-evaluated arguments.
     ///
     /// Return `Err(Error::Operation { name, args })` to signal.
     /// Return `Ok(value)` to complete without signaling (e.g. cached).
-    fn perform(
-        &self,
-        args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error>;
+    fn perform(&self, args: &[V], ctx: &mut dyn Context<V>) -> Result<V, Error<V>>;
 }

@@ -50,6 +50,10 @@ pub struct EvalArgs {
     /// Output format (yaml, json, or toml). Defaults to yaml.
     #[arg(short = 'o', long, default_value = "yaml")]
     pub output: String,
+
+    /// VM host to use: sandbox (default, pure) or server (effects enabled).
+    #[arg(short = 'v', long, default_value = "sandbox")]
+    pub vm: String,
 }
 
 #[derive(Args)]

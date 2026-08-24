@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 use super::common::{arr, num, require_object, require_one_arg};
 
@@ -7,11 +10,11 @@ use super::common::{arr, num, require_object, require_one_arg};
 
 #[derive(Clone, Copy)]
 pub struct Keys;
-impl Function for Keys {
+impl Function<NonFunctionValue> for Keys {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
@@ -27,11 +30,11 @@ impl Function for Keys {
 
 #[derive(Clone, Copy)]
 pub struct Values;
-impl Function for Values {
+impl Function<NonFunctionValue> for Values {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
@@ -44,11 +47,11 @@ impl Function for Values {
 
 #[derive(Clone, Copy)]
 pub struct Entries;
-impl Function for Entries {
+impl Function<NonFunctionValue> for Entries {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let obj = require_object(arg)?;
@@ -64,11 +67,11 @@ impl Function for Entries {
 
 #[derive(Clone, Copy)]
 pub struct Size;
-impl Function for Size {
+impl Function<NonFunctionValue> for Size {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = require_one_arg(args)?;
         let size = if arg.is_null() {

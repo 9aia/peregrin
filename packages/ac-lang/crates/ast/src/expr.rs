@@ -10,7 +10,11 @@ pub trait ExprFactory<E, V> {
     where
         S: Into<String>;
 
+    fn apply(&self, target: E, args: Vec<E>) -> E;
+
     fn array(&self, elements: Vec<E>) -> E;
 
     fn object(&self, entries: Vec<(String, E)>) -> E;
+
+    fn index(&self, target: E, index: E) -> E;
 }

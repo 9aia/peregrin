@@ -1,5 +1,5 @@
 use ac_dialect::{Dialect, DocumentVocabulary, ExprParser, SchemaVocabulary, Syntax};
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 
 use crate::schema_vocabulary::JSON_SCHEMA_VOCABULARY;
 

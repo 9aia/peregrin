@@ -1,8 +1,9 @@
+use ac_runtime_values::NonFunctionValue;
 use rand::Rng;
 use serde_json::Value;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 
 use super::common::{array, require_int, s};
 use crate::error::RandError;
@@ -29,11 +30,11 @@ use crate::error::RandError;
 #[derive(Clone, Copy)]
 pub struct String_;
 
-impl Function for String_ {
+impl Function<NonFunctionValue> for String_ {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let length = require_int(args, 0)?;
         if length < 0 {
@@ -97,11 +98,11 @@ impl Function for String_ {
 #[derive(Clone, Copy)]
 pub struct Bytes;
 
-impl Function for Bytes {
+impl Function<NonFunctionValue> for Bytes {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let length = require_int(args, 0)?;
         if length < 0 {
@@ -128,11 +129,11 @@ impl Function for Bytes {
 #[derive(Clone, Copy)]
 pub struct Uuid;
 
-impl Function for Uuid {
+impl Function<NonFunctionValue> for Uuid {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let mut rng = rand::rng();
         let mut bytes = [0u8; 16];

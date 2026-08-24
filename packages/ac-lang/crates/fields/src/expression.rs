@@ -1,6 +1,7 @@
+use ac_runtime_values::NonFunctionValue;
 use ac_dialect::Dialect;
-use ac_runtime::NonFunctionValue;
-use ac_runtime_canonical::{CanonicalContext, Context, Error, Eval, Host, Vm};
+use ac_runtime_canonical::{CanonicalContext, Eval, Host, Vm};
+use ac_runtime_values::Error;
 use serde_json::Value as JsonValue;
 
 use crate::parser::parse_expr_to_tree;
@@ -14,7 +15,7 @@ use crate::types::{DEFAULT_NAMESPACE, Namespaces};
 /// - Literals: `"string"`, `123`, `true`, `false`, `null`
 ///
 /// Returns `None` if the expression cannot be resolved.
-pub fn eval_expression<H: Host + Clone + 'static>(
+pub fn eval_expression<H: Host<NonFunctionValue> + Clone + 'static>(
     expr: &str,
     namespaces: &Namespaces,
     host: &H,
@@ -41,7 +42,7 @@ pub fn eval_expression<H: Host + Clone + 'static>(
 /// and other user-defined functions.
 ///
 /// Returns `None` if the body cannot be evaluated.
-pub fn eval_body<H: Host + Clone + 'static>(
+pub fn eval_body<H: Host<NonFunctionValue> + Clone + 'static>(
     body: &str,
     params: &[(String, JsonValue)],
     namespaces: &Namespaces,
@@ -62,13 +63,13 @@ pub fn eval_body<H: Host + Clone + 'static>(
 }
 
 #[derive(Clone)]
-struct VmEval<H: Host + Clone + 'static> {
+struct VmEval<H: Host<NonFunctionValue> + Clone + 'static> {
     host: H,
     namespaces: Namespaces,
     dialect: &'static dyn Dialect,
 }
 
-impl<H: Host + Clone + 'static> VmEval<H> {
+impl<H: Host<NonFunctionValue> + Clone + 'static> VmEval<H> {
     fn new(host: H, namespaces: Namespaces, dialect: &'static dyn Dialect) -> Self {
         VmEval {
             host,
@@ -78,7 +79,7 @@ impl<H: Host + Clone + 'static> VmEval<H> {
     }
 }
 
-impl<H: Host + Clone + 'static> Eval for VmEval<H> {
+impl<H: Host<NonFunctionValue> + Clone + 'static> Eval<NonFunctionValue> for VmEval<H> {
     fn eval_expr(
         &self,
         expr: &str,

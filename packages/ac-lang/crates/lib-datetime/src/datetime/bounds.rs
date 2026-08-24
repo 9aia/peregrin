@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 
 use super::common::{format_iso, parse_iso, require_one_string, s};
 use chrono::{Datelike, Duration, Timelike, Utc};
@@ -8,11 +9,11 @@ macro_rules! bound_fn {
     ($struct_name:ident, $body:expr) => {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
-        impl Function for $struct_name {
+        impl Function<NonFunctionValue> for $struct_name {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut dyn Context,
+                _ctx: &mut dyn Context<NonFunctionValue>,
             ) -> Result<NonFunctionValue, Error> {
                 let input = require_one_string(args)?;
                 let dt = parse_iso(input)?;

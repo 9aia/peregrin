@@ -1,4 +1,4 @@
-use ac_runtime::FunctionValue;
+use ac_runtime_values::FunctionValue;
 use ac_store::DefinitionHash;
 
 /// A named entry in a document — a definition with its local name.

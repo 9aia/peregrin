@@ -1,0 +1,176 @@
+//! # ac-runtime-server
+//!
+//! A [`Host`] for running AC expressions with effects enabled.
+//!
+//! Includes everything from [`ac-runtime-sandbox`] plus:
+//!
+//! - **OS stdlib** (`fs.*`, `env.*`, `path.*`, `time.*`, `cmd.*`, `tmp.*`, `socket.*`, `sig.*`)
+//!   from [`ac-lib-os-std`].
+//! - **HTTP server** (`http_server.*`) from [`ac-lib-http-server-std`].
+//! - **HTTP client** (`http_client.*`) from [`ac-lib-http-client-std`].
+//! - **Random** (`rand.*`) from [`ac-lib-rand`].
+//!
+//! This is the host you want when AC needs to open ports, read files,
+//! spawn processes, or make HTTP requests.
+
+use ac_runtime_canonical::CanonicalEval;
+use ac_runtime_values::{CanonicalContext, Function, GenericFunction, Host, LazyFunction, NonFunctionValue};
+use ac_lib_crypto::CryptoModule;
+use ac_lib_datetime::DateTimeModule;
+use ac_lib_http_client::HttpClientModule;
+use ac_lib_http_client_std::StdHttpClient;
+use ac_lib_http_server_std::std_http_server_module;
+use ac_lib_intl::IntlModule;
+use ac_lib_kv::KeyValueStoreModule;
+use ac_lib_kv_hashmap::HashKeyValueStore;
+use ac_lib_os::{CmdModule, EnvModule, FsModule, PathModule, SigModule, SocketModule, TimeModule, TmpModule};
+use ac_lib_os_std::{StdCmd, StdEnv, StdFs, StdPath, StdSig, StdSocket, StdTime, StdTmp};
+use ac_lib_rand::RandModule;
+use ac_lib_utils::{
+    ArrayModule, BoolModule, CmpModule, FnModule, MathModule, ObjModule, SetModule, StrModule,
+    TypeModule,
+};
+use ac_runtime_example_1::DefaultHost;
+use ac_runtime_modules::ModuleHost;
+
+/// Resource limits for server-side evaluation.
+///
+/// Mirrors [`ac_runtime_sandbox::SandboxLimits`] so the same depth/call
+/// guards can be enforced even when effects are enabled.
+#[derive(Clone, Debug)]
+pub struct ServerLimits {
+    /// Maximum scope depth (function call nesting).
+    pub max_depth: Option<usize>,
+    /// Maximum number of function calls during a single evaluation.
+    pub max_calls: Option<usize>,
+}
+
+impl Default for ServerLimits {
+    fn default() -> Self {
+        ServerLimits {
+            max_depth: Some(256),
+            max_calls: Some(100_000),
+        }
+    }
+}
+
+/// A host with effects: sandbox modules plus HTTP, OS, and random.
+///
+/// Function lookup checks the built-in [`DefaultHost`] first, then the
+/// module host (pure libs, HTTP, OS, random, KV, etc.).
+#[derive(Clone)]
+pub struct ServerHost {
+    default: DefaultHost,
+    modules: ModuleHost,
+    limits: ServerLimits,
+}
+
+impl ServerHost {
+    /// Creates a new server host with the given limits and all enabled modules.
+    pub fn new(limits: ServerLimits) -> Self {
+        let modules = ModuleHost::new()
+            .with(MathModule)
+            .with(StrModule)
+            .with(ArrayModule)
+            .with(SetModule)
+            .with(BoolModule)
+            .with(CmpModule)
+            .with(ObjModule)
+            .with(FnModule)
+            .with(TypeModule)
+            .with(CryptoModule)
+            .with(DateTimeModule)
+            .with(IntlModule::new())
+            .with(KeyValueStoreModule::new(HashKeyValueStore::default()))
+            .with(RandModule)
+            .with(FsModule::new(StdFs))
+            .with(EnvModule::new(StdEnv))
+            .with(PathModule::new(StdPath))
+            .with(TimeModule::new(StdTime))
+            .with(CmdModule::new(StdCmd))
+            .with(TmpModule::new(StdTmp))
+            .with(SocketModule::new(StdSocket::default()))
+            .with(SigModule::new(StdSig))
+            .with(std_http_server_module())
+            .with(HttpClientModule::new(StdHttpClient));
+
+        ServerHost {
+            default: DefaultHost::default(),
+            modules,
+            limits,
+        }
+    }
+
+    /// Creates a [`Context`] with the server limits applied.
+    pub fn new_context(&self) -> CanonicalContext {
+        let mut ctx = CanonicalContext::new();
+        if let Some(max) = self.limits.max_depth {
+            ctx.set_max_depth(max);
+        }
+        if let Some(max) = self.limits.max_calls {
+            ctx.set_max_calls(max);
+        }
+        ctx.set_eval(Box::new(CanonicalEval::new(
+            self.clone(),
+            self.limits.max_depth,
+            self.limits.max_calls,
+        )));
+        ctx
+    }
+
+    /// Returns the configured limits.
+    pub fn limits(&self) -> &ServerLimits {
+        &self.limits
+    }
+
+    /// Returns the inner [`ModuleHost`], allowing callers to register
+    /// additional modules on top of the defaults.
+    pub fn modules(&self) -> &ModuleHost {
+        &self.modules
+    }
+
+    /// Consumes the host and returns the inner [`ModuleHost`].
+    pub fn into_modules(self) -> ModuleHost {
+        self.modules
+    }
+}
+
+impl Default for ServerHost {
+    fn default() -> Self {
+        Self::new(ServerLimits::default())
+    }
+}
+
+impl Host<NonFunctionValue> for ServerHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
+        self.default.function(name).or_else(|| self.modules.function(name))
+    }
+
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
+        self.default
+            .lazy_function(name)
+            .or_else(|| self.modules.lazy_function(name))
+    }
+
+    fn generic_function(&self, name: &str) -> Option<&dyn GenericFunction<NonFunctionValue>> {
+        self.default
+            .generic_function(name)
+            .or_else(|| self.modules.generic_function(name))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ServerHost;
+    use super::ServerLimits;
+    use ac_runtime_values::Host;
+
+    #[test]
+    fn cmp_functions_are_available() {
+        let host = ServerHost::new(ServerLimits::default());
+        assert!(host.function("cmp.eq").is_some());
+        assert!(host.function("cmp.compare").is_some());
+        assert!(host.function("cmp.min").is_some());
+        assert!(host.function("cmp.sort").is_some());
+    }
+}

@@ -83,10 +83,6 @@ pub fn unify(
             }
         }
 
-        // Pattern is a Var not in type_params — opaque, only matches itself
-        // (handled by the Var vs Var arm above) or Unknown/Never (handled above).
-        (_, Type::Var(_)) => false,
-
         // Actual is a Var not in pattern position — can't unify with concrete.
         (Type::Var(_), _) => false,
 

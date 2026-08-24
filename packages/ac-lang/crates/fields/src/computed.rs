@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 use crate::expression::eval_expression;
 use crate::types::{ArgSpec, ComputedField, DEFAULT_NAMESPACE, Namespaces};
 use ac_dialect::Dialect;
@@ -17,7 +18,7 @@ use serde_json::Value as JsonValue;
 ///
 /// Returns a list of error messages for any computed fields that could not
 /// be evaluated after all passes.
-pub fn compute_fields<H: Host + Clone + 'static>(
+pub fn compute_fields<H: Host<NonFunctionValue> + Clone + 'static>(
     data: &mut JsonValue,
     computed: &[ComputedField],
     namespaces: &mut Namespaces,

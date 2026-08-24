@@ -1,7 +1,8 @@
+use ac_runtime_values::NonFunctionValue;
 use std::sync::Arc;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 use ac_runtime_modules::Module;
 
 use crate::error::OsError;
@@ -40,7 +41,7 @@ impl Module for EnvModule {
         "env"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "get" => Some(&self.get),
             "has" => Some(&self.has),
@@ -65,11 +66,11 @@ struct GetFn {
     env: Arc<dyn Env>,
 }
 
-impl Function for GetFn {
+impl Function<NonFunctionValue> for GetFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         let value = self.env.get(key)?;
@@ -84,11 +85,11 @@ struct HasFn {
     env: Arc<dyn Env>,
 }
 
-impl Function for HasFn {
+impl Function<NonFunctionValue> for HasFn {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let key = require_one_string(args)?;
         self.env
@@ -102,11 +103,11 @@ struct KeysFn {
     env: Arc<dyn Env>,
 }
 
-impl Function for KeysFn {
+impl Function<NonFunctionValue> for KeysFn {
     fn call(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let keys = self.env.keys()?;
         let arr: Vec<serde_json::Value> = keys.into_iter().map(serde_json::Value::String).collect();

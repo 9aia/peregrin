@@ -11,6 +11,7 @@ members = [
   "crates/ast-canonical",
   "crates/ast-common",
   "crates/runtime",
+  "crates/runtime-config",
   "crates/runtime-core",
   "crates/lib-utils",
   "crates/lib-datetime",
@@ -77,6 +78,7 @@ members = [
   "crates/integration-tests",
   "crates/runtime-type",
   "crates/runtime-sandbox",
+  "crates/runtime-server",
   "crates/lexer",
   "crates/lexer-canonical",
   "crates/lexer-common",
@@ -97,6 +99,7 @@ ac-ast = { path = "crates/ast" }
 ac-ast-canonical = { path = "crates/ast-canonical" }
 ac-ast-common = { path = "crates/ast-common" }
 ac-runtime-values = { path = "crates/runtime" }
+ac-runtime-config = { path = "crates/runtime-config" }
 ac-runtime-modules = { path = "crates/runtime-core" }
 ac-lib-utils = { path = "crates/lib-utils" }
 ac-lib-datetime = { path = "crates/lib-datetime" }
@@ -161,6 +164,7 @@ ac-codebase = { path = "crates/codebase" }
 ac-integration-tests = { path = "crates/integration-tests" }
 ac-runtime-type = { path = "crates/runtime-type" }
 ac-runtime-sandbox = { path = "crates/runtime-sandbox" }
+ac-runtime-server = { path = "crates/runtime-server" }
 ac-lexer = { path = "crates/lexer" }
 ac-lexer-canonical = { path = "crates/lexer-canonical" }
 ac-lexer-common = { path = "crates/lexer-common" }

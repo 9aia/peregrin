@@ -2,6 +2,7 @@
 
 use ac_lib_utils::{ArrayModule, BoolModule, FnModule, ObjModule, StrModule};
 use ac_runtime::{Function, Host};
+
 use ac_runtime_example_1::DefaultHost;
 use ac_runtime_modules::ModuleHost;
 
@@ -39,18 +40,18 @@ impl Default for TypeHost {
     }
 }
 
-impl Host for TypeHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for TypeHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         self.inner
             .function(name)
             .or_else(|| self.default.function(name))
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn ac_runtime::LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn ac_runtime::LazyFunction<NonFunctionValue>> {
         self.inner.lazy_function(name)
     }
 
-    fn generic_function(&self, name: &str) -> Option<&dyn ac_runtime::GenericFunction> {
+    fn generic_function(&self, name: &str) -> Option<&dyn ac_runtime::GenericFunction<NonFunctionValue>> {
         self.inner.generic_function(name)
     }
 }
@@ -64,7 +65,7 @@ impl ac_runtime_modules::Module for TypeHelpersModule {
         "type"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "kind" => Some(&TypeKind),
             "name" => Some(&TypeName),

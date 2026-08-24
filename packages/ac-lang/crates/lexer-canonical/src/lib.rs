@@ -7,10 +7,10 @@
 //! - `42`, `1.5`, `-3` for numbers
 //! - `true` / `false` for booleans, `null` for null
 //! - `handle` and `as` as keywords
-//! - `(` `)` `{` `}` `[` `]` `,` `:` as delimiters
+//! - `(` `)` `{` `}` `[` `]` `,` `:` `.` as delimiters
 //! - `// line comments` and `/* block comments */`
 //!
-//! Identifiers may contain `.` for namespace paths (e.g. `math.sqrt`).
+//! Dots are separate `Dot` tokens; `math.sqrt` lexes as `math`, `.`, `sqrt`.
 //!
 //! The canonical config is available as [`canonical_config()`]; custom
 //! dialects can start from it and modify keywords, delimiters, and rules

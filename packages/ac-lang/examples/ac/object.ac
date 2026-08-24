@@ -1,0 +1,5 @@
+{
+  name: "ac",
+  version: 1,
+  sum: add(40, 2)
+}

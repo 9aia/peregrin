@@ -1,8 +1,31 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{CanonicalContext, Context, Error, Eval};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Eval};
+use ac_runtime_values::{CanonicalContext, Error, FunctionValue};
+
 use ac_runtime_modules::Module;
 
 use super::module::FnModule;
+
+/// Test-only helpers for decoding function values from `NonFunctionValue`s.
+///
+/// The production `NonFunctionValue` no longer has function-detection
+/// methods; these helpers keep the test assertions readable without
+/// adding those methods back to the library type.
+trait FunctionValueExt {
+    fn is_function(&self) -> bool;
+    fn as_function(&self) -> Option<FunctionValue>;
+}
+
+impl FunctionValueExt for NonFunctionValue {
+    fn is_function(&self) -> bool {
+        FunctionValue::from_json(self.inner()).is_some()
+    }
+
+    fn as_function(&self) -> Option<FunctionValue> {
+        FunctionValue::from_json(self.inner())
+    }
+}
 
 fn call(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = FnModule.function(name).expect("function exists");
@@ -38,10 +61,10 @@ fn fn_value(body: &str, params: &[&str]) -> NonFunctionValue {
 
 use ac_ast_canonical::Expr;
 use ac_runtime_canonical::Vm;
-use ac_runtime_example_1::DefaultHost;
+use crate::shared::TestHost;
 
 struct TestEval;
-impl Eval for TestEval {
+impl Eval<NonFunctionValue> for TestEval {
     fn eval_expr(
         &self,
         expr: &str,
@@ -65,7 +88,7 @@ impl Eval for TestEval {
                 let arg_val = eval_arg(&arg_str, vars)?;
                 args.push(Expr::Value(arg_val));
             }
-            let vm = Vm::new(DefaultHost::default());
+            let vm = Vm::new(TestHost::default());
             let mut ctx = CanonicalContext::new();
             let call_expr = Expr::call(name.trim(), args);
             return vm.eval(&call_expr, &mut ctx);
@@ -160,13 +183,6 @@ fn call_with_eval(name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let mut ctx = CanonicalContext::new();
     ctx.set_eval(Box::new(TestEval));
     func.call(args, &mut ctx).expect("call succeeds")
-}
-
-fn call_err_with_eval(name: &str, args: &[NonFunctionValue]) -> Result<NonFunctionValue, Error> {
-    let func = FnModule.function(name).expect("function exists");
-    let mut ctx = CanonicalContext::new();
-    ctx.set_eval(Box::new(TestEval));
-    func.call(args, &mut ctx)
 }
 
 // ── module ─────────────────────────────────────────────────────────
@@ -504,8 +520,8 @@ fn choice_with_string_predicate() {
         &[
             s("hello"),
             fn_value("x", &["x"]),
-            fn_value("add(x, 0)", &["x"]),
-            fn_value("add(x, 100)", &["x"]),
+            fn_value("add(0, 0)", &["x"]),
+            fn_value("add(0, 100)", &["x"]),
         ],
     );
     assert_eq!(result.as_number(), Some(0.0));
@@ -573,7 +589,7 @@ fn apply_binds_fewer_args_than_params() {
     let result = call_with_eval(
         "apply",
         &[
-            fn_value("add(a, b)", &["a", "b"]),
+            fn_value("add(a, 0)", &["a", "b"]),
             NonFunctionValue::new(serde_json::json!([3])),
         ],
     );

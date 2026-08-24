@@ -1,5 +1,6 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 
 use super::common::{n, parse_iso, require_two_strings};
 
@@ -15,11 +16,11 @@ fn duration_secs_f64(
 
 #[derive(Clone, Copy)]
 pub struct DurationBetween;
-impl Function for DurationBetween {
+impl Function<NonFunctionValue> for DurationBetween {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let dt_a = parse_iso(a)?;
@@ -36,11 +37,11 @@ impl Function for DurationBetween {
 
 #[derive(Clone, Copy)]
 pub struct DurationSeconds;
-impl Function for DurationSeconds {
+impl Function<NonFunctionValue> for DurationSeconds {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let dt_a = parse_iso(a)?;
@@ -51,11 +52,11 @@ impl Function for DurationSeconds {
 
 #[derive(Clone, Copy)]
 pub struct DurationMinutes;
-impl Function for DurationMinutes {
+impl Function<NonFunctionValue> for DurationMinutes {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let dt_a = parse_iso(a)?;
@@ -66,11 +67,11 @@ impl Function for DurationMinutes {
 
 #[derive(Clone, Copy)]
 pub struct DurationHours;
-impl Function for DurationHours {
+impl Function<NonFunctionValue> for DurationHours {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let dt_a = parse_iso(a)?;
@@ -81,11 +82,11 @@ impl Function for DurationHours {
 
 #[derive(Clone, Copy)]
 pub struct DurationDays;
-impl Function for DurationDays {
+impl Function<NonFunctionValue> for DurationDays {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (a, b) = require_two_strings(args)?;
         let dt_a = parse_iso(a)?;

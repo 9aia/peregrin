@@ -30,12 +30,12 @@ fn block_on<F: Future>(future: F) -> F::Output {
 
 #[derive(Clone)]
 struct Add;
-impl Function for Add {
+impl Function<NonFunctionValue> for Add {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -46,8 +46,8 @@ struct DefaultHost {
     add: Add,
 }
 
-impl Host for DefaultHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for DefaultHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "add" => Some(&self.add),
             _ => None,
@@ -105,12 +105,12 @@ fn vm_host_accessor() {
 
 #[derive(Clone)]
 struct AsyncFetch;
-impl AsyncFunction for AsyncFetch {
+impl AsyncFunction<NonFunctionValue> for AsyncFetch {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut (dyn Context + 'a),
-    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
+        _ctx: &'a mut (dyn Context<NonFunctionValue> + 'a),
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error<NonFunctionValue>>> + 'a>> {
         Box::pin(async {
             let input = args.first().and_then(|v| v.as_str()).unwrap_or("");
             Ok(NonFunctionValue::new(format!("fetched:{input}")))
@@ -120,12 +120,12 @@ impl AsyncFunction for AsyncFetch {
 
 #[derive(Clone)]
 struct AsyncAdd;
-impl AsyncFunction for AsyncAdd {
+impl AsyncFunction<NonFunctionValue> for AsyncAdd {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut (dyn Context + 'a),
-    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
+        _ctx: &'a mut (dyn Context<NonFunctionValue> + 'a),
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error<NonFunctionValue>>> + 'a>> {
         Box::pin(async {
             let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
             Ok(NonFunctionValue::new(sum))
@@ -135,12 +135,12 @@ impl AsyncFunction for AsyncAdd {
 
 #[derive(Clone)]
 struct YieldOnce;
-impl AsyncFunction for YieldOnce {
+impl AsyncFunction<NonFunctionValue> for YieldOnce {
     fn call<'a>(
         &'a self,
         args: &'a [NonFunctionValue],
-        _ctx: &'a mut (dyn Context + 'a),
-    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>> {
+        _ctx: &'a mut (dyn Context<NonFunctionValue> + 'a),
+    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error<NonFunctionValue>>> + 'a>> {
         Box::pin(async {
             let val = args.first().cloned().unwrap_or(NonFunctionValue::new(0));
             Err(Error::Yield(val))
@@ -156,15 +156,15 @@ struct MixedHost {
     yield_once: YieldOnce,
 }
 
-impl Host for MixedHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for MixedHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "add" => Some(&self.add),
             _ => None,
         }
     }
 
-    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction> {
+    fn async_function(&self, name: &str) -> Option<&dyn AsyncFunction<NonFunctionValue>> {
         match name {
             "async_add" => Some(&self.async_add),
             "fetch" => Some(&self.fetch),
@@ -320,20 +320,20 @@ fn vm_eval_deeply_nested_calls() {
 #[test]
 fn vm_eval_call_with_no_args() {
     struct GetAnswer;
-    impl Function for GetAnswer {
+    impl Function<NonFunctionValue> for GetAnswer {
         fn call(
             &self,
             _args: &[NonFunctionValue],
-            _ctx: &mut dyn Context,
-        ) -> Result<NonFunctionValue, Error> {
+            _ctx: &mut dyn Context<NonFunctionValue>,
+        ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
             Ok(NonFunctionValue::new(42))
         }
     }
     struct AnswerHost {
         answer: GetAnswer,
     }
-    impl Host for AnswerHost {
-        fn function(&self, name: &str) -> Option<&dyn Function> {
+    impl Host<NonFunctionValue> for AnswerHost {
+        fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
             match name {
                 "answer" => Some(&self.answer),
                 _ => None,
@@ -399,9 +399,9 @@ fn vm_eval_value_types() {
 
 #[derive(Clone)]
 struct PingOp;
-impl crate::Operation for PingOp {
-    fn signature(&self) -> crate::OperationSig {
-        crate::OperationSig {
+impl crate::Operation<NonFunctionValue> for PingOp {
+    fn signature(&self) -> crate::OperationSig<NonFunctionValue> {
+        crate::OperationSig::<NonFunctionValue> {
             name: "ping".to_string(),
             params: vec![],
             return_schema: None,
@@ -410,8 +410,8 @@ impl crate::Operation for PingOp {
     fn perform(
         &self,
         _args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         Err(Error::Operation {
             name: "ping".to_string(),
             args: vec![],
@@ -424,14 +424,14 @@ struct PingHost {
     add: Add,
     ping: PingOp,
 }
-impl Host for PingHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for PingHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "add" => Some(&self.add),
             _ => None,
         }
     }
-    fn operation(&self, name: &str) -> Option<&dyn crate::Operation> {
+    fn operation(&self, name: &str) -> Option<&dyn crate::Operation<NonFunctionValue>> {
         match name {
             "ping" => Some(&self.ping),
             _ => None,

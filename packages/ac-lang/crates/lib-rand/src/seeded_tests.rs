@@ -1,3 +1,4 @@
+use ac_runtime_values::NonFunctionValue;
 use super::test_helpers::*;
 
 // ── rand.seeded_int ──────────────────────────────────────────────

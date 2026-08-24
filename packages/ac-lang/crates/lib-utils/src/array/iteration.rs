@@ -1,18 +1,21 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 use super::helpers::{arr, array_unary_fn, num, require_array, require_function_value};
-use crate::shared::{apply_fn, apply_fn2, find_index, is_truthy_fn};
+use crate::shared::{apply_fn2, find_index, is_truthy_fn};
 
 // ── take / drop ────────────────────────────────────────────────────
 
 #[derive(Clone, Copy)]
 pub struct Take;
-impl Function for Take {
+impl Function<NonFunctionValue> for Take {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -38,11 +41,11 @@ impl Function for Take {
 
 #[derive(Clone, Copy)]
 pub struct Drop;
-impl Function for Drop {
+impl Function<NonFunctionValue> for Drop {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -98,11 +101,11 @@ array_unary_fn!(Unzip, |input: &[serde_json::Value]| {
 
 #[derive(Clone, Copy)]
 pub struct Intersperse;
-impl Function for Intersperse {
+impl Function<NonFunctionValue> for Intersperse {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -125,11 +128,11 @@ impl Function for Intersperse {
 
 #[derive(Clone, Copy)]
 pub struct Intercalate;
-impl Function for Intercalate {
+impl Function<NonFunctionValue> for Intercalate {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -168,11 +171,11 @@ array_unary_fn!(Dedupe, |input: &[serde_json::Value]| {
 
 #[derive(Clone, Copy)]
 pub struct Prepend;
-impl Function for Prepend {
+impl Function<NonFunctionValue> for Prepend {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -192,11 +195,11 @@ impl Function for Prepend {
 
 #[derive(Clone, Copy)]
 pub struct TakeWhile;
-impl Function for TakeWhile {
+impl Function<NonFunctionValue> for TakeWhile {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -220,11 +223,11 @@ impl Function for TakeWhile {
 
 #[derive(Clone, Copy)]
 pub struct DropWhile;
-impl Function for DropWhile {
+impl Function<NonFunctionValue> for DropWhile {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -250,11 +253,11 @@ impl Function for DropWhile {
 
 #[derive(Clone, Copy)]
 pub struct Scan;
-impl Function for Scan {
+impl Function<NonFunctionValue> for Scan {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -277,11 +280,11 @@ impl Function for Scan {
 
 #[derive(Clone, Copy)]
 pub struct Foldr;
-impl Function for Foldr {
+impl Function<NonFunctionValue> for Foldr {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -303,11 +306,11 @@ impl Function for Foldr {
 
 #[derive(Clone, Copy)]
 pub struct FindIndex;
-impl Function for FindIndex {
+impl Function<NonFunctionValue> for FindIndex {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -324,11 +327,11 @@ impl Function for FindIndex {
 
 #[derive(Clone, Copy)]
 pub struct FindLast;
-impl Function for FindLast {
+impl Function<NonFunctionValue> for FindLast {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -348,11 +351,11 @@ impl Function for FindLast {
 
 #[derive(Clone, Copy)]
 pub struct FindLastIndex;
-impl Function for FindLastIndex {
+impl Function<NonFunctionValue> for FindLastIndex {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -373,11 +376,11 @@ impl Function for FindLastIndex {
 
 #[derive(Clone, Copy)]
 pub struct Windows;
-impl Function for Windows {
+impl Function<NonFunctionValue> for Windows {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -410,11 +413,11 @@ impl Function for Windows {
 
 #[derive(Clone, Copy)]
 pub struct Transpose;
-impl Function for Transpose {
+impl Function<NonFunctionValue> for Transpose {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let array = require_array(args.first().ok_or(Error::ArgumentCount {
             expected: 1,
@@ -449,11 +452,11 @@ impl Function for Transpose {
 
 #[derive(Clone, Copy)]
 pub struct InsertAt;
-impl Function for InsertAt {
+impl Function<NonFunctionValue> for InsertAt {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
             return Err(Error::ArgumentCount {
@@ -484,11 +487,11 @@ impl Function for InsertAt {
 
 #[derive(Clone, Copy)]
 pub struct RemoveAt;
-impl Function for RemoveAt {
+impl Function<NonFunctionValue> for RemoveAt {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {

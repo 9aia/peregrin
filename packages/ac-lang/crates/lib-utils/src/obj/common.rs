@@ -1,5 +1,7 @@
-use ac_runtime::Error;
-use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_runtime_values::Error;
+
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
+
 
 pub(super) fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionValue, Error> {
     args.first().ok_or(Error::ArgumentCount {
@@ -58,7 +60,7 @@ pub(super) fn require_string(arg: &NonFunctionValue) -> Result<String, Error> {
 }
 
 pub(super) fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error> {
-    arg.as_function().ok_or(Error::TypeMismatch {
+    FunctionValue::from_json(arg.inner()).ok_or(Error::TypeMismatch {
         expected: "function value",
         got: "non-function",
     })
@@ -89,44 +91,6 @@ pub(super) fn bind_param(
         .first()
         .map(|(name, _)| vec![(name.clone(), NonFunctionValue::new(value.clone()))])
         .unwrap_or_default()
-}
-
-pub(super) fn is_truthy_value(value: &NonFunctionValue) -> bool {
-    if let Some(b) = value.as_bool() {
-        b
-    } else if let Some(n) = value.as_number() {
-        n != 0.0
-    } else if let Some(s) = value.as_str() {
-        !s.is_empty()
-    } else if value.is_null() {
-        false
-    } else if let Some(arr) = value.as_array() {
-        !arr.is_empty()
-    } else if let Some(obj) = value.as_object() {
-        !obj.is_empty()
-    } else {
-        true
-    }
-}
-
-pub(super) fn value_to_string(value: &serde_json::Value) -> String {
-    match value {
-        serde_json::Value::String(s) => s.clone(),
-        serde_json::Value::Number(n) => {
-            if let Some(f) = n.as_f64() {
-                if f == f.trunc() {
-                    format!("{f:.0}")
-                } else {
-                    f.to_string()
-                }
-            } else {
-                n.to_string()
-            }
-        }
-        serde_json::Value::Bool(b) => b.to_string(),
-        serde_json::Value::Null => "null".to_string(),
-        _ => serde_json::to_string(value).unwrap_or_else(|_| "unknown".to_string()),
-    }
 }
 
 pub(super) fn deep_merge_values(a: &serde_json::Value, b: &serde_json::Value) -> serde_json::Value {
@@ -170,7 +134,7 @@ pub(super) fn update_path_recursive(
     value: serde_json::Value,
     segments: &[&str],
     fn_val: &FunctionValue,
-    ctx: &mut dyn ac_runtime::Context,
+    ctx: &mut dyn ac_runtime::Context<ac_runtime_values::NonFunctionValue>,
 ) -> Result<serde_json::Value, Error> {
     if segments.is_empty() {
         let vars = bind_param(fn_val, &value);

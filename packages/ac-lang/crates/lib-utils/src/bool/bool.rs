@@ -1,6 +1,9 @@
 use ac_ast_canonical::Expr;
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function, LazyFunction};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function, LazyFunction};
+use ac_runtime_values::{Error};
+
 use ac_runtime_modules::Module;
 
 /// The `bool` module — boolean utility functions.
@@ -15,7 +18,7 @@ impl Module for BoolModule {
         "bool"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "and" => Some(&And),
             "or" => Some(&Or),
@@ -29,7 +32,7 @@ impl Module for BoolModule {
         }
     }
 
-    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction> {
+    fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
         match name {
             "if" => Some(&IfLazy),
             "and" => Some(&AndLazy),
@@ -74,11 +77,11 @@ macro_rules! bool_unary_fn {
     ($struct_name:ident, $body:expr) => {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
-        impl Function for $struct_name {
+        impl Function<NonFunctionValue> for $struct_name {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut dyn Context,
+                _ctx: &mut dyn Context<NonFunctionValue>,
             ) -> Result<NonFunctionValue, Error> {
                 let input = require_one_bool(args)?;
                 Ok(to_bool($body(input)))
@@ -91,11 +94,11 @@ macro_rules! bool_binary_fn {
     ($struct_name:ident, $body:expr) => {
         #[derive(Clone, Copy)]
         pub struct $struct_name;
-        impl Function for $struct_name {
+        impl Function<NonFunctionValue> for $struct_name {
             fn call(
                 &self,
                 args: &[NonFunctionValue],
-                _ctx: &mut dyn Context,
+                _ctx: &mut dyn Context<NonFunctionValue>,
             ) -> Result<NonFunctionValue, Error> {
                 let (a, b) = require_two_bools(args)?;
                 Ok(to_bool($body(a, b)))
@@ -119,14 +122,14 @@ bool_binary_fn!(Eq, |a: bool, b: bool| a == b);
 #[derive(Clone, Copy)]
 pub struct IfLazy;
 
-impl LazyFunction for IfLazy {
+impl LazyFunction<NonFunctionValue> for IfLazy {
     fn call(
         &self,
         args: &[Expr<NonFunctionValue>],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
         evaluate: &mut dyn FnMut(
             &Expr<NonFunctionValue>,
-            &mut dyn Context,
+            &mut dyn Context<NonFunctionValue>,
         ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 3 {
@@ -152,14 +155,14 @@ impl LazyFunction for IfLazy {
 #[derive(Clone, Copy)]
 pub struct AndLazy;
 
-impl LazyFunction for AndLazy {
+impl LazyFunction<NonFunctionValue> for AndLazy {
     fn call(
         &self,
         args: &[Expr<NonFunctionValue>],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
         evaluate: &mut dyn FnMut(
             &Expr<NonFunctionValue>,
-            &mut dyn Context,
+            &mut dyn Context<NonFunctionValue>,
         ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
@@ -189,14 +192,14 @@ impl LazyFunction for AndLazy {
 #[derive(Clone, Copy)]
 pub struct OrLazy;
 
-impl LazyFunction for OrLazy {
+impl LazyFunction<NonFunctionValue> for OrLazy {
     fn call(
         &self,
         args: &[Expr<NonFunctionValue>],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
         evaluate: &mut dyn FnMut(
             &Expr<NonFunctionValue>,
-            &mut dyn Context,
+            &mut dyn Context<NonFunctionValue>,
         ) -> Result<NonFunctionValue, Error>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {

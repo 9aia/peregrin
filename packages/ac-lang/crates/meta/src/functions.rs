@@ -1,7 +1,7 @@
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error, FunctionValue, NonFunctionValue};
 use serde_json::Value as JsonValue;
 
 // ── reflection ──────────────────────────────────────────────
@@ -13,11 +13,11 @@ use serde_json::Value as JsonValue;
 #[derive(Clone)]
 pub struct TypeOf;
 
-impl Function for TypeOf {
+impl Function<NonFunctionValue> for TypeOf {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let v = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
@@ -45,11 +45,11 @@ impl Function for TypeOf {
 #[derive(Clone)]
 pub struct Keys;
 
-impl Function for Keys {
+impl Function<NonFunctionValue> for Keys {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let v = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
@@ -69,17 +69,19 @@ impl Function for Keys {
 #[derive(Clone)]
 pub struct IsFunction;
 
-impl Function for IsFunction {
+impl Function<NonFunctionValue> for IsFunction {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let v = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
             got: 0,
         })?;
-        Ok(NonFunctionValue::new(v.is_function()))
+        Ok(NonFunctionValue::new(
+            FunctionValue::from_json(v.inner()).is_some(),
+        ))
     }
 }
 
@@ -94,11 +96,11 @@ impl Function for IsFunction {
 #[derive(Clone)]
 pub struct Eval;
 
-impl Function for Eval {
+impl Function<NonFunctionValue> for Eval {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        ctx: &mut dyn Context,
+        ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let expr_str = args
             .first()
@@ -124,11 +126,11 @@ impl Function for Eval {
 #[derive(Clone)]
 pub struct Parse;
 
-impl Function for Parse {
+impl Function<NonFunctionValue> for Parse {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let expr_str = args
             .first()
@@ -149,11 +151,11 @@ impl Function for Parse {
 #[derive(Clone)]
 pub struct AstToString;
 
-impl Function for AstToString {
+impl Function<NonFunctionValue> for AstToString {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
@@ -171,11 +173,11 @@ impl Function for AstToString {
 #[derive(Clone)]
 pub struct AstName;
 
-impl Function for AstName {
+impl Function<NonFunctionValue> for AstName {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
@@ -204,11 +206,11 @@ impl Function for AstName {
 #[derive(Clone)]
 pub struct AstArgs;
 
-impl Function for AstArgs {
+impl Function<NonFunctionValue> for AstArgs {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
@@ -237,11 +239,11 @@ impl Function for AstArgs {
 #[derive(Clone)]
 pub struct AstIsCall;
 
-impl Function for AstIsCall {
+impl Function<NonFunctionValue> for AstIsCall {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let ast = args.first().ok_or(Error::ArgumentCount {
             expected: 1,

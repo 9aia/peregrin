@@ -54,10 +54,10 @@
 //!     .then(GenerateStage);
 //! ```
 
+use ac_runtime_values::NonFunctionValue;
 use std::path::PathBuf;
 
 use ac_fields::ExtractedFields;
-use ac_runtime_values::NonFunctionValue;
 use ac_source::SourceMap;
 use ac_typecheck_core::TypeError;
 use ac_typegen_core::TypegenContext;
@@ -78,6 +78,8 @@ pub struct ParsedDoc {
     pub source_map: SourceMap,
     /// Base path for relative import resolution (parent dir of source file).
     pub base_path: Option<PathBuf>,
+    /// Source format used to parse the document (e.g. `yaml`, `json`, `toml`, `ac`).
+    pub format: String,
 }
 
 /// Output of the extract phase — extracted fields plus carried source map.

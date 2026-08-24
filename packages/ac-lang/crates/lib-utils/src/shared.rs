@@ -1,5 +1,9 @@
-use ac_runtime::{Context, Error};
-use ac_runtime::{FunctionValue, NonFunctionValue};
+use ac_runtime::{Context};
+use ac_runtime_values::{Error};
+use serde_json::Value as JsonValue;
+
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
+
 
 // ════════════════════════════════════════════════════════════════════
 // Tier 0: Shared helpers (replaces duplicated copies across modules)
@@ -14,26 +18,8 @@ pub(crate) fn require_array(arg: &NonFunctionValue) -> Result<&[serde_json::Valu
     })
 }
 
-pub(crate) fn require_object(
-    arg: &NonFunctionValue,
-) -> Result<&serde_json::Map<String, serde_json::Value>, Error> {
-    arg.as_object().ok_or(Error::TypeMismatch {
-        expected: "object",
-        got: "non-object",
-    })
-}
-
-pub(crate) fn require_string(arg: &NonFunctionValue) -> Result<String, Error> {
-    arg.as_str()
-        .map(|s| s.to_string())
-        .ok_or(Error::TypeMismatch {
-            expected: "string",
-            got: "non-string",
-        })
-}
-
 pub(crate) fn require_function_value(arg: &NonFunctionValue) -> Result<FunctionValue, Error> {
-    arg.as_function().ok_or(Error::TypeMismatch {
+    FunctionValue::from_json(arg.inner()).ok_or(Error::TypeMismatch {
         expected: "function value",
         got: "non-function",
     })
@@ -46,30 +32,6 @@ pub(crate) fn require_one_arg(args: &[NonFunctionValue]) -> Result<&NonFunctionV
         expected: 1,
         got: 0,
     })
-}
-
-pub(crate) fn require_two_args(
-    args: &[NonFunctionValue],
-) -> Result<(&NonFunctionValue, &NonFunctionValue), Error> {
-    if args.len() < 2 {
-        return Err(Error::ArgumentCount {
-            expected: 2,
-            got: args.len(),
-        });
-    }
-    Ok((&args[0], &args[1]))
-}
-
-pub(crate) fn require_three_args(
-    args: &[NonFunctionValue],
-) -> Result<(&NonFunctionValue, &NonFunctionValue, &NonFunctionValue), Error> {
-    if args.len() < 3 {
-        return Err(Error::ArgumentCount {
-            expected: 3,
-            got: args.len(),
-        });
-    }
-    Ok((&args[0], &args[1], &args[2]))
 }
 
 pub(crate) fn require_one_array(args: &[NonFunctionValue]) -> Result<&[serde_json::Value], Error> {
@@ -145,19 +107,87 @@ pub(crate) fn bind_two_params(
     ]
 }
 
-pub(crate) fn bind_all_params(
+fn pattern_binding_name(pattern: &JsonValue) -> Option<&str> {
+    pattern.get("type").and_then(|v| v.as_str())?;
+    pattern.get("name").and_then(|v| v.as_str())
+}
+
+fn destructure_pattern(
+    pattern: &JsonValue,
+    value: &JsonValue,
+    out: &mut Vec<(String, JsonValue)>,
+) -> Result<(), Error> {
+    match pattern.get("type").and_then(|v| v.as_str()) {
+        Some("identifier") => {
+            if let Some(name) = pattern_binding_name(pattern) {
+                out.push((name.to_string(), value.clone()));
+            }
+        }
+        Some("array") => {
+            let patterns = pattern.get("patterns").and_then(|v| v.as_array()).ok_or(
+                Error::PrimitiveError("invalid array pattern".to_string()),
+            )?;
+            let arr = value.as_array().ok_or(Error::TypeMismatch {
+                expected: "array",
+                got: "non-array",
+            })?;
+            for (i, child_pattern) in patterns.iter().enumerate() {
+                let child = arr.get(i).unwrap_or(&JsonValue::Null);
+                destructure_pattern(child_pattern, child, out)?;
+            }
+        }
+        Some("object") => {
+            let obj = value.as_object().ok_or(Error::TypeMismatch {
+                expected: "object",
+                got: "non-object",
+            })?;
+            let entries = pattern.get("entries").and_then(|v| v.as_array()).ok_or(
+                Error::PrimitiveError("invalid object pattern".to_string()),
+            )?;
+            for entry in entries {
+                let arr = entry.as_array().ok_or(Error::PrimitiveError(
+                    "invalid object pattern entry".to_string(),
+                ))?;
+                let key = arr
+                    .get(0)
+                    .and_then(|v| v.as_str())
+                    .ok_or(Error::PrimitiveError(
+                        "invalid object pattern key".to_string(),
+                    ))?;
+                let child_pattern = arr.get(1).ok_or(Error::PrimitiveError(
+                    "invalid object pattern entry".to_string(),
+                ))?;
+                let child = obj.get(key).unwrap_or(&JsonValue::Null);
+                destructure_pattern(child_pattern, child, out)?;
+            }
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
+pub(crate) fn bind_function_params(
     fn_val: &FunctionValue,
-    args: &[serde_json::Value],
-) -> Vec<(String, NonFunctionValue)> {
-    fn_val
-        .params
-        .iter()
-        .enumerate()
-        .map(|(i, (name, _))| {
-            let val = args.get(i).cloned().unwrap_or(serde_json::Value::Null);
-            (name.clone(), NonFunctionValue::new(val))
-        })
-        .collect()
+    args: &[JsonValue],
+) -> Result<Vec<(String, NonFunctionValue)>, Error> {
+    let mut bindings = Vec::new();
+
+    for (i, (name, _)) in fn_val.params.iter().enumerate() {
+        let arg = args.get(i).unwrap_or(&JsonValue::Null);
+
+        if let Some(pattern) = fn_val.patterns.get(i) {
+            if pattern.get("type").is_some() {
+                let mut raw = Vec::new();
+                destructure_pattern(pattern, arg, &mut raw)?;
+                bindings.extend(raw.into_iter().map(|(n, v)| (n, NonFunctionValue::new(v))));
+                continue;
+            }
+        }
+
+        bindings.push((name.clone(), NonFunctionValue::new(arg.clone())));
+    }
+
+    Ok(bindings)
 }
 
 // ── truthiness ─────────────────────────────────────────────────────
@@ -192,10 +222,6 @@ pub(crate) fn b(value: bool) -> NonFunctionValue {
 
 pub(crate) fn num(value: f64) -> NonFunctionValue {
     NonFunctionValue::new(serde_json::json!(value))
-}
-
-pub(crate) fn obj_value(map: serde_json::Map<String, serde_json::Value>) -> NonFunctionValue {
-    NonFunctionValue::new(serde_json::Value::Object(map))
 }
 
 // ── string conversion ──────────────────────────────────────────────
@@ -244,7 +270,7 @@ pub(crate) fn value_to_string(value: &serde_json::Value) -> String {
 
 /// Apply a single-param function to a value: bind_param + eval_expr.
 pub(crate) fn apply_fn(
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     fn_val: &FunctionValue,
     value: &serde_json::Value,
 ) -> Result<NonFunctionValue, Error> {
@@ -254,7 +280,7 @@ pub(crate) fn apply_fn(
 
 /// Apply a two-param function to two values: bind_two_params + eval_expr.
 pub(crate) fn apply_fn2(
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     fn_val: &FunctionValue,
     a: &serde_json::Value,
     b: &serde_json::Value,
@@ -265,7 +291,7 @@ pub(crate) fn apply_fn2(
 
 /// Apply a predicate function and check if the result is truthy.
 pub(crate) fn is_truthy_fn(
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     fn_val: &FunctionValue,
     value: &serde_json::Value,
 ) -> Result<bool, Error> {
@@ -276,7 +302,7 @@ pub(crate) fn is_truthy_fn(
 /// Map a function over an iterator, collecting results.
 /// Works with any iterator yielding `&serde_json::Value`.
 pub(crate) fn map_iter<'a, I>(
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Vec<serde_json::Value>, Error>
@@ -293,7 +319,7 @@ where
 
 /// Filter an iterator by a predicate function, collecting matching items.
 pub(crate) fn filter_iter<'a, I>(
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Vec<serde_json::Value>, Error>
@@ -311,7 +337,7 @@ where
 
 /// Fold an iterator with a two-param function and an initial accumulator.
 pub(crate) fn fold_iter<'a, I>(
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     fn_val: &FunctionValue,
     iter: I,
     init: serde_json::Value,
@@ -330,7 +356,7 @@ where
 /// Find the first element matching a predicate.
 /// Returns `None` if no match.
 pub(crate) fn find_first<'a, I>(
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Option<serde_json::Value>, Error>
@@ -348,7 +374,7 @@ where
 /// Find the index of the first element matching a predicate.
 /// Returns `None` if no match.
 pub(crate) fn find_index<'a, I>(
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Option<usize>, Error>
@@ -366,7 +392,7 @@ where
 /// Find the first matching element from a reverse iterator.
 /// Returns `None` if no match.
 pub(crate) fn find_first_rev<'a, I>(
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Option<serde_json::Value>, Error>
@@ -380,7 +406,7 @@ where
 /// The index is relative to the reversed iteration order.
 /// Returns `None` if no match.
 pub(crate) fn find_index_rev<'a, I>(
-    ctx: &mut dyn Context,
+    ctx: &mut dyn Context<NonFunctionValue>,
     fn_val: &FunctionValue,
     iter: I,
 ) -> Result<Option<usize>, Error>
@@ -388,4 +414,51 @@ where
     I: Iterator<Item = &'a serde_json::Value>,
 {
     find_index(ctx, fn_val, iter)
+}
+
+#[cfg(test)]
+use ac_runtime::{Function, Host};
+#[cfg(test)]
+use ac_runtime_modules::Module;
+
+#[cfg(test)]
+use ac_runtime_example_1::DefaultHost;
+
+#[cfg(test)]
+pub(crate) struct TestHost {
+    default: DefaultHost,
+    math: crate::MathModule,
+}
+
+#[cfg(test)]
+impl Default for TestHost {
+    fn default() -> Self {
+        TestHost {
+            default: DefaultHost::default(),
+            math: crate::MathModule,
+        }
+    }
+}
+
+#[cfg(test)]
+impl Clone for TestHost {
+    fn clone(&self) -> Self {
+        TestHost {
+            default: self.default.clone(),
+            math: self.math,
+        }
+    }
+}
+
+#[cfg(test)]
+impl Host<NonFunctionValue> for TestHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
+        match name {
+            "add" => self.math.function("add"),
+            "sub" => self.math.function("sub"),
+            "mul" => self.math.function("mul"),
+            "div" => self.math.function("div"),
+            _ => self.default.function(name),
+        }
+    }
 }

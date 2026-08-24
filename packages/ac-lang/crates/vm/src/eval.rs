@@ -1,9 +1,7 @@
 use std::future::Future;
 use std::pin::Pin;
 
-use ac_runtime_values::NonFunctionValue;
-
-use crate::Error;
+use crate::{Error, Value};
 
 /// A callback that evaluates an expression string with variable bindings.
 ///
@@ -21,17 +19,17 @@ use crate::Error;
 /// and function resolver are available:
 ///
 /// ```ignore
-/// impl Eval for ExprEval {
+/// impl Eval<MyValue> for ExprEval {
 ///     fn eval_expr(
 ///         &self,
 ///         expr: &str,
-///         vars: &[(String, NonFunctionValue)],
-///     ) -> Result<NonFunctionValue, Error> {
+///         vars: &[(String, MyValue)],
+///     ) -> Result<MyValue, Error<MyValue>> {
 ///         // Parse expr, bind vars, evaluate, return result
 ///     }
 /// }
 /// ```
-pub trait Eval {
+pub trait Eval<V: Value> {
     /// Evaluate an expression string with the given variable bindings.
     ///
     /// # Arguments
@@ -41,12 +39,8 @@ pub trait Eval {
     ///
     /// # Returns
     ///
-    /// The evaluated [`NonFunctionValue`], or an [`Error`] if evaluation failed.
-    fn eval_expr(
-        &self,
-        expr: &str,
-        vars: &[(String, NonFunctionValue)],
-    ) -> Result<NonFunctionValue, Error>;
+    /// The evaluated value, or an [`Error`] if evaluation failed.
+    fn eval_expr(&self, expr: &str, vars: &[(String, V)]) -> Result<V, Error<V>>;
 }
 
 /// An async callback that evaluates an expression string with variable bindings.
@@ -58,14 +52,14 @@ pub trait Eval {
 /// The async VM ([`VirtualMachine::eval_async`](crate::VirtualMachine::eval_async))
 /// uses this when set on a [`Context`](crate::Context) via
 /// [`Context::set_async_eval`](crate::Context::set_async_eval).
-pub trait AsyncEval {
+pub trait AsyncEval<V: Value> {
     /// Evaluate an expression string with the given variable bindings.
     ///
     /// Returns a boxed future that resolves to the evaluated
-    /// [`NonFunctionValue`] or an [`Error`].
+    /// value or an [`Error`].
     fn eval_expr_async<'a>(
         &'a self,
         expr: &'a str,
-        vars: &'a [(String, NonFunctionValue)],
-    ) -> Pin<Box<dyn Future<Output = Result<NonFunctionValue, Error>> + 'a>>;
+        vars: &'a [(String, V)],
+    ) -> Pin<Box<dyn Future<Output = Result<V, Error<V>>> + 'a>>;
 }

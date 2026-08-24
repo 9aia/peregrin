@@ -104,12 +104,17 @@ dependencies = [
  "ac-dialect-canonical",
  "ac-fields",
  "ac-frontend",
+ "ac-lexer-canonical",
  "ac-module-resolver-core",
  "ac-module-resolver-file",
  "ac-module-resolver-memory",
+ "ac-parser",
+ "ac-parser-canonical",
  "ac-runtime",
  "ac-runtime-canonical",
  "ac-runtime-example-1",
+ "ac-runtime-sandbox",
+ "ac-runtime-server",
  "ac-runtime-values",
  "ac-source",
  "ac-typecheck-core",
@@ -177,6 +182,7 @@ dependencies = [
  "ac-dialect-canonical",
  "ac-frontend",
  "ac-module-resolver-virtual",
+ "ac-runtime-values",
  "ac-typecheck-schema-json",
  "ac-typegen-import",
  "ac-typegen-key-set-special",
@@ -479,6 +485,7 @@ version = "0.1.0"
 dependencies = [
  "ac-runtime",
  "ac-runtime-modules",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -496,6 +503,7 @@ version = "0.1.0"
 dependencies = [
  "ac-runtime",
  "ac-runtime-modules",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -557,6 +565,7 @@ version = "0.1.0"
 dependencies = [
  "ac-runtime",
  "ac-runtime-modules",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -569,6 +578,7 @@ dependencies = [
  "ac-runtime",
  "ac-runtime-canonical",
  "ac-runtime-modules",
+ "ac-runtime-values",
  "mio",
  "nix",
 ]
@@ -741,17 +751,20 @@ name = "ac-runtime"
 version = "0.1.0"
 dependencies = [
  "ac-ast-canonical",
- "ac-runtime-values",
  "indexmap",
- "serde_json",
 ]
 
 [[package]]
 name = "ac-runtime-canonical"
 version = "0.1.0"
 dependencies = [
+ "ac-lexer",
+ "ac-lexer-canonical",
+ "ac-parser",
+ "ac-parser-canonical",
  "ac-runtime",
  "ac-runtime-common",
+ "ac-runtime-values",
  "serde_json",
 ]
 
@@ -765,6 +778,16 @@ dependencies = [
  "ac-runtime",
  "ac-runtime-canonical",
  "ac-runtime-example-1",
+ "ac-runtime-values",
+ "serde_json",
+]
+
+[[package]]
+name = "ac-runtime-config"
+version = "0.1.0"
+dependencies = [
+ "ac-runtime",
+ "indexmap",
  "serde_json",
 ]
 
@@ -802,6 +825,31 @@ dependencies = [
  "ac-runtime-canonical",
  "ac-runtime-example-1",
  "ac-runtime-modules",
+ "ac-runtime-values",
+]
+
+[[package]]
+name = "ac-runtime-server"
+version = "0.1.0"
+dependencies = [
+ "ac-lib-crypto",
+ "ac-lib-datetime",
+ "ac-lib-http-client",
+ "ac-lib-http-client-std",
+ "ac-lib-http-server",
+ "ac-lib-http-server-std",
+ "ac-lib-intl",
+ "ac-lib-kv",
+ "ac-lib-kv-hashmap",
+ "ac-lib-os",
+ "ac-lib-os-std",
+ "ac-lib-rand",
+ "ac-lib-utils",
+ "ac-runtime",
+ "ac-runtime-canonical",
+ "ac-runtime-example-1",
+ "ac-runtime-modules",
+ "ac-runtime-values",
 ]
 
 [[package]]
@@ -827,8 +875,9 @@ dependencies = [
 name = "ac-runtime-values"
 version = "0.1.0"
 dependencies = [
+ "ac-runtime",
+ "ac-runtime-config",
  "ac-source",
- "serde_json",
 ]
 
 [[package]]

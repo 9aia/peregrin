@@ -7,8 +7,12 @@ use ac_ast_canonical::Expr;
 use ac_dialect::Dialect;
 use ac_dialect_canonical::AC_DIALECT;
 use ac_fields::{APPLY_FUNCTION, DEFAULT_NAMESPACE, Namespaces, eval_expression};
-use ac_runtime::{FunctionValue, NonFunctionValue};
-use ac_runtime_canonical::{CanonicalContext, Context, Error, Eval, Vm};
+use ac_runtime_values::{FunctionValue, NonFunctionValue};
+
+use ac_runtime::{Context, Eval};
+use ac_runtime_values::{CanonicalContext, Error};
+use ac_runtime_canonical::{Vm};
+
 use serde_json::Value as JsonValue;
 
 use crate::host::TypeHost;
@@ -241,7 +245,7 @@ impl TypeEval {
     }
 }
 
-impl Eval for TypeEval {
+impl Eval<NonFunctionValue> for TypeEval {
     fn eval_expr(
         &self,
         expr: &str,
@@ -273,7 +277,7 @@ struct TypeEvalShim {
     call_chain: RefCell<Vec<String>>,
 }
 
-impl Eval for TypeEvalShim {
+impl Eval<NonFunctionValue> for TypeEvalShim {
     fn eval_expr(
         &self,
         expr: &str,

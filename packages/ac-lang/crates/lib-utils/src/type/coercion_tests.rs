@@ -1,5 +1,7 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime_values::{Error};
+
 use ac_runtime_modules::Module;
 
 use super::TypeModule;

@@ -1,5 +1,8 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime::{Context, Function};
+use ac_runtime_values::{Error};
+
 
 use super::common::{b, require_object, require_string, require_two_args};
 
@@ -7,11 +10,11 @@ use super::common::{b, require_object, require_string, require_two_args};
 
 #[derive(Clone, Copy)]
 pub struct Get;
-impl Function for Get {
+impl Function<NonFunctionValue> for Get {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, key_arg) = require_two_args(args)?;
         let obj = require_object(obj_arg)?;
@@ -27,11 +30,11 @@ impl Function for Get {
 
 #[derive(Clone, Copy)]
 pub struct GetOr;
-impl Function for GetOr {
+impl Function<NonFunctionValue> for GetOr {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, key_arg, default_arg) = super::common::require_three_args(args)?;
         let obj = require_object(obj_arg)?;
@@ -47,11 +50,11 @@ impl Function for GetOr {
 
 #[derive(Clone, Copy)]
 pub struct HasKey;
-impl Function for HasKey {
+impl Function<NonFunctionValue> for HasKey {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (obj_arg, key_arg) = require_two_args(args)?;
         let obj = require_object(obj_arg)?;
@@ -64,11 +67,11 @@ impl Function for HasKey {
 
 #[derive(Clone, Copy)]
 pub struct DeepGet;
-impl Function for DeepGet {
+impl Function<NonFunctionValue> for DeepGet {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         if args.len() < 2 {
             return Err(Error::ArgumentCount {
@@ -110,11 +113,11 @@ impl Function for DeepGet {
 
 #[derive(Clone, Copy)]
 pub struct PathOr;
-impl Function for PathOr {
+impl Function<NonFunctionValue> for PathOr {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let (value_arg, path_arg, default_arg) = super::common::require_three_args(args)?;
         let path = require_string(path_arg)?;

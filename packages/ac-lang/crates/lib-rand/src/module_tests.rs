@@ -1,4 +1,4 @@
-use ac_runtime::NonFunctionValue;
+use ac_runtime_values::NonFunctionValue;
 use ac_runtime_canonical::{CanonicalContext, Context, Host, Vm};
 use ac_runtime_modules::{Module, ModuleHost};
 

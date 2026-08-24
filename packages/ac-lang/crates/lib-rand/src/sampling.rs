@@ -1,10 +1,11 @@
+use ac_runtime_values::NonFunctionValue;
 use rand::Rng;
 use rand::prelude::IndexedRandom;
 use rand::seq::SliceRandom;
 use serde_json::Value;
 
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::{Error};
+use ac_runtime::{Context, Function};
 
 use super::common::{array, require_array, require_int};
 use crate::error::RandError;
@@ -20,11 +21,11 @@ use crate::error::RandError;
 #[derive(Clone, Copy)]
 pub struct Pick;
 
-impl Function for Pick {
+impl Function<NonFunctionValue> for Pick {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arr = require_array(args, 0)?;
         if arr.is_empty() {
@@ -47,11 +48,11 @@ impl Function for Pick {
 #[derive(Clone, Copy)]
 pub struct Choice;
 
-impl Function for Choice {
+impl Function<NonFunctionValue> for Choice {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arr = require_array(args, 0)?;
         let count = require_int(args, 1)?;
@@ -88,11 +89,11 @@ impl Function for Choice {
 #[derive(Clone, Copy)]
 pub struct Sample;
 
-impl Function for Sample {
+impl Function<NonFunctionValue> for Sample {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arr = require_array(args, 0)?;
         let count = require_int(args, 1)?;
@@ -130,11 +131,11 @@ impl Function for Sample {
 #[derive(Clone, Copy)]
 pub struct Shuffle;
 
-impl Function for Shuffle {
+impl Function<NonFunctionValue> for Shuffle {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arr = require_array(args, 0)?;
         let mut shuffled: Vec<Value> = arr.to_vec();
@@ -156,11 +157,11 @@ impl Function for Shuffle {
 #[derive(Clone, Copy)]
 pub struct WeightedPick;
 
-impl Function for WeightedPick {
+impl Function<NonFunctionValue> for WeightedPick {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let items = require_array(args, 0)?;
         let weights = require_array(args, 1)?;

@@ -1,8 +1,10 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{CanonicalContext, Context, Error};
+use ac_runtime_values::NonFunctionValue;
+
+use ac_runtime_values::{CanonicalContext, Error};
+
 use ac_runtime_modules::Module;
 
-use super::math::MathModule;
+use super::MathModule;
 
 fn call(module: &dyn Module, name: &str, args: &[NonFunctionValue]) -> NonFunctionValue {
     let func = module.function(name).expect("function exists");
@@ -26,10 +28,6 @@ fn s(v: &str) -> NonFunctionValue {
 
 fn n(v: f64) -> NonFunctionValue {
     NonFunctionValue::new(serde_json::json!(v))
-}
-
-fn b(v: bool) -> NonFunctionValue {
-    NonFunctionValue::new(v)
 }
 
 #[test]

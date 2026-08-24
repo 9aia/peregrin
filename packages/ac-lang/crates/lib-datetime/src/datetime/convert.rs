@@ -1,16 +1,17 @@
-use ac_runtime::NonFunctionValue;
-use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::{Error};
+use ac_runtime_values::{Context, Function};
 
 use super::common::{format_iso, n, parse_iso, require_number, require_one_string, s};
 use crate::DatetimeError;
 
 #[derive(Clone, Copy)]
 pub struct FromUnix;
-impl Function for FromUnix {
+impl Function<NonFunctionValue> for FromUnix {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let arg = args.first().ok_or(Error::ArgumentCount {
             expected: 1,
@@ -27,11 +28,11 @@ impl Function for FromUnix {
 
 #[derive(Clone, Copy)]
 pub struct ToUnix;
-impl Function for ToUnix {
+impl Function<NonFunctionValue> for ToUnix {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
+        _ctx: &mut dyn Context<NonFunctionValue>,
     ) -> Result<NonFunctionValue, Error> {
         let input = require_one_string(args)?;
         let dt = parse_iso(input)?;

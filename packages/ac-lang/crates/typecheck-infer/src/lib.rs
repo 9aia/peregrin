@@ -201,7 +201,7 @@ fn resolve_path_type(path: &str, env: &TypeEnv, dialect: &dyn Dialect) -> Type {
 /// For generic functions (`type_params` non-empty), this unifies argument
 /// types against parameter types to build a substitution, then applies it
 /// to the return type. If unification fails, returns [`Type::Unknown`].
-fn check_call(fn_type: &FunctionType, arg_types: &[Type]) -> Type {
+pub fn check_call(fn_type: &FunctionType, arg_types: &[Type]) -> Type {
     check_call_with_expected(fn_type, arg_types, None)
 }
 

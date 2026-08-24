@@ -10,12 +10,12 @@ use crate::{Function, Host};
 
 #[derive(Clone)]
 struct Add;
-impl Function for Add {
+impl Function<NonFunctionValue> for Add {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let sum: f64 = args.iter().filter_map(|v| v.as_number()).sum();
         Ok(NonFunctionValue::new(sum))
     }
@@ -23,12 +23,12 @@ impl Function for Add {
 
 #[derive(Clone)]
 struct Mul;
-impl Function for Mul {
+impl Function<NonFunctionValue> for Mul {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let product: f64 = args.iter().filter_map(|v| v.as_number()).product();
         Ok(NonFunctionValue::new(product))
     }
@@ -37,12 +37,12 @@ impl Function for Mul {
 /// A host function that always yields on the first call.
 #[derive(Clone)]
 struct YieldingFetch;
-impl Function for YieldingFetch {
+impl Function<NonFunctionValue> for YieldingFetch {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let input = args.first().and_then(|v| v.as_str()).unwrap_or("unknown");
         Err(Error::Yield(NonFunctionValue::new(format!(
             "yield:{input}"
@@ -56,12 +56,12 @@ impl Function for YieldingFetch {
 struct CachingFetch {
     cache: std::collections::HashMap<String, NonFunctionValue>,
 }
-impl Function for CachingFetch {
+impl Function<NonFunctionValue> for CachingFetch {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let key = args.first().and_then(|v| v.as_str()).unwrap_or("unknown");
         if let Some(cached) = self.cache.get(key) {
             Ok(cached.clone())
@@ -80,8 +80,8 @@ struct ServerHost {
     fetch: YieldingFetch,
 }
 
-impl Host for ServerHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for ServerHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "add" => Some(&self.add),
             "mul" => Some(&self.mul),
@@ -108,8 +108,8 @@ struct ClientHost {
     fetch: CachingFetch,
 }
 
-impl Host for ClientHost {
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+impl Host<NonFunctionValue> for ClientHost {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "add" => Some(&self.add),
             "mul" => Some(&self.mul),

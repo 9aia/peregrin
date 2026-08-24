@@ -34,7 +34,7 @@ pub struct HostFunctionSigs(pub Vec<RawFnSig>);
 impl HostFunctionSigs {
     /// Default host function signatures for the reference runtime.
     ///
-    /// These mirror `ac_runtime_example_1::DefaultHost` — `add`, `mul`, `concat`, `len`.
+    /// These mirror `ac_runtime_example_1::DefaultHost` — `concat`, `len`.
     /// Also includes generic signatures for higher-order array functions
     /// (`array.map`, `array.filter`, `array.reduce`) that are used by
     /// `ac-lib-utils`.
@@ -42,24 +42,6 @@ impl HostFunctionSigs {
         use serde_json::json;
         HostFunctionSigs(vec![
             // ── monomorphic builtins ──────────────────────────────
-            (
-                "add".to_string(),
-                vec![],
-                vec![
-                    ("a".to_string(), json!({ "type": "number" })),
-                    ("b".to_string(), json!({ "type": "number" })),
-                ],
-                Some(json!({ "type": "number" })),
-            ),
-            (
-                "mul".to_string(),
-                vec![],
-                vec![
-                    ("a".to_string(), json!({ "type": "number" })),
-                    ("b".to_string(), json!({ "type": "number" })),
-                ],
-                Some(json!({ "type": "number" })),
-            ),
             (
                 "concat".to_string(),
                 vec![],

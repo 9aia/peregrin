@@ -1,6 +1,6 @@
 //! Canonical token kind and factory.
 
-use ac_lexer::{CommentFactory, CommentTokenKind, KindFactory, TokenKind};
+use ac_lexer::{CommentFactory, CommentTokenKind, EofFactory, IdentFactory, NumberFactory, StringFactory, TokenKind};
 use std::fmt;
 
 /// The canonical AC expression token kinds.
@@ -10,8 +10,8 @@ use std::fmt;
 /// reuse the generic lexing infrastructure from `ac-lexer`.
 #[derive(Debug, Clone, PartialEq)]
 pub enum CanonicalKind {
-    /// An identifier — function name, variable name, or namespace path
-    /// (e.g. `add`, `math.sqrt`, `x`).
+    /// An identifier — function name or variable name
+    /// (e.g. `add`, `x`). Dots are separate `Dot` tokens.
     Identifier(String),
 
     /// A string literal (already unescaped, without quotes).
@@ -56,6 +56,21 @@ pub enum CanonicalKind {
     /// Clause separator — `:` in handler clauses.
     Colon,
 
+    /// Arrow — `->` (first-class function body introducer).
+    Arrow,
+
+    /// Less-than — `<` (generic parameter list opener).
+    LessThan,
+
+    /// Greater-than — `>` (generic parameter list closer).
+    GreaterThan,
+
+    /// Equal — `=` (assignment).
+    Equal,
+
+    /// Dot — `.` (field access).
+    Dot,
+
     /// A comment — `// line` or `/* block */`. Filtered out of the
     /// token stream by the canonical lexer, but available for tooling
     /// (LSP, formatters) that wants to preserve comments.
@@ -83,6 +98,11 @@ impl fmt::Display for CanonicalKind {
             CanonicalKind::BracketClose => write!(f, "]"),
             CanonicalKind::Comma => write!(f, ","),
             CanonicalKind::Colon => write!(f, ":"),
+            CanonicalKind::Arrow => write!(f, "->"),
+            CanonicalKind::LessThan => write!(f, "<"),
+            CanonicalKind::GreaterThan => write!(f, ">"),
+            CanonicalKind::Equal => write!(f, "="),
+            CanonicalKind::Dot => write!(f, "."),
             CanonicalKind::Comment(s) => write!(f, "comment({s:?})"),
             CanonicalKind::Eof => write!(f, "eof"),
         }
@@ -111,21 +131,35 @@ impl CommentTokenKind for CanonicalKind {
 #[derive(Clone, Default)]
 pub struct CanonicalFactory;
 
-impl KindFactory<CanonicalKind> for CanonicalFactory {
+impl EofFactory<CanonicalKind> for CanonicalFactory {
+    fn eof_kind(&self) -> CanonicalKind {
+        CanonicalKind::Eof
+    }
+}
+
+impl StringFactory<CanonicalKind> for CanonicalFactory {
     fn string_kind(&self, value: String) -> CanonicalKind {
         CanonicalKind::String(value)
     }
+}
 
+impl NumberFactory<CanonicalKind> for CanonicalFactory {
     fn number_kind(&self, value: f64) -> CanonicalKind {
         CanonicalKind::Number(value)
     }
+}
 
+impl IdentFactory<CanonicalKind> for CanonicalFactory {
     fn ident_kind(&self, text: String) -> CanonicalKind {
         CanonicalKind::Identifier(text)
     }
 
-    fn eof_kind(&self) -> CanonicalKind {
-        CanonicalKind::Eof
+    fn is_ident_start(&self, ch: char) -> bool {
+        ch.is_alphabetic() || ch == '_'
+    }
+
+    fn is_ident_continue(&self, ch: char) -> bool {
+        ch.is_alphanumeric() || ch == '_'
     }
 }
 

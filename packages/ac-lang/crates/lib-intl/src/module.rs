@@ -1,4 +1,5 @@
-use ac_runtime::Function;
+use ac_runtime_values::NonFunctionValue;
+use ac_runtime_values::Function;
 use ac_runtime_modules::Module;
 
 use super::compare_strings::CompareStrings;
@@ -125,7 +126,7 @@ impl Module for IntlModule {
         "intl"
     }
 
-    fn function(&self, name: &str) -> Option<&dyn Function> {
+    fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
         match name {
             "format_number" => Some(&self.f_format_number),
             "format_number_to_parts" => Some(&self.f_format_number_to_parts),

@@ -3,8 +3,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 
 use ac_module_resolver_core::ModuleResolver;
-use ac_runtime::NonFunctionValue;
 use ac_runtime::{Context, Error, Function};
+use ac_runtime_values::NonFunctionValue;
 
 /// A [`Function`] that resolves module imports via a [`ModuleResolver`].
 ///
@@ -51,12 +51,12 @@ impl ImportFunction {
     }
 }
 
-impl Function for ImportFunction {
+impl Function<NonFunctionValue> for ImportFunction {
     fn call(
         &self,
         args: &[NonFunctionValue],
-        _ctx: &mut dyn Context,
-    ) -> Result<NonFunctionValue, Error> {
+        _ctx: &mut dyn Context<NonFunctionValue>,
+    ) -> Result<NonFunctionValue, Error<NonFunctionValue>> {
         let path_value = args.first().ok_or_else(|| Error::ArgumentCount {
             expected: 1,
             got: args.len(),

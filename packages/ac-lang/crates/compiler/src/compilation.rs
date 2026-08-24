@@ -10,12 +10,12 @@
 //! [`Compilation::take`] API (backed by a `TypeId` map). This lets
 //! custom passes carry state without modifying this struct.
 
+use ac_runtime_values::NonFunctionValue;
 use std::any::{Any, TypeId};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
 use ac_fields::ExtractedFields;
-use ac_runtime::NonFunctionValue;
 use ac_source::SourceMap;
 use ac_typecheck_core::TypeError;
 use ac_typegen_core::TypegenContext;

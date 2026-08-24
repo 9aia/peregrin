@@ -1,6 +1,6 @@
+use ac_runtime_values::NonFunctionValue;
 use std::collections::HashMap;
 
-use ac_runtime::NonFunctionValue;
 use serde_json::Value as JsonValue;
 
 /// The conventional name of the default namespace used for shorthand
