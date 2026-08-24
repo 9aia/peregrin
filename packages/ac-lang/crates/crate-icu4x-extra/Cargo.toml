@@ -1,0 +1,7 @@
+[package]
+name = "crate-icu4x-extra"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ecma402-traits = { package = "crate-ecma402-traits", path = "../crate-ecma402-traits" }

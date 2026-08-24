@@ -20,9 +20,9 @@ members = [
   "crates/lib-collections",
   "crates/lib-datetime",
   "crates/lib-intl",
-  "crates/rust-lib-ecma402-traits",
-  "crates/rust-lib-ecma402-icu4x",
-  "crates/rust-lib-icu4x-extra",
+  "crates/crate-ecma402-traits",
+  "crates/crate-ecma402-icu4x",
+  "crates/crate-icu4x-extra",
   "crates/lib-crypto",
   "crates/lib-rand",
   "crates/lib-test",
@@ -121,9 +121,9 @@ ac-lib-ip = { path = "crates/lib-ip" }
 ac-lib-collections = { path = "crates/lib-collections" }
 ac-lib-datetime = { path = "crates/lib-datetime" }
 ac-lib-intl = { path = "crates/lib-intl" }
-ecma402-traits = { package = "rust-lib-ecma402-traits", path = "crates/rust-lib-ecma402-traits" }
-ecma402-icu4x = { package = "rust-lib-ecma402-icu4x", path = "crates/rust-lib-ecma402-icu4x" }
-icu4x-extra = { package = "rust-lib-icu4x-extra", path = "crates/rust-lib-icu4x-extra" }
+ecma402-traits = { package = "crate-ecma402-traits", path = "crates/crate-ecma402-traits" }
+ecma402-icu4x = { package = "crate-ecma402-icu4x", path = "crates/crate-ecma402-icu4x" }
+icu4x-extra = { package = "crate-icu4x-extra", path = "crates/crate-icu4x-extra" }
 ac-lib-crypto = { path = "crates/lib-crypto" }
 ac-lib-rand = { path = "crates/lib-rand" }
 ac-lib-test = { path = "crates/lib-test" }

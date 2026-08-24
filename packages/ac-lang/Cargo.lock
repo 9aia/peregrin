@@ -1520,6 +1520,35 @@ dependencies = [
 ]
 
 [[package]]
+name = "crate-ecma402-icu4x"
+version = "0.1.0"
+dependencies = [
+ "crate-ecma402-traits",
+ "crate-icu4x-extra",
+ "fixed_decimal",
+ "icu",
+ "icu_decimal_data",
+ "icu_locale_fallback",
+ "icu_provider",
+ "icu_provider_blob",
+ "serde",
+ "serde_json",
+ "writeable",
+ "zerovec",
+]
+
+[[package]]
+name = "crate-ecma402-traits"
+version = "0.1.0"
+
+[[package]]
+name = "crate-icu4x-extra"
+version = "0.1.0"
+dependencies = [
+ "crate-ecma402-traits",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3239,35 +3268,6 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
-]
-
-[[package]]
-name = "rust-lib-ecma402-icu4x"
-version = "0.1.0"
-dependencies = [
- "fixed_decimal",
- "icu",
- "icu_decimal_data",
- "icu_locale_fallback",
- "icu_provider",
- "icu_provider_blob",
- "rust-lib-ecma402-traits",
- "rust-lib-icu4x-extra",
- "serde",
- "serde_json",
- "writeable",
- "zerovec",
-]
-
-[[package]]
-name = "rust-lib-ecma402-traits"
-version = "0.1.0"
-
-[[package]]
-name = "rust-lib-icu4x-extra"
-version = "0.1.0"
-dependencies = [
- "rust-lib-ecma402-traits",
 ]
 
 [[package]]
