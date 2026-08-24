@@ -3,6 +3,7 @@ use ac_runtime_modules::Module;
 use ac_runtime_values::NonFunctionValue;
 
 use super::hash_map as hm;
+use super::hash_set as hs;
 use super::ops::{End, From, IsEmpty, Len, New, Peek, Pop, Push, ToArray};
 
 static NEW: New = New;
@@ -46,9 +47,21 @@ static HASH_MAP_HAS: hm::Has = hm::Has;
 static HASH_MAP_KEYS: hm::Keys = hm::Keys;
 static HASH_MAP_VALUES: hm::Values = hm::Values;
 
+static HASH_SET_NEW: hs::New = hs::New;
+static HASH_SET_FROM: hs::From = hs::From;
+static HASH_SET_TO_ARRAY: hs::ToArray = hs::ToArray;
+static HASH_SET_LEN: hs::Len = hs::Len;
+static HASH_SET_IS_EMPTY: hs::IsEmpty = hs::IsEmpty;
+static HASH_SET_ADD: hs::Add = hs::Add;
+static HASH_SET_REMOVE: hs::Remove = hs::Remove;
+static HASH_SET_HAS: hs::Has = hs::Has;
+static HASH_SET_UNION: hs::Union = hs::Union;
+static HASH_SET_INTERSECTION: hs::Intersection = hs::Intersection;
+static HASH_SET_DIFFERENCE: hs::Difference = hs::Difference;
+
 /// The `collections` module — collection types for the AC runtime.
 ///
-/// Currently implemented: `vec`, `list`, `queue`, `stack`, `deque`, `hash_map`.
+/// Currently implemented: `vec`, `list`, `queue`, `stack`, `deque`, `hash_map`, `hash_set`.
 #[derive(Clone, Copy)]
 pub struct CollectionsModule;
 
@@ -119,6 +132,18 @@ impl Module for CollectionsModule {
             "hash_map.has" => Some(&HASH_MAP_HAS),
             "hash_map.keys" => Some(&HASH_MAP_KEYS),
             "hash_map.values" => Some(&HASH_MAP_VALUES),
+            // hash_set
+            "hash_set.new" => Some(&HASH_SET_NEW),
+            "hash_set.from" => Some(&HASH_SET_FROM),
+            "hash_set.to_array" => Some(&HASH_SET_TO_ARRAY),
+            "hash_set.len" => Some(&HASH_SET_LEN),
+            "hash_set.is_empty" => Some(&HASH_SET_IS_EMPTY),
+            "hash_set.add" => Some(&HASH_SET_ADD),
+            "hash_set.remove" => Some(&HASH_SET_REMOVE),
+            "hash_set.has" => Some(&HASH_SET_HAS),
+            "hash_set.union" => Some(&HASH_SET_UNION),
+            "hash_set.intersection" => Some(&HASH_SET_INTERSECTION),
+            "hash_set.difference" => Some(&HASH_SET_DIFFERENCE),
             _ => None,
         }
     }

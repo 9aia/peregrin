@@ -1,0 +1,10 @@
+[package]
+name = "ac-lib-compress"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+thiserror.workspace = true
+
+[dev-dependencies]
+ac-lib-compress-gzip = { path = "../lib-compress-gzip" }

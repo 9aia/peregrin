@@ -24,6 +24,7 @@ members = [
   "crates/rust-lib-icu4x-extra",
   "crates/lib-crypto",
   "crates/lib-rand",
+  "crates/lib-test",
   "crates/lib-kv",
   "crates/lib-kv-hashmap",
   "crates/lib-os",
@@ -89,6 +90,10 @@ members = [
   "crates/parser",
   "crates/parser-canonical",
   "crates/parser-common",
+  "crates/lib-compress",
+  "crates/lib-compress-gzip",
+  "crates/lib-archive",
+  "crates/lib-archive-tar",
 ]
 resolver = "3"
 
@@ -116,6 +121,7 @@ ecma402-icu4x = { package = "rust-lib-ecma402-icu4x", path = "crates/rust-lib-ec
 icu4x-extra = { package = "rust-lib-icu4x-extra", path = "crates/rust-lib-icu4x-extra" }
 ac-lib-crypto = { path = "crates/lib-crypto" }
 ac-lib-rand = { path = "crates/lib-rand" }
+ac-lib-test = { path = "crates/lib-test" }
 ac-lib-kv = { path = "crates/lib-kv" }
 ac-lib-kv-hashmap = { path = "crates/lib-kv-hashmap" }
 ac-lib-os = { path = "crates/lib-os" }
@@ -124,6 +130,10 @@ ac-lib-http-client = { path = "crates/lib-http-client" }
 ac-lib-http-client-std = { path = "crates/lib-http-client-std" }
 ac-lib-http-server = { path = "crates/lib-http-server" }
 ac-lib-http-server-std = { path = "crates/lib-http-server-std" }
+ac-lib-compress = { path = "crates/lib-compress" }
+ac-lib-compress-gzip = { path = "crates/lib-compress-gzip" }
+ac-lib-archive = { path = "crates/lib-archive" }
+ac-lib-archive-tar = { path = "crates/lib-archive-tar" }
 ac-runtime = { path = "crates/vm" }
 ac-runtime-common = { path = "crates/vm-common" }
 ac-runtime-canonical = { path = "crates/vm-canonical" }
@@ -187,6 +197,8 @@ indexmap = "2"
 rayon = "1"
 sha2 = "0.10"
 thiserror = "2"
+flate2 = "1"
+tar = "0.4"
 chrono = { version = "0.4", features = ["serde"] }
 pass-lang = "1"
 driver-lang = "1"
@@ -213,6 +225,7 @@ default = [
   "lib-intl",
   "lib-crypto",
   "lib-rand",
+  "lib-test",
   "lib-kv",
   "lib-kv-hashmap",
   "lib-os",
@@ -258,6 +271,7 @@ lib-datetime = ["dep:ac-lib-datetime", "vm", "dep:ac-runtime-modules"]
 lib-intl = ["dep:ac-lib-intl", "vm", "dep:ac-runtime-modules"]
 lib-crypto = ["dep:ac-lib-crypto", "vm", "dep:ac-runtime-modules"]
 lib-rand = ["dep:ac-lib-rand", "vm", "dep:ac-runtime-modules"]
+lib-test = ["dep:ac-lib-test", "vm", "dep:ac-runtime-modules"]
 lib-kv = ["dep:ac-lib-kv", "vm", "dep:ac-runtime-modules"]
 lib-kv-hashmap = ["dep:ac-lib-kv-hashmap", "lib-kv"]
 lib-os = ["dep:ac-lib-os", "vm", "dep:ac-runtime-modules"]
@@ -302,6 +316,7 @@ ac-lib-datetime = { workspace = true, optional = true }
 ac-lib-intl = { workspace = true, optional = true }
 ac-lib-crypto = { workspace = true, optional = true }
 ac-lib-rand = { workspace = true, optional = true }
+ac-lib-test = { workspace = true, optional = true }
 ac-lib-kv = { workspace = true, optional = true }
 ac-lib-kv-hashmap = { workspace = true, optional = true }
 ac-lib-os = { workspace = true, optional = true }

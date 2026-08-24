@@ -1,0 +1,9 @@
+[package]
+name = "ac-lib-archive-tar"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+ac-lib-archive = { path = "../lib-archive" }
+tar.workspace = true
+thiserror.workspace = true

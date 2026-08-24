@@ -41,6 +41,19 @@ pub(super) fn require_object(
     })
 }
 
+/// Require two array arguments.
+pub(super) fn require_two_arrays(
+    args: &[NonFunctionValue],
+) -> Result<(&[serde_json::Value], &[serde_json::Value]), Error> {
+    if args.len() < 2 {
+        return Err(Error::ArgumentCount {
+            expected: 2,
+            got: args.len(),
+        });
+    }
+    Ok((require_array(args, 0)?, require_array(args, 1)?))
+}
+
 /// Require a single object argument.
 pub(super) fn require_one_object(
     args: &[NonFunctionValue],
