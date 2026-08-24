@@ -4,7 +4,7 @@
 //!
 //! Includes everything from [`ac-runtime-sandbox`] plus:
 //!
-//! - **OS stdlib** (`fs.*`, `env.*`, `path.*`, `time.*`, `cmd.*`, `tmp.*`, `socket.*`, `sig.*`)
+//! - **OS stdlib** (`fs.*`, `env.*`, `path.*`, `time.*`, `cmd.*`, `process.*`, `tmp.*`, `socket.*`, `sig.*`)
 //!   from [`ac-lib-os-std`].
 //! - **HTTP server** (`http_server.*`) from [`ac-lib-http-server-std`].
 //! - **HTTP client** (`http_client.*`) from [`ac-lib-http-client-std`].
@@ -13,8 +13,6 @@
 //! This is the host you want when AC needs to open ports, read files,
 //! spawn processes, or make HTTP requests.
 
-use ac_runtime_canonical::CanonicalEval;
-use ac_runtime_values::{CanonicalContext, Function, GenericFunction, Host, LazyFunction, NonFunctionValue};
 use ac_lib_crypto::CryptoModule;
 use ac_lib_datetime::DateTimeModule;
 use ac_lib_http_client::HttpClientModule;
@@ -23,15 +21,24 @@ use ac_lib_http_server_std::std_http_server_module;
 use ac_lib_intl::IntlModule;
 use ac_lib_kv::KeyValueStoreModule;
 use ac_lib_kv_hashmap::HashKeyValueStore;
-use ac_lib_os::{CmdModule, EnvModule, FsModule, PathModule, SigModule, SocketModule, TimeModule, TmpModule};
-use ac_lib_os_std::{StdCmd, StdEnv, StdFs, StdPath, StdSig, StdSocket, StdTime, StdTmp};
+use ac_lib_os::{
+    CmdModule, EnvModule, FsModule, PathModule, ProcessModule, SigModule, SocketModule, TimeModule,
+    TmpModule,
+};
+use ac_lib_os_std::{
+    StdCmd, StdEnv, StdFs, StdPath, StdProcess, StdSig, StdSocket, StdTime, StdTmp,
+};
 use ac_lib_rand::RandModule;
 use ac_lib_utils::{
     ArrayModule, BoolModule, CmpModule, FnModule, MathModule, ObjModule, SetModule, StrModule,
     TypeModule,
 };
+use ac_runtime_canonical::CanonicalEval;
 use ac_runtime_example_1::DefaultHost;
 use ac_runtime_modules::ModuleHost;
+use ac_runtime_values::{
+    CanonicalContext, Function, GenericFunction, Host, LazyFunction, NonFunctionValue,
+};
 
 /// Resource limits for server-side evaluation.
 ///
@@ -88,6 +95,7 @@ impl ServerHost {
             .with(PathModule::new(StdPath))
             .with(TimeModule::new(StdTime))
             .with(CmdModule::new(StdCmd))
+            .with(ProcessModule::new(StdProcess::default()))
             .with(TmpModule::new(StdTmp))
             .with(SocketModule::new(StdSocket::default()))
             .with(SigModule::new(StdSig))
@@ -143,7 +151,9 @@ impl Default for ServerHost {
 
 impl Host<NonFunctionValue> for ServerHost {
     fn function(&self, name: &str) -> Option<&dyn Function<NonFunctionValue>> {
-        self.default.function(name).or_else(|| self.modules.function(name))
+        self.default
+            .function(name)
+            .or_else(|| self.modules.function(name))
     }
 
     fn lazy_function(&self, name: &str) -> Option<&dyn LazyFunction<NonFunctionValue>> {
