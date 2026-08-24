@@ -199,10 +199,17 @@ impl OtlpState for HttpOtlpState {
 fn take_ended_spans(spans: &Mutex<HashMap<String, Span>>) -> Vec<Span> {
     let mut guard = spans.lock().unwrap();
     let taken = std::mem::take(&mut *guard);
-    let (ended, remaining): (Vec<Span>, HashMap<String, Span>) =
-        taken.into_iter().partition(|(_, s)| s.end_time.is_some());
+    let mut ended = Vec::new();
+    let mut remaining = HashMap::new();
+    for (id, span) in taken {
+        if span.end_time.is_some() {
+            ended.push(span);
+        } else {
+            remaining.insert(id, span);
+        }
+    }
     *guard = remaining;
-    ended.into_iter().map(|(_, s)| s).collect()
+    ended
 }
 
 fn attribute_value(value: &Value) -> Value {
