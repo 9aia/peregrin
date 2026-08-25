@@ -6,9 +6,9 @@ Custom drivers are registered by name in the `DriverRegistry`.
 
 ```ts
 import { Effect } from "effect";
-import { Driver } from "ac-core";
-import { DriverRegistry, Runner } from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
+import { Driver } from "handl-core";
+import { DriverRegistry, Runner } from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
 
 const EchoDriver: Driver = {
   name: "echo",

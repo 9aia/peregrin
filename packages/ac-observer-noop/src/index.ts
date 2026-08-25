@@ -1,4 +1,4 @@
-import { Observer, type Span, type Workflow, type Node, type Event } from "ac-core";
+import { Observer, type Span, type Workflow, type Node, type Event } from "handl-core";
 import { Layer as EffectLayer } from "effect";
 
 export class NoopSpan implements Span {

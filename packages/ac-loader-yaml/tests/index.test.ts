@@ -5,9 +5,9 @@ import os from "node:os";
 import path from "node:path";
 import { loadWorkflowFromText, loadRaw } from "../src/index.ts";
 
-describe("ac-loader-yaml", () => {
+describe("handl-loader-yaml", () => {
   it("loads a minimal workflow from text", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       const wf = await Effect.runPromise(loadWorkflowFromText("name: test\nnodes: []", tmp));
       expect(wf.name).toBe("test");
@@ -18,7 +18,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("fails when nodes is not an array", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       await expect(
         Effect.runPromise(loadWorkflowFromText("name: test\nnodes: notArray", tmp)),
@@ -29,7 +29,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("merges include into node with and local wins", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(path.join(tmp, "env.yaml"), "env:\n  REGION: us-east-1\ntimeout: 300\n");
       const wf = await Effect.runPromise(
@@ -59,7 +59,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("injects a whole dict via include expression", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(path.join(tmp, "env.yaml"), "REGION: us-east-1\nCLUSTER: prod\n");
       const wf = await Effect.runPromise(
@@ -84,7 +84,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("injects a whole list via include expression", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(
         path.join(tmp, "shards.yaml"),
@@ -102,7 +102,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("injects scalar and partial include expressions", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(path.join(tmp, "version.yaml"), "1.2.3");
       const wf = await Effect.runPromise(
@@ -127,7 +127,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("uses first include when include is a list", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(
         path.join(tmp, "a.yaml"),
@@ -148,7 +148,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("recursively merges include files", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(path.join(tmp, "base.yaml"), "env:\n  PYTHONPATH: /app\n");
       fs.writeFileSync(
@@ -179,7 +179,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("resolves recursive include expressions", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(path.join(tmp, "base.yaml"), "PYTHONPATH: /app\n");
       fs.writeFileSync(path.join(tmp, "prod.yaml"), "include: base.yaml\nREGION: us-east-1\n");
@@ -206,7 +206,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("detects circular includes by key", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(path.join(tmp, "a.yaml"), "include: b.yaml\nvalue: a\n");
       fs.writeFileSync(path.join(tmp, "b.yaml"), "include: a.yaml\nvalue: b\n");
@@ -217,7 +217,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("detects circular includes by expression", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(path.join(tmp, "a.yaml"), "value: ${include(b.yaml)}\n");
       fs.writeFileSync(path.join(tmp, "b.yaml"), "value: ${include(a.yaml)}\n");
@@ -235,7 +235,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("detects self includes", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(path.join(tmp, "main.yaml"), "include: main.yaml\n");
       await expect(Effect.runPromise(loadRaw("include: main.yaml", tmp))).rejects.toBeDefined();
@@ -245,7 +245,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("raises for missing include files", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       fs.writeFileSync(
         path.join(tmp, "main.yaml"),
@@ -262,7 +262,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("merges a snippet into a node", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       const wf = await Effect.runPromise(
         loadWorkflowFromText(
@@ -298,7 +298,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("injects a scalar snippet via expression", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       const wf = await Effect.runPromise(
         loadWorkflowFromText(
@@ -323,7 +323,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("injects a list snippet via expression", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       const wf = await Effect.runPromise(
         loadWorkflowFromText(
@@ -348,7 +348,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("injects a dict snippet via expression", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       const wf = await Effect.runPromise(
         loadWorkflowFromText(
@@ -379,7 +379,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("interpolates a snippet into a partial string", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       const wf = await Effect.runPromise(
         loadWorkflowFromText(
@@ -404,7 +404,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("raises for unknown snippet references", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       await expect(
         Effect.runPromise(
@@ -422,7 +422,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("resolves three levels of snippet inheritance", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       const wf = await Effect.runPromise(
         loadWorkflowFromText(
@@ -458,7 +458,7 @@ describe("ac-loader-yaml", () => {
   });
 
   it("detects self-referencing snippet inheritance", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
       await expect(
         Effect.runPromise(
@@ -482,10 +482,10 @@ describe("ac-loader-yaml", () => {
     }
   });
 
-  it("auto-discovers nodes and snippets from the .ac directory", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-loader-yaml-"));
+  it("auto-discovers nodes and snippets from the .handl directory", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-loader-yaml-"));
     try {
-      const acDir = path.join(tmp, ".ac");
+      const acDir = path.join(tmp, ".handl");
       fs.mkdirSync(acDir);
       fs.writeFileSync(
         path.join(acDir, "shared.snippet.yml"),

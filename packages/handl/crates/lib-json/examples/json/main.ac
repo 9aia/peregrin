@@ -1,0 +1,9 @@
+{
+  value: {
+    hello: "world",
+    count: 42,
+    list: [1, 2, 3]
+  },
+  text: json.encode(value),
+  decoded: json.decode(text)
+}

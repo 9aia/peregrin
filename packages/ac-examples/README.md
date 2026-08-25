@@ -1,4 +1,4 @@
-# ac-examples
+# handl-examples
 
 Example workflows and reusable fragments for the Agent Campaigns (Peregrin)
 TypeScript runtime. These YAMLs were ported from the original Python
@@ -12,8 +12,8 @@ TypeScript runtime. These YAMLs were ported from the original Python
 ## Running
 
 ```bash
-ac run packages/ac-examples/examples/review-pr.yaml
-ac run packages/ac-examples/workflows/create-workflow/main.yaml
+handl run packages/handl-examples/examples/review-pr.yaml
+handl run packages/handl-examples/workflows/create-workflow/main.yaml
 ```
 
 ## Notes

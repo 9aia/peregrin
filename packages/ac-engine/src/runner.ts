@@ -12,12 +12,12 @@ import {
   Observer,
   StateStore,
   TemplateError,
-} from "ac-core";
-import type { ExecutionContext } from "ac-core";
+} from "handl-core";
+import type { ExecutionContext } from "handl-core";
 import { captureWildcards, EventBus, matches } from "./bus.js";
 import { DriverRegistry } from "./registry.js";
-import { buildValidator, CapabilityChecker, ResourceGate, validateObject } from "ac-safety";
-import { resolveTemplate, resolveValueForNode, type TemplateFunction } from "ac-template-engine";
+import { buildValidator, CapabilityChecker, ResourceGate, validateObject } from "handl-safety";
+import { resolveTemplate, resolveValueForNode, type TemplateFunction } from "handl-template-engine";
 
 function resolveForward(fwdType: string, captures: Record<string, string>): string {
   const parts = fwdType.split(".");
@@ -104,7 +104,7 @@ export interface Runner {
   ) => Effect.Effect<ReadonlyArray<Event>, DriverError, never>;
 }
 
-export const Runner = Context.GenericTag<Runner>("ac/Runner");
+export const Runner = Context.GenericTag<Runner>("handl/Runner");
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);

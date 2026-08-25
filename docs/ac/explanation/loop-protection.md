@@ -63,8 +63,8 @@ repeat the same event sequence 3+ times in a row.
 Configurable:
 
 ```bash
-ac run workflow.yaml --cycle-window 20 --cycle-threshold 3
-ac run workflow.yaml --no-cycle-detection
+handl run workflow.yaml --cycle-window 20 --cycle-threshold 3
+handl run workflow.yaml --no-cycle-detection
 ```
 
 ## 3. Global safety nets
@@ -74,7 +74,7 @@ ac run workflow.yaml --no-cycle-detection
 **`timeout`** (default 0 = no limit) — wall-clock timeout in seconds.
 
 ```bash
-ac run workflow.yaml --timeout 60 --max-events 1000
+handl run workflow.yaml --timeout 60 --max-events 1000
 ```
 
 ## Intentional vs accidental

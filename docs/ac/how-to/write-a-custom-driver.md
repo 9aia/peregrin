@@ -1,13 +1,13 @@
 # Write a custom driver
 
-A driver is a value that satisfies the `Driver` interface from `ac-core`. It returns an `Effect` that produces the events a node should emit.
+A driver is a value that satisfies the `Driver` interface from `handl-core`. It returns an `Effect` that produces the events a node should emit.
 
 ## The `Driver` interface
 
 ```ts
 import { Effect } from "effect";
-import { Driver, DriverError, Event } from "ac-core";
-import type { ExecutionContext, Node } from "ac-core";
+import { Driver, DriverError, Event } from "handl-core";
+import type { ExecutionContext, Node } from "handl-core";
 
 interface Driver {
   readonly name: string;
@@ -29,7 +29,7 @@ The driver must return an `Effect` that succeeds with an array of `Event` object
 
 ```ts
 import { Effect } from "effect";
-import { Driver, DriverError, Event } from "ac-core";
+import { Driver, DriverError, Event } from "handl-core";
 
 const HttpDriver: Driver = {
   name: "http",
@@ -74,15 +74,15 @@ Register the driver through the `DriverRegistry` at runtime, or build an Effect 
 
 ```ts
 import { Effect } from "effect";
-import { Driver, DriverError, Event } from "ac-core";
+import { Driver, DriverError, Event } from "handl-core";
 import {
   DriverRegistry,
   DriverRegistryLiveLayer,
   Runner,
   RunnerLiveLayer,
   EventBusLiveLayer,
-} from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
+} from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
 
 const echoDriver: Driver = {
   name: "echo",

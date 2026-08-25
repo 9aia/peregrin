@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/main.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/main.schema.json
 # bugfix: end-to-end bugfix workflow for ndocs-3.
 #
 # Pipeline:
@@ -15,7 +15,7 @@
 #   BUG_ID=123 \
 #   BUG_DESCRIPTION="Login crashes on empty password" \
 #   BUG_TEST_PATH="src/auth/login.test.ts" \
-#   ac run examples/bugfix/main.yaml
+#   handl run examples/bugfix/main.yaml
 #
 # Required env:
 #   BUG_ID            — short identifier (becomes branch name: fix/<id>)

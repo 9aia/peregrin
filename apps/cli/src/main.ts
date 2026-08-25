@@ -1,16 +1,16 @@
 import { Args, Command, Options } from "@effect/cli";
 import { NodeContext, NodeRuntime } from "@effect/platform-node";
 import { Console, Effect, Layer, Option } from "effect";
-import { Event, Observer } from "ac-core";
-import { loadWorkflow, LoaderError, loadRaw } from "ac-loader-yaml";
-import { discover } from "ac-file-router";
-import { Runner, type RunOptions } from "ac-engine";
+import { Event, Observer } from "handl-core";
+import { loadWorkflow, LoaderError, loadRaw } from "handl-loader-yaml";
+import { discover } from "handl-file-router";
+import { Runner, type RunOptions } from "handl-engine";
 import {
   makeDefaultsLive,
   MetricsObserver,
   NoopObserverLayer,
   OtelObserver,
-} from "ac-cli-defaults";
+} from "handl-cli-defaults";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -485,7 +485,7 @@ const typegen = Command.make(
 
       const handlerNames = noHandlers ? [] : discovered.handlers.map((entry) => entry.name).sort();
 
-      const defsDir = path.join(baseDir, ".ac", "generated", "schemas");
+      const defsDir = path.join(baseDir, ".handl", "generated", "schemas");
       const payloadSchemaRefs: Record<string, string> = {};
       for (const entry of discovered.events) {
         const rel = path.relative(defsDir, path.dirname(entry.path)).replace(/\\/g, "/");
@@ -613,19 +613,25 @@ const typegen = Command.make(
       yield* writeSchema(rootSchema, rootSchemaRel);
       yield* injectSchemaComment(
         workflow,
-        path.posix.join(".ac", "generated", "schemas", rootSchemaRel),
+        path.posix.join(".handl", "generated", "schemas", rootSchemaRel),
       );
 
       for (const entry of discovered.nodes) {
         const rel = `nodes/${entry.name}.schema.json`;
         yield* writeSchema({ $ref: "_defs.schema.json#/$defs/node" }, rel);
-        yield* injectSchemaComment(entry.path, path.posix.join(".ac", "generated", "schemas", rel));
+        yield* injectSchemaComment(
+          entry.path,
+          path.posix.join(".handl", "generated", "schemas", rel),
+        );
       }
 
       for (const entry of discovered.snippets) {
         const rel = `snippets/${entry.name}.schema.json`;
         yield* writeSchema({ $ref: "_defs.schema.json#/$defs/snippet" }, rel);
-        yield* injectSchemaComment(entry.path, path.posix.join(".ac", "generated", "schemas", rel));
+        yield* injectSchemaComment(
+          entry.path,
+          path.posix.join(".handl", "generated", "schemas", rel),
+        );
       }
 
       yield* Console.log(`schemas written to ${defsDir}`);
@@ -635,7 +641,7 @@ const typegen = Command.make(
       yield* Console.log(`  drivers:  ${DRIVER_TYPES.length} types`);
       yield* Console.log(`  files:    ${written.length} schemas generated`);
       for (const rel of written) {
-        yield* Console.log(`    .ac/generated/schemas/${rel}`);
+        yield* Console.log(`    .handl/generated/schemas/${rel}`);
       }
     }),
 ).pipe(Command.withDescription("generate JSON Schemas for a workflow"));
@@ -644,10 +650,12 @@ const version = Command.make("version", {}, () => Console.log("0.0.0")).pipe(
   Command.withDescription("Show the CLI version"),
 );
 
-const ac = Command.make("ac").pipe(Command.withSubcommands([run, validate, typegen, version]));
+const handl = Command.make("handl").pipe(
+  Command.withSubcommands([run, validate, typegen, version]),
+);
 
-const program = Command.run(ac, {
-  name: "ac",
+const program = Command.run(handl, {
+  name: "handl",
   version: "0.0.0",
 });
 

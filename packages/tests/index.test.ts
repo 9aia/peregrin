@@ -3,14 +3,14 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { Effect } from "effect";
-import { DriverError, Event, TemplateError } from "ac-core";
-import type { Driver, ExecutionContext, Node } from "ac-core";
-import { captureWildcards, matches } from "ac-engine";
-import { loadWorkflow } from "ac-loader-yaml";
-import { resolveTemplate } from "ac-template-engine";
-import { runWorkflow } from "ac-testing-library";
+import { DriverError, Event, TemplateError } from "handl-core";
+import type { Driver, ExecutionContext, Node } from "handl-core";
+import { captureWildcards, matches } from "handl-engine";
+import { loadWorkflow } from "handl-loader-yaml";
+import { resolveTemplate } from "handl-template-engine";
+import { runWorkflow } from "handl-testing-library";
 
-const mkTmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "ac-integration-"));
+const mkTmp = () => fs.mkdtempSync(path.join(os.tmpdir(), "handl-integration-"));
 
 const writeFiles = (dir: string, files: Record<string, string>) => {
   for (const [relative, content] of Object.entries(files)) {
@@ -66,12 +66,12 @@ const runFile = async (dir: string, file = "workflow.yaml") => {
   return Effect.runPromise(runWorkflow(workflow, drivers));
 };
 
-describe("@ac/tests integration", () => {
+describe("@handl/tests integration", () => {
   it("discovers snippets and included files through the file router", async () => {
     const dir = mkTmp();
     try {
       writeFiles(dir, {
-        ".ac/fragments.yaml": `
+        ".handl/fragments.yaml": `
           snippets:
             greet:
               driver: shell
@@ -80,7 +80,7 @@ describe("@ac/tests integration", () => {
         `,
         "workflow.yaml": `
           name: snippets
-          include: [.ac/fragments.yaml]
+          include: [.handl/fragments.yaml]
           nodes:
             - id: greet
               snippet: greet
@@ -103,7 +103,7 @@ describe("@ac/tests integration", () => {
     const dir = mkTmp();
     try {
       writeFiles(dir, {
-        ".ac/map.node.yml": `
+        ".handl/map.node.yml": `
           id: map
           driver: python
           on: [start]
@@ -146,7 +146,7 @@ describe("@ac/tests integration", () => {
     const dir = mkTmp();
     try {
       writeFiles(dir, {
-        ".ac/map.node.yml": `
+        ".handl/map.node.yml": `
           id: map
           driver: python
           on: [start]

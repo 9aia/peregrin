@@ -6,11 +6,11 @@ Proposed
 
 ## Context
 
-`ac-vm` defines the `VirtualMachine` trait and `ac-vm-canonical` provides a single, monolithic `CanonicalVm` that matches every `Expr` variant in one tree-walking `eval` method. While this works for the canonical language, it has several architectural limits:
+`handl-vm` defines the `VirtualMachine` trait and `handl-vm-canonical` provides a single, monolithic `CanonicalVm` that matches every `Expr` variant in one tree-walking `eval` method. While this works for the canonical language, it has several architectural limits:
 
 1. **The VM is not composable from parts.** `CanonicalVm` owns the evaluation logic for `Value`, `Call`, `Array`, `Object`, and `Handle` all at once. A host that only wants a subset of the language (e.g. no `Handle`, no lazy calls, no async) must still carry and audit the entire implementation.
 2. **Extension requires editing the monolith.** Adding a new expression variant, optimization, or dialect-specific behavior means opening `CanonicalVm::eval` and `CanonicalVm::eval_async` and threading changes through the entire tree walker.
-3. **Middleware only observes, it does not recompose.** `MiddlewareVm` in `ac-vm-common` can wrap a VM with cross-cutting hooks (`Trace`, `Counter`, `Chain`), but it cannot change _which_ VM logic handles a given node. It is an outer wrapper, not an inner assembler.
+3. **Middleware only observes, it does not recompose.** `MiddlewareVm` in `handl-vm-common` can wrap a VM with cross-cutting hooks (`Trace`, `Counter`, `Chain`), but it cannot change _which_ VM logic handles a given node. It is an outer wrapper, not an inner assembler.
 4. **There is no path to alternative evaluators.** `VirtualMachine` is pluggable, but the workspace contains only `CanonicalVm` plus wrappers. A capability-specific VM (e.g. a pure-value machine, a strict no-`Handle` machine, a sandboxed machine) does not exist as a separate, reusable component.
 
 The goal is to make the VM layer as composable as the host layer already is (`ChainHost`, `FilterHost`, `SpyHost`, `MapHost`) and the middleware layer (`MiddlewareVm`, `Chain`).
@@ -60,7 +60,7 @@ impl<H: Host> LegoVm<H> {
 
 ### Canonical bundle
 
-`ac-vm-canonical` exports a `CanonicalBundle` / `canonical_vm` constructor that registers the default handlers:
+`handl-vm-canonical` exports a `CanonicalBundle` / `canonical_vm` constructor that registers the default handlers:
 
 ```rust
 pub fn canonical_vm<H: Host>(host: H) -> LegoVm<H> {
@@ -113,11 +113,11 @@ let vm = MiddlewareVm::new(
 - `Vec<Box<dyn ExprHandler>>` and `&mut dyn FnMut` dispatch per node adds virtual-call overhead compared to the closed `match` in `CanonicalVm`. This is acceptable for the targeted use cases (embeddable, host-defined languages) but not ideal for raw throughput. A hot-path VM can bypass `LegoVm` and implement `VirtualMachine` directly.
 - The `Expr` enum remains the common data model. If a dialect needs radically different expression shapes, it must either extend `Expr` or implement a completely separate `VirtualMachine`. `ExprHandler` is not a new AST layer.
 - `Host` is passed to every handler call. If a host is expensive to pass by reference, the dispatcher can hold `&Host` once and expose it. The current `&dyn Host` is the existing pattern.
-- Converting `CanonicalVm::eval` and `CanonicalVm::eval_async` into separate handlers is a non-trivial refactor of `ac-vm-canonical`. It should be done in phases: introduce `LegoVm` and handlers in `ac-vm-common`, then migrate `CanonicalVm` to use them, then deprecate the old `match`-based code.
+- Converting `CanonicalVm::eval` and `CanonicalVm::eval_async` into separate handlers is a non-trivial refactor of `handl-vm-canonical`. It should be done in phases: introduce `LegoVm` and handlers in `handl-vm-common`, then migrate `CanonicalVm` to use them, then deprecate the old `match`-based code.
 
 ## References
 
-- `packages/ac-lang/crates/vm/src/runtime.rs` — `VirtualMachine` trait
-- `packages/ac-lang/crates/vm-canonical/src/vm.rs` — `CanonicalVm` tree-walker
-- `packages/ac-lang/crates/vm-common/src/middleware_vm.rs` — `MiddlewareVm` and `VmMiddleware`
-- `packages/ac-lang/crates/vm-common/src/host.rs` — host combinators (`ChainHost`, `SpyHost`, etc.)
+- `packages/handl/crates/vm/src/runtime.rs` — `VirtualMachine` trait
+- `packages/handl/crates/vm-canonical/src/vm.rs` — `CanonicalVm` tree-walker
+- `packages/handl/crates/vm-common/src/middleware_vm.rs` — `MiddlewareVm` and `VmMiddleware`
+- `packages/handl/crates/vm-common/src/host.rs` — host combinators (`ChainHost`, `SpyHost`, etc.)

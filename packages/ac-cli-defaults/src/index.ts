@@ -7,24 +7,29 @@ import {
   type Node,
   type Event,
   type StateStore,
-} from "ac-core";
-import { EventStoreLive, StateStoreLive } from "ac-store-memory";
-import { NoopSpan, Layer as NoopObserverLayer } from "ac-observer-noop";
-import { Live as LiteLLMLive, LiteLLMDriver } from "ac-plugin-litellm";
-import { Live as AppriseLive, AppriseDriver } from "ac-plugin-apprise";
-import { AgentDriver } from "ac-driver-agent";
-import { CliDriver } from "ac-driver-cli";
-import { HttpDriver } from "ac-driver-http";
-import { HumanDriver } from "ac-driver-human";
-import { NoopDriver } from "ac-driver-noop";
-import { PollingDriver } from "ac-driver-polling";
-import { PythonDriver } from "ac-driver-python";
-import { RunnerDriver } from "ac-driver-runner";
-import { ShellDriver } from "ac-driver-shell";
-import { StdinDriver } from "ac-driver-stdin";
-import { StreamingDriver } from "ac-driver-streaming";
-import { WebhookDriver } from "ac-driver-webhook";
-import { DriverRegistry, DriverRegistryLive, EventBusLiveLayer, RunnerLiveLayer } from "ac-engine";
+} from "handl-core";
+import { EventStoreLive, StateStoreLive } from "handl-store-memory";
+import { NoopSpan, Layer as NoopObserverLayer } from "handl-observer-noop";
+import { Live as LiteLLMLive, LiteLLMDriver } from "handl-plugin-litellm";
+import { Live as AppriseLive, AppriseDriver } from "handl-plugin-apprise";
+import { AgentDriver } from "handl-driver-agent";
+import { CliDriver } from "handl-driver-cli";
+import { HttpDriver } from "handl-driver-http";
+import { HumanDriver } from "handl-driver-human";
+import { NoopDriver } from "handl-driver-noop";
+import { PollingDriver } from "handl-driver-polling";
+import { PythonDriver } from "handl-driver-python";
+import { RunnerDriver } from "handl-driver-runner";
+import { ShellDriver } from "handl-driver-shell";
+import { StdinDriver } from "handl-driver-stdin";
+import { StreamingDriver } from "handl-driver-streaming";
+import { WebhookDriver } from "handl-driver-webhook";
+import {
+  DriverRegistry,
+  DriverRegistryLive,
+  EventBusLiveLayer,
+  RunnerLiveLayer,
+} from "handl-engine";
 
 const registry = new DriverRegistryLive();
 registry.register("agent", AgentDriver);
@@ -205,8 +210,8 @@ export const MetricsObserverLive = Layer.succeed(Observer, new MetricsObserver()
 const DefaultsLive = makeDefaultsLive(NoopObserverLayer);
 
 export { DefaultDriverRegistryLive };
-export { RunnerLiveLayer, EventBusLiveLayer } from "ac-engine";
-export { Live as MemoryStoreLive } from "ac-store-memory";
-export { Layer as NoopObserverLayer } from "ac-observer-noop";
-export { OtelObserver, OtelObserverLive } from "ac-observer-otel";
+export { RunnerLiveLayer, EventBusLiveLayer } from "handl-engine";
+export { Live as MemoryStoreLive } from "handl-store-memory";
+export { Layer as NoopObserverLayer } from "handl-observer-noop";
+export { OtelObserver, OtelObserverLive } from "handl-observer-otel";
 export { DefaultsLive };

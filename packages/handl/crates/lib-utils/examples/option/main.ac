@@ -1,0 +1,6 @@
+{
+  some: option.unwrap(option.some(42)),
+  or_default: option.unwrap_or(option.none(), 0),
+  is_some: option.is_some(option.some(1)),
+  is_none: option.is_none(option.none())
+}

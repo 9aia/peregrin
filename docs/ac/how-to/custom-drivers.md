@@ -77,7 +77,7 @@ Implement the `Driver` interface and register it with `DriverRegistry`:
 
 ```ts
 import { Effect } from "effect";
-import { Driver, Event } from "ac-core";
+import { Driver, Event } from "handl-core";
 
 const GreeterDriver: Driver = {
   name: "greeter",
@@ -90,8 +90,8 @@ Register at runtime:
 
 ```ts
 import { Effect } from "effect";
-import { DriverRegistry } from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
+import { DriverRegistry } from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
 
 const program = Effect.gen(function* () {
   const registry = yield* DriverRegistry;

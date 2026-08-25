@@ -1,5 +1,5 @@
 {
-  "name": "ac-driver-polling",
+  "name": "handl-driver-polling",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,9 +14,9 @@
     "check": "vp check"
   },
   "dependencies": {
-    "ac-core": "workspace:*",
-    "ac-template-engine": "workspace:*",
-    "effect": "^3.22.1"
+    "effect": "^3.22.1",
+    "handl-core": "workspace:*",
+    "handl-template-engine": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

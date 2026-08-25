@@ -1,0 +1,4 @@
+{
+  tap: fn.tap((x) -> add(x, 1), 5),
+  pipe: fn.pipe(5, (x) -> add(x, 1), (x) -> mul(x, 2))
+}

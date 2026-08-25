@@ -15,7 +15,7 @@
 # (rm -rf) is blocked; the safe node (echo) runs. A capability.violation
 # event is emitted with the violation details.
 #
-# Run:  ac run examples/capability-confinement/main.yaml
+# Run:  handl run examples/capability-confinement/main.yaml
 
 name: capability-confinement
 

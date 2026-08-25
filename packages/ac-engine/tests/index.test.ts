@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vite-plus/test";
 import { matches, captureWildcards } from "../src/index.ts";
 
-describe("ac-engine", () => {
+describe("handl-engine", () => {
   it("matches exact patterns", () => {
     expect(matches("a.b", "a.b")).toBe(true);
     expect(matches("a.b", "a.c")).toBe(false);

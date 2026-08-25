@@ -4,19 +4,19 @@ on:
   push:
     branches: [main]
     paths:
-      - "packages/ac-lang/**"
+      - "packages/handl/**"
       - ".github/workflows/rust.yml"
   pull_request:
     branches: [main]
     paths:
-      - "packages/ac-lang/**"
+      - "packages/handl/**"
 
 env:
   CARGO_TERM_COLOR: always
 
 defaults:
   run:
-    working-directory: packages/ac-lang
+    working-directory: packages/handl
 
 jobs:
   fmt:
@@ -29,7 +29,7 @@ jobs:
           components: rustfmt
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/ac-lang
+          workspaces: packages/handl
       - run: cargo fmt --check -p rust-lib-ecma402-icu4x -p rust-lib-ecma402-traits
 
   clippy:
@@ -42,7 +42,7 @@ jobs:
           components: clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/ac-lang
+          workspaces: packages/handl
       - run: cargo clippy -p rust-lib-ecma402-icu4x -p rust-lib-ecma402-traits -- -D warnings
 
   test:
@@ -60,7 +60,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/ac-lang
+          workspaces: packages/handl
       - run: cargo test -p ${{ matrix.package }} ${{ matrix.cargo-flags }}
 
   doc:
@@ -71,7 +71,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/ac-lang
+          workspaces: packages/handl
       - run: cargo doc -p rust-lib-ecma402-icu4x -p rust-lib-ecma402-traits --no-deps
         env:
           RUSTDOCFLAGS: "-D warnings"

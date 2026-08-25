@@ -1,9 +1,9 @@
 {
-  "name": "ac",
+  "name": "handl",
   "version": "0.0.0",
   "private": true,
   "bin": {
-    "ac": "./dist/cli.mjs"
+    "handl": "./dist/cli.mjs"
   },
   "type": "module",
   "scripts": {
@@ -15,12 +15,12 @@
     "@effect/cli": "^0.77.0",
     "@effect/platform": "^0.97.1",
     "@effect/platform-node": "^0.107.0",
-    "ac-cli-defaults": "workspace:*",
-    "ac-core": "workspace:*",
-    "ac-engine": "workspace:*",
-    "ac-file-router": "workspace:*",
-    "ac-loader-yaml": "workspace:*",
-    "effect": "^3.22.1"
+    "effect": "^3.22.1",
+    "handl-cli-defaults": "workspace:*",
+    "handl-core": "workspace:*",
+    "handl-engine": "workspace:*",
+    "handl-file-router": "workspace:*",
+    "handl-loader-yaml": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

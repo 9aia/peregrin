@@ -62,7 +62,7 @@ nodes:
 
 ## File-based schemas
 
-`*.event.json` files in `.ac/` or alongside the workflow are
+`*.event.json` files in `.handl/` or alongside the workflow are
 auto-discovered. The filename (without extension) is the event type.
 
 ## See also

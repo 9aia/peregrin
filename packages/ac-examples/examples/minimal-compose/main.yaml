@@ -1,9 +1,9 @@
-# yaml-language-server: $schema=.ac/schema.gen.json
+# yaml-language-server: $schema=.handl/schema.gen.json
 # minimal-compose/ — explicit composition with include: and snippet:.
 #
-# No .ac/ directory — everything is declared explicitly. Run with:
+# No .handl/ directory — everything is declared explicitly. Run with:
 #
-#   ac run examples/minimal-compose/main.yaml --dry-run
+#   handl run examples/minimal-compose/main.yaml --dry-run
 
 name: minimal-compose
 

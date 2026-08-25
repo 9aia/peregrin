@@ -1,6 +1,6 @@
 # fix: spawn an agent to apply the fix. Retry loop via max_fires.
 # Uses driver: agent with ${node.fires} for attempt numbering —
-# no /tmp/ac-bugfix-attempt counter file needed.
+# no /tmp/handl-bugfix-attempt counter file needed.
 #
 # Fires on agent.investigate.done OR test.check.failed (retry).
 # max_fires bounds the retry loop (default 3, override via config.max_fix_attempts).

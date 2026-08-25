@@ -1,14 +1,14 @@
 # Memory store
 
-`MemoryStore` from `ac-store-memory` is an in-memory `EventStore`. Fast, no persistence.
+`MemoryStore` from `handl-store-memory` is an in-memory `EventStore`. Fast, no persistence.
 
 ## Programmatic usage
 
 ```ts
 import { Effect } from "effect";
-import { Runner } from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
-import { Live as MemoryStoreLive } from "ac-store-memory";
+import { Runner } from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
+import { Live as MemoryStoreLive } from "handl-store-memory";
 
 const program = Effect.gen(function* () {
   const runner = yield* Runner;

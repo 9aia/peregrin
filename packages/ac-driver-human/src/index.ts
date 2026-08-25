@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { createInterface } from "node:readline/promises";
 import { Effect, Layer } from "effect";
-import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
-import { resolveValueForNode } from "ac-template-engine";
+import { Driver, DriverError, Event, type ExecutionContext, type Node } from "handl-core";
+import { resolveValueForNode } from "handl-template-engine";
 
 export const HumanDriver: Driver = {
   name: "human",

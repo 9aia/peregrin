@@ -24,7 +24,7 @@ nodes:
 ## Run it
 
 ```bash
-ac run hello.yaml
+handl run hello.yaml
 ```
 
 Output:
@@ -41,7 +41,7 @@ workflow complete: 2 events
 ## Validate without running
 
 ```bash
-ac validate hello.yaml
+handl validate hello.yaml
 ```
 
 ## Next steps

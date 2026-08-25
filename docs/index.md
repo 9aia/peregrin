@@ -17,9 +17,9 @@ repair the state machine.
 
 ## Where to start
 
-- [Quick Start](/ac/quick-start/introduction) — what Peregrin is and how the
+- [Quick Start](/handl/quick-start/introduction) — what Peregrin is and how the
   model works.
-- [Tutorials](/ac/tutorials/) — install the CLI and run your first workflow.
-- [Reference](/ac/reference/) — look up drivers, schemas, and features.
+- [Tutorials](/handl/tutorials/) — install the CLI and run your first workflow.
+- [Reference](/handl/reference/) — look up drivers, schemas, and features.
 
 This site is organised around the Diataxis documentation framework.

@@ -84,7 +84,7 @@ These are not afterthoughts. They are part of the model, and they appear in the 
 A workflow does not have to stop at running commands. Nodes can inspect, extend,
 and write new workflow YAML files. A meta-workflow can scaffold a CI workflow,
 draft a human-review loop, or generate a new campaign file and commit it for
-review — either inside the same repository or to a shared AC library. The engine
+review — either inside the same repository or to a shared handl library. The engine
 treats workflow files as just another artifact that campaigns can produce.
 
 ## Built-in libraries and drivers
@@ -114,7 +114,7 @@ If your automation is starting to feel like a fragile pile of scripts and webhoo
 
 ## What to read next
 
-- [Getting started](/ac/tutorials/getting-started) — install the CLI and run your first workflow.
-- [Write a workflow](/ac/tutorials/write-a-workflow) — a deeper walk through the YAML model.
-- [Drivers](/ac/explanation/drivers) — how drivers work and how to choose one.
-- [Explanation](/ac/explanation/) — the concepts behind the engine.
+- [Getting started](/handl/tutorials/getting-started) — install the CLI and run your first workflow.
+- [Write a workflow](/handl/tutorials/write-a-workflow) — a deeper walk through the YAML model.
+- [Drivers](/handl/explanation/drivers) — how drivers work and how to choose one.
+- [Explanation](/handl/explanation/) — the concepts behind the engine.

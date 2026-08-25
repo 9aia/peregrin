@@ -1,0 +1,6 @@
+$:
+  name:
+    type: string
+  $:
+    type: string
+name: alice

@@ -30,7 +30,7 @@ Read these files in the repo to understand the framework:
 1. **`${WORKFLOW_PATH}`** — the main workflow YAML with:
    - `name`, `config`, `events`, `nodes`
    - Auto-discovered lib nodes (copy needed `.node.yml` files from
-     `examples/lib/` into a `.ac/lib/` directory alongside the workflow)
+     `examples/lib/` into a `.handl/lib/` directory alongside the workflow)
    - Agent nodes with `prompt_file` references
    - Shell nodes for validate/verify/report steps
 
@@ -55,7 +55,7 @@ Read these files in the repo to understand the framework:
    careful event routing.
 
 3. **`prompt_file` paths are resolved relative to CWD** (the repo root
-   when `ac run` is called from there), NOT relative to the workflow YAML.
+   when `handl run` is called from there), NOT relative to the workflow YAML.
    Use paths like `campaigns/my-workflow/phase1.prompt.md`.
 
 4. **`forward:` replaces thin echo bridge nodes** — use
@@ -75,7 +75,7 @@ Read these files in the repo to understand the framework:
    agents run concurrently in the same worktree. If two agents edit the
    same file, they'll conflict.
 
-9. **Every event in `on:` must be emitted by some node** — `ac validate`
+9. **Every event in `on:` must be emitted by some node** — `handl validate`
    warns about orphan subscriptions. Check the warnings.
 
 10. **`emit:` map overrides `emits:` list** — use `emit: {0: success,
@@ -97,7 +97,7 @@ default: failure}` for explicit exit-code-to-event mapping.
 3. Plan the wave structure (which phases are parallel, which are sequential).
 4. Write the main.yaml.
 5. Write the prompt files.
-6. Copy needed lib nodes to `.ac/lib/`.
+6. Copy needed lib nodes to `.handl/lib/`.
 7. Print a summary of what you created to stdout.
 
-Do NOT run `ac validate` or `ac run` — downstream nodes will do that.
+Do NOT run `handl validate` or `handl run` — downstream nodes will do that.

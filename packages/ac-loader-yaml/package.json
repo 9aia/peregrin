@@ -1,5 +1,5 @@
 {
-  "name": "ac-loader-yaml",
+  "name": "handl-loader-yaml",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,9 +14,9 @@
     "check": "vp check"
   },
   "dependencies": {
-    "ac-core": "workspace:*",
-    "ac-file-router": "workspace:*",
     "effect": "^3.22.1",
+    "handl-core": "workspace:*",
+    "handl-file-router": "workspace:*",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

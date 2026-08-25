@@ -1,0 +1,7 @@
+{
+  render: template.render("Hello <%= name %>!", {name: "handl"}),
+  escaped: template.render("Value: <%- html %>", {html: "<script>"}),
+  custom: template.render("Hi {{ name }}!", {name: "handl"}, {delimiters: {interpolate: ["{{", "}}"]}}),
+  silent: template.render("A<% add(1, 2) %>B", {}),
+  escape: template.escape("<div>")
+}

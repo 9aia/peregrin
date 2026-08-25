@@ -41,7 +41,7 @@
 
 ## Persistence
 
-- Crash-recoverable by default (JsonStore at `.ac/<name>.jsonl`)
+- Crash-recoverable by default (JsonStore at `.handl/<name>.jsonl`)
 - `--replay` resumes from crash
 - `--resume` retries from failure (prunes failure events, resets fire counts, preserves worktree state)
 - `--no-store` opts out
@@ -58,13 +58,13 @@
 - **Includes anywhere:** `include:` (merge) and `${include(path)}` (inject) in any YAML position
 - **Named snippets:** `snippet: name` (merge) and `${snippet(name)}` (inject) — reusable fragments by name, with file refs and inheritance
 - **Python imports:** `import:` in YAML — import handler modules from file paths or dotted module paths, with `as:` aliasing
-- **File router:** auto-discover `*.node.yml`, `*.snippet.yml`, `*.event.json`, `*.handler.py`, `*.config.yml`, `*.secret.yml`, `.env` files by suffix — colocate by domain, walked recursively in `.ac/` first, then alongside
+- **File router:** auto-discover `*.node.yml`, `*.snippet.yml`, `*.event.json`, `*.handler.py`, `*.config.yml`, `*.secret.yml`, `.env` files by suffix — colocate by domain, walked recursively in `.handl/` first, then alongside
 - **Multi-file:** split workflows across files with recursive includes
 
 ## Validation and types
 
 - **Payload validation:** `*.event.json` — JSON Schema per event type, validated at runtime. Failures emit `event.invalid`. `--strict` makes failures also emit `node.failed` and drop the invalid event
-- **Type generation:** `ac typegen workflow.yaml` — generates JSON Schema with enums for event types, snippet names, handler names, and driver types for editor autocomplete
+- **Type generation:** `handl typegen workflow.yaml` — generates JSON Schema with enums for event types, snippet names, handler names, and driver types for editor autocomplete
 
 ## Streaming and dry-run
 
@@ -74,7 +74,7 @@
 ## Placeholders and state
 
 - **Payload placeholders:** `${event.payload.x}`, `${secret.API_KEY}`, `${config.region}`, `${state.x}`, `${event.shard}`, `${node.fires}`
-- **Shared state:** `ctx.state` — persisted key/value store (default `.ac/<name>.state.json`), restored on `--replay`
+- **Shared state:** `ctx.state` — persisted key/value store (default `.handl/<name>.state.json`), restored on `--replay`
 - **Wildcard captures:** `${event.shard}` and `${event.match.N}`
 - **Fire counter:** `${node.fires}` / `ctx.fires` — 1-based attempt number
 - **Idempotency keys:** `ctx.idempotency_key` — unique per node firing
@@ -89,7 +89,7 @@
 
 - **Graceful shutdown:** SIGINT/SIGTERM handler — awaits in-flight tasks, cleans up webhook servers
 - **Concurrency control:** `--max-concurrency N` limits parallel node executions (default: 50)
-- **Reusable lib:** `packages/ac-examples/examples/lib/` — canonical, copyable node YAMLs
+- **Reusable lib:** `packages/handl-examples/examples/lib/` — canonical, copyable node YAMLs
 
 ## Integration library
 

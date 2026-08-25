@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/nodes/verify.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/nodes/verify.schema.json
 # verify: run vp check + targeted tests in the worktree.
 # Reusable by any workflow that needs to validate changes.
 #
@@ -6,7 +6,7 @@
 #   BUG_TEST_PATH — test file/path to run (optional)
 #
 # Emits: verify.passed | verify.failed
-# Writes output to /tmp/ac-bugfix-verify-output.txt for retry feedback.
+# Writes output to /tmp/handl-bugfix-verify-output.txt for retry feedback.
 
 id: verify
 driver: shell
@@ -14,11 +14,11 @@ on: [fix.done]
 emits: [verify.passed, verify.failed]
 params:
   cmd: |
-    source /tmp/ac-bugfix-env
+    source /tmp/handl-bugfix-env
     cd "$WORKTREE_PATH"
 
     echo "Running vp check (light tier)..."
-    vp check 2>&1 | tee /tmp/ac-bugfix-verify-output.txt
+    vp check 2>&1 | tee /tmp/handl-bugfix-verify-output.txt
     CHECK_RC=$?
 
     if [ $CHECK_RC -ne 0 ]; then
@@ -28,7 +28,7 @@ params:
 
     if [ -n "$BUG_TEST_PATH" ]; then
       echo "Running targeted tests: $BUG_TEST_PATH"
-      vp test "$BUG_TEST_PATH" 2>&1 | tee -a /tmp/ac-bugfix-verify-output.txt
+      vp test "$BUG_TEST_PATH" 2>&1 | tee -a /tmp/handl-bugfix-verify-output.txt
       TEST_RC=$?
       if [ $TEST_RC -ne 0 ]; then
         echo "tests failed (rc=$TEST_RC)"

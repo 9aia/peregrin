@@ -185,9 +185,9 @@ operationally important to remain an ad-hoc script:
 
 ## What to read next
 
-- [Getting started](/ac/tutorials/getting-started) — install the CLI and run
+- [Getting started](/handl/tutorials/getting-started) — install the CLI and run
   your first workflow.
-- [Write a workflow](/ac/tutorials/write-a-workflow) — a deeper walk through
+- [Write a workflow](/handl/tutorials/write-a-workflow) — a deeper walk through
   the YAML model.
-- [Drivers](/ac/explanation/drivers) — how drivers work and how to choose one.
-- [Explanation](/ac/explanation/) — the concepts behind the engine.
+- [Drivers](/handl/explanation/drivers) — how drivers work and how to choose one.
+- [Explanation](/handl/explanation/) — the concepts behind the engine.

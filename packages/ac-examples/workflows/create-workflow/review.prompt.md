@@ -14,13 +14,13 @@ correctness, then write PASS or FAIL.
 3. **Run both checks yourself** to see the full output:
    ```bash
    cd "${config.repo}"
-   ac validate "${WORKFLOW_PATH}" 2>&1
-   ac run "${WORKFLOW_PATH}" --dry-run --no-store 2>&1
+   handl validate "${WORKFLOW_PATH}" 2>&1
+   handl run "${WORKFLOW_PATH}" --dry-run --no-store 2>&1
    ```
 
 ## Checklist (these are real issues we've seen)
 
-### Structural (ac validate should catch these)
+### Structural (handl validate should catch these)
 
 - [ ] Every event in a node's `on:` is emitted by some other node
 - [ ] No orphan subscriptions (validate warns about these)
@@ -47,10 +47,10 @@ correctness, then write PASS or FAIL.
       have `max_fires` to bound the loop.
 - [ ] **`forward:` is used instead of echo bridge nodes** — no shell nodes
       that just `echo` to bridge events.
-- [ ] **`prompt_file` paths are relative to repo root** (where `ac run`
+- [ ] **`prompt_file` paths are relative to repo root** (where `handl run`
       is called from), not relative to the workflow YAML.
 - [ ] **Prompt files exist and are non-empty**.
-- [ ] **Lib nodes are in `.ac/lib/`** if used (auto-discovered by the
+- [ ] **Lib nodes are in `.handl/lib/`** if used (auto-discovered by the
       file router).
 - [ ] **`set_state_from_stdout` is only used on shell nodes** (not agent
       nodes — the agent driver doesn't support it).

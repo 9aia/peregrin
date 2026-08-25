@@ -156,7 +156,7 @@ created by an earlier node in the same workflow.
   params:
     cmd: |
       devin -p "Review this report:
-      ${file("/tmp/ac-report.txt")}"
+      ${file("/tmp/handl-report.txt")}"
 ```
 
 ### `shell` helper — run a shell command at runtime

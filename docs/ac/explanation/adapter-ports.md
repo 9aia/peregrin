@@ -20,8 +20,8 @@ interface EventStore {
 
 ### Implementations
 
-- `JsonStore` (from `ac-store-json`) — append-only JSON lines file.
-- `MemoryStore` (from `ac-store-memory`) — in-memory, fast, no persistence.
+- `JsonStore` (from `handl-store-json`) — append-only JSON lines file.
+- `MemoryStore` (from `handl-store-memory`) — in-memory, fast, no persistence.
 - Custom — implement the `EventStore` interface and provide it as a `Layer`.
 
 ### Why an adapter port?
@@ -34,7 +34,7 @@ The store also provides `seenTypes()` — a fast lookup for which event types ha
 
 ```ts
 import { Effect, Layer } from "effect";
-import { Event, EventStore } from "ac-core";
+import { Event, EventStore } from "handl-core";
 
 class MyRedisStore implements EventStore {
   // ... implement all, byType, seenTypes, latest, clear, close

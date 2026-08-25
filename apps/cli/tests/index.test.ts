@@ -2,17 +2,17 @@ import { describe, it, expect, vi, beforeEach } from "vite-plus/test";
 import fs from "node:fs";
 import path from "node:path";
 import { Effect } from "effect";
-import { Workflow } from "ac-core";
-import { DriverRegistry } from "ac-engine";
+import { Workflow } from "handl-core";
+import { DriverRegistry } from "handl-engine";
 import {
   makeDefaultsLive,
   DefaultDriverRegistryLive,
   DefaultsLive,
   MetricsObserver,
   NoopObserverLayer,
-} from "ac-cli-defaults";
+} from "handl-cli-defaults";
 
-vi.mock("ac-observer-otel", () => ({
+vi.mock("handl-observer-otel", () => ({
   OtelObserver: class {
     constructor(_config: Record<string, unknown>) {}
   },
@@ -43,12 +43,12 @@ it("exposes a cli bin entry", () => {
   const pkg = JSON.parse(
     fs.readFileSync(path.join(import.meta.dirname, "../package.json"), "utf8"),
   );
-  expect(pkg.bin.ac).toContain("cli.mjs");
+  expect(pkg.bin.handl).toContain("cli.mjs");
 });
 
-describe("ac CLI argument parsing", () => {
+describe("handl CLI argument parsing", () => {
   it("runs the version command", async () => {
-    process.argv = ["node", "ac", "version"];
+    process.argv = ["node", "handl", "version"];
     await import("../src/main.ts");
     expect(captured).toHaveLength(1);
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -58,14 +58,14 @@ describe("ac CLI argument parsing", () => {
   });
 
   it("rejects an unknown subcommand", async () => {
-    process.argv = ["node", "ac", "foobar"];
+    process.argv = ["node", "handl", "foobar"];
     await import("../src/main.ts");
     expect(captured).toHaveLength(1);
     await expect(Effect.runPromise(captured[0])).rejects.toBeDefined();
   });
 });
 
-describe("ac-cli-defaults default config loading", () => {
+describe("handl-cli-defaults default config loading", () => {
   it("exposes the default live layer", () => {
     expect(DefaultsLive).toBeDefined();
     expect(DefaultDriverRegistryLive).toBeDefined();

@@ -1,11 +1,11 @@
 # Write a custom store
 
-Implement the `EventStore` interface from `ac-core` and provide it as an Effect `Layer`.
+Implement the `EventStore` interface from `handl-core` and provide it as an Effect `Layer`.
 
 ## The `EventStore` interface
 
 ```ts
-import { Event, EventStore } from "ac-core";
+import { Event, EventStore } from "handl-core";
 
 interface EventStore {
   append(event: Event): void;
@@ -22,7 +22,7 @@ interface EventStore {
 
 ```ts
 import sqlite3 from "sqlite3";
-import { Event, EventStore } from "ac-core";
+import { Event, EventStore } from "handl-core";
 import { Layer } from "effect";
 
 class SQLiteStore implements EventStore {
@@ -97,8 +97,8 @@ Use it:
 
 ```ts
 import { Effect } from "effect";
-import { Runner } from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
+import { Runner } from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
 
 const SQLiteLive = Layer.succeed(EventStore, new SQLiteStore("/data/workflow.db"));
 

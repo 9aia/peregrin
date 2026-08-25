@@ -5,4 +5,4 @@
  * authored in the Python runtime.  They are pure data and run with the
  * TypeScript engine.
  */
-export const packageName = "ac-examples";
+export const packageName = "handl-examples";

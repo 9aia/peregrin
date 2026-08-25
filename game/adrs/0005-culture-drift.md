@@ -67,7 +67,7 @@ hosts:
 
 - **Dialect divergence in parsing.** Over time, a region might develop
   different literal syntax. The `Dialect` trait's `ExprParser` is
-  configurable (`packages/ac-lang/crates/dialect/src/expr_parser/expr_parser.rs`).
+  configurable (`packages/handl/crates/dialect/src/expr_parser/expr_parser.rs`).
   A region could use `yes`/`no` for booleans while another uses `true`/
   `false`. The same `Expr` is produced, but the surface form differs.
   The player must learn the local dialect.
@@ -104,7 +104,7 @@ hosts:
 
 - Game ADR-0001: Language — the protocol
 - Game ADR-0004: Society — the graph
-- `Dialect` trait: `packages/ac-lang/crates/dialect/src/dialect/dialect.rs`
-- `ExprParser` trait: `packages/ac-lang/crates/dialect/src/expr_parser/expr_parser.rs`
-- `LexerConfig`: `packages/ac-lang/crates/lexer-canonical/src/config.rs`
-- `ModuleHost`: `packages/ac-lang/crates/runtime-core/src/host/host.rs`
+- `Dialect` trait: `packages/handl/crates/dialect/src/dialect/dialect.rs`
+- `ExprParser` trait: `packages/handl/crates/dialect/src/expr_parser/expr_parser.rs`
+- `LexerConfig`: `packages/handl/crates/lexer-canonical/src/config.rs`
+- `ModuleHost`: `packages/handl/crates/runtime-core/src/host/host.rs`

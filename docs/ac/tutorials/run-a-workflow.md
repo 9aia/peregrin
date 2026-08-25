@@ -3,13 +3,13 @@
 ## Basic run
 
 ```bash
-ac run workflow.yaml
+handl run workflow.yaml
 ```
 
 ## CLI flags
 
 ```bash
-ac run workflow.yaml \
+handl run workflow.yaml \
   --log-level DEBUG \
   --log-format json \
   --secrets secrets.json \
@@ -45,7 +45,7 @@ instead of executing them. HTTP nodes print their requests. Webhook nodes print
 their server address. The full event trace is still produced.
 
 ```bash
-ac run workflow.yaml --dry-run
+handl run workflow.yaml --dry-run
 ```
 
 ## Graceful shutdown
@@ -54,7 +54,7 @@ SIGINT and SIGTERM await in-flight tasks, clean up webhook servers, close the
 store and DLQ, and emit `workflow.cancelled`.
 
 ```bash
-ac run workflow.yaml --shutdown-timeout 30
+handl run workflow.yaml --shutdown-timeout 30
 ```
 
 ## Concurrency control
@@ -62,32 +62,32 @@ ac run workflow.yaml --shutdown-timeout 30
 Limit how many nodes run simultaneously. The default is 50.
 
 ```bash
-ac run workflow.yaml --max-concurrency 5
+handl run workflow.yaml --max-concurrency 5
 ```
 
 ## Dead-letter queue (DLQ)
 
-Failed events are persisted by default to `.ac/<name>.dlq.jsonl`.
+Failed events are persisted by default to `.handl/<name>.dlq.jsonl`.
 
 ```bash
-ac run workflow.yaml --dlq /var/log/ac/dlq.jsonl
-ac run workflow.yaml --no-dlq
-ac run workflow.yaml --export-dlq /tmp/dlq.json
+handl run workflow.yaml --dlq /var/log/handl/dlq.jsonl
+handl run workflow.yaml --no-dlq
+handl run workflow.yaml --export-dlq /tmp/dlq.json
 ```
 
 ## Persistence (default — no config needed)
 
-Events are saved to `.ac/<workflow-name>.jsonl` automatically. Survives crashes.
+Events are saved to `.handl/<workflow-name>.jsonl` automatically. Survives crashes.
 
 ```bash
-ac run workflow.yaml
-# events saved to .ac/<workflow-name>.jsonl
+handl run workflow.yaml
+# events saved to .handl/<workflow-name>.jsonl
 ```
 
 Opt out:
 
 ```bash
-ac run workflow.yaml --no-store
+handl run workflow.yaml --no-store
 ```
 
 ## Replay (crash recovery)
@@ -95,9 +95,9 @@ ac run workflow.yaml --no-store
 Resume from a saved event log. `--replay` accepts JSON arrays and JSON lines.
 
 ```bash
-ac run workflow.yaml --export-log /tmp/log.json
-ac run workflow.yaml --replay /tmp/log.json
-ac run workflow.yaml --replay .ac/my-workflow.jsonl
+handl run workflow.yaml --export-log /tmp/log.json
+handl run workflow.yaml --replay /tmp/log.json
+handl run workflow.yaml --replay .handl/my-workflow.jsonl
 ```
 
 ## Resume (failure recovery with retry)
@@ -106,8 +106,8 @@ ac run workflow.yaml --replay .ac/my-workflow.jsonl
 counts for failed nodes, and preserves shared state.
 
 ```bash
-ac run workflow.yaml
-ac run workflow.yaml --resume
+handl run workflow.yaml
+handl run workflow.yaml --resume
 ```
 
 ## Observability
@@ -115,20 +115,20 @@ ac run workflow.yaml --resume
 Enable OpenTelemetry tracing:
 
 ```bash
-ac run workflow.yaml --otel
+handl run workflow.yaml --otel
 ```
 
 Export to a collector:
 
 ```bash
-ac run workflow.yaml --otel-endpoint http://collector:4317
-ac run workflow.yaml --otel-endpoint http://collector:4318/v1/traces --otel-protocol http
+handl run workflow.yaml --otel-endpoint http://collector:4317
+handl run workflow.yaml --otel-endpoint http://collector:4318/v1/traces --otel-protocol http
 ```
 
 ## Prometheus metrics
 
 ```bash
-ac run workflow.yaml --metrics 9090
+handl run workflow.yaml --metrics 9090
 ```
 
 Metrics at `http://127.0.0.1:9090/metrics`. Health check at `/health`.
@@ -136,8 +136,8 @@ Metrics at `http://127.0.0.1:9090/metrics`. Health check at `/health`.
 ## Secrets and environment
 
 ```bash
-ac run workflow.yaml --secrets secrets.json
-ac run workflow.yaml --env .env
+handl run workflow.yaml --secrets secrets.json
+handl run workflow.yaml --env .env
 ```
 
 ### Public config: `AC_PUBLIC_*`

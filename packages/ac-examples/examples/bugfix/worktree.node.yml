@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/nodes/worktree.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/nodes/worktree.schema.json
 # worktree: create a git worktree from origin/main.
 # Reusable by any workflow that needs an isolated branch.
 #
@@ -10,7 +10,7 @@
 #   BUG_ID  — used for branch name (fix/<id>) and worktree dir slug
 #
 # Emits: worktree.ready | <workflow>.aborted
-# Writes /tmp/ac-bugfix-env with WORKTREE_PATH, BRANCH, REPO for downstream nodes.
+# Writes /tmp/handl-bugfix-env with WORKTREE_PATH, BRANCH, REPO for downstream nodes.
 
 id: worktree
 driver: shell
@@ -33,9 +33,9 @@ params:
 
     git worktree add "$WORKTREE" -b "$BRANCH" origin/main
 
-    echo "WORKTREE_PATH=$WORKTREE" > /tmp/ac-bugfix-env
-    echo "BRANCH=$BRANCH" >> /tmp/ac-bugfix-env
-    echo "REPO=$REPO" >> /tmp/ac-bugfix-env
+    echo "WORKTREE_PATH=$WORKTREE" > /tmp/handl-bugfix-env
+    echo "BRANCH=$BRANCH" >> /tmp/handl-bugfix-env
+    echo "REPO=$REPO" >> /tmp/handl-bugfix-env
 
     echo "worktree ready at $WORKTREE on branch $BRANCH"
   emit:

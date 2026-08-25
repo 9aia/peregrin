@@ -1,5 +1,5 @@
 {
-  "name": "ac-template-engine",
+  "name": "handl-template-engine",
   "version": "0.0.0",
   "private": true,
   "files": [
@@ -17,8 +17,8 @@
     "check": "vp check"
   },
   "dependencies": {
-    "ac-core": "workspace:*",
     "effect": "^3.22.1",
+    "handl-core": "workspace:*",
     "lodash-es": "^4.17.21"
   },
   "devDependencies": {

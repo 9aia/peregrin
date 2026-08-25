@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/nodes/pr.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/nodes/pr.schema.json
 # pr: push branch and create a GitHub PR.
 # Reusable by any workflow that needs to open a PR.
 #
@@ -13,13 +13,13 @@ on: [review.done]
 emits: [pr.created, bugfix.aborted]
 params:
   cmd: |
-    source /tmp/ac-bugfix-env
+    source /tmp/handl-bugfix-env
     cd "$WORKTREE_PATH"
 
     git push -u origin "$BRANCH"
 
-    SUMMARY=$(cat /tmp/ac-bugfix-fix-summary.txt 2>/dev/null || echo "$BUG_DESCRIPTION")
-    REVIEW=$(cat /tmp/ac-bugfix-review.txt 2>/dev/null || echo "review complete")
+    SUMMARY=$(cat /tmp/handl-bugfix-fix-summary.txt 2>/dev/null || echo "$BUG_DESCRIPTION")
+    REVIEW=$(cat /tmp/handl-bugfix-review.txt 2>/dev/null || echo "review complete")
 
     PR_URL=$(gh pr create \
       --title "fix: $BUG_DESCRIPTION" \

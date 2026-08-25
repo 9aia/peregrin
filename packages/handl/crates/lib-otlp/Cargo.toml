@@ -1,0 +1,13 @@
+[package]
+name = "handl-lib-otlp"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+handl-vm-values-json.workspace = true
+handl-vm-common.workspace = true
+handl-vm.workspace = true
+serde_json = "1"
+thiserror = "2"
+rand.workspace = true
+hex.workspace = true

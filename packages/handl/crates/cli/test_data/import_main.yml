@@ -1,0 +1,10 @@
+$:
+  common:
+    type: object
+    expr: "import('./import_common.yml')"
+  host:
+    type: string
+    expr: "common.host"
+  port:
+    type: number
+    expr: "common.port"

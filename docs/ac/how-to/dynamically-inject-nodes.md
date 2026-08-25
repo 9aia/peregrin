@@ -27,7 +27,7 @@ The `planner` driver returns:
 
 ```ts
 import { Effect } from "effect";
-import { Driver, Event } from "ac-core";
+import { Driver, Event } from "handl-core";
 
 const PlannerDriver: Driver = {
   name: "planner",
@@ -52,7 +52,7 @@ A driver can also inject nodes directly through the `ExecutionContext` without e
 
 ```ts
 import { Effect } from "effect";
-import { Driver, Event } from "ac-core";
+import { Driver, Event } from "handl-core";
 
 const InjectorDriver: Driver = {
   name: "injector",

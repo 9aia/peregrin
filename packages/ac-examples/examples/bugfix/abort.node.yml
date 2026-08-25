@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/nodes/abort.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/nodes/abort.schema.json
 # abort: print abort summary when any node fails.
 # Reusable by any workflow — listens for <workflow>.aborted.
 
@@ -8,7 +8,7 @@ on: [bugfix.aborted]
 emits: [bugfix.failed]
 params:
   cmd: |
-    source /tmp/ac-bugfix-env 2>/dev/null || true
+    source /tmp/handl-bugfix-env 2>/dev/null || true
     echo "════════════════════════════════════════"
     echo "  BUGFIX ABORTED"
     echo "════════════════════════════════════════"

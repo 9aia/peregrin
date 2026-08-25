@@ -1,14 +1,14 @@
 # Use the programmatic API
 
-Everything the CLI can do, you can do from TypeScript using the `ac-core` model, the `ac-engine` runner, and the `ac-loader-yaml` loader. The runtime is built on [Effect](https://effect.website), so program setup and dependency wiring use `Layer` and `Effect.runPromise`.
+Everything the CLI can do, you can do from TypeScript using the `handl-core` model, the `handl-engine` runner, and the `handl-loader-yaml` loader. The runtime is built on [Effect](https://effect.website), so program setup and dependency wiring use `Layer` and `Effect.runPromise`.
 
 ## Basic run
 
 ```ts
 import { Effect } from "effect";
-import { Node, Workflow } from "ac-core";
-import { Runner, RunnerLiveLayer } from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
+import { Node, Workflow } from "handl-core";
+import { Runner, RunnerLiveLayer } from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
 
 const workflow = new Workflow(
   "hello",
@@ -33,9 +33,9 @@ Effect.runPromise(program);
 
 ```ts
 import { Effect } from "effect";
-import { loadWorkflow } from "ac-loader-yaml";
-import { Runner } from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
+import { loadWorkflow } from "handl-loader-yaml";
+import { Runner } from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
 
 const program = Effect.gen(function* () {
   const workflow = yield* loadWorkflow("workflow.yaml");
@@ -52,12 +52,12 @@ Effect.runPromise(program);
 The default CLI layer uses an in-memory `MemoryStore`. For a persistent JSON-lines store, provide `JsonStore` instead:
 
 ```ts
-import { Live as JsonStoreLive } from "ac-store-json";
-import { Live as MemoryStoreLive } from "ac-store-memory";
+import { Live as JsonStoreLive } from "handl-store-json";
+import { Live as MemoryStoreLive } from "handl-store-memory";
 
 const program = ...
   .pipe(Effect.provide(DefaultsLive))
-  .pipe(Effect.provide(JsonStoreLive(".ac/events.jsonl")));
+  .pipe(Effect.provide(JsonStoreLive(".handl/events.jsonl")));
 ```
 
 The `JsonStore` layer overrides the in-memory store because both satisfy the `EventStore` adapter port.
@@ -80,7 +80,7 @@ const passed = log.filter((e) => e.type === "lint.passed");
 For direct store access, implement or yield the `EventStore` port:
 
 ```ts
-import { EventStore } from "ac-core";
+import { EventStore } from "handl-core";
 
 const store = yield * EventStore;
 const all = store.all();
@@ -92,7 +92,7 @@ const byType = store.byType("lint.passed");
 Provide the `OtelObserver` layer to emit console span output:
 
 ```ts
-import { OtelObserverLive } from "ac-observer-otel";
+import { OtelObserverLive } from "handl-observer-otel";
 
 const program = ...
   .pipe(Effect.provide(DefaultsLive))

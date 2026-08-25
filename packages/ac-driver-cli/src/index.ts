@@ -1,7 +1,7 @@
 import cp from "node:child_process";
 import { Effect, Layer } from "effect";
-import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
-import { resolveValueForNode } from "ac-template-engine";
+import { Driver, DriverError, Event, type ExecutionContext, type Node } from "handl-core";
+import { resolveValueForNode } from "handl-template-engine";
 
 function buildEnv(params: Record<string, unknown>, ctx: ExecutionContext): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...process.env };

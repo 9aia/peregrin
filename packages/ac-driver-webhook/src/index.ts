@@ -1,7 +1,7 @@
 import http from "node:http";
 import { Effect, Layer } from "effect";
-import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
-import { resolveValueForNode } from "ac-template-engine";
+import { Driver, DriverError, Event, type ExecutionContext, type Node } from "handl-core";
+import { resolveValueForNode } from "handl-template-engine";
 
 type PostData = { body: unknown; headers: unknown };
 

@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { TemplateError } from "ac-core";
+import { TemplateError } from "handl-core";
 
 const specials = new Set(["\\", "^", "$", ".", "|", "?", "*", "+", "(", ")", "[", "]", "{", "}"]);
 

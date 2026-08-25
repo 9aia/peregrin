@@ -54,11 +54,11 @@ nodes:
 
 ## Auto-discover a local library
 
-Put files in `.ac/` next to the workflow (or alongside it). The file router auto-discovers components by suffix, so you can keep node definitions, snippets, handlers, and schemas together by domain.
+Put files in `.handl/` next to the workflow (or alongside it). The file router auto-discovers components by suffix, so you can keep node definitions, snippets, handlers, and schemas together by domain.
 
 ```
 my-workflow.yaml
-.ac/
+.handl/
   git/
     worktree.node.yml
     worktree.handler.py
@@ -68,7 +68,7 @@ my-workflow.yaml
 ```yaml
 name: my-workflow
 
-nodes: [] # nodes are auto-loaded from .ac/**/*.node.yml
+nodes: [] # nodes are auto-loaded from .handl/**/*.node.yml
 ```
 
 ## Wait for parallel branches
@@ -149,8 +149,8 @@ For tests or a custom CLI, compose the engine with Effect `Layer`s. Each layer p
 
 ```ts
 import { Effect } from "effect";
-import { RunnerLiveLayer, EventBusLiveLayer, DriverRegistryLiveLayer } from "ac-engine";
-import { Live as MemoryStoreLayer } from "ac-store-memory";
+import { RunnerLiveLayer, EventBusLiveLayer, DriverRegistryLiveLayer } from "handl-engine";
+import { Live as MemoryStoreLayer } from "handl-store-memory";
 
 const program = Effect.gen(function* () {
   const runner = yield* Runner;

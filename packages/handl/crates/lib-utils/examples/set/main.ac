@@ -1,0 +1,6 @@
+{
+  unique: set.unique([1, 2, 2, 3]),
+  union: set.union([1, 2], [2, 3]),
+  intersection: set.intersection([1, 2], [2, 3]),
+  difference: set.difference([1, 2, 3], [2])
+}

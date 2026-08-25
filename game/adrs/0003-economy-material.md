@@ -87,5 +87,5 @@ The economy is modeled as functions and operations on the host:
 
 - Game ADR-0001: Language — the protocol
 - Game ADR-0002: Psychology — the mind
-- `Host` trait: `packages/ac-lang/crates/vm/src/host.rs`
-- `ModuleHost`: `packages/ac-lang/crates/runtime-core/src/host/host.rs`
+- `Host` trait: `packages/handl/crates/vm/src/host.rs`
+- `ModuleHost`: `packages/handl/crates/runtime-core/src/host/host.rs`

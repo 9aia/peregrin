@@ -1,5 +1,5 @@
 {
-  "name": "ac-safety",
+  "name": "handl-safety",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,8 +14,8 @@
     "check": "vp check"
   },
   "dependencies": {
-    "ac-core": "workspace:*",
-    "effect": "^3.22.1"
+    "effect": "^3.22.1",
+    "handl-core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

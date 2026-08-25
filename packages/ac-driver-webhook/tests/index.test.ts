@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vite-plus/test";
 import { WebhookDriver, WebhookDriverLive } from "../src/index.ts";
 
-describe("ac-driver-webhook", () => {
+describe("handl-driver-webhook", () => {
   it("exports a driver named webhook", () => {
     expect(WebhookDriver.name).toBe("webhook");
   });

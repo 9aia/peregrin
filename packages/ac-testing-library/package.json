@@ -1,5 +1,5 @@
 {
-  "name": "ac-testing-library",
+  "name": "handl-testing-library",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -14,11 +14,11 @@
     "check": "vp check"
   },
   "dependencies": {
-    "ac-core": "workspace:*",
-    "ac-engine": "workspace:*",
-    "ac-observer-noop": "workspace:*",
-    "ac-store-memory": "workspace:*",
-    "effect": "^3.22.1"
+    "effect": "^3.22.1",
+    "handl-core": "workspace:*",
+    "handl-engine": "workspace:*",
+    "handl-observer-noop": "workspace:*",
+    "handl-store-memory": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

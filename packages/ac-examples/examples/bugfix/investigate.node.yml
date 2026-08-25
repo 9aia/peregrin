@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/nodes/investigate.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/nodes/investigate.schema.json
 # investigate: spawn a normal-mode agent to find the root cause.
 # Bugfix-specific — uses devin -p to search the codebase and produce a report.
 #
@@ -14,7 +14,7 @@ on: [reproduce.done]
 emits: [investigate.done, bugfix.aborted]
 params:
   cmd: |
-    source /tmp/ac-bugfix-env
+    source /tmp/handl-bugfix-env
     cd "$WORKTREE_PATH"
 
     devin -p "You are investigating a bug in the ndocs-3 project (Effect + Bun + Vite+).

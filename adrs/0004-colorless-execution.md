@@ -6,7 +6,7 @@ Proposed
 
 ## Context
 
-The AC canonical language already has no `await`, no `async` keyword, and no built-in I/O. Its syntax is colorless. The runtime, however, still exposes the sync/async color of Rust: `Host` has `function` and `async_function`, `CanonicalVm` has `eval` and `eval_async`, and a host that wants both modes must duplicate logic. The runtime should match the syntax.
+The handl canonical language already has no `await`, no `async` keyword, and no built-in I/O. Its syntax is colorless. The runtime, however, still exposes the sync/async color of Rust: `Host` has `function` and `async_function`, `CanonicalVm` has `eval` and `eval_async`, and a host that wants both modes must duplicate logic. The runtime should match the syntax.
 
 Arrow handlers (`Operation` + `handle`) already separate an operation request from its resolution. A `read()` call in the language is just an operation; the handler that catches it decides whether to block, await, or yield. This makes sync vs async a host interpretation, not a language feature. The same pattern generalizes to buildtime vs runtime and server vs browser: different hosts resolving the same operations in different environments.
 
@@ -14,7 +14,7 @@ Streaming and out-of-order rendering (e.g., prerender HTML on the server, resume
 
 ## Decision
 
-1. **Make the canonical AC language colorless with respect to sync and async.**
+1. **Make the canonical handl language colorless with respect to sync and async.**
    - No `async`, `await`, or effect-coloring keywords in the language syntax.
    - All side-effecting or capability calls are `Operation`s.
    - Pure computation remains `Function`.
@@ -66,11 +66,11 @@ Streaming and out-of-order rendering (e.g., prerender HTML on the server, resume
 
 ## References
 
-- `packages/ac-lang/docs/LANG.md`
-- `packages/ac-lang/docs/explanations/design-principles.md`
-- `packages/ac-lang/crates/vm/src/host.rs`
-- `packages/ac-lang/crates/vm/src/operation.rs`
-- `packages/ac-lang/crates/vm-canonical/src/continuation.rs`
-- `packages/ac-lang/crates/vm-canonical/src/vm.rs`
-- `packages/ac-lang/papers/declarative-topology-synthesis.md`
-- `packages/ac-examples/examples/capability-confinement/README.md`
+- `packages/handl/docs/LANG.md`
+- `packages/handl/docs/explanations/design-principles.md`
+- `packages/handl/crates/vm/src/host.rs`
+- `packages/handl/crates/vm/src/operation.rs`
+- `packages/handl/crates/vm-canonical/src/continuation.rs`
+- `packages/handl/crates/vm-canonical/src/vm.rs`
+- `packages/handl/papers/declarative-topology-synthesis.md`
+- `packages/handl-examples/examples/capability-confinement/README.md`

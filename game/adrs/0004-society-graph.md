@@ -89,5 +89,5 @@ Society is modeled as shared module state between hosts:
 
 - Game ADR-0002: Psychology — the mind
 - Game ADR-0006: Memory — the continuity
-- `ModuleHost`: `packages/ac-lang/crates/runtime-core/src/host/host.rs`
-- `Host` trait: `packages/ac-lang/crates/vm/src/host.rs`
+- `ModuleHost`: `packages/handl/crates/runtime-core/src/host/host.rs`
+- `Host` trait: `packages/handl/crates/vm/src/host.rs`

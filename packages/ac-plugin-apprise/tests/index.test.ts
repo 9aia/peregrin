@@ -1,8 +1,8 @@
 import { it, expect } from "@effect/vitest";
 import { vi } from "vite-plus/test";
 import { Effect, Either } from "effect";
-import { Node } from "ac-core";
-import type { ExecutionContext } from "ac-core";
+import { Node } from "handl-core";
+import type { ExecutionContext } from "handl-core";
 import { AppriseDriver } from "../src/index.ts";
 
 const { mockSend } = vi.hoisted(() => ({ mockSend: vi.fn() }));

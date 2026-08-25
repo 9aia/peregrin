@@ -6,7 +6,7 @@ import { Effect } from "effect";
 
 const captured: Array<Effect.Effect<void, unknown, never>> = [];
 
-vi.mock("ac-observer-otel", () => ({
+vi.mock("handl-observer-otel", () => ({
   OtelObserver: class {
     constructor(_config: Record<string, unknown>) {}
   },
@@ -29,7 +29,7 @@ vi.mock("@effect/platform-node", async (importOriginal) => {
 let tmpDir = "";
 
 beforeAll(() => {
-  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "ac-cli-e2e-"));
+  tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "handl-cli-e2e-"));
 });
 
 beforeEach(() => {
@@ -49,9 +49,9 @@ const writeWorkflow = (name: string, content: string): string => {
   return filePath;
 };
 
-describe("ac CLI e2e", () => {
+describe("handl CLI e2e", () => {
   it("runs the version command", async () => {
-    process.argv = ["node", "ac", "version"];
+    process.argv = ["node", "handl", "version"];
     await import("../../src/main.ts");
     expect(captured).toHaveLength(1);
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -71,7 +71,7 @@ nodes:
     emits: [node.done]
 `,
     );
-    process.argv = ["node", "ac", "run", "--dry-run", workflowPath];
+    process.argv = ["node", "handl", "run", "--dry-run", workflowPath];
     await import("../../src/main.ts");
     expect(captured).toHaveLength(1);
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -92,7 +92,7 @@ nodes:
     emits: [node.done]
 `,
     );
-    process.argv = ["node", "ac", "validate", workflowPath];
+    process.argv = ["node", "handl", "validate", workflowPath];
     await import("../../src/main.ts");
     expect(captured).toHaveLength(1);
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
@@ -110,7 +110,7 @@ nodes:
 nodes: []
 `,
     );
-    process.argv = ["node", "ac", "typegen", "--stdout", "--no-handlers", workflowPath];
+    process.argv = ["node", "handl", "typegen", "--stdout", "--no-handlers", workflowPath];
     await import("../../src/main.ts");
     expect(captured).toHaveLength(1);
     const log = vi.spyOn(console, "log").mockImplementation(() => {});

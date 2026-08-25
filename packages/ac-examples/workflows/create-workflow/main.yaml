@@ -7,8 +7,8 @@
 # output and the YAML for correctness. The fix agent iterates on feedback.
 #
 # Why three layers of checking:
-#   - ac validate  → structural (orphan subscriptions — warn-only, no exit-1)
-#   - ac --dry-run → runtime (node failures, prompt path errors, event flow)
+#   - handl validate  → structural (orphan subscriptions — warn-only, no exit-1)
+#   - handl --dry-run → runtime (node failures, prompt path errors, event flow)
 #   - agent review → semantic (fan-in without driver, event collisions,
 #                    parallel agents editing same files — issues neither
 #                    tool catches, learned from real experience)
@@ -17,7 +17,7 @@
 #   SPEC_PATH=/path/to/spec.md \
 #   WORKFLOW_PATH=campaigns/my-campaign/main.yaml \
 #   WORKFLOW_NAME=my-campaign \
-#   ac run workflows/create-workflow/main.yaml
+#   handl run workflows/create-workflow/main.yaml
 #
 # Inputs:
 #   SPEC_PATH     — markdown file describing what the campaign should do
@@ -70,7 +70,7 @@ events:
 nodes:
   # ─── Generate ────────────────────────────────────────────────────────────
   # Agent reads the spec file + framework docs/examples, then writes the
-  # workflow YAML + prompt files + copies lib nodes to .ac/lib/.
+  # workflow YAML + prompt files + copies lib nodes to .handl/lib/.
   # The prompt encodes 11 gotcha rules so the generator avoids common
   # mistakes (fan-in without driver, event collisions, etc.) upfront.
   - id: generate
@@ -89,7 +89,7 @@ nodes:
         default: generate.failed
 
   # ─── Validate ───────────────────────────────────────────────────────────
-  # Structural check: ac validate warns about orphan subscriptions (warn-only,
+  # Structural check: handl validate warns about orphan subscriptions (warn-only,
   # no exit-1). Also fires after fix.done — re-validates after each fix.
   - id: validate
     driver: shell
@@ -98,14 +98,14 @@ nodes:
     params:
       cmd: |
         cd "${config.repo}"
-        ac validate "${WORKFLOW_PATH}" 2>&1
+        handl validate "${WORKFLOW_PATH}" 2>&1
       emit:
         0: validate.passed
         default: validate.failed
       timeout: 30
 
   # ─── Dry-run ────────────────────────────────────────────────────────────
-  # Runtime check: ac run --dry-run simulates the full event flow without
+  # Runtime check: handl run --dry-run simulates the full event flow without
   # side effects. Catches node failures, prompt_file path errors, and
   # verifies all nodes fire and the event sequence is correct.
   - id: dryrun
@@ -115,7 +115,7 @@ nodes:
     params:
       cmd: |
         cd "${config.repo}"
-        ac run "${WORKFLOW_PATH}" --dry-run --no-store 2>&1
+        handl run "${WORKFLOW_PATH}" --dry-run --no-store 2>&1
       emit:
         0: dryrun.done
         default: dryrun.failed
@@ -123,7 +123,7 @@ nodes:
 
   # ─── Review ─────────────────────────────────────────────────────────────
   # Semantic check: a normal-mode agent reviews the dry-run output + YAML
-  # against a 26-item checklist. Catches issues neither ac validate nor
+  # against a 26-item checklist. Catches issues neither handl validate nor
   # dry-run can detect: fan-in nodes without a driver, event collisions
   # on repeated steps, parallel agents editing the same files, state
   # variables read before being set, unhandled node.exhausted, etc.
@@ -179,7 +179,7 @@ nodes:
         echo "========================================"
         echo "  Validated, dry-run passed, review approved."
         echo "  Run with:"
-        echo "    ac run ${WORKFLOW_PATH}"
+        echo "    handl run ${WORKFLOW_PATH}"
         echo "========================================"
 
   # ─── Abort ──────────────────────────────────────────────────────────────
@@ -214,6 +214,6 @@ nodes:
         echo "  FIX EXHAUSTED — ${config.max_fix_attempts} attempts"
         echo "  Node '${event.payload.node}' hit max_fires=${event.payload.max_fires}"
         echo "  Review the workflow manually:"
-        echo "    ac validate ${WORKFLOW_PATH}"
-        echo "    ac run ${WORKFLOW_PATH} --dry-run"
+        echo "    handl validate ${WORKFLOW_PATH}"
+        echo "    handl run ${WORKFLOW_PATH} --dry-run"
         echo "========================================"

@@ -11,7 +11,7 @@
 # Usage:
 #   FEAT_ID=my-feature \
 #   FEAT_DESCRIPTION="add a reusable snippet library" \
-#   ac run libraries/common/new-feat/main.yaml
+#   handl run libraries/common/new-feat/main.yaml
 
 name: new-feat
 

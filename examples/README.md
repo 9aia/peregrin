@@ -60,4 +60,4 @@ Some examples call external services or prompt a human; read the header comment 
 
 - Examples in `30-agentic-safety` and `40-meta` that use `runner` or `agent` drivers assume a planner handler or agent CLI is configured. They are designed as patterns to wire in once the handler side is ready.
 - All shell commands are safe and idempotent; they use `echo`, read-only queries, or dry-run-safe placeholders.
-- The examples are written against the Peregrin YAML conventions shown in `docs/ac/`. If a driver in the current TypeScript implementation differs, the YAML itself is the intended reference pattern.
+- The examples are written against the Peregrin YAML conventions shown in `docs/handl/`. If a driver in the current TypeScript implementation differs, the YAML itself is the intended reference pattern.

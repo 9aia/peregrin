@@ -8,7 +8,7 @@ Proposed
 
 The game requires a communication system between players and NPCs that is
 semantically real — not keyword matching, not dialogue trees, but actual
-language comprehension. AC-Lang provides the runtime foundation (see
+language comprehension. handl provides the runtime foundation (see
 Peregrin ADR-0034), but the game-specific design decisions about how the
 language maps to gameplay need their own record.
 
@@ -81,8 +81,8 @@ occurs. The language layer is responsible for:
 
 ## References
 
-- Peregrin ADR-0034: AC-Lang as the foundation for a game conlang
-- `Host` trait: `packages/ac-lang/crates/vm/src/host.rs`
-- `Continuation`: `packages/ac-lang/crates/vm/src/continuation.rs`
-- `Lexer` trait: `packages/ac-lang/crates/lexer/src/lib.rs`
-- `Dialect` trait: `packages/ac-lang/crates/dialect/src/dialect/dialect.rs`
+- Peregrin ADR-0034: handl as the foundation for a game conlang
+- `Host` trait: `packages/handl/crates/vm/src/host.rs`
+- `Continuation`: `packages/handl/crates/vm/src/continuation.rs`
+- `Lexer` trait: `packages/handl/crates/lexer/src/lib.rs`
+- `Dialect` trait: `packages/handl/crates/dialect/src/dialect/dialect.rs`

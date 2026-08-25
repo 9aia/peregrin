@@ -1,0 +1,9 @@
+[package]
+name = "handl-lib-json"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+handl-lib-serialize = { path = "../lib-serialize" }
+serde = "1"
+serde_json = "1"

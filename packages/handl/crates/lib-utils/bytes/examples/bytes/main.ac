@@ -1,0 +1,5 @@
+{
+  from_string: bytes.from_string("hello"),
+  to_string: bytes.to_string(bytes.from_string("hello")),
+  length: bytes.length(bytes.from_string("hello"))
+}

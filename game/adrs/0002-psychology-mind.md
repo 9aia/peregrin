@@ -45,7 +45,7 @@ subsystems:
   (a merchant at their stall expects trade talk). Scheduled by the game
   engine, not driven by language.
 
-- **Vocabulary** — the `ModuleHost` from AC-Lang. The set of registered
+- **Vocabulary** — the `ModuleHost` from handl. The set of registered
   modules is the NPC's lexicon. Mutable at runtime — words are added
   through gameplay, removed through forgetting or censorship.
 
@@ -85,5 +85,5 @@ a resonance state. The player is the alien communicating with formal minds.
 ## References
 
 - Peregrin ADR-0035: Game psychology system for formal-minded NPCs
-- `Host` trait: `packages/ac-lang/crates/vm/src/host.rs:36-89`
-- `ModuleHost`: `packages/ac-lang/crates/runtime-core/src/host/host.rs`
+- `Host` trait: `packages/handl/crates/vm/src/host.rs:36-89`
+- `ModuleHost`: `packages/handl/crates/runtime-core/src/host/host.rs`

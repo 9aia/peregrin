@@ -1,6 +1,6 @@
-# AC Language Library — Reusable field patterns
+# handl Language Library — Reusable field patterns
 
-The `lang/` namespace holds reusable AC language field patterns. These are
+The `lang/` namespace holds reusable handl language field patterns. These are
 not workflow artifacts — they are **field schema definitions** that emerge
 from the language's own primitives (`expr`, `arg`, `merge`, `import()`).
 
@@ -12,7 +12,7 @@ from the language's own primitives (`expr`, `arg`, `merge`, `import()`).
 
 ## The `import` field pattern
 
-The AC language doesn't need an `import` keyword. Four primitives compose
+The handl language doesn't need an `import` keyword. Four primitives compose
 to produce it:
 
 - **`arg: { type: string }`** — the field's data value (a path string) is the input

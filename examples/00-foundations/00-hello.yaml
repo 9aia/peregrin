@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/00-hello.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/00-hello.schema.json
 # 00-hello: the smallest possible Peregrin workflow.
 # Demonstrates: a node, the shell driver, and the synthetic `start` event.
 #

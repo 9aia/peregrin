@@ -214,8 +214,8 @@ nodes:
 Auto-discover workflow components by walking the file system. Files are
 routed by **suffix pattern** — `<name>.<type>.<ext>`.
 
-The router walks `.ac/` recursively first (precedence), then the
-workflow's directory recursively. `.ac/` wins by name.
+The router walks `.handl/` recursively first (precedence), then the
+workflow's directory recursively. `.handl/` wins by name.
 
 | Suffix                             | Kind         | What it does                             |
 | ---------------------------------- | ------------ | ---------------------------------------- |
@@ -231,7 +231,7 @@ workflow's directory recursively. `.ac/` wins by name.
 
 ```
 my-workflow.yaml
-.ac/
+.handl/
   review/
     review.node.yml
     review.handler.py
@@ -283,7 +283,7 @@ On validation failure:
 
 ### Placeholders in typegen
 
-`ac typegen` produces schemas that accept `${...}` placeholders via `anyOf`
+`handl typegen` produces schemas that accept `${...}` placeholders via `anyOf`
 so editors do not flag them as type errors.
 
 ## See also

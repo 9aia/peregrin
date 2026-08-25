@@ -1,0 +1,7 @@
+$:
+  host:
+    type: string
+  port:
+    type: number
+host: example.com
+port: 8080

@@ -16,12 +16,12 @@ Drivers execute node logic. A node declares `driver: <name>`, and the runner loo
 
 ## The driver registry
 
-The `DriverRegistry` maps driver names to `Driver` implementations. Built-in drivers are registered by `ac-cli-defaults`. You can also register custom drivers at runtime or through an Effect `Layer`.
+The `DriverRegistry` maps driver names to `Driver` implementations. Built-in drivers are registered by `handl-cli-defaults`. You can also register custom drivers at runtime or through an Effect `Layer`.
 
 ```ts
 import { Effect } from "effect";
-import { DriverRegistry } from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
+import { DriverRegistry } from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
 
 const program = Effect.gen(function* () {
   const registry = yield* DriverRegistry;

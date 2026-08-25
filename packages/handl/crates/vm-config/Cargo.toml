@@ -1,0 +1,17 @@
+[package]
+name = "handl-vm-config"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+handl-vm-values-json.workspace = true
+handl-vm-host-canonical.workspace = true
+handl-vm-common.workspace = true
+handl-vm.workspace = true
+handl-vm-backend-rust-interpreter.workspace = true
+handl-lib-utils.workspace = true
+handl-lib-crypto.workspace = true
+handl-lib-datetime.workspace = true
+handl-lib-intl.workspace = true
+handl-lib-kv.workspace = true
+handl-lib-kv-hashmap.workspace = true

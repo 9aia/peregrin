@@ -32,7 +32,7 @@ generated agent-campaign workflow.
    event types (`verify1.passed` instead of `test.check.passed`).
 
 3. **Prompt file not found** → fix the path to be relative to repo root
-   (where `ac run` is called from), not relative to the workflow YAML.
+   (where `handl run` is called from), not relative to the workflow YAML.
 
 4. **Orphan subscription** → either add a node that emits the missing
    event, or remove the subscription.

@@ -3,7 +3,7 @@
 The `ExecutionContext` object gives drivers access to workflow config, secrets, the event log, and runtime actions.
 
 ```ts
-import { Event } from "ac-core";
+import { Event } from "handl-core";
 
 const exampleDriver = {
   name: "example",

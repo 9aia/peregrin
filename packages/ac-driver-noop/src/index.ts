@@ -1,6 +1,6 @@
 import { Effect, Layer } from "effect";
-import { Driver, Event } from "ac-core";
-import type { DriverError, ExecutionContext, Node } from "ac-core";
+import { Driver, Event } from "handl-core";
+import type { DriverError, ExecutionContext, Node } from "handl-core";
 
 export class NoopDriver implements Driver {
   readonly name = "noop";

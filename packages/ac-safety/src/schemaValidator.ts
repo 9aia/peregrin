@@ -1,4 +1,4 @@
-import type { Event, EventSchema } from "ac-core";
+import type { Event, EventSchema } from "handl-core";
 
 const SYNTHETIC_TYPES = new Set([
   "start",

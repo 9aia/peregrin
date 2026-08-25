@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { TemplateError } from "ac-core";
+import { TemplateError } from "handl-core";
 import type { TemplateFunction } from "./types.js";
 import { checkCapability } from "./capability.js";
 

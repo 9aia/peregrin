@@ -6,7 +6,7 @@ the runner reads them. Swap implementations without touching the bus or runner.
 ## Built-in stores
 
 - `JsonStore` (default) — append-only JSON lines file. Crash-recoverable by
-  default. Default path: `.ac/<workflow-name>.jsonl`.
+  default. Default path: `.handl/<workflow-name>.jsonl`.
 - `MemoryStore` — in-memory, fast, no persistence. Opt out with `--no-store`.
 
 ## Why an adapter port?

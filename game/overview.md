@@ -20,10 +20,10 @@ Seven systems, one protocol:
 
 ## Foundation
 
-Built on [AC-Lang](../../packages/ac-lang/), a general-purpose expression language with a fully decoupled architecture. See:
+Built on [handl](../../packages/handl/), a general-purpose expression language with a fully decoupled architecture. See:
 
 ## The core principle
 
 **The language is the protocol. The host is the mind. The `Host` trait is the synapse.**
 
-AC-Lang provides the language runtime (VM, lexer, parser, dialect, continuations). The game engine provides the minds (NpcMind, psychology, economy, society, culture, memory, world). They meet at the `Host` trait — a small, well-defined interface where every function lookup is a psychological decision and every operation signal is a speech act.
+handl provides the language runtime (VM, lexer, parser, dialect, continuations). The game engine provides the minds (NpcMind, psychology, economy, society, culture, memory, world). They meet at the `Host` trait — a small, well-defined interface where every function lookup is a psychological decision and every operation signal is a speech act.

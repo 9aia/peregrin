@@ -1,0 +1,14 @@
+$:
+  greeting:
+    type: string
+    expr: 'concat(arg, "!")'
+    arg: true
+  functions:
+    type: object
+functions:
+  concat:
+    params:
+      x: { type: string }
+      y: { type: string }
+    return: { type: string }
+greeting: hello

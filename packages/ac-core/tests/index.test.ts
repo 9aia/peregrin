@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vite-plus/test";
 import { Event, EventSchema, Node, Workflow } from "../src/index.ts";
 
-describe("ac-core", () => {
+describe("handl-core", () => {
   it("creates an Event with a type, payload and source", () => {
     const event = new Event("test", { value: 1 }, "src");
     expect(event.type).toBe("test");

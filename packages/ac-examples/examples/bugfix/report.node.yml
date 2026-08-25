@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/nodes/report.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/nodes/report.schema.json
 # report: print completion summary.
 # Reusable by any workflow — change the header text via merge override.
 
@@ -8,7 +8,7 @@ on: [pr.created]
 emits: [bugfix.complete]
 params:
   cmd: |
-    source /tmp/ac-bugfix-env
+    source /tmp/handl-bugfix-env
     echo "════════════════════════════════════════"
     echo "  BUGFIX COMPLETE"
     echo "════════════════════════════════════════"

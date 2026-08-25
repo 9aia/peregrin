@@ -1,5 +1,5 @@
 # report: print completion summary.
-# Reads ${state.branch} and ${state.worktree_path} — no /tmp/ac-bugfix-env needed.
+# Reads ${state.branch} and ${state.worktree_path} — no /tmp/handl-bugfix-env needed.
 
 id: report
 driver: shell

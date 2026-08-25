@@ -1,0 +1,8 @@
+[package]
+name = "handl-lib-toml"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+handl-lib-serialize = { path = "../lib-serialize" }
+toml = "0.8"

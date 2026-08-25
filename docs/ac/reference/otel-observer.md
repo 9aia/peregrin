@@ -1,14 +1,14 @@
 # OpenTelemetry observer
 
-`OtelObserver` from `ac-observer-otel` writes console span output for the workflow and every node.
+`OtelObserver` from `handl-observer-otel` writes console span output for the workflow and every node.
 
 ## Usage
 
 ```ts
 import { Effect } from "effect";
-import { Runner } from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
-import { OtelObserverLive } from "ac-observer-otel";
+import { Runner } from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
+import { OtelObserverLive } from "handl-observer-otel";
 
 const program = Effect.gen(function* () {
   const runner = yield* Runner;

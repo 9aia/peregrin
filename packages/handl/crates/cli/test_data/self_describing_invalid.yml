@@ -1,0 +1,12 @@
+$:
+  name:
+    type: string
+    enum:
+      - alice
+      - bob
+      - charlie
+  version:
+    type: number
+name: alice
+version: 1
+extra_field: "not declared"

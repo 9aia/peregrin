@@ -6,7 +6,7 @@ processes that can thrash the machine. The engine adds backpressure.
 ## Concurrency
 
 ```bash
-ac run wf.yaml --max-concurrency 4 \
+handl run wf.yaml --max-concurrency 4 \
   --max-cpu-percent 80 --max-mem-percent 85 --min-free-mem-mb 512
 ```
 
@@ -29,7 +29,7 @@ falls back to count-only.
 ## Global load circuit breaker
 
 ```bash
-ac run wf.yaml \
+handl run wf.yaml \
   --load-breaker-cpu 90 --load-breaker-mem 90 \
   --load-breaker-sustained 10 --load-breaker-cooldown 30
 ```

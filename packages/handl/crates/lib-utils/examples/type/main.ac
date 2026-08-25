@@ -1,0 +1,6 @@
+{
+  number: type.is_number(42),
+  string: type.is_string("hello"),
+  typeof: type.type_of([1, 2, 3]),
+  empty: type.is_empty("")
+}

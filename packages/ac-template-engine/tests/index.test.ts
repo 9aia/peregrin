@@ -3,7 +3,7 @@ import fs from "node:fs";
 import { describe, it, expect } from "vite-plus/test";
 import { Effect } from "effect";
 import { resolveTemplate, resolveValue, resolveValueForNode } from "../src/index.ts";
-import { Event, Node, type ExecutionContext } from "ac-core";
+import { Event, Node, type ExecutionContext } from "handl-core";
 
 const makeCtx = (
   config: Record<string, unknown> = {},
@@ -38,7 +38,7 @@ const makeCtx = (
   missingSecrets: [],
 });
 
-describe("ac-template-engine", () => {
+describe("handl-template-engine", () => {
   it("passes through text without placeholders", async () => {
     const text = await Effect.runPromise(resolveTemplate("hello world", [], makeCtx()));
     expect(text).toBe("hello world");

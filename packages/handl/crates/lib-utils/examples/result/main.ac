@@ -1,0 +1,5 @@
+{
+  ok: result.is_ok(result.ok(42)),
+  err: result.is_err(result.err("failed")),
+  value: result.ok(42)
+}

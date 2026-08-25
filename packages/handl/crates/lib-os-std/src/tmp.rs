@@ -1,0 +1,31 @@
+use std::fs;
+
+use handl_lib_os::{OsError, Tmp};
+
+/// Temporary file/directory implementation backed by `std::env::temp_dir`.
+#[derive(Default)]
+pub struct StdTmp;
+
+impl Tmp for StdTmp {
+    fn file(&self) -> Result<String, OsError> {
+        let dir = std::env::temp_dir();
+        let path = dir.join(format!("handl-{}-{}", std::process::id(), unique_suffix()));
+        Ok(path.to_string_lossy().into_owned())
+    }
+
+    fn dir(&self) -> Result<String, OsError> {
+        let dir = std::env::temp_dir();
+        let path = dir.join(format!("handl-dir-{}-{}", std::process::id(), unique_suffix()));
+        fs::create_dir_all(&path).map_err(|e| OsError::Io {
+            message: e.to_string(),
+        })?;
+        Ok(path.to_string_lossy().into_owned())
+    }
+}
+
+fn unique_suffix() -> String {
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static COUNTER: AtomicU64 = AtomicU64::new(0);
+    let n = COUNTER.fetch_add(1, Ordering::SeqCst);
+    format!("{n}")
+}

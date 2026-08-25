@@ -1,5 +1,5 @@
 import type { Effect } from "effect";
-import type { ExecutionContext, Node, TemplateError } from "ac-core";
+import type { ExecutionContext, Node, TemplateError } from "handl-core";
 
 export interface TemplateFunction {
   readonly name: string;

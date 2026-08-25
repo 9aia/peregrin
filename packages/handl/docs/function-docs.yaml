@@ -1,0 +1,3429 @@
+array:
+  at:
+    description: Returns the element at the given index of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.at(arr: Array, ...args: Any[])"
+  avg:
+    description: Returns the average of the elements of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.avg(arr: Array, ...args: Any[])"
+  chunk:
+    description: Splits an array into fixed-size chunks.
+    details: ""
+    examples:
+      - array.chunk([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.chunk(arr: Array, ...args: Any[])"
+  compact:
+    description: Removes null/empty values from an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.compact(arr: Array, ...args: Any[])"
+  concat:
+    description: Concatenates multiple values into an array.
+    details: ""
+    examples:
+      - array.concat([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.concat(arr: Array, ...args: Any[])"
+  contains:
+    description: Checks whether an array contains a value.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.contains(arr: Array, ...args: Any[])"
+  count_by:
+    description: Groups and counts elements of an array by a key.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.count_by(arr: Array, ...args: Any[])"
+  dedupe:
+    description: Removes consecutive duplicate elements from an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.dedupe(arr: Array, ...args: Any[])"
+  deep_flatten:
+    description: Recursively flattens a nested array.
+    details: ""
+    examples:
+      - array.deep_flatten([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.deep_flatten(arr: Array, ...args: Any[])"
+  drop:
+    description: Returns the elements of an array after the first n.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.drop(arr: Array, ...args: Any[])"
+  drop_while:
+    description: Drops leading elements of an array while a predicate holds.
+    details: ""
+    examples:
+      - array.drop_while([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.drop_while(arr: Array, ...args: Any[])"
+  enumerate:
+    description: Returns each element paired with its index.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.enumerate(arr: Array, ...args: Any[])"
+  every:
+    description: Checks whether all elements of an array satisfy a predicate.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.every(arr: Array, ...args: Any[])"
+  fill:
+    description: Fills an array with a value.
+    details: ""
+    examples:
+      - array.fill([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.fill(arr: Array, ...args: Any[])"
+  filter:
+    description: Filters an array by a predicate.
+    details: ""
+    examples:
+      - array.filter([1, 2, 3], x => x > 1)
+    params:
+      - name: arr
+        type: Array
+      - name: fn
+        type: Function
+    return_value: Array
+    see: []
+    signature: "array.filter(arr: Array, fn: Function)"
+  find:
+    description: Finds the first matching element in an array.
+    details: ""
+    examples:
+      - array.find([1, 2, 3], x => x > 1)
+    params:
+      - name: arr
+        type: Array
+      - name: fn
+        type: Function
+    return_value: Any
+    see: []
+    signature: "array.find(arr: Array, fn: Function)"
+  find_index:
+    description: Returns the index of the first matching element in an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.find_index(arr: Array, ...args: Any[])"
+  find_last:
+    description: Finds the last matching element in an array.
+    details: ""
+    examples:
+      - array.find_last([1, 2, 3], x => x > 1)
+    params:
+      - name: arr
+        type: Array
+      - name: fn
+        type: Function
+    return_value: Any
+    see: []
+    signature: "array.find_last(arr: Array, fn: Function)"
+  find_last_index:
+    description: Returns the index of the last matching element in an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.find_last_index(arr: Array, ...args: Any[])"
+  first:
+    description: Returns the first element of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.first(arr: Array, ...args: Any[])"
+  flat_map:
+    description: Maps each element and flattens the result by one level.
+    details: ""
+    examples:
+      - array.flat_map([1, 2, 3], x => x > 1)
+    params:
+      - name: arr
+        type: Array
+      - name: fn
+        type: Function
+    return_value: Array
+    see: []
+    signature: "array.flat_map(arr: Array, fn: Function)"
+  flatten:
+    description: Flattens a nested array by one level.
+    details: ""
+    examples:
+      - array.flatten([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.flatten(arr: Array, ...args: Any[])"
+  foldr:
+    description: Folds an array from right to left.
+    details: ""
+    examples:
+      - array.foldr([1, 2, 3], (a, b) => a + b, 0)
+    params:
+      - name: arr
+        type: Array
+      - name: fn
+        type: Function
+      - name: initial
+        type: Any
+    return_value: Any
+    see: []
+    signature: "array.foldr(arr: Array, fn: Function, initial: Any)"
+  group_by:
+    description: Groups elements by a key function.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.group_by(arr: Array, ...args: Any[])"
+  index_of:
+    description: Returns the index of a value in an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.index_of(arr: Array, ...args: Any[])"
+  insert_at:
+    description: Inserts a value at the given index of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.insert_at(arr: Array, ...args: Any[])"
+  intercalate:
+    description: Inserts a separator between elements of an array and concatenates.
+    details: ""
+    examples:
+      - array.intercalate([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.intercalate(arr: Array, ...args: Any[])"
+  intersperse:
+    description: Inserts a value between elements of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.intersperse(arr: Array, ...args: Any[])"
+  last:
+    description: Returns the last element of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.last(arr: Array, ...args: Any[])"
+  length:
+    description: Returns the number of elements in an array.
+    details: ""
+    examples:
+      - array.length([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+    return_value: Number
+    see: []
+    signature: "array.length(arr: Array)"
+  map:
+    description: Maps a function over an array.
+    details: ""
+    examples:
+      - array.map([1, 2, 3], x => x > 1)
+    params:
+      - name: arr
+        type: Array
+      - name: fn
+        type: Function
+    return_value: Array
+    see: []
+    signature: "array.map(arr: Array, fn: Function)"
+  max:
+    description: Returns the maximum value in an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.max(arr: Array, ...args: Any[])"
+  max_by:
+    description: Returns the maximum element of an array by a key function.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.max_by(arr: Array, ...args: Any[])"
+  mean:
+    description: Returns the mean of the elements of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.mean(arr: Array, ...args: Any[])"
+  median:
+    description: Returns the median of an array of numbers.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.median(arr: Array, ...args: Any[])"
+  min:
+    description: Returns the minimum value in an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.min(arr: Array, ...args: Any[])"
+  min_by:
+    description: Returns the minimum element of an array by a key function.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.min_by(arr: Array, ...args: Any[])"
+  partition:
+    description: Splits elements into two arrays based on a predicate.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.partition(arr: Array, ...args: Any[])"
+  pluck:
+    description: Extracts the value of a key from each object in an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.pluck(arr: Array, ...args: Any[])"
+  pop:
+    description: Removes and returns the last element of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.pop(arr: Array, ...args: Any[])"
+  prepend:
+    description: Prepends an element to an array.
+    details: ""
+    examples:
+      - array.prepend([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.prepend(arr: Array, ...args: Any[])"
+  product:
+    description: Returns the product of the elements of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.product(arr: Array, ...args: Any[])"
+  push:
+    description: Appends an element to the end of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.push(arr: Array, ...args: Any[])"
+  range:
+    description: Returns an array of numbers in the given range.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.range(arr: Array, ...args: Any[])"
+  reduce:
+    description: Reduces an array to a single value.
+    details: ""
+    examples:
+      - array.reduce([1, 2, 3], (a, b) => a + b, 0)
+    params:
+      - name: arr
+        type: Array
+      - name: fn
+        type: Function
+      - name: initial
+        type: Any
+    return_value: Any
+    see: []
+    signature: "array.reduce(arr: Array, fn: Function, initial: Any)"
+  remove_at:
+    description: Removes the element at the given index of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.remove_at(arr: Array, ...args: Any[])"
+  reverse:
+    description: Reverses an array.
+    details: ""
+    examples:
+      - array.reverse([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.reverse(arr: Array, ...args: Any[])"
+  scan:
+    description: Returns a running reduction of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.scan(arr: Array, ...args: Any[])"
+  shift:
+    description: Removes and returns the first element of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.shift(arr: Array, ...args: Any[])"
+  slice:
+    description: Returns a slice of an array.
+    details: ""
+    examples:
+      - array.slice([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.slice(arr: Array, ...args: Any[])"
+  some:
+    description: Checks whether any element of an array satisfies a predicate.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.some(arr: Array, ...args: Any[])"
+  sort:
+    description: Sorts an array.
+    details: ""
+    examples:
+      - array.sort([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.sort(arr: Array, ...args: Any[])"
+  sort_by:
+    description: Sorts an array by a key function.
+    details: ""
+    examples:
+      - array.sort_by([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.sort_by(arr: Array, ...args: Any[])"
+  sort_by_desc:
+    description: Sorts an array by a key function in descending order.
+    details: ""
+    examples:
+      - array.sort_by_desc([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.sort_by_desc(arr: Array, ...args: Any[])"
+  stddev:
+    description: Returns the standard deviation of an array of numbers.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.stddev(arr: Array, ...args: Any[])"
+  sum:
+    description: Returns the sum of the elements of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.sum(arr: Array, ...args: Any[])"
+  take:
+    description: Returns the first n elements of an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.take(arr: Array, ...args: Any[])"
+  take_while:
+    description: Returns leading elements of an array while a predicate holds.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.take_while(arr: Array, ...args: Any[])"
+  transpose:
+    description: Transposes rows and columns of a nested array.
+    details: ""
+    examples:
+      - array.transpose([1, 2, 3])
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Array
+    see: []
+    signature: "array.transpose(arr: Array, ...args: Any[])"
+  unzip:
+    description: Splits an array of pairs into two arrays.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.unzip(arr: Array, ...args: Any[])"
+  windows:
+    description: Performs the `windows` operation on an array.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.windows(arr: Array, ...args: Any[])"
+  zip:
+    description: Combines multiple arrays element-wise.
+    details: ""
+    examples: []
+    params:
+      - name: arr
+        type: Array
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "array.zip(arr: Array, ...args: Any[])"
+bool:
+  and:
+    description: Returns the logical AND of two values.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Boolean
+      - name: b
+        type: Boolean
+    return_value: Boolean
+    see: []
+    signature: "bool.and(a: Boolean, b: Boolean)"
+  eq:
+    description: Checks whether two values are equal.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Boolean
+      - name: b
+        type: Boolean
+    return_value: Boolean
+    see: []
+    signature: "bool.eq(a: Boolean, b: Boolean)"
+  implies:
+    description: Returns whether one value implies another.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Boolean
+      - name: b
+        type: Boolean
+    return_value: Boolean
+    see: []
+    signature: "bool.implies(a: Boolean, b: Boolean)"
+  nand:
+    description: Returns the NAND of two values.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Boolean
+      - name: b
+        type: Boolean
+    return_value: Boolean
+    see: []
+    signature: "bool.nand(a: Boolean, b: Boolean)"
+  nor:
+    description: Returns the NOR of two values.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Boolean
+      - name: b
+        type: Boolean
+    return_value: Boolean
+    see: []
+    signature: "bool.nor(a: Boolean, b: Boolean)"
+  not:
+    description: Returns the logical negation of a value.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Boolean
+      - name: b
+        type: Boolean
+    return_value: Boolean
+    see: []
+    signature: "bool.not(a: Boolean, b: Boolean)"
+  or:
+    description: Returns the logical OR of two values.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Boolean
+      - name: b
+        type: Boolean
+    return_value: Boolean
+    see: []
+    signature: "bool.or(a: Boolean, b: Boolean)"
+  xor:
+    description: Returns the logical XOR of two values.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Boolean
+      - name: b
+        type: Boolean
+    return_value: Boolean
+    see: []
+    signature: "bool.xor(a: Boolean, b: Boolean)"
+bytes:
+  avg:
+    description: Returns the average of the elements of a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.avg(value: Bytes, ...args: Any[])"
+  concat:
+    description: Concatenates multiple values into a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.concat(value: Bytes, ...args: Any[])"
+  contains:
+    description: Checks whether a byte array contains a value.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.contains(value: Bytes, ...args: Any[])"
+  count:
+    description: Returns the number of matching elements in a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Number
+    see: []
+    signature: "bytes.count(value: Bytes, ...args: Any[])"
+  decode_base64:
+    description: Decodes a base64 string to a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: String
+    see: []
+    signature: "bytes.decode_base64(value: Bytes, ...args: Any[])"
+  decode_hex:
+    description: Decodes a hexadecimal string to a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: String
+    see: []
+    signature: "bytes.decode_hex(value: Bytes, ...args: Any[])"
+  encode_base64:
+    description: Encodes a byte array as a base64 string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: String
+    see: []
+    signature: "bytes.encode_base64(value: Bytes, ...args: Any[])"
+  encode_hex:
+    description: Encodes a byte array as a hexadecimal string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: String
+    see: []
+    signature: "bytes.encode_hex(value: Bytes, ...args: Any[])"
+  ends_with:
+    description: Checks whether a byte array ends with a suffix.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.ends_with(value: Bytes, ...args: Any[])"
+  equals:
+    description: Checks whether two byte arrays are equal.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Bytes
+      - name: b
+        type: Bytes
+    return_value: Boolean
+    see: []
+    signature: "bytes.equals(a: Bytes, b: Bytes)"
+  find:
+    description: Finds the first matching element in a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.find(value: Bytes, ...args: Any[])"
+  from_string:
+    description: Creates a byte array from a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: String
+    see: []
+    signature: "bytes.from_string(value: Bytes, ...args: Any[])"
+  get:
+    description: Returns the value associated with the given key in a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.get(value: Bytes, ...args: Any[])"
+  index_of:
+    description: Returns the index of a value in a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Number
+    see: []
+    signature: "bytes.index_of(value: Bytes, ...args: Any[])"
+  is_empty:
+    description: Checks whether a byte array is empty.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.is_empty(value: Bytes, ...args: Any[])"
+  length:
+    description: Returns the number of bytes in a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Number
+    see: []
+    signature: "bytes.length(value: Bytes, ...args: Any[])"
+  max:
+    description: Returns the maximum value in a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.max(value: Bytes, ...args: Any[])"
+  min:
+    description: Returns the minimum value in a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.min(value: Bytes, ...args: Any[])"
+  reverse:
+    description: Reverses a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.reverse(value: Bytes, ...args: Any[])"
+  set:
+    description: Sets the value associated with the given key in a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.set(value: Bytes, ...args: Any[])"
+  slice:
+    description: Returns a slice of a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.slice(value: Bytes, ...args: Any[])"
+  sort:
+    description: Sorts a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.sort(value: Bytes, ...args: Any[])"
+  starts_with:
+    description: Checks whether a byte array starts with a prefix.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.starts_with(value: Bytes, ...args: Any[])"
+  sum:
+    description: Returns the sum of the elements of a byte array.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: Bytes
+    see: []
+    signature: "bytes.sum(value: Bytes, ...args: Any[])"
+  to_string:
+    description: Converts a byte array to a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Bytes
+      - name: args
+        type: Any...
+    return_value: String
+    see: []
+    signature: "bytes.to_string(value: Bytes, ...args: Any[])"
+cmp:
+  between:
+    description: Checks whether a value lies between two bounds.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "cmp.between(a: Any, b: Any)"
+  clamp:
+    description: Constrains a number between a minimum and a maximum.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Any
+    see: []
+    signature: "cmp.clamp(a: Any, b: Any)"
+  compare:
+    description: Compares two values and returns their ordering.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Number
+    see: []
+    signature: "cmp.compare(a: Any, b: Any)"
+  eq:
+    description: Checks whether two values are equal.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "cmp.eq(a: Any, b: Any)"
+  ge:
+    description: Checks whether the first value is greater than or equal to the second.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "cmp.ge(a: Any, b: Any)"
+  gt:
+    description: Checks whether the first value is greater than the second.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "cmp.gt(a: Any, b: Any)"
+  in_range:
+    description: Checks whether a value lies within the given range.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "cmp.in_range(a: Any, b: Any)"
+  is_sorted:
+    description: Checks whether an array is sorted.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "cmp.is_sorted(a: Any, b: Any)"
+  is_sorted_desc:
+    description: Checks whether an array is sorted in descending order.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "cmp.is_sorted_desc(a: Any, b: Any)"
+  le:
+    description: Checks whether the first value is less than or equal to the second.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "cmp.le(a: Any, b: Any)"
+  lt:
+    description: Checks whether the first value is less than the second.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "cmp.lt(a: Any, b: Any)"
+  max:
+    description: Returns the larger of two values.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Any
+    see: []
+    signature: "cmp.max(a: Any, b: Any)"
+  min:
+    description: Returns the smaller of two values.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Any
+    see: []
+    signature: "cmp.min(a: Any, b: Any)"
+  ne:
+    description: Checks whether two values are not equal.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "cmp.ne(a: Any, b: Any)"
+  sort:
+    description: Sorts values.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Any
+    see: []
+    signature: "cmp.sort(a: Any, b: Any)"
+  sort_desc:
+    description: Sorts values by desc.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Any
+      - name: b
+        type: Any
+    return_value: Any
+    see: []
+    signature: "cmp.sort_desc(a: Any, b: Any)"
+fn:
+  apply:
+    description: Performs the `apply` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.apply(...fns: Function[])"
+  choice:
+    description: Performs the `choice` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.choice(...fns: Function[])"
+  compose:
+    description: Composes functions from right to left.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.compose(...fns: Function[])"
+  constantly:
+    description: Performs the `constantly` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.constantly(...fns: Function[])"
+  converge:
+    description: Performs the `converge` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.converge(...fns: Function[])"
+  fanout:
+    description: Calls multiple functions and returns an array of results.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.fanout(...fns: Function[])"
+  flip:
+    description: Performs the `flip` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.flip(...fns: Function[])"
+  flow:
+    description: Composes functions in a flow.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.flow(...fns: Function[])"
+  if:
+    description: Performs the `if` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.if(...fns: Function[])"
+  match:
+    description: Performs the `match` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.match(...fns: Function[])"
+  partial:
+    description: Performs the `partial` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.partial(...fns: Function[])"
+  pipe:
+    description: Composes functions from left to right.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.pipe(...fns: Function[])"
+  tap:
+    description: Performs the `tap` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.tap(...fns: Function[])"
+  unless:
+    description: Performs the `unless` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.unless(...fns: Function[])"
+  when:
+    description: Performs the `when` operation on functions.
+    details: ""
+    examples: []
+    params:
+      - name: fns
+        type: Function...
+    return_value: Function
+    see: []
+    signature: "fn.when(...fns: Function[])"
+math:
+  abs:
+    description: Returns the absolute value of a number.
+    details: ""
+    examples:
+      - math.abs(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.abs(value: Number)"
+  acos:
+    description: Returns the arccosine of a number in radians.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.acos(value: Number)"
+  acosh:
+    description: Returns the inverse hyperbolic cosine of a number.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.acosh(value: Number)"
+  add:
+    description: Adds two numbers.
+    details: ""
+    examples:
+      - math.add(10, 3)
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.add(a: Number, b: Number)"
+  asin:
+    description: Returns the arcsine of a number in radians.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.asin(value: Number)"
+  asinh:
+    description: Returns the inverse hyperbolic sine of a number.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.asinh(value: Number)"
+  atan:
+    description: Returns the arctangent of a number in radians.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.atan(value: Number)"
+  atan2:
+    description: Returns the four-quadrant arctangent of y and x.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.atan2(value: Number)"
+  atanh:
+    description: Returns the inverse hyperbolic tangent of a number.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.atanh(value: Number)"
+  cbrt:
+    description: Returns the cube root of a number.
+    details: ""
+    examples:
+      - math.cbrt(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.cbrt(value: Number)"
+  ceil:
+    description: Rounds a number up to the nearest integer.
+    details: ""
+    examples:
+      - math.ceil(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.ceil(value: Number)"
+  clamp:
+    description: Constrains a number between a minimum and a maximum.
+    details: ""
+    examples:
+      - math.clamp(10, 0, 5) // 5
+    params:
+      - name: value
+        type: Number
+      - name: min
+        type: Number
+      - name: max
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.clamp(value: Number, min: Number, max: Number)"
+  cos:
+    description: Returns the cosine of an angle in radians.
+    details: ""
+    examples:
+      - math.cos(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.cos(value: Number)"
+  cosh:
+    description: Returns the hyperbolic cosine of a number.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.cosh(value: Number)"
+  degrees:
+    description: Converts radians to degrees.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.degrees(value: Number)"
+  div:
+    description: Divides the first number by the second.
+    details: ""
+    examples:
+      - math.div(10, 3)
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.div(a: Number, b: Number)"
+  e:
+    description: Returns the constant e.
+    details: ""
+    examples: []
+    params: []
+    return_value: Number
+    see: []
+    signature: math.e()
+  exp:
+    description: Returns e raised to the given power.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.exp(value: Number)"
+  factorial:
+    description: Returns the factorial of a non-negative integer.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.factorial(value: Number)"
+  floor:
+    description: Rounds a number down to the nearest integer.
+    details: ""
+    examples:
+      - math.floor(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.floor(value: Number)"
+  floor_div:
+    description: Divides two numbers and rounds the result down to the nearest integer.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.floor_div(value: Number)"
+  fract:
+    description: Returns the fractional part of a number.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.fract(value: Number)"
+  gcd:
+    description: Returns the greatest common divisor of two integers.
+    details: ""
+    examples:
+      - math.gcd(12, 8)
+    params:
+      - name: a
+        type: Integer
+      - name: b
+        type: Integer
+    return_value: Integer
+    see: []
+    signature: "math.gcd(a: Integer, b: Integer)"
+  hypot:
+    description: Returns the length of the hypotenuse of a right-angled triangle.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.hypot(a: Number, b: Number)"
+  infinity:
+    description: Returns positive infinity.
+    details: ""
+    examples: []
+    params: []
+    return_value: Number
+    see: []
+    signature: math.infinity()
+  is_finite:
+    description: Checks whether a number is finite.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.is_finite(value: Number)"
+  is_infinite:
+    description: Checks whether a number is infinite.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.is_infinite(value: Number)"
+  is_integer:
+    description: Checks whether a number is an integer.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.is_integer(value: Number)"
+  is_nan:
+    description: Checks whether a number is NaN.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.is_nan(value: Number)"
+  lcm:
+    description: Returns the least common multiple of two integers.
+    details: ""
+    examples:
+      - math.lcm(12, 8)
+    params:
+      - name: a
+        type: Integer
+      - name: b
+        type: Integer
+    return_value: Integer
+    see: []
+    signature: "math.lcm(a: Integer, b: Integer)"
+  lerp:
+    description: Linearly interpolates between two numbers.
+    details: ""
+    examples:
+      - math.lerp(0, 100, 0.5) // 50
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+      - name: t
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.lerp(a: Number, b: Number, t: Number)"
+  log:
+    description: Returns the natural logarithm of a number.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.log(a: Number, b: Number)"
+  log10:
+    description: Returns the base-10 logarithm of a number.
+    details: ""
+    examples:
+      - math.log10(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.log10(value: Number)"
+  log2:
+    description: Returns the base-2 logarithm of a number.
+    details: ""
+    examples:
+      - math.log2(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.log2(value: Number)"
+  map_range:
+    description: Maps a number from one range to another.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.map_range(value: Number)"
+  max:
+    description: Returns the larger of two numbers.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.max(a: Number, b: Number)"
+  min:
+    description: Returns the smaller of two numbers.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.min(a: Number, b: Number)"
+  mod:
+    description: Returns the remainder of the first number divided by the second.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.mod(a: Number, b: Number)"
+  mul:
+    description: Multiplies two numbers.
+    details: ""
+    examples:
+      - math.mul(10, 3)
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.mul(a: Number, b: Number)"
+  nan:
+    description: Returns the NaN (Not-a-Number) value.
+    details: ""
+    examples: []
+    params: []
+    return_value: Number
+    see: []
+    signature: math.nan()
+  pi:
+    description: Returns the constant π.
+    details: ""
+    examples: []
+    params: []
+    return_value: Number
+    see: []
+    signature: math.pi()
+  pow:
+    description: Raises a number to the given power.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.pow(a: Number, b: Number)"
+  radians:
+    description: Converts degrees to radians.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.radians(value: Number)"
+  round:
+    description: Rounds a number to the nearest integer.
+    details: ""
+    examples:
+      - math.round(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.round(value: Number)"
+  round_to:
+    description: Rounds a number to the given number of decimal places.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+      - name: decimals
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.round_to(value: Number, decimals: Number)"
+  sign:
+    description: Returns -1, 0, or 1 based on the sign of a number.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.sign(value: Number)"
+  sin:
+    description: Returns the sine of an angle in radians.
+    details: ""
+    examples:
+      - math.sin(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.sin(value: Number)"
+  sinh:
+    description: Returns the hyperbolic sine of a number.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.sinh(value: Number)"
+  sqrt:
+    description: Returns the square root of a number.
+    details: ""
+    examples:
+      - math.sqrt(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.sqrt(value: Number)"
+  sub:
+    description: Subtracts the second number from the first.
+    details: ""
+    examples:
+      - math.sub(10, 3)
+    params:
+      - name: a
+        type: Number
+      - name: b
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.sub(a: Number, b: Number)"
+  tan:
+    description: Returns the tangent of an angle in radians.
+    details: ""
+    examples:
+      - math.tan(-5)
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.tan(value: Number)"
+  tanh:
+    description: Returns the hyperbolic tangent of a number.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.tanh(value: Number)"
+  tau:
+    description: Returns the constant τ (2π).
+    details: ""
+    examples: []
+    params: []
+    return_value: Number
+    see: []
+    signature: math.tau()
+  trunc:
+    description: Removes the fractional part of a number.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Number
+    return_value: Number
+    see: []
+    signature: "math.trunc(value: Number)"
+mood:
+  cnd:
+    description: Performs the `cnd` operation on a mood value.
+    details: ""
+    examples: []
+    params: []
+    return_value: Mood
+    see: []
+    signature: mood.cnd()
+  ind:
+    description: Performs the `ind` operation on a mood value.
+    details: ""
+    examples: []
+    params: []
+    return_value: Mood
+    see: []
+    signature: mood.ind()
+  int:
+    description: Performs the `int` operation on a mood value.
+    details: ""
+    examples: []
+    params: []
+    return_value: Mood
+    see: []
+    signature: mood.int()
+  neg:
+    description: Performs the `neg` operation on a mood value.
+    details: ""
+    examples: []
+    params: []
+    return_value: Mood
+    see: []
+    signature: mood.neg()
+  norm:
+    description: Performs the `norm` operation on a mood value.
+    details: ""
+    examples: []
+    params: []
+    return_value: Mood
+    see: []
+    signature: mood.norm()
+  pot:
+    description: Performs the `pot` operation on a mood value.
+    details: ""
+    examples: []
+    params: []
+    return_value: Mood
+    see: []
+    signature: mood.pot()
+obj:
+  clone_deep:
+    description: Performs the `clone_deep` operation on an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.clone_deep(obj: Object, ...args: Any[])"
+  deep_get:
+    description: Retrieves a nested value by a path of keys.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.deep_get(obj: Object, ...args: Any[])"
+  deep_merge:
+    description: Recursively merges multiple objects.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.deep_merge(obj: Object, ...args: Any[])"
+  entries:
+    description: Returns the key-value pairs of an object.
+    details: ""
+    examples:
+      - "obj.entries({a: 1, b: 2})"
+    params:
+      - name: obj
+        type: Object
+    return_value: Array
+    see: []
+    signature: "obj.entries(obj: Object)"
+  filter_keys:
+    description: Keeps keys that satisfy a predicate.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.filter_keys(obj: Object, ...args: Any[])"
+  filter_values:
+    description: Keeps values that satisfy a predicate.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.filter_values(obj: Object, ...args: Any[])"
+  from_entries:
+    description: Creates an object from an array of key-value pairs.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.from_entries(obj: Object, ...args: Any[])"
+  get:
+    description: Returns the value associated with the given key in an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.get(obj: Object, ...args: Any[])"
+  get_or:
+    description: Returns the or of an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.get_or(obj: Object, ...args: Any[])"
+  has_key:
+    description: Checks whether an object has key.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.has_key(obj: Object, ...args: Any[])"
+  invert:
+    description: Performs the `invert` operation on an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.invert(obj: Object, ...args: Any[])"
+  keys:
+    description: Returns the keys of an object.
+    details: ""
+    examples:
+      - "obj.keys({a: 1, b: 2})"
+    params:
+      - name: obj
+        type: Object
+    return_value: Array
+    see: []
+    signature: "obj.keys(obj: Object)"
+  map_keys:
+    description: Maps over the keys of an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.map_keys(obj: Object, ...args: Any[])"
+  map_values:
+    description: Maps over the values of an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.map_values(obj: Object, ...args: Any[])"
+  merge:
+    description: Merges two or more an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.merge(obj: Object, ...args: Any[])"
+  omit:
+    description: Returns an object excluding the selected keys.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.omit(obj: Object, ...args: Any[])"
+  path_or:
+    description: Performs the `path_or` operation on an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.path_or(obj: Object, ...args: Any[])"
+  pick:
+    description: Returns an object containing only the selected keys.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.pick(obj: Object, ...args: Any[])"
+  set:
+    description: Sets the value associated with the given key in an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.set(obj: Object, ...args: Any[])"
+  set_path:
+    description: Sets the path of an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.set_path(obj: Object, ...args: Any[])"
+  size:
+    description: Returns the number of elements in an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.size(obj: Object, ...args: Any[])"
+  update:
+    description: Updates a value in an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.update(obj: Object, ...args: Any[])"
+  update_path:
+    description: Performs the `update_path` operation on an object.
+    details: ""
+    examples: []
+    params:
+      - name: obj
+        type: Object
+      - name: args
+        type: Any...
+    return_value: Any
+    see: []
+    signature: "obj.update_path(obj: Object, ...args: Any[])"
+  values:
+    description: Returns the values of an object.
+    details: ""
+    examples:
+      - "obj.values({a: 1, b: 2})"
+    params:
+      - name: obj
+        type: Object
+    return_value: Array
+    see: []
+    signature: "obj.values(obj: Object)"
+option:
+  and:
+    description: Returns the logical AND of two values.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.and(value: Any)"
+  and_then:
+    description: Performs the `and_then` operation on an Option.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.and_then(value: Any)"
+  filter:
+    description: Filters an Option by a predicate.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.filter(value: Any)"
+  flat_map:
+    description: Performs the `flat_map` operation on an Option.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.flat_map(value: Any)"
+  is_none:
+    description: Checks whether an Option is None.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.is_none(value: Any)"
+  is_some:
+    description: Checks whether an Option is Some.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.is_some(value: Any)"
+  map:
+    description: Maps a function over an Option.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.map(value: Any)"
+  map_or:
+    description: Maps over an Option and transforms or.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.map_or(value: Any)"
+  none:
+    description: Creates a None value.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: None
+    see: []
+    signature: "option.none(value: Any)"
+  or:
+    description: Returns the logical OR of two values.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.or(value: Any)"
+  or_else:
+    description: Performs the `or_else` operation on an Option.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.or_else(value: Any)"
+  some:
+    description: Checks whether any element satisfies a predicate.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Some
+    see: []
+    signature: "option.some(value: Any)"
+  unwrap:
+    description: Performs the `unwrap` operation on an Option.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.unwrap(value: Any)"
+  unwrap_or:
+    description: Performs the `unwrap_or` operation on an Option.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.unwrap_or(value: Any)"
+  unwrap_or_else:
+    description: Performs the `unwrap_or_else` operation on an Option.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.unwrap_or_else(value: Any)"
+  xor:
+    description: Returns the logical XOR of two values.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "option.xor(value: Any)"
+result:
+  err:
+    description: Creates an Err value.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Err
+    see: []
+    signature: "result.err(value: Any)"
+  is_err:
+    description: Checks whether a Result is Err.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "result.is_err(value: Any)"
+  is_ok:
+    description: Checks whether a Result is Ok.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "result.is_ok(value: Any)"
+  ok:
+    description: Creates an Ok value.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Ok
+    see: []
+    signature: "result.ok(value: Any)"
+set:
+  difference:
+    description: Returns the difference of two sets.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Array
+      - name: b
+        type: Array
+    return_value: Array
+    see: []
+    signature: "set.difference(a: Array, b: Array)"
+  intersection:
+    description: Returns the intersection of two sets.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Array
+      - name: b
+        type: Array
+    return_value: Array
+    see: []
+    signature: "set.intersection(a: Array, b: Array)"
+  symmetric_difference:
+    description: Returns the symmetric difference of two sets.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Array
+      - name: b
+        type: Array
+    return_value: Array
+    see: []
+    signature: "set.symmetric_difference(a: Array, b: Array)"
+  union:
+    description: Returns the union of two sets.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Array
+      - name: b
+        type: Array
+    return_value: Array
+    see: []
+    signature: "set.union(a: Array, b: Array)"
+  unique:
+    description: Removes duplicate elements from a set.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Array
+      - name: b
+        type: Array
+    return_value: Array
+    see: []
+    signature: "set.unique(a: Array, b: Array)"
+  unique_by:
+    description: Performs the `unique_by` operation on a set.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Array
+      - name: b
+        type: Array
+    return_value: Array
+    see: []
+    signature: "set.unique_by(a: Array, b: Array)"
+  without:
+    description: Returns a set without the given elements.
+    details: ""
+    examples: []
+    params:
+      - name: a
+        type: Array
+      - name: b
+        type: Array
+    return_value: Array
+    see: []
+    signature: "set.without(a: Array, b: Array)"
+str:
+  bytes:
+    description: Returns the bytes of a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: Array<Number>
+    see: []
+    signature: "str.bytes(value: String)"
+  camel_case:
+    description: Converts a string to camelCase.
+    details: ""
+    examples:
+      - str.camel_case('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.camel_case(value: String)"
+  capitalize:
+    description: Capitalizes the first character of a string.
+    details: ""
+    examples:
+      - str.capitalize('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.capitalize(value: String)"
+  char_at:
+    description: Returns the character at the given index of a string.
+    details: ""
+    examples:
+      - str.char_at('hello', 1)
+    params:
+      - name: value
+        type: String
+      - name: index
+        type: Number
+    return_value: String
+    see: []
+    signature: "str.char_at(value: String, index: Number)"
+  concat:
+    description: Concatenates multiple values into a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.concat(value: String)"
+  contains:
+    description: Checks whether a string contains a value.
+    details: ""
+    examples:
+      - str.contains('hello')
+    params:
+      - name: value
+        type: String
+    return_value: Boolean
+    see: []
+    signature: "str.contains(value: String)"
+  count:
+    description: Returns the number of matching elements in a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.count(value: String)"
+  ends_with:
+    description: Checks whether a string ends with a suffix.
+    details: ""
+    examples:
+      - str.ends_with('hello')
+    params:
+      - name: value
+        type: String
+    return_value: Boolean
+    see: []
+    signature: "str.ends_with(value: String)"
+  equals:
+    description: Checks whether two strings are equal.
+    details: ""
+    examples:
+      - str.equals('hello')
+    params:
+      - name: value
+        type: String
+    return_value: Boolean
+    see: []
+    signature: "str.equals(value: String)"
+  escape_html:
+    description: Escapes HTML entities in a string.
+    details: ""
+    examples:
+      - str.escape_html('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.escape_html(value: String)"
+  escape_url:
+    description: Encodes a string as a URL-safe string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.escape_url(value: String)"
+  find:
+    description: Finds the first matching element in a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.find(value: String)"
+  is_alpha:
+    description: Checks whether a string contains only alphabetic characters.
+    details: ""
+    examples:
+      - str.is_alpha('hello')
+    params:
+      - name: value
+        type: String
+    return_value: Boolean
+    see: []
+    signature: "str.is_alpha(value: String)"
+  is_alphanumeric:
+    description: Checks whether a string contains only alphanumeric characters.
+    details: ""
+    examples:
+      - str.is_alphanumeric('hello')
+    params:
+      - name: value
+        type: String
+    return_value: Boolean
+    see: []
+    signature: "str.is_alphanumeric(value: String)"
+  is_empty:
+    description: Checks whether a string is empty.
+    details: ""
+    examples:
+      - str.is_empty('hello')
+    params:
+      - name: value
+        type: String
+    return_value: Boolean
+    see: []
+    signature: "str.is_empty(value: String)"
+  is_numeric:
+    description: Checks whether a string contains only numeric characters.
+    details: ""
+    examples:
+      - str.is_numeric('hello')
+    params:
+      - name: value
+        type: String
+    return_value: Boolean
+    see: []
+    signature: "str.is_numeric(value: String)"
+  join:
+    description: Joins an array of strings using the string as a separator.
+    details: ""
+    examples:
+      - str.join(['a','b','c'], '-') // 'a-b-c'
+    params:
+      - name: parts
+        type: Array<String>
+      - name: separator
+        type: String
+    return_value: String
+    see: []
+    signature: "str.join(parts: Array<String>, separator: String = '')"
+  kebab_case:
+    description: Converts a string to kebab-case.
+    details: ""
+    examples:
+      - str.kebab_case('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.kebab_case(value: String)"
+  length:
+    description: Returns the number of characters in a string.
+    details: ""
+    examples:
+      - str.length('hello')
+    params:
+      - name: value
+        type: String
+    return_value: Number
+    see: []
+    signature: "str.length(value: String)"
+  levenshtein:
+    description: Returns the Levenshtein distance between two strings.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.levenshtein(value: String)"
+  lines:
+    description: Splits a string into an array of lines.
+    details: ""
+    examples:
+      - str.lines('a-b-c', '-')
+    params:
+      - name: value
+        type: String
+      - name: separator
+        type: String
+    return_value: Array<String>
+    see: []
+    signature: "str.lines(value: String, separator: String)"
+  lower:
+    description: Converts a string to lowercase.
+    details: ""
+    examples:
+      - str.lower('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.lower(value: String)"
+  pad_left:
+    description: Pads a string on the left to a given length.
+    details: ""
+    examples:
+      - str.pad_left('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.pad_left(value: String)"
+  pad_right:
+    description: Pads a string on the right to a given length.
+    details: ""
+    examples:
+      - str.pad_right('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.pad_right(value: String)"
+  pascal_case:
+    description: Converts a string to PascalCase.
+    details: ""
+    examples:
+      - str.pascal_case('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.pascal_case(value: String)"
+  repeat:
+    description: Repeats a string a number of times.
+    details: ""
+    examples:
+      - str.repeat('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.repeat(value: String)"
+  replace:
+    description: Replaces occurrences of a pattern in a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+      - name: pattern
+        type: String
+      - name: replacement
+        type: String
+    return_value: String
+    see: []
+    signature: "str.replace(value: String, pattern: String, replacement: String =
+      '')"
+  replace_first:
+    description: Replaces the first occurrence of a pattern in a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+      - name: pattern
+        type: String
+      - name: replacement
+        type: String
+    return_value: String
+    see: []
+    signature: "str.replace_first(value: String, pattern: String, replacement: String
+      = '')"
+  reverse:
+    description: Reverses a string.
+    details: ""
+    examples:
+      - str.reverse('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.reverse(value: String)"
+  rfind:
+    description: Performs the `rfind` operation on a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.rfind(value: String)"
+  similarity:
+    description: Returns the similarity between two strings.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.similarity(value: String)"
+  slice:
+    description: Returns a slice of a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.slice(value: String)"
+  slugify:
+    description: Converts a string to a URL-safe slug.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.slugify(value: String)"
+  snake_case:
+    description: Converts a string to snake_case.
+    details: ""
+    examples:
+      - str.snake_case('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.snake_case(value: String)"
+  split:
+    description: Splits a string by a separator.
+    details: ""
+    examples:
+      - str.split('a-b-c', '-')
+    params:
+      - name: value
+        type: String
+      - name: separator
+        type: String
+    return_value: Array<String>
+    see: []
+    signature: "str.split(value: String, separator: String)"
+  split_at:
+    description: Splits a string at the given index.
+    details: ""
+    examples:
+      - str.split_at('a-b-c', '-')
+    params:
+      - name: value
+        type: String
+      - name: separator
+        type: String
+    return_value: Array<String>
+    see: []
+    signature: "str.split_at(value: String, separator: String)"
+  split_whitespace:
+    description: Splits a string by whitespace.
+    details: ""
+    examples:
+      - str.split_whitespace('a-b-c', '-')
+    params:
+      - name: value
+        type: String
+      - name: separator
+        type: String
+    return_value: Array<String>
+    see: []
+    signature: "str.split_whitespace(value: String, separator: String)"
+  starts_with:
+    description: Checks whether a string starts with a prefix.
+    details: ""
+    examples:
+      - str.starts_with('hello')
+    params:
+      - name: value
+        type: String
+    return_value: Boolean
+    see: []
+    signature: "str.starts_with(value: String)"
+  strip_prefix:
+    description: Removes a prefix from a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.strip_prefix(value: String)"
+  strip_suffix:
+    description: Removes a suffix from a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.strip_suffix(value: String)"
+  title_case:
+    description: Converts a string to Title Case.
+    details: ""
+    examples:
+      - str.title_case('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.title_case(value: String)"
+  trim:
+    description: Removes leading and trailing whitespace from a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.trim(value: String)"
+  trim_end:
+    description: Removes trailing whitespace from a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.trim_end(value: String)"
+  trim_matches:
+    description: Removes leading and trailing matches from a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.trim_matches(value: String)"
+  trim_start:
+    description: Removes leading whitespace from a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.trim_start(value: String)"
+  truncate:
+    description: Truncates a string to a given length.
+    details: ""
+    examples:
+      - str.truncate('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.truncate(value: String)"
+  unescape_html:
+    description: Unescapes HTML entities in a string.
+    details: ""
+    examples:
+      - str.unescape_html('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.unescape_html(value: String)"
+  unescape_url:
+    description: Decodes a URL-encoded a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.unescape_url(value: String)"
+  upper:
+    description: Converts a string to uppercase.
+    details: ""
+    examples:
+      - str.upper('hello world')
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.upper(value: String)"
+  word_wrap:
+    description: Wraps a string into lines of a given width.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: String
+    return_value: String
+    see: []
+    signature: "str.word_wrap(value: String)"
+type:
+  coalesce:
+    description: Performs the `coalesce` operation on a value.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Any
+    see: []
+    signature: "type.coalesce(value: Any)"
+  default:
+    description: Performs the `default` operation on a value.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Any
+    see: []
+    signature: "type.default(value: Any)"
+  identity:
+    description: Performs the `identity` operation on a value.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Any
+    see: []
+    signature: "type.identity(value: Any)"
+  is_array:
+    description: Checks whether a value is an array.
+    details: ""
+    examples:
+      - type.is_array(value)
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "type.is_array(value: Any)"
+  is_bool:
+    description: Checks whether a value is a boolean.
+    details: ""
+    examples:
+      - type.is_bool(value)
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "type.is_bool(value: Any)"
+  is_empty:
+    description: Checks whether a value is empty.
+    details: ""
+    examples:
+      - type.is_empty(value)
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "type.is_empty(value: Any)"
+  is_null:
+    description: Checks whether a value is null.
+    details: ""
+    examples:
+      - type.is_null(value)
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "type.is_null(value: Any)"
+  is_number:
+    description: Checks whether a value is a number.
+    details: ""
+    examples:
+      - type.is_number(value)
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "type.is_number(value: Any)"
+  is_object:
+    description: Checks whether a value is an object.
+    details: ""
+    examples:
+      - type.is_object(value)
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "type.is_object(value: Any)"
+  is_string:
+    description: Checks whether a value is a string.
+    details: ""
+    examples:
+      - type.is_string(value)
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "type.is_string(value: Any)"
+  is_truthy:
+    description: Checks whether a value is truthy.
+    details: ""
+    examples:
+      - type.is_truthy(value)
+    params:
+      - name: value
+        type: Any
+    return_value: Boolean
+    see: []
+    signature: "type.is_truthy(value: Any)"
+  to_bool:
+    description: Converts a value to a boolean.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Bool
+    see: []
+    signature: "type.to_bool(value: Any)"
+  to_number:
+    description: Converts a value to a number.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Number
+    see: []
+    signature: "type.to_number(value: Any)"
+  to_string:
+    description: Converts a value to a string.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: String
+    see: []
+    signature: "type.to_string(value: Any)"
+  type_of:
+    description: Performs the `type_of` operation on a value.
+    details: ""
+    examples: []
+    params:
+      - name: value
+        type: Any
+    return_value: Any
+    see: []
+    signature: "type.type_of(value: Any)"

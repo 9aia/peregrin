@@ -8,7 +8,7 @@ Accepted
 
 Peregrin needs a uniform, format-agnostic serialization ecosystem for the
 standard library. The existing language frontends (`frontend-json`, `frontend-toml`,
-`frontend-yaml`, etc.) in the `ac-lang` Rust crate already parse these formats.
+`frontend-yaml`, etc.) in the `handl` Rust crate already parse these formats.
 The serialization layer itself should live in Rust crates for performance, bound
 to proven Rust libraries (`serde_json`, `toml`, `serde_yaml`, etc.).
 
@@ -22,15 +22,15 @@ Goals:
 
 ## Decision
 
-Create Rust crates under `packages/ac-lang/crates/lib-*`.
+Create Rust crates under `packages/handl/crates/lib-*`.
 
-- `ac-lib-serialize` defines `SerializeError`, `Encoder`, `Decoder`, `serialize`,
+- `handl-lib-serialize` defines `SerializeError`, `Encoder`, `Decoder`, `serialize`,
   and `deserialize`.
-- `ac-lib-json` / `ac-lib-toml` / `ac-lib-yaml` implement the framework traits for
+- `handl-lib-json` / `handl-lib-toml` / `handl-lib-yaml` implement the framework traits for
   their respective `Value` types, using `serde_json`, `toml`, and `serde_yaml`.
 - `Json` / `Toml` / `Yaml` combined codecs are exposed alongside split
   `*Encoder` / `*Decoder` types.
-- Format crates are added as workspace members in `packages/ac-lang/Cargo.toml`.
+- Format crates are added as workspace members in `packages/handl/Cargo.toml`.
 
 ## Consequences
 

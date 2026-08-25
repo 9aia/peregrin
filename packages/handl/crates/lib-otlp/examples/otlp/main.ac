@@ -1,0 +1,19 @@
+[
+  otlp.configure({
+    endpoint: "http://localhost:4318",
+    service_name: "demo"
+  }),
+  otlp.end_span(
+    otlp.start_span("handle_request", {
+      attributes: { route: "/hello" }
+    })
+  ),
+  otlp.record_log("INFO", "request handled", {
+    attributes: { route: "/hello" }
+  }),
+  otlp.record_metric("requests", 1, {
+    kind: "counter",
+    attributes: { route: "/hello" }
+  }),
+  otlp.flush()
+]

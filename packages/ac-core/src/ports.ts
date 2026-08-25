@@ -20,7 +20,7 @@ export interface DeadLetterQueue {
   readonly close: () => Effect.Effect<void>;
 }
 
-export const DeadLetterQueue = Context.GenericTag<DeadLetterQueue>("ac/DeadLetterQueue");
+export const DeadLetterQueue = Context.GenericTag<DeadLetterQueue>("handl/DeadLetterQueue");
 
 export interface Driver {
   readonly name: string;
@@ -33,7 +33,7 @@ export interface Driver {
   ) => Effect.Effect<ReadonlyArray<Event>, DriverError>;
 }
 
-export const Driver = Context.GenericTag<Driver>("ac/Driver");
+export const Driver = Context.GenericTag<Driver>("handl/Driver");
 
 export interface EventStore {
   readonly append: (event: Event) => void;
@@ -45,7 +45,7 @@ export interface EventStore {
   readonly close: () => void;
 }
 
-export const EventStore = Context.GenericTag<EventStore>("ac/EventStore");
+export const EventStore = Context.GenericTag<EventStore>("handl/EventStore");
 
 export interface Span {
   readonly end: () => void;
@@ -74,7 +74,7 @@ export interface Observer {
   readonly onRetire: (nodeId: string) => void;
 }
 
-export const Observer = Context.GenericTag<Observer>("ac/Observer");
+export const Observer = Context.GenericTag<Observer>("handl/Observer");
 
 export interface StateStore {
   get(key: string): unknown;
@@ -84,4 +84,4 @@ export interface StateStore {
   close(): void;
 }
 
-export const StateStore = Context.GenericTag<StateStore>("ac/StateStore");
+export const StateStore = Context.GenericTag<StateStore>("handl/StateStore");

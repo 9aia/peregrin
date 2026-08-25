@@ -6,7 +6,7 @@ Proposed
 
 ## Context
 
-`ac-vm` currently exposes the sync/async color of Rust through the `VirtualMachine` and `Host` traits. `Host` has `function` and `async_function`; `CanonicalVm` has `eval` and `eval_async`. The two `eval` implementations are nearly identical, with `eval_async` awaiting on `AsyncFunction`. See `crates/vm-canonical/src/vm.rs` lines 58-300.
+`handl-vm` currently exposes the sync/async color of Rust through the `VirtualMachine` and `Host` traits. `Host` has `function` and `async_function`; `CanonicalVm` has `eval` and `eval_async`. The two `eval` implementations are nearly identical, with `eval_async` awaiting on `AsyncFunction`. See `crates/vm-canonical/src/vm.rs` lines 58-300.
 
 This design conflicts with ADR 0004: if the canonical language is colorless, the VM should not have a separate `AsyncFunction` path. A single `read()` call should be an `Operation` (effect), and the host driver should resolve it either synchronously or asynchronously. The VM should expose one evaluation primitive that supports both.
 
@@ -14,9 +14,9 @@ This design conflicts with ADR 0004: if the canonical language is colorless, the
 
 ## Decision
 
-1. **Remove `AsyncFunction` from the canonical `Host` trait and the `ac-vm` public API.**
+1. **Remove `AsyncFunction` from the canonical `Host` trait and the `handl-vm` public API.**
    - The canonical `Host` resolves names to `Function`, `LazyFunction`, `Operation`, and `GenericFunction` only.
-   - `AsyncFunction` may remain in `ac-vm-common` as a host-side utility, but it is not a concept the language or core VM sees.
+   - `AsyncFunction` may remain in `handl-vm-common` as a host-side utility, but it is not a concept the language or core VM sees.
 
 2. **Make `eval_resumable` the single core evaluation primitive.**
    - `VirtualMachine` exposes `eval_resumable`.
@@ -57,15 +57,15 @@ This design conflicts with ADR 0004: if the canonical language is colorless, the
 
 ## Relationship to ADR 0004
 
-This ADR implements the VM changes needed by ADR 0004. ADR 0004 states the design goal; this ADR changes the `ac-vm` API to make it real.
+This ADR implements the VM changes needed by ADR 0004. ADR 0004 states the design goal; this ADR changes the `handl-vm` API to make it real.
 
 ## References
 
 - `adrs/0004-colorless-execution.md`
-- `packages/ac-lang/crates/vm/src/host.rs`
-- `packages/ac-lang/crates/vm/src/runtime.rs`
-- `packages/ac-lang/crates/vm/src/operation.rs`
-- `packages/ac-lang/crates/vm-canonical/src/vm.rs`
-- `packages/ac-lang/crates/vm-canonical/src/continuation.rs`
-- `packages/ac-lang/crates/runtime-core/src/module/module.rs`
-- `packages/ac-lang/crates/runtime-core/src/host/host.rs`
+- `packages/handl/crates/vm/src/host.rs`
+- `packages/handl/crates/vm/src/runtime.rs`
+- `packages/handl/crates/vm/src/operation.rs`
+- `packages/handl/crates/vm-canonical/src/vm.rs`
+- `packages/handl/crates/vm-canonical/src/continuation.rs`
+- `packages/handl/crates/runtime-core/src/module/module.rs`
+- `packages/handl/crates/runtime-core/src/host/host.rs`

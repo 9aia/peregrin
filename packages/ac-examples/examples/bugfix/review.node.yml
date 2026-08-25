@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/nodes/review.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/nodes/review.schema.json
 # review: spawn a normal-mode agent to review the diff.
 # Reusable by any workflow that needs agent review before PR.
 #
@@ -13,7 +13,7 @@ on: [commit.done]
 emits: [review.done, bugfix.aborted]
 params:
   cmd: |
-    source /tmp/ac-bugfix-env
+    source /tmp/handl-bugfix-env
     cd "$WORKTREE_PATH"
 
     DIFF=$(git diff HEAD~1 HEAD)

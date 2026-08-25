@@ -1,7 +1,14 @@
 import cp from "node:child_process";
 import { Effect, Layer } from "effect";
-import { Driver, DriverError, Event, EventSchema, type ExecutionContext, type Node } from "ac-core";
-import { resolveValueForNode } from "ac-template-engine";
+import {
+  Driver,
+  DriverError,
+  Event,
+  EventSchema,
+  type ExecutionContext,
+  type Node,
+} from "handl-core";
+import { resolveValueForNode } from "handl-template-engine";
 
 export const ShellDriver: Driver = {
   name: "shell",

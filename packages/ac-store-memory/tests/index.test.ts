@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vite-plus/test";
 import { MemoryStore } from "../src/index.ts";
-import { Event } from "ac-core";
+import { Event } from "handl-core";
 
-describe("ac-store-memory", () => {
+describe("handl-store-memory", () => {
   it("stores and retrieves events by type", () => {
     const store = new MemoryStore();
     store.append(new Event("a", { n: 1 }));

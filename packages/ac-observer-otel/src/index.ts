@@ -1,6 +1,6 @@
 import crypto from "node:crypto";
 import { Layer, Option } from "effect";
-import { Observer, type Span, type Workflow, type Node, type Event } from "ac-core";
+import { Observer, type Span, type Workflow, type Node, type Event } from "handl-core";
 
 function generateTraceparent(): string {
   const traceId = crypto.randomBytes(16).toString("hex");

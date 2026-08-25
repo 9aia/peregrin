@@ -1,5 +1,5 @@
 {
-  "name": "ac-plugin-apprise",
+  "name": "handl-plugin-apprise",
   "version": "0.0.0",
   "private": true,
   "type": "module",
@@ -15,9 +15,9 @@
   },
   "dependencies": {
     "@toanalien/ahha": "0.1.1",
-    "ac-core": "workspace:*",
-    "ac-template-engine": "workspace:*",
     "effect": "^3.22.1",
+    "handl-core": "workspace:*",
+    "handl-template-engine": "workspace:*",
     "nodemailer": "^9.0.5"
   },
   "devDependencies": {

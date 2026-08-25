@@ -1,0 +1,40 @@
+[package]
+name = "handl-fuzz"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[package.metadata]
+cargo-fuzz = true
+
+[workspace]
+
+[dependencies]
+libfuzzer-sys = "0.4"
+handl-fields = { path = "../crates/fields" }
+handl-dialect = { path = "../crates/dialect" }
+handl-dialect-canonical = { path = "../crates/dialect-canonical" }
+handl-typecheck-infer = { path = "../crates/typecheck-infer" }
+handl-lexer = { path = "../crates/lexer" }
+handl-lexer-canonical = { path = "../crates/lexer-canonical" }
+serde_json = "1"
+
+[[bin]]
+name = "expression"
+path = "fuzz_targets/expression.rs"
+
+[[bin]]
+name = "interpolation"
+path = "fuzz_targets/interpolation.rs"
+
+[[bin]]
+name = "scoped_interpolation"
+path = "fuzz_targets/scoped_interpolation.rs"
+
+[[bin]]
+name = "parse_expr"
+path = "fuzz_targets/parse_expr.rs"
+
+[[bin]]
+name = "lexer"
+path = "fuzz_targets/lexer.rs"

@@ -1,0 +1,384 @@
+[package]
+name = "handl"
+version = "0.1.0"
+edition = "2024"
+
+[workspace]
+members = [
+  "crates/dialect",
+  "crates/dialect-canonical",
+  "crates/ast",
+  "crates/ast-canonical",
+  "crates/ast-common",
+  "crates/vm-values-json",
+  "crates/lib-utils",
+  "crates/lib-utils/bytes",
+  "crates/lib-unicode",
+  "crates/lib-ip",
+  "crates/lib-collections",
+  "crates/lib-datetime",
+  "crates/lib-intl",
+  "crates/crate-ecma402-traits",
+  "crates/crate-ecma402-icu4x",
+  "crates/crate-icu4x-extra",
+  "crates/lib-crypto",
+  "crates/lib-rand",
+  "crates/lib-test",
+  "crates/lib-kv",
+  "crates/lib-kv-hashmap",
+  "crates/lib-os",
+  "crates/lib-os-std",
+  "crates/lib-http-client",
+  "crates/lib-http-client-std",
+  "crates/lib-http-server",
+  "crates/lib-http-server-std",
+  "crates/vm",
+  "crates/vm-common",
+  "crates/vm-transform",
+  "crates/vm-backend-rust-interpreter",
+  "crates/frontend-json",
+  "crates/frontend-yaml",
+  "crates/frontend-toml",
+  "crates/source",
+  "crates/fields",
+  "crates/typegen-core",
+  "crates/typegen-key-set-special",
+  "crates/module-resolver-core",
+  "crates/module-resolver-memory",
+  "crates/module-resolver-noop",
+  "crates/module-resolver-file",
+  "crates/module-resolver-virtual",
+  "crates/module-resolver-http",
+  "crates/module-resolver-git",
+  "crates/typegen-import",
+  "crates/typegen-backend-json-schema",
+  "crates/typecheck-core",
+  "crates/typecheck-infer",
+  "crates/typecheck-keys",
+  "crates/typecheck-import",
+  "crates/typecheck-schema-json",
+  "crates/frontend",
+  "crates/vm-host-canonical",
+  "crates/compiler-common",
+  "crates/compiler-canonical",
+  "crates/compiler-pass-parse",
+  "crates/compiler-pass-extract",
+  "crates/compiler-pass-resolve",
+  "crates/compiler-pass-typecheck",
+  "crates/compiler-pass-generate",
+  "crates/compiler",
+  "crates/compiler-backend-js",
+  "crates/compiler-tests",
+  "crates/bench",
+  "crates/cli",
+  "crates/cli-plugin",
+  "crates/experiment-host-sugar",
+  "crates/meta",
+  "crates/store",
+  "crates/codebase",
+  "crates/integration-tests",
+  "crates/vm-type",
+  "crates/vm-config",
+  "crates/vm-server",
+  "crates/lexer",
+  "crates/lexer-canonical",
+  "crates/lexer-common",
+  "crates/parser",
+  "crates/parser-canonical",
+  "crates/parser-common",
+  "crates/lib-websocket",
+  "crates/lib-compress",
+  "crates/lib-compress-gzip",
+  "crates/lib-archive",
+  "crates/lib-archive-tar",
+  "crates/lib-otlp",
+  "crates/lib-otlp-std",
+  "crates/lib-serialize",
+  "crates/lib-json",
+  "crates/lib-toml",
+  "crates/lib-yaml",
+  "crates/handl-reference-gen",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2024"
+
+[workspace.dependencies]
+handl-dialect = { path = "crates/dialect" }
+handl-dialect-canonical = { path = "crates/dialect-canonical" }
+handl-ast = { path = "crates/ast" }
+handl-ast-canonical = { path = "crates/ast-canonical" }
+handl-ast-common = { path = "crates/ast-common" }
+handl-vm-values-json = { path = "crates/vm-values-json" }
+handl-lib-utils = { path = "crates/lib-utils" }
+handl-lib-utils-bytes = { path = "crates/lib-utils/bytes" }
+handl-lib-unicode = { path = "crates/lib-unicode" }
+handl-lib-ip = { path = "crates/lib-ip" }
+handl-lib-collections = { path = "crates/lib-collections" }
+handl-lib-datetime = { path = "crates/lib-datetime" }
+handl-lib-intl = { path = "crates/lib-intl" }
+ecma402-traits = { package = "crate-ecma402-traits", path = "crates/crate-ecma402-traits" }
+ecma402-icu4x = { package = "crate-ecma402-icu4x", path = "crates/crate-ecma402-icu4x" }
+icu4x-extra = { package = "crate-icu4x-extra", path = "crates/crate-icu4x-extra" }
+handl-lib-crypto = { path = "crates/lib-crypto" }
+handl-lib-rand = { path = "crates/lib-rand" }
+handl-lib-test = { path = "crates/lib-test" }
+handl-lib-kv = { path = "crates/lib-kv" }
+handl-lib-kv-hashmap = { path = "crates/lib-kv-hashmap" }
+handl-lib-os = { path = "crates/lib-os" }
+handl-lib-os-std = { path = "crates/lib-os-std" }
+handl-lib-http-client = { path = "crates/lib-http-client" }
+handl-lib-http-client-std = { path = "crates/lib-http-client-std" }
+handl-lib-http-server = { path = "crates/lib-http-server" }
+handl-lib-http-server-std = { path = "crates/lib-http-server-std" }
+handl-lib-otlp = { path = "crates/lib-otlp" }
+handl-lib-otlp-std = { path = "crates/lib-otlp-std" }
+handl-lib-compress = { path = "crates/lib-compress" }
+handl-lib-compress-gzip = { path = "crates/lib-compress-gzip" }
+handl-lib-archive = { path = "crates/lib-archive" }
+handl-lib-archive-tar = { path = "crates/lib-archive-tar" }
+handl-vm = { path = "crates/vm" }
+handl-vm-common = { path = "crates/vm-common" }
+handl-vm-backend-rust-interpreter = { path = "crates/vm-backend-rust-interpreter" }
+handl-frontend-json = { path = "crates/frontend-json" }
+handl-frontend-yaml = { path = "crates/frontend-yaml" }
+handl-frontend-toml = { path = "crates/frontend-toml" }
+handl-source = { path = "crates/source" }
+handl-fields = { path = "crates/fields" }
+handl-cli = { path = "crates/cli" }
+handl-cli-plugin = { path = "crates/cli-plugin" }
+handl-frontend = { path = "crates/frontend" }
+handl-vm-host-canonical = { path = "crates/vm-host-canonical" }
+handl-compiler-common = { path = "crates/compiler-common" }
+handl-compiler-canonical = { path = "crates/compiler-canonical" }
+handl-compiler-backend-js = { path = "crates/compiler-backend-js" }
+handl-compiler-pass-parse = { path = "crates/compiler-pass-parse" }
+handl-compiler-pass-extract = { path = "crates/compiler-pass-extract" }
+handl-compiler-pass-resolve = { path = "crates/compiler-pass-resolve" }
+handl-compiler-pass-typecheck = { path = "crates/compiler-pass-typecheck" }
+handl-compiler-pass-generate = { path = "crates/compiler-pass-generate" }
+handl-compiler = { path = "crates/compiler" }
+handl-compiler-tests = { path = "crates/compiler-tests" }
+handl-typegen-core = { path = "crates/typegen-core" }
+handl-typegen-key-set-special = { path = "crates/typegen-key-set-special" }
+handl-module-resolver-core = { path = "crates/module-resolver-core" }
+handl-module-resolver-memory = { path = "crates/module-resolver-memory" }
+handl-module-resolver-noop = { path = "crates/module-resolver-noop" }
+handl-module-resolver-file = { path = "crates/module-resolver-file" }
+handl-module-resolver-virtual = { path = "crates/module-resolver-virtual" }
+handl-module-resolver-http = { path = "crates/module-resolver-http" }
+handl-module-resolver-git = { path = "crates/module-resolver-git" }
+handl-typegen-import = { path = "crates/typegen-import" }
+handl-typegen-backend-json-schema = { path = "crates/typegen-backend-json-schema" }
+handl-typecheck-core = { path = "crates/typecheck-core" }
+handl-typecheck-infer = { path = "crates/typecheck-infer" }
+handl-typecheck-keys = { path = "crates/typecheck-keys" }
+handl-typecheck-import = { path = "crates/typecheck-import" }
+handl-typecheck-schema-json = { path = "crates/typecheck-schema-json" }
+handl-meta = { path = "crates/meta" }
+handl-store = { path = "crates/store" }
+handl-codebase = { path = "crates/codebase" }
+handl-integration-tests = { path = "crates/integration-tests" }
+handl-vm-type = { path = "crates/vm-type" }
+handl-vm-config = { path = "crates/vm-config" }
+handl-vm-server = { path = "crates/vm-server" }
+handl-lexer = { path = "crates/lexer" }
+handl-lexer-canonical = { path = "crates/lexer-canonical" }
+handl-lexer-common = { path = "crates/lexer-common" }
+handl-parser = { path = "crates/parser" }
+handl-parser-canonical = { path = "crates/parser-canonical" }
+handl-parser-common = { path = "crates/parser-common" }
+rand = "0.9"
+hex = "0.4"
+md-5 = "0.10"
+base64 = "0.22"
+indexmap = "2"
+rayon = "1"
+sha2 = "0.10"
+thiserror = "2"
+flate2 = "1"
+tar = "0.4"
+chrono = { version = "0.4", features = ["serde"] }
+pass-lang = "1"
+driver-lang = "1"
+
+[features]
+default = [
+  "vm",
+  "host",
+  "json",
+  "yaml",
+  "toml",
+  "fields",
+  "dialect-canonical",
+  "compiler",
+  "typecheck",
+  "typegen",
+  "resolver-core",
+  "resolver-memory",
+  "resolver-noop",
+  "resolver-file",
+  "resolver-virtual",
+  "lib-utils",
+  "lib-datetime",
+  "lib-intl",
+  "lib-crypto",
+  "lib-rand",
+  "lib-test",
+  "lib-kv",
+  "lib-kv-hashmap",
+  "lib-os",
+  "lib-os-std",
+  "lib-http-client",
+  "lib-http-client-std",
+  "lib-http-server",
+  "lib-http-server-std",
+  "lib-otlp",
+  "lib-otlp-std",
+  "lib-unicode",
+  "lib-ip",
+  "store",
+  "codebase",
+]
+
+vm = ["handl-vm", "handl-vm-backend-rust-interpreter"]
+host = ["dep:handl-vm-host-canonical", "vm"]
+json = ["dep:handl-frontend-json"]
+yaml = ["dep:handl-frontend-yaml"]
+toml = ["dep:handl-frontend-toml"]
+fields = ["dep:handl-fields"]
+dialect-canonical = ["dep:handl-dialect-canonical"]
+compiler = [
+  "dep:handl-compiler",
+  "dep:handl-compiler-canonical",
+  "vm",
+  "host",
+  "fields",
+  "dialect-canonical",
+  "typecheck",
+  "typegen",
+  "resolver-core",
+  "resolver-memory",
+  "resolver-file",
+]
+typecheck = ["dep:handl-typecheck-core", "dep:handl-typecheck-schema-json"]
+typegen = ["dep:handl-typegen-core", "dep:handl-typegen-backend-json-schema"]
+resolver-core = ["dep:handl-module-resolver-core"]
+resolver-memory = ["dep:handl-module-resolver-memory", "resolver-core"]
+resolver-noop = ["dep:handl-module-resolver-noop", "resolver-core"]
+resolver-file = ["dep:handl-module-resolver-file", "resolver-core"]
+resolver-virtual = ["dep:handl-module-resolver-virtual", "resolver-core"]
+lib-utils = ["dep:handl-lib-utils", "vm", "dep:handl-vm-common"]
+lib-datetime = ["dep:handl-lib-datetime", "vm", "dep:handl-vm-common"]
+lib-intl = ["dep:handl-lib-intl", "vm", "dep:handl-vm-common"]
+lib-crypto = ["dep:handl-lib-crypto", "vm", "dep:handl-vm-common"]
+lib-rand = ["dep:handl-lib-rand", "vm", "dep:handl-vm-common"]
+lib-test = ["dep:handl-lib-test", "vm", "dep:handl-vm-common"]
+lib-kv = ["dep:handl-lib-kv", "vm", "dep:handl-vm-common"]
+lib-kv-hashmap = ["dep:handl-lib-kv-hashmap", "lib-kv"]
+lib-os = ["dep:handl-lib-os", "vm", "dep:handl-vm-common"]
+lib-os-std = ["dep:handl-lib-os-std", "lib-os"]
+lib-http-client = ["dep:handl-lib-http-client", "vm", "dep:handl-vm-common"]
+lib-http-client-std = ["dep:handl-lib-http-client-std", "lib-http-client"]
+lib-http-server = ["dep:handl-lib-http-server", "vm", "dep:handl-vm-common"]
+lib-http-server-std = ["dep:handl-lib-http-server-std", "lib-http-server"]
+lib-otlp = ["dep:handl-lib-otlp", "vm", "dep:handl-vm-common"]
+lib-otlp-std = ["dep:handl-lib-otlp-std", "lib-otlp"]
+lib-unicode = ["dep:handl-lib-unicode", "vm", "dep:handl-vm-common"]
+lib-ip = ["dep:handl-lib-ip"]
+store = ["dep:handl-store"]
+codebase = ["dep:handl-codebase", "store"]
+
+[dependencies]
+handl-ast.workspace = true
+handl-ast-canonical.workspace = true
+handl-dialect.workspace = true
+handl-vm-values-json.workspace = true
+handl-source.workspace = true
+
+handl-dialect-canonical = { workspace = true, optional = true }
+handl-vm-common = { workspace = true, optional = true }
+handl-vm = { workspace = true, optional = true }
+handl-vm-backend-rust-interpreter = { workspace = true, optional = true }
+handl-vm-host-canonical = { workspace = true, optional = true }
+handl-frontend-json = { workspace = true, optional = true }
+handl-frontend-yaml = { workspace = true, optional = true }
+handl-frontend-toml = { workspace = true, optional = true }
+handl-fields = { workspace = true, optional = true }
+handl-compiler = { workspace = true, optional = true }
+handl-compiler-canonical = { workspace = true, optional = true }
+handl-module-resolver-core = { workspace = true, optional = true }
+handl-module-resolver-memory = { workspace = true, optional = true }
+handl-module-resolver-noop = { workspace = true, optional = true }
+handl-module-resolver-file = { workspace = true, optional = true }
+handl-module-resolver-virtual = { workspace = true, optional = true }
+handl-typecheck-core = { workspace = true, optional = true }
+handl-typecheck-schema-json = { workspace = true, optional = true }
+handl-typegen-core = { workspace = true, optional = true }
+handl-typegen-backend-json-schema = { workspace = true, optional = true }
+handl-lib-utils = { workspace = true, optional = true }
+handl-lib-datetime = { workspace = true, optional = true }
+handl-lib-intl = { workspace = true, optional = true }
+handl-lib-crypto = { workspace = true, optional = true }
+handl-lib-rand = { workspace = true, optional = true }
+handl-lib-test = { workspace = true, optional = true }
+handl-lib-kv = { workspace = true, optional = true }
+handl-lib-kv-hashmap = { workspace = true, optional = true }
+handl-lib-os = { workspace = true, optional = true }
+handl-lib-os-std = { workspace = true, optional = true }
+handl-lib-http-client = { workspace = true, optional = true }
+handl-lib-http-client-std = { workspace = true, optional = true }
+handl-lib-http-server = { workspace = true, optional = true }
+handl-lib-http-server-std = { workspace = true, optional = true }
+handl-lib-otlp = { workspace = true, optional = true }
+handl-lib-otlp-std = { workspace = true, optional = true }
+handl-lib-unicode = { workspace = true, optional = true }
+handl-lib-ip = { workspace = true, optional = true }
+handl-store = { workspace = true, optional = true }
+handl-codebase = { workspace = true, optional = true }
+handl-vm-config = { workspace = true, optional = true }
+
+[dev-dependencies]
+serde_json = "1"
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 1
+
+[[example]]
+name = "basic"
+path = "examples/rust/basic/main.rs"
+
+[[example]]
+name = "functions"
+path = "examples/rust/functions/main.rs"
+
+[[example]]
+name = "fields"
+path = "examples/rust/fields/main.rs"
+
+[[example]]
+name = "handlers"
+path = "examples/rust/handlers/main.rs"
+
+[[example]]
+name = "resumable"
+path = "examples/rust/resumable/main.rs"
+
+[[example]]
+name = "content-addressing"
+path = "examples/rust/content-addressing/main.rs"
+
+[[example]]
+name = "multi-handler"
+path = "examples/rust/multi-handler/main.rs"
+
+[[example]]
+name = "generics"
+path = "examples/rust/generics/main.rs"

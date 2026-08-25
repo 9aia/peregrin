@@ -1,5 +1,5 @@
 import { Context, Effect, Layer } from "effect";
-import { Event, Node, EventStore, Observer } from "ac-core";
+import { Event, Node, EventStore, Observer } from "handl-core";
 
 function matchPattern(pattern: string, eventType: string): Array<Array<string>> | null {
   const p = pattern.split(".");
@@ -65,7 +65,7 @@ export interface EventBus {
   readonly inject: (nodes: ReadonlyArray<Record<string, unknown>>) => void;
 }
 
-export const EventBus = Context.GenericTag<EventBus>("ac/EventBus");
+export const EventBus = Context.GenericTag<EventBus>("handl/EventBus");
 
 class EventBusLive implements EventBus {
   private nodes = new Map<string, Node>();

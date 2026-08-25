@@ -1,0 +1,79 @@
+reference:
+  - title: Math
+    slug: math
+    description: Math utility functions.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: math
+  - title: String
+    slug: str
+    description: String utility functions.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: str
+  - title: Array
+    slug: array
+    description: Array utility functions.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: array
+  - title: Object
+    slug: obj
+    description: Object utility functions.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: obj
+  - title: Type
+    slug: type
+    description: Type coercion and predicate functions.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: type
+  - title: Bytes
+    slug: bytes
+    description: Byte array utility functions.
+    include:
+      - crate: handl-lib-utils-bytes
+        reexports_from: bytes
+  - title: Boolean
+    slug: bool
+    description: Boolean logic functions.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: bool
+  - title: Compare
+    slug: cmp
+    description: Comparison and ordering functions.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: cmp
+  - title: Function
+    slug: fn
+    description: Function combinator utilities.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: fn
+  - title: Mood
+    slug: mood
+    description: Mood value functions.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: mood
+  - title: Option
+    slug: option
+    description: Option value constructors and predicates.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: option
+  - title: Result
+    slug: result
+    description: Result value constructors and predicates.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: result
+  - title: Set
+    slug: set
+    description: Set-theoretic operations on arrays.
+    include:
+      - crate: handl-lib-utils
+        reexports_from: set

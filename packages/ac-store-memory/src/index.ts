@@ -1,4 +1,4 @@
-import { Event, EventStore, StateStore } from "ac-core";
+import { Event, EventStore, StateStore } from "handl-core";
 import { Layer } from "effect";
 
 export class MemoryStore implements EventStore {

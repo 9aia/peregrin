@@ -1,4 +1,4 @@
-# ADR 0006: First-Class Testing Standard Library for AC
+# ADR 0006: First-Class Testing Standard Library for handl
 
 ## Status
 
@@ -6,27 +6,27 @@ Proposed
 
 ## Context
 
-AC has a growing set of runtime standard-library modules under `packages/ac-lang/crates/lib-*` (`lib-utils`, `lib-rand`, `lib-collections`, etc.). These are exposed as `Module` implementations that `ModuleHost` dispatches by a single dotted prefix such as `math.abs`, `rand.int`, or `array.map`. The AC standard library has no testing surface yet, which is a major adoption barrier for a functional language where property-based testing should be first-class.
+handl has a growing set of runtime standard-library modules under `packages/handl/crates/lib-*` (`lib-utils`, `lib-rand`, `lib-collections`, etc.). These are exposed as `Module` implementations that `ModuleHost` dispatches by a single dotted prefix such as `math.abs`, `rand.int`, or `array.map`. The handl standard library has no testing surface yet, which is a major adoption barrier for a functional language where property-based testing should be first-class.
 
 We need a testing system that is:
 
 - discoverable as ordinary language modules;
 - deterministic and parallel by default;
 - able to cover unit tests, assertions, property tests, benchmarks, fuzzing, and snapshots;
-- built on the existing `ac-lib-rand` seeded RNG so randomness is reproducible.
+- built on the existing `handl-lib-rand` seeded RNG so randomness is reproducible.
 
 ## Decision
 
-Introduce `packages/ac-lang/crates/lib-test`, a new runtime module crate that provides the following AC modules:
+Introduce `packages/handl/crates/lib-test`, a new runtime module crate that provides the following handl modules:
 
-| AC module   | Primary responsibility                                                                                 |
-| ----------- | ------------------------------------------------------------------------------------------------------ |
-| `test`      | Test suite definition, registration, parallel execution, fixtures, and report emission                 |
-| `assert`    | Assertion primitives (`equal`, `not_equal`, `true`, `false`, `match`, `contains`)                      |
-| `property`  | Property-based testing with generators, `for_all`, shrinkable counterexamples, and deterministic seeds |
-| `benchmark` | Wall-clock timing of functions across iterations with simple statistics                                |
-| `fuzz`      | Structure-agnostic random-input stress testing with seed control                                       |
-| `snapshot`  | Snapshot record, match, and update for language values                                                 |
+| handl module | Primary responsibility                                                                                 |
+| ------------ | ------------------------------------------------------------------------------------------------------ |
+| `test`       | Test suite definition, registration, parallel execution, fixtures, and report emission                 |
+| `assert`     | Assertion primitives (`equal`, `not_equal`, `true`, `false`, `match`, `contains`)                      |
+| `property`   | Property-based testing with generators, `for_all`, shrinkable counterexamples, and deterministic seeds |
+| `benchmark`  | Wall-clock timing of functions across iterations with simple statistics                                |
+| `fuzz`       | Structure-agnostic random-input stress testing with seed control                                       |
+| `snapshot`   | Snapshot record, match, and update for language values                                                 |
 
 ### Module routing
 
@@ -34,7 +34,7 @@ Introduce `packages/ac-lang/crates/lib-test`, a new runtime module crate that pr
 
 ### Crate design
 
-- `ac-lib-test` follows the `ac-lib-utils`/`ac-lib-rand` pattern:
+- `handl-lib-test` follows the `handl-lib-utils`/`handl-lib-rand` pattern:
   - one Rust crate under `crates/lib-test`;
   - each logical module lives in its own file with a `Module` struct;
   - shared helpers live in `shared.rs`;
@@ -48,7 +48,7 @@ Introduce `packages/ac-lang/crates/lib-test`, a new runtime module crate that pr
 
 - Every function that uses randomness accepts an optional integer `seed` argument.
 - If `seed` is omitted, the current system time is used; if provided, the same seed always yields the same sequence.
-- This reuses the `rand` / `rand_chacha` ecosystem already depended on by `ac-lib-rand`.
+- This reuses the `rand` / `rand_chacha` ecosystem already depended on by `handl-lib-rand`.
 
 ### Error model
 
@@ -59,7 +59,7 @@ Introduce `packages/ac-lang/crates/lib-test`, a new runtime module crate that pr
 
 ### Positive
 
-- AC gains a first-class testing experience that mirrors the rest of the standard library.
+- handl gains a first-class testing experience that mirrors the rest of the standard library.
 - Test runs can be parallel and deterministic from a single seed.
 - Each testing concern is isolated in its own module, matching the existing `lib-*` decomposition.
 - The design is forward-compatible with `std.*` namespacing when a router module is introduced.
@@ -72,7 +72,7 @@ Introduce `packages/ac-lang/crates/lib-test`, a new runtime module crate that pr
 
 ## References
 
-- `packages/ac-lang/crates/lib-utils`
-- `packages/ac-lang/crates/lib-rand`
-- `packages/ac-lang/crates/runtime-core/src/module/module.rs`
-- `packages/ac-lang/crates/runtime-core/src/host/host.rs`
+- `packages/handl/crates/lib-utils`
+- `packages/handl/crates/lib-rand`
+- `packages/handl/crates/runtime-core/src/module/module.rs`
+- `packages/handl/crates/runtime-core/src/host/host.rs`

@@ -1,0 +1,10 @@
+$:
+  common:
+    type: object
+    expr: "import(concat('./dynamic_import_', 'target.yml'))"
+  host:
+    type: string
+    expr: "common.host"
+  port:
+    type: number
+    expr: "common.port"

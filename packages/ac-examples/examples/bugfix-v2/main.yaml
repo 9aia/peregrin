@@ -3,8 +3,8 @@
 # Compare with examples/bugfix/ (the original) to see what the new features
 # eliminate:
 #
-#   /tmp/ac-bugfix-env sidecar files     → ${state.worktree_path}, ${state.branch}
-#   /tmp/ac-bugfix-attempt counter       → ${node.fires}
+#   /tmp/handl-bugfix-env sidecar files     → ${state.worktree_path}, ${state.branch}
+#   /tmp/handl-bugfix-attempt counter       → ${node.fires}
 #   envsubst + devin -p boilerplate      → driver: agent with prompt_file
 #   thin orchestrator echo bridge nodes  → forward:
 #
@@ -16,7 +16,7 @@
 #
 # Usage:
 #   BUG_ID=123 BUG_DESCRIPTION="Login crashes on empty password" \
-#   ac run examples/bugfix-v2/main.yaml
+#   handl run examples/bugfix-v2/main.yaml
 
 name: bugfix-v2
 

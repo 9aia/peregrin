@@ -1,4 +1,4 @@
-import { Event, EventStore, StateStore } from "ac-core";
+import { Event, EventStore, StateStore } from "handl-core";
 import { Data, Effect, Layer } from "effect";
 import fs from "node:fs";
 import path from "node:path";

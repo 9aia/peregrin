@@ -1,6 +1,6 @@
 import { Context, Either, Effect, Layer } from "effect";
-import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
-import { resolveValueForNode } from "ac-template-engine";
+import { Driver, DriverError, Event, type ExecutionContext, type Node } from "handl-core";
+import { resolveValueForNode } from "handl-template-engine";
 
 const defaultEndpoint = "http://127.0.0.1:4000/v1/chat/completions";
 
@@ -17,7 +17,7 @@ export interface LiteLLM {
   readonly complete: (request: LiteLLMRequest) => Effect.Effect<string, DriverError>;
 }
 
-export const LiteLLM = Context.GenericTag<LiteLLM>("ac/LiteLLM");
+export const LiteLLM = Context.GenericTag<LiteLLM>("handl/LiteLLM");
 
 interface Usage {
   readonly prompt_tokens: number;

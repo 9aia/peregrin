@@ -1,0 +1,6 @@
+{
+  is_number: mood.int(42, "type.number"),
+  projection: mood.ind(42, "type.number"),
+  complement: mood.neg(42, "type.string"),
+  with_default: mood.cnd(null, "type.number", 0)
+}

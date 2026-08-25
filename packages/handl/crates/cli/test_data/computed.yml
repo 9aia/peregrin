@@ -1,0 +1,29 @@
+$:
+  name:
+    type: string
+  version:
+    type: number
+  doubled:
+    type: number
+    expr: "mul(version, 2)"
+  quadrupled:
+    type: number
+    expr: "mul(doubled, 2)"
+  label:
+    type: string
+    expr: 'concat(name, "-v2")'
+  functions:
+    type: object
+functions:
+  mul:
+    params:
+      x: { type: number }
+      y: { type: number }
+    return: { type: number }
+  concat:
+    params:
+      x: { type: string }
+      y: { type: string }
+    return: { type: string }
+name: alice
+version: 3

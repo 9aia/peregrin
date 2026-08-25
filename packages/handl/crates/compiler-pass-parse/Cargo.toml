@@ -1,0 +1,16 @@
+[package]
+name = "handl-compiler-pass-parse"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+handl-vm-values-json.workspace = true
+handl-compiler.workspace = true
+handl-frontend.workspace = true
+
+[dev-dependencies]
+handl-dialect-canonical.workspace = true
+handl-module-resolver-virtual.workspace = true
+handl-typecheck-schema-json.workspace = true
+handl-typegen-key-set-special.workspace = true
+handl-typegen-import.workspace = true

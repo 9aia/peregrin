@@ -1,6 +1,6 @@
 import { Context, Either, Effect, Layer } from "effect";
-import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
-import { resolveValueForNode } from "ac-template-engine";
+import { Driver, DriverError, Event, type ExecutionContext, type Node } from "handl-core";
+import { resolveValueForNode } from "handl-template-engine";
 import { send as ahhaSend, registerService, type ParsedUrl, type Params } from "@toanalien/ahha";
 import nodemailer from "nodemailer";
 
@@ -14,7 +14,7 @@ export interface Apprise {
   readonly send: (message: AppriseMessage) => Effect.Effect<void, DriverError>;
 }
 
-export const Apprise = Context.GenericTag<Apprise>("ac/Apprise");
+export const Apprise = Context.GenericTag<Apprise>("handl/Apprise");
 
 interface NotificationResult {
   readonly success: boolean;

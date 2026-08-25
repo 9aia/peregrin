@@ -13,7 +13,7 @@ workflows. Each file is a domain-namespaced artifact that the loader can
 | `display/`  | `display.*`  | User-facing reports and abort controls.            |
 | `git/`      | `git.*`      | Git worktrees, commits, and branches.              |
 | `github/`   | `github.*`   | GitHub PRs, reviews, and merges.                   |
-| `lang/`     | `lang.*`     | AC language reusable field patterns.               |
+| `lang/`     | `lang.*`     | handl language reusable field patterns.            |
 | `meta/`     | `meta.*`     | Meta-operations and workspace introspection.       |
 | `peregrin/` | `peregrin.*` | Peregrin-project-specific orchestrations.          |
 | `test/`     | `test.*`     | Test execution and reporting.                      |
@@ -31,7 +31,7 @@ purpose and may be copied into other projects.
 - `.prompt.yml` — domain-local prompt text, included with
   `params.prompt: ${include(...)}`.
 - `.event.json` — a reusable payload schema for an event type.
-- `.field.yml` — a reusable AC language field pattern (see `lang/`).
+- `.field.yml` — a reusable handl language field pattern (see `lang/`).
 - `.yaml` with a top-level `name:` — a runnable workflow.
 
 ## Use a library node in your workflow
@@ -88,7 +88,7 @@ dependency visible.
 3. Add an `annotations` block with at least `title`, `description`, and `tags`.
 4. Set `since: "0.1.0"` for the initial release.
 5. Set `timeout`, `emit` defaults, and `max_fires` for resilience.
-6. Run `ac validate` on a workflow that uses the node.
+6. Run `handl validate` on a workflow that uses the node.
 
 ## Annotations
 
@@ -126,7 +126,7 @@ contracts are complete.
 
 ## Validation
 
-Run `ac validate <workflow>` on every workflow that uses a library node. Add
+Run `handl validate <workflow>` on every workflow that uses a library node. Add
 or update a node in `packages/tests` or `libraries/tests` if the node is
 widely used.
 
@@ -134,6 +134,6 @@ widely used.
 
 - `project/adrs/0029-stdlib-design.md` — design rationale and conventions.
 - `project/adrs/0009-annotations.md` — the `annotations` field.
-- `packages/ac-file-router/src/index.ts` — file discovery suffixes.
-- `packages/ac-loader-yaml/src/loader.ts` — `include`, `snippet`, and merge
+- `packages/handl-file-router/src/index.ts` — file discovery suffixes.
+- `packages/handl-loader-yaml/src/loader.ts` — `include`, `snippet`, and merge
   behavior.

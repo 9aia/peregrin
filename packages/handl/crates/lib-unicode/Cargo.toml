@@ -1,0 +1,13 @@
+[package]
+name = "handl-lib-unicode"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+unicode-ident = "1"
+handl-vm.workspace = true
+handl-vm-common.workspace = true
+handl-vm-values-json.workspace = true
+serde_json = "1"
+
+[dev-dependencies]

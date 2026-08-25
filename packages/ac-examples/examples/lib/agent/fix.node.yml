@@ -15,7 +15,7 @@
 #   timeout     — seconds (default: 600)
 #
 # ${node.fires} is available in the prompt to show the attempt number,
-# replacing the /tmp/ac-*-attempt counter hack.
+# replacing the /tmp/handl-*-attempt counter hack.
 
 id: agent.fix
 driver: agent

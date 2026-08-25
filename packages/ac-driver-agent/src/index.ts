@@ -2,9 +2,9 @@ import cp from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { Effect, Layer } from "effect";
-import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
-import { resolveValueForNode } from "ac-template-engine";
-import { LiteLLM, Live as LiteLLMLive } from "ac-plugin-litellm";
+import { Driver, DriverError, Event, type ExecutionContext, type Node } from "handl-core";
+import { resolveValueForNode } from "handl-template-engine";
+import { LiteLLM, Live as LiteLLMLive } from "handl-plugin-litellm";
 
 export const AgentDriver: Driver = {
   name: "agent",

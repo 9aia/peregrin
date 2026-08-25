@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vite-plus/test";
 import { NoopDriver, NoopDriverLive } from "../src/index.ts";
 
-describe("ac-driver-noop", () => {
+describe("handl-driver-noop", () => {
   it("exports a driver named noop", () => {
     expect(new NoopDriver().name).toBe("noop");
   });

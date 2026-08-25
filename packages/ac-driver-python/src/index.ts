@@ -1,8 +1,8 @@
 import cp from "node:child_process";
 import path from "node:path";
 import { Effect, Layer } from "effect";
-import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
-import { resolveValueForNode } from "ac-template-engine";
+import { Driver, DriverError, Event, type ExecutionContext, type Node } from "handl-core";
+import { resolveValueForNode } from "handl-template-engine";
 
 function findPythonImport(ctx: ExecutionContext, alias: string): string | undefined {
   for (const imp of ctx.pythonImports ?? []) {

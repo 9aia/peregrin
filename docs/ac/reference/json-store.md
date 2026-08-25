@@ -1,19 +1,19 @@
 # JSON store
 
-`JsonStore` from `ac-store-json` is an append-only `EventStore` that persists every event as one line of JSON.
+`JsonStore` from `handl-store-json` is an append-only `EventStore` that persists every event as one line of JSON.
 
 ## Programmatic usage
 
 ```ts
 import { Effect } from "effect";
-import { Runner } from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
-import { Live as JsonStoreLive } from "ac-store-json";
+import { Runner } from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
+import { Live as JsonStoreLive } from "handl-store-json";
 
 const program = Effect.gen(function* () {
   const runner = yield* Runner;
   return yield* runner.run(workflow);
-}).pipe(Effect.provide(DefaultsLive), Effect.provide(JsonStoreLive(".ac/events.jsonl")));
+}).pipe(Effect.provide(DefaultsLive), Effect.provide(JsonStoreLive(".handl/events.jsonl")));
 
 Effect.runPromise(program);
 ```

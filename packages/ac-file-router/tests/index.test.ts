@@ -5,9 +5,9 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-describe("ac-file-router", () => {
+describe("handl-file-router", () => {
   it("discovers .node.yml files", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-file-router-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-file-router-"));
     try {
       fs.writeFileSync(path.join(tmp, "demo.node.yml"), "");
       const result = await Effect.runPromise(discover(tmp));
@@ -19,7 +19,7 @@ describe("ac-file-router", () => {
   });
 
   it("discovers all recognized file kinds", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-file-router-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-file-router-"));
     try {
       fs.writeFileSync(path.join(tmp, "alpha.node.yml"), "");
       fs.writeFileSync(path.join(tmp, "beta.snippet.yml"), "");
@@ -42,7 +42,7 @@ describe("ac-file-router", () => {
   });
 
   it("discovers nested files", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-file-router-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-file-router-"));
     try {
       fs.mkdirSync(path.join(tmp, "sub"));
       fs.writeFileSync(path.join(tmp, "sub", "nested.node.yml"), "");
@@ -55,25 +55,25 @@ describe("ac-file-router", () => {
     }
   });
 
-  it("prioritizes the .ac directory over the root", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-file-router-"));
+  it("prioritizes the .handl directory over the root", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-file-router-"));
     try {
-      fs.mkdirSync(path.join(tmp, ".ac"));
+      fs.mkdirSync(path.join(tmp, ".handl"));
       fs.writeFileSync(path.join(tmp, "ghost.node.yml"), "id: root\n");
-      fs.writeFileSync(path.join(tmp, ".ac", "ghost.node.yml"), "id: ac\n");
+      fs.writeFileSync(path.join(tmp, ".handl", "ghost.node.yml"), "id: handl\n");
       const result = await Effect.runPromise(discover(tmp));
       expect(result.nodes).toHaveLength(1);
-      expect(result.nodes[0].path).toContain(".ac");
+      expect(result.nodes[0].path).toContain(".handl");
     } finally {
       fs.rmSync(tmp, { recursive: true, force: true });
     }
   });
 
-  it("skips hidden directories except .ac", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-file-router-"));
+  it("skips hidden directories except .handl", async () => {
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-file-router-"));
     try {
-      fs.mkdirSync(path.join(tmp, ".ac"));
-      fs.writeFileSync(path.join(tmp, ".ac", "visible.node.yml"), "");
+      fs.mkdirSync(path.join(tmp, ".handl"));
+      fs.writeFileSync(path.join(tmp, ".handl", "visible.node.yml"), "");
       fs.mkdirSync(path.join(tmp, ".git"));
       fs.writeFileSync(path.join(tmp, ".git", "ignored.node.yml"), "");
       const result = await Effect.runPromise(discover(tmp));
@@ -85,7 +85,7 @@ describe("ac-file-router", () => {
   });
 
   it("sorts config files", async () => {
-    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "ac-file-router-"));
+    const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "handl-file-router-"));
     try {
       fs.writeFileSync(path.join(tmp, "z.config.yml"), "");
       fs.writeFileSync(path.join(tmp, "a.config.yml"), "");

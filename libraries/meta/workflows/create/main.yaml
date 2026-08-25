@@ -4,7 +4,7 @@
 #   SPEC_PATH=/path/to/spec.md \
 #   WORKFLOW_PATH=campaigns/my-campaign/main.yaml \
 #   WORKFLOW_NAME=my-campaign \
-#   ac run libraries/meta/workflows/create/main.yaml
+#   handl run libraries/meta/workflows/create/main.yaml
 
 name: meta-create
 

@@ -102,6 +102,6 @@ the host:
 - Game ADR-0002: Psychology — the mind
 - Game ADR-0003: Economy — the material
 - Game ADR-0006: Memory — the continuity
-- `Host` trait: `packages/ac-lang/crates/vm/src/host.rs`
-- `Continuation`: `packages/ac-lang/crates/vm/src/continuation.rs`
-- `Expr`: `packages/ac-lang/crates/ast/` (ac-ast crate)
+- `Host` trait: `packages/handl/crates/vm/src/host.rs`
+- `Continuation`: `packages/handl/crates/vm/src/continuation.rs`
+- `Expr`: `packages/handl/crates/ast/` (handl-ast crate)

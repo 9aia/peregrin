@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/nodes/reproduce.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/nodes/reproduce.schema.json
 # reproduce: install deps and run baseline checks in the worktree.
 # Reusable by any workflow that needs a baseline before making changes.
 #
@@ -13,7 +13,7 @@ on: [worktree.ready]
 emits: [reproduce.done, bugfix.aborted]
 params:
   cmd: |
-    source /tmp/ac-bugfix-env
+    source /tmp/handl-bugfix-env
     cd "$WORKTREE_PATH"
     bun install
     if [ -n "$BUG_TEST_PATH" ]; then

@@ -72,7 +72,7 @@ const collect = (
     const dirs: Array<string> = [];
     for (const entry of sorted) {
       if (entry.isDirectory()) {
-        if (entry.name === ".ac" && skipAc) continue;
+        if (entry.name === ".handl" && skipAc) continue;
         if (entry.name.startsWith(".")) continue;
         dirs.push(entry.name);
       } else if (entry.isFile()) {
@@ -89,7 +89,7 @@ const collect = (
 
 export const discover = (baseDir: string): Effect.Effect<DiscoveredFiles, DiscoverError, never> =>
   Effect.gen(function* () {
-    const acDir = path.join(baseDir, ".ac");
+    const acDir = path.join(baseDir, ".handl");
     const acExists = yield* isDirectory(acDir);
     const roots: Array<string> = [];
     if (acExists) roots.push(acDir);

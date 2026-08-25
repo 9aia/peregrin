@@ -10,7 +10,7 @@ Without memory, every interaction is isolated. The player can say
 something to an NPC, walk away, come back, and the NPC has no recollection.
 The world has no continuity. Past actions don't affect future interactions.
 
-The `Context` in AC-Lang provides per-evaluation variable scope, but it
+The `Context` in handl provides per-evaluation variable scope, but it
 does not persist across evaluations. Long-term memory must live in the
 host — the `NpcMind` (see Game ADR-0002). The question is what gets
 remembered, how it's stored, and how it's retrieved.
@@ -122,5 +122,5 @@ Memory is a weighted, tagged, time-indexed log inside each `NpcMind`:
 
 - Game ADR-0002: Psychology — the mind
 - Game ADR-0004: Society — the graph
-- `Context`: `packages/ac-lang/crates/vm/src/context.rs`
-- `Host` trait: `packages/ac-lang/crates/vm/src/host.rs`
+- `Context`: `packages/handl/crates/vm/src/context.rs`
+- `Host` trait: `packages/handl/crates/vm/src/host.rs`

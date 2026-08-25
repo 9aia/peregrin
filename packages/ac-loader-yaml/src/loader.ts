@@ -2,8 +2,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { parse } from "yaml";
 import { Data, Effect } from "effect";
-import { Workflow } from "ac-core";
-import { discover } from "ac-file-router";
+import { Workflow } from "handl-core";
+import { discover } from "handl-file-router";
 
 export class LoaderError extends Data.TaggedError("LoaderError")<{
   readonly reason: string;

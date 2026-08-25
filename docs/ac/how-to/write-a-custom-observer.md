@@ -1,11 +1,11 @@
 # Write a custom observer
 
-Implement the `Observer` interface from `ac-core` and provide it as an Effect `Layer`.
+Implement the `Observer` interface from `handl-core` and provide it as an Effect `Layer`.
 
 ## The `Observer` and `Span` interfaces
 
 ```ts
-import { Observer, Span, Event, Workflow, Node } from "ac-core";
+import { Observer, Span, Event, Workflow, Node } from "handl-core";
 
 const MyObserver: Observer = {
   onWorkflowStart(workflow: Workflow) {
@@ -41,9 +41,9 @@ const MyObserver: Observer = {
 
 ```ts
 import { Layer, Effect } from "effect";
-import { Observer } from "ac-core";
-import { Runner } from "ac-engine";
-import { DefaultsLive } from "ac-cli-defaults";
+import { Observer } from "handl-core";
+import { Runner } from "handl-engine";
+import { DefaultsLive } from "handl-cli-defaults";
 
 const MyObserverLive = Layer.succeed(Observer, MyObserver);
 

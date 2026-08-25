@@ -10,9 +10,9 @@ import {
   makePreexec,
   validateObject,
 } from "../src/index.ts";
-import { Event, EventSchema } from "ac-core";
+import { Event, EventSchema } from "handl-core";
 
-describe("ac-safety", () => {
+describe("handl-safety", () => {
   it("redacts secret strings from payloads", () => {
     const redacted = redactPayload({ key: "secret", text: "hello" }, { key: "secret" });
     expect(redacted).toEqual({ key: REDACTED, text: "hello" });

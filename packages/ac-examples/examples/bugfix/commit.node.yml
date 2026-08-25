@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/nodes/commit.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/nodes/commit.schema.json
 # commit: stage and commit changes with a conventional message.
 # Reusable by any workflow that needs to commit work.
 #
@@ -13,10 +13,10 @@ on: [verify.passed]
 emits: [commit.done, bugfix.aborted]
 params:
   cmd: |
-    source /tmp/ac-bugfix-env
+    source /tmp/handl-bugfix-env
     cd "$WORKTREE_PATH"
 
-    SUMMARY=$(cat /tmp/ac-bugfix-fix-summary.txt 2>/dev/null || echo "fix: $BUG_DESCRIPTION")
+    SUMMARY=$(cat /tmp/handl-bugfix-fix-summary.txt 2>/dev/null || echo "fix: $BUG_DESCRIPTION")
 
     git add -A
     git commit -m "fix: $BUG_DESCRIPTION

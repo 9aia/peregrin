@@ -1,0 +1,8 @@
+fn.tap(
+  (s) -> [
+    http_server.route(s, "GET", "/list", str.join(fs.list("crates/lib-http-server/examples/http_server/07-dir-list
+    http_server.start(s, "127.0.0.1:8087"),
+    http_server.join(s)
+  ],
+  http_server.new()
+)

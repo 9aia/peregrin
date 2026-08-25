@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=.ac/generated/schemas/nodes/fix.schema.json
+# yaml-language-server: $schema=.handl/generated/schemas/nodes/fix.schema.json
 # fix: spawn an agent to apply the fix.
 # Bugfix-specific — uses devin -p to edit files following ndocs-3 conventions.
 #
@@ -9,7 +9,7 @@
 #   BUG_DESCRIPTION — what the bug is
 #
 # Emits: fix.done | fix.failed
-# Writes summary to /tmp/ac-bugfix-fix-summary.txt.
+# Writes summary to /tmp/handl-bugfix-fix-summary.txt.
 
 id: fix
 driver: shell
@@ -18,7 +18,7 @@ emits: [fix.done, fix.failed]
 max_fires: 3
 params:
   cmd: |
-    source /tmp/ac-bugfix-env
+    source /tmp/handl-bugfix-env
     cd "$WORKTREE_PATH"
 
     ATTEMPT="${node.fires}"
@@ -29,13 +29,13 @@ params:
 
     Worktree: $(pwd) (branch: $BRANCH)
 
-    Previous investigation report is in /tmp/ac-bugfix-investigation.txt.
-    $(cat /tmp/ac-bugfix-investigation.txt 2>/dev/null || echo 'No prior investigation.')
+    Previous investigation report is in /tmp/handl-bugfix-investigation.txt.
+    $(cat /tmp/handl-bugfix-investigation.txt 2>/dev/null || echo 'No prior investigation.')
 
     $(if [ "$ATTEMPT" -gt 1 ]; then
       echo "Previous fix attempt failed verification."
       echo "Verify output from last attempt:"
-      cat /tmp/ac-bugfix-verify-output.txt 2>/dev/null || echo 'No verify output.'
+      cat /tmp/handl-bugfix-verify-output.txt 2>/dev/null || echo 'No verify output.'
     fi)
 
     Apply the fix following ndocs-3 conventions:
@@ -44,7 +44,7 @@ params:
     - Core code stays portable (no cloud SDKs in src/core/)
     - Keep changes surgical — touch only what's needed
 
-    After fixing, write a summary to /tmp/ac-bugfix-fix-summary.txt:
+    After fixing, write a summary to /tmp/handl-bugfix-fix-summary.txt:
     FILES_CHANGED: <list>
     SUMMARY: <what you changed and why>
 

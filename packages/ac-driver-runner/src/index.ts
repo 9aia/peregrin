@@ -1,5 +1,5 @@
 import { Effect, Layer } from "effect";
-import { Driver, Event, type ExecutionContext, type Node } from "ac-core";
+import { Driver, Event, type ExecutionContext, type Node } from "handl-core";
 
 export const RunnerDriver: Driver = {
   name: "runner",

@@ -1,0 +1,10 @@
+[package]
+name = "handl-module-resolver-memory"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+handl-module-resolver-core.workspace = true
+
+[dev-dependencies]
+serde_json = "1"

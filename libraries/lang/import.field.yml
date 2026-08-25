@@ -1,5 +1,5 @@
 # import.field.yml
-# Reusable AC language field pattern: "import" field
+# Reusable handl language field pattern: "import" field
 #
 # Emerges from four primitives — no compiler support needed:
 #   arg:    field's data value (a path string) is the input
@@ -7,7 +7,7 @@
 #   type:   output must be object (required by merge)
 #   merge:  spread result into parent scope, remove field
 #
-# Usage in any AC document:
+# Usage in any handl document:
 #
 #   fields:
 #     import:

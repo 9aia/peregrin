@@ -1,0 +1,4 @@
+[package]
+name = "crate-ecma402-traits"
+version.workspace = true
+edition.workspace = true

@@ -6,7 +6,7 @@ Accepted
 
 ## Context
 
-The `ac-lexer` crate was created to tokenize AC (Astral Chronicle) expression
+The `handl-lexer` crate was created to tokenize handl (Astral Chronicle) expression
 syntax. Over time it became clear that the lexer would need to support multiple
 dialects, parser-adjacent tooling (formatters, LSPs), and possibly syntax
 variations (different quotes, comment delimiters, number formats, identifier
@@ -63,7 +63,7 @@ so built-in rules still work with custom errors.
 ### Why primitive methods in the factory?
 
 Initially `StringRule`, `NumberRule`, `IdentRule`, etc. called free functions in
-`ac_lexer::primitives`. That made the scanning syntax hard-coded. By moving
+`handl_lexer::primitives`. That made the scanning syntax hard-coded. By moving
 `lex_string`, `lex_number`, `lex_ident`, `is_ident_start`, `is_string_start`,
 etc. into the factories with default implementations, the canonical rules remain
 usable while any factory method can be overridden. The rules became thin

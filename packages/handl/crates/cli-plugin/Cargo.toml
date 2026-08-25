@@ -1,0 +1,11 @@
+[package]
+name = "handl-cli-plugin"
+version.workspace = true
+edition.workspace = true
+
+[lib]
+name = "handl_cli_plugin"
+path = "src/lib.rs"
+
+[dependencies]
+toml = "0.8"

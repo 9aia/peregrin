@@ -13,21 +13,21 @@
       },
     },
     "apps/cli": {
-      "name": "ac",
+      "name": "handl",
       "version": "0.0.0",
       "bin": {
-        "ac": "./dist/cli.mjs",
+        "handl": "./dist/cli.mjs",
       },
       "dependencies": {
         "@effect/cli": "^0.77.0",
         "@effect/platform": "^0.97.1",
         "@effect/platform-node": "^0.107.0",
-        "ac-cli-defaults": "workspace:*",
-        "ac-core": "workspace:*",
-        "ac-engine": "workspace:*",
-        "ac-file-router": "workspace:*",
-        "ac-loader-yaml": "workspace:*",
         "effect": "^3.22.1",
+        "handl-cli-defaults": "workspace:*",
+        "handl-core": "workspace:*",
+        "handl-engine": "workspace:*",
+        "handl-file-router": "workspace:*",
+        "handl-loader-yaml": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -62,29 +62,29 @@
       },
     },
     "packages/ac-cli-defaults": {
-      "name": "ac-cli-defaults",
+      "name": "handl-cli-defaults",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-driver-agent": "workspace:*",
-        "ac-driver-cli": "workspace:*",
-        "ac-driver-http": "workspace:*",
-        "ac-driver-human": "workspace:*",
-        "ac-driver-noop": "workspace:*",
-        "ac-driver-polling": "workspace:*",
-        "ac-driver-python": "workspace:*",
-        "ac-driver-runner": "workspace:*",
-        "ac-driver-shell": "workspace:*",
-        "ac-driver-stdin": "workspace:*",
-        "ac-driver-streaming": "workspace:*",
-        "ac-driver-webhook": "workspace:*",
-        "ac-engine": "workspace:*",
-        "ac-observer-noop": "workspace:*",
-        "ac-observer-otel": "workspace:*",
-        "ac-plugin-apprise": "workspace:*",
-        "ac-plugin-litellm": "workspace:*",
-        "ac-store-memory": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-driver-agent": "workspace:*",
+        "handl-driver-cli": "workspace:*",
+        "handl-driver-http": "workspace:*",
+        "handl-driver-human": "workspace:*",
+        "handl-driver-noop": "workspace:*",
+        "handl-driver-polling": "workspace:*",
+        "handl-driver-python": "workspace:*",
+        "handl-driver-runner": "workspace:*",
+        "handl-driver-shell": "workspace:*",
+        "handl-driver-stdin": "workspace:*",
+        "handl-driver-streaming": "workspace:*",
+        "handl-driver-webhook": "workspace:*",
+        "handl-engine": "workspace:*",
+        "handl-observer-noop": "workspace:*",
+        "handl-observer-otel": "workspace:*",
+        "handl-plugin-apprise": "workspace:*",
+        "handl-plugin-litellm": "workspace:*",
+        "handl-store-memory": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -93,7 +93,7 @@
       },
     },
     "packages/ac-core": {
-      "name": "ac-core",
+      "name": "handl-core",
       "version": "0.0.0",
       "dependencies": {
         "effect": "^3.22.1",
@@ -105,13 +105,13 @@
       },
     },
     "packages/ac-driver-agent": {
-      "name": "ac-driver-agent",
+      "name": "handl-driver-agent",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-plugin-litellm": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-plugin-litellm": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -120,12 +120,12 @@
       },
     },
     "packages/ac-driver-cli": {
-      "name": "ac-driver-cli",
+      "name": "handl-driver-cli",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -134,13 +134,13 @@
       },
     },
     "packages/ac-driver-http": {
-      "name": "ac-driver-http",
+      "name": "handl-driver-http",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-plugin-apprise": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-plugin-apprise": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -149,12 +149,12 @@
       },
     },
     "packages/ac-driver-human": {
-      "name": "ac-driver-human",
+      "name": "handl-driver-human",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -163,11 +163,11 @@
       },
     },
     "packages/ac-driver-noop": {
-      "name": "ac-driver-noop",
+      "name": "handl-driver-noop",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -176,12 +176,12 @@
       },
     },
     "packages/ac-driver-polling": {
-      "name": "ac-driver-polling",
+      "name": "handl-driver-polling",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -190,12 +190,12 @@
       },
     },
     "packages/ac-driver-python": {
-      "name": "ac-driver-python",
+      "name": "handl-driver-python",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -204,12 +204,12 @@
       },
     },
     "packages/ac-driver-runner": {
-      "name": "ac-driver-runner",
+      "name": "handl-driver-runner",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -218,12 +218,12 @@
       },
     },
     "packages/ac-driver-shell": {
-      "name": "ac-driver-shell",
+      "name": "handl-driver-shell",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -232,12 +232,12 @@
       },
     },
     "packages/ac-driver-stdin": {
-      "name": "ac-driver-stdin",
+      "name": "handl-driver-stdin",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -246,12 +246,12 @@
       },
     },
     "packages/ac-driver-streaming": {
-      "name": "ac-driver-streaming",
+      "name": "handl-driver-streaming",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -260,12 +260,12 @@
       },
     },
     "packages/ac-driver-webhook": {
-      "name": "ac-driver-webhook",
+      "name": "handl-driver-webhook",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -274,13 +274,13 @@
       },
     },
     "packages/ac-engine": {
-      "name": "ac-engine",
+      "name": "handl-engine",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-safety": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-safety": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -289,7 +289,7 @@
       },
     },
     "packages/ac-examples": {
-      "name": "ac-examples",
+      "name": "handl-examples",
       "version": "0.0.0",
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -298,11 +298,11 @@
       },
     },
     "packages/ac-file-router": {
-      "name": "ac-file-router",
+      "name": "handl-file-router",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -311,12 +311,12 @@
       },
     },
     "packages/ac-loader-yaml": {
-      "name": "ac-loader-yaml",
+      "name": "handl-loader-yaml",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-file-router": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-file-router": "workspace:*",
         "yaml": "^2.9.0",
       },
       "devDependencies": {
@@ -326,11 +326,11 @@
       },
     },
     "packages/ac-observer-noop": {
-      "name": "ac-observer-noop",
+      "name": "handl-observer-noop",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -339,11 +339,11 @@
       },
     },
     "packages/ac-observer-otel": {
-      "name": "ac-observer-otel",
+      "name": "handl-observer-otel",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -352,13 +352,13 @@
       },
     },
     "packages/ac-plugin-apprise": {
-      "name": "ac-plugin-apprise",
+      "name": "handl-plugin-apprise",
       "version": "0.0.0",
       "dependencies": {
         "@toanalien/ahha": "0.1.1",
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
         "nodemailer": "^9.0.5",
       },
       "devDependencies": {
@@ -370,12 +370,12 @@
       },
     },
     "packages/ac-plugin-litellm": {
-      "name": "ac-plugin-litellm",
+      "name": "handl-plugin-litellm",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-template-engine": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-template-engine": "workspace:*",
       },
       "devDependencies": {
         "@effect/vitest": "^0.30.0",
@@ -385,11 +385,11 @@
       },
     },
     "packages/ac-safety": {
-      "name": "ac-safety",
+      "name": "handl-safety",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -398,11 +398,11 @@
       },
     },
     "packages/ac-store-json": {
-      "name": "ac-store-json",
+      "name": "handl-store-json",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -411,11 +411,11 @@
       },
     },
     "packages/ac-store-memory": {
-      "name": "ac-store-memory",
+      "name": "handl-store-memory",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -424,11 +424,11 @@
       },
     },
     "packages/ac-template-engine": {
-      "name": "ac-template-engine",
+      "name": "handl-template-engine",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
         "lodash-es": "^4.17.21",
       },
       "devDependencies": {
@@ -439,14 +439,14 @@
       },
     },
     "packages/ac-testing-library": {
-      "name": "ac-testing-library",
+      "name": "handl-testing-library",
       "version": "0.0.0",
       "dependencies": {
-        "ac-core": "workspace:*",
-        "ac-engine": "workspace:*",
-        "ac-observer-noop": "workspace:*",
-        "ac-store-memory": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-engine": "workspace:*",
+        "handl-observer-noop": "workspace:*",
+        "handl-store-memory": "workspace:*",
       },
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -454,20 +454,27 @@
         "vite-plus": "catalog:",
       },
     },
+    "packages/handl": {
+      "name": "handl-docs",
+      "version": "1.0.0",
+      "devDependencies": {
+        "vitepress": "next",
+      },
+    },
     "packages/tests": {
-      "name": "@ac/tests",
+      "name": "@handl/tests",
       "version": "0.0.0",
       "devDependencies": {
         "@types/node": "^24.13.3",
-        "ac-core": "workspace:*",
-        "ac-engine": "workspace:*",
-        "ac-file-router": "workspace:*",
-        "ac-loader-yaml": "workspace:*",
-        "ac-safety": "workspace:*",
-        "ac-store-memory": "workspace:*",
-        "ac-template-engine": "workspace:*",
-        "ac-testing-library": "workspace:*",
         "effect": "^3.22.1",
+        "handl-core": "workspace:*",
+        "handl-engine": "workspace:*",
+        "handl-file-router": "workspace:*",
+        "handl-loader-yaml": "workspace:*",
+        "handl-safety": "workspace:*",
+        "handl-store-memory": "workspace:*",
+        "handl-template-engine": "workspace:*",
+        "handl-testing-library": "workspace:*",
         "typescript": "~6.0.2",
         "vite-plus": "catalog:",
       },
@@ -483,7 +490,7 @@
       },
     },
     "packages/vm-js": {
-      "name": "@ac-lang/vm-js",
+      "name": "@handl/vm-js",
       "version": "0.0.0",
       "devDependencies": {
         "@types/node": "^24.13.3",
@@ -500,10 +507,6 @@
     "vite-plus": "0.2.9",
   },
   "packages": {
-    "@ac-lang/vm-js": ["@ac-lang/vm-js@workspace:packages/vm-js"],
-
-    "@ac/tests": ["@ac/tests@workspace:packages/tests"],
-
     "@algolia/abtesting": ["@algolia/abtesting@1.22.0", "", { "dependencies": { "@algolia/client-common": "5.56.0", "@algolia/requester-browser-xhr": "5.56.0", "@algolia/requester-fetch": "5.56.0", "@algolia/requester-node-http": "5.56.0" } }, "sha512-BFR6zNowNKcY7Ou7TaJc9QWexES4YKPbmf/OTFofpdsdhz4x6q0lbxp3duO0EHnyrN7rE4ba/TSXuY+BDGu4+g=="],
 
     "@algolia/autocomplete-core": ["@algolia/autocomplete-core@1.17.7", "", { "dependencies": { "@algolia/autocomplete-plugin-algolia-insights": "1.17.7", "@algolia/autocomplete-shared": "1.17.7" } }, "sha512-BjiPOW6ks90UKl7TwMv7oNQMnzU+t/wk9mgIDi6b1tXpUek7MW0lbNOUHpvam9pe3lVCf4xPFT+lK7s+e+fs7Q=="],
@@ -559,6 +562,8 @@
     "@docsearch/js": ["@docsearch/js@3.8.2", "", { "dependencies": { "@docsearch/react": "3.8.2", "preact": "^10.0.0" } }, "sha512-Q5wY66qHn0SwA7Taa0aDbHiJvaFJLOJyHmooQ7y8hlwwQLQ/5WwCcoX0g7ii04Qi2DJlHsd0XXzJ8Ypw9+9YmQ=="],
 
     "@docsearch/react": ["@docsearch/react@3.8.2", "", { "dependencies": { "@algolia/autocomplete-core": "1.17.7", "@algolia/autocomplete-preset-algolia": "1.17.7", "@docsearch/css": "3.8.2", "algoliasearch": "^5.14.2" }, "peerDependencies": { "@types/react": ">= 16.8.0 < 19.0.0", "react": ">= 16.8.0 < 19.0.0", "react-dom": ">= 16.8.0 < 19.0.0", "search-insights": ">= 1 < 3" }, "optionalPeers": ["@types/react", "react", "react-dom", "search-insights"] }, "sha512-xCRrJQlTt8N9GU0DG4ptwHRkfnSnD/YpdeaXe02iKfqs97TkZJv60yE+1eq/tjPcVnTW8dP5qLP7itifFVV5eg=="],
+
+    "@docsearch/sidepanel-js": ["@docsearch/sidepanel-js@4.7.0", "", {}, "sha512-A8r34jCU8kcIk2viECEn2msA28ojUF1BLi/3v5OWWc5G2N3jOuuumBXoeYjfr8dA0UxgFSy5R2bt12dnFJQSyA=="],
 
     "@effect/cli": ["@effect/cli@0.77.0", "", { "dependencies": { "ini": "^4.1.3", "toml": "^3.0.0", "yaml": "^2.5.0" }, "peerDependencies": { "@effect/platform": "^0.97.1", "@effect/printer": "^0.51.0", "@effect/printer-ansi": "^0.51.0", "effect": "^3.22.1" } }, "sha512-uVw33bcqPaSu6YZqGf6MyM2CbYsE79mrAnQsDzSFnP8jmnjNfXWrfmWUGK2yy0jXD0wWmVbmvwm4xVFv2Utsog=="],
 
@@ -637,6 +642,10 @@
     "@esbuild/win32-ia32": ["@esbuild/win32-ia32@0.25.12", "", { "os": "win32", "cpu": "ia32" }, "sha512-HkqnmmBoCbCwxUKKNPBixiWDGCpQGVsrQfJoVGYLPT41XWF8lHuE5N6WhVia2n4o5QK5M4tYr21827fNhi4byQ=="],
 
     "@esbuild/win32-x64": ["@esbuild/win32-x64@0.25.12", "", { "os": "win32", "cpu": "x64" }, "sha512-alJC0uCZpTFrSL0CCDjcgleBXPnCrEAhTBILpeAp7M/OFgoqtAetfBzX0xM00MUsVVPpVjlPuMbREqnZCXaTnA=="],
+
+    "@handl/tests": ["@handl/tests@workspace:packages/tests"],
+
+    "@handl/vm-js": ["@handl/vm-js@workspace:packages/vm-js"],
 
     "@iconify-json/simple-icons": ["@iconify-json/simple-icons@1.2.93", "", { "dependencies": { "@iconify/types": "*" } }, "sha512-/XhANjfGYOuqvSR3TmUnkQkINvQ4GVjVuukvymRbxtVFBvIq/yiXJqCDycKcQPT401OYT9H2vIY6ihAlz1QIAw=="],
 
@@ -789,6 +798,8 @@
     "@shikijs/engine-oniguruma": ["@shikijs/engine-oniguruma@2.5.0", "", { "dependencies": { "@shikijs/types": "2.5.0", "@shikijs/vscode-textmate": "^10.0.2" } }, "sha512-pGd1wRATzbo/uatrCIILlAdFVKdxImWJGQ5rFiB5VZi2ve5xj3Ax9jny8QvkaV93btQEwR/rSz5ERFpC5mKNIw=="],
 
     "@shikijs/langs": ["@shikijs/langs@2.5.0", "", { "dependencies": { "@shikijs/types": "2.5.0" } }, "sha512-Qfrrt5OsNH5R+5tJ/3uYBBZv3SuGmnRPejV9IlIbFH3HTGLDlkqgHymAlzklVmKBjAaVmkPkyikAV/sQ1wSL+w=="],
+
+    "@shikijs/primitive": ["@shikijs/primitive@4.4.3", "", { "dependencies": { "@shikijs/types": "4.4.3", "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.5" } }, "sha512-m0wBeLDQDeIxRdUmrCPdQqfuUamDwRL5isCfYbguKD6NiaKpVbsv+3J81DyIKgNW5h4WAIIr8T4EkgQrBBxvaQ=="],
 
     "@shikijs/themes": ["@shikijs/themes@2.5.0", "", { "dependencies": { "@shikijs/types": "2.5.0" } }, "sha512-wGrk+R8tJnO0VMzmUExHR+QdSaPUl/NKs+a4cQQRWyoc3YFbUzuLEi/KWK1hj+8BfHRKm2jNhhJck1dfstJpiw=="],
 
@@ -1016,62 +1027,6 @@
 
     "@yuku-toolchain/types": ["@yuku-toolchain/types@0.5.43", "", {}, "sha512-kSpvPntnXw5+lYjO71ffBEnQ5ycQ74KGIYknh0TS4xeyCuBkOqxyJumxZkMhLBBUCLjDAbx2+Icnr3Zh4ftjpQ=="],
 
-    "ac": ["ac@workspace:apps/cli"],
-
-    "ac-cli-defaults": ["ac-cli-defaults@workspace:packages/ac-cli-defaults"],
-
-    "ac-core": ["ac-core@workspace:packages/ac-core"],
-
-    "ac-driver-agent": ["ac-driver-agent@workspace:packages/ac-driver-agent"],
-
-    "ac-driver-cli": ["ac-driver-cli@workspace:packages/ac-driver-cli"],
-
-    "ac-driver-http": ["ac-driver-http@workspace:packages/ac-driver-http"],
-
-    "ac-driver-human": ["ac-driver-human@workspace:packages/ac-driver-human"],
-
-    "ac-driver-noop": ["ac-driver-noop@workspace:packages/ac-driver-noop"],
-
-    "ac-driver-polling": ["ac-driver-polling@workspace:packages/ac-driver-polling"],
-
-    "ac-driver-python": ["ac-driver-python@workspace:packages/ac-driver-python"],
-
-    "ac-driver-runner": ["ac-driver-runner@workspace:packages/ac-driver-runner"],
-
-    "ac-driver-shell": ["ac-driver-shell@workspace:packages/ac-driver-shell"],
-
-    "ac-driver-stdin": ["ac-driver-stdin@workspace:packages/ac-driver-stdin"],
-
-    "ac-driver-streaming": ["ac-driver-streaming@workspace:packages/ac-driver-streaming"],
-
-    "ac-driver-webhook": ["ac-driver-webhook@workspace:packages/ac-driver-webhook"],
-
-    "ac-engine": ["ac-engine@workspace:packages/ac-engine"],
-
-    "ac-examples": ["ac-examples@workspace:packages/ac-examples"],
-
-    "ac-file-router": ["ac-file-router@workspace:packages/ac-file-router"],
-
-    "ac-loader-yaml": ["ac-loader-yaml@workspace:packages/ac-loader-yaml"],
-
-    "ac-observer-noop": ["ac-observer-noop@workspace:packages/ac-observer-noop"],
-
-    "ac-observer-otel": ["ac-observer-otel@workspace:packages/ac-observer-otel"],
-
-    "ac-plugin-apprise": ["ac-plugin-apprise@workspace:packages/ac-plugin-apprise"],
-
-    "ac-plugin-litellm": ["ac-plugin-litellm@workspace:packages/ac-plugin-litellm"],
-
-    "ac-safety": ["ac-safety@workspace:packages/ac-safety"],
-
-    "ac-store-json": ["ac-store-json@workspace:packages/ac-store-json"],
-
-    "ac-store-memory": ["ac-store-memory@workspace:packages/ac-store-memory"],
-
-    "ac-template-engine": ["ac-template-engine@workspace:packages/ac-template-engine"],
-
-    "ac-testing-library": ["ac-testing-library@workspace:packages/ac-testing-library"],
-
     "algoliasearch": ["algoliasearch@5.56.0", "", { "dependencies": { "@algolia/abtesting": "1.22.0", "@algolia/client-abtesting": "5.56.0", "@algolia/client-analytics": "5.56.0", "@algolia/client-common": "5.56.0", "@algolia/client-insights": "5.56.0", "@algolia/client-personalization": "5.56.0", "@algolia/client-query-suggestions": "5.56.0", "@algolia/client-search": "5.56.0", "@algolia/ingestion": "1.56.0", "@algolia/monitoring": "1.56.0", "@algolia/recommend": "5.56.0", "@algolia/requester-browser-xhr": "5.56.0", "@algolia/requester-fetch": "5.56.0", "@algolia/requester-node-http": "5.56.0" } }, "sha512-PrqppUmhT4ENdas2pH9caE7efUcxy6EcSFhWzosiVuQBzu2tQ5yLTI6jwomT/1cuBnivzGfxiJCqDNN9FRRh+Q=="],
 
     "ansi-regex": ["ansi-regex@5.0.1", "", {}, "sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ=="],
@@ -1140,6 +1095,64 @@
 
     "fsevents": ["fsevents@2.3.3", "", { "os": "darwin" }, "sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw=="],
 
+    "handl": ["handl@workspace:apps/cli"],
+
+    "handl-cli-defaults": ["handl-cli-defaults@workspace:packages/ac-cli-defaults"],
+
+    "handl-core": ["handl-core@workspace:packages/ac-core"],
+
+    "handl-docs": ["handl-docs@workspace:packages/handl"],
+
+    "handl-driver-agent": ["handl-driver-agent@workspace:packages/ac-driver-agent"],
+
+    "handl-driver-cli": ["handl-driver-cli@workspace:packages/ac-driver-cli"],
+
+    "handl-driver-http": ["handl-driver-http@workspace:packages/ac-driver-http"],
+
+    "handl-driver-human": ["handl-driver-human@workspace:packages/ac-driver-human"],
+
+    "handl-driver-noop": ["handl-driver-noop@workspace:packages/ac-driver-noop"],
+
+    "handl-driver-polling": ["handl-driver-polling@workspace:packages/ac-driver-polling"],
+
+    "handl-driver-python": ["handl-driver-python@workspace:packages/ac-driver-python"],
+
+    "handl-driver-runner": ["handl-driver-runner@workspace:packages/ac-driver-runner"],
+
+    "handl-driver-shell": ["handl-driver-shell@workspace:packages/ac-driver-shell"],
+
+    "handl-driver-stdin": ["handl-driver-stdin@workspace:packages/ac-driver-stdin"],
+
+    "handl-driver-streaming": ["handl-driver-streaming@workspace:packages/ac-driver-streaming"],
+
+    "handl-driver-webhook": ["handl-driver-webhook@workspace:packages/ac-driver-webhook"],
+
+    "handl-engine": ["handl-engine@workspace:packages/ac-engine"],
+
+    "handl-examples": ["handl-examples@workspace:packages/ac-examples"],
+
+    "handl-file-router": ["handl-file-router@workspace:packages/ac-file-router"],
+
+    "handl-loader-yaml": ["handl-loader-yaml@workspace:packages/ac-loader-yaml"],
+
+    "handl-observer-noop": ["handl-observer-noop@workspace:packages/ac-observer-noop"],
+
+    "handl-observer-otel": ["handl-observer-otel@workspace:packages/ac-observer-otel"],
+
+    "handl-plugin-apprise": ["handl-plugin-apprise@workspace:packages/ac-plugin-apprise"],
+
+    "handl-plugin-litellm": ["handl-plugin-litellm@workspace:packages/ac-plugin-litellm"],
+
+    "handl-safety": ["handl-safety@workspace:packages/ac-safety"],
+
+    "handl-store-json": ["handl-store-json@workspace:packages/ac-store-json"],
+
+    "handl-store-memory": ["handl-store-memory@workspace:packages/ac-store-memory"],
+
+    "handl-template-engine": ["handl-template-engine@workspace:packages/ac-template-engine"],
+
+    "handl-testing-library": ["handl-testing-library@workspace:packages/ac-testing-library"],
+
     "hast-util-to-html": ["hast-util-to-html@9.0.5", "", { "dependencies": { "@types/hast": "^3.0.0", "@types/unist": "^3.0.0", "ccount": "^2.0.0", "comma-separated-tokens": "^2.0.0", "hast-util-whitespace": "^3.0.0", "html-void-elements": "^3.0.0", "mdast-util-to-hast": "^13.0.0", "property-information": "^7.0.0", "space-separated-tokens": "^2.0.0", "stringify-entities": "^4.0.0", "zwitch": "^2.0.4" } }, "sha512-OguPdidb+fbHQSU4Q4ZiLKnzWo8Wwsf5bZfbvu7//a9oTYoqD/fWpe96NuHkoS9h0ccGOTe0C4NGXdtS0iObOw=="],
 
     "hast-util-whitespace": ["hast-util-whitespace@3.0.0", "", { "dependencies": { "@types/hast": "^3.0.0" } }, "sha512-88JUN06ipLwsnv+dVn+OIYOvAuvBMy/Qoi6O7mQHxdPXpjy+Cd6xRkWwux7DKO+4sYILtLBRIKgsdpS2gQc7qw=="],
@@ -1158,7 +1171,7 @@
 
     "is-what": ["is-what@5.5.0", "", {}, "sha512-oG7cgbmg5kLYae2N5IVd3jm2s+vldjxJzK1pcu9LfpGuQ93MQSzo0okvRna+7y5ifrD+20FE8FvjusyGaz14fw=="],
 
-    "jiti": ["jiti@2.7.0", "", { "bin": { "jiti": "lib/jiti-cli.mjs" } }, "sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ=="],
+    "jiti": ["jiti@2.7.0", "", { "bin": { "jiti": "lib/jiti-cli.mjs" } }, ""],
 
     "js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 
@@ -1233,6 +1246,8 @@
     "nodemailer": ["nodemailer@9.0.5", "", {}, "sha512-wvjiKvjczmsN7U/8006JOdXubgBk2XFAbioDMbT+sM7cPs0QrhJTa6KBRX7P5REGGkDcLUz/EarWidb8G8C1jQ=="],
 
     "obug": ["obug@2.1.4", "", {}, "sha512-4a+OsYv9UktOJKE+l1A4OufDgdRF9PifWj+tJnHURo/P+WOxpG4GzUFL9qCalmWauao6ogiG+QvnCovwPoyAWA=="],
+
+    "oniguruma-parser": ["oniguruma-parser@0.12.2", "", {}, "sha512-6HVa5oIrgMC6aA6WF6XyyqbhRPJrKR02L20+2+zpDtO5QAzGHAUGw5TKQvwi5vctNnRHkJYmjAhRVQF2EKdTQw=="],
 
     "oniguruma-to-es": ["oniguruma-to-es@3.1.1", "", { "dependencies": { "emoji-regex-xs": "^1.0.0", "regex": "^6.0.1", "regex-recursion": "^6.0.2" } }, "sha512-bUH8SDvPkH3ho3dvwJwfonjlQ4R80vjyvrU8YpxuROddv55vAEJrTuCuCVUhhsHbtlD9tGGbaNApGQckXhS8iQ=="],
 
@@ -1376,11 +1391,15 @@
 
     "zwitch": ["zwitch@2.0.4", "", {}, "sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A=="],
 
+    "@shikijs/primitive/@shikijs/types": ["@shikijs/types@4.4.3", "", { "dependencies": { "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.5" } }, "sha512-UEJxmRR++MAGR6hugn0vgVS2W/6lWAts84FFSrnlH9sP0LNol7E5+NQ792pH8liWUhyMyjhTgSUH3k7iD7tc5g=="],
+
     "@types/nodemailer/@types/node": ["@types/node@26.2.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-5IviulTZeRNp2vAJ514cc/HUlY5nZ9fCbq9DMyC52BrhFZACo3nI0R7qBxhQmo/d27NFe96ur/b7Wwxklda+kg=="],
 
     "@vue/compiler-core/estree-walker": ["estree-walker@2.0.2", "", {}, "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w=="],
 
     "@vue/compiler-sfc/estree-walker": ["estree-walker@2.0.2", "", {}, "sha512-Rfkk/Mp/DL7JVje3u18FxFujQlTNR2q6QfMSMB7AvCBx91NGj/ba3kCfza0f6dVDbw7YlRf/nDrn7pQrCCyQ/w=="],
+
+    "handl-docs/vitepress": ["vitepress@2.0.0-alpha.19", "", { "dependencies": { "@docsearch/css": "^4.7.0", "@docsearch/js": "^4.7.0", "@docsearch/sidepanel-js": "^4.7.0", "@iconify-json/simple-icons": "^1.2.92", "@shikijs/core": "^4.4.1", "@shikijs/transformers": "^4.4.1", "@shikijs/types": "^4.4.1", "@types/markdown-it": "^14.1.2", "@vitejs/plugin-vue": "^6.0.8", "@vue/devtools-api": "^8.2.1", "@vue/shared": "^3.5.40", "@vueuse/core": "^14.4.0", "@vueuse/integrations": "^14.4.0", "focus-trap": "^8.2.2", "mark.js": "8.11.1", "minisearch": "^7.2.0", "shiki": "^4.4.1", "vite": "^8.2.0", "vue": "^3.5.40" }, "peerDependencies": { "markdown-it-mathjax3": "^4", "postcss": "^8" }, "optionalPeers": ["markdown-it-mathjax3", "postcss"], "bin": { "vitepress": "bin/vitepress.js" } }, "sha512-WnBsb0Bwr43kXKyiis+lld/7ri3hnMbthS8N3hpFtjjwsdLO4IRmiAE08D7aud4q6oMDf9uwRowxzNqRFe/amw=="],
 
     "utils/@types/node": ["@types/node@26.2.0", "", { "dependencies": { "undici-types": "~8.3.0" } }, "sha512-5IviulTZeRNp2vAJ514cc/HUlY5nZ9fCbq9DMyC52BrhFZACo3nI0R7qBxhQmo/d27NFe96ur/b7Wwxklda+kg=="],
 
@@ -1390,6 +1409,50 @@
 
     "@types/nodemailer/@types/node/undici-types": ["undici-types@8.3.0", "", {}, "sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ=="],
 
+    "handl-docs/vitepress/@docsearch/css": ["@docsearch/css@4.7.0", "", {}, "sha512-Sk5xkdRFeE7PeWjG9l4AfTwdvMfr9wHiwNNCpHXT4v4SNyNMKdHGvEILc31BgaVFGDDNbv5u/a73tofRiwbEZw=="],
+
+    "handl-docs/vitepress/@docsearch/js": ["@docsearch/js@4.7.0", "", {}, "sha512-x5lCqu1tetgsJFkjQ6VSocbHldsRkGEgwg5N98Vx21sq/V5wcmj4u226PY9k+TEpIgQ772zlYbPLTPicWyGnpA=="],
+
+    "handl-docs/vitepress/@shikijs/core": ["@shikijs/core@4.4.3", "", { "dependencies": { "@shikijs/primitive": "4.4.3", "@shikijs/types": "4.4.3", "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.5", "hast-util-to-html": "^9.0.5" } }, "sha512-QCR4q2ZO/ILJEuwiBMel4wdcTDb1JGwfjKTxPDF6x8ixOaluPrVqIn06C99AcRPhmYlBR56d/Fb+GN58GzExpg=="],
+
+    "handl-docs/vitepress/@shikijs/transformers": ["@shikijs/transformers@4.4.3", "", { "dependencies": { "@shikijs/core": "4.4.3", "@shikijs/types": "4.4.3" } }, "sha512-oJSARV6NaWd+rnNJbtnpAdj3Zg0ZVyzsnMgb3vi3HA+35y8lBWUCpOnWsmyiXZIikY+x1BDqrQUgmxfzWh7Jvw=="],
+
+    "handl-docs/vitepress/@shikijs/types": ["@shikijs/types@4.4.3", "", { "dependencies": { "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.5" } }, "sha512-UEJxmRR++MAGR6hugn0vgVS2W/6lWAts84FFSrnlH9sP0LNol7E5+NQ792pH8liWUhyMyjhTgSUH3k7iD7tc5g=="],
+
+    "handl-docs/vitepress/@vitejs/plugin-vue": ["@vitejs/plugin-vue@6.0.8", "", { "dependencies": { "@rolldown/pluginutils": "^1.0.1" }, "peerDependencies": { "vite": "^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0", "vue": "^3.2.25" } }, "sha512-0ZjgOg7oO6farnNGup7yvoM/YXZV84OZxHAwtflItNa/6zzQyVb5LNxyea3FEKEX2XlagIKzrlH7wwxkKgtiew=="],
+
+    "handl-docs/vitepress/@vue/devtools-api": ["@vue/devtools-api@8.2.1", "", { "dependencies": { "@vue/devtools-kit": "^8.2.1" } }, "sha512-6u4vXBlIBAC1wMplIZgpyPn7uh/s4Bf6F5bMzvLv+EdJ0aHs/+4B7Ygv864EStQSjRbsRzTko/kUG1A1IejQ3A=="],
+
+    "handl-docs/vitepress/@vueuse/core": ["@vueuse/core@14.4.0", "", { "dependencies": { "@types/web-bluetooth": "^0.0.21", "@vueuse/metadata": "14.4.0", "@vueuse/shared": "14.4.0" }, "peerDependencies": { "vue": "^3.5.0" } }, "sha512-X4WHz1HlCzCBoYXesUkifzzWBAcZgXG8Fi5iNPQg/epdzOB3gu8Fawj3hvuwYR1nGcXGnvxwYYcUC/71++svtQ=="],
+
+    "handl-docs/vitepress/@vueuse/integrations": ["@vueuse/integrations@14.4.0", "", { "dependencies": { "@vueuse/core": "14.4.0", "@vueuse/shared": "14.4.0" }, "peerDependencies": { "async-validator": "^4", "axios": "^1", "change-case": "^5", "drauu": "^0.4", "focus-trap": "^7 || ^8", "fuse.js": "^7", "idb-keyval": "^6", "jwt-decode": "^4", "nprogress": "^0.2", "qrcode": "^1.5", "sortablejs": "^1", "universal-cookie": "^7 || ^8", "vue": "^3.5.0" }, "optionalPeers": ["async-validator", "axios", "change-case", "drauu", "focus-trap", "fuse.js", "idb-keyval", "jwt-decode", "nprogress", "qrcode", "sortablejs", "universal-cookie"] }, "sha512-oJz9qTgczvA7L1nXQFRU7h8tQbOCoiceqvMMhT9XYMyOGTqLJ2rEa09PON+nD2t48sZUfeOmg4eaWJXV4sZb/w=="],
+
+    "handl-docs/vitepress/focus-trap": ["focus-trap@8.2.2", "", { "dependencies": { "tabbable": "^6.5.0" } }, "sha512-qV0g8hRYBqgACcFOH3f9wXc4zPKhr/0z9RI2a6ZijZ72EeBi4g8oBy8zAWuUR1TsMpOzwpUMFvjdasrC41Joug=="],
+
+    "handl-docs/vitepress/shiki": ["shiki@4.4.3", "", { "dependencies": { "@shikijs/core": "4.4.3", "@shikijs/engine-javascript": "4.4.3", "@shikijs/engine-oniguruma": "4.4.3", "@shikijs/langs": "4.4.3", "@shikijs/themes": "4.4.3", "@shikijs/types": "4.4.3", "@shikijs/vscode-textmate": "^10.0.2", "@types/hast": "^3.0.5" } }, "sha512-Mb/GvXPHBAXdgGIcnfU5L3ldpn1XcxrGkPHwqgRx17/I2XRfqlFKk2vGkHWINn1kdXvzJZeuO3is6I9KLPFm0g=="],
+
     "utils/@types/node/undici-types": ["undici-types@8.3.0", "", {}, "sha512-j375ScV60dom+YkPFIfTLcOiPxkN/buHz5GobjLhixFuANaNs3C9l4GmrWqejgXWJ7BbJcFYpTEUkS1Ge8bpZQ=="],
+
+    "handl-docs/vitepress/@vue/devtools-api/@vue/devtools-kit": ["@vue/devtools-kit@8.2.1", "", { "dependencies": { "@vue/devtools-shared": "^8.2.1", "birpc": "^2.6.1", "hookable": "^5.5.3", "perfect-debounce": "^2.0.0" } }, "sha512-FIGIuq3AWReEpbAHY/cRGeHDfI0qOb8OCQ3YjbEAX04uaxIDbGc9rhkbVcG7rnfHPXE3RsU5KrWOu9V/okd8AQ=="],
+
+    "handl-docs/vitepress/@vueuse/core/@vueuse/metadata": ["@vueuse/metadata@14.4.0", "", {}, "sha512-swx/255R6JyHZFJhx845iz5CRWDZdCfvkZOpACWc5+c5WHcG24mv8gUT1WIdFQaHt6dq79rvILd9QnCWiyVm9g=="],
+
+    "handl-docs/vitepress/@vueuse/core/@vueuse/shared": ["@vueuse/shared@14.4.0", "", { "peerDependencies": { "vue": "^3.5.0" } }, "sha512-JRgY90Sz8DDtPMsaDflvPMp9xYk69JZAmbuDvAquUVXKr2gEjqtzGNTTthLfckH0BzBqvnu31gb4a8TGLRe79g=="],
+
+    "handl-docs/vitepress/@vueuse/integrations/@vueuse/shared": ["@vueuse/shared@14.4.0", "", { "peerDependencies": { "vue": "^3.5.0" } }, "sha512-JRgY90Sz8DDtPMsaDflvPMp9xYk69JZAmbuDvAquUVXKr2gEjqtzGNTTthLfckH0BzBqvnu31gb4a8TGLRe79g=="],
+
+    "handl-docs/vitepress/shiki/@shikijs/engine-javascript": ["@shikijs/engine-javascript@4.4.3", "", { "dependencies": { "@shikijs/types": "4.4.3", "@shikijs/vscode-textmate": "^10.0.2", "oniguruma-to-es": "^4.3.6" } }, "sha512-FbOjFJp9VLdo1Wevs10BBtVxiTWwNLqZh5Gkhjgda/ioL15YOgeSl9n+6XMa3qRlPQzfhFNe641SrynFHYG0nQ=="],
+
+    "handl-docs/vitepress/shiki/@shikijs/engine-oniguruma": ["@shikijs/engine-oniguruma@4.4.3", "", { "dependencies": { "@shikijs/types": "4.4.3", "@shikijs/vscode-textmate": "^10.0.2" } }, "sha512-EcOQkxdxGQrc1Row/cC2c96/v1dbZqGnEVu1qTuT/MJmp6+cXCvQussowVmCv5Tqr3KuY3c7IbM6HTW3LJ1k9w=="],
+
+    "handl-docs/vitepress/shiki/@shikijs/langs": ["@shikijs/langs@4.4.3", "", { "dependencies": { "@shikijs/types": "4.4.3" } }, "sha512-ePic0yfAJGOF83D5wBHK/00EjK65oahBYxFk5epgq33WRv7X9UuxLEV8PtR0szC0z8dl7INIpIodB99JRFlR+A=="],
+
+    "handl-docs/vitepress/shiki/@shikijs/themes": ["@shikijs/themes@4.4.3", "", { "dependencies": { "@shikijs/types": "4.4.3" } }, "sha512-w8UHjeUnIR965KMWJHUPXOc2mNJUnK3vpVLYLvw5IYU2mnTTJ89E24OrJDBNiJDQ0qzb0tc4l7mrIXx5cFeIyw=="],
+
+    "handl-docs/vitepress/@vue/devtools-api/@vue/devtools-kit/@vue/devtools-shared": ["@vue/devtools-shared@8.2.1", "", {}, "sha512-Fkac7lUdGReh6pVOi3AYPRGe82LQqRmAfThW7RRligOAP0ZA/Z1z9XLHDM9dv34pV2HRc79DK8uKPeG2fLnA/g=="],
+
+    "handl-docs/vitepress/@vue/devtools-api/@vue/devtools-kit/perfect-debounce": ["perfect-debounce@2.1.0", "", {}, "sha512-LjgdTytVFXeUgtHZr9WYViYSM/g8MkcTPYDlPa3cDqMirHjKiSZPYd6DoL7pK8AJQr+uWkQvCjHNdiMqsrJs+g=="],
+
+    "handl-docs/vitepress/shiki/@shikijs/engine-javascript/oniguruma-to-es": ["oniguruma-to-es@4.3.6", "", { "dependencies": { "oniguruma-parser": "^0.12.2", "regex": "^6.1.0", "regex-recursion": "^6.0.2" } }, "sha512-csuQ9x3Yr0cEIs/Zgx/OEt9iBw9vqIunAPQkx19R/fiMq2oGVTgcMqO/V3Ybqefr1TBvosI6jU539ksaBULJyA=="],
   }
 }

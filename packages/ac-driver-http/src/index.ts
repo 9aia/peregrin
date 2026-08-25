@@ -1,7 +1,7 @@
 import { Either, Effect, Layer } from "effect";
-import { Driver, DriverError, Event, type ExecutionContext, type Node } from "ac-core";
-import { resolveValueForNode } from "ac-template-engine";
-import { Apprise, Live as AppriseLive } from "ac-plugin-apprise";
+import { Driver, DriverError, Event, type ExecutionContext, type Node } from "handl-core";
+import { resolveValueForNode } from "handl-template-engine";
+import { Apprise, Live as AppriseLive } from "handl-plugin-apprise";
 
 const makeBody = (body: unknown, headers: Record<string, string>): string | undefined => {
   if (body === undefined) return undefined;

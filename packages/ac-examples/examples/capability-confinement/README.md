@@ -54,7 +54,7 @@ narrows** — the reviewer does not grant capabilities, it only removes them.
 ## Run it
 
 ```bash
-ac run examples/capability-confinement/main.yaml
+handl run examples/capability-confinement/main.yaml
 ```
 
 ## What you'll see in the event log

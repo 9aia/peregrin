@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import { Event, Node, TemplateError, type ExecutionContext } from "ac-core";
+import { Event, Node, TemplateError, type ExecutionContext } from "handl-core";
 import { parseCall } from "./parse.js";
 import { templateFunctions, type TemplateFunction } from "./functions/index.js";
 
