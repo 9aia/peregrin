@@ -1,9 +1,0 @@
-[package]
-name = "handl-lib-archive-tar"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-handl-lib-archive = { path = "../lib-archive" }
-tar.workspace = true
-thiserror.workspace = true

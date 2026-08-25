@@ -1,7 +1,0 @@
-[package]
-name = "handl-vm-transform"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-handl-vm.workspace = true

@@ -1,8 +1,0 @@
-fn.tap(
-  (s) -> [
-    http_server.serve_static(s, "/static", "examples/ac/servers/02-static/public"),
-    http_server.start(s, "127.0.0.1:8082"),
-    http_server.join(s)
-  ],
-  http_server.new()
-)

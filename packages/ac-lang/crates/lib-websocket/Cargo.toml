@@ -1,7 +1,0 @@
-[package]
-name = "ac-lib-websocket"
-version.workspace = true
-edition.workspace = true
-description = "WebSocket frame and message codec for the AC runtime."
-
-[dependencies]

@@ -1,7 +1,0 @@
-$:
-  host:
-    type: string
-  port:
-    type: number
-host: dynamic.example.com
-port: 9090

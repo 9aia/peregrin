@@ -1,8 +1,0 @@
-[package]
-name = "ac-lib-ip"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-
-[dev-dependencies]

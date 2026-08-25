@@ -1,8 +1,0 @@
-[package]
-name = "ac-lib-http-client-std"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-ac-lib-http-client.workspace = true
-ureq = "2"

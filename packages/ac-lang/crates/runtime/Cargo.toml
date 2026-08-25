@@ -1,9 +1,0 @@
-[package]
-name = "ac-runtime-values"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-ac-runtime.workspace = true
-ac-runtime-config.workspace = true
-ac-source.workspace = true

@@ -1,8 +1,0 @@
-[package]
-name = "handl-lib-ip"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-
-[dev-dependencies]

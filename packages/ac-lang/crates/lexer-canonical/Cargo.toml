@@ -1,9 +1,0 @@
-[package]
-name = "ac-lexer-canonical"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-ac-lexer.workspace = true
-ac-lexer-common.workspace = true
-ac-dialect.workspace = true

@@ -1,8 +1,0 @@
-[package]
-name = "ac-runtime"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-ac-ast-canonical.workspace = true
-indexmap.workspace = true

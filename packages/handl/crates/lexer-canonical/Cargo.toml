@@ -1,9 +1,0 @@
-[package]
-name = "handl-lexer-canonical"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-handl-lexer.workspace = true
-handl-lexer-common.workspace = true
-handl-dialect.workspace = true

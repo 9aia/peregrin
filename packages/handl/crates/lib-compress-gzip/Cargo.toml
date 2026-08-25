@@ -1,9 +1,0 @@
-[package]
-name = "handl-lib-compress-gzip"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-handl-lib-compress = { path = "../lib-compress" }
-flate2.workspace = true
-thiserror.workspace = true

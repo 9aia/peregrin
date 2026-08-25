@@ -1,5 +1,0 @@
-# Generated corpus from fuzzing runs — regenerated via `cargo fuzz run`
-corpus/
-
-# Crash artifacts
-crashes/

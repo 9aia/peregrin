@@ -1,8 +1,0 @@
-[package]
-name = "handl-lib-yaml"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-handl-lib-serialize = { path = "../lib-serialize" }
-serde_yaml = "0.9"

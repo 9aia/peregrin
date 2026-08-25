@@ -1,7 +1,0 @@
-$:
-  lib:
-    type: object
-    expr: "import('./import_functions_lib.yml')"
-  label:
-    type: string
-    expr: "lib.functions.make_label(lib.host)"

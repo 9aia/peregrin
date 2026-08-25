@@ -1,6 +1,0 @@
-{
-  and: bool.and(true, false),
-  or: bool.or(false, true),
-  not: bool.not(true),
-  xor: bool.xor(true, true)
-}

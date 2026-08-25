@@ -1,8 +1,0 @@
-[package]
-name = "handl-ast-canonical"
-version.workspace = true
-edition.workspace = true
-
-[dependencies]
-handl-ast.workspace = true
-handl-ast-common.workspace = true

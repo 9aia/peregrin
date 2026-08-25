@@ -1,6 +1,0 @@
-{
-  eq: cmp.eq(1, 1),
-  min: cmp.min(3, 1, 2),
-  clamp: cmp.clamp(10, 0, 5),
-  sorted: cmp.sort([3, 1, 2])
-}
