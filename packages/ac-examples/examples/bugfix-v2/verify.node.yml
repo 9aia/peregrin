@@ -1,8 +1,0 @@
-# verify: run checks after fix is applied.
-# Uses forward: to bridge agent.fix.done → test.check.run.
-# The test/check.node.yml lib node reads ${state.worktree_path}.
-
-id: verify
-on: [agent.fix.done]
-emits: [test.check.run]
-forward: [test.check.run]

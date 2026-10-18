@@ -1,43 +1,11 @@
 {
   "name": "peregrin",
-  "version": "0.0.0",
   "private": true,
-  "workspaces": [
-    "packages/*",
-    "apps/*",
-    "tools/*"
-  ],
-  "type": "module",
   "scripts": {
-    "ready": "vp check && vp run -r test && vp run -r build",
-    "dev": "vp run website#dev",
-    "docs:dev": "vitepress dev docs",
-    "docs:build": "vitepress build docs",
-    "docs:preview": "vitepress preview docs",
-    "prepare": "vp config"
+    "css": "tailwindcss -i crates/peregrin-web/style/input.css -o crates/peregrin-web/style/main.css --minify"
   },
   "devDependencies": {
-    "@typescript/native-preview": "7.0.0-dev.20260707.2",
-    "esbuild": "^0.25.0",
-    "vite": "catalog:",
-    "vite-plus": "catalog:",
-    "vitepress": "^1.6.0"
-  },
-  "overrides": {
-    "vite": "catalog:"
-  },
-  "devEngines": {
-    "packageManager": {
-      "name": "bun",
-      "version": "1.3.14",
-      "onFail": "download"
-    }
-  },
-  "engines": {
-    "node": ">=22.18.0"
-  },
-  "catalog": {
-    "vite": "npm:@voidzero-dev/vite-plus-core@0.2.9",
-    "vite-plus": "0.2.9"
+    "@tailwindcss/typography": "^0.5",
+    "tailwindcss": "^4"
   }
 }

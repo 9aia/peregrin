@@ -1,8 +1,0 @@
-# commit: trigger git.commit.run after verify passes.
-# Uses forward: to bridge test.check.passed → git.commit.run.
-# The git/commit.node.yml lib node reads ${state.worktree_path} and ${state.branch}.
-
-id: commit
-on: [test.check.passed]
-emits: [git.commit.run]
-forward: [git.commit.run]

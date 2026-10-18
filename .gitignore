@@ -38,3 +38,7 @@ repos/
 
 # rust
 target/
+/target
+node_modules
+Cargo.lock.tmp
+.cargo/config.toml

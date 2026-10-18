@@ -1,0 +1,13 @@
+[package]
+name = "peregrin-core"
+description = "Peregrin domain — events, campaign/node/graph model (pure)"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

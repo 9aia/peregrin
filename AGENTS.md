@@ -1,38 +1,62 @@
-<!--VITE PLUS START-->
+# Peregrin
 
-# Using Vite+, the Unified Toolchain for the Web
+Event-driven orchestration for agent workflows — campaigns, node
+daemons, hub, remote transport — plus the session-management app.
+Rust workspace, ports-and-adapters. Session *mechanism* lives in
+[sepia](https://github.com/9aia/sepia) (sibling checkout at `../sepia`,
+workspace path deps); peregrin owns policy + orchestration.
 
-This project is using Vite+, a unified toolchain built on top of Vite, Rolldown, Vitest, tsdown, Oxlint, Oxfmt, and Vite Task. Vite+ wraps runtime management, package management, and frontend tooling in a single global CLI called `vp`. Vite+ is distinct from Vite, and it invokes Vite through `vp dev` and `vp build`. Run `vp help` to print a list of commands and `vp <command> --help` for information about a specific command.
+## Layout
 
-Docs are local at `node_modules/vite-plus/docs` or online at https://viteplus.dev/guide/.
+- `peregrin-core` pure domain (events, campaigns, nodes) — no I/O.
+- Ports: `peregrin-{driver,loader,store,bus,remote,config,secret,service,template}`;
+  impls `peregrin-{port}-{impl}` (`-shell`, `-yaml`, `-toml`, `-keyring`,
+  `-dotenv`, `-systemd`, `-http`).
+- `peregrin-control` — arbitration (lock registry, takeover policy,
+  merge/route) over the sepia session plane.
+- `peregrin-node` (daemon: sepia plane + engine + api) · `peregrin-hub`
+  (SSR host) · `peregrin-http` (REST+SSE) · `peregrin-sync`/
+  `peregrin-outbox`/`peregrin-push` · `peregrin-web`/`peregrin-web-core`
+  (Leptos app) · `peregrin-cli` (`peregrin` binary) ·
+  `peregrin-telemetry` · `peregrin-testkit` · `xtask`.
+- `libraries/` — workflow stdlib artifacts. `project/` — nested repo
+  with the engine ADRs (the port spec). `adrs/` — top-level ADRs.
 
-## Built-in Commands vs Scripts
+## Commands
 
-`vp <name>` runs a built-in command. `vp run <name>` runs a `package.json` script or a `vite.config.ts` task. Scripts cannot overwrite built-ins, so `vp dev` and `vp run dev` may do different things. Check `package.json` and `vite.config.ts` first, and run `vp run <name>` when the project defines a script or task with that name.
+```bash
+cargo xtask check          # fmt + clippy -D warnings + web markup gate
+cargo xtask test           # suite (nextest if present)
+cargo xtask install        # release peregrin + hub + site → ~/.local
+cargo xtask site           # wasm bundle + PWA assets → target/site
+cargo xtask smoke          # headless-Chrome console probe (post-UI-change)
+cargo xtask e2e            # node+hub+browser suite (needs site first)
+```
 
-## Tool Versions
+UI stack: Tailwind v4 + typography — `bun install && bun run css`
+writes `crates/peregrin-web/style/main.css` (generated — edit
+`input.css`, never `main.css`). Git hooks in `.hooks/`
+(`core.hooksPath` = `.hooks`).
 
-Run `vp toolchain` to show versions and relationships in the active Vite+
-release. Add a tool name to select part of the graph. For example, run
-`vp toolchain vite`. Use `--global` to ignore the local `vite-plus` package. Use
-`vp why <package>` to show the package-manager dependency graph.
+## Boundary with sepia
 
-## Review Checklist
+Mechanism vs policy: sepia does things *to* sessions (attach, prompt,
+restore, drivers, ACP); peregrin decides who/when/where (locks,
+takeover, merge, route, queue) and orchestrates (campaigns, drivers,
+transport). `peregrin-node` consumes the session plane over the wire —
+never link session internals into orchestration code.
 
-- [ ] Run `vp install` after pulling remote changes and before getting started.
-- [ ] Run `vp check` and `vp test` to format, lint, type check and test changes.
-- [ ] Check if there are `vite.config.ts` tasks or `package.json` scripts necessary for validation, run via `vp run <script>`.
-- [ ] If setup, runtime, or package-manager behavior looks wrong, run `vp env doctor` and include its output when asking for help.
+## Rules
 
-<!--VITE PLUS END-->
+- Workspace lints strict (pedantic, `unwrap_used` warn, `unsafe_code`
+  forbid); tests `#![allow]` liberally.
+- `peregrin-web`: `#[cfg]` gates behavior, never markup shape
+  (`view!`/`impl IntoView`) — enforced by `xtask check`.
+- Golden fixtures regenerate deliberately.
+- `.config/nextest.toml` is the test-runner config.
 
-## Vendored Repositories
+## Docs
 
-This project vendors external repositories under `repos/`.
-
-- Use vendored repositories as read-only reference material when working with related libraries
-- Prefer examples and patterns from the vendored source code over generated guesses or web search results
-- Do not edit files under `repos/` unless explicitly asked
-- Do not import from `repos/` — application code should continue importing from normal package dependencies
-
-When writing Effect code, read `repos/effect/LLMS.md` first, then inspect `repos/effect/` for examples of idiomatic usage, tests, module structure, and API design. Treat it as the source of truth for Effect patterns.
+Diátaxis: `docs/tutorials/` `docs/how-to/` `docs/reference/`
+`docs/explanation/`. `project/adrs/` is the engine design history —
+read it before changing engine semantics.

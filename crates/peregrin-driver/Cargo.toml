@@ -1,0 +1,15 @@
+[package]
+name = "peregrin-driver"
+description = "Campaign-driver port — node drivers run actions for the engine"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+[dependencies]
+async-trait.workspace = true
+thiserror.workspace = true
+peregrin-core.workspace = true
+serde_json.workspace = true

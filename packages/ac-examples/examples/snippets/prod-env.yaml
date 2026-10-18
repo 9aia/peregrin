@@ -1,5 +1,0 @@
-# Shared environment config — included into `params` blocks.
-env:
-  PYTHONPATH: /app
-  LOG_LEVEL: INFO
-timeout: 300

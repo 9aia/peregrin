@@ -1,8 +1,0 @@
-# reproduce: install deps after worktree is ready.
-# Uses forward: to bridge git.worktree.ready → test.install.run.
-# The test/install.node.yml lib node reads ${state.worktree_path}.
-
-id: reproduce
-on: [git.worktree.ready]
-emits: [test.install.run]
-forward: [test.install.run]

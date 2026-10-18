@@ -21,7 +21,6 @@ Documentation can be accurate but incomplete, or complete but inconsistent. Each
 **Diataxis cannot give you functional quality**. It requires technical skill and keeping documentation synchronised with the product.
 
 However, Diataxis can **expose** lapses in functional quality:
-
 - Structuring reference to mirror code makes gaps obvious
 - Moving explanation out of tutorials highlights unclear steps
 - Separating concerns reveals inconsistencies
@@ -45,7 +44,6 @@ Deep quality is **conditional on functional quality**. No one experiences docume
 ### How They Relate
 
 Think of it this way:
-
 - **Functional quality** = Constraints you must conform to
 - **Deep quality** = Liberation, creativity, taste
 
@@ -64,7 +62,6 @@ Real documentation often faces complexity that doesn't fit neatly into simple st
 ### Multiple User Types
 
 Your product might serve:
-
 - End users who consume the product
 - Developers who build on top of it
 - Contributors who maintain it
@@ -72,7 +69,6 @@ Your product might serve:
 These are effectively different products for different people. Each group has its own relationship with the product.
 
 **Think user-first**:
-
 - Do developers need to understand user concerns first?
   - If yes: Let developer tutorials follow user tutorials
 - Do contributors need distinct workflows?
@@ -87,7 +83,6 @@ These are effectively different products for different people. Each group has it
 Deploying to AWS vs Azure vs on-premise might create vastly different workflows. Same product, different concerns.
 
 **Options**:
-
 - Separate documentation by environment if experiences differ significantly
 - Use common structure where concerns overlap
 - Let users find their path based on their situation
@@ -133,7 +128,6 @@ for production use.
 **Lists longer than 7 items are hard for humans to read** unless they have mechanical order (alphabetical, numerical).
 
 If a section has 15 how-to guides, group them into categories with their own sub-landing pages:
-
 - Installation (4 guides)
 - Configuration (5 guides)
 - Deployment (6 guides)
@@ -145,7 +139,6 @@ Keep references **one level deep** from SKILL.md when possible. Don't create dee
 ### When Multiple Dimensions Collide
 
 Sometimes you have:
-
 - Four documentation types (tutorials/how-to/reference/explanation)
 - AND user types (users/developers/contributors)
 - AND environments (cloud/on-premise/hybrid)
@@ -153,7 +146,6 @@ Sometimes you have:
 Which dimension comes first in hierarchy?
 
 **There's no single answer**. Think about:
-
 - How do your users think about the product?
 - Does a cloud user also need on-premise docs?
 - Does a developer typically need all four doc types for their domain?
@@ -170,7 +162,6 @@ Be clear about the limits:
 Accuracy requires domain knowledge and keeping docs synchronised with reality. Diataxis can help expose gaps, but can't fill them.
 
 You need to:
-
 - Understand the product deeply
 - Test every claim
 - Update docs when the product changes
@@ -181,7 +172,6 @@ You need to:
 Diataxis creates conditions where flow and anticipation become possible, but it's not a formula.
 
 You still need:
-
 - Taste and judgement
 - Understanding of user experience
 - Empathy for your users
@@ -190,7 +180,6 @@ You still need:
 ### It Can't Bypass Other Expertise
 
 Other disciplines matter:
-
 - UX design
 - Visual design
 - Information architecture
@@ -202,7 +191,6 @@ Diataxis complements these, doesn't replace them.
 ### It's Not a Shortcut
 
 Good documentation requires:
-
 - Skill
 - Time
 - Iteration
@@ -214,7 +202,6 @@ Diataxis provides direction and principles, not magic.
 ### It Won't Solve Every Documentation Problem
 
 Some problems are about:
-
 - Resources and staffing
 - Organisational politics
 - Product complexity
@@ -235,7 +222,6 @@ Users move through a cycle with your product:
 4. **Understanding phase** - Stepping back to reflect and deepen knowledge (explanation)
 
 This isn't strictly linear. A user might:
-
 - Jump to reference while following a tutorial
 - Return to tutorials when learning new features
 - Start with explanation to get oriented
@@ -252,14 +238,12 @@ Don't try to understand everything about Diataxis before using it. Pick up one i
 ### Organic Growth
 
 Think of documentation like a plant:
-
 - A plant is never finished, but always complete at its current stage
 - It grows from the inside out, cell by cell
 - Structure emerges naturally from healthy development
 - It adapts to external conditions
 
 Your documentation should be the same:
-
 - Always complete for its current state
 - Always ready to grow further
 - Structure emerges from well-formed content
@@ -282,7 +266,6 @@ This keeps work flowing without requiring a big plan. Each small change moves in
 This is the **most common mistake**. The distinction matters because:
 
 **Tutorials** (at study):
-
 - For learners building competence
 - Carefully managed path
 - Eliminates the unexpected
@@ -292,7 +275,6 @@ This is the **most common mistake**. The distinction matters because:
 - Can be basic or advanced
 
 **How-to Guides** (at work):
-
 - For competent users solving problems
 - Adapts to real-world complexity
 - Prepares for the unexpected
@@ -308,7 +290,6 @@ The difference isn't basic vs advanced. It's study vs work, learning vs applying
 ### Reference/Explanation Blur
 
 **Reference** (work):
-
 - Describes what is
 - Boring and unmemorable
 - Lists and tables
@@ -316,7 +297,6 @@ The difference isn't basic vs advanced. It's study vs work, learning vs applying
 - Neutral facts only
 
 **Explanation** (study):
-
 - Discusses why and how
 - You might read it away from work
 - Can be read "in the bath"
@@ -330,7 +310,6 @@ The difference isn't basic vs advanced. It's study vs work, learning vs applying
 ### Documentation for Different Maturity Levels
 
 You might have:
-
 - Getting started tutorial (beginners)
 - Advanced integration tutorial (experienced developers)
 - Basic how-to guides (common tasks)
@@ -341,13 +320,11 @@ This is fine. The tutorial/how-to distinction is about study vs work, not basic 
 ### Living Documentation
 
 Documentation that:
-
 - Changes frequently with the product
 - Has many contributors
 - Serves rapidly evolving needs
 
 **Diataxis helps here** by:
-
 - Providing clear categories for contributions
 - Making it obvious where new content belongs
 - Preventing muddle that accumulates over time
@@ -355,7 +332,6 @@ Documentation that:
 ### Minimalist Documentation
 
 You don't need all four types for every feature. Sometimes you only need:
-
 - Reference (for simple, well-understood tools)
 - How-to guide + reference (for established practices)
 - Tutorial + reference (for new or complex features)
@@ -367,28 +343,24 @@ Provide what users actually need, not what feels complete.
 ### When Writing
 
 **For tutorials**:
-
 - Test with real users repeatedly
 - Watch where they get stuck
 - Fix every point of failure
 - Aim for perfect reliability
 
 **For how-to guides**:
-
 - Talk to users about their goals
 - Identify real problems they face
 - Focus on flow and anticipation
 - Don't try to be exhaustive
 
 **For reference**:
-
 - Mirror the product structure exactly
 - Use automated generation where possible
 - Keep it synchronised with code
 - Be consistent above all
 
 **For explanation**:
-
 - Write when you have time to think
 - Take multiple perspectives
 - Connect to other knowledge
@@ -399,21 +371,18 @@ Provide what users actually need, not what feels complete.
 Look for these signs:
 
 **Boundary violations**:
-
 - Explanation in tutorials (extract and link)
 - Instruction in reference (move to how-to)
 - Teaching in how-to guides (assume competence)
 - Reference detail in tutorials (link instead)
 
 **Missing flow**:
-
 - Excessive context switching
 - Concerns left unresolved
 - Unexpected jumps
 - Disrupted rhythm
 
 **Wrong audience**:
-
 - Tutorial assuming competence
 - How-to guide teaching basics
 - Reference assuming intent

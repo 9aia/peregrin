@@ -1,0 +1,4 @@
+# Sibling-checkout overrides for local dev — copy to .cargo/config.toml
+# (gitignored). Points peregrin's sepia deps at ../sepia instead of the
+# committed ../sepia paths (same thing today; swap the workspace deps
+# to `git = "https://github.com/9aia/sepia", branch = "v2"` once pushed).

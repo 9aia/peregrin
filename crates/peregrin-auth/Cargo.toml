@@ -1,0 +1,12 @@
+[package]
+name = "peregrin-auth"
+description = "Pairing + node credentials"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+[dependencies]
+peregrin-secret.workspace = true

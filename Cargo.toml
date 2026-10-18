@@ -1,0 +1,205 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/peregrin-acp-client",
+    "crates/peregrin-auth",
+    "crates/peregrin-bus",
+    "crates/peregrin-cli",
+    "crates/peregrin-config",
+    "crates/peregrin-config-toml",
+    "crates/peregrin-control",
+    "crates/peregrin-core",
+    "crates/peregrin-dotenv",
+    "crates/peregrin-driver",
+    "crates/peregrin-driver-shell",
+    "crates/peregrin-engine",
+    "crates/peregrin-http",
+    "crates/peregrin-hub",
+    "crates/peregrin-keyring",
+    "crates/peregrin-loader",
+    "crates/peregrin-loader-yaml",
+    "crates/peregrin-node",
+    "crates/peregrin-outbox",
+    "crates/peregrin-push",
+    "crates/peregrin-remote",
+    "crates/peregrin-remote-http",
+    "crates/peregrin-secret",
+    "crates/peregrin-service",
+    "crates/peregrin-store",
+    "crates/peregrin-sync",
+    "crates/peregrin-systemd",
+    "crates/peregrin-telemetry",
+    "crates/peregrin-template",
+    "crates/peregrin-testkit",
+    "crates/peregrin-web",
+    "crates/peregrin-web-core",
+    "xtask",
+]
+
+[workspace.package]
+edition = "2024"
+rust-version = "1.85"
+repository = "https://github.com/9aia/peregrin"
+
+[workspace.dependencies]
+# Internal crates.
+peregrin-acp-client = { path = "crates/peregrin-acp-client" }
+peregrin-auth = { path = "crates/peregrin-auth" }
+peregrin-bus = { path = "crates/peregrin-bus" }
+peregrin-cli = { path = "crates/peregrin-cli" }
+peregrin-config = { path = "crates/peregrin-config" }
+peregrin-config-toml = { path = "crates/peregrin-config-toml" }
+peregrin-control = { path = "crates/peregrin-control" }
+peregrin-core = { path = "crates/peregrin-core" }
+peregrin-dotenv = { path = "crates/peregrin-dotenv" }
+peregrin-driver = { path = "crates/peregrin-driver" }
+peregrin-driver-shell = { path = "crates/peregrin-driver-shell" }
+peregrin-engine = { path = "crates/peregrin-engine" }
+peregrin-http = { path = "crates/peregrin-http" }
+peregrin-hub = { path = "crates/peregrin-hub" }
+peregrin-keyring = { path = "crates/peregrin-keyring" }
+peregrin-loader = { path = "crates/peregrin-loader" }
+peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml" }
+peregrin-node = { path = "crates/peregrin-node" }
+peregrin-outbox = { path = "crates/peregrin-outbox" }
+peregrin-push = { path = "crates/peregrin-push" }
+peregrin-remote = { path = "crates/peregrin-remote" }
+peregrin-remote-http = { path = "crates/peregrin-remote-http" }
+peregrin-secret = { path = "crates/peregrin-secret" }
+peregrin-service = { path = "crates/peregrin-service" }
+peregrin-store = { path = "crates/peregrin-store" }
+peregrin-sync = { path = "crates/peregrin-sync" }
+peregrin-systemd = { path = "crates/peregrin-systemd" }
+peregrin-telemetry = { path = "crates/peregrin-telemetry" }
+peregrin-template = { path = "crates/peregrin-template" }
+peregrin-testkit = { path = "crates/peregrin-testkit" }
+peregrin-web = { path = "crates/peregrin-web" }
+peregrin-web-core = { path = "crates/peregrin-web-core" }
+
+# sepia — the session plane these crates embed. Local path deps for
+# sibling checkouts (~/GitHub/9aia); swap to
+# `git = "https://github.com/9aia/sepia", branch = "v2"` once pushed.
+sepia-core = { path = "../sepia/crates/sepia-core" }
+sepia-proto = { path = "../sepia/crates/sepia-proto" }
+sepia-acp = { path = "../sepia/crates/sepia-acp" }
+sepia-session = { path = "../sepia/crates/sepia-session" }
+sepia-driver = { path = "../sepia/crates/sepia-driver" }
+sepia-host = { path = "../sepia/crates/sepia-host" }
+sepia-meta = { path = "../sepia/crates/sepia-meta" }
+sepia-convert = { path = "../sepia/crates/sepia-convert" }
+sepia-testkit = { path = "../sepia/crates/sepia-testkit" }
+sepia-driver-devin = { path = "../sepia/crates/sepia-driver-devin" }
+sepia-driver-cline = { path = "../sepia/crates/sepia-driver-cline" }
+sepia-driver-claude = { path = "../sepia/crates/sepia-driver-claude" }
+sepia-driver-cursor = { path = "../sepia/crates/sepia-driver-cursor" }
+
+# External dependencies — pin conservative majors/minors.
+serde = { version = "1.0", features = ["derive"] }
+serde_json = { version = "1.0", features = ["preserve_order"] }
+thiserror = "2.0"
+async-trait = "0.1"
+tokio = { version = "1", features = [
+  "signal",
+  "macros",
+  "rt-multi-thread",
+  "process",
+  "io-util",
+  "io-std",
+  "sync",
+  "time",
+  "fs",
+] }
+tokio-util = { version = "0.7", features = ["codec"] }
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+semver = "1"
+toml = "0.8"
+rusqlite = { version = "0.32" }
+camino = { version = "1", features = ["serde1"] }
+ureq = { version = "3", features = ["json"] }
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["fs", "limit"] }
+leptos = { version = "0.8.21", default-features = false }
+leptos_router = { version = "0.8.17", default-features = false }
+leptos_meta = { version = "0.8.7", default-features = false }
+leptos_axum = "0.8.10"
+wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+web-sys = "0.3"
+console_error_panic_hook = "0.1"
+time = { version = "0.3", features = ["formatting"] }
+tempfile = "3"
+uuid = { version = "1", features = ["v4", "serde"] }
+proptest = "1"
+# OS keyring for hub node credentials: Secret Service (dbus, sync API —
+# the zbus/async feature would triple the tree), Keychain, Credential
+# Manager. Platform deps are target-gated inside the crate.
+keyring = { version = "3.6", default-features = false, features = [
+  "sync-secret-service",
+  "crypto-rust",
+  "apple-native",
+  "windows-native",
+] }
+insta = { version = "1", features = ["json", "redactions"] }
+# Browser e2e (peregrin-hub tests). Pinned exact: 0.37.6+ shipped <7 days ago.
+thirtyfour = "=0.37.5"
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+# Hard gates: deny classes that hide real bugs.
+correctness = { level = "deny", priority = -1 }
+suspicious = { level = "deny", priority = -1 }
+perf = { level = "deny", priority = -1 }
+# Warn-level signal, fixed as we go.
+style = { level = "warn", priority = -1 }
+complexity = { level = "warn", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+unwrap_used = "warn"
+expect_used = "warn"
+# Pedantic lints that cost more than they catch here.
+missing_errors_doc = "allow"
+missing_panics_doc = "allow"
+must_use_candidate = "allow"
+module_name_repetitions = "allow"
+doc_markdown = "allow"
+similar_names = "allow"
+too_many_lines = "allow"
+cast_precision_loss = "allow"
+cast_possible_truncation = "allow"
+cast_sign_loss = "allow"
+# `leptos_ui::variants!` derives Clone on Copy types inside its expansion.
+expl_impl_clone_on_copy = "allow"
+cast_lossless = "allow"
+struct_excessive_bools = "allow"
+
+[profile.dev]
+# Line tables only: backtraces still symbolize, but test-binary links
+# and disk usage drop sharply (full-debuginfo target/ was 25 GB).
+debug = "line-tables-only"
+
+[profile.dev.package."*"]
+debug = false # dependencies don't need debuginfo
+
+[profile.test]
+debug = "line-tables-only"
+
+[profile.test.package."*"]
+debug = false
+
+[profile.release]
+# Thin LTO for local `cargo xtask install` + the wasm site build —
+# shipped binaries go through `cargo build --profile dist` (release.yml).
+lto = "thin"
+strip = true
+panic = "unwind" # keep unwind: tests + tokio supervise panics
+
+[profile.dist]
+# What we ship: maximum optimization, one codegen unit.
+inherits = "release"
+lto = "fat"
+codegen-units = 1

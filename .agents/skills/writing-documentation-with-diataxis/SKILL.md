@@ -14,12 +14,10 @@ Diataxis is a framework for creating documentation that **feels good to use** - 
 **Important**: Diataxis is an approach, not a template. Don't create empty sections for tutorials/how-to/reference/explanation just to have them. Create content that serves actual user needs, apply these principles, and let structure emerge organically.
 
 **Core insight**: Documentation serves practitioners in a domain of skill. What they need changes based on two dimensions:
-
 1. **Action vs Cognition** - doing things vs understanding things
 2. **Acquisition vs Application** - learning vs working
 
 These create exactly four documentation types:
-
 - **Learning by doing** → Tutorials
 - **Working to achieve a goal** → How-to Guides
 - **Working and need facts** → Reference
@@ -32,19 +30,17 @@ These create exactly four documentation types:
 When uncertain which documentation type is needed, ask two questions:
 
 **1. Does the content inform ACTION or COGNITION?**
-
 - Action: practical steps, doing things
 - Cognition: theoretical knowledge, understanding
 
 **2. Does it serve ACQUISITION or APPLICATION of skill?**
-
 - Acquisition: learning, study
 - Application: working, getting things done
 
 Then apply:
 
 | Content Type | User Activity | Documentation Type |
-| ------------ | ------------- | ------------------ |
+|--------------|---------------|--------------------|
 | Action       | Acquisition   | **Tutorial**       |
 | Action       | Application   | **How-to Guide**   |
 | Cognition    | Application   | **Reference**      |
@@ -55,7 +51,6 @@ Then apply:
 ### 1. Identify the User Need
 
 Ask yourself:
-
 - Who is the user? (learner or practitioner)
 - What do they need? (to do something or understand something)
 - Where are they? (studying or working)
@@ -67,7 +62,6 @@ Apply the two questions above to determine which documentation type serves this 
 ### 3. Apply the Core Principles
 
 **For Tutorials** (learning by doing):
-
 - You're responsible for the learner's success - every step must work
 - Focus on doing, not explaining
 - Show where they're going upfront
@@ -79,7 +73,6 @@ Apply the two questions above to determine which documentation type serves this 
 - Aspire to perfect reliability
 
 **For How-to Guides** (working to achieve goals):
-
 - Address real-world problems, not tool capabilities
 - Assume competence - they know what they want
 - Provide logical sequence that flows with human thinking
@@ -90,7 +83,6 @@ Apply the two questions above to determine which documentation type serves this 
 - Name guides clearly: "How to [accomplish X]"
 
 **For Reference** (facts while working):
-
 - Describe, don't instruct - neutral facts only
 - Structure mirrors the product architecture
 - Use standard, consistent patterns throughout
@@ -100,7 +92,6 @@ Apply the two questions above to determine which documentation type serves this 
 - Completeness matters here (unlike how-to guides)
 
 **For Explanation** (understanding concepts):
-
 - Talk about the subject from multiple angles
 - Answer "why" - design decisions, history, constraints
 - Make connections to related concepts
@@ -122,7 +113,6 @@ Apply the two questions above to determine which documentation type serves this 
 ### 5. Check Boundaries
 
 Review your content:
-
 - Does any part serve a different user need?
 - Is there explanation in your tutorial? (Extract and link to it)
 - Are you instructing in reference? (Move to how-to guide)
@@ -137,7 +127,6 @@ Use this iterative workflow:
 **1. Choose a piece** - Any page, section, or paragraph
 
 **2. Challenge it** with these questions:
-
 - What user need does this serve?
 - Which documentation type should this be?
 - Does it serve that need well?
@@ -185,7 +174,7 @@ Don't try to restructure everything at once. Structure emerges from improving in
 ## Quick Reference Table
 
 | Aspect             | Tutorials           | How-to Guides       | Reference            | Explanation            |
-| ------------------ | ------------------- | ------------------- | -------------------- | ---------------------- |
+|--------------------|---------------------|---------------------|----------------------|------------------------|
 | **Answers**        | "Can you teach me?" | "How do I...?"      | "What is...?"        | "Why...?"              |
 | **User is**        | Learning by doing   | Working on task     | Working, needs facts | Studying to understand |
 | **Content**        | Action steps        | Action steps        | Information          | Information            |
@@ -196,14 +185,12 @@ Don't try to restructure everything at once. Structure emerges from improving in
 ## Supporting Files
 
 For more detailed guidance, refer to:
-
 - **principles.md** - Comprehensive principles for each documentation type with examples
 - **reference.md** - Quality framework, complex scenarios, and additional guidance
 
 ## Output Requirements
 
 When applying Diataxis:
-
 - Be direct and practical
 - Focus on serving user needs
 - Use the compass to resolve uncertainty

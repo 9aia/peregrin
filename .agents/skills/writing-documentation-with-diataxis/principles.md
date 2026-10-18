@@ -8,7 +8,7 @@ This file provides comprehensive guidance for each of the four Diataxis document
 
 A tutorial is a lesson that takes a learner by the hand through a practical learning experience. The purpose is to help the learner acquire basic competence and confidence through doing.
 
-**Key insight**: Learning happens through action, not explanation. What the learner _does_ is not necessarily what they _learn_ - they learn concepts, relationships, and confidence through the actions they perform.
+**Key insight**: Learning happens through action, not explanation. What the learner *does* is not necessarily what they *learn* - they learn concepts, relationships, and confidence through the actions they perform.
 
 ### Detailed Principles
 
@@ -17,7 +17,6 @@ A tutorial is a lesson that takes a learner by the hand through a practical lear
 You are responsible for the learner's success. If something goes wrong, that's your problem, not theirs. The only responsibility of the learner is to be attentive and follow directions.
 
 The tutorial must be:
-
 - **Meaningful** - the learner needs a sense of achievement
 - **Successful** - the learner must be able to complete it
 - **Logical** - the path must make sense
@@ -25,14 +24,13 @@ The tutorial must be:
 
 #### 2. Ruthlessly Minimise Explanation
 
-Explanation is the hardest temptation to resist. You want learners to _understand_, but explanation distracts from doing and blocks learning.
+Explanation is the hardest temptation to resist. You want learners to *understand*, but explanation distracts from doing and blocks learning.
 
 - Give minimal context: "We use HTTPS because it's more secure"
 - Link to detailed explanation for later study
 - Trust that understanding emerges from repeated action
 
 Example of too much explanation:
-
 ```
 We're using HTTPS because it provides encryption through TLS/SSL protocols,
 which create a secure channel by using asymmetric cryptography to exchange
@@ -40,7 +38,6 @@ symmetric keys...
 ```
 
 Better:
-
 ```
 We use HTTPS because it's more secure. (For details on how HTTPS works,
 see the security explanation.)
@@ -50,7 +47,7 @@ see the security explanation.)
 
 In a learning situation, the student is in the moment with concrete things. Lead them from one concrete action and result to another.
 
-- Use _this_ problem, _this_ action, _this_ result
+- Use *this* problem, *this* action, *this* result
 - Avoid abstraction and generalisation
 - Don't discuss alternatives or options
 - The general patterns will emerge naturally from concrete examples
@@ -58,7 +55,6 @@ In a learning situation, the student is in the moment with concrete things. Lead
 #### 4. Deliver Visible Results Early and Often
 
 Each step should produce a comprehensible result. This:
-
 - Builds confidence
 - Helps learners connect cause and effect
 - Provides feedback that they're on track
@@ -82,7 +78,6 @@ Show exact expected output when possible. Prepare them for surprising actions: "
 Learning requires reflection. Learners are too focused on what they're doing to notice important signs unless prompted.
 
 Close learning loops by pointing things out:
-
 - "Notice how the prompt changes"
 - "See that the status is now 'active'"
 - "The logs show that three connections were made"
@@ -91,10 +86,9 @@ Observing is an active skill - teach it.
 
 #### 7. Target the "Feeling of Doing"
 
-Accomplished practitioners experience a _feeling of doing_ - where purpose, action, thinking, and result flow together. This is what makes work feel like a pleasure.
+Accomplished practitioners experience a *feeling of doing* - where purpose, action, thinking, and result flow together. This is what makes work feel like a pleasure.
 
 Your tutorial should create conditions for this feeling:
-
 - Tie together purpose and action
 - Create smooth flow from step to step
 - Allow repetition (learners will repeat successful steps for pleasure)
@@ -117,8 +111,7 @@ You cannot be there to rescue them when things go wrong. The tutorial must rescu
 ### Tutorial Examples
 
 **Good tutorial structure**:
-
-````markdown
+```markdown
 # Build Your First API Endpoint
 
 In this tutorial, we'll create a simple REST API endpoint that returns user data.
@@ -139,7 +132,6 @@ Run this command in your terminal:
 ```bash
 uvicorn api.users:app --reload
 ```
-````
 
 You should see output like this:
 
@@ -153,10 +145,8 @@ INFO:     Uvicorn running on http://127.0.0.1:8000
 The server is now running and will automatically reload when you make changes.
 
 ## Step 3: Test your endpoint
-
 ...
-
-````
+```
 
 **Bad tutorial** (too much explanation, no clear path):
 ```markdown
@@ -170,7 +160,7 @@ To create an API, you'll need to understand HTTP methods, status codes,
 and JSON serialisation...
 
 [More explanation without clear steps]
-````
+```
 
 ---
 
@@ -189,12 +179,10 @@ A how-to guide addresses a real-world goal or problem by providing practical dir
 Focus on what users need to accomplish, not what the tool can do.
 
 **Wrong approach** (tool-focused):
-
 - "How to use the deploy command"
 - "How to configure database options"
 
 **Right approach** (problem-focused):
-
 - "How to deploy with zero downtime"
 - "How to optimise database performance for high traffic"
 
@@ -203,7 +191,6 @@ The guide should answer: "How do I accomplish [meaningful goal]?"
 #### 2. Assume Competence
 
 Your reader:
-
 - Knows what they want to achieve
 - Understands the domain
 - Can follow directions correctly
@@ -216,14 +203,12 @@ Don't teach basics. Don't explain concepts. If they need that, they should start
 This is critical. Flow means the guide moves smoothly through the user's work.
 
 Ask yourself:
-
 - What must the user hold in their mind right now?
 - When can they resolve those thoughts?
 - How long are you asking them to keep concerns open?
 - What will they reach for next?
 
 Minimise context switching:
-
 - Group operations by tool or location
 - Don't make them jump back and forth between files
 - Consider the pace and rhythm of their work
@@ -263,7 +248,7 @@ The task defines what the guide covers, not the tool's capabilities.
 
 Steps should flow in an order that makes sense for human thinking and action, not just technical requirements.
 
-Sometimes the order is imposed by dependencies (step 2 requires step 1). But often there's subtlety: maybe two operations _could_ be done in either order, but one sets up the user's environment or thinking in a way that benefits the other.
+Sometimes the order is imposed by dependencies (step 2 requires step 1). But often there's subtlety: maybe two operations *could* be done in either order, but one sets up the user's environment or thinking in a way that benefits the other.
 
 Pay attention to sense and meaning in ordering - how human beings think and act.
 
@@ -272,13 +257,11 @@ Pay attention to sense and meaning in ordering - how human beings think and act.
 Titles should say exactly what the guide shows.
 
 **Good**:
-
 - "How to integrate application performance monitoring"
 - "How to configure automated backups"
 - "How to troubleshoot deployment failures"
 
 **Bad**:
-
 - "Performance monitoring" (what about it?)
 - "Backups" (too vague)
 - "Deployment" (is this how-to or reference?)
@@ -288,8 +271,7 @@ Search engines appreciate good titles as much as humans do.
 ### How-to Guide Examples
 
 **Good how-to guide**:
-
-````markdown
+```markdown
 # How to Configure Rate Limiting
 
 This guide shows you how to add rate limiting to your API endpoints to prevent
@@ -305,7 +287,6 @@ Add the `@rate_limit` decorator to your endpoint:
 def get_data():
     ...
 ```
-````
 
 This limits each user to 100 requests per hour.
 
@@ -323,8 +304,7 @@ the error response:
 [specific instructions]
 
 For a complete list of rate limiting options, see the rate limiting reference.
-
-````
+```
 
 **Bad how-to guide** (teaching instead of guiding work):
 ```markdown
@@ -337,7 +317,7 @@ Let's learn about rate limiting by building a simple example. First, we need
 to understand how rate limiting algorithms work...
 
 [More explanation than action]
-````
+```
 
 ---
 
@@ -347,7 +327,7 @@ to understand how rate limiting algorithms work...
 
 Reference contains the technical description - facts - that a user needs to do things correctly. It's information you consult while working.
 
-**Key characteristic**: Reference is neutral. It's not concerned with what the user is doing, only with accurately describing what _is_.
+**Key characteristic**: Reference is neutral. It's not concerned with what the user is doing, only with accurately describing what *is*.
 
 ### Detailed Principles
 
@@ -358,7 +338,6 @@ Neutral description is the imperative of reference.
 This is harder than it seems. What's natural is to explain, instruct, discuss, opine. These all run counter to reference, which demands accuracy, precision, completeness, and clarity.
 
 Just describe:
-
 - What the thing is
 - What it does
 - How it behaves
@@ -372,7 +351,6 @@ Don't explain why it's designed that way (that's explanation). Don't instruct ho
 The way a map corresponds to territory helps us use it to navigate. Documentation should mirror the product structure.
 
 If a method belongs to a class in a module:
-
 ```
 docs/
   reference/
@@ -388,7 +366,6 @@ This helps users find what they need because the documentation structure matches
 Use standard patterns throughout. Reference is useful when it's consistent.
 
 For every function, document in the same order:
-
 1. Brief description
 2. Parameters
 3. Return value
@@ -396,7 +373,6 @@ For every function, document in the same order:
 5. Example (optional)
 
 For every class:
-
 1. Brief description
 2. Constructor
 3. Methods
@@ -407,19 +383,17 @@ Users should always find information where they expect it, in familiar formats.
 #### 4. Be Austere and Authoritative
 
 Reference should be:
-
 - **Austere**: No decoration, no enthusiasm, no marketing
 - **Authoritative**: No doubt or ambiguity
 - **Factual**: Just what is true
 
-One _consults_ reference, one doesn't _read_ it. It should support quick, confident lookup.
+One *consults* reference, one doesn't *read* it. It should support quick, confident lookup.
 
 #### 5. Completeness Matters
 
 Unlike how-to guides (which can be selective), reference should be complete.
 
 Document:
-
 - All parameters
 - All return values
 - All exceptions
@@ -444,8 +418,7 @@ This shows typical usage without falling into "how to authenticate" territory.
 ### Reference Examples
 
 **Good reference**:
-
-````markdown
+```markdown
 # authenticate()
 
 Authenticates a user with provided credentials and returns an authentication token.
@@ -460,7 +433,6 @@ Authenticates a user with provided credentials and returns an authentication tok
 ## Returns
 
 `AuthToken` object containing:
-
 - `token` (string): The authentication token
 - `expires_at` (datetime): Token expiration timestamp
 - `user_id` (integer): Authenticated user's ID
@@ -482,15 +454,13 @@ token = User.authenticate(
     remember=True
 )
 ```
-````
 
 ## Notes
 
 - Passwords are compared using constant-time comparison to prevent timing attacks
 - Failed attempts are logged for security monitoring
 - Maximum session timeout is 86400 seconds (24 hours)
-
-````
+```
 
 **Bad reference** (instructing and explaining):
 ```markdown
@@ -505,7 +475,7 @@ the database. This is more secure than storing passwords in plain text.
 To use it, first make sure you have a user object...
 
 [More instruction than description]
-````
+```
 
 ---
 
@@ -519,18 +489,17 @@ Explanation provides context and background. It helps users understand and see t
 
 ### Detailed Principles
 
-#### 1. Talk _About_ the Subject
+#### 1. Talk *About* the Subject
 
 Explanation approaches topics from multiple directions. It circles around the subject, providing different perspectives.
 
-You're not documenting _for_ action (like tutorials or how-to guides). You're documenting to illuminate understanding.
+You're not documenting *for* action (like tutorials or how-to guides). You're documenting to illuminate understanding.
 
 Even titles should reflect this: "About user authentication", "About database connection policies".
 
 #### 2. Answer "Why"
 
 Explanation is uniquely positioned to address "why" questions:
-
 - Why is it designed this way?
 - Why choose this over alternatives?
 - Why did this evolve historically?
@@ -541,7 +510,6 @@ These questions have no place in tutorials, how-to guides, or reference. Explana
 #### 3. Make Connections
 
 Help weave a web of understanding:
-
 - Connect to related concepts
 - Show how parts interact
 - Link to things outside the immediate topic
@@ -552,7 +520,6 @@ Understanding means seeing relationships. Explanation makes those relationships 
 #### 4. Provide Context
 
 Give background that helps users understand:
-
 - Historical context: How did we get here?
 - Design context: What constraints shaped this?
 - Technical context: What trade-offs were made?
@@ -563,7 +530,6 @@ Context transforms isolated facts into meaningful understanding.
 #### 5. Permit Opinion and Perspective
 
 Unlike reference (which must be neutral), explanation can and should include:
-
 - Opinions about approaches
 - Discussion of trade-offs
 - Counter-examples
@@ -588,7 +554,6 @@ Its scope is a topic - "an area of knowledge" with reasonable boundaries. It loo
 ### Explanation Examples
 
 **Good explanation**:
-
 ```markdown
 # About Authentication Strategies
 
@@ -631,8 +596,7 @@ For JWT token reference, see the security reference.
 ```
 
 **Bad explanation** (too much instruction):
-
-````markdown
+```markdown
 # JWT Authentication
 
 To implement JWT authentication, first install the JWT library:
@@ -640,13 +604,10 @@ To implement JWT authentication, first install the JWT library:
 ```bash
 pip install pyjwt
 ```
-````
 
 Then create a token like this:
 
 [Code instructions continue...]
-
 ```
 
 This should be in a how-to guide, not explanation.
-```
