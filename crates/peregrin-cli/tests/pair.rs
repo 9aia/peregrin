@@ -8,7 +8,7 @@ use std::process::{Command, Output};
 use tempfile::TempDir;
 
 fn sepia(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_sepia"))
+    Command::new(env!("CARGO_BIN_EXE_peregrin"))
         .args(args)
         .output()
         .unwrap()
