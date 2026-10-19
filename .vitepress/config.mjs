@@ -18,11 +18,15 @@ export default defineConfig({
       },
       {
         text: 'How-to',
-        items: [{ text: 'Run a node', link: '/how-to/run-a-node' }],
+        items: [
+          { text: 'Run a node', link: '/how-to/run-a-node' },
+          { text: 'Run a hub', link: '/how-to/run-a-hub' },
+        ],
       },
       {
         text: 'Reference',
         items: [
+          { text: 'HTTP API', link: '/reference/api' },
           { text: 'Environment', link: '/reference/environment' },
         ],
       },
