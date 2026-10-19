@@ -22,6 +22,7 @@ use std::time::Duration;
 use async_trait::async_trait;
 use peregrin_http::{AppState, EventFeed, app};
 use peregrin_outbox::{OpKind, Outbox};
+use peregrin_session::LocalPlane;
 use peregrin_sync::engine::SubmitOutcome;
 use peregrin_sync::{
     IndexedSession, NodeClient, NodeRef, NodeStatus, NodeTarget, NodeWrite, ProjectionStore,
@@ -198,7 +199,7 @@ async fn start_stub_with(sessions: Vec<Session>, token: Option<String>) -> StubN
     );
     let dir = tempfile::tempdir().unwrap();
     let meta = MetaStore::open(&dir.path().join("meta.json"));
-    let state = AppState::new(plane)
+    let state = AppState::new(Arc::new(LocalPlane(plane)))
         .with_meta(meta.clone())
         .with_token(token)
         .with_held_watch(Duration::ZERO)
