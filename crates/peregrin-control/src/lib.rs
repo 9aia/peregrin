@@ -229,3 +229,40 @@ impl Ownership {
             .collect()
     }
 }
+
+/// A session-index row from the merged multi-node view.
+#[derive(Debug, Clone)]
+pub struct OwnershipRow {
+    /// The session id as indexed on `node_id`.
+    pub session_id: String,
+    /// The node that indexed it.
+    pub node_id: String,
+    /// The agent that owns the session on that node.
+    pub agent: String,
+}
+
+/// Resolve which node owns `session` over merged projection rows —
+/// `agent` narrows when ids collide across nodes; the first match wins
+/// otherwise. Pure policy: callers do the node lookup.
+///
+/// # Errors
+/// `"Session not found"` when no row matches.
+pub fn pick_owner<'a, I>(rows: I, session: &str, agent: Option<&str>) -> Result<NodeId, String>
+where
+    I: Iterator<Item = &'a OwnershipRow>,
+{
+    let mut found: Option<NodeId> = None;
+    for row in rows {
+        if row.session_id != session {
+            continue;
+        }
+        if let Some(want) = agent {
+            if row.agent == want {
+                return Ok(NodeId(row.node_id.clone()));
+            }
+        } else if found.is_none() {
+            found = Some(NodeId(row.node_id.clone()));
+        }
+    }
+    found.ok_or_else(|| format!("Session not found: {session}"))
+}

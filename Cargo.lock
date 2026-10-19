@@ -3657,6 +3657,7 @@ dependencies = [
  "leptos_axum",
  "leptos_meta",
  "leptos_router",
+ "peregrin-control",
  "peregrin-http",
  "peregrin-outbox",
  "peregrin-push",

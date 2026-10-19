@@ -26,6 +26,7 @@ ureq.workspace = true
 futures.workspace = true
 form_urlencoded = "1"
 async-trait.workspace = true
+peregrin-control.workspace = true
 peregrin-sync.workspace = true
 peregrin-outbox.workspace = true
 peregrin-push.workspace = true

@@ -105,27 +105,19 @@ fn owner<'a>(
     agent: Option<&str>,
     nodes: &'a HashMap<String, HubNode>,
 ) -> Result<(String, &'a HubNode), String> {
-    // `agent` narrows when ids collide; otherwise the first match wins.
-    let mut found: Option<String> = None;
-    for row in projection
+    // Routing policy lives in `peregrin-control` — `agent` narrows
+    // when ids collide; otherwise the first match wins.
+    let rows: Vec<peregrin_control::OwnershipRow> = projection
         .sessions(None)
         .map_err(|e| format!("projection: {e}"))?
-    {
-        if row.session_id != id {
-            continue;
-        }
-        if let Some(want) = agent {
-            if row.agent == want {
-                return nodes
-                    .get(&row.node_id)
-                    .map(|n| (row.node_id.clone(), n))
-                    .ok_or_else(|| format!("node {} not registered", row.node_id));
-            }
-        } else if found.is_none() {
-            found = Some(row.node_id.clone());
-        }
-    }
-    let node_id = found.ok_or_else(|| format!("Session not found: {id}"))?;
+        .into_iter()
+        .map(|row| peregrin_control::OwnershipRow {
+            session_id: row.session_id,
+            node_id: row.node_id,
+            agent: row.agent,
+        })
+        .collect();
+    let node_id = peregrin_control::pick_owner(rows.iter(), id, agent)?.0;
     nodes
         .get(&node_id)
         .map(|n| (node_id.clone(), n))
