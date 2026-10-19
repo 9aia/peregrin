@@ -3821,6 +3821,7 @@ dependencies = [
  "futures",
  "peregrin-http",
  "peregrin-outbox",
+ "peregrin-session",
  "rusqlite",
  "sepia-core",
  "sepia-meta",

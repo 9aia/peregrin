@@ -24,6 +24,7 @@ time.workspace = true
 ureq.workspace = true
 [dev-dependencies]
 peregrin-http.workspace = true
+peregrin-session.workspace = true
 sepia-session.workspace = true
 sepia-meta.workspace = true
 sepia-testkit.workspace = true
