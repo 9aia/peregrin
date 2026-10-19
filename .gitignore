@@ -42,3 +42,4 @@ target/
 node_modules
 Cargo.lock.tmp
 .cargo/config.toml
+docs/

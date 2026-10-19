@@ -108,36 +108,48 @@ pub async fn collection(
 /// pending rows (created-but-unflushed sessions).
 async fn list(state: &AppState, with_locks: bool) -> Response {
     let result = state.plane.list_sessions(with_locks).await;
-    respond_map(result, StatusCode::OK, |sessions| {
-        let mut overlaid: Vec<SummaryWire> = Vec::with_capacity(sessions.len());
-        let mut known = std::collections::HashSet::new();
-        for session in sessions {
-            let meta = meta_of(state, &session.id);
-            known.insert(session.id.clone());
-            overlaid.push(SummaryWire::overlay(session, meta.as_ref()));
-        }
-        // Sessions created via POST /api/sessions but not yet flushed
-        // into the agent's store survive restarts only in the meta
-        // file — surface them so they stay reachable.
-        let pending: Vec<SummaryWire> = state
-            .meta
-            .as_ref()
-            .map(crate::feed::InstrumentedMeta::sessions)
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|(id, meta)| !known.contains(id) && meta.agent.is_some() && meta.cwd.is_some())
-            .map(|(id, meta)| {
-                let can_rewind = meta
-                    .agent
-                    .as_deref()
-                    .is_some_and(|agent| state.plane.can_rewind(agent));
-                SummaryWire::pending(&id, &meta, can_rewind)
-            })
-            .collect();
-        let mut all = overlaid;
-        all.extend(pending);
-        json!({ "sessions": all })
-    })
+    let Ok(sessions) = result else {
+        return respond_map(result, StatusCode::OK, |_| json!({ "sessions": [] }));
+    };
+    let known: std::collections::HashSet<String> = sessions.iter().map(|s| s.id.clone()).collect();
+    // Sessions created via POST /api/sessions but not yet flushed
+    // into the agent's store survive restarts only in the meta
+    // file — surface them so they stay reachable. `can_rewind` is
+    // async on the plane port, so these rows resolve outside the
+    // sync respond_map closure.
+    let pending_ids: Vec<_> = state
+        .meta
+        .as_ref()
+        .map(crate::feed::InstrumentedMeta::sessions)
+        .unwrap_or_default()
+        .into_iter()
+        .filter(|(id, meta)| !known.contains(id) && meta.agent.is_some() && meta.cwd.is_some())
+        .map(|(id, meta)| {
+            let agent = meta.agent.clone();
+            (id, meta, agent)
+        })
+        .collect();
+    let mut pending = Vec::with_capacity(pending_ids.len());
+    for (id, meta, agent) in pending_ids {
+        let can_rewind = match agent.as_deref() {
+            Some(agent) => state.plane.can_rewind(agent).await,
+            None => false,
+        };
+        pending.push(SummaryWire::pending(&id, &meta, can_rewind));
+    }
+    respond_map(
+        Ok::<_, ControlError>(sessions),
+        StatusCode::OK,
+        |sessions| {
+            let mut all: Vec<SummaryWire> = Vec::with_capacity(sessions.len() + pending.len());
+            for session in sessions {
+                let meta = meta_of(state, &session.id);
+                all.push(SummaryWire::overlay(session, meta.as_ref()));
+            }
+            all.extend(pending);
+            json!({ "sessions": all })
+        },
+    )
 }
 
 /// `POST /api/sessions` — create a session under an agent runtime.
@@ -272,7 +284,12 @@ pub async fn meta_alias(
 /// overlay applied, same shape as the list rows).
 async fn get_one(state: &AppState, id: &str, agent: Option<&str>) -> Response {
     let result = state.plane.get_summary(id, agent).await;
-    respond_map(result, StatusCode::OK, |session| {
+    let Ok(session) = result else {
+        return respond_map(result, StatusCode::OK, |_| json!(null));
+    };
+    // Async on the plane port — resolve outside the sync closure.
+    let can_rewind = state.plane.can_rewind(&session.backend_type).await;
+    respond_map(Ok::<_, ControlError>(session), StatusCode::OK, |session| {
         let summary = sepia_session::SessionSummary {
             id: session.id.clone(),
             title: session.title.clone(),
@@ -289,7 +306,7 @@ async fn get_one(state: &AppState, id: &str, agent: Option<&str>) -> Response {
             spans: None,
             parent_session_id: session.parent_session_id.clone(),
             agent_id: session.agent_id.clone(),
-            can_rewind: state.plane.can_rewind(&session.backend_type),
+            can_rewind,
         };
         let meta = meta_of(state, &session.id);
         json!(SummaryWire::overlay(summary, meta.as_ref()))
@@ -417,7 +434,10 @@ pub async fn history(
         before,
         agent_id: agent,
     };
-    let result = state.plane.get_history(&id, &options).await;
+    let result = state
+        .plane
+        .get_history(&id, &options, options.agent_id.as_deref())
+        .await;
     respond_map(result, StatusCode::OK, |page| {
         json!(HistoryPageWire {
             messages: page.messages,
@@ -803,7 +823,7 @@ pub async fn prompt(
         Ok(parts) => parts,
         Err(message) => return bad_request(&message),
     };
-    match state.plane.prompt(&id, &parts, agent.as_deref()).await {
+    match state.plane.prompt(&id, parts, agent.as_deref()).await {
         Ok(()) => ok(),
         Err(e) => {
             tracing::warn!("request failed: {e}");

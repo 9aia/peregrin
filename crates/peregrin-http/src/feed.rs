@@ -8,9 +8,10 @@ use std::collections::{HashMap, HashSet};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
+use peregrin_session::SessionPlane;
 use sepia_meta::{MetaStore, RunSpan, SessionMeta};
 use sepia_proto::SessionEvent;
-use sepia_session::{ControlPlane, SessionSummary};
+use sepia_session::SessionSummary;
 use serde_json::{Value, json};
 use tokio::sync::broadcast;
 
@@ -302,7 +303,7 @@ impl HeldWatches {
     }
 
     /// One probe round — the ticker body, also directly testable.
-    pub async fn tick(&self, plane: &ControlPlane, feed: &EventFeed) {
+    pub async fn tick(&self, plane: &Arc<dyn SessionPlane>, feed: &EventFeed) {
         {
             let now = Instant::now();
             self.inner
@@ -378,7 +379,7 @@ impl HeldWatches {
 
     /// Spawn the ticker — re-probes every `interval` while watches live.
     /// Called once at app build; a `0` interval disables the watch.
-    pub fn spawn_ticker(&self, plane: Arc<ControlPlane>, feed: EventFeed) {
+    pub fn spawn_ticker(&self, plane: Arc<dyn SessionPlane>, feed: EventFeed) {
         let Some(interval) = self.interval else {
             return;
         };
@@ -409,7 +410,7 @@ impl LiveListeners {
     /// task ends).
     pub fn register(
         &self,
-        plane: &Arc<ControlPlane>,
+        plane: &Arc<dyn SessionPlane>,
         feed: &EventFeed,
         push: Option<Arc<peregrin_push::PushStore>>,
         id: &str,

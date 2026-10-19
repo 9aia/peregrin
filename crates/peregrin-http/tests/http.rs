@@ -14,6 +14,7 @@ use axum::body::Body;
 use axum::http::{HeaderValue, Request, StatusCode};
 use futures::StreamExt;
 use peregrin_http::{AppState, Env, Pairing, app};
+use peregrin_session::LocalPlane;
 use sepia_acp::{AcpConnection, AgentSpec, spawn_agent};
 use sepia_core::storage::SessionRepository;
 use sepia_core::{MessageNode, Role, Session, StorageError};
@@ -182,7 +183,7 @@ struct TestApp {
 fn mk_app(plane: &Arc<ControlPlane>) -> TestApp {
     let dir = tempfile::tempdir().unwrap();
     let meta = MetaStore::open(&dir.path().join("meta.json"));
-    let state = AppState::new(plane.clone())
+    let state = AppState::new(Arc::new(LocalPlane(plane.clone())))
         .with_meta(meta.clone())
         .with_node(peregrin_http::NodeIdentity {
             id: "node_test".into(),
@@ -352,7 +353,7 @@ async fn unknown_route_is_404() {
 async fn bearer_gate_rejects_and_accepts() {
     let (plane, _) = mk_plane(vec![], vec![]);
     let dir = tempfile::tempdir().unwrap();
-    let state = AppState::new(plane.clone())
+    let state = AppState::new(Arc::new(LocalPlane(plane.clone())))
         .with_token(Some("secret".into()))
         .with_meta(MetaStore::open(&dir.path().join("meta.json")))
         .with_held_watch(Duration::ZERO);
@@ -443,7 +444,7 @@ async fn pair_redeems_code_into_bearer_token() {
     )
     .unwrap();
 
-    let state = AppState::new(plane.clone())
+    let state = AppState::new(Arc::new(LocalPlane(plane.clone())))
         .with_token(Some("secret".into()))
         .with_meta(MetaStore::open(&dir.path().join("meta.json")))
         .with_pairing(pairing)
@@ -487,7 +488,7 @@ async fn pair_redeem_is_rate_limited_per_ip() {
     let (plane, _) = mk_plane(vec![], vec![]);
     let dir = tempfile::tempdir().unwrap();
     let pairing = Pairing::open(dir.path().join("pair-code"), dir.path().join("tokens.json"));
-    let state = AppState::new(plane.clone())
+    let state = AppState::new(Arc::new(LocalPlane(plane.clone())))
         .with_pairing(pairing)
         // 3 attempts/minute — the 4th must bounce.
         .with_pair_limit(peregrin_http::RateLimiter::pair(3, 20))
@@ -1159,7 +1160,7 @@ async fn agents_projects_config_and_misc() {
 async fn meta_dependent_routes_501_without_store() {
     let (plane, _) = mk_plane(vec![session_with("devin", vec![])], vec![]);
     // No meta → renames/projects/config answer 501.
-    let state = AppState::new(plane.clone()).with_held_watch(Duration::ZERO);
+    let state = AppState::new(Arc::new(LocalPlane(plane.clone()))).with_held_watch(Duration::ZERO);
     let app = app(state);
     let (status, _, _) = call(&app, patch("/api/sessions/s1", json!({ "title": "x" }))).await;
     assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
@@ -1175,7 +1176,7 @@ async fn node_patch_renames_and_persists() {
     let (plane, _) = mk_plane(vec![], vec![MockRuntime::new("devin", &[])]);
     let dir = tempfile::tempdir().unwrap();
     let node_path = dir.path().join("node.json");
-    let state = AppState::new(plane.clone())
+    let state = AppState::new(Arc::new(LocalPlane(plane.clone())))
         .with_node(peregrin_http::NodeIdentity {
             id: "node_test".into(),
             name: "testbox".into(),
@@ -1240,7 +1241,7 @@ async fn import_convert_seams() {
         Arc::new(|session, _target| async move { Ok(session.id.clone()) }.boxed());
     let convert: ConvertSession =
         Arc::new(|_id, _target| async move { Ok("converted-id".to_string()) }.boxed());
-    let state = AppState::new(plane.clone())
+    let state = AppState::new(Arc::new(LocalPlane(plane.clone())))
         .with_meta(meta)
         .with_import_session(import)
         .with_convert(convert)
@@ -1300,7 +1301,7 @@ async fn feed_emits_meta_and_session_events() {
     let (plane, _) = mk_plane(vec![s1], vec![MockRuntime::new("devin", &[])]);
     let dir = tempfile::tempdir().unwrap();
     let meta = MetaStore::open(&dir.path().join("meta.json"));
-    let state = AppState::new(plane.clone())
+    let state = AppState::new(Arc::new(LocalPlane(plane.clone())))
         .with_meta(meta)
         .with_held_watch(Duration::ZERO);
     let feed = state.feed.clone();
@@ -1338,7 +1339,7 @@ async fn query_token_works_on_sse_paths() {
             &[("MOCK_CAPS", "load"), ("MOCK_SESSIONS", "s1|/tmp|S1|now")],
         )],
     );
-    let state = AppState::new(plane.clone())
+    let state = AppState::new(Arc::new(LocalPlane(plane.clone())))
         .with_token(Some("secret".into()))
         .with_held_watch(Duration::ZERO)
         .with_keep_alive(Duration::ZERO);

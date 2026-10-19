@@ -11,6 +11,7 @@ workspace = true
 [dependencies]
 sepia-acp.workspace = true
 sepia-session.workspace = true
+peregrin-session.workspace = true
 sepia-convert.workspace = true
 sepia-core.workspace = true
 sepia-meta.workspace = true

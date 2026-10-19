@@ -10,6 +10,7 @@ repository.workspace = true
 workspace = true
 [dependencies]
 sepia-acp.workspace = true
+peregrin-session.workspace = true
 sepia-session.workspace = true
 sepia-core.workspace = true
 sepia-host.workspace = true

@@ -39,13 +39,24 @@ fn prebuild() -> anyhow::Result<()> {
             "cargo",
             &["build", "--manifest-path", "../sepia/Cargo.toml", "--bins"],
         )?;
-        let sepia_target = std::path::Path::new("../sepia/target/debug");
+        // sepia's builds land wherever CARGO_TARGET_DIR points —
+        // shared-target first (the global default here), repo-local
+        // target/debug as fallback.
         let ours = std::path::Path::new("target/debug");
-        for entry in std::fs::read_dir(sepia_target)? {
-            let entry = entry?;
-            let name = entry.file_name();
-            let Some(name) = name.to_str() else { continue };
-            if name.starts_with("sepia") && entry.file_type()?.is_file() {
+        for sepia_target in [
+            "../sepia/target/debug",
+            concat!(env!("HOME"), "/.cargo/shared-target/debug"),
+        ] {
+            let Ok(read) = std::fs::read_dir(sepia_target) else {
+                continue;
+            };
+            for entry in read.flatten() {
+                let name = entry.file_name();
+                let Some(name) = name.to_str() else { continue };
+                let is_file = entry.file_type().is_ok_and(|t| t.is_file());
+                if !(name.starts_with("sepia") && is_file) {
+                    continue;
+                }
                 let dst = ours.join(name);
                 if !dst.exists() {
                     let _ = std::fs::hard_link(entry.path(), &dst)

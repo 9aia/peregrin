@@ -9,8 +9,9 @@ use std::sync::Arc;
 use peregrin_http::AppState;
 use peregrin_http::env::Env;
 use peregrin_http::routes::sessions::ImportTarget;
+use peregrin_session::SessionPlane;
 use sepia_core::Session;
-use sepia_session::{ControlError, ControlErrorCode, Local, Paths, base_options, build};
+use sepia_session::{ControlError, ControlErrorCode, Paths, base_options, build};
 
 /// Default `PEREGRIN_HOME`: `PEREGRIN_HOME` env or
 /// `~/.local/share/peregrin`. (The session plane's own `SEPIA_HOME`
@@ -40,12 +41,33 @@ fn control_err(e: impl std::fmt::Display) -> ControlError {
 /// # Errors
 /// `std::io::Error` on plane build, bind, or serve failure.
 pub async fn serve(env: &Env) -> std::io::Result<()> {
+    let service_mode = std::env::var("PEREGRIN_SESSION_PLANE").as_deref() == Ok("service");
+    if service_mode {
+        let spec = peregrin_session::Spec {
+            binary: peregrin_session::sepia_binary().ok_or_else(|| {
+                std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "sepia binary not found — set PEREGRIN_SEPIA or install sepia",
+                )
+            })?,
+            env: Vec::new(), // child inherits SEPIA_*/driver envs from the node
+        };
+        let service = peregrin_session::SepiaService::spawn(spec)
+            .await
+            .map_err(|e| std::io::Error::other(format!("sepia serve failed: {e}")))?;
+        let plane: Arc<dyn SessionPlane> = Arc::new(peregrin_session::ServicePlane(service));
+        let state = AppState::from_env(env, Arc::clone(&plane));
+        return run(env, state, plane).await;
+    }
+
     let paths = Paths::new(env.home.clone());
     let mut options = base_options();
     options.idle_ttl = Some(env.idle_ttl);
     options.sweep_interval = Some(env.sweep);
     options.file_history_dir = Some(env.claude_dir.join("file-history"));
     let local = build(&paths, options).await?;
+    let plane: Arc<dyn SessionPlane> =
+        Arc::new(peregrin_session::LocalPlane(Arc::clone(&local.plane)));
 
     // Conversion seams — devin↔cline.
     let devin_store = local
@@ -88,16 +110,16 @@ pub async fn serve(env: &Env) -> std::io::Result<()> {
                     .map_err(|e| control_err(e.message))
             }) as futures::future::BoxFuture<'static, Result<String, ControlError>>
         }) as peregrin_http::ImportSession;
-        AppState::from_env(env, Arc::clone(&local.plane))
+        AppState::from_env(env, Arc::clone(&plane))
             .with_convert(convert)
             .with_import_session(import)
     } else {
-        AppState::from_env(env, Arc::clone(&local.plane))
+        AppState::from_env(env, Arc::clone(&plane))
     };
-    run(env, state, local).await
+    run(env, state, plane).await
 }
 
-async fn run(env: &Env, state: AppState, local: Local) -> std::io::Result<()> {
+async fn run(env: &Env, state: AppState, plane: Arc<dyn SessionPlane>) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind((env.host.as_str(), env.port)).await?;
     tracing::info!("peregrin-node listening on {}:{}", env.host, env.port);
     let app = peregrin_http::app(state);
@@ -109,7 +131,7 @@ async fn run(env: &Env, state: AppState, local: Local) -> std::io::Result<()> {
     .with_graceful_shutdown(async move {
         let _ = tokio::signal::ctrl_c().await;
         tracing::info!("peregrin-node shutting down");
-        local.plane.close_all().await;
+        plane.close_all().await;
     })
     .await
 }

@@ -12,6 +12,11 @@ workspace = true
 [dependencies]
 sepia-host.workspace = true
 sepia-driver.workspace = true
+sepia-session.workspace = true
+sepia-core.workspace = true
+sepia-proto.workspace = true
+sepia-acp.workspace = true
+async-trait.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true

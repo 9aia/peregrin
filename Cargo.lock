@@ -3623,6 +3623,7 @@ dependencies = [
  "http-body-util",
  "nix",
  "peregrin-push",
+ "peregrin-session",
  "peregrin-telemetry",
  "sepia-acp",
  "sepia-convert",
@@ -3710,6 +3711,7 @@ dependencies = [
  "futures",
  "nix",
  "peregrin-http",
+ "peregrin-session",
  "peregrin-telemetry",
  "sepia-acp",
  "sepia-convert",
@@ -3787,8 +3789,13 @@ version = "0.0.0"
 name = "peregrin-session"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
+ "sepia-acp",
+ "sepia-core",
  "sepia-driver",
  "sepia-host",
+ "sepia-proto",
+ "sepia-session",
  "serde",
  "serde_json",
  "tempfile",

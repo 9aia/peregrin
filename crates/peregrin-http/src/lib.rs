@@ -23,8 +23,8 @@ use axum::middleware::{self, Next};
 use axum::response::{IntoResponse, Response};
 use axum::routing::any;
 use axum::{Router, serve as axum_serve};
+use peregrin_session::SessionPlane;
 use sepia_meta::MetaStore;
-use sepia_session::ControlPlane;
 use tracing::Instrument;
 
 pub use env::{Env, EnvError};
@@ -41,7 +41,7 @@ pub use routes::sessions::{ConvertSession, ImportSession, ImportTarget};
 /// SSH tunnels, servers registry, push, telemetry, UI assets, AG-UI).
 #[derive(Clone)]
 pub struct AppState {
-    pub plane: Arc<ControlPlane>,
+    pub plane: Arc<dyn SessionPlane>,
     /// The instrumented meta overlay — `None` → meta routes answer 501.
     pub meta: Option<InstrumentedMeta>,
     /// Process-wide node event feed behind `GET /api/events`.
@@ -80,7 +80,7 @@ pub struct AppState {
 
 impl AppState {
     /// Minimal state — tokenless, no meta store, ephemeral node id.
-    pub fn new(plane: Arc<ControlPlane>) -> Self {
+    pub fn new(plane: Arc<dyn SessionPlane>) -> Self {
         Self {
             plane,
             meta: None,
@@ -113,7 +113,7 @@ impl AppState {
     /// Assemble state from a parsed [`Env`] — the `serve.ts` wiring:
     /// meta store at `PEREGRIN_META`, node identity at `PEREGRIN_NODE`,
     /// pairing at `<home>/pair-code` + `<home>/tokens.json`.
-    pub fn from_env(env: &Env, plane: Arc<ControlPlane>) -> Self {
+    pub fn from_env(env: &Env, plane: Arc<dyn SessionPlane>) -> Self {
         let feed = EventFeed::new();
         let meta = MetaStore::open(&env.meta_path);
         Self {
