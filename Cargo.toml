@@ -79,19 +79,19 @@ peregrin-web-core = { path = "crates/peregrin-web-core" }
 # sepia — the session plane these crates embed. Local path deps for
 # sibling checkouts (~/GitHub/9aia); swap to
 # `git = "https://github.com/9aia/sepia", branch = "v2"` once pushed.
-sepia-core = { path = "../sepia/crates/sepia-core" }
-sepia-proto = { path = "../sepia/crates/sepia-proto" }
-sepia-acp = { path = "../sepia/crates/sepia-acp" }
-sepia-session = { path = "../sepia/crates/sepia-session" }
-sepia-driver = { path = "../sepia/crates/sepia-driver" }
-sepia-host = { path = "../sepia/crates/sepia-host" }
-sepia-meta = { path = "../sepia/crates/sepia-meta" }
-sepia-convert = { path = "../sepia/crates/sepia-convert" }
-sepia-testkit = { path = "../sepia/crates/sepia-testkit" }
-sepia-driver-devin = { path = "../sepia/crates/sepia-driver-devin" }
-sepia-driver-cline = { path = "../sepia/crates/sepia-driver-cline" }
-sepia-driver-claude = { path = "../sepia/crates/sepia-driver-claude" }
-sepia-driver-cursor = { path = "../sepia/crates/sepia-driver-cursor" }
+sepia-core = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-proto = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-acp = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-session = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-driver = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-host = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-meta = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-convert = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-testkit = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
+sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "v2" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }
