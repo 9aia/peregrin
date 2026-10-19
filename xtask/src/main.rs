@@ -43,6 +43,7 @@ fn prebuild() -> anyhow::Result<()> {
         // shared-target first (the global default here), repo-local
         // target/debug as fallback.
         let ours = std::path::Path::new("target/debug");
+        std::fs::create_dir_all(ours)?;
         for sepia_target in [
             "../sepia/target/debug",
             concat!(env!("HOME"), "/.cargo/shared-target/debug"),
@@ -57,15 +58,56 @@ fn prebuild() -> anyhow::Result<()> {
                 if !(name.starts_with("sepia") && is_file) {
                     continue;
                 }
-                let dst = ours.join(name);
-                if !dst.exists() {
-                    let _ = std::fs::hard_link(entry.path(), &dst)
-                        .or_else(|_| std::fs::copy(entry.path(), &dst).map(|_| ()));
-                }
+                link_bin(&entry.path(), &ours.join(name));
+            }
+        }
+    }
+    // Our own binaries land wherever CARGO_TARGET_DIR points too —
+    // link them into repo-local target/debug so harnesses resolving
+    // `<root>/target/debug/<bin>` find them under either config.
+    for our_target in [concat!(env!("HOME"), "/.cargo/shared-target/debug")] {
+        let Ok(read) = std::fs::read_dir(our_target) else {
+            continue;
+        };
+        for entry in read.flatten() {
+            let name = entry.file_name();
+            let Some(name) = name.to_str() else { continue };
+            let is_file = entry.file_type().is_ok_and(|t| t.is_file());
+            if !(name.starts_with("peregrin") && is_file) {
+                continue;
+            }
+            link_bin(
+                &entry.path(),
+                &std::path::Path::new("target/debug").join(name),
+            );
+        }
+    }
+    // e2e harnesses pin PEREGRIN_SITE_ROOT to `target/site` — stage the
+    // hub's public assets there (sw.js, manifest, icon) so asset checks
+    // pass without a full `xtask site` wasm build. No `pkg/` on purpose:
+    // `browser_enabled` keys off it to gate the hydrated-app tests.
+    let site = std::path::Path::new("target/site");
+    let public = std::path::Path::new("crates/peregrin-hub/public");
+    if public.is_dir() {
+        let _ = std::fs::create_dir_all(site);
+        for entry in std::fs::read_dir(public)?.flatten() {
+            let dst = site.join(entry.file_name());
+            if entry.file_type().is_ok_and(|t| t.is_file()) && !dst.exists() {
+                let _ = std::fs::copy(entry.path(), dst);
             }
         }
     }
     Ok(())
+}
+
+fn link_bin(src: &std::path::Path, dst: &std::path::Path) {
+    if dst.exists() {
+        return;
+    }
+    if let Some(parent) = dst.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    let _ = std::fs::hard_link(src, dst).or_else(|_| std::fs::copy(src, dst).map(|_| ()));
 }
 
 /// `TESTKIT_BIN_DIRS` — where testkit looks for spawned binaries:
@@ -73,9 +115,10 @@ fn prebuild() -> anyhow::Result<()> {
 fn testkit_bin_dirs() -> String {
     let root = std::env::current_dir().unwrap_or_else(|_| ".".into());
     format!(
-        "{}:{}",
+        "{}:{}:{}",
         root.join("target/debug").display(),
-        root.join("../sepia/target/debug").display()
+        root.join("../sepia/target/debug").display(),
+        concat!(env!("HOME"), "/.cargo/shared-target/debug")
     )
 }
 

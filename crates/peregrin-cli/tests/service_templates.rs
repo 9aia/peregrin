@@ -164,7 +164,7 @@ fn env_template_documents_the_knobs() {
     for knob in [
         "PEREGRIN_TOKEN",
         "PEREGRIN_HOST",
-        "PEREGRIN_DB",
+        "SEPIA_DEVIN_DB",
         "SEPIA_CLINE_DIR",
         "SEPIA_CLAUDE_DIR",
         "SEPIA_CURSOR_DIR",
