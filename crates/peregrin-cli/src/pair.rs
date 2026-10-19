@@ -1,5 +1,5 @@
 //! The mint half of pairing
-//! (docs/protocol.md "Auth — pairing"): `sepia pair` runs on the node
+//! (docs/protocol.md "Auth — pairing"): `peregrin pair` runs on the node
 //! itself and writes `$PEREGRIN_HOME/pair-code` — `{code, expiresAt}` —
 //! which the running server consumes on the next `POST /api/pair`. The
 //! filesystem is the gate: only someone who can write `$PEREGRIN_HOME` (the
@@ -53,7 +53,7 @@ pub fn write_pair_code_file(home: &Path) -> Result<MintedPairCode, CliError> {
     })
 }
 
-/// `sepia pair` — print a one-time pairing code; the UI exchanges it via
+/// `peregrin pair` — print a one-time pairing code; the UI exchanges it via
 /// `POST /api/pair`.
 pub fn pair(home: &Path, url: &str) -> Result<(), CliError> {
     // Mint = write the code file the running server consumes; whoever can

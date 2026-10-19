@@ -252,7 +252,7 @@ fn hub_e2e_over_a_real_node() {
     let node_port = 18790u16;
     let mut node = std::process::Command::new(sepia_testkit::ensure_driver_bin("peregrin-node"))
         .env("SEPIA_DRIVER_DIR", &driver_dir)
-        .env("PEREGRIN_DEVIN_DB", &db)
+        .env("SEPIA_DEVIN_DB", &db)
         .env("PEREGRIN_HOME", &node_home)
         .env("PEREGRIN_META", node_home.join("meta.json"))
         .env("PEREGRIN_NODE", node_home.join("node.json"))
@@ -466,7 +466,7 @@ fn hub_resolves_node_tokens_from_the_credential_store() {
     let node_port = 18792u16;
     let mut node = std::process::Command::new(sepia_testkit::ensure_driver_bin("peregrin-node"))
         .env("SEPIA_DRIVER_DIR", &driver_dir)
-        .env("PEREGRIN_DEVIN_DB", &db)
+        .env("SEPIA_DEVIN_DB", &db)
         .env("PEREGRIN_HOME", &node_home)
         .env("PEREGRIN_META", node_home.join("meta.json"))
         .env("PEREGRIN_NODE", node_home.join("node.json"))

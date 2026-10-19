@@ -3506,13 +3506,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
-name = "peregrin-acp-client"
-version = "0.0.0"
-dependencies = [
- "serde_json",
-]
-
-[[package]]
 name = "peregrin-auth"
 version = "0.0.0"
 dependencies = [
@@ -3568,6 +3561,10 @@ dependencies = [
 [[package]]
 name = "peregrin-control"
 version = "0.0.0"
+dependencies = [
+ "serde",
+ "serde_json",
+]
 
 [[package]]
 name = "peregrin-core"
@@ -3785,6 +3782,19 @@ version = "0.0.0"
 [[package]]
 name = "peregrin-service"
 version = "0.0.0"
+
+[[package]]
+name = "peregrin-session"
+version = "0.0.0"
+dependencies = [
+ "sepia-driver",
+ "sepia-host",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "tokio",
+ "tracing",
+]
 
 [[package]]
 name = "peregrin-store"

@@ -1,4 +1,4 @@
-//! sepia — the CLI. Local store verbs over the
+//! peregrin — the CLI. Local store verbs over the
 //! Devin/Cline/Claude/Cursor stores, node ops against a running node's
 //! `/api/*` surface, agent config IR verbs, pairing, `serve` (the node
 //! itself, shared with `peregrin-node`), and `service` management
@@ -12,7 +12,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 use peregrin_cli::node_ops::{NodeArgs, TargetArgs};
 use peregrin_cli::{CliError, PEREGRIN_VERSION, api, node_ops, pair, service};
 
-fn default_sepia_home() -> PathBuf {
+fn default_peregrin_home() -> PathBuf {
     peregrin_node::peregrin_home()
 }
 
@@ -252,7 +252,7 @@ enum SessionsCommands {
     /// POST /api/sessions/import — write session IR (or a history array)
     /// into an agent store
     Import {
-        /// A session JSON export (`sessions export` / `sepia export`
+        /// A session JSON export (`sessions export` / `peregrin export`
         /// output) or a history array
         path: PathBuf,
         /// Agent store to write into
@@ -431,7 +431,7 @@ enum PushCommands {
 
 #[derive(Subcommand)]
 enum ServiceCommands {
-    /// Install the sepia node (or hub, --hub) as an OS service
+    /// Install the peregrin node (or hub, --hub) as an OS service
     /// (systemd/launchd)
     Install {
         /// Manage the hub unit (peregrin-hub) instead of the node unit
@@ -451,7 +451,7 @@ enum ServiceCommands {
         #[arg(long)]
         env_file: Option<PathBuf>,
     },
-    /// Stop, disable and remove the sepia service
+    /// Stop, disable and remove the peregrin service
     Uninstall {
         /// Manage the hub unit (peregrin-hub) instead of the node unit
         #[arg(long)]
@@ -463,7 +463,7 @@ enum ServiceCommands {
         #[arg(long)]
         purge: bool,
     },
-    /// Show whether the sepia service is installed, enabled and running
+    /// Show whether the peregrin service is installed, enabled and running
     Status {
         /// Manage the hub unit (peregrin-hub) instead of the node unit
         #[arg(long)]
@@ -472,7 +472,7 @@ enum ServiceCommands {
         #[arg(long)]
         system: bool,
     },
-    /// Restart the sepia service
+    /// Restart the peregrin service
     Restart {
         /// Manage the hub unit (peregrin-hub) instead of the node unit
         #[arg(long)]
@@ -481,7 +481,7 @@ enum ServiceCommands {
         #[arg(long)]
         system: bool,
     },
-    /// Print (or follow, -f) the sepia service log
+    /// Print (or follow, -f) the peregrin service log
     Logs {
         /// Manage the hub unit (peregrin-hub) instead of the node unit
         #[arg(long)]
@@ -497,10 +497,10 @@ enum ServiceCommands {
 
 // --- root ----------------------------------------------------------------------
 
-/// Drive a sepia node over its API, or convert sessions between the
+/// Drive a peregrin node over its API, or convert sessions between the
 /// Devin, Cline, Claude and Cursor stores
 #[derive(Parser)]
-#[command(name = "sepia", version = PEREGRIN_VERSION)]
+#[command(name = "peregrin", version = PEREGRIN_VERSION)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -543,12 +543,12 @@ enum Commands {
         #[command(flatten)]
         args: TargetArgs,
     },
-    /// POST /api/pair — exchange a `sepia pair` code for a long-lived
+    /// POST /api/pair — exchange a `peregrin pair` code for a long-lived
     /// bearer token
     Redeem {
-        /// One-time code printed by `sepia pair` on the node
+        /// One-time code printed by `peregrin pair` on the node
         code: String,
-        /// Base URL of the sepia node (default: PEREGRIN_NODE_URL, else
+        /// Base URL of the peregrin node (default: PEREGRIN_NODE_URL, else
         /// http://127.0.0.1:8787)
         #[arg(long, default_value_t = api::default_node_url())]
         node: String,
@@ -564,7 +564,7 @@ enum Commands {
         #[command(flatten)]
         args: TargetArgs,
     },
-    /// Node ops against /api/sessions — run against a live sepia node
+    /// Node ops against /api/sessions — run against a live peregrin node
     #[command(subcommand)]
     Sessions(SessionsCommands),
     /// Node-local project grouping (/api/projects)
@@ -581,20 +581,20 @@ enum Commands {
     /// POST /api/pair
     Pair {
         /// PEREGRIN_HOME of the node to pair with
-        #[arg(long, default_value_os_t = default_sepia_home())]
+        #[arg(long, default_value_os_t = default_peregrin_home())]
         home: PathBuf,
         /// The node's URL, printed for the pairing UI
         #[arg(long, default_value_t = default_pair_url())]
         url: String,
     },
-    /// Serve the sepia node — the `/api/*` surface (PEREGRIN_* env
+    /// Serve the peregrin node — the `/api/*` surface (PEREGRIN_* env
     /// configures it)
     Serve,
-    /// Manage the sepia node as an OS service (systemd user unit /
+    /// Manage the peregrin node as an OS service (systemd user unit /
     /// launchd plist)
     #[command(subcommand)]
     Service(ServiceCommands),
-    /// Print the sepia version stamp
+    /// Print the peregrin version stamp
     Version,
 }
 

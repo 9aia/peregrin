@@ -16,7 +16,7 @@
 //! - `OTEL_EXPORTER_OTLP_ENDPOINT` / `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`
 //!   — the standard vars also enable export (full `OTEL_EXPORTER_*`
 //!   config: headers, timeout, compression, protocol).
-//! - `SEPIA_OTEL_SERVICE_NAME` — `service.name` resource; falls back to
+//! - `PEREGRIN_OTEL_SERVICE_NAME` — `service.name` resource; falls back to
 //!   `OTEL_SERVICE_NAME`, then `"sepia"`.
 //! - `OTEL_SERVICE_NAME` / `OTEL_RESOURCE_ATTRIBUTES` — honored by the
 //!   SDK's env resource detector.
@@ -40,8 +40,8 @@ use tracing_subscriber::{EnvFilter, Layer as _};
 
 /// `PEREGRIN_OTEL_ENDPOINT` — the opt-in switch. OTLP/HTTP base URL.
 pub const ENV_OTEL_ENDPOINT: &str = "PEREGRIN_OTEL_ENDPOINT";
-/// `SEPIA_OTEL_SERVICE_NAME` — `service.name` override.
-pub const ENV_OTEL_SERVICE_NAME: &str = "SEPIA_OTEL_SERVICE_NAME";
+/// `PEREGRIN_OTEL_SERVICE_NAME` — `service.name` override.
+pub const ENV_OTEL_SERVICE_NAME: &str = "PEREGRIN_OTEL_SERVICE_NAME";
 /// Standard endpoint vars the exporter honors — also enable export.
 const OTEL_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_ENDPOINT";
 const OTEL_TRACES_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT";
@@ -337,7 +337,7 @@ mod tests {
     fn service_name_precedence() {
         let vars = [
             ("PEREGRIN_OTEL_ENDPOINT", "http://localhost:4318"),
-            ("SEPIA_OTEL_SERVICE_NAME", "peregrin-hub"),
+            ("PEREGRIN_OTEL_SERVICE_NAME", "peregrin-hub"),
             ("OTEL_SERVICE_NAME", "otel-name"),
         ];
         let config = config_from(lookup(&vars)).unwrap_or_else(|| panic!("enabled"));

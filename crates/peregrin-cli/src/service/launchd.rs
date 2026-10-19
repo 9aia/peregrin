@@ -1,17 +1,17 @@
-//! One `ai.sepia` job: a
+//! One `ai.peregrin` job: a
 //! LaunchAgent under `~/Library/LaunchAgents` for `--user` (the only
 //! sensible default for a dev tool) or a LaunchDaemon under
 //! `/Library/LaunchDaemons` for `--system`. Unlike systemd, launchd has
 //! no EnvironmentFile directive, so the env file is rendered into the
 //! plist's `EnvironmentVariables` dict at install time — edit the file,
-//! re-run `sepia service install` to apply.
+//! re-run `peregrin service install` to apply.
 
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use super::{CliError, ServiceSpec, ServiceStatus, env_template};
 
-/// `ai.sepia` for the node, `ai.peregrin-hub` for the hub.
+/// `ai.peregrin` for the node, `ai.peregrin-hub` for the hub.
 fn label(spec: &ServiceSpec) -> String {
     format!("ai.{}", spec.name.replace('-', "."))
 }
@@ -38,7 +38,7 @@ fn domain(spec: &ServiceSpec) -> String {
     }
 }
 
-/// The service endpoint `print`/`kickstart` take: `gui/<uid>/ai.sepia`.
+/// The service endpoint `print`/`kickstart` take: `gui/<uid>/ai.peregrin`.
 fn service_target(spec: &ServiceSpec) -> String {
     format!("{}/{}", domain(spec), label(spec))
 }

@@ -19,7 +19,7 @@ use crate::CliError;
 /// whether it's a system-level (root) or per-user unit.
 #[derive(Clone, Debug)]
 pub struct ServiceSpec {
-    /// Unit name — `sepia` (node) or `peregrin-hub`. Drives the systemd
+    /// Unit name — `peregrin` (node) or `peregrin-hub`. Drives the systemd
     /// unit file, launchd label, log path and default env file.
     pub name: String,
     /// Absolute path the unit's ExecStart/ProgramArguments should run.
@@ -39,19 +39,19 @@ pub struct ServiceStatus {
     pub detail: String,
 }
 
-/// The unit name both backends use: `sepia.service` / `ai.sepia.plist`.
-pub const SERVICE_NAME: &str = "sepia";
+/// The unit name both backends use: `peregrin.service` / `ai.peregrin.plist`.
+pub const SERVICE_NAME: &str = "peregrin";
 
 /// Where `~/.config/peregrin/env` lives — the EnvironmentFile/template.
 pub fn default_env_file(home: &Path, name: &str) -> PathBuf {
-    let file = if name == "sepia" { "env" } else { "hub-env" };
+    let file = if name == "peregrin" { "env" } else { "hub-env" };
     home.join(format!(".config/peregrin/{file}"))
 }
 
 /// The stock env template — written once, never overwritten. Comments
 /// list every knob so editing doesn't need docs in the unit.
 pub fn env_template() -> String {
-    "# sepia service environment — KEY=value per line, no quoting.\n\
+    "# peregrin service environment — KEY=value per line, no quoting.\n\
      # See DEPLOY.md \"PEREGRIN_* environment\" for the full reference.\n\
      \n\
      # Bearer auth on every /api/* route (required for non-loopback binds).\n\
@@ -59,11 +59,11 @@ pub fn env_template() -> String {
      # Bind address — non-loopback requires PEREGRIN_TOKEN.\n\
      # PEREGRIN_HOST=127.0.0.1\n\
      # Devin store path (opened read-only).\n\
-     # PEREGRIN_DB=$HOME/.local/share/devin/cli/sessions.db\n\
+     # SEPIA_DEVIN_DB=$HOME/.local/share/devin/cli/sessions.db\n\
      # Overlay session stores.\n\
-     # PEREGRIN_CLINE_DIR=$HOME/.cline/data\n\
-     # PEREGRIN_CLAUDE_DIR=$HOME/.claude\n\
-     # PEREGRIN_CURSOR_DIR=$HOME/.cursor\n\
+     # SEPIA_CLINE_DIR=$HOME/.cline/data\n\
+     # SEPIA_CLAUDE_DIR=$HOME/.claude\n\
+     # SEPIA_CURSOR_DIR=$HOME/.cursor\n\
      # --- peregrin-hub only (hub-env) ---\n\
      # Nodes the hub follows: id=url[@token];… — omit @token and the\n\
      # credential store supplies it (OS keyring, else\n\
@@ -186,11 +186,13 @@ fn backend() -> Result<Backend, CliError> {
             "windows" => "win32",
             other => other,
         };
-        CliError(format!("sepia service is not supported on {platform} yet"))
+        CliError(format!(
+            "peregrin service is not supported on {platform} yet"
+        ))
     })
 }
 
-/// The command the unit runs — the compiled binary when `sepia` IS the
+/// The command the unit runs — the compiled binary when `peregrin` IS the
 /// binary (the process's own resolved path).
 fn resolve_exec(hub: bool) -> Result<Vec<String>, CliError> {
     if hub {
@@ -206,14 +208,14 @@ fn resolve_exec(hub: bool) -> Result<Vec<String>, CliError> {
     }
     let exec = std::env::current_exe()
         .and_then(|p| p.canonicalize())
-        .map_err(|e| CliError(format!("cannot resolve the sepia binary path: {e}")))?;
+        .map_err(|e| CliError(format!("cannot resolve the peregrin binary path: {e}")))?;
     Ok(vec![exec.to_string_lossy().into_owned(), "serve".into()])
 }
 
 // Exec is only meaningful at install time — status/logs/uninstall must
 // not resolve it (these verbs don't need it anyway).
 fn spec(hub: bool, system: bool, env_file: Option<&Path>) -> ServiceSpec {
-    let name = if hub { "peregrin-hub" } else { "sepia" };
+    let name = if hub { "peregrin-hub" } else { "peregrin" };
     ServiceSpec {
         name: name.to_string(),
         exec: Vec::new(),
@@ -222,7 +224,7 @@ fn spec(hub: bool, system: bool, env_file: Option<&Path>) -> ServiceSpec {
     }
 }
 
-/// `sepia service install` — write the unit + env template, then enable
+/// `peregrin service install` — write the unit + env template, then enable
 /// + start it.
 pub fn service_install(
     hub: bool,
@@ -234,7 +236,7 @@ pub fn service_install(
     let verb = "install";
     let run = || -> Result<(), CliError> {
         let b = backend()?;
-        let name = if hub { "peregrin-hub" } else { "sepia" };
+        let name = if hub { "peregrin-hub" } else { "peregrin" };
         let spec = ServiceSpec {
             name: name.to_string(),
             exec: match exec {
@@ -252,7 +254,7 @@ pub fn service_install(
             b.unit_path(&spec).display()
         );
         println!(
-            "env: edit {} then 'sepia service restart'",
+            "env: edit {} then 'peregrin service restart'",
             spec.env_file.display()
         );
         if linger {
@@ -270,10 +272,10 @@ pub fn service_install(
         }
         Ok(())
     };
-    run().map_err(|e| CliError(format!("sepia service {verb}: {}", e.0)))
+    run().map_err(|e| CliError(format!("peregrin service {verb}: {}", e.0)))
 }
 
-/// `sepia service uninstall` — stop, disable and remove the service.
+/// `peregrin service uninstall` — stop, disable and remove the service.
 pub fn service_uninstall(hub: bool, system: bool, purge: bool) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
         let b = backend()?;
@@ -292,10 +294,10 @@ pub fn service_uninstall(hub: bool, system: bool, purge: bool) -> Result<(), Cli
         }
         Ok(())
     };
-    run().map_err(|e| CliError(format!("sepia service uninstall: {}", e.0)))
+    run().map_err(|e| CliError(format!("peregrin service uninstall: {}", e.0)))
 }
 
-/// `sepia service status` — installed/enabled/running.
+/// `peregrin service status` — installed/enabled/running.
 pub fn service_status(hub: bool, system: bool) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
         let b = backend()?;
@@ -312,10 +314,10 @@ pub fn service_status(hub: bool, system: bool) -> Result<(), CliError> {
         }
         Ok(())
     };
-    run().map_err(|e| CliError(format!("sepia service status: {}", e.0)))
+    run().map_err(|e| CliError(format!("peregrin service status: {}", e.0)))
 }
 
-/// `sepia service restart`.
+/// `peregrin service restart`.
 pub fn service_restart(hub: bool, system: bool) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
         let b = backend()?;
@@ -323,10 +325,10 @@ pub fn service_restart(hub: bool, system: bool) -> Result<(), CliError> {
         println!("restarted");
         Ok(())
     };
-    run().map_err(|e| CliError(format!("sepia service restart: {}", e.0)))
+    run().map_err(|e| CliError(format!("peregrin service restart: {}", e.0)))
 }
 
-/// `sepia service logs` — print (or follow, `-f`) the service log.
+/// `peregrin service logs` — print (or follow, `-f`) the service log.
 pub fn service_logs(hub: bool, system: bool, follow: bool) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
         let b = backend()?;
@@ -336,5 +338,5 @@ pub fn service_logs(hub: bool, system: bool, follow: bool) -> Result<(), CliErro
         }
         Ok(())
     };
-    run().map_err(|e| CliError(format!("sepia service logs: {}", e.0)))
+    run().map_err(|e| CliError(format!("peregrin service logs: {}", e.0)))
 }

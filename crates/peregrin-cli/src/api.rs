@@ -94,7 +94,7 @@ fn to_api_error(status: u16, body: &str) -> ApiError {
 
 fn as_api_error(cause: impl std::fmt::Display, base_url: &str) -> ApiError {
     ApiError {
-        message: format!("Cannot reach {base_url} — is a sepia node running there? ({cause})"),
+        message: format!("Cannot reach {base_url} — is a peregrin node running there? ({cause})"),
         status: None,
         code: None,
     }

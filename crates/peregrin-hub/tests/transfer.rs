@@ -489,7 +489,7 @@ async fn transfer_over_two_real_nodes() {
         std::fs::create_dir_all(&home).unwrap();
         std::process::Command::new(sepia_testkit::ensure_driver_bin("peregrin-node"))
             .env("SEPIA_DRIVER_DIR", &driver_dir)
-            .env("PEREGRIN_DEVIN_DB", db)
+            .env("SEPIA_DEVIN_DB", db)
             .env("PEREGRIN_HOME", &home)
             .env("PEREGRIN_META", home.join("meta.json"))
             .env("PEREGRIN_NODE", home.join("node.json"))

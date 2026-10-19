@@ -28,7 +28,44 @@ fn prebuild() -> anyhow::Result<()> {
         args.push("--bin");
         args.push(bin);
     }
-    run("cargo", &args)
+    run("cargo", &args)?;
+    // sepia binaries the suite spawns (drivers, mock agent, the
+    // `sepia serve` subprocess) — built once from the sibling checkout,
+    // then linked into our target/debug so test harnesses that resolve
+    // `<root>/target/debug/<bin>` find them uniformly.
+    let sepia = std::path::Path::new("../sepia/Cargo.toml");
+    if sepia.exists() {
+        run(
+            "cargo",
+            &["build", "--manifest-path", "../sepia/Cargo.toml", "--bins"],
+        )?;
+        let sepia_target = std::path::Path::new("../sepia/target/debug");
+        let ours = std::path::Path::new("target/debug");
+        for entry in std::fs::read_dir(sepia_target)? {
+            let entry = entry?;
+            let name = entry.file_name();
+            let Some(name) = name.to_str() else { continue };
+            if name.starts_with("sepia") && entry.file_type()?.is_file() {
+                let dst = ours.join(name);
+                if !dst.exists() {
+                    let _ = std::fs::hard_link(entry.path(), &dst)
+                        .or_else(|_| std::fs::copy(entry.path(), &dst).map(|_| ()));
+                }
+            }
+        }
+    }
+    Ok(())
+}
+
+/// `TESTKIT_BIN_DIRS` — where testkit looks for spawned binaries:
+/// peregrin's own bins + sepia's (drivers, mock agent, `sepia` itself).
+fn testkit_bin_dirs() -> String {
+    let root = std::env::current_dir().unwrap_or_else(|_| ".".into());
+    format!(
+        "{}:{}",
+        root.join("target/debug").display(),
+        root.join("../sepia/target/debug").display()
+    )
 }
 
 fn main() -> anyhow::Result<()> {
@@ -59,6 +96,7 @@ fn main() -> anyhow::Result<()> {
                 .args(cmd)
                 .env("SEPIA_TESTKIT_PREBUILT", "1")
                 .env("PEREGRIN_E2E_PREBUILT", "1")
+                .env("TESTKIT_BIN_DIRS", testkit_bin_dirs())
                 .status()?;
             anyhow::ensure!(status.success(), "workspace tests failed");
         }
@@ -97,10 +135,6 @@ fn main() -> anyhow::Result<()> {
                 std::path::Path::new("target/site/pkg").is_dir(),
                 "target/site/pkg missing — run `cargo xtask site` first"
             );
-            let env = [
-                ("PEREGRIN_BROWSER_E2E", "1"),
-                ("PEREGRIN_E2E_PREBUILT", "1"),
-            ];
             let status = Command::new("cargo")
                 .args([
                     "test",
@@ -111,7 +145,9 @@ fn main() -> anyhow::Result<()> {
                     "--",
                     "--ignored",
                 ])
-                .envs(env)
+                .env("PEREGRIN_BROWSER_E2E", "1")
+                .env("PEREGRIN_E2E_PREBUILT", "1")
+                .env("TESTKIT_BIN_DIRS", testkit_bin_dirs())
                 .status()?;
             anyhow::ensure!(status.success(), "browser e2e failed");
         }

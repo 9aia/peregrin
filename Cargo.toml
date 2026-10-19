@@ -1,7 +1,7 @@
 [workspace]
 resolver = "2"
 members = [
-    "crates/peregrin-acp-client",
+    "crates/peregrin-session",
     "crates/peregrin-auth",
     "crates/peregrin-bus",
     "crates/peregrin-cli",
@@ -43,7 +43,7 @@ repository = "https://github.com/9aia/peregrin"
 
 [workspace.dependencies]
 # Internal crates.
-peregrin-acp-client = { path = "crates/peregrin-acp-client" }
+peregrin-session = { path = "crates/peregrin-session" }
 peregrin-auth = { path = "crates/peregrin-auth" }
 peregrin-bus = { path = "crates/peregrin-bus" }
 peregrin-cli = { path = "crates/peregrin-cli" }
@@ -181,12 +181,16 @@ struct_excessive_bools = "allow"
 # Line tables only: backtraces still symbolize, but test-binary links
 # and disk usage drop sharply (full-debuginfo target/ was 25 GB).
 debug = "line-tables-only"
+incremental = false # this dep tree makes incremental dirs multi-GB
+
 
 [profile.dev.package."*"]
 debug = false # dependencies don't need debuginfo
 
 [profile.test]
 debug = "line-tables-only"
+incremental = false
+
 
 [profile.test.package."*"]
 debug = false

@@ -1,5 +1,5 @@
 //! The node-op verbs; every
-//! handler here talks to a running sepia node's REST API
+//! handler here talks to a running peregrin node's REST API
 //! (docs/protocol.md). Each takes `--node`/`--token` (defaults:
 //! `PEREGRIN_NODE_URL` → http://127.0.0.1:8787, `PEREGRIN_TOKEN` → none).
 
@@ -11,7 +11,7 @@ use crate::api::{self, NodeTarget};
 /// `--node`/`--token`/`--json` — the shared flag block of node verbs.
 #[derive(Clone, clap::Args)]
 pub struct NodeArgs {
-    /// Base URL of the sepia node (default: PEREGRIN_NODE_URL, else http://127.0.0.1:8787)
+    /// Base URL of the peregrin node (default: PEREGRIN_NODE_URL, else http://127.0.0.1:8787)
     #[arg(long, default_value_t = api::default_node_url())]
     pub node: String,
     /// Bearer token for the node (default: PEREGRIN_TOKEN)
@@ -25,7 +25,7 @@ pub struct NodeArgs {
 /// `--node`/`--token` without `--json`.
 #[derive(Clone, clap::Args)]
 pub struct TargetArgs {
-    /// Base URL of the sepia node (default: PEREGRIN_NODE_URL, else http://127.0.0.1:8787)
+    /// Base URL of the peregrin node (default: PEREGRIN_NODE_URL, else http://127.0.0.1:8787)
     #[arg(long, default_value_t = api::default_node_url())]
     pub node: String,
     /// Bearer token for the node (default: PEREGRIN_TOKEN)
@@ -145,7 +145,7 @@ fn iso_of_ms(ms: f64) -> String {
 
 // --- Top-level node verbs ----------------------------------------------------
 
-/// `sepia health` — `GET /api/health`.
+/// `peregrin health` — `GET /api/health`.
 pub fn health(args: &NodeArgs) -> Result<(), CliError> {
     let health = api::get_health(&args.target())?;
     if args.json {
@@ -163,7 +163,7 @@ pub fn health(args: &NodeArgs) -> Result<(), CliError> {
     Ok(())
 }
 
-/// `sepia node` — `GET /api/node`.
+/// `peregrin node` — `GET /api/node`.
 pub fn node(args: &NodeArgs) -> Result<(), CliError> {
     let descriptor = api::get_node(&args.target())?;
     if args.json {
@@ -204,7 +204,7 @@ pub fn node(args: &NodeArgs) -> Result<(), CliError> {
     Ok(())
 }
 
-/// `sepia agents` — `GET /api/agents`.
+/// `peregrin agents` — `GET /api/agents`.
 pub fn agents(args: &NodeArgs) -> Result<(), CliError> {
     let agents = api::list_agents(&args.target())?;
     if args.json {
@@ -226,7 +226,7 @@ pub fn agents(args: &NodeArgs) -> Result<(), CliError> {
     Ok(())
 }
 
-/// `sepia user` — `GET /api/user`.
+/// `peregrin user` — `GET /api/user`.
 pub fn user(args: &NodeArgs) -> Result<(), CliError> {
     let data = api::get_user(&args.target())?;
     let user = data.get("user").cloned().unwrap_or(Value::Null);
@@ -247,7 +247,7 @@ pub fn user(args: &NodeArgs) -> Result<(), CliError> {
     Ok(())
 }
 
-/// `sepia fs <path>` — `GET /api/fs`.
+/// `peregrin fs <path>` — `GET /api/fs`.
 pub fn fs(path: &str, args: &NodeArgs) -> Result<(), CliError> {
     let dirs = api::list_dirs(&args.target(), path)?;
     if args.json {
@@ -260,12 +260,12 @@ pub fn fs(path: &str, args: &NodeArgs) -> Result<(), CliError> {
     Ok(())
 }
 
-/// `sepia events` — `GET /api/events` to stdout.
+/// `peregrin events` — `GET /api/events` to stdout.
 pub fn events(args: &TargetArgs) -> Result<(), CliError> {
     api::stream_sse(&args.target(), "GET", "/api/events", None, print_frame).map_err(CliError::from)
 }
 
-/// `sepia redeem <code>` — `POST /api/pair`.
+/// `peregrin redeem <code>` — `POST /api/pair`.
 pub fn redeem(code: &str, args: &TargetArgs) -> Result<(), CliError> {
     let token = api::pair_redeem(&api::resolve_target(&args.node, None), code)?;
     println!("{token}");
@@ -275,7 +275,7 @@ pub fn redeem(code: &str, args: &TargetArgs) -> Result<(), CliError> {
 
 // --- sessions -----------------------------------------------------------------
 
-/// `sepia sessions list` — `GET /api/sessions`.
+/// `peregrin sessions list` — `GET /api/sessions`.
 pub fn sessions_list(locks: bool, args: &NodeArgs) -> Result<(), CliError> {
     let sessions = api::list_sessions(&args.target(), locks)?;
     if args.json {
@@ -288,7 +288,7 @@ pub fn sessions_list(locks: bool, args: &NodeArgs) -> Result<(), CliError> {
     Ok(())
 }
 
-/// `sepia sessions create` — `POST /api/sessions`.
+/// `peregrin sessions create` — `POST /api/sessions`.
 pub fn sessions_create(
     cwd: &str,
     agent: Option<&str>,
@@ -330,7 +330,7 @@ pub fn sessions_create(
     Ok(())
 }
 
-/// `sepia sessions attach <id>` — `POST /api/sessions/:id/attach`.
+/// `peregrin sessions attach <id>` — `POST /api/sessions/:id/attach`.
 pub fn sessions_attach(
     session_id: &str,
     takeover: bool,
@@ -368,7 +368,7 @@ pub fn sessions_attach(
     Ok(())
 }
 
-/// `sepia prompt <id> <text>` (also `sessions prompt`).
+/// `peregrin prompt <id> <text>` (also `sessions prompt`).
 pub fn sessions_prompt(
     session_id: &str,
     text: &str,
@@ -380,7 +380,7 @@ pub fn sessions_prompt(
     Ok(())
 }
 
-/// `sepia sessions cancel <id>` — `POST /api/sessions/:id/cancel`.
+/// `peregrin sessions cancel <id>` — `POST /api/sessions/:id/cancel`.
 pub fn sessions_cancel(
     session_id: &str,
     agent: Option<&str>,
@@ -391,7 +391,7 @@ pub fn sessions_cancel(
     Ok(())
 }
 
-/// `sepia sessions permission <id>` — answer a pending permission request.
+/// `peregrin sessions permission <id>` — answer a pending permission request.
 pub fn sessions_permission(
     session_id: &str,
     request: &str,
@@ -404,7 +404,7 @@ pub fn sessions_permission(
     Ok(())
 }
 
-/// `sepia sessions history <id>` — `GET /api/sessions/:id/history`.
+/// `peregrin sessions history <id>` — `GET /api/sessions/:id/history`.
 pub fn sessions_history(
     session_id: &str,
     limit: Option<i64>,
@@ -435,7 +435,7 @@ pub fn sessions_history(
     Ok(())
 }
 
-/// `sepia sessions checkpoints <id>` — `GET /api/sessions/:id/checkpoints`.
+/// `peregrin sessions checkpoints <id>` — `GET /api/sessions/:id/checkpoints`.
 pub fn sessions_checkpoints(
     session_id: &str,
     agent: Option<&str>,
@@ -465,7 +465,7 @@ pub fn sessions_checkpoints(
     Ok(())
 }
 
-/// `sepia sessions export <id>` — the complete session IR.
+/// `peregrin sessions export <id>` — the complete session IR.
 pub fn sessions_export(
     session_id: &str,
     out: Option<&str>,
@@ -504,7 +504,7 @@ fn urlencode(value: &str) -> String {
     out
 }
 
-/// `sepia sessions stream <id>` — the live run's session events
+/// `peregrin sessions stream <id>` — the live run's session events
 /// (sepia-proto `SessionEvent` JSON frames) to stdout.
 pub fn sessions_stream(
     session_id: &str,
@@ -522,7 +522,7 @@ pub fn sessions_stream(
     .map_err(CliError::from)
 }
 
-/// `sepia sessions meta <id>` — the meta overlay PATCH.
+/// `peregrin sessions meta <id>` — the meta overlay PATCH.
 #[allow(clippy::too_many_arguments, clippy::fn_params_excessive_bools)]
 pub fn sessions_meta(
     session_id: &str,
@@ -579,7 +579,7 @@ pub fn sessions_meta(
     Ok(())
 }
 
-/// `sepia sessions rename <id> <title>`.
+/// `peregrin sessions rename <id> <title>`.
 pub fn sessions_rename(
     session_id: &str,
     title: &str,
@@ -596,7 +596,7 @@ pub fn sessions_rename(
     Ok(())
 }
 
-/// `sepia sessions delete <id>` — `DELETE /api/sessions/:id`.
+/// `peregrin sessions delete <id>` — `DELETE /api/sessions/:id`.
 pub fn sessions_delete(
     session_id: &str,
     agent: Option<&str>,
@@ -607,14 +607,14 @@ pub fn sessions_delete(
     Ok(())
 }
 
-/// `sepia sessions convert <id> --to cline|devin`.
+/// `peregrin sessions convert <id> --to cline|devin`.
 pub fn sessions_convert(session_id: &str, to: &str, args: &TargetArgs) -> Result<(), CliError> {
     let converted = api::convert_session(&args.target(), session_id, to)?;
     println!("Converted session {session_id} → {to}: {converted}");
     Ok(())
 }
 
-/// `sepia sessions import <path>` — session IR JSON or a flat history
+/// `peregrin sessions import <path>` — session IR JSON or a flat history
 /// array into an agent store.
 #[allow(clippy::too_many_arguments)]
 pub fn sessions_import(
@@ -664,7 +664,7 @@ pub fn sessions_import(
 
 const RESUME_PAGE_SIZE: i64 = 500;
 
-/// `sepia sessions resume <id> --to cline|devin` — "Resume on…": pull a
+/// `peregrin sessions resume <id> --to cline|devin` — "Resume on…": pull a
 /// session off the source node, write it into an agent store here.
 #[allow(clippy::too_many_arguments)]
 pub fn sessions_resume(
@@ -740,7 +740,7 @@ pub fn sessions_resume(
     Ok(())
 }
 
-/// `sepia sessions restore <id>` — revert workspace files via recorded
+/// `peregrin sessions restore <id>` — revert workspace files via recorded
 /// diffs or a checkpoint ref. `--confirm` mandatory.
 #[allow(clippy::too_many_arguments)]
 pub fn sessions_restore(
@@ -792,7 +792,7 @@ pub fn sessions_restore(
     Ok(())
 }
 
-/// `sepia sessions rewind <id>` — truncate the transcript at a node,
+/// `peregrin sessions rewind <id>` — truncate the transcript at a node,
 /// turn count or checkpoint. `--confirm` mandatory.
 #[allow(clippy::too_many_arguments)]
 pub fn sessions_rewind(
@@ -868,7 +868,7 @@ pub fn projects_delete(project_id: &str, args: &TargetArgs) -> Result<(), CliErr
 
 // --- config (node) ------------------------------------------------------------
 
-/// `sepia config get` — `GET /api/config`.
+/// `peregrin config get` — `GET /api/config`.
 pub fn config_get(args: &NodeArgs) -> Result<(), CliError> {
     let config = api::get_config(&args.target())?;
     if args.json {
@@ -886,7 +886,7 @@ pub fn config_get(args: &NodeArgs) -> Result<(), CliError> {
     Ok(())
 }
 
-/// `sepia config set <key> <value>` — `PATCH /api/config/:key`.
+/// `peregrin config set <key> <value>` — `PATCH /api/config/:key`.
 pub fn config_set(key: &str, value: &str, args: &TargetArgs) -> Result<(), CliError> {
     let parsed: Value = serde_json::from_str(value).unwrap_or_else(|_| json!(value));
     api::set_config(&args.target(), key, &parsed)?;
@@ -899,14 +899,14 @@ pub fn config_set(key: &str, value: &str, args: &TargetArgs) -> Result<(), CliEr
 
 // --- push ---------------------------------------------------------------------
 
-/// `sepia push vapid` — `GET /api/push/vapid`.
+/// `peregrin push vapid` — `GET /api/push/vapid`.
 pub fn push_vapid(args: &TargetArgs) -> Result<(), CliError> {
     let public_key = api::get_vapid(&args.target())?;
     println!("{public_key}");
     Ok(())
 }
 
-/// `sepia push subscribe <json>` — `POST /api/push/subscribe`.
+/// `peregrin push subscribe <json>` — `POST /api/push/subscribe`.
 pub fn push_subscribe(subscription: &str, args: &TargetArgs) -> Result<(), CliError> {
     let parsed: Value = serde_json::from_str(subscription)
         .map_err(|_| CliError("subscription must be valid JSON".into()))?;
@@ -915,7 +915,7 @@ pub fn push_subscribe(subscription: &str, args: &TargetArgs) -> Result<(), CliEr
     Ok(())
 }
 
-/// `sepia push unsubscribe <endpoint>` — `DELETE /api/push/subscribe`.
+/// `peregrin push unsubscribe <endpoint>` — `DELETE /api/push/subscribe`.
 pub fn push_unsubscribe(endpoint: &str, args: &TargetArgs) -> Result<(), CliError> {
     api::push_unsubscribe(&args.target(), endpoint)?;
     println!("Unsubscribed");

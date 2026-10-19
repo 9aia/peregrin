@@ -156,7 +156,7 @@ pub fn render(spec: &ServiceSpec) -> String {
     };
     format!(
         "[Unit]\n\
-         Description=Sepia node\n\
+         Description=Peregrin node\n\
          After=network-online.target\n\
          \n\
          [Service]\n\

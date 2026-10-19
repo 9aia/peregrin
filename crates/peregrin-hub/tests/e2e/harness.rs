@@ -340,7 +340,7 @@ impl E2eEnv {
     fn spawn_node(spec: &NodeSpec) -> Child {
         Command::new(bin_path("peregrin-node"))
             .env("SEPIA_DRIVER_DIR", &spec.driver_dir)
-            .env("PEREGRIN_DEVIN_DB", &spec.db)
+            .env("SEPIA_DEVIN_DB", &spec.db)
             .env("PEREGRIN_HOME", &spec.home)
             .env("PEREGRIN_META", spec.home.join("meta.json"))
             .env("PEREGRIN_NODE", spec.home.join("node.json"))

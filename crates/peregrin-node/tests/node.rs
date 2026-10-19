@@ -42,7 +42,7 @@ fn node_serves_sessions_over_http() {
     let port = free_port();
     let mut child = std::process::Command::new(sepia_testkit::ensure_driver_bin("peregrin-node"))
         .env("SEPIA_DRIVER_DIR", &driver_dir)
-        .env("PEREGRIN_DEVIN_DB", &db)
+        .env("SEPIA_DEVIN_DB", &db)
         .env("PEREGRIN_HOME", &home)
         .env("PEREGRIN_META", home.join("meta.json"))
         .env("PEREGRIN_NODE", home.join("node.json"))
@@ -122,7 +122,7 @@ fn node_attach_prompt_stream_e2e() {
     let port = free_port();
     let mut child = std::process::Command::new(sepia_testkit::ensure_driver_bin("peregrin-node"))
         .env("SEPIA_DRIVER_DIR", &driver_dir)
-        .env("PEREGRIN_DEVIN_DB", &db)
+        .env("SEPIA_DEVIN_DB", &db)
         .env("PEREGRIN_HOME", &home)
         .env("PEREGRIN_META", home.join("meta.json"))
         .env("PEREGRIN_NODE", home.join("node.json"))

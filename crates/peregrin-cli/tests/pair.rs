@@ -1,4 +1,4 @@
-//! `sepia pair` — the minted code's shape and the `pair-code` file the
+//! `peregrin pair` — the minted code's shape and the `pair-code` file the
 //! server consumes.
 
 #![allow(clippy::unwrap_used, clippy::pedantic)]
@@ -7,7 +7,7 @@ use std::process::{Command, Output};
 
 use tempfile::TempDir;
 
-fn sepia(args: &[&str]) -> Output {
+fn peregrin(args: &[&str]) -> Output {
     Command::new(env!("CARGO_BIN_EXE_peregrin"))
         .args(args)
         .output()
@@ -41,7 +41,7 @@ fn pair_writes_the_code_file_and_prints_it() {
     let home = tmp.path().join("sepia-home");
     let home_str = home.to_string_lossy().into_owned();
 
-    let out = sepia(&["pair", "--home", &home_str, "--url", "http://node:9999"]);
+    let out = peregrin(&["pair", "--home", &home_str, "--url", "http://node:9999"]);
     assert!(
         out.status.success(),
         "stderr: {}",
@@ -92,7 +92,7 @@ fn pair_codes_are_unique() {
     let home_str = home.to_string_lossy().into_owned();
     let mut codes = std::collections::HashSet::new();
     for _ in 0..5 {
-        let out = sepia(&["pair", "--home", &home_str]);
+        let out = peregrin(&["pair", "--home", &home_str]);
         let stdout = String::from_utf8_lossy(&out.stdout);
         let code = stdout
             .lines()

@@ -1,4 +1,4 @@
-//! `sepia service` — the rendered unit/plist templates and the env file
+//! `peregrin service` — the rendered unit/plist templates and the env file
 //! contents, asserted without touching `systemctl`/`launchctl`.
 
 #![allow(clippy::unwrap_used, clippy::pedantic)]
@@ -6,7 +6,7 @@
 
 use std::path::PathBuf;
 
-use sepia_cli::service::{ServiceSpec, default_env_file, env_template, launchd, systemd};
+use peregrin_cli::service::{ServiceSpec, default_env_file, env_template, launchd, systemd};
 use tempfile::TempDir;
 
 fn home() -> PathBuf {
@@ -17,8 +17,8 @@ fn home() -> PathBuf {
 
 fn spec(system: bool, env_file: PathBuf) -> ServiceSpec {
     ServiceSpec {
-        name: "sepia".into(),
-        exec: vec!["/usr/local/bin/sepia".into(), "serve".into()],
+        name: "peregrin".into(),
+        exec: vec!["/usr/local/bin/peregrin".into(), "serve".into()],
         env_file,
         system,
     }
@@ -30,9 +30,9 @@ fn spec(system: bool, env_file: PathBuf) -> ServiceSpec {
 fn systemd_user_unit_uses_h_specifier() {
     let spec = spec(false, home().join(".config/peregrin/env"));
     let unit = systemd::render(&spec);
-    assert!(unit.contains("Description=Sepia node"), "{unit}");
+    assert!(unit.contains("Description=Peregrin node"), "{unit}");
     assert!(
-        unit.contains("ExecStart=/usr/local/bin/sepia serve"),
+        unit.contains("ExecStart=/usr/local/bin/peregrin serve"),
         "{unit}"
     );
     // A user unit under $HOME renders the env file as %h/…
@@ -46,26 +46,32 @@ fn systemd_user_unit_uses_h_specifier() {
 
 #[test]
 fn systemd_system_unit_keeps_a_literal_env_path() {
-    let spec = spec(true, PathBuf::from("/etc/sepia/env"));
+    let spec = spec(true, PathBuf::from("/etc/peregrin/env"));
     let unit = systemd::render(&spec);
-    assert!(unit.contains("EnvironmentFile=-/etc/sepia/env"), "{unit}");
+    assert!(
+        unit.contains("EnvironmentFile=-/etc/peregrin/env"),
+        "{unit}"
+    );
     assert!(unit.contains("WantedBy=multi-user.target"), "{unit}");
 }
 
 #[test]
 fn systemd_env_file_outside_home_stays_literal_in_user_units() {
-    let spec = spec(false, PathBuf::from("/opt/sepia/env"));
+    let spec = spec(false, PathBuf::from("/opt/peregrin/env"));
     let unit = systemd::render(&spec);
-    assert!(unit.contains("EnvironmentFile=-/opt/sepia/env"), "{unit}");
+    assert!(
+        unit.contains("EnvironmentFile=-/opt/peregrin/env"),
+        "{unit}"
+    );
 }
 
 #[test]
 fn systemd_quotes_exec_args_with_spaces() {
     let mut spec = spec(false, PathBuf::from("/tmp/env"));
-    spec.exec = vec!["/path with space/sepia".into(), "serve".into()];
+    spec.exec = vec!["/path with space/peregrin".into(), "serve".into()];
     let unit = systemd::render(&spec);
     assert!(
-        unit.contains("ExecStart=\"/path with space/sepia\" serve"),
+        unit.contains("ExecStart=\"/path with space/peregrin\" serve"),
         "{unit}"
     );
 }
@@ -75,12 +81,12 @@ fn systemd_unit_paths() {
     let user_spec = spec(false, PathBuf::from("/tmp/env"));
     assert_eq!(
         systemd::unit_path(&user_spec),
-        home().join(".config/systemd/user/sepia.service")
+        home().join(".config/systemd/user/peregrin.service")
     );
     let system_spec = spec(true, PathBuf::from("/tmp/env"));
     assert_eq!(
         systemd::unit_path(&system_spec),
-        PathBuf::from("/etc/systemd/system/sepia.service")
+        PathBuf::from("/etc/systemd/system/peregrin.service")
     );
 }
 
@@ -92,10 +98,10 @@ fn launchd_plist_renders_label_args_and_log_paths() {
     let spec = spec(false, tmp.path().join("env"));
     let plist = launchd::render(&spec);
     assert!(plist.contains("<key>Label</key>"), "{plist}");
-    assert!(plist.contains("<string>ai.sepia</string>"), "{plist}");
+    assert!(plist.contains("<string>ai.peregrin</string>"), "{plist}");
     assert!(plist.contains("<key>ProgramArguments</key>"), "{plist}");
     assert!(
-        plist.contains("<string>/usr/local/bin/sepia</string>"),
+        plist.contains("<string>/usr/local/bin/peregrin</string>"),
         "{plist}"
     );
     assert!(plist.contains("<string>serve</string>"), "{plist}");
@@ -130,10 +136,10 @@ fn launchd_escapes_xml_in_values() {
     let env_file = tmp.path().join("env");
     std::fs::write(&env_file, "PEREGRIN_TOKEN=a&b<c>\n").unwrap();
     let mut spec = spec(false, env_file);
-    spec.exec = vec!["/weird&path/sepia".into()];
+    spec.exec = vec!["/weird&path/peregrin".into()];
     let plist = launchd::render(&spec);
     assert!(plist.contains("a&amp;b&lt;c&gt;"), "{plist}");
-    assert!(plist.contains("/weird&amp;path/sepia"), "{plist}");
+    assert!(plist.contains("/weird&amp;path/peregrin"), "{plist}");
 }
 
 #[test]
@@ -141,12 +147,12 @@ fn launchd_unit_paths() {
     let user_spec = spec(false, PathBuf::from("/tmp/env"));
     assert_eq!(
         launchd::unit_path(&user_spec),
-        home().join("Library/LaunchAgents/ai.sepia.plist")
+        home().join("Library/LaunchAgents/ai.peregrin.plist")
     );
     let system_spec = spec(true, PathBuf::from("/tmp/env"));
     assert_eq!(
         launchd::unit_path(&system_spec),
-        PathBuf::from("/Library/LaunchDaemons/ai.sepia.plist")
+        PathBuf::from("/Library/LaunchDaemons/ai.peregrin.plist")
     );
 }
 
@@ -159,9 +165,9 @@ fn env_template_documents_the_knobs() {
         "PEREGRIN_TOKEN",
         "PEREGRIN_HOST",
         "PEREGRIN_DB",
-        "PEREGRIN_CLINE_DIR",
-        "PEREGRIN_CLAUDE_DIR",
-        "PEREGRIN_CURSOR_DIR",
+        "SEPIA_CLINE_DIR",
+        "SEPIA_CLAUDE_DIR",
+        "SEPIA_CURSOR_DIR",
     ] {
         assert!(template.contains(knob), "missing {knob} in template");
     }
@@ -177,7 +183,7 @@ fn env_template_documents_the_knobs() {
 #[test]
 fn env_file_default_is_under_dot_config() {
     assert_eq!(
-        default_env_file(&home(), "sepia"),
+        default_env_file(&home(), "peregrin"),
         home().join(".config/peregrin/env")
     );
 }
