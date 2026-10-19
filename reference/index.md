@@ -1,4 +1,4 @@
 # Reference
 
 - [Environment](environment.md)
-- [Crate API docs](api/) — generated rustdoc
+- Crate API docs — generated rustdoc (soon)

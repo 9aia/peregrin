@@ -24,7 +24,6 @@ export default defineConfig({
         text: 'Reference',
         items: [
           { text: 'Environment', link: '/reference/environment' },
-          { text: 'Crate API docs', link: '/api/' },
         ],
       },
       {
