@@ -67,8 +67,9 @@ TTLs) are read by the sepia child — export them on the node.
 
 ## systemd
 
-`peregrin-service` + `peregrin-service-systemd` are the service port and
-adapter — a unit file keeps the node alive and restarts it. Generate
-one from the repo (`cargo xtask install` drops a unit template under
-`~/.local/share/peregrin/`), then `systemctl --user enable --now
-peregrin-node`.
+`peregrin-service` + `peregrin-systemd` are the service port and
+adapter — a unit file keeps the node alive and restarts it. `peregrin
+service install` writes + enables the unit (`--hub` manages the hub,
+`--system` a system unit); `peregrin service disable` stops it and keeps
+it stopped across logins (unit file kept) until `peregrin service
+enable`. `status`, `restart` and `logs` round out the verbs.
