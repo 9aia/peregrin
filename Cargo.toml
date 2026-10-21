@@ -207,3 +207,17 @@ panic = "unwind" # keep unwind: tests + tokio supervise panics
 inherits = "release"
 lto = "fat"
 codegen-units = 1
+
+# cargo-leptos wiring — `cargo xtask dev` (or `cargo leptos watch`)
+# builds the wasm bundle into `site-root/pkg` and runs the hub with
+# `LEPTOS_*` env vars set.
+[[workspace.metadata.leptos]]
+name = "peregrin"
+bin-package = "peregrin-hub"
+lib-package = "peregrin-web"
+# wasm-bindgen output base name — must match the lib crate name.
+output-name = "peregrin_web"
+site-root = "target/site"
+site-addr = "127.0.0.1:3002"
+reload-port = 3001
+assets-dir = "crates/peregrin-hub/public"

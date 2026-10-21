@@ -164,7 +164,11 @@ fn AimSubMenu(
     children: Children,
 ) -> impl IntoView {
     view! {
-        <details class="group/sub relative" data-name=data_name>
+        <details
+            class="group/sub relative"
+            data-name=data_name
+            onmouseenter="var d=this;if(d.getAttribute('aria-disabled')==='true')return;var p=d.parentElement;if(p){p.querySelectorAll('details[open]').forEach(function(o){if(o!==d)o.removeAttribute('open')})};d.open=true"
+        >
             <summary
                 class=move || {
                     if disabled {

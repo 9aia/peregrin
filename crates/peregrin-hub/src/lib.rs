@@ -176,14 +176,14 @@ fn default_site_root() -> String {
     {
         return p;
     }
-    let sepia_site = std::env::var_os("PEREGRIN_HOME")
+    let staged_site = std::env::var_os("PEREGRIN_HOME")
         .map(std::path::PathBuf::from)
         .or_else(|| {
             std::env::var_os("HOME")
                 .map(|h| std::path::PathBuf::from(h).join(".local/share/peregrin"))
         })
         .map(|h| h.join("site"));
-    for p in [sepia_site, Some(std::path::PathBuf::from("target/site"))]
+    for p in [staged_site, Some(std::path::PathBuf::from("target/site"))]
         .into_iter()
         .flatten()
     {
@@ -342,7 +342,7 @@ pub fn hub_state(config: &HubConfig) -> Result<HubState, String> {
             std::env::var_os("HOME")
                 .map(|h| std::path::PathBuf::from(h).join(".local/share/peregrin"))
         })
-        .unwrap_or_else(|| std::path::PathBuf::from(".sepia"))
+        .unwrap_or_else(|| std::path::PathBuf::from(".peregrin"))
         .join("hub");
     std::fs::create_dir_all(&home).map_err(|e| format!("create {}: {e}", home.display()))?;
     let creds = credentials::open(&home);

@@ -289,3 +289,26 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* shadcn-style ScrollArea — a thin overlay thumb on a transparent
+   track; the thumb deepens on hover. Used by `ScrollArea` for every
+   panel/menu/transcript scroller, and on the horizontal `<pre>`
+   scrollers via the class directly. */
+.scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.scroll-area::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-area::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+.scroll-area::-webkit-scrollbar-thumb:hover {
+  background: var(--muted-foreground);
+}

@@ -188,7 +188,7 @@ pub fn node_for_cwd<'a>(
         .and_then(|(_, n)| effective_node(n, primary))
 }
 
-/// Last two path segments (`9aia/sepia`) — the menu's compact dir
+/// Last two path segments (`9aia/peregrin`) — the menu's compact dir
 /// label (the old `dirLabel`; the row keeps the full path in `title`).
 pub fn dir_label(path: &str) -> String {
     let parts: Vec<&str> = path
@@ -501,7 +501,7 @@ mod tests {
 
     #[test]
     fn dir_label_keeps_the_last_two_segments() {
-        assert_eq!(dir_label("/home/u/9aia/sepia"), "9aia/sepia");
+        assert_eq!(dir_label("/home/u/9aia/peregrin"), "9aia/peregrin");
         assert_eq!(dir_label("/work"), "work");
         assert_eq!(dir_label("/"), "/");
         assert_eq!(dir_label("/a/b/"), "a/b");

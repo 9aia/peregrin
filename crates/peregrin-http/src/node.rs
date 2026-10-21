@@ -6,7 +6,8 @@ use std::path::Path;
 
 use serde::Serialize;
 
-/// Sepia protocol revision — bump on breaking changes (docs/protocol.md).
+/// Node API protocol revision — bump on breaking changes (the
+/// `protocol` field `GET /api/node` reports).
 pub const PROTOCOL_VERSION: u32 = 1;
 
 /// What `GET /api/node` reports; `version` defaults to the crate stamp.

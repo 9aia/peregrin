@@ -1,5 +1,5 @@
-//! peregrin-telemetry — the opt-in OpenTelemetry layer over Sepia's
-//! `tracing` stack.
+//! peregrin-telemetry — the opt-in OpenTelemetry layer over the
+//! daemons' `tracing` stack.
 //!
 //! [`init`] builds the global subscriber every daemon main installs:
 //! the existing `fmt` + `RUST_LOG` (`EnvFilter`) logging, plus — only
@@ -17,7 +17,7 @@
 //!   — the standard vars also enable export (full `OTEL_EXPORTER_*`
 //!   config: headers, timeout, compression, protocol).
 //! - `PEREGRIN_OTEL_SERVICE_NAME` — `service.name` resource; falls back to
-//!   `OTEL_SERVICE_NAME`, then `"sepia"`.
+//!   `OTEL_SERVICE_NAME`, then `"peregrin"`.
 //! - `OTEL_SERVICE_NAME` / `OTEL_RESOURCE_ATTRIBUTES` — honored by the
 //!   SDK's env resource detector.
 //!
@@ -47,7 +47,7 @@ const OTEL_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_ENDPOINT";
 const OTEL_TRACES_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_TRACES_ENDPOINT";
 const OTEL_SERVICE_NAME: &str = "OTEL_SERVICE_NAME";
 
-const DEFAULT_SERVICE_NAME: &str = "sepia";
+const DEFAULT_SERVICE_NAME: &str = "peregrin";
 /// OTLP/HTTP signal path appended to base-URL endpoints (mirrors the
 /// exporter's own `OTEL_EXPORTER_OTLP_ENDPOINT` handling).
 const TRACES_PATH: &str = "/v1/traces";
@@ -297,7 +297,7 @@ mod tests {
     }
 
     #[test]
-    fn sepia_endpoint_appends_traces_path() {
+    fn peregrin_endpoint_appends_traces_path() {
         let config = config_from(lookup(&[(
             "PEREGRIN_OTEL_ENDPOINT",
             "http://localhost:4318/",
@@ -307,11 +307,11 @@ mod tests {
             config.endpoint.as_deref(),
             Some("http://localhost:4318/v1/traces")
         );
-        assert_eq!(config.service_name, "sepia");
+        assert_eq!(config.service_name, "peregrin");
     }
 
     #[test]
-    fn sepia_endpoint_verbatim_when_path_present() {
+    fn peregrin_endpoint_verbatim_when_path_present() {
         let config = config_from(lookup(&[(
             "PEREGRIN_OTEL_ENDPOINT",
             "http://collector:4318/v1/traces",

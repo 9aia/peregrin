@@ -1,7 +1,7 @@
 {
-  "name": "sepia",
-  "short_name": "sepia",
-  "description": "Resumable coding-agent sessions — one dark UI.",
+  "name": "Peregrin",
+  "short_name": "Peregrin",
+  "description": "Peregrin — resumable coding-agent sessions, one dark UI.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

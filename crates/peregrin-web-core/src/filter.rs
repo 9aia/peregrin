@@ -208,9 +208,14 @@ impl Recency {
     }
 }
 
+/// localStorage key for the browser default archived visibility —
+/// written by Settings → Sessions; the session list adopts it
+/// post-hydration (a `?archived=1` link still forces rows shown).
+pub const SHOW_ARCHIVED_KEY: &str = "peregrin-show-archived";
+
 /// The filter bar's full state — a pure value so the same pipeline
-/// drives the rendered list, the "N of M sessions" heading, the
-/// arrow-key order, and the `?…` URL sync.
+/// drives the rendered list, the arrow-key order, and the `?…` URL
+/// sync.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct SessionFilter {
     /// Case-insensitive substring match on title + cwd.
@@ -228,8 +233,8 @@ pub struct SessionFilter {
 }
 
 impl SessionFilter {
-    /// Any narrowing constraint active — drives the "N of M sessions"
-    /// heading.
+    /// Any narrowing constraint active — `show_archived` widens the
+    /// list rather than narrowing it, so it doesn't count.
     pub fn is_active(&self) -> bool {
         !self.query.trim().is_empty()
             || self.status != StatusFilter::All
@@ -314,16 +319,6 @@ impl SessionFilter {
             rows: g.rows,
         }));
         out
-    }
-
-    /// The count line above the list — `"N of M sessions"` while
-    /// filtering, `"M sessions"` otherwise.
-    pub fn heading(&self, shown: usize, total: usize) -> String {
-        if self.is_active() {
-            format!("{shown} of {total} sessions")
-        } else {
-            format!("{total} sessions")
-        }
     }
 
     /// Read filter state out of the `?…` params (`q`, `agents`,
@@ -770,9 +765,8 @@ mod tests {
         let shown = f.apply(list(), NOW);
         // Archived "e" slots back in at its updated_at position.
         assert_eq!(ids(&shown), ["b", "e", "a", "c", "d"]);
-        // …and doesn't count as a narrowing filter for the heading.
+        // …and doesn't count as a narrowing filter for `is_active`.
         assert!(!f.is_active());
-        assert_eq!(f.heading(5, 5), "5 sessions");
     }
 
     #[test]
@@ -920,14 +914,12 @@ mod tests {
     }
 
     #[test]
-    fn heading_counts_and_filter_activity() {
+    fn filter_activity_and_force_open() {
         let f = filter("", StatusFilter::All, &[], SortMode::Newest);
         assert!(!f.is_active());
-        assert_eq!(f.heading(4, 4), "4 sessions");
         let f = filter("x", StatusFilter::All, &[], SortMode::Newest);
         assert!(f.is_active());
         assert!(f.force_open());
-        assert_eq!(f.heading(2, 4), "2 of 4 sessions");
         // Non-text filters count as active but don't force-expand.
         let f = filter("", StatusFilter::Locked, &[], SortMode::Newest);
         assert!(f.is_active());

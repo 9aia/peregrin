@@ -122,6 +122,46 @@ fn testkit_bin_dirs() -> String {
     )
 }
 
+/// `cargo xtask dev` — the working-tree loop: `cargo leptos watch`
+/// rebuilds the wasm bundle + the hub on save and auto-refreshes the
+/// browser (the shell's `AutoReload`). Serves on :3002 — the
+/// installed prod hub keeps :3000 and the reload websocket :3001.
+/// Env comes from `~/.config/peregrin/hub-env` (KEY=value, `#`
+/// comments) so the dev hub talks to the same nodes as the unit.
+fn dev() -> anyhow::Result<()> {
+    let mut cmd = Command::new("cargo");
+    cmd.args(["leptos", "watch"]);
+    let env_path = std::env::var_os("HOME").map_or_else(
+        || std::path::PathBuf::from(".config/peregrin/hub-env"),
+        |h| std::path::PathBuf::from(h).join(".config/peregrin/hub-env"),
+    );
+    match std::fs::read_to_string(&env_path) {
+        Ok(text) => {
+            for line in text.lines().map(str::trim) {
+                if line.is_empty() || line.starts_with('#') {
+                    continue;
+                }
+                if let Some((k, v)) = line.split_once('=') {
+                    cmd.env(k.trim(), v.trim());
+                }
+            }
+        }
+        Err(_) => println!(
+            "note: {} not found — running without hub env",
+            env_path.display()
+        ),
+    }
+    // A long-running watcher must not sit on the user's flock
+    // (~/.cargo.lock serializes cargo invocations) — its children
+    // still lock-build normally via cargo's own package-cache lock.
+    cmd.env("CARGO_LOCK_HELD", "1");
+    cmd.env("PEREGRIN_HUB_PORT", "3002");
+    println!("dev hub → http://127.0.0.1:3002 (prod keeps :3000)");
+    let status = cmd.status()?;
+    anyhow::ensure!(status.success(), "cargo leptos watch failed");
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     match std::env::args().nth(1).as_deref() {
         Some("check") => {
@@ -173,6 +213,7 @@ fn main() -> anyhow::Result<()> {
             build_site()?;
         }
         Some("site") => build_site()?,
+        Some("dev") => dev()?,
         // Headless-Chrome console probe against the live stack —
         // the UI regression gate; run after any peregrin-web change.
         Some("smoke") => {
@@ -206,7 +247,7 @@ fn main() -> anyhow::Result<()> {
             anyhow::ensure!(status.success(), "browser e2e failed");
         }
         Some(other) => anyhow::bail!("unknown task {other}"),
-        None => anyhow::bail!("usage: cargo xtask <check|test|install|site|smoke|e2e>"),
+        None => anyhow::bail!("usage: cargo xtask <check|test|install|site|dev|smoke|e2e>"),
     }
     Ok(())
 }

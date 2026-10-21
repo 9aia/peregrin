@@ -1,6 +1,6 @@
 [package]
 name = "peregrin-http"
-description = "Sepia HTTP API — axum driving adapter the peregrin-node daemon mounts (port of apps/server)"
+description = "Peregrin HTTP API — axum driving adapter the peregrin-node daemon mounts (port of apps/server)"
 version = "0.0.0"
 edition.workspace = true
 rust-version.workspace = true

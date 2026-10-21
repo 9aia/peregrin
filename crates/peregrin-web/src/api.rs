@@ -776,7 +776,7 @@ pub async fn fs_dirs(path: String, node: Option<String>) -> Result<Vec<String>, 
         .map_err(ServerFnError::new)
 }
 
-/// `POST /api/pair` — redeem a pairing code (from `sepia pair`) for a
+/// `POST /api/pair` — redeem a pairing code (from `peregrin pair`) for a
 /// node credential. The minted token is returned once — the UI shows
 /// it and tells the user to store it.
 #[server(prefix = "/hub")]

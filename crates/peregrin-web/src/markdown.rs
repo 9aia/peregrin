@@ -418,7 +418,7 @@ fn CodeBlock(#[prop(into)] lang: Option<String>, #[prop(into)] code: String) -> 
                     {move || if copied.get() { "copied" } else { "copy" }}
                 </button>
             </div>
-            <pre class="overflow-x-auto p-3 font-mono text-xs leading-relaxed"><code>{tokens
+            <pre class="scroll-area overflow-x-auto p-3 font-mono text-xs leading-relaxed"><code>{tokens
                 .into_iter()
                 .map(|t| {
                     // `class()` is "" for Plain — an empty attribute
@@ -475,7 +475,7 @@ fn MermaidBlock(#[prop(into)] code: String) -> impl IntoView {
             </div>
             <div node_ref=diagram hidden class="mermaid-diagram overflow-x-auto p-3 [&_svg]:mx-auto"></div>
             <div node_ref=source class="mermaid-source">
-                <pre class="overflow-x-auto p-3 font-mono text-xs leading-relaxed"><code>{code}</code></pre>
+                <pre class="scroll-area overflow-x-auto p-3 font-mono text-xs leading-relaxed"><code>{code}</code></pre>
             </div>
         </div>
     }

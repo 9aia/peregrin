@@ -456,7 +456,7 @@ async fn manifest_is_served_from_site_root() {
     let (app, _render_lock) = locked_app(test_state()).await;
     let (status, body) = get(app, "/manifest.json").await;
     assert_eq!(status, StatusCode::OK);
-    assert!(body.contains("\"sepia\""));
+    assert!(body.contains("\"Peregrin\""));
 }
 
 #[tokio::test]

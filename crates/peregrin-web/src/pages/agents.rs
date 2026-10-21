@@ -15,7 +15,7 @@ pub fn AgentsPage() -> impl IntoView {
     let agents = crate::api::shared().agents;
 
     view! {
-        <Title text="agents — sepia"/>
+        <Title text="agents — Peregrin"/>
         <section class="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-6">
             <PageHead class="mb-0">
                 <div>

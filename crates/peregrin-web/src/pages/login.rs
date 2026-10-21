@@ -30,61 +30,73 @@ pub fn LoginPage() -> impl IntoView {
     let next = move || query.read().get("next").unwrap_or_default();
 
     view! {
-        <Title text="sign in — sepia"/>
+        <Title text="sign in — Peregrin"/>
+        // login-03: muted canvas, brand mark centered above the card.
         <div
             data-name="LoginPage"
-            class="fixed inset-0 z-[90] grid place-items-center bg-background p-4"
+            class="fixed inset-0 z-[90] flex min-h-svh flex-col items-center justify-center gap-6 bg-muted p-6 md:p-10"
         >
-            <Card class="w-full max-w-sm">
-                <CardHeader>
-                    <span class="text-lg font-bold tracking-tight text-primary">"sepia"</span>
-                    <CardTitle>"Sign in"</CardTitle>
-                    <CardDescription>
-                        "This hub is locked — enter the access token (PEREGRIN_HUB_TOKEN)."
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form method="post" action="/login" class="flex flex-col gap-3">
-                        {move || {
-                            let n = next();
-                            (!n.is_empty()).then(|| {
-                                view! { <input type="hidden" name="next" value=n/> }
-                            })
-                        }}
-                        <label class="flex flex-col gap-1.5 text-sm">
-                            <span class="text-muted-foreground">"Access token"</span>
-                            <Input
-                                {..}
-                                attr:r#type="password"
-                                attr:name="token"
-                                attr:placeholder="hub token"
-                                attr:autocomplete="current-password"
-                                attr:required=true
-                                attr:autofocus=true
-                            />
-                        </label>
-                        {move || {
-                            failed().then(|| {
-                                view! {
-                                    <p
-                                        data-name="LoginError"
-                                        role="alert"
-                                        class="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                                    >
-                                        "Invalid token — check it and try again."
-                                    </p>
-                                }
-                            })
-                        }}
-                        <Button button_type="submit">"Continue"</Button>
-                    </form>
-                    <p class="mt-4 text-xs text-muted-foreground">
-                        "One-time link? "
-                        <code class="font-mono">"/?token=…"</code>
-                        " plants the same cookie."
-                    </p>
-                </CardContent>
-            </Card>
+            <div class="flex w-full max-w-sm flex-col gap-6">
+                <a href="/" class="flex items-center gap-2 self-center font-medium">
+                    <span class="flex size-6 items-center justify-center rounded-md bg-primary text-sm font-bold text-primary-foreground">
+                        "P"
+                    </span>
+                    "Peregrin"
+                </a>
+                <Card>
+                    <CardHeader class="text-center">
+                        <CardTitle>"Welcome back"</CardTitle>
+                        <CardDescription>
+                            "Enter the access token to sign in to this hub"
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form method="post" action="/login" class="flex flex-col gap-4">
+                            {move || {
+                                let n = next();
+                                (!n.is_empty()).then(|| {
+                                    view! { <input type="hidden" name="next" value=n/> }
+                                })
+                            }}
+                            <label class="flex flex-col gap-1.5 text-sm font-medium">
+                                "Access token"
+                                <Input
+                                    {..}
+                                    attr:r#type="password"
+                                    attr:name="token"
+                                    attr:placeholder="hub token"
+                                    attr:autocomplete="current-password"
+                                    attr:required=true
+                                    attr:autofocus=true
+                                />
+                            </label>
+                            {move || {
+                                failed().then(|| {
+                                    view! {
+                                        <p
+                                            data-name="LoginError"
+                                            role="alert"
+                                            class="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                                        >
+                                            "Invalid token — check it and try again."
+                                        </p>
+                                    }
+                                })
+                            }}
+                            <Button button_type="submit" class="w-full">
+                                "Continue"
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
+                <p class="text-center text-xs text-muted-foreground">
+                    "The token is the hub's "
+                    <code class="font-mono">"PEREGRIN_HUB_TOKEN"</code>
+                    " — a one-time "
+                    <code class="font-mono">"/?token=…"</code>
+                    " link plants the same cookie."
+                </p>
+            </div>
         </div>
     }
 }

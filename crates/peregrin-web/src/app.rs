@@ -386,10 +386,10 @@ fn IconRail(help: RwSignal<bool>) -> impl IntoView {
                 href="/"
                 exact=true
                 attr:class="mb-3 inline-flex size-9 items-center justify-center rounded-lg text-lg font-bold tracking-tight text-primary"
-                attr:title="sepia — sessions"
-                attr:aria-label="sepia — sessions"
+                attr:title="Peregrin — sessions"
+                attr:aria-label="Peregrin — sessions"
             >
-                "S"
+                "P"
             </A>
             <div class="flex flex-col items-center gap-1">
                 <button
@@ -451,7 +451,7 @@ pub fn App() -> impl IntoView {
     let palette_open = RwSignal::new(false);
 
     view! {
-        <Title text="sepia"/>
+        <Title text="Peregrin"/>
         <Router>
             <div class="flex h-dvh overflow-hidden">
                 // Desktop navigation — the sidebar-09 icon rail; the
@@ -470,7 +470,7 @@ pub fn App() -> impl IntoView {
                             <Icon name="menu" class="size-5"/>
                         </button>
                         <A href="/" attr:class="font-bold tracking-tight text-primary">
-                            "sepia"
+                            "Peregrin"
                         </A>
                         <span class="ml-auto">
                             <ThemeToggle/>
@@ -480,7 +480,7 @@ pub fn App() -> impl IntoView {
                     // (reduced-motion kills it via input.css). Nested
                     // scrollers (the transcript) keep `auto` — it's
                     // not inherited.
-                    <main class="flex min-w-0 flex-1 scroll-smooth flex-col overflow-y-auto">
+                    <main class="scroll-area flex min-w-0 flex-1 scroll-smooth flex-col overflow-y-auto">
                         <Routes fallback=|| {
                             view! {
                                 <EmptyState
@@ -520,7 +520,7 @@ pub fn App() -> impl IntoView {
                 </div>
                 <Sheet open=sidebar_open side="left" class="w-64">
                     <SheetHeader>
-                        <SheetTitle>"sepia"</SheetTitle>
+                        <SheetTitle>"Peregrin"</SheetTitle>
                     </SheetHeader>
                     <SheetBody class="p-0 pt-2">
                         {nav_items("", Some(std::sync::Arc::new(move || sidebar_open.set(false))))}

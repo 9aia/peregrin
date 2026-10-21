@@ -134,7 +134,7 @@ impl PushStore {
             "title": title,
             "body": body,
             "url": url,
-            "tag": format!("sepia-{}", kind.tag()),
+            "tag": format!("peregrin-{}", kind.tag()),
         })
         .to_string();
         let mut delivered = 0usize;
@@ -195,7 +195,7 @@ fn send_one(keys: &VapidKeys, sub: &PushSubscription, payload: &str) -> Result<(
     );
     let mut sig_builder = VapidSignatureBuilder::from_base64(&keys.private_key, &info)
         .map_err(|e| PushError::Vapid(format!("{e:?}")))?;
-    sig_builder.add_claim("sub", "mailto:sepia@localhost");
+    sig_builder.add_claim("sub", "mailto:peregrin@localhost");
     let sig = sig_builder
         .build()
         .map_err(|e| PushError::Vapid(format!("{e:?}")))?;

@@ -1,6 +1,6 @@
 [package]
 name = "peregrin-web"
-description = "Leptos UI for Sepia — session list, session detail, and live chat over the node API"
+description = "Leptos UI for Peregrin — session list, session detail, and live chat over the node API"
 version = "0.0.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -100,6 +100,7 @@ tw_merge = "0.1"
 # SSR/hydrate identical and no JS). Pinned to a released version ≥7d
 # old; only the icon categories we use are compiled in.
 lucide-leptos = { version = "=3.48.0", default-features = false, features = [
+    "accessibility",
     "account",
     "arrows",
     "connectivity",

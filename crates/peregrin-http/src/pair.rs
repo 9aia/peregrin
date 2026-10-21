@@ -1,5 +1,5 @@
 //! Pairing — port of `apps/server/src/pair.ts`: the one-time short code
-//! `sepia pair` writes to `$PEREGRIN_HOME/pair-code` redeems for a long-lived
+//! `peregrin pair` writes to `$PEREGRIN_HOME/pair-code` redeems for a long-lived
 //! `sepia_…` bearer credential. Issued credentials persist as sha256
 //! hashes in `$PEREGRIN_HOME/tokens.json` — the file alone can't
 //! authenticate.

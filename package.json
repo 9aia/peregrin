@@ -5,6 +5,7 @@
     "css": "tailwindcss -i crates/peregrin-web/style/input.css -o crates/peregrin-web/style/main.css --minify"
   },
   "devDependencies": {
+    "@tailwindcss/cli": "^4.3.3",
     "@tailwindcss/typography": "^0.5",
     "tailwindcss": "^4"
   }

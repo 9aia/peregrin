@@ -1,8 +1,8 @@
-// sepia service worker — deliberately small. Only the content-hashed
+// peregrin service worker — deliberately small. Only the content-hashed
 // /pkg/ bundle is cache-first; every other same-origin asset is
 // network-first with a cache fallback for offline, so a deploy can
 // never pair fresh HTML with a stale fixed-name asset (style.css).
-const CACHE = "sepia-v5";
+const CACHE = "peregrin-v1";
 const ASSETS = ["/", "/style.css", "/manifest.json", "/icon.svg"];
 
 self.addEventListener("install", (event) => {
@@ -92,7 +92,7 @@ self.addEventListener("push", (event) => {
     tag: data.tag,
     data: { url: data.url || "/" },
   };
-  event.waitUntil(self.registration.showNotification(data.title || "sepia", options));
+  event.waitUntil(self.registration.showNotification(data.title || "Peregrin", options));
 });
 
 self.addEventListener("notificationclick", (event) => {

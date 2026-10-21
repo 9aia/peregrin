@@ -48,7 +48,7 @@ use tw_merge::IntoTailwindClass;
 const PAGE_SIZE: i64 = 100;
 
 /// Shared `<pre>` body for tool output and thinking dumps.
-const TOOL_PRE: &str = "max-h-80 overflow-auto whitespace-pre-wrap break-words border-t \
+const TOOL_PRE: &str = "scroll-area max-h-80 overflow-auto whitespace-pre-wrap break-words border-t \
                         border-border/60 px-3 py-2 font-mono text-xs text-muted-foreground";
 
 /// `/sessions/:id` — standalone deep link: the same master-detail
@@ -131,7 +131,7 @@ fn DiffBlock(
                     </div>
                 }
             })}
-            <div class="max-h-72 overflow-auto py-1 font-mono text-[11px] leading-relaxed">{lines}</div>
+            <div class="scroll-area max-h-72 overflow-auto py-1 font-mono text-[11px] leading-relaxed">{lines}</div>
         </div>
     }
 }
@@ -1014,7 +1014,7 @@ pub fn SessionPanel(
     let running = move || live.read().running;
 
     view! {
-        <Title text="session — sepia"/>
+        <Title text="session — Peregrin"/>
         <section class="mx-auto flex h-full w-full max-w-4xl flex-col gap-4 px-4 py-4">
             <Suspense fallback=move || {
                 view! {
@@ -1656,7 +1656,7 @@ pub fn SessionPanel(
                                                         }
                                                         .to_class()
                                                         href=export_href(&detail_id, Some(&detail_agent))
-                                                        download=format!("sepia-session-{detail_id}.json")
+                                                        download=format!("peregrin-session-{detail_id}.json")
                                                     >
                                                         "Export JSON"
                                                     </a>
@@ -1740,7 +1740,7 @@ pub fn SessionPanel(
                                     {view! {
                                     <div class="relative flex min-h-40 flex-1 flex-col">
                                     <div
-                                        class="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-lg border bg-card p-3"
+                                        class="scroll-area flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-lg border bg-card p-3"
                                         node_ref=log_ref
                                     >
                                         <OlderButton
@@ -2255,7 +2255,7 @@ fn ContextCard(context: SystemContext) -> impl IntoView {
                                                 </code>
                                             })}
                                         </div>
-                                        <pre class="max-h-64 overflow-auto whitespace-pre-wrap p-2 text-xs text-muted-foreground">
+                                        <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap p-2 text-xs text-muted-foreground">
                                             {r.body.clone()}
                                         </pre>
                                     </div>
@@ -2273,7 +2273,7 @@ fn ContextCard(context: SystemContext) -> impl IntoView {
                                             <summary class="cursor-pointer select-none px-2.5 py-1.5 text-xs font-medium text-foreground/80">
                                                 {s.title.clone()}
                                             </summary>
-                                            <pre class="max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
+                                            <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
                                                 {s.body.clone()}
                                             </pre>
                                         </details>
@@ -2284,7 +2284,7 @@ fn ContextCard(context: SystemContext) -> impl IntoView {
                             if !context.prompt_text.is_empty() {
                                 items.push(if context.prompt_sections.is_empty() {
                                     view! {
-                                        <pre class="max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-muted/40 p-2.5 text-xs text-muted-foreground">
+                                        <pre class="scroll-area max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-muted/40 p-2.5 text-xs text-muted-foreground">
                                             {context.prompt_text.clone()}
                                         </pre>
                                     }
@@ -2295,7 +2295,7 @@ fn ContextCard(context: SystemContext) -> impl IntoView {
                                             <summary class="cursor-pointer select-none px-2.5 py-1.5 text-xs font-medium text-foreground/80">
                                                 "Full prompt"
                                             </summary>
-                                            <pre class="max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
+                                            <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
                                                 {context.prompt_text.clone()}
                                             </pre>
                                         </details>
@@ -2320,7 +2320,7 @@ fn ContextCard(context: SystemContext) -> impl IntoView {
                                                     {rule.path.clone()}
                                                 </code>
                                             </summary>
-                                            <pre class="max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
+                                            <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
                                                 {content.clone()}
                                             </pre>
                                         </details>

@@ -5,7 +5,7 @@
 //! directly (`SEPIA_LOCK_TTL_MS`, `SEPIA_HISTORY_LIMIT`,
 //! `SEPIA_INHERIT_ENV`, `SEPIA_DEBUG`) deliberately don't ride `Env`;
 //! neither do the OTEL knobs `peregrin-telemetry` reads at boot
-//! (`PEREGRIN_OTEL_ENDPOINT`, `SEPIA_OTEL_SERVICE_NAME`, and the standard
+//! (`PEREGRIN_OTEL_ENDPOINT`, `PEREGRIN_OTEL_SERVICE_NAME`, and the standard
 //! `OTEL_EXPORTER_OTLP_*` vars — see `DEPLOY.md` "Telemetry").
 //! `Env::parse` fails fast on bad values, like the TS schema.
 
@@ -43,7 +43,7 @@ pub struct Env {
     pub token: Option<String>,
     /// `PEREGRIN_META`/`PEREGRIN_META_PATH` — the overlay JSON file.
     pub meta_path: PathBuf,
-    /// `PEREGRIN_HOME` — Sepia-owned data dir (node.json, meta.json, tokens).
+    /// `PEREGRIN_HOME` — peregrin-owned data dir (node.json, meta.json, tokens).
     pub home: PathBuf,
     /// `PEREGRIN_NODE` — stable node identity file.
     pub node_path: PathBuf,
@@ -69,7 +69,7 @@ pub struct Env {
     /// `PEREGRIN_PAIR_LIMIT_PER_DAY` — `/api/pair` attempts/24h per client
     /// IP; `0` disables. Both at `0` turns the throttle off entirely.
     pub pair_limit_per_day: u32,
-    /// `<home>/pair-code` — written by `sepia pair`, consumed on read.
+    /// `<home>/pair-code` — written by `peregrin pair`, consumed on read.
     pub pair_code_path: PathBuf,
     /// `<home>/tokens.json` — sha256 hashes of issued pair credentials.
     pub tokens_path: PathBuf,
@@ -179,7 +179,7 @@ impl Env {
         // fails fast at construction rather than mid-request.
         if !is_loopback_host(&host) && token.as_deref().unwrap_or("").is_empty() {
             return Err(EnvError(format!(
-                "sepia-server refuses to bind {host} without PEREGRIN_TOKEN. Set PEREGRIN_TOKEN or bind a loopback address (PEREGRIN_HOST=127.0.0.1)."
+                "peregrin-server refuses to bind {host} without PEREGRIN_TOKEN. Set PEREGRIN_TOKEN or bind a loopback address (PEREGRIN_HOST=127.0.0.1)."
             )));
         }
 

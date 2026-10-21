@@ -1261,7 +1261,7 @@ pub async fn import_session(
             &uuid::Uuid::new_v4().to_string(),
             &title,
             &cwd,
-            model.as_deref().unwrap_or("sepia-import"),
+            model.as_deref().unwrap_or("peregrin-import"),
             &messages,
         )
     };

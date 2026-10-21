@@ -112,7 +112,7 @@ async fn session_detail_keeps_the_sessions_panel() {
     // highlighted row.
     let html = page("/sessions/s1", FakeNodeApi::seeded().shared()).await;
     assert_contains(&html, "data-name=\"SessionsPanel\"");
-    assert_contains(&html, "5 sessions");
+    assert_contains(&html, "Fix flaky login spec");
     assert_contains(&html, "Prompt the agent");
 }
 
@@ -142,9 +142,8 @@ async fn session_list_renders_titles_badges_and_groups() {
     ] {
         assert_contains(&html, title);
     }
-    // Count line + cwd group headings (last path segment per group).
-    // The archived `s5` is hidden — 5 of 6 seeded rows show.
-    assert_contains(&html, "5 sessions");
+    // cwd group headings (last path segment per group). The archived
+    // `s5` is hidden — 5 of 6 seeded rows show.
     assert_contains(&html, "acme-api");
     assert_contains(&html, "docs-site");
     // The pinned row sits in its own section above the groups.
@@ -153,9 +152,10 @@ async fn session_list_renders_titles_badges_and_groups() {
     // parent shows the child count.
     assert_contains(&html, "data-name=\"SubAgentMark\"");
     assert_contains(&html, "data-name=\"ChildCount\"");
-    // Archived rows hide until the toggle; the toggle advertises N.
+    // Archived rows hide by default — visibility is a Settings
+    // pref (`?archived=1` deep link overrides); no in-list toggle.
     assert!(!html.contains("Stale spike"));
-    assert_contains(&html, "Show archived (1)");
+    assert!(!html.contains("data-name=\"ArchivedToggle\""));
     // Status chips from the seeded flags.
     assert_contains(&html, ">busy<");
     assert_contains(&html, ">locked<");
@@ -565,6 +565,7 @@ async fn settings_renders_all_sections() {
     for section in [
         "Settings",
         "Appearance",
+        "Sessions",
         "Node",
         "Agents",
         "Queued writes",

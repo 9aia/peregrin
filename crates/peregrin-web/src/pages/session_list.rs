@@ -20,6 +20,8 @@ use leptos_router::hooks::use_query_map;
 use peregrin_web_core::composer::{CONVERT_TARGETS, import_body};
 use peregrin_web_core::desktop::{create_target, effective_node, node_for_cwd, resolve_create_cwd};
 #[cfg(feature = "hydrate")]
+use peregrin_web_core::filter::SHOW_ARCHIVED_KEY;
+#[cfg(feature = "hydrate")]
 use peregrin_web_core::filter::query_href;
 use peregrin_web_core::filter::{
     CollapsedGroups, PINNED_KEY, Recency, SectionKind, SessionFilter, SessionRow, SortMode,
@@ -42,7 +44,8 @@ use crate::components::icons::Icon;
 use crate::components::toast::{ToastStore, use_toast};
 use crate::components::{
     Badge, BadgeVariant, Button, ButtonClass, ButtonSize, ButtonVariant, ConfirmDialog, EmptyState,
-    ErrorBanner, Input, SELECT_CLASS, Sheet, SheetBody, SheetHeader, SheetTitle, Skeleton,
+    ErrorBanner, Input, SELECT_CLASS, ScrollArea, Sheet, SheetBody, SheetHeader, SheetTitle,
+    Skeleton,
 };
 use crate::desktop::Desktop;
 use crate::dto::{AgentDto, NodeStatusDto};
@@ -91,7 +94,7 @@ pub fn SessionListPage() -> impl IntoView {
     let selected_id: Signal<Option<String>> = Signal::derive(move || selected().map(|(id, _)| id));
 
     view! {
-        <Title text="sessions — sepia"/>
+        <Title text="sessions — Peregrin"/>
         <div class="flex h-full min-h-0 w-full">
             <SessionListPanel selected_id=selected_id/>
             // Chat pane — fills the rest on lg+; takes over the whole
@@ -233,6 +236,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
     // The header's "New session" button state — in-flight flag plus
     // the inline error line (the old form's `form_error` slot).
     let creating = RwSignal::new(false);
+    let import_open = RwSignal::new(false);
     // DOM/async callbacks run under whatever owner was last current —
     // a stale one makes scoped spawns abort before their first poll —
     // so spawn every callback task under this component's owner.
@@ -500,6 +504,23 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
         });
     }
 
+    // Default archived visibility lives in Settings → Sessions
+    // (`SHOW_ARCHIVED_KEY`); a `?archived=1` link still forces it on.
+    // Adopted post-hydration like `closed_groups` — SSR and first
+    // hydration agree on the URL-seeded value.
+    #[cfg(feature = "hydrate")]
+    {
+        let (stored_archived, _set, _clear) = leptos_use::storage::use_local_storage::<
+            bool,
+            codee::string::JsonSerdeCodec,
+        >(SHOW_ARCHIVED_KEY);
+        Effect::new(move |_| {
+            if stored_archived.get() {
+                show_archived.set(true);
+            }
+        });
+    }
+
     // Global hotkeys — document keydown, client only. The key→action
     // mapping is pure (`peregrin_web_core::keymap`, resolved through the
     // `keybinds` context so per-browser overrides apply); this
@@ -696,33 +717,72 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                 // hidden while no node is reachable. The signal stays
                 // false through SSR + first hydration — the mirror
                 // Effect flips it post-mount, so markup agrees.
-                {move || {
-                    node_connected.get().then(move || {
-                        view! {
+                // Split button (shadcn ButtonGroup): "New session" +
+                // a chevron segment opening the secondary actions —
+                // Import lives in the flyout. The group always renders
+                // (SSR shape stable); the create half mounts only once
+                // a node is reachable — before that it's import-only.
+                <div class="flex w-full" data-name="NewSessionGroup">
+                    {move || {
+                        node_connected.get().then(move || {
+                            view! {
+                                <button
+                                    type="button"
+                                    data-name="NewSessionButton"
+                                    class=format!(
+                                        "{} flex-1 rounded-r-none",
+                                        ButtonClass {
+                                            variant: ButtonVariant::Secondary,
+                                            size: ButtonSize::Default,
+                                        }
+                                        .to_class()
+                                    )
+                                    disabled=move || creating.get()
+                                    title="New session (n)"
+                                    on:click=move |_| create_in(None, None)
+                                >
+                                    <Icon name="plus" class="size-3.5"/>
+                                    {move || {
+                                        if creating.get() { "Creating…" } else { "New session" }
+                                    }}
+                                </button>
+                            }
+                        })
+                    }}
+                    <details class="group relative flex-1" data-name="NewSessionMore">
+                        <summary
+                            class=format!(
+                                "{} w-full list-none select-none group-not-first:rounded-l-none group-first:rounded-4xl [&::-webkit-details-marker]:hidden",
+                                ButtonClass {
+                                    variant: ButtonVariant::Secondary,
+                                    size: ButtonSize::Default,
+                                }
+                                .to_class()
+                            )
+                            aria-label="More session actions"
+                            title="More session actions"
+                        >
+                            <Icon name="chevron-down" class="size-3.5"/>
+                        </summary>
+                        // open: sibling backdrop swallows the outside click
+                        <span
+                            class="fixed inset-0 z-40 hidden cursor-default group-open:block"
+                            onclick="this.parentElement.removeAttribute('open')"
+                        ></span>
+                        <div class="absolute right-0 z-50 mt-1 w-44 rounded-3xl bg-popover p-1.5 text-sm text-popover-foreground shadow-lg ring-1 ring-border">
                             <button
                                 type="button"
-                                data-name="NewSessionButton"
-                                class=format!(
-                                    "{} w-full",
-                                    ButtonClass {
-                                        variant: ButtonVariant::Secondary,
-                                        size: ButtonSize::Default,
-                                    }
-                                    .to_class()
-                                )
-                                disabled=move || creating.get()
-                                title="New session (n)"
-                                on:click=move |_| create_in(None, None)
+                                class="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-sm font-medium hover:bg-accent cursor-pointer"
+                                onclick="this.closest('details').removeAttribute('open')"
+                                on:click=move |_| import_open.set(true)
                             >
-                                <Icon name="plus" class="size-3.5"/>
-                                {move || {
-                                    if creating.get() { "Creating…" } else { "New session" }
-                                }}
+                                <Icon name="upload" class="size-4 text-muted-foreground"/>
+                                "Import session…"
                             </button>
-                        }
-                    })
-                }}
-                <ImportCard on_imported=move || sessions.refetch()/>
+                        </div>
+                    </details>
+                </div>
+                <ImportCard open=import_open on_imported=move || sessions.refetch()/>
                 {move || {
                     create_error
                         .get()
@@ -734,7 +794,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
             }
             // `min-h-0` lets the scroll area shrink inside the column
             // instead of pushing the header/form off-screen.
-            <div class="flex min-h-0 flex-1 overflow-y-auto p-2">
+            <ScrollArea class="flex flex-1 p-2">
                 {
                     // View-type erasure — the nested Suspense tree
                     // overflows rustc's query depth when the page is
@@ -827,29 +887,14 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                                 let filter = current_filter();
                                                 let sections =
                                                     filter.sections(list.clone(), now_ms());
-                                                let shown: usize =
-                                                    sections.iter().map(|s| s.rows.len()).sum();
-                                                // Hidden archived rows count
-                                                // against the heading's "of M"
-                                                // only while shown.
-                                                let total = list
-                                                    .iter()
-                                                    .filter(|s| {
-                                                        filter.show_archived || !s.archived
-                                                    })
-                                                    .count();
-                                                let archived_total =
-                                                    list.iter().filter(|s| s.archived).count();
                                                 // A text filter force-expands
                                                 // every section.
                                                 let force_open = filter.force_open();
-                                                let heading = filter.heading(shown, total);
                                                 let kids = child_counts(&list);
                                                 let row_filter = filter.clone();
                                                 let sections = sections
                                                     .into_iter()
                                                     .map(|section| {
-                                                        let count = section.rows.len();
                                                         let label = section.label.clone();
                                                         let pinned_hdr =
                                                             section.kind == SectionKind::Pinned;
@@ -975,9 +1020,6 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                                                     <span class="min-w-0 truncate">
                                                                         {label}
                                                                     </span>
-                                                                    <span class="ml-auto shrink-0 font-normal normal-case">
-                                                                        {count}
-                                                                    </span>
                                                                 </button>
                                                                 // Class-driven collapse — the rows
                                                                 // always render, so SSR and hydrate
@@ -1012,39 +1054,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                                     }
                                                         .into_any()
                                                 };
-                                                view! {
-                                                    <p class="px-1.5 pb-1 text-[11px] text-muted-foreground">
-                                                        {heading}
-                                                    </p>
-                                                    {body}
-                                                    // Archived rows are hidden
-                                                    // by default; the toggle
-                                                    // widens the list, it
-                                                    // doesn't filter it.
-                                                    {(archived_total > 0).then(|| {
-                                                        view! {
-                                                            <button
-                                                                type="button"
-                                                                data-name="ArchivedToggle"
-                                                                class="mt-1 w-full rounded-sm px-1.5 py-1 text-left text-[11px] text-muted-foreground hover:text-foreground"
-                                                                on:click=move |_| {
-                                                                    show_archived.update(|v| *v = !*v);
-                                                                }
-                                                            >
-                                                                {move || {
-                                                                    if show_archived.get() {
-                                                                        "Hide archived".to_string()
-                                                                    } else {
-                                                                        format!(
-                                                                            "Show archived ({archived_total})"
-                                                                        )
-                                                                    }
-                                                                }}
-                                                            </button>
-                                                        }
-                                                    })}
-                                                }
-                                                    .into_any()
+                                                view! { {body} }.into_any()
                                             }}
                                         }
                                             .into_any()
@@ -1056,7 +1066,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         }
                         .into_any()
                     }
-            </div>
+            </ScrollArea>
             // Row context menu — a single fixed-position instance moved
             // to the pointer on `contextmenu`. Always rendered (`hidden`
             // while closed) so SSR and hydrate emit identical DOM;
@@ -2176,6 +2186,13 @@ fn check_icon() -> impl IntoView {
     view! { <Icon name="check" class="size-3.5 shrink-0 text-primary"/> }
 }
 
+/// Hover opens this submenu and folds open siblings — menubar
+/// behavior; click still toggles as before. Inline JS so it works
+/// pre-hydration like the backdrop's handler.
+const SUBMENU_HOVER_OPEN: &str = "var d=this;var p=d.parentElement;if(p){\
+    p.querySelectorAll('details[open]').forEach(function(o){if(o!==d)o.removeAttribute('open')})\
+    };d.open=true";
+
 /// A `<details>` submenu inside a header menu — the `AimSubMenu`
 /// shape (icon + label + muted right-hand hint + chevron) with the
 /// panel flying LEFT: the header menus anchor at the panel's right
@@ -2199,7 +2216,7 @@ fn PanelSubMenu(
     children: Children,
 ) -> impl IntoView {
     view! {
-        <details class="group/sub relative" data-name=data_name>
+        <details class="group/sub relative" data-name=data_name onmouseenter=SUBMENU_HOVER_OPEN>
             <summary
                 class=format!(
                     "{MENU_ITEM_CLS} list-none select-none [&::-webkit-details-marker]:hidden"
@@ -2598,19 +2615,21 @@ fn read_import_file(
 ) {
 }
 
-/// "Import session…" — a ghost button under the new-session form that
-/// opens a `Sheet`: file picker for a session export (the `{session}`
+/// "Import session…" — the chevron flyout item in `NewSessionGroup`,
+/// opening a `Sheet`: file picker for a session export (the `{session}`
 /// IR `GET /api/sessions/:id/export` produces), a target-store select
 /// (`cline`/`devin` — the node's `ImportTarget`), an optional cwd
 /// override, and the POST. On success the merged list refreshes and
 /// the imported copy is selected.
 #[component]
 fn ImportCard(
+    /// Sheet visibility — owned by the chevron menu item in the
+    /// `NewSessionGroup` split button.
+    open: RwSignal<bool>,
     /// Runs after an import lands — `sessions.refetch()`.
     on_imported: impl Fn() + 'static + Send + Sync + Copy,
 ) -> impl IntoView {
     let owner = StoredValue::new(Owner::current().unwrap_or_default());
-    let open = RwSignal::new(false);
     // `(file name, parsed JSON)` — staged by the picker until Import.
     let picked: RwSignal<Option<(String, Value)>> = RwSignal::new(None);
     let target = RwSignal::new("devin".to_string());
@@ -2661,17 +2680,6 @@ fn ImportCard(
 
     view! {
         <div data-name="ImportCard">
-            // The second w-full button under "New session" — the old
-            // card's ghost affordance with the upload glyph; the Sheet
-            // it opens is unchanged.
-            <Button
-                variant=ButtonVariant::Ghost
-                class="w-full text-muted-foreground hover:text-foreground"
-                on_click=Box::new(move || open.set(true))
-            >
-                <Icon name="upload" class="size-3.5"/>
-                "Import session…"
-            </Button>
             <Sheet open=open side="right" class="w-96" label="Import session">
                 <SheetHeader>
                     <SheetTitle>"Import session"</SheetTitle>

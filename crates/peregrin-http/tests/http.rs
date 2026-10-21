@@ -431,7 +431,7 @@ async fn pair_redeems_code_into_bearer_token() {
     let code_path = dir.path().join("pair-code");
     let tokens_path = dir.path().join("tokens.json");
     let pairing = Pairing::open(code_path.clone(), tokens_path);
-    // The mint channel is the pair-code file — same file `sepia pair` writes.
+    // The mint channel is the pair-code file — same file `peregrin pair` writes.
     let code = peregrin_http::pair::mint_pair_code();
     let expires_at = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)

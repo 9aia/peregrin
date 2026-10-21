@@ -27,12 +27,13 @@ impl Theme {
         }
     }
 
-    /// Toggle-button glyph.
+    /// Toggle-button icon — a lucide kebab-case name resolved by the
+    /// shell's `components::icons::Icon`.
     pub fn icon(self) -> &'static str {
         match self {
-            Self::Dark => "☾",
-            Self::Light => "☀",
-            Self::System => "◐",
+            Self::Dark => "moon",
+            Self::Light => "sun",
+            Self::System => "sun-moon",
         }
     }
 

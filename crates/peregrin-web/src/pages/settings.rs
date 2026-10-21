@@ -10,6 +10,8 @@ use leptos::prelude::*;
 use leptos_meta::Title;
 use serde_json::Value;
 
+#[cfg(feature = "hydrate")]
+use peregrin_web_core::filter::SHOW_ARCHIVED_KEY;
 use peregrin_web_core::notify::NotifyPrefs;
 #[cfg(feature = "hydrate")]
 use peregrin_web_core::notify::STORAGE_KEY;
@@ -38,6 +40,7 @@ fn err_view(e: &ServerFnError, retry: impl Fn() + Send + Sync + 'static) -> AnyV
 /// observer both read this list.
 const SECTIONS: &[(&str, &str)] = &[
     ("appearance", "Appearance"),
+    ("sessions", "Sessions"),
     ("node", "Node"),
     ("agents", "Agents"),
     ("outbox", "Queued writes"),
@@ -111,13 +114,13 @@ pub fn SettingsPage() -> impl IntoView {
         });
     }
     view! {
-        <Title text="settings — sepia"/>
+        <Title text="settings — Peregrin"/>
         <section class="mx-auto w-full max-w-5xl p-4 md:p-6">
             <PageHead>
                 <div>
                     <PageTitle>"Settings"</PageTitle>
                     <PageDescription>
-                        "Appearance, node identity, agents, outbox, and notifications."
+                        "Appearance, session list, node identity, agents, outbox, and notifications."
                     </PageDescription>
                 </div>
             </PageHead>
@@ -161,6 +164,9 @@ pub fn SettingsPage() -> impl IntoView {
                 <div node_ref=spy_root class="flex min-w-0 flex-1 flex-col gap-6">
                     <section id="appearance" data-spy="appearance" class="scroll-mt-6">
                         <AppearanceSection/>
+                    </section>
+                    <section id="sessions" data-spy="sessions" class="scroll-mt-6">
+                        <SessionsSection/>
                     </section>
                     <section id="node" data-spy="node" class="scroll-mt-6">
                         <NodeSection/>
@@ -229,6 +235,61 @@ fn AppearanceSection() -> impl IntoView {
                         </option>
                     </select>
                 </label>
+            </CardContent>
+        </Card>
+    }
+}
+
+/// Session-list defaults — browser-local prefs (`SHOW_ARCHIVED_KEY`
+/// in localStorage; the list adopts it on mount, `?archived=1` still
+/// forces rows shown). Same SSR shape as AppearanceSection: the
+/// checkbox renders disabled until hydrate wires the storage signal.
+#[component]
+fn SessionsSection() -> impl IntoView {
+    #[cfg(feature = "hydrate")]
+    let stored = {
+        let (get, set, _clear) = leptos_use::storage::use_local_storage::<
+            bool,
+            codee::string::JsonSerdeCodec,
+        >(SHOW_ARCHIVED_KEY);
+        Some((get, set))
+    };
+    #[cfg(not(feature = "hydrate"))]
+    let stored: Option<(Signal<bool>, WriteSignal<bool>)> = None;
+
+    // SSR renders the checkbox disabled+unchecked — identical shape;
+    // hydrate wires it to the storage signal.
+    let checked = move || stored.as_ref().is_some_and(|(get, _)| get.get());
+    let disabled = stored.is_none();
+    let on_change = move |ev| {
+        if let Some((_, set)) = &stored {
+            set.set(event_target_checked(&ev));
+        }
+    };
+
+    view! {
+        <Card>
+            <CardHeader>
+                <CardTitle>"Sessions"</CardTitle>
+                <CardDescription>"Session list defaults for this browser."</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <label class="flex items-center gap-2 text-sm">
+                    <input
+                        type="checkbox"
+                        data-name="ShowArchivedPref"
+                        class="size-4 accent-primary"
+                        prop:checked=checked
+                        disabled=disabled
+                        on:change=on_change
+                    />
+                    "Show archived sessions"
+                </label>
+                <p class="mt-1.5 text-xs text-muted-foreground">
+                    "Archived sessions stay hidden unless this is on — a "
+                    <code class="font-mono">"?archived=1"</code>
+                    " link shows them regardless."
+                </p>
             </CardContent>
         </Card>
     }

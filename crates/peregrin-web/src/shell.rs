@@ -21,7 +21,7 @@ pub fn shell(options: LeptosOptions) -> impl IntoView {
                 <meta charset="utf-8"/>
                 <meta name="viewport" content="width=device-width, initial-scale=1"/>
                 <meta name="theme-color" content="#09090b"/>
-                <title>"sepia"</title>
+                <title>"Peregrin"</title>
                 <link rel="manifest" href="/manifest.json"/>
                 <link rel="icon" href="/icon.svg" type="image/svg+xml"/>
                 // Geist latin subset — the one face body text always

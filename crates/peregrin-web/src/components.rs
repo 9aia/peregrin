@@ -119,6 +119,11 @@ clx! { CardDescription, p, "text-sm text-muted-foreground" }
 clx! { CardContent, div, "p-5 pt-0" }
 clx! { CardFooter, div, "flex items-center p-5 pt-0" }
 
+// Scrollable region — `overflow-y-auto` plus the `.scroll-area`
+// scrollbar styling from input.css (shadcn `ScrollArea` shape).
+// `min-h-0` keeps it shrinkable inside flex columns.
+clx! { ScrollArea, div, "scroll-area min-h-0 overflow-y-auto" }
+
 void! { Separator, hr, "shrink-0 border-none bg-border h-px w-full" }
 
 void! { Skeleton, div, "animate-pulse rounded-md bg-muted" }
@@ -628,7 +633,8 @@ pub mod icons {
     /// `unplug`, `square`, `loader-circle`, `trash`, `folder-open`,
     /// `globe`, `octagon-x`, `file`, `monitor`, `rotate-ccw`,
     /// `keyboard`, `search`, `sliders-horizontal`, `arrow-up-down`,
-    /// `clock`, `circle-dot`, `chevron-left`, `arrow-right-left`.
+    /// `clock`, `circle-dot`, `chevron-left`, `arrow-right-left`,
+    /// `moon`, `sun`, `sun-moon`.
     #[component]
     #[allow(clippy::needless_pass_by_value)] // component props are owned
     pub fn Icon(
@@ -706,6 +712,9 @@ pub mod icons {
                     "octagon-x" => view! { <lucide_leptos::OctagonX/> }.into_any(),
                     "file" => view! { <lucide_leptos::File/> }.into_any(),
                     "monitor" => view! { <lucide_leptos::Monitor/> }.into_any(),
+                    "moon" => view! { <lucide_leptos::Moon/> }.into_any(),
+                    "sun" => view! { <lucide_leptos::Sun/> }.into_any(),
+                    "sun-moon" => view! { <lucide_leptos::SunMoon/> }.into_any(),
                     "rotate-ccw" => view! { <lucide_leptos::RotateCcw/> }.into_any(),
                     "keyboard" => view! { <lucide_leptos::Keyboard/> }.into_any(),
                     "search" => view! { <lucide_leptos::Search/> }.into_any(),
@@ -897,7 +906,7 @@ pub fn Sheet(
 
 clx! { SheetHeader, div, "flex shrink-0 items-center justify-between gap-2 p-4 pb-2" }
 clx! { SheetTitle, h3, "font-heading text-base font-medium text-foreground" }
-clx! { SheetBody, div, "flex-1 overflow-y-auto px-4 py-3" }
+clx! { SheetBody, div, "scroll-area flex-1 overflow-y-auto px-4 py-3" }
 
 /// Centered empty state — lucide icon tile (the old app's `EmptyMedia`
 /// recipe), title, description, actions. `icon` is a lucide name (see

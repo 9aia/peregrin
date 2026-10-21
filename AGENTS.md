@@ -29,6 +29,8 @@ cargo xtask check          # fmt + clippy -D warnings + web markup gate
 cargo xtask test           # suite (nextest if present)
 cargo xtask install        # release peregrin + hub + site → ~/.local
 cargo xtask site           # wasm bundle + PWA assets → target/site
+cargo xtask dev            # cargo-leptos watch: rebuild wasm+hub on save,
+                           # auto-refresh — dev hub on :3002 (prod :3000)
 cargo xtask smoke          # headless-Chrome console probe (post-UI-change)
 cargo xtask e2e            # node+hub+browser suite (needs site first)
 ```

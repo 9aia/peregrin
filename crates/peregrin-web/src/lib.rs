@@ -68,6 +68,8 @@ pub async fn sleep_ms(ms: u32) {
 pub mod theme {
     use leptos::prelude::*;
 
+    use crate::components::icons::Icon;
+
     // The state machine (cycle, stored-value mapping, dark resolution)
     // is pure — it lives in `peregrin-web-core` and is tested there.
     pub use peregrin_web_core::theme::{STORAGE_KEY, Theme};
@@ -131,7 +133,11 @@ pub mod theme {
                 class="inline-flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
                 on:click=move |_| theme.update(|t| *t = t.next())
             >
-                {move || theme.get().icon()}
+                {move || {
+                    view! {
+                        <Icon name=theme.get().icon() class="size-4"/>
+                    }
+                }}
             </button>
         }
     }

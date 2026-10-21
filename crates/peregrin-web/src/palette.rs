@@ -318,7 +318,7 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                     id="sepia-palette-list"
                     role="listbox"
                     aria-label="Results"
-                    class="max-h-80 overflow-y-auto p-1.5"
+                    class="scroll-area max-h-80 overflow-y-auto p-1.5"
                 >
                     {move || {
                         // Items exist only while open — SSR and first

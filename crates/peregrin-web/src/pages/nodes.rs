@@ -32,7 +32,7 @@ pub fn NodesPage() -> impl IntoView {
     }
 
     view! {
-        <Title text="nodes — sepia"/>
+        <Title text="nodes — Peregrin"/>
         <section class="mx-auto w-full max-w-5xl space-y-6 p-4 md:p-6">
             <PageHead class="mb-0">
                 <div>
@@ -231,7 +231,7 @@ pub fn NodesPage() -> impl IntoView {
     }
 }
 
-/// "Pair a device" — redeem a one-time code (`sepia pair` writes it
+/// "Pair a device" — redeem a one-time code (`peregrin pair` writes it
 /// to `$PEREGRIN_HOME/pair-code` on the node) for a long-lived node
 /// credential. `POST /api/pair` is deliberately unauthenticated
 /// node-side — the code itself is the credential.
@@ -278,7 +278,7 @@ fn PairCard() -> impl IntoView {
             <CardHeader>
                 <CardTitle>"Pair a device"</CardTitle>
                 <CardDescription>
-                    "Redeem the one-time code from `sepia pair` for a node credential. The token is shown once — store it somewhere safe."
+                    "Redeem the one-time code from `peregrin pair` for a node credential. The token is shown once — store it somewhere safe."
                 </CardDescription>
             </CardHeader>
             <CardContent>

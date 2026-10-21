@@ -1577,7 +1577,7 @@ pub fn parse_system_context(messages: &[(String, f64)]) -> SystemContext {
 
 /* ==== chat rows ======================================================== */
 
-/// One run span: which agent on which Sepia node continued a session —
+/// One run span: which agent on which peregrin node continued a session —
 /// `SummaryWire.spans`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RunSpan {

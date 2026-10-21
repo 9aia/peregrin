@@ -2,8 +2,8 @@
 //! merged store + control plane, serves the `/api/*` surface, and shuts
 //! the plane down on SIGINT/SIGTERM.
 //!
-//! The boot sequence lives in [`peregrin_node::serve`] — `sepia serve`
-//! (crates/sepia-cli) runs the same path.
+//! The boot sequence lives in [`peregrin_node::serve`] — `peregrin serve`
+//! (crates/peregrin-cli) runs the same path.
 
 use peregrin_http::env::Env;
 

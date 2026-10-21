@@ -1,4 +1,4 @@
-//! peregrin-http — the axum driving adapter for the Sepia API. Port of
+//! peregrin-http — the axum driving adapter for the peregrin node API. Port of
 //! `apps/server/src/app.ts`: mounts `/api/*` over a `ControlPlane`, the
 //! `MetaStore` overlay, and the node event feed. The `peregrin-node`
 //! daemon composes [`AppState`] and serves [`app`].
@@ -392,7 +392,7 @@ pub fn app(state: AppState) -> Router {
 /// `std::io::Error` on bind/serve failure.
 pub async fn serve(env: &Env, state: AppState) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind((env.host.as_str(), env.port)).await?;
-    tracing::info!("sepia-server listening on {}:{}", env.host, env.port);
+    tracing::info!("peregrin-server listening on {}:{}", env.host, env.port);
     // `ConnectInfo` feeds the /api/pair limiter its client-IP key.
     axum_serve(
         listener,
