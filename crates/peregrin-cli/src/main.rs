@@ -463,6 +463,26 @@ enum ServiceCommands {
         #[arg(long)]
         purge: bool,
     },
+    /// Start the service now and at boot/login (keeps the unit file —
+    /// the counterpart of `disable`, not a reinstall)
+    Enable {
+        /// Manage the hub unit (peregrin-hub) instead of the node unit
+        #[arg(long)]
+        hub: bool,
+        /// Install/manage the system-level unit instead of the per-user one
+        #[arg(long)]
+        system: bool,
+    },
+    /// Stop the service now and keep it stopped across boots/logins —
+    /// the unit file stays so `enable` brings it back
+    Disable {
+        /// Manage the hub unit (peregrin-hub) instead of the node unit
+        #[arg(long)]
+        hub: bool,
+        /// Install/manage the system-level unit instead of the per-user one
+        #[arg(long)]
+        system: bool,
+    },
     /// Show whether the peregrin service is installed, enabled and running
     Status {
         /// Manage the hub unit (peregrin-hub) instead of the node unit
@@ -849,6 +869,8 @@ fn run_service(cmd: &ServiceCommands) -> Result<(), CliError> {
         ServiceCommands::Uninstall { hub, system, purge } => {
             service::service_uninstall(*hub, *system, *purge)
         }
+        ServiceCommands::Enable { hub, system } => service::service_enable(*hub, *system),
+        ServiceCommands::Disable { hub, system } => service::service_disable(*hub, *system),
         ServiceCommands::Status { hub, system } => service::service_status(*hub, *system),
         ServiceCommands::Restart { hub, system } => service::service_restart(*hub, *system),
         ServiceCommands::Logs {

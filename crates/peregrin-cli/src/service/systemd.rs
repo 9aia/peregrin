@@ -288,6 +288,19 @@ pub fn restart(spec: &ServiceSpec) -> Result<(), CliError> {
     run(&systemctl(spec, &["restart", &unit_name(spec)]))
 }
 
+/// `enable --now` — start now + at boot/login; the unit file stays put.
+pub fn enable(spec: &ServiceSpec) -> Result<(), CliError> {
+    require_systemd("systemctl")?;
+    run(&systemctl(spec, &["enable", "--now", &unit_name(spec)]))
+}
+
+/// `disable --now` — stop now + skip at boot/login; the unit file stays
+/// put so `enable` brings it back without a reinstall.
+pub fn disable(spec: &ServiceSpec) -> Result<(), CliError> {
+    require_systemd("systemctl")?;
+    run(&systemctl(spec, &["disable", "--now", &unit_name(spec)]))
+}
+
 /// `-f` hands the terminal to `journalctl -f`; returns its exit code.
 pub fn logs(spec: &ServiceSpec, follow: bool) -> Result<i32, CliError> {
     require_systemd("journalctl")?;

@@ -7,4 +7,8 @@ pub trait Service: Send + Sync {
     fn status(&self) -> std::io::Result<String>;
     /// Restart the unit.
     fn restart(&self) -> std::io::Result<()>;
+    /// Enable + start now and at boot/login.
+    fn enable(&self) -> std::io::Result<()>;
+    /// Stop now and stay stopped across boots/logins (unit file kept).
+    fn disable(&self) -> std::io::Result<()>;
 }

@@ -365,6 +365,39 @@ pub fn restart(spec: &ServiceSpec) -> Result<(), CliError> {
     run(&["launchctl", "kickstart", "-k", &service_target(spec)])
 }
 
+/// Clear the launchd disabled flag, then load + start the job —
+/// bootstrap when it's out of the domain, kickstart when it's loaded
+/// but stopped. The plist stays put either way.
+pub fn enable(spec: &ServiceSpec) -> Result<(), CliError> {
+    require_launchctl()?;
+    let _ = spawn(&["launchctl", "enable", &service_target(spec)]);
+    if loaded(spec) {
+        return run(&["launchctl", "kickstart", "-k", &service_target(spec)]);
+    }
+    run(&[
+        "launchctl",
+        "bootstrap",
+        &domain(spec),
+        &unit_path(spec).to_string_lossy(),
+    ])
+}
+
+/// Set the disabled flag (survives login) and boot the job out of the
+/// domain now. The plist stays — `enable` brings it back.
+pub fn disable(spec: &ServiceSpec) -> Result<(), CliError> {
+    require_launchctl()?;
+    let _ = spawn(&["launchctl", "disable", &service_target(spec)]);
+    if loaded(spec) {
+        run(&[
+            "launchctl",
+            "bootout",
+            &domain(spec),
+            &unit_path(spec).to_string_lossy(),
+        ])?;
+    }
+    Ok(())
+}
+
 /// Print the tail; `--follow` hands the terminal to `tail -f`.
 pub fn logs(spec: &ServiceSpec, follow: bool) -> Result<i32, CliError> {
     let log = log_path(spec);

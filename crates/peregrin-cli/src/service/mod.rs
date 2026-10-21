@@ -163,6 +163,27 @@ impl Backend {
         }
     }
 
+    /// Enable + start now and at boot/login; the unit file stays put.
+    pub fn enable(&self, spec: &ServiceSpec) -> Result<(), CliError> {
+        match self {
+            #[cfg(unix)]
+            Self::Systemd => systemd::enable(spec),
+            #[cfg(unix)]
+            Self::Launchd => launchd::enable(spec),
+        }
+    }
+
+    /// Stop now and stay stopped across boots/logins; the unit file
+    /// stays put so `enable` brings it back without a reinstall.
+    pub fn disable(&self, spec: &ServiceSpec) -> Result<(), CliError> {
+        match self {
+            #[cfg(unix)]
+            Self::Systemd => systemd::disable(spec),
+            #[cfg(unix)]
+            Self::Launchd => launchd::disable(spec),
+        }
+    }
+
     pub fn logs(&self, spec: &ServiceSpec, follow: bool) -> Result<i32, CliError> {
         match self {
             #[cfg(unix)]
@@ -326,6 +347,29 @@ pub fn service_restart(hub: bool, system: bool) -> Result<(), CliError> {
         Ok(())
     };
     run().map_err(|e| CliError(format!("peregrin service restart: {}", e.0)))
+}
+
+/// `peregrin service enable` — start now + at boot/login.
+pub fn service_enable(hub: bool, system: bool) -> Result<(), CliError> {
+    let run = || -> Result<(), CliError> {
+        let b = backend()?;
+        b.enable(&spec(hub, system, None))?;
+        println!("enabled + started");
+        Ok(())
+    };
+    run().map_err(|e| CliError(format!("peregrin service enable: {}", e.0)))
+}
+
+/// `peregrin service disable` — stop now; stays stopped across
+/// boots/logins until `enable` (the unit file is kept).
+pub fn service_disable(hub: bool, system: bool) -> Result<(), CliError> {
+    let run = || -> Result<(), CliError> {
+        let b = backend()?;
+        b.disable(&spec(hub, system, None))?;
+        println!("disabled + stopped");
+        Ok(())
+    };
+    run().map_err(|e| CliError(format!("peregrin service disable: {}", e.0)))
 }
 
 /// `peregrin service logs` — print (or follow, `-f`) the service log.
