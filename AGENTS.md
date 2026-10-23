@@ -33,6 +33,8 @@ cargo xtask dev            # cargo-leptos watch: rebuild wasm+hub on save,
                            # auto-refresh — dev hub on :3002 (prod :3000)
 cargo xtask smoke          # headless-Chrome console probe (post-UI-change)
 cargo xtask e2e            # node+hub+browser suite (needs site first)
+cargo xtask coverage       # llvm-cov report (HTML → target/llvm-cov/html);
+                           # extra args pass through, e.g. --fail-under-lines 100
 ```
 
 UI stack: Tailwind v4 + typography — `bun install && bun run css`

@@ -16,6 +16,16 @@ fn nextest_available() -> bool {
         .is_ok_and(|s| s.success())
 }
 
+/// True when the `cargo-llvm-cov` subcommand is installed.
+fn llvm_cov_available() -> bool {
+    Command::new("cargo")
+        .args(["llvm-cov", "--version"])
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .is_ok_and(|s| s.success())
+}
+
 /// Binaries tests shell out to — one prebuild beats N in-test
 /// `cargo build`s serializing on locks. `sepia-*` binaries come from
 /// the sibling sepia checkout (path deps); tests resolve them via
@@ -39,6 +49,14 @@ fn prebuild() -> anyhow::Result<()> {
             "cargo",
             &["build", "--manifest-path", "../sepia/Cargo.toml", "--bins"],
         )?;
+    }
+    stage_bins_and_site()
+}
+
+/// Link freshly built workspace + sepia binaries into `target/debug`
+/// and stage the hub's public assets into `target/site`.
+fn stage_bins_and_site() -> anyhow::Result<()> {
+    if std::path::Path::new("../sepia/Cargo.toml").exists() {
         // sepia's builds land wherever CARGO_TARGET_DIR points —
         // shared-target first (the global default here), repo-local
         // target/debug as fallback.
@@ -194,6 +212,88 @@ fn main() -> anyhow::Result<()> {
                 .status()?;
             anyhow::ensure!(status.success(), "workspace tests failed");
         }
+        // `cargo xtask coverage [llvm-cov args…]` — HTML report under
+        // target/llvm-cov/html plus a printed summary. Extra args pass
+        // through to cargo-llvm-cov (e.g. `--fail-under-lines 100`,
+        // `--lcov --output-path lcov.info`); passing any report flag
+        // replaces the default --html.
+        Some("coverage") => {
+            anyhow::ensure!(
+                llvm_cov_available(),
+                "cargo-llvm-cov not installed — `cargo install cargo-llvm-cov` \
+                 (needs the llvm-tools rustup component)"
+            );
+            // Prebuild spawned binaries *inside* the coverage env:
+            // llvm-cov's rustc wrapper instruments only the workspace
+            // crates named at show-env time — bins built outside it run
+            // uninstrumented and e2e coverage stays invisible. sepia's
+            // bins pass through the wrapper uninstrumented (not in this
+            // workspace's crate list); sepia measures its own coverage.
+            let mut bins = String::new();
+            for bin in TEST_BINS {
+                bins.push_str(" --bin ");
+                bins.push_str(bin);
+            }
+            let pre = format!(
+                "eval \"$(cargo llvm-cov show-env --export-prefix)\" \
+                 && cargo build{bins}"
+            );
+            run("sh", &["-c", &pre])?;
+            if std::path::Path::new("../sepia/Cargo.toml").exists() {
+                run(
+                    "sh",
+                    &[
+                        "-c",
+                        "eval \"$(cargo llvm-cov show-env --export-prefix)\" \
+                         && cargo build --manifest-path ../sepia/Cargo.toml \
+                         --bins",
+                    ],
+                )?;
+            }
+            // Stale non-instrumented links in target/debug would shadow
+            // the fresh instrumented builds — drop them before staging.
+            if let Ok(read) = std::fs::read_dir("target/debug") {
+                for entry in read.flatten() {
+                    let name = entry.file_name();
+                    let Some(name) = name.to_str() else { continue };
+                    let is_file = entry.file_type().is_ok_and(|t| t.is_file());
+                    if is_file && (name.starts_with("peregrin") || name.starts_with("sepia")) {
+                        let _ = std::fs::remove_file(entry.path());
+                    }
+                }
+            }
+            stage_bins_and_site()?;
+            // --no-tests=pass matches `xtask test`: an empty suite is
+            // a pass, not nextest's exit-4 "no tests to run".
+            let runner = if nextest_available() {
+                "cargo llvm-cov nextest --workspace --exclude xtask --no-tests=pass"
+            } else {
+                "cargo llvm-cov --workspace --exclude xtask"
+            };
+            let extra: Vec<String> = std::env::args().skip(2).collect();
+            let wants_report = extra.iter().any(|a| {
+                matches!(
+                    a.as_str(),
+                    "--text"
+                        | "--summary-only"
+                        | "--json"
+                        | "--lcov"
+                        | "--cobertura"
+                        | "--codecov"
+                        | "--open"
+                )
+            });
+            let html = if wants_report { "" } else { " --html" };
+            let cov = format!("{runner}{html} \"$@\"");
+            let status = Command::new("sh")
+                .args(["-c", &cov, "xtask-coverage"])
+                .args(&extra)
+                .env("SEPIA_TESTKIT_PREBUILT", "1")
+                .env("PEREGRIN_E2E_PREBUILT", "1")
+                .env("TESTKIT_BIN_DIRS", testkit_bin_dirs())
+                .status()?;
+            anyhow::ensure!(status.success(), "coverage run failed");
+        }
         Some("install") => {
             let bins = ["peregrin", "peregrin-hub"];
             let mut build = vec!["build", "--release"];
@@ -247,7 +347,9 @@ fn main() -> anyhow::Result<()> {
             anyhow::ensure!(status.success(), "browser e2e failed");
         }
         Some(other) => anyhow::bail!("unknown task {other}"),
-        None => anyhow::bail!("usage: cargo xtask <check|test|install|site|dev|smoke|e2e>"),
+        None => {
+            anyhow::bail!("usage: cargo xtask <check|test|install|site|dev|smoke|e2e|coverage>")
+        }
     }
     Ok(())
 }
