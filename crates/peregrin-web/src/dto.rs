@@ -524,4 +524,37 @@ mod tests {
         assert_eq!(parsed.status, "");
         assert_eq!(parsed.attempts, 0);
     }
+
+    #[test]
+    fn text_falls_back_to_blocks() {
+        // `content` wins when non-empty.
+        let m = HistoryMessageDto {
+            content: "direct".into(),
+            ..HistoryMessageDto::default()
+        };
+        assert_eq!(m.text(), "direct");
+        // Empty content + no blocks → empty.
+        let m = HistoryMessageDto::default();
+        assert_eq!(m.text(), "");
+        // Text blocks join; non-text blocks drop.
+        let m = HistoryMessageDto {
+            blocks: Some(vec![
+                serde_json::json!({"type": "text", "text": "first "}),
+                serde_json::json!({"type": "image", "text": "ignored"}),
+                serde_json::json!({"type": "text", "text": "second"}),
+            ]),
+            ..HistoryMessageDto::default()
+        };
+        assert_eq!(m.text(), "first second");
+    }
+
+    #[test]
+    fn push_prefs_maps_notify_prefs() {
+        let dto = PushPrefsDto::from(peregrin_web_core::notify::NotifyPrefs {
+            done: true,
+            permission: false,
+        });
+        assert!(dto.done);
+        assert!(!dto.permission);
+    }
 }
