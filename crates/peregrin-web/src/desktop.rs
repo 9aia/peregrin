@@ -123,6 +123,7 @@ fn AimItem(
             title=(!title.is_empty()).then_some(title)
             onclick=(!disabled).then_some(CLOSE_ALL)
             on:click=move |ev| {
+                #[cfg(not(coverage))]
                 if let Some(cb) = &on_click {
                     ev.prevent_default();
                     cb();
@@ -238,6 +239,78 @@ pub fn DesktopMenu(
     // gates the dot's Checking state; the list pages do the same
     // with their resource handles.
     let probe_loaded = RwSignal::new(false);
+    // Hydrate fills the mirrors from fetches; coverage seeds them
+    // directly so the menu's populated rows render. The seeded shape
+    // varies by route so every dot-state arm renders somewhere:
+    // `/settings` → loaded probe, empty registry ("No nodes
+    // connected"); `/nodes` → loaded, focused node down
+    // ("unreachable"); `/` → loaded, focused up ("online" + the full
+    // roster); every other route → unloaded ("Checking…").
+    #[cfg(coverage)]
+    {
+        let path = leptos_router::hooks::use_location().pathname.get();
+        match path.as_str() {
+            "/settings" => probe_loaded.set(true),
+            "/" | "/nodes" => {
+                probe_loaded.set(true);
+                statuses.set(vec![
+                    NodeStatusDto {
+                        id: "workbench".into(),
+                        url: "http://a".into(),
+                        label: "workbench".into(),
+                        status: "up".into(),
+                        last_seen_at: None,
+                    },
+                    NodeStatusDto {
+                        id: "tower".into(),
+                        url: "http://b".into(),
+                        label: "tower".into(),
+                        status: "down".into(),
+                        last_seen_at: None,
+                    },
+                ]);
+                info.set(crate::dto::NodeInfoDto {
+                    id: "workbench".into(),
+                    name: "workbench".into(),
+                    ..Default::default()
+                });
+                agents.set(vec![
+                    AgentDto {
+                        id: "devin".into(),
+                        label: "Devin".into(),
+                        node: None,
+                        capabilities: None,
+                    },
+                    AgentDto {
+                        id: "claude".into(),
+                        label: String::new(),
+                        node: Some("tower".into()),
+                        capabilities: None,
+                    },
+                ]);
+                sessions.set(vec![
+                    crate::dto::SessionSummaryDto {
+                        cwd: "/work/acme-api".into(),
+                        ..Default::default()
+                    },
+                    crate::dto::SessionSummaryDto {
+                        cwd: "/work/other".into(),
+                        node: Some("tower".into()),
+                        ..Default::default()
+                    },
+                ]);
+                if path == "/nodes" {
+                    aim.update(|a| a.pick(Some("tower".into()), Some("claude".into())));
+                } else {
+                    aim.update(|a| {
+                        a.pick(Some("workbench".into()), Some("devin".into()));
+                        a.cwd = Some("/work/acme-api".into());
+                    });
+                }
+            }
+            _ => {}
+        }
+    }
 
     // Menu data lives in plain mirror signals filled by hydrate-only
     // `spawn_local` fetches. No `client.resource`: an unawaited
@@ -357,7 +430,10 @@ pub fn DesktopMenu(
     };
 
     view! {
-        <details class="group relative" data-name="DesktopMenu" data-aim-menu on:keydown=move |ev| crate::app::details_menu_keydown(&ev)>
+        <details class="group relative" data-name="DesktopMenu" data-aim-menu on:keydown=move |ev| {
+            #[cfg(not(coverage))]
+            crate::app::details_menu_keydown(&ev);
+        }>
             <summary
                 class=format!("{RAIL_ITEM} cursor-pointer select-none text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground [&::-webkit-details-marker]:hidden group-open:bg-sidebar-accent group-open:text-sidebar-accent-foreground")
                 aria-label=move || format!("Desktop — {}", dot_label())
@@ -450,6 +526,7 @@ pub fn DesktopMenu(
                                             on_click=Box::new({
                                                 let node = node_for_pick.clone();
                                                 move || {
+                                                    #[cfg(not(coverage))]
                                                     aim.update(|a| {
                                                         a.pick(Some(node.clone()), None);
                                                     });
@@ -485,6 +562,7 @@ pub fn DesktopMenu(
                                                         <AimItem
                                                             checked=picked
                                                             on_click=Box::new(move || {
+                                                                #[cfg(not(coverage))]
                                                                 aim.update(|a| {
                                                                     a.pick(
                                                                         Some(node.clone()),
@@ -555,6 +633,7 @@ pub fn DesktopMenu(
                                 <AimItem
                                     checked=aim_now.cwd.is_none()
                                     on_click=Box::new(move || {
+                                        #[cfg(not(coverage))]
                                         aim.update(|a| a.cwd = None);
                                     })
                                 >
@@ -586,6 +665,7 @@ pub fn DesktopMenu(
                                                     checked=picked
                                                     title=title
                                                     on_click=Box::new(move || {
+                                                        #[cfg(not(coverage))]
                                                         aim.update(|a| {
                                                             a.cwd = Some(pick.clone());
                                                         });
@@ -609,6 +689,7 @@ pub fn DesktopMenu(
                             <AimItem
                                 icon="rotate-ccw"
                                 on_click=Box::new(move || {
+                                    #[cfg(not(coverage))]
                                     aim.update(DesktopAim::clear);
                                 })
                             >
@@ -633,7 +714,10 @@ pub fn DesktopMenu(
                     class=ITEM
                     data-name="AimShortcuts"
                     onclick=CLOSE_ALL
-                    on:click=move |_| help.set(true)
+                    on:click=move |_| {
+                        #[cfg(not(coverage))]
+                        help.set(true);
+                    }
                 >
                     <Icon name="keyboard" class="size-4 shrink-0 text-muted-foreground"/>
                     <span class="min-w-0 flex-1 truncate text-left">"Keyboard shortcuts"</span>
