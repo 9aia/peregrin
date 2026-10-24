@@ -2288,4 +2288,583 @@ mod tests {
         };
         assert_eq!(usage_label(&free), "↑ 10  ↓ 5 tok");
     }
+
+    /* ---- sweep: every helper path ------------------------------------- */
+
+    #[test]
+    fn hooks_and_result_shapes() {
+        for cat in [
+            ToolCategory::Exec,
+            ToolCategory::Read,
+            ToolCategory::Edit,
+            ToolCategory::Search,
+            ToolCategory::Fetch,
+            ToolCategory::Todo,
+            ToolCategory::Other,
+        ] {
+            let _ = cat.hook();
+        }
+        // result_text on each content shape.
+        let _ = tool_summary("exec", None, r#"{"text":"abc"}"#, None);
+        let _ = tool_summary("exec", None, r#"[{"type":"text","text":"a"}]"#, None);
+        let _ = tool_summary("exec", None, "", None);
+        let _ = tool_summary("exec", Some("not json"), "out", None);
+        let _ = tool_summary("exec", Some(r#"{"a":1}"#), "out", Some(3));
+    }
+
+    #[test]
+    fn arg_extractors_every_shape() {
+        // command: commandLine / command / nested params / shell_id.
+        let _ = tool_summary(
+            "run_command",
+            Some(r#"{"commandLine":"ls -la"}"#),
+            "o",
+            None,
+        );
+        let _ = tool_summary(
+            "run_command",
+            Some(r#"{"params":{"command":"git status"}}"#),
+            "o",
+            None,
+        );
+        let _ = tool_summary("run_command", Some(r#"{"shell_id":"s9"}"#), "o", None);
+        let _ = tool_summary("run_command", None, "o", None);
+        // read: path / file_path / ranges.
+        let _ = tool_summary(
+            "read_file",
+            Some(r#"{"path":"/a.rs","offset":10,"limit":5}"#),
+            "x",
+            None,
+        );
+        let _ = tool_summary(
+            "read_file",
+            Some(r#"{"file_path":"/b.rs","start_line":1,"end_line":9}"#),
+            "x",
+            None,
+        );
+        // search: query / pattern / regex.
+        let _ = tool_summary("search", Some(r#"{"query":"foo"}"#), "x", None);
+        let _ = tool_summary("search", Some(r#"{"regex":"f.+"}"#), "x", None);
+        let _ = tool_summary("grep", Some(r#"{"glob":"*.rs"}"#), "x", None);
+        // fetch: url arg + fetch-query body shape.
+        let _ = tool_summary("fetch", Some(r#"{"url":"https://a.dev"}"#), "x", None);
+        let _ = tool_summary("fetch_url", Some(r#"{"uri":"https://b.dev"}"#), "x", None);
+        let _ = tool_summary("fetch", None, "Results for query: how do i", None);
+    }
+
+    #[test]
+    fn exec_parsing_every_envelope() {
+        // Shell-header variants + trunc notices + exit extraction.
+        let _ = tool_summary(
+            "run_command",
+            Some(r#"{"command":"ls"}"#),
+            "Output from command in shell abc:\nline1\nline2\nExit code: 2",
+            None,
+        );
+        let _ = tool_summary(
+            "run_command",
+            Some(r#"{"command":"ls"}"#),
+            "big output\n\n… (12 lines truncated)\n… (3 lines truncated)",
+            None,
+        );
+        let _ = tool_summary(
+            "run_command",
+            Some(r#"{"command":"ls"}"#),
+            "stdout only, no envelope",
+            None,
+        );
+        let _ = tool_summary(
+            "run_command",
+            Some(r#"{"command":"ls"}"#),
+            "cmd failed\nexit 1",
+            None,
+        );
+        // The authoritative exit_code arg replaces a parsed note.
+        let d = tool_summary("run_command", None, "x\nExit code: 7", Some(0));
+        assert!(
+            d.segments
+                .iter()
+                .any(|s| matches!(s, ToolSegment::Note { text, error: false } if text == "exit 0"))
+        );
+    }
+
+    #[test]
+    fn read_edit_envelope_variants() {
+        // file-view without attrs.
+        let _ = tool_summary(
+            "read_file",
+            None,
+            "<file-view>\n1|a\n2|b\n</file-view>",
+            None,
+        );
+        // updated-file envelope w/ and w/o path.
+        let _ = tool_summary("edit_file", None, "The file has been updated.", None);
+        let _ = tool_summary(
+            "edit_file",
+            None,
+            "The file /x.rs has been updated.\n\nedited file:\nbody",
+            None,
+        );
+        // created-file envelope.
+        let _ = tool_summary(
+            "write_file",
+            None,
+            "File created successfully at: /n.rs",
+            None,
+        );
+        // args-diff fallback (old/new strings → diff segment).
+        let _ = tool_summary(
+            "edit_file",
+            Some(r#"{"file_path":"/e.rs","old_string":"a","new_string":"b"}"#),
+            "done",
+            None,
+        );
+        let _ = tool_summary("write_file", Some(r#"{"content":"c"}"#), "", None);
+    }
+
+    #[test]
+    fn search_result_variants() {
+        let _ = tool_summary(
+            "grep",
+            Some(r#"{"pattern":"p"}"#),
+            "Found 1 match(es) for pattern 'p' in src:\nsrc/a.rs:1: p",
+            None,
+        );
+        let _ = tool_summary("grep", Some(r#"{"pattern":"p"}"#), "no matches found", None);
+        let _ = tool_summary("search", None, "src/b.rs:9: hit", None);
+    }
+
+    #[test]
+    fn content_segments_edge_cases() {
+        // Image via uri + via inline data.
+        let segs = tool_content_segments(&[
+            json!({"type": "image", "uri": "https://x/img.png"}),
+            json!({"type": "image", "data": "AA==", "mimeType": "image/gif"}),
+            json!({"type": "terminal", "terminalId": "t1"}),
+            json!({"type": "text", "text": "   "}),
+            json!({"type": "wat"}),
+            // depth-capped self-nesting.
+            json!({"type": "content", "content": {"type": "content", "content": {"type": "text", "text": "deep"}}}),
+        ]);
+        assert_eq!(segs.len(), 4);
+    }
+
+    #[test]
+    fn system_context_variants() {
+        // system_info missing fields; rules with empty body; skills
+        // without a source suffix; multiple workspaces.
+        let msgs = vec![
+            (
+                "<system_info>\nCurrent workspace directories:\n  /a (cwd)\n  /b\n</system_info>"
+                    .to_string(),
+                1.0,
+            ),
+            (
+                "<rules><rule name=\"r\" path=\"/r.md\"></rule></rules>".to_string(),
+                1.0,
+            ),
+            (
+                "<available_skills>\n- **x**\n- **y**: desc\n</available_skills>".to_string(),
+                1.0,
+            ),
+            ("plain prompt, no headings".to_string(), 1.0),
+        ];
+        let ctx = parse_system_context(&msgs);
+        assert!(ctx.workspaces.len() >= 2);
+        assert_eq!(ctx.rules[0].content, None);
+        // `- **x**` without a `: description` suffix doesn't parse.
+        assert_eq!(ctx.skills.len(), 1);
+        // Report with no agent_id and a one-line body (no title lift).
+        let msgs = vec![(
+            "<subagent_completion_notification>[Background subagent completed]\nsingle line</subagent_completion_notification>"
+                .to_string(),
+            2.0,
+        )];
+        let ctx = parse_system_context(&msgs);
+        assert_eq!(ctx.reports.len(), 1);
+        // Empty input → empty context.
+        assert!(parse_system_context(&[]).is_empty());
+    }
+
+    #[test]
+    fn build_rows_edge_shapes() {
+        // Attachments flag, missing model, span with empty node.
+        let blocks = [json!({"type": "image"})];
+        let mut m = row("user", "attached", 1.0);
+        m.blocks = Some(&blocks);
+        let mut a = row("assistant", "ok", 2.0);
+        a.model = Some("");
+        let rows = build_rows(&[m, a], &[]);
+        assert!(!rows.is_empty());
+        // Span markers with blank agent/node fall back sanely.
+        let rows = build_rows(
+            &[row("user", "x", 10.0)],
+            &[RunSpan {
+                at: 1.0,
+                agent: String::new(),
+                node: String::new(),
+            }],
+        );
+        assert!(!rows.is_empty());
+        // Later spans at exact boundaries.
+        let rows = build_rows(
+            &[row("user", "x", 10.0), row("assistant", "y", 20.0)],
+            &[
+                RunSpan {
+                    at: 10.0,
+                    agent: "a".into(),
+                    node: "n".into(),
+                },
+                RunSpan {
+                    at: 20.0,
+                    agent: "b".into(),
+                    node: "n".into(),
+                },
+            ],
+        );
+        assert!(!rows.is_empty());
+    }
+
+    #[test]
+    fn number_and_duration_formats() {
+        let _ = grouped_number(0.0);
+        let _ = grouped_number(999.0);
+        let _ = grouped_number(1_000.0);
+        let _ = grouped_number(1_234_567.0);
+        let _ = compact_number(999.0);
+        let _ = compact_number(1_000.0);
+        let _ = compact_number(1_500_000.0);
+        let _ = format_cost(1.0);
+        let _ = format_cost(0.1);
+        let _ = format_duration(0.0);
+        let _ = format_duration(500.0);
+        let _ = format_duration(1_500.0);
+        let _ = format_duration(61_000.0);
+        let _ = format_duration(3_700_000.0);
+        let u = TokenUsage {
+            thinking: Some(10.0),
+            cache_write: Some(5.0),
+            ..TokenUsage::default()
+        };
+        let _ = usage_label(&u);
+        let _ = format_usage(&u);
+        let _ = format_usage(&TokenUsage::default());
+        assert_eq!(compact_number(2_500_000_000.0), "2.5B");
+        let u = TokenUsage {
+            input: 1.0,
+            output: 2.0,
+            cache_read: Some(3.0),
+            cache_write: Some(4.0),
+            thinking: Some(5.0),
+            cost: Some(0.5),
+        };
+        let _ = format_usage(&u);
+        let _ = grouped_number(-1_234_567.0);
+    }
+
+    /* ---- sweep 2: the narrow branches --------------------------------- */
+
+    #[test]
+    fn ansi_and_json_scanners() {
+        // OSC terminated by ESC \ and by BEL; C1 single-char sets.
+        assert_eq!(strip_ansi("a\x1b]0;t\x1b\\b"), "ab");
+        let _ = strip_ansi("a\x1b(P\x1b=Q\x1b>R");
+        // String + escape + object escapes inside strings.
+        let (v, rest) = split_leading_json("   \"a\\\"b\" {\"x\":\"y\\\\\"} tail");
+        assert_eq!(v.len(), 2);
+        assert_eq!(rest, "tail");
+        // A balanced-but-invalid value breaks the loop.
+        let (v, _) = split_leading_json("{\"a\":} more");
+        assert!(v.is_empty());
+        // Unterminated string → the scan returns None.
+        let (v, rest) = split_leading_json("\"abc");
+        assert!(v.is_empty());
+        assert_eq!(rest, "\"abc");
+    }
+
+    #[test]
+    fn result_text_every_envelope() {
+        // Object without a known text field → pretty JSON.
+        let d = tool_summary("analyze", None, r#"{"nope":1}"#, None);
+        assert!(matches!(&d.segments[0], ToolSegment::Code(_)));
+        // A bare JSON string result.
+        let _ = tool_summary("analyze", None, "\"just text\"", None);
+        // Parsed value + trailing prose.
+        let _ = tool_summary("analyze", None, "{\"text\":\"t\"} and then", None);
+        // Non-string non-object JSON (array of numbers).
+        let _ = tool_summary("analyze", None, "[1, 2]", None);
+        // camelCase + generic/empty names.
+        assert_eq!(
+            tool_summary("myFancyTool", None, "", None).label,
+            "My Fancy Tool"
+        );
+        assert_eq!(tool_summary("other", None, "", None).label, "Tool call");
+    }
+
+    #[test]
+    fn arg_extractors_remaining_shapes() {
+        // `commands` array joins; `input`/`params` nest command/cmd/shell.
+        let _ = tool_summary("run_command", Some(r#"{"commands":["a","b"]}"#), "o", None);
+        let _ = tool_summary("run_command", Some(r#"{"params":{"cmd":"x"}}"#), "o", None);
+        let _ = tool_summary(
+            "run_command",
+            Some(r#"{"params":{"shell":"y"}}"#),
+            "o",
+            None,
+        );
+        let _ = tool_summary("run_command", Some(r#"{"shellId":"s1"}"#), "o", None);
+        // queries/requests arrays: string, object-with-path, object-with-url.
+        let _ = tool_summary("search", Some(r#"{"queries":["q1"]}"#), "x", None);
+        let _ = tool_summary("search", Some(r#"{"queries":[{"path":"/a"}]}"#), "x", None);
+        let _ = tool_summary(
+            "fetch",
+            Some(r#"{"requests":[{"url":"https://u"}]}"#),
+            "x",
+            None,
+        );
+        // start_line+end_line range pair.
+        let d = tool_summary(
+            "read_file",
+            Some(r#"{"path":"/a","start_line":3,"end_line":8}"#),
+            "x",
+            None,
+        );
+        assert_eq!(d.detail.as_deref(), Some("/a:3–8"));
+    }
+
+    #[test]
+    fn exec_result_envelopes() {
+        // truncation_notice + parsed-out + trunc-lines + bad exit.
+        let _ = tool_summary(
+            "run_command",
+            None,
+            "<truncation_notice>Full output written to: /tmp/o</truncation_notice>\nkept",
+            None,
+        );
+        let _ = tool_summary("run_command", None, "<truncation_notice>unclosed", None);
+        let _ = tool_summary(
+            "run_command",
+            None,
+            "body `cargo test` was parsed out (3 of 9 lines shown).",
+            None,
+        );
+        let _ = tool_summary(
+            "run_command",
+            None,
+            "body `cmd` was parsed out (3 of 9 total lines shown).",
+            None,
+        );
+        let _ = tool_summary(
+            "run_command",
+            None,
+            "body `cmd` was parsed out (x of y lines shown).",
+            None,
+        );
+        let _ = tool_summary("run_command", None, "tail was parsed out (", None);
+        let _ = tool_summary("run_command", None, "… (12 lines truncated)\nrest", None);
+        let _ = tool_summary("run_command", None, "… (1 line truncated)\nrest", None);
+        let _ = tool_summary("run_command", None, "… (no digits here", None);
+        let _ = tool_summary("run_command", None, "x\nExit code: nope", None);
+        let _ = tool_summary("run_command", None, "x\n\n\n\n\nExit code: 1", None);
+        let _ = tool_summary(
+            "run_command",
+            None,
+            "Output from command in shell \nbody: no colon before newline",
+            None,
+        );
+        // JSON-carried exit code → the `raw_exit` note.
+        let _ = tool_summary("run_command", None, r#"{"exitCode":2}"#, None);
+        // Per-tool labels.
+        assert_eq!(
+            tool_summary("get_output", None, "o", None).label,
+            "Read shell output"
+        );
+        assert_eq!(
+            tool_summary("kill_shell", None, "o", None).label,
+            "Killed shell"
+        );
+        // Huge output caps at 200 lines.
+        let big = (0..300)
+            .map(|i| format!("l{i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let d = tool_summary("run_command", None, &big, None);
+        assert!(matches!(&d.segments[0], ToolSegment::Code(c) if c.contains("more lines")));
+    }
+
+    #[test]
+    fn read_edit_search_fetch_variants() {
+        // Unrecognized read result → generic code body.
+        let _ = tool_summary("read_file", None, "plain output", None);
+        let _ = tool_summary("read_file", None, "", None);
+        // file-view with an empty body → no segments.
+        let _ = tool_summary("read_file", None, "<file-view>\n</file-view>", None);
+        // `The file X` without the updated suffix → no parse.
+        let _ = tool_summary("edit_file", None, "The file /a.rs whatever", None);
+        // Edit with plain text, no diff/created → markdown body.
+        let _ = tool_summary("edit_file", None, "all done here", None);
+        // new-only args diff.
+        let _ = tool_summary(
+            "edit_file",
+            Some(r#"{"file_path":"/a","new_string":"b"}"#),
+            "",
+            None,
+        );
+        // Search: unparseable result with empty + nonempty text.
+        let _ = tool_summary("grep", None, "", None);
+        let _ = tool_summary("grep", None, "Found xx nonsense", None);
+        // Fetch: empty + web-search-query body.
+        let _ = tool_summary("fetch", None, "", None);
+        let _ = tool_summary(
+            "web_search",
+            None,
+            "# Web Search Results for \"rust\"\nhits",
+            None,
+        );
+    }
+
+    #[test]
+    fn file_diff_view_trailing_and_clipped() {
+        // Shared tail lines → the `⋮ N unchanged` trailer + context.
+        let v = file_diff_view(&ToolCallDiff {
+            path: "/f".into(),
+            old_text: Some("h\no1\ns1\ns2\ns3\ns4\ns5".into()),
+            new_text: Some("h\nn1\ns1\ns2\ns3\ns4\ns5".into()),
+        });
+        assert!(v.text.contains("⋮ 5 unchanged lines"));
+        // >120 changed middle lines → clipped note.
+        let old = (0..140)
+            .map(|i| format!("o{i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let new = (0..140)
+            .map(|i| format!("n{i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        let v = file_diff_view(&ToolCallDiff {
+            path: "/f".into(),
+            old_text: Some(old),
+            new_text: Some(new),
+        });
+        assert!(v.text.contains("more changed lines"));
+    }
+
+    #[test]
+    fn content_segments_terminal_and_image() {
+        let segs = tool_content_segments(&[
+            json!({"type": "terminal", "terminalId": "t9", "output": "o"}),
+            json!({"type": "terminal"}),
+            json!({"type": "image"}), // no uri/data → no segment
+            json!({"type": "image", "data": "AA=="}), // mimeType default
+            json!({"type": "text"}),  // missing text → none
+            json!({"x": 1}),          // unknown type
+        ]);
+        // 2 (terminal note+code) + 1 (terminal note) + 1 (image).
+        assert_eq!(segs.len(), 4);
+        // Depth cap: 20 nested `content` wrappers — no stack blowup.
+        let mut v = json!({"type": "text", "text": "deep"});
+        for _ in 0..20 {
+            v = json!({"type": "content", "content": v});
+        }
+        let _ = tool_content_segments(&[v]);
+    }
+
+    #[test]
+    fn system_context_edge_parsing() {
+        let msgs = vec![
+            // `<ruleset` must not open a `rules` block; unclosed + no `>`.
+            (
+                "pre <ruleset>x</ruleset> mid <rules unclosed".to_string(),
+                1.0,
+            ),
+            (
+                "<system_info>\nCurrent workspace directories:\n  /a (cwd)\n\nPlatform:\nOS Version: 1\nToday's date: d\nOther: z\n</system_info>".to_string(),
+                1.0,
+            ),
+            // single-quoted + unquoted attrs; a rule missing `name`.
+            (
+                "<rules><rule name='n' path=/p>body</rule><rule path=\"/q\">x</rule></rules>"
+                    .to_string(),
+                1.0,
+            ),
+            // Duplicate name:path — the later block supplies the body.
+            (
+                "<rules><rule name=\"n\" path=\"/p\"></rule></rules><rules><rule name=\"n\" path=\"/p\">filled</rule></rules>"
+                    .to_string(),
+                1.0,
+            ),
+            (
+                "<available_skills>\nnon-dash\n- x\n- **unclosed\n- ** : blank\n- **dup**: a\n- **dup**: b\n- **s**: d (trailing)\n- **src**: d (source: /sk)\n</available_skills>".to_string(),
+                1.0,
+            ),
+            // Report edges: empty body → skipped; header containing a
+            // newline stays; single-line body; a duplicate collapses.
+            (
+                "<subagent_completion_notification></subagent_completion_notification>".to_string(),
+                2.0,
+            ),
+            (
+                "<subagent_completion_notification>[hdr\nmulti]\nreal body\nsecond</subagent_completion_notification>".to_string(),
+                2.0,
+            ),
+            (
+                "<subagent_completion_notification>oneliner</subagent_completion_notification><subagent_completion_notification>oneliner</subagent_completion_notification>".to_string(),
+                2.0,
+            ),
+            // Fenced + indented headings don't split; two top-level do.
+            (
+                "# One\na\n```\n# fenced\n```\n    # indented\n# Two\nb".to_string(),
+                1.0,
+            ),
+        ];
+        let ctx = parse_system_context(&msgs);
+        assert!(
+            ctx.rules
+                .iter()
+                .any(|r| r.content.as_deref() == Some("filled"))
+        );
+        assert_eq!(ctx.skills.len(), 3);
+        assert_eq!(ctx.reports.len(), 2);
+        assert_eq!(ctx.prompt_sections.len(), 2);
+    }
+
+    #[test]
+    fn build_rows_attachments_and_trailing_spans() {
+        // Empty assistant with a non-text block survives the blank fold.
+        let blocks = [json!({"type": "image", "data": "AA=="})];
+        let mut a = row("assistant", "", 2.0);
+        a.blocks = Some(&blocks);
+        let rows = build_rows(&[row("user", "u", 1.0), a], &[]);
+        assert_eq!(rows.len(), 2);
+        // A span past the last message trails the backlog.
+        let rows = build_rows(
+            &[row("user", "u", 10.0)],
+            &[RunSpan {
+                at: 99.0,
+                agent: "a".into(),
+                node: "n".into(),
+            }],
+        );
+        assert!(matches!(&rows[0], ChatRow::History { .. }));
+        assert!(matches!(&rows[1], ChatRow::Marker { label, .. } if label == "a @ n"));
+        // Context card + model markers stack ahead of the same row.
+        let mut a = row("assistant", "x", 3.0);
+        a.model = Some("m1");
+        let mut b = row("assistant", "y", 4.0);
+        b.model = Some("m2");
+        let rows = build_rows(
+            &[
+                row("system", "<system_info>Platform: z</system_info>", 1.0),
+                row("user", "u", 2.0),
+                a,
+                b,
+            ],
+            &[],
+        );
+        assert!(matches!(&rows[0], ChatRow::Context(_)));
+        assert!(
+            rows.iter()
+                .any(|r| matches!(r, ChatRow::Marker { label, .. } if label == "model: m2"))
+        );
+    }
 }

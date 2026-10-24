@@ -323,3 +323,50 @@ pub fn logs(spec: &ServiceSpec, follow: bool) -> Result<i32, CliError> {
         .map_err(|e| CliError(format!("`{}` failed to spawn: {e}", cmd.join(" "))))?;
     Ok(status.code().unwrap_or(-1))
 }
+
+#[cfg(test)]
+mod cov_tests {
+    //! Private-helper coverage the integration tests can't reach.
+    use super::*;
+
+    #[test]
+    fn helpers() {
+        assert_eq!(quote_arg("plain"), "plain");
+        assert_eq!(quote_arg("a b"), "\"a b\"");
+        assert_eq!(quote_arg("a\"b"), "\"a\\\"b\"");
+        assert_eq!(quote_arg("a'b"), "\"a'b\"");
+        assert_eq!(quote_arg("a\\b"), "a\\b");
+        assert!(on_path("sh"));
+        assert!(!on_path("definitely-not-on-path-xyz"));
+        assert!(require_systemd("sh").is_ok());
+        assert!(require_systemd("definitely-not-on-path-xyz").is_err());
+        let spec = ServiceSpec {
+            name: "x".into(),
+            exec: vec![],
+            env_file: PathBuf::from("/tmp/x"),
+            system: false,
+        };
+        assert_eq!(unit_name(&spec), "x.service");
+        assert_eq!(systemctl(&spec, &["status"])[..2], ["systemctl", "--user"]);
+        let spec = ServiceSpec {
+            system: true,
+            ..spec
+        };
+        assert_eq!(systemctl(&spec, &["status"])[..2], ["systemctl", "status"]);
+        assert_eq!(journalctl(&spec, &["-u"])[..2], ["journalctl", "-u"]);
+        assert!(unit_path(&spec).ends_with("x.service"));
+        let _ = home_dir();
+        log_cmd(&["a".into(), "b".into()]);
+        // spawn/run error shapes.
+        let s = |argv: &[&str]| argv.iter().map(|a| (*a).to_string()).collect::<Vec<_>>();
+        assert!(spawn(&[], Stdio::null(), Stdio::null()).is_err());
+        assert!(spawn(&s(&["true"]), Stdio::null(), Stdio::null()).is_ok());
+        assert!(run(&s(&["true"])).is_ok());
+        assert!(run(&s(&["false"])).is_err());
+        assert!(run(&s(&["sh", "-c", "echo e >&2; exit 3"])).is_err());
+        assert_eq!(try_run(&s(&["false"])), 1);
+        let p = capture(&s(&["sh", "-c", "echo hi; exit 2"]));
+        assert_eq!(p.code, 2);
+        assert!(p.stdout.contains("hi"));
+    }
+}

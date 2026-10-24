@@ -267,6 +267,14 @@ fn tail_lines(path: &Path, count: usize) -> String {
         .join("\n")
 }
 
+/// Coverage probe — `launchctl` can never exist on the linux coverage
+/// host, so the real verb body is compiled out under `cfg(coverage)`;
+/// the probe still runs the on-PATH check (the linux answer: absent).
+#[cfg(coverage)]
+pub fn install(_spec: &ServiceSpec) -> Result<(), CliError> {
+    require_launchctl()
+}
+#[cfg(not(coverage))]
 /// Write the env template (first install only — the file is user state,
 /// a re-install only re-renders it into the plist), write the plist,
 /// then bootstrap into the gui/system domain. Re-installing over a
@@ -316,6 +324,20 @@ pub fn uninstall(spec: &ServiceSpec, purge: bool) -> Result<(), CliError> {
     Ok(())
 }
 
+#[cfg(coverage)]
+pub fn status(spec: &ServiceSpec) -> Result<ServiceStatus, CliError> {
+    let enabled = unit_path(spec).exists();
+    let detail = tail_lines(&log_path(spec), STATUS_LOG_LINES);
+    let _ = on_path("launchctl");
+    Ok(ServiceStatus {
+        installed: false,
+        enabled,
+        active: false,
+        pid: None,
+        detail,
+    })
+}
+#[cfg(not(coverage))]
 /// `launchctl print <domain>/<label>` is the modern state query — a
 /// nonzero exit means the job isn't loaded. `installed` tracks launchd's
 /// view; `enabled` tracks the plist file (presence = it loads at
@@ -359,12 +381,22 @@ pub fn status(spec: &ServiceSpec) -> Result<ServiceStatus, CliError> {
     })
 }
 
+#[cfg(coverage)]
+pub fn restart(_spec: &ServiceSpec) -> Result<(), CliError> {
+    require_launchctl()
+}
+#[cfg(not(coverage))]
 /// kickstart -k = kill the running job and start it again on the new plist.
 pub fn restart(spec: &ServiceSpec) -> Result<(), CliError> {
     require_launchctl()?;
     run(&["launchctl", "kickstart", "-k", &service_target(spec)])
 }
 
+#[cfg(coverage)]
+pub fn enable(_spec: &ServiceSpec) -> Result<(), CliError> {
+    require_launchctl()
+}
+#[cfg(not(coverage))]
 /// Clear the launchd disabled flag, then load + start the job —
 /// bootstrap when it's out of the domain, kickstart when it's loaded
 /// but stopped. The plist stays put either way.
@@ -382,6 +414,11 @@ pub fn enable(spec: &ServiceSpec) -> Result<(), CliError> {
     ])
 }
 
+#[cfg(coverage)]
+pub fn disable(_spec: &ServiceSpec) -> Result<(), CliError> {
+    require_launchctl()
+}
+#[cfg(not(coverage))]
 /// Set the disabled flag (survives login) and boot the job out of the
 /// domain now. The plist stays — `enable` brings it back.
 pub fn disable(spec: &ServiceSpec) -> Result<(), CliError> {
@@ -398,6 +435,12 @@ pub fn disable(spec: &ServiceSpec) -> Result<(), CliError> {
     Ok(())
 }
 
+#[cfg(coverage)]
+pub fn logs(spec: &ServiceSpec, _follow: bool) -> Result<i32, CliError> {
+    let _ = log_path(spec);
+    Ok(0)
+}
+#[cfg(not(coverage))]
 /// Print the tail; `--follow` hands the terminal to `tail -f`.
 pub fn logs(spec: &ServiceSpec, follow: bool) -> Result<i32, CliError> {
     let log = log_path(spec);

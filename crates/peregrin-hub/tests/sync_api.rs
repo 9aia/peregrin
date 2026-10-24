@@ -281,10 +281,10 @@ fn hub_e2e_over_a_real_node() {
         .unwrap();
 
     let client = ureq::Agent::config_builder()
-        .timeout_global(Some(std::time::Duration::from_secs(10)))
+        .timeout_global(Some(std::time::Duration::from_secs(30)))
         .build()
         .new_agent();
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(90);
     let body = loop {
         match client.get(format!("http://127.0.0.1:{hub_port}/")).call() {
             Ok(mut resp) => {
@@ -319,7 +319,7 @@ fn hub_e2e_over_a_real_node() {
 /// Poll `cond` until it holds or `timeout` lapses (the hub tests have
 /// no shared wait helper).
 async fn wait_for(mut cond: impl FnMut() -> bool, what: &str) {
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
     while std::time::Instant::now() < deadline {
         if cond() {
             return;
@@ -366,7 +366,7 @@ async fn pair_persists_and_adopts_the_minted_token() {
         .timeout_global(Some(std::time::Duration::from_secs(2)))
         .build()
         .new_agent();
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
     loop {
         match agent.get(format!("{url}/api/health")).call() {
             Ok(_) => break,
@@ -505,10 +505,10 @@ fn hub_resolves_node_tokens_from_the_credential_store() {
         .unwrap();
 
     let client = ureq::Agent::config_builder()
-        .timeout_global(Some(std::time::Duration::from_secs(10)))
+        .timeout_global(Some(std::time::Duration::from_secs(30)))
         .build()
         .new_agent();
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(90);
     let body = loop {
         match client.get(format!("http://127.0.0.1:{hub_port}/")).call() {
             Ok(mut resp) => {

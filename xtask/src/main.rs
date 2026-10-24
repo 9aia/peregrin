@@ -50,12 +50,15 @@ fn prebuild() -> anyhow::Result<()> {
             &["build", "--manifest-path", "../sepia/Cargo.toml", "--bins"],
         )?;
     }
-    stage_bins_and_site()
+    stage_bins_and_site(None)
 }
 
 /// Link freshly built workspace + sepia binaries into `target/debug`
 /// and stage the hub's public assets into `target/site`.
-fn stage_bins_and_site() -> anyhow::Result<()> {
+/// `peregrin_dir` overrides where `peregrin*` bins are linked from —
+/// the coverage arm passes its isolated target dir so staged links are
+/// the instrumented builds, not stale shared-target ones.
+fn stage_bins_and_site(peregrin_dir: Option<&std::path::Path>) -> anyhow::Result<()> {
     if std::path::Path::new("../sepia/Cargo.toml").exists() {
         // sepia's builds land wherever CARGO_TARGET_DIR points —
         // shared-target first (the global default here), repo-local
@@ -80,10 +83,17 @@ fn stage_bins_and_site() -> anyhow::Result<()> {
             }
         }
     }
-    // Our own binaries land wherever CARGO_TARGET_DIR points too —
+    // Our own binaries land wherever CARGO_TARGET_DIR points —
     // link them into repo-local target/debug so harnesses resolving
-    // `<root>/target/debug/<bin>` find them under either config.
-    for our_target in [concat!(env!("HOME"), "/.cargo/shared-target/debug")] {
+    // `<root>/target/debug/<bin>` find them under either config. A
+    // coverage run passes its isolated target dir first so the
+    // instrumented build wins over any stale shared-target binary.
+    let mut our_targets: Vec<std::path::PathBuf> = Vec::new();
+    if let Some(dir) = peregrin_dir {
+        our_targets.push(dir.to_path_buf());
+    }
+    our_targets.push(concat!(env!("HOME"), "/.cargo/shared-target/debug").into());
+    for our_target in our_targets.iter().filter_map(|p| p.to_str()) {
         let Ok(read) = std::fs::read_dir(our_target) else {
             continue;
         };
@@ -130,14 +140,20 @@ fn link_bin(src: &std::path::Path, dst: &std::path::Path) {
 
 /// `TESTKIT_BIN_DIRS` — where testkit looks for spawned binaries:
 /// peregrin's own bins + sepia's (drivers, mock agent, `sepia` itself).
-fn testkit_bin_dirs() -> String {
+/// `first` prepends a dir — the coverage arm puts its isolated target
+/// dir first so tests spawn the *instrumented* peregrin binaries.
+fn testkit_bin_dirs(first: Option<&std::path::Path>) -> String {
     let root = std::env::current_dir().unwrap_or_else(|_| ".".into());
-    format!(
-        "{}:{}:{}",
-        root.join("target/debug").display(),
-        root.join("../sepia/target/debug").display(),
-        concat!(env!("HOME"), "/.cargo/shared-target/debug")
-    )
+    let mut dirs = Vec::new();
+    if let Some(first) = first {
+        dirs.push(first.display().to_string());
+    }
+    dirs.extend([
+        root.join("target/debug").display().to_string(),
+        root.join("../sepia/target/debug").display().to_string(),
+        concat!(env!("HOME"), "/.cargo/shared-target/debug").to_string(),
+    ]);
+    dirs.join(":")
 }
 
 /// `cargo xtask dev` — the working-tree loop: `cargo leptos watch`
@@ -208,7 +224,7 @@ fn main() -> anyhow::Result<()> {
                 .args(cmd)
                 .env("SEPIA_TESTKIT_PREBUILT", "1")
                 .env("PEREGRIN_E2E_PREBUILT", "1")
-                .env("TESTKIT_BIN_DIRS", testkit_bin_dirs())
+                .env("TESTKIT_BIN_DIRS", testkit_bin_dirs(None))
                 .status()?;
             anyhow::ensure!(status.success(), "workspace tests failed");
         }
@@ -223,12 +239,25 @@ fn main() -> anyhow::Result<()> {
                 "cargo-llvm-cov not installed — `cargo install cargo-llvm-cov` \
                  (needs the llvm-tools rustup component)"
             );
+            // Isolate coverage artifacts: CARGO_TARGET_DIR is shared
+            // (~/.cargo/shared-target) and sibling checkouts' coverage
+            // runs drop profraws + instrumented objects into the same
+            // llvm-cov-target — foreign files would land in this report
+            // at 0% and corrupt TOTAL. A repo-local dir keeps the report
+            // to this workspace's objects only.
+            let cov_target = std::env::current_dir()?.join("target/llvm-cov-target");
             // Prebuild spawned binaries *inside* the coverage env:
             // llvm-cov's rustc wrapper instruments only the workspace
             // crates named at show-env time — bins built outside it run
-            // uninstrumented and e2e coverage stays invisible. sepia's
-            // bins pass through the wrapper uninstrumented (not in this
-            // workspace's crate list); sepia measures its own coverage.
+            // uninstrumented and e2e coverage stays invisible. Building
+            // them into the coverage target dir itself also makes their
+            // objects visible to the report (llvm-cov scans
+            // <cov-target>/debug), so coverage exercised by spawning
+            // `peregrin`/`peregrin-node`/`peregrin-hub` counts — the
+            // only way `fn main` and service verbs are reachable.
+            // sepia's bins pass through the wrapper uninstrumented (not
+            // in this workspace's crate list); sepia measures its own
+            // coverage.
             let mut bins = String::new();
             for bin in TEST_BINS {
                 bins.push_str(" --bin ");
@@ -236,19 +265,25 @@ fn main() -> anyhow::Result<()> {
             }
             let pre = format!(
                 "eval \"$(cargo llvm-cov show-env --export-prefix)\" \
-                 && cargo build{bins}"
+                 && cargo build{bins} --target-dir {}",
+                cov_target.display()
             );
-            run("sh", &["-c", &pre])?;
+            let status = Command::new("sh")
+                .args(["-c", &pre])
+                .env("CARGO_LLVM_COV_TARGET_DIR", &cov_target)
+                .status()?;
+            anyhow::ensure!(status.success(), "coverage bin prebuild failed");
             if std::path::Path::new("../sepia/Cargo.toml").exists() {
-                run(
-                    "sh",
-                    &[
+                let status = Command::new("sh")
+                    .args([
                         "-c",
                         "eval \"$(cargo llvm-cov show-env --export-prefix)\" \
                          && cargo build --manifest-path ../sepia/Cargo.toml \
                          --bins",
-                    ],
-                )?;
+                    ])
+                    .env("CARGO_LLVM_COV_TARGET_DIR", &cov_target)
+                    .status()?;
+                anyhow::ensure!(status.success(), "sepia bin prebuild failed");
             }
             // Stale non-instrumented links in target/debug would shadow
             // the fresh instrumented builds — drop them before staging.
@@ -262,7 +297,7 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
             }
-            stage_bins_and_site()?;
+            stage_bins_and_site(Some(&cov_target.join("debug")))?;
             // --no-tests=pass matches `xtask test`: an empty suite is
             // a pass, not nextest's exit-4 "no tests to run".
             let runner = if nextest_available() {
@@ -290,7 +325,11 @@ fn main() -> anyhow::Result<()> {
                 .args(&extra)
                 .env("SEPIA_TESTKIT_PREBUILT", "1")
                 .env("PEREGRIN_E2E_PREBUILT", "1")
-                .env("TESTKIT_BIN_DIRS", testkit_bin_dirs())
+                .env(
+                    "TESTKIT_BIN_DIRS",
+                    testkit_bin_dirs(Some(&cov_target.join("debug"))),
+                )
+                .env("CARGO_LLVM_COV_TARGET_DIR", &cov_target)
                 .status()?;
             anyhow::ensure!(status.success(), "coverage run failed");
         }
@@ -342,7 +381,7 @@ fn main() -> anyhow::Result<()> {
                 ])
                 .env("PEREGRIN_BROWSER_E2E", "1")
                 .env("PEREGRIN_E2E_PREBUILT", "1")
-                .env("TESTKIT_BIN_DIRS", testkit_bin_dirs())
+                .env("TESTKIT_BIN_DIRS", testkit_bin_dirs(None))
                 .status()?;
             anyhow::ensure!(status.success(), "browser e2e failed");
         }

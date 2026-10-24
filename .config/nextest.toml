@@ -13,3 +13,14 @@ fail-fast = false
 [[profile.default.overrides]]
 filter = 'binary_id(/e2e$/)'
 slow-timeout = { period = "5m", terminate-after = 3 }
+
+# Binaries that spawn real peregrin-node/peregrin-hub/driver processes —
+# under `xtask coverage` those children are instrumented (slow to boot)
+# and they hold fixed ports, so running too many at once starves them
+# into their request timeouts. Cap the group; other tests still run
+# full-width.
+[[profile.default.overrides]]
+filter = 'binary_id(/(::|^)(node|sync_api|transfer)$/)'
+# This nextest predates test-groups; threads-required at full width
+# serializes the spawned-binaries suites the same way.
+threads-required = "num-test-threads"

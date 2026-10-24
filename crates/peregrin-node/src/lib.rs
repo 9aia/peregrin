@@ -41,7 +41,13 @@ fn control_err(e: impl std::fmt::Display) -> ControlError {
 /// # Errors
 /// `std::io::Error` on plane build, bind, or serve failure.
 pub async fn serve(env: &Env) -> std::io::Result<()> {
+    // `PEREGRIN_SESSION_PLANE` selects the wire mode — tests can't set
+    // process env under `forbid(unsafe_code)`, so the spawn-a-`sepia
+    // serve`-child arm is compiled out of coverage builds (it runs in
+    // the spawned-node e2e instead).
+    #[cfg(not(coverage))]
     let service_mode = std::env::var("PEREGRIN_SESSION_PLANE").as_deref() == Ok("service");
+    #[cfg(not(coverage))]
     if service_mode {
         let spec = peregrin_session::Spec {
             binary: peregrin_session::sepia_binary().ok_or_else(|| {

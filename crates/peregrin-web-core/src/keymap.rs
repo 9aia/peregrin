@@ -1135,4 +1135,56 @@ mod tests {
         assert_eq!(nav_index(None, 3, NavDir::Up), Some(2));
         assert_eq!(nav_index(Some(0), 0, NavDir::Down), None);
     }
+    #[test]
+    fn action_metadata_covers_every_variant() {
+        for a in [
+            Action::ToggleHelp,
+            Action::CloseHelp,
+            Action::TogglePalette,
+            Action::ToggleList,
+            Action::FocusNewSession,
+            Action::NavNext,
+            Action::NavPrev,
+            Action::CloseMenu,
+            Action::ClearFilter,
+            Action::CloseSelection,
+            Action::OpenSettings,
+            Action::FoldGroup,
+            Action::UnfoldGroup,
+        ] {
+            let _ = (
+                a.label(),
+                a.bindable(),
+                a.id(),
+                a.default_chords(),
+                a.group(),
+            );
+        }
+        // Escape variants aren't bindable — no id.
+        assert_eq!(Action::CloseMenu.id(), None);
+        assert_eq!(Action::from_id("nope"), None);
+        assert_eq!(
+            Action::from_id(Action::TogglePalette.id().unwrap()),
+            Some(Action::TogglePalette)
+        );
+    }
+
+    #[test]
+    fn overrides_serialize_skips_unbindable() {
+        // A stray non-bindable action in the map is dropped on write.
+        let mut ov = KeyOverrides::default();
+        ov.0.insert(Action::CloseMenu, None);
+        ov.0.insert(
+            Action::ToggleList,
+            Some(Chord {
+                key: "t".into(),
+                command: true,
+                alt: false,
+                shift: false,
+            }),
+        );
+        let v = serde_json::to_value(&ov).unwrap();
+        assert!(v.get("app.sidebar").is_some());
+        assert_eq!(v.as_object().unwrap().len(), 1);
+    }
 }

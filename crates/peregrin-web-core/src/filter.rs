@@ -1241,4 +1241,24 @@ mod proptests {
             .map(|r| r.id.as_str())
             .collect()
     }
+    #[test]
+    fn enum_labels_complete() {
+        for m in [SortMode::Newest, SortMode::Oldest, SortMode::Title] {
+            let _ = (m.as_str(), m.label());
+        }
+        for m in [StatusFilter::All, StatusFilter::Free, StatusFilter::Locked] {
+            let _ = (m.as_str(), m.label());
+        }
+        for m in [Recency::Any, Recency::Day, Recency::Week, Recency::Month] {
+            let _ = (m.as_str(), m.label(), m.max_age_ms());
+        }
+    }
+
+    #[test]
+    fn iso_ms_rejects_garbage_tail() {
+        assert!(iso_ms("2026-01-01T00:00:00.Z").is_none());
+        assert!(iso_ms("2026-01-01T00:00:00.5Q").is_none());
+        assert!(iso_ms("2026-01-01T00:00:00+02:00").is_some());
+        assert!(iso_ms("2026-01-01T00:00:00.25Z").is_some());
+    }
 }

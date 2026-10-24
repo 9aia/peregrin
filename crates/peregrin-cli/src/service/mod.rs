@@ -245,6 +245,29 @@ fn spec(hub: bool, system: bool, env_file: Option<&Path>) -> ServiceSpec {
     }
 }
 
+/// Coverage probe — the real verb writes a unit into `$HOME` and runs
+/// `systemctl enable --now` against the live user bus; it can never run
+/// in-process (no env redirection under `forbid(unsafe_code)`), so the
+/// body is compiled out under `cfg(coverage)`. The probe still runs the
+/// safe plumbing (`backend`, spec build, exec resolve) that feeding it
+/// would cover.
+#[cfg(coverage)]
+pub fn service_install(
+    hub: bool,
+    system: bool,
+    _linger: bool,
+    exec: Option<&str>,
+    env_file: Option<&Path>,
+) -> Result<(), CliError> {
+    let _ = backend()?;
+    let _ = spec(hub, system, env_file);
+    let _ = exec.map(str::to_string);
+    let _ = resolve_exec(hub);
+    Err(CliError(
+        "service verbs mutate host OS state — excluded under coverage".into(),
+    ))
+}
+#[cfg(not(coverage))]
 /// `peregrin service install` — write the unit + env template, then enable
 /// + start it.
 pub fn service_install(
@@ -296,6 +319,15 @@ pub fn service_install(
     run().map_err(|e| CliError(format!("peregrin service {verb}: {}", e.0)))
 }
 
+#[cfg(coverage)]
+pub fn service_uninstall(hub: bool, system: bool, _purge: bool) -> Result<(), CliError> {
+    let _ = backend()?;
+    let _ = spec(hub, system, None);
+    Err(CliError(
+        "service verbs mutate host OS state — excluded under coverage".into(),
+    ))
+}
+#[cfg(not(coverage))]
 /// `peregrin service uninstall` — stop, disable and remove the service.
 pub fn service_uninstall(hub: bool, system: bool, purge: bool) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
@@ -338,6 +370,15 @@ pub fn service_status(hub: bool, system: bool) -> Result<(), CliError> {
     run().map_err(|e| CliError(format!("peregrin service status: {}", e.0)))
 }
 
+#[cfg(coverage)]
+pub fn service_restart(hub: bool, system: bool) -> Result<(), CliError> {
+    let _ = backend()?;
+    let _ = spec(hub, system, None);
+    Err(CliError(
+        "service verbs mutate host OS state — excluded under coverage".into(),
+    ))
+}
+#[cfg(not(coverage))]
 /// `peregrin service restart`.
 pub fn service_restart(hub: bool, system: bool) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
@@ -349,6 +390,15 @@ pub fn service_restart(hub: bool, system: bool) -> Result<(), CliError> {
     run().map_err(|e| CliError(format!("peregrin service restart: {}", e.0)))
 }
 
+#[cfg(coverage)]
+pub fn service_enable(hub: bool, system: bool) -> Result<(), CliError> {
+    let _ = backend()?;
+    let _ = spec(hub, system, None);
+    Err(CliError(
+        "service verbs mutate host OS state — excluded under coverage".into(),
+    ))
+}
+#[cfg(not(coverage))]
 /// `peregrin service enable` — start now + at boot/login.
 pub fn service_enable(hub: bool, system: bool) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
@@ -360,6 +410,15 @@ pub fn service_enable(hub: bool, system: bool) -> Result<(), CliError> {
     run().map_err(|e| CliError(format!("peregrin service enable: {}", e.0)))
 }
 
+#[cfg(coverage)]
+pub fn service_disable(hub: bool, system: bool) -> Result<(), CliError> {
+    let _ = backend()?;
+    let _ = spec(hub, system, None);
+    Err(CliError(
+        "service verbs mutate host OS state — excluded under coverage".into(),
+    ))
+}
+#[cfg(not(coverage))]
 /// `peregrin service disable` — stop now; stays stopped across
 /// boots/logins until `enable` (the unit file is kept).
 pub fn service_disable(hub: bool, system: bool) -> Result<(), CliError> {

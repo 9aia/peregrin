@@ -112,4 +112,11 @@ mod tests {
         assert!(Theme::System.prefers_dark(true));
         assert!(!Theme::System.prefers_dark(false));
     }
+    #[test]
+    fn labels_and_icons_cover_every_theme() {
+        for t in [Theme::System, Theme::Dark, Theme::Light] {
+            let _ = (t.label(), t.icon());
+        }
+        assert_eq!(Theme::Dark.icon(), "moon");
+    }
 }

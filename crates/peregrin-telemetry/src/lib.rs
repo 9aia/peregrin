@@ -357,4 +357,85 @@ mod tests {
         assert!(!guard.is_enabled());
         guard.force_flush();
     }
+
+    #[test]
+    fn enabled_mirrors_config_presence() {
+        // Whatever the host env says, `enabled` must agree with it.
+        assert_eq!(enabled(), config_from(|k| std::env::var(k).ok()).is_some());
+    }
+
+    #[test]
+    fn provider_builds_and_guard_flushes() {
+        let provider = build_provider(&TelemetryConfig {
+            endpoint: Some("http://127.0.0.1:4318/v1/traces".into()),
+            service_name: "test".into(),
+        })
+        .expect("exporter builds without connecting");
+        let guard = TelemetryGuard {
+            provider: Some(provider),
+        };
+        assert!(guard.is_enabled());
+        guard.force_flush();
+        // Drop flushes + shuts the provider down.
+    }
+
+    #[test]
+    fn init_installs_tracing_only_when_unconfigured() {
+        // One-shot global — this is the only init() call in the suite.
+        let guard = init();
+        assert_eq!(
+            guard.provider.is_some(),
+            config_from(|k| std::env::var(k).ok()).is_some()
+        );
+    }
+
+    #[test]
+    fn propagation_round_trip() {
+        global::set_text_map_propagator(TraceContextPropagator::new());
+        // Inject a fabricated valid remote context — covers VecInjector
+        // deterministically (a bare tracing span carries no OTEL
+        // context without the exporter layer).
+        use opentelemetry::trace::{SpanContext, SpanId, TraceFlags, TraceId, TraceState};
+        let sc = SpanContext::new(
+            TraceId::from(0xabc_u128),
+            SpanId::from(0xdef_u64),
+            TraceFlags::SAMPLED,
+            true,
+            TraceState::default(),
+        );
+        let cx = opentelemetry::Context::new().with_remote_span_context(sc);
+        let mut headers: Vec<(String, String)> = Vec::new();
+        global::get_text_map_propagator(|p| {
+            p.inject_context(&cx, &mut VecInjector(&mut headers));
+        });
+        assert!(headers.iter().any(|(k, _)| k == "traceparent"));
+        let mut map = http::HeaderMap::new();
+        for (k, v) in &headers {
+            map.insert(
+                http::HeaderName::from_bytes(k.as_bytes()).unwrap(),
+                v.parse().unwrap(),
+            );
+        }
+        // Extraction attaches the remote parent (valid context arm).
+        let server = server_span(&http::Method::GET, "/x", &map);
+        record_response(&server, 503);
+        record_response(&server, 200);
+        // `trace_headers` on a bare span context emits nothing — still
+        // exercises the injector path.
+        let _ = trace_headers();
+        // A garbage traceparent degrades to a local-root span.
+        let mut bad = http::HeaderMap::new();
+        bad.insert("traceparent", "nope".parse().unwrap());
+        let _ = server_span(&http::Method::POST, "/y", &bad);
+    }
+
+    #[test]
+    fn extractor_enumerates_keys() {
+        let mut map = http::HeaderMap::new();
+        map.insert("x-a", "1".parse().unwrap());
+        let ex = HeaderMapExtractor(&map);
+        assert_eq!(ex.get("x-a"), Some("1"));
+        assert!(ex.get("missing").is_none());
+        assert_eq!(ex.keys(), vec!["x-a"]);
+    }
 }

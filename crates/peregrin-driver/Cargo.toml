@@ -13,3 +13,6 @@ async-trait.workspace = true
 thiserror.workspace = true
 peregrin-core.workspace = true
 serde_json.workspace = true
+
+[dev-dependencies]
+tokio.workspace = true

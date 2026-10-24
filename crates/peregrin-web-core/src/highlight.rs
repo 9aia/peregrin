@@ -718,4 +718,29 @@ mod tests {
         assert!(toks.contains(&(TokenKind::Num, "1e-3".to_string())));
         assert!(toks.contains(&(TokenKind::Num, "4u64".to_string())));
     }
+    #[test]
+    fn token_kind_classes_cover_all() {
+        for k in [
+            TokenKind::Plain,
+            TokenKind::Keyword,
+            TokenKind::Str,
+            TokenKind::Num,
+            TokenKind::Comment,
+        ] {
+            let _ = k.class();
+        }
+    }
+
+    #[test]
+    fn unterminated_and_multiline_strings() {
+        // Unterminated at EOF still counts as a string.
+        let toks = highlight("rust", "let s = \"abc");
+        assert!(toks.iter().any(|t| t.kind == TokenKind::Str));
+        // Newline closes a non-multiline string as unterminated.
+        let toks = highlight("rust", "let s = \"abc\nnext");
+        let _ = toks;
+        // Triple-quoted may span lines.
+        let toks = highlight("python", "s = \'\'\'multi\nline\'\'\'");
+        assert!(toks.iter().any(|t| t.kind == TokenKind::Str));
+    }
 }

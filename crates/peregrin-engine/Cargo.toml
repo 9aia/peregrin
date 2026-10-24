@@ -11,3 +11,6 @@ workspace = true
 [dependencies]
 peregrin-core.workspace = true
 peregrin-driver.workspace = true
+
+[dev-dependencies]
+async-trait.workspace = true

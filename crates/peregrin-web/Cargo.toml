@@ -141,3 +141,12 @@ hydration_context = "0.3.2"
 name = "ssr_pages"
 path = "tests/ssr_pages.rs"
 required-features = ["ssr"]
+
+[[test]]
+name = "api"
+path = "tests/api.rs"
+required-features = ["ssr"]
+[[test]]
+name = "ssr_variants"
+path = "tests/ssr_variants.rs"
+required-features = ["ssr"]

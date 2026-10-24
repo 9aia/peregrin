@@ -54,7 +54,7 @@ fn node_serves_sessions_over_http() {
         .spawn()
         .unwrap();
 
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
     let body = loop {
         match ureq::get(format!("http://127.0.0.1:{port}/api/sessions")).call() {
             Ok(mut resp) => break resp.body_mut().read_to_string().unwrap(),
@@ -140,9 +140,12 @@ fn node_attach_prompt_stream_e2e() {
         .spawn()
         .unwrap();
 
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(20);
+    // Generous windows — under `xtask coverage` the spawned node is
+    // instrumented and the whole suite runs in parallel, so startup
+    // and attach take far longer than a standalone run.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(120);
     let client = ureq::Agent::config_builder()
-        .timeout_global(Some(std::time::Duration::from_secs(10)))
+        .timeout_global(Some(std::time::Duration::from_secs(90)))
         .build()
         .new_agent();
     let base = format!("http://127.0.0.1:{port}");
@@ -183,7 +186,7 @@ fn node_attach_prompt_stream_e2e() {
 
     let mut body = String::new();
     let mut buf = [0u8; 8192];
-    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(30);
     while !body.contains("echo: hello") && std::time::Instant::now() < deadline {
         match std::io::Read::read(&mut resp.body_mut().as_reader(), &mut buf) {
             Ok(0) => break,

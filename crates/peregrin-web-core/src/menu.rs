@@ -216,4 +216,18 @@ mod tests {
         let labels: Vec<String> = vec!["  Archive".to_string(), "Pin".to_string()];
         assert_eq!(typeahead(&labels, &ALL, 'a', None), Some(0));
     }
+    #[test]
+    fn nav_exhaustive_edges() {
+        assert_eq!(move_active(&[], None, NavDir::Down), None);
+        assert_eq!(move_active(&[false, false], Some(0), NavDir::Up), None);
+        assert_eq!(
+            move_active(&[true, false, true], Some(9), NavDir::Down),
+            Some(0)
+        );
+        assert_eq!(
+            move_active(&[true, false, true], Some(9), NavDir::Up),
+            Some(2)
+        );
+        assert_eq!(typeahead(&[], &[], 'a', None), None);
+    }
 }

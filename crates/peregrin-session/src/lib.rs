@@ -115,6 +115,12 @@ impl SepiaService {
         let (notifications, _) = broadcast::channel(256);
         let client = spawn_one(&spec, &notifications).await?;
         let manifest = handshake(&client).await?;
+        if manifest.protocol != EXPECTED_PROTOCOL {
+            return Err(RpcError::internal(format!(
+                "sepia protocol {} unsupported (client speaks {EXPECTED_PROTOCOL})",
+                manifest.protocol
+            )));
+        }
         Ok(Self {
             client: Arc::new(Mutex::new(client)),
             spec,
@@ -299,17 +305,12 @@ async fn spawn_one(
     Ok(client)
 }
 
+/// Fetch + parse the manifest without gating on protocol — the two
+/// callers gate differently: `spawn` demands `EXPECTED_PROTOCOL`,
+/// `respawn` demands the protocol the service originally booted with.
 async fn handshake(client: &DriverClient) -> Result<Manifest, RpcError> {
     let raw = client.call("manifest", json!({})).await?;
-    let manifest: Manifest =
-        serde_json::from_value(raw).map_err(|e| RpcError::internal(format!("manifest: {e}")))?;
-    if manifest.protocol != EXPECTED_PROTOCOL {
-        return Err(RpcError::internal(format!(
-            "sepia protocol {} unsupported (client speaks {EXPECTED_PROTOCOL})",
-            manifest.protocol
-        )));
-    }
-    Ok(manifest)
+    serde_json::from_value(raw).map_err(|e| RpcError::internal(format!("manifest: {e}")))
 }
 
 /* ---- typed surface over `sepia serve`'s methods ---- */

@@ -441,4 +441,104 @@ mod tests {
         });
         assert!(t.pending_permission.is_none());
     }
+
+    #[test]
+    fn every_frame_kind_folds() {
+        let mut t = LiveTranscript::default();
+        t.push_user("hi there");
+        assert_eq!(t.entries[0].title, "you");
+        assert!(t.entries[0].done);
+        // Reasoning lifecycle.
+        t.apply(&SessionEvent::ReasoningMessageStart {
+            message_id: "r1".into(),
+            role: "assistant".into(),
+        });
+        t.apply(&SessionEvent::ReasoningMessageContent {
+            message_id: "r1".into(),
+            delta: "thinking".into(),
+        });
+        t.apply(&SessionEvent::ReasoningMessageEnd {
+            message_id: "r1".into(),
+        });
+        // Tool call with every optional payload + a late real name.
+        t.apply(&SessionEvent::ToolCallStart {
+            tool_call_id: "tc".into(),
+            tool_call_name: "tool".into(),
+            locations: Some(vec![ToolCallLocation {
+                path: "/b.rs".into(),
+                line: None,
+            }]),
+            diffs: Some(vec![ToolCallDiff {
+                path: "/b.rs".into(),
+                old_text: Some("o".into()),
+                new_text: Some("n".into()),
+            }]),
+            contents: Some(vec![serde_json::json!({"type": "text", "text": "c"})]),
+        });
+        t.apply(&SessionEvent::ToolCallArgs {
+            tool_call_id: "tc".into(),
+            delta: "x".into(),
+            tool_call_name: Some("real_name".into()),
+        });
+        t.apply(&SessionEvent::ToolCallEnd {
+            tool_call_id: "tc".into(),
+            status: Some("completed".into()),
+            tool_call_name: Some("real_name".into()),
+            locations: Some(vec![ToolCallLocation {
+                path: "/c.rs".into(),
+                line: Some(1),
+            }]),
+            diffs: Some(vec![ToolCallDiff {
+                path: "/c.rs".into(),
+                old_text: None,
+                new_text: None,
+            }]),
+            contents: Some(vec![serde_json::json!({"type": "text", "text": "d"})]),
+        });
+        let e = t.entries.iter().find(|e| e.key == "tc").unwrap();
+        assert_eq!(e.title, "real_name");
+        assert_eq!(e.locations[0].path, "/c.rs");
+        assert_eq!(e.contents.len(), 1);
+        // `acp:tool_call_update` folds locations/diffs/contents into
+        // the open row and renames the placeholder.
+        t.apply(&SessionEvent::Custom {
+            name: "acp:tool_call_update".into(),
+            value: serde_json::json!({
+                "toolCallId": "tc2",
+                "title": "renamed",
+                "locations": [{"path": "/d.rs"}],
+                "diffs": [{"path": "/d.rs", "oldText": "a", "newText": "b"}],
+                "contents": [{"type": "text", "text": "z"}],
+            }),
+        });
+        let e = t.entries.iter().find(|e| e.key == "tc2").unwrap();
+        assert_eq!(e.title, "renamed");
+        assert_eq!(e.locations[0].path, "/d.rs");
+        assert_eq!(e.diffs.len(), 1);
+        assert_eq!(e.contents.len(), 1);
+        // Edge payloads: empty id → ignored; bad values → parse-fail.
+        t.apply(&SessionEvent::Custom {
+            name: "acp:tool_call_update".into(),
+            value: serde_json::json!({"toolCallId": ""}),
+        });
+        t.apply(&SessionEvent::Custom {
+            name: "acp:tool_call_update".into(),
+            value: serde_json::json!({
+                "toolCallId": "tc",
+                "locations": "nope",
+                "diffs": [{"nope": 1}],
+                "contents": [],
+            }),
+        });
+        // Permission requests that don't parse / carry no id are dropped.
+        t.apply(&SessionEvent::Custom {
+            name: "acp:permission_request".into(),
+            value: serde_json::json!({"requestId": ""}),
+        });
+        t.apply(&SessionEvent::Custom {
+            name: "acp:permission_request".into(),
+            value: serde_json::json!("garbage"),
+        });
+        assert!(t.pending_permission.is_none());
+    }
 }

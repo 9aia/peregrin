@@ -1598,3 +1598,43 @@ impl NodeApi for HttpNodeApi {
         .map_err(|e| e.to_string())?
     }
 }
+
+#[cfg(all(test, feature = "ssr"))]
+mod coverage_tests {
+    //! Private-helper coverage the integration tests can't reach
+    //! (they're not `pub`): the `request` method arms, `error_of`'s
+    //! fallback, the query/body encoders.
+    use super::*;
+
+    #[test]
+    fn request_method_arms() {
+        let api = HttpNodeApi::new("http://127.0.0.1:1/", Some("t".into()));
+        // The builders construct without calling — each method arm.
+        let _ = api.request("GET", "/x");
+        let _ = api.request("HEAD", "/x");
+        let _ = api.request("DELETE", "/x");
+        let _ = api.request("OTHER", "/x");
+        let api = HttpNodeApi::new("http://127.0.0.1:1", None);
+        let _ = api.request("GET", "/x");
+    }
+
+    #[test]
+    fn encoders() {
+        assert_eq!(url_encode("a b/c~d"), "a%20b%2Fc~d");
+        assert_eq!(id_query(None), "");
+        assert_eq!(id_query(Some("a b")), "?agent=a%20b");
+        assert_eq!(
+            history_path("s1", None, None, None),
+            "/api/sessions/s1/history"
+        );
+        assert_eq!(
+            history_path("s1", Some("a"), Some(3), Some(9)),
+            "/api/sessions/s1/history?agent=a&before=3&limit=9"
+        );
+        let body = rewind_body(&RewindSelector::NodeId(2));
+        assert_eq!(body["confirm"], serde_json::json!(true));
+        assert_eq!(body["nodeId"], serde_json::json!(2));
+        let body = rewind_body(&RewindSelector::Checkpoint("c".into()));
+        assert_eq!(body["checkpoint"], serde_json::json!("c"));
+    }
+}

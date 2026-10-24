@@ -357,4 +357,21 @@ mod tests {
         let nameless = att("", "image/png", "", 512.0);
         assert_eq!(attachment_label(&nameless), "image/png (512 B)");
     }
+    #[test]
+    fn attachment_sizing_and_labels() {
+        let a = att("f.png", "image/png", "AAAABBBB", 2048.0);
+        let b = att("", "", "", 0.0);
+        assert_eq!(attachment_chars(&[a.clone(), b.clone()]), 8);
+        assert_eq!(attachment_label(&b), "attachment (0 B)");
+        let c = att("", "text/plain", "", 0.0);
+        assert_eq!(attachment_label(&c), "text/plain (0 B)");
+    }
+
+    #[test]
+    fn agent_query_encodes_and_omits() {
+        assert_eq!(agent_query(None), "");
+        assert_eq!(agent_query(Some("")), "");
+        assert_eq!(agent_query(Some("devin")), "?agent=devin");
+        assert_eq!(agent_query(Some("a b")), "?agent=a%20b");
+    }
 }

@@ -3579,6 +3579,7 @@ name = "peregrin-dotenv"
 version = "0.0.0"
 dependencies = [
  "peregrin-secret",
+ "tempfile",
 ]
 
 [[package]]
@@ -3589,6 +3590,7 @@ dependencies = [
  "peregrin-core",
  "serde_json",
  "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]
@@ -3606,6 +3608,7 @@ dependencies = [
 name = "peregrin-engine"
 version = "0.0.0"
 dependencies = [
+ "async-trait",
  "peregrin-core",
  "peregrin-driver",
 ]

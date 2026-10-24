@@ -10,3 +10,5 @@ repository.workspace = true
 workspace = true
 [dependencies]
 peregrin-secret.workspace = true
+[dev-dependencies]
+tempfile.workspace = true

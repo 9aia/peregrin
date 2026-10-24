@@ -149,6 +149,9 @@ thirtyfour = "=0.37.5"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
+# `cfg(coverage)` is set by cargo-llvm-cov's rustc wrapper; probes for
+# host-untestable paths gate on it (see cli service backends, mains).
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(coverage)"] }
 
 [workspace.lints.clippy]
 # Hard gates: deny classes that hide real bugs.
