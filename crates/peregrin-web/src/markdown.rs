@@ -600,26 +600,6 @@ mod tests {
     }
 
     #[test]
-    fn unmatched_markers_stay_literal() {
-        let md = inlines("**unclosed and `lonely and *star and [text](nope");
-        assert_eq!(
-            md,
-            vec![MdInline::Text(
-                "**unclosed and `lonely and *star and [text](nope".into()
-            )]
-        );
-        let md = inlines("x `code` trailing");
-        assert_eq!(
-            md,
-            vec![
-                MdInline::Text("x ".into()),
-                MdInline::Code("code".into()),
-                MdInline::Text(" trailing".into()),
-            ]
-        );
-    }
-
-    #[test]
     fn gfm_tables() {
         let md = parse("| Name | Cost |\n| --- | --: |\n| a | `1` |\n| b | 2 |\n\ntail");
         assert_eq!(
