@@ -102,9 +102,12 @@ mod resolve_tests {
                 recording: RwSignal::new(Some(Action::TogglePalette)),
             };
             // Recording owns the keyboard — resolve is inert.
-            assert_eq!(keybinds.resolve("?", Mods::NONE, KeyCtx::Global), None);
+            assert_eq!(
+                keybinds.resolve("?", Mods::default(), KeyCtx::default()),
+                None
+            );
             keybinds.recording.set(None);
-            let _ = keybinds.resolve("?", Mods::NONE, KeyCtx::Global);
+            let _ = keybinds.resolve("?", Mods::default(), KeyCtx::default());
         });
     }
 }

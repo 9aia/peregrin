@@ -31,7 +31,7 @@ use leptos::prelude::*;
 /// on success. No-op off-wasm — SSR never runs the mounting Effect
 /// that calls this, but the symbol must exist so the markup shape
 /// stays feature-agnostic (the cfg-never-gates-markup rule).
-#[cfg(not(feature = "hydrate"))]
+#[cfg(not(any(feature = "hydrate", coverage)))]
 pub fn render(
     _target: NodeRef<leptos::html::Div>,
     _source: NodeRef<leptos::html::Div>,

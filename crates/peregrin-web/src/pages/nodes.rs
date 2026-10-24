@@ -428,10 +428,7 @@ mod status_variant_tests {
         assert!(matches!(status_variant("up"), BadgeVariant::Success));
         assert!(matches!(status_variant("queued"), BadgeVariant::Info));
         assert!(matches!(status_variant("locked"), BadgeVariant::Warning));
-        assert!(matches!(
-            status_variant("down"),
-            BadgeVariant::Destructive
-        ));
+        assert!(matches!(status_variant("down"), BadgeVariant::Destructive));
         assert!(matches!(status_variant("mystery"), BadgeVariant::Muted));
     }
 }

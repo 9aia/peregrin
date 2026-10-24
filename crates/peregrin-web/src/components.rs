@@ -975,7 +975,8 @@ pub fn EmptyState(
 
 #[cfg(test)]
 mod icon_tests {
-    use super::*;
+    use super::icons::Icon;
+    use leptos::prelude::*;
 
     /// Every `Icon` name builds its view — the match arm executes when
     /// the component constructs its view tree, so a bare

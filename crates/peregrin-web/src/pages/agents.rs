@@ -74,10 +74,12 @@ pub fn AgentsPage() -> impl IntoView {
 
 #[component]
 fn AgentCard(agent: AgentDto) -> impl IntoView {
+    let id_label = agent.id.clone();
+    let name_label = agent.label.clone();
     let label = if agent.label.trim().is_empty() {
-        agent.id.clone()
+        id_label
     } else {
-        agent.label.clone()
+        name_label
     };
     let chips = capability_chips(agent.capabilities.as_ref());
     view! {
