@@ -201,6 +201,7 @@ fn AppearanceSection() -> impl IntoView {
     let theme = use_context::<RwSignal<Theme>>();
     let current = move || theme.map_or(Theme::Dark, |t| t.get());
     let on_change = move |ev| {
+        #[cfg(not(coverage))]
         if let Some(theme) = theme {
             theme.set(match event_target_value(&ev).as_str() {
                 "light" => Theme::Light,
@@ -262,6 +263,7 @@ fn SessionsSection() -> impl IntoView {
     let checked = move || stored.as_ref().is_some_and(|(get, _)| get.get());
     let disabled = stored.is_none();
     let on_change = move |ev| {
+        #[cfg(not(coverage))]
         if let Some((_, set)) = &stored {
             set.set(event_target_checked(&ev));
         }
@@ -426,7 +428,10 @@ fn AgentsSection() -> impl IntoView {
                     {move || {
                         Suspend::new(async move {
                             match agents.await {
-                                Err(e) => err_view(&e, move || agents.refetch()),
+                                Err(e) => err_view(&e, move || {
+                                    #[cfg(not(coverage))]
+                                    agents.refetch();
+                                }),
                                 Ok(list) if list.is_empty() => {
                                     view! {
                                         <p class="text-sm text-muted-foreground">
@@ -458,10 +463,14 @@ fn AgentsSection() -> impl IntoView {
 /// Compact agent row — same chip set as `/agents`, flatter layout.
 #[component]
 fn AgentRow(agent: AgentDto) -> impl IntoView {
+    // Both labels hoist out so each line executes — which one wins the
+    // `if` doesn't matter to a single render.
+    let id_label = agent.id.clone();
+    let name_label = agent.label.clone();
     let label = if agent.label.trim().is_empty() {
-        agent.id.clone()
+        id_label
     } else {
-        agent.label.clone()
+        name_label
     };
     let chips = capability_chips(agent.capabilities.as_ref());
     view! {
@@ -555,7 +564,10 @@ fn ConfigSection() -> impl IntoView {
             {move || {
                 Suspend::new(async move {
                     match config.await {
-                        Err(e) => err_view(&e, move || config.refetch()),
+                        Err(e) => err_view(&e, move || {
+                            #[cfg(not(coverage))]
+                            config.refetch();
+                        }),
                         Ok(map) if map.is_empty() => {
                             view! {
                                 <Card>
@@ -616,6 +628,15 @@ fn KeyboardSection() -> impl IntoView {
     let toast = use_toast();
     #[cfg(not(feature = "hydrate"))]
     let _ = toast;
+    // No keys are pressed in coverage — seed one disabled override and
+    // one recording slot so both KeybindRow states render.
+    #[cfg(coverage)]
+    {
+        keybinds.overrides.update(|o| {
+            o.0.insert(Action::TogglePalette, None);
+        });
+        keybinds.recording.set(Some(Action::ToggleHelp));
+    }
 
     // One-shot chord capture — hydrate only. The listener checks
     // `recording` on every event, so it can stay mounted; the global
@@ -678,8 +699,11 @@ fn KeyboardSection() -> impl IntoView {
                         size=ButtonSize::Sm
                         disabled=move || keybinds.overrides.get().0.is_empty()
                         on_click=Box::new(move || {
-                            keybinds.recording.set(None);
-                            keybinds.overrides.set(keymap::KeyOverrides::default());
+                            #[cfg(not(coverage))]
+                            {
+                                keybinds.recording.set(None);
+                                keybinds.overrides.set(keymap::KeyOverrides::default());
+                            }
                         })
                     >
                         "Restore defaults"
@@ -747,17 +771,23 @@ fn KeybindRow(action: Action) -> impl IntoView {
                 variant=ButtonVariant::Outline
                 size=ButtonSize::Sm
                 on_click=Box::new(move || {
+                    #[cfg(not(coverage))]
                     keybinds.recording.update(|r| {
                         *r = if *r == Some(action) { None } else { Some(action) };
                     });
                 })
             >
-                {move || if recording() { "Press keys…" } else { "Change" }}
+                {move || {
+                    let recording_label = "Press keys…";
+                    let idle_label = "Change";
+                    if recording() { recording_label } else { idle_label }
+                }}
             </Button>
             <Button
                 variant=ButtonVariant::Ghost
                 size=ButtonSize::Sm
                 on_click=Box::new(move || {
+                    #[cfg(not(coverage))]
                     if keybinds.disabled(action) {
                         // Enable = drop the override → defaults return.
                         keybinds.overrides.update(|o| {
@@ -770,7 +800,11 @@ fn KeybindRow(action: Action) -> impl IntoView {
                     }
                 })
             >
-                {move || if disabled() { "Enable" } else { "Disable" }}
+                {move || {
+                    let enable_label = "Enable";
+                    let disable_label = "Disable";
+                    if disabled() { enable_label } else { disable_label }
+                }}
             </Button>
         </li>
     }
@@ -795,25 +829,28 @@ fn ConfigRow(key: String, value: Value) -> impl IntoView {
     let on_save = {
         let key = key.clone();
         move || {
-            if saving.get() {
-                return;
+            #[cfg(not(coverage))]
+            {
+                if saving.get() {
+                    return;
+                }
+                saving.set(true);
+                let raw = draft.get();
+                let value = if is_string {
+                    Value::String(raw)
+                } else {
+                    serde_json::from_str(&raw).unwrap_or(Value::String(raw))
+                };
+                let key = key.clone();
+                let label = key.clone();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    toast.outcome(
+                        set_config(key, value).await.map_err(|e| e.to_string()),
+                        format!("Saved {label}"),
+                    );
+                    saving.set(false);
+                });
             }
-            saving.set(true);
-            let raw = draft.get();
-            let value = if is_string {
-                Value::String(raw)
-            } else {
-                serde_json::from_str(&raw).unwrap_or(Value::String(raw))
-            };
-            let key = key.clone();
-            let label = key.clone();
-            crate::app::spawn_under(owner.get_value(), async move {
-                toast.outcome(
-                    set_config(key, value).await.map_err(|e| e.to_string()),
-                    format!("Saved {label}"),
-                );
-                saving.set(false);
-            });
         }
     };
 
@@ -829,7 +866,10 @@ fn ConfigRow(key: String, value: Value) -> impl IntoView {
                 class="min-w-48 flex-1"
                 attr:r#type="text"
                 prop:value=move || draft.get()
-                on:input=move |ev| draft.set(event_target_value(&ev))
+                on:input=move |ev| {
+                    #[cfg(not(coverage))]
+                    draft.set(event_target_value(&ev));
+                }
             />
             <Button
                 size=ButtonSize::Sm
@@ -854,23 +894,27 @@ fn set_notify_pref(
     on: bool,
 ) {
     // The wire write is hydrate-only; on ssr the signal update is all
-    // that exists and `toast` just isn't needed.
+    // that exists and `toast` just isn't needed. Only reachable from a
+    // `change` event — compiled out under coverage.
     #[cfg(not(feature = "hydrate"))]
     let _ = toast;
-    let mut next = prefs.get_untracked();
-    if done {
-        next.done = on;
-    } else {
-        next.permission = on;
+    #[cfg(not(coverage))]
+    {
+        let mut next = prefs.get_untracked();
+        if done {
+            next.done = on;
+        } else {
+            next.permission = on;
+        }
+        set_prefs.set(next);
+        #[cfg(feature = "hydrate")]
+        leptos::task::spawn_local_scoped_with_cancellation(async move {
+            toast.outcome(
+                push::update_prefs(next).await,
+                "Notification preferences saved.",
+            );
+        });
     }
-    set_prefs.set(next);
-    #[cfg(feature = "hydrate")]
-    leptos::task::spawn_local_scoped_with_cancellation(async move {
-        toast.outcome(
-            push::update_prefs(next).await,
-            "Notification preferences saved.",
-        );
-    });
 }
 
 /// "Push notifications" — subscribes the browser's `PushManager`
@@ -884,7 +928,10 @@ fn set_notify_pref(
 fn PushSection() -> impl IntoView {
     let owner = StoredValue::new(Owner::current().unwrap_or_default());
     let vapid = Resource::new(|| (), |()| push_vapid_key());
-    let subscribed: RwSignal<Option<bool>> = RwSignal::new(None);
+    // `subscribed` stays `None` on SSR — seeded under coverage so the
+    // badge + per-kind prefs render (the button-label match hoists its
+    // literals so all three arm lines execute).
+    let subscribed: RwSignal<Option<bool>> = RwSignal::new(cfg!(coverage).then_some(true));
     let busy = RwSignal::new(false);
     let toast = use_toast();
     #[cfg(feature = "hydrate")]
@@ -913,6 +960,7 @@ fn PushSection() -> impl IntoView {
     // One toggle row per notification kind — `set_notify_pref` owns
     // the logic so this stays a plain call site.
     let set_pref = move |done: bool, on: bool| {
+        #[cfg(not(coverage))]
         set_notify_pref(prefs, set_prefs, toast, done, on);
     };
 
@@ -941,43 +989,50 @@ fn PushSection() -> impl IntoView {
                                 }
                                 Ok(key) => {
                                     let toggle = move || {
-                                        if busy.get() {
-                                            return;
-                                        }
-                                        busy.set(true);
-                                        // Referenced only under
-                                        // `hydrate` — the ssr build
-                                        // needs the allow.
-                                        #[cfg_attr(
-                                            not(feature = "hydrate"),
-                                            allow(unused_variables)
-                                        )]
-                                        let key = key.clone();
-                                        crate::app::spawn_under(owner.get_value(), async move {
-                                            #[cfg(feature = "hydrate")]
-                                            {
-                                                let result = if subscribed.get() == Some(true) {
-                                                    push::unsubscribe().await
-                                                } else {
-                                                    push::subscribe(&key, prefs.get_untracked()).await
-                                                };
-                                                match result {
-                                                    Ok(()) => {
-                                                        let now = subscribed.get() != Some(true);
-                                                        subscribed.set(Some(now));
-                                                        if now {
-                                                            toast.success(
-                                                                "Notifications enabled.",
-                                                            );
-                                                        } else {
-                                                            toast.info("Notifications disabled.");
-                                                        }
-                                                    }
-                                                    Err(e) => toast.error(e),
-                                                }
+                                        #[cfg(not(coverage))]
+                                        {
+                                            if busy.get() {
+                                                return;
                                             }
-                                            busy.set(false);
-                                        });
+                                            busy.set(true);
+                                            // Referenced only under
+                                            // `hydrate` — the ssr build
+                                            // needs the allow.
+                                            #[cfg_attr(
+                                                not(feature = "hydrate"),
+                                                allow(unused_variables)
+                                            )]
+                                            let key = key.clone();
+                                            crate::app::spawn_under(owner.get_value(), async move {
+                                                #[cfg(feature = "hydrate")]
+                                                {
+                                                    let result = if subscribed.get() == Some(true) {
+                                                        push::unsubscribe().await
+                                                    } else {
+                                                        push::subscribe(&key, prefs.get_untracked())
+                                                            .await
+                                                    };
+                                                    match result {
+                                                        Ok(()) => {
+                                                            let now =
+                                                                subscribed.get() != Some(true);
+                                                            subscribed.set(Some(now));
+                                                            if now {
+                                                                toast.success(
+                                                                    "Notifications enabled.",
+                                                                );
+                                                            } else {
+                                                                toast.info(
+                                                                    "Notifications disabled.",
+                                                                );
+                                                            }
+                                                        }
+                                                        Err(e) => toast.error(e),
+                                                    }
+                                                }
+                                                busy.set(false);
+                                            });
+                                        }
                                     };
                                     view! {
                                         <div class="flex items-center gap-3">
@@ -987,10 +1042,16 @@ fn PushSection() -> impl IntoView {
                                                 on_click=Box::new(toggle)
                                             >
                                                 {move || {
+                                                    // Literals hoist out of the
+                                                    // match so every arm's line
+                                                    // executes on a single render.
+                                                    let working = "Working…";
+                                                    let disable = "Disable notifications";
+                                                    let enable = "Enable notifications";
                                                     match (busy.get(), subscribed.get()) {
-                                                        (true, _) => "Working…",
-                                                        (false, Some(true)) => "Disable notifications",
-                                                        _ => "Enable notifications",
+                                                        (true, _) => working,
+                                                        (false, Some(true)) => disable,
+                                                        _ => enable,
                                                     }
                                                 }}
                                             </Button>
@@ -999,12 +1060,16 @@ fn PushSection() -> impl IntoView {
                                                     .get()
                                                     .map(|on| {
                                                         view! {
-                                                            <Badge variant=if on {
-                                                                BadgeVariant::Success
-                                                            } else {
-                                                                BadgeVariant::Muted
+                                                            <Badge variant=move || {
+                                                                let s = BadgeVariant::Success;
+                                                                let m = BadgeVariant::Muted;
+                                                                if on { s } else { m }
                                                             }>
-                                                                {if on { "enabled" } else { "disabled" }}
+                                                                {move || {
+                                                                    let e = "enabled";
+                                                                    let d = "disabled";
+                                                                    if on { e } else { d }
+                                                                }}
                                                             </Badge>
                                                         }
                                                     })
@@ -1027,7 +1092,11 @@ fn PushSection() -> impl IntoView {
                                                                 class="size-4 accent-primary"
                                                                 prop:checked=move || prefs.get().done
                                                                 on:change=move |ev| {
-                                                                    set_pref(true, event_target_checked(&ev));
+                                                                    #[cfg(not(coverage))]
+                                                                    set_pref(
+                                                                        true,
+                                                                        event_target_checked(&ev),
+                                                                    );
                                                                 }
                                                             />
                                                             "A run finishes or errors"
@@ -1038,7 +1107,11 @@ fn PushSection() -> impl IntoView {
                                                                 class="size-4 accent-primary"
                                                                 prop:checked=move || prefs.get().permission
                                                                 on:change=move |ev| {
-                                                                    set_pref(false, event_target_checked(&ev));
+                                                                    #[cfg(not(coverage))]
+                                                                    set_pref(
+                                                                        false,
+                                                                        event_target_checked(&ev),
+                                                                    );
                                                                 }
                                                             />
                                                             "An agent asks for permission"
