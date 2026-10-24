@@ -491,3 +491,146 @@ impl LiveListeners {
         });
     }
 }
+
+#[cfg(test)]
+mod cov_tests {
+    #![allow(clippy::unwrap_used)]
+    use std::collections::HashMap;
+
+    use peregrin_session::LocalPlane;
+    use sepia_core::Session;
+    use sepia_core::storage::SessionRepository;
+    use sepia_session::{ControlPlane, ControlPlaneOptions};
+
+    use super::*;
+
+    /// In-memory store for a real `LocalPlane` — exercises `tick`
+    /// against the production trait, not a stub.
+    struct MemStore {
+        sessions: Mutex<HashMap<String, Session>>,
+    }
+
+    #[async_trait::async_trait]
+    impl SessionRepository for MemStore {
+        async fn save(&self, session: &Session) -> Result<(), sepia_core::StorageError> {
+            self.sessions
+                .lock()
+                .unwrap()
+                .insert(session.id.clone(), session.clone());
+            Ok(())
+        }
+        async fn get_by_id(
+            &self,
+            id: &str,
+            _agent: Option<&str>,
+        ) -> Result<Option<Session>, sepia_core::StorageError> {
+            Ok(self.sessions.lock().unwrap().get(id).cloned())
+        }
+        async fn list(&self) -> Result<Vec<Session>, sepia_core::StorageError> {
+            Ok(self.sessions.lock().unwrap().values().cloned().collect())
+        }
+        async fn delete(&self, id: &str) -> Result<(), sepia_core::StorageError> {
+            self.sessions.lock().unwrap().remove(id);
+            Ok(())
+        }
+        async fn has_session(&self, id: &str) -> Result<bool, sepia_core::StorageError> {
+            Ok(self.sessions.lock().unwrap().contains_key(id))
+        }
+    }
+
+    fn plane_with(sessions: &[Session]) -> Arc<dyn SessionPlane> {
+        let store = Arc::new(MemStore {
+            sessions: Mutex::new(sessions.iter().map(|s| (s.id.clone(), s.clone())).collect()),
+        });
+        Arc::new(LocalPlane(ControlPlane::new(
+            store,
+            ControlPlaneOptions::default(),
+        )))
+    }
+
+    fn session(id: &str) -> Session {
+        serde_json::from_value(json!({
+            "id": id,
+            "title": "T",
+            "workingDirectory": "/w",
+            "backendType": "devin",
+            "model": "m",
+            "createdAt": 1_700_000_000.0,
+            "lastActivityAt": 1_700_000_100.0,
+            "mainChainId": 0
+        }))
+        .unwrap()
+    }
+
+    fn meta() -> InstrumentedMeta {
+        // `keep` leaks the tempdir — MetaStore flushes into it on every
+        // mutation, so it must outlive the returned store.
+        let dir = tempfile::tempdir().unwrap().keep();
+        InstrumentedMeta::new(MetaStore::open(&dir.join("m.json")), EventFeed::new())
+    }
+
+    #[test]
+    fn payload_and_busy() {
+        let p = session_payload("s", Some("a"), json!({"x":1}));
+        assert_eq!(p["id"], "s");
+        assert_eq!(p["agent"], "a");
+        let _ = session_payload("s", None, json!({}));
+        assert_eq!(busy_from_events(&[]), None);
+        assert_eq!(EventFeed::default().subscriber_count(), 0);
+        let feed = EventFeed::new();
+        let _rx = feed.subscribe();
+        assert_eq!(feed.subscriber_count(), 1);
+    }
+
+    #[test]
+    fn instrumented_meta_emits() {
+        let m = meta();
+        let mut rx = m.feed.subscribe();
+        let _ = m.of("s1");
+        let _ = m.sessions();
+        m.patch("s1", &SessionMeta::default());
+        m.remove("s1");
+        let _ = m.list_projects();
+        m.create_project("p");
+        let same = m.ensure_project("x", "n");
+        assert_eq!(same.name, "n");
+        let _ = m.ensure_project("x", "n"); // same name — no emit
+        let _ = m.ensure_project("x", "n2"); // rename — emits
+        assert!(m.rename_project("x", "n3"));
+        assert!(!m.rename_project("missing", "n"));
+        m.delete_project("x");
+        m.delete_project("x"); // second delete is a no-op
+        let _ = m.config();
+        m.set_config("k", json!(1));
+        assert_eq!(m.config()["k"], json!(1));
+        let _ = rx.try_recv();
+    }
+
+    #[tokio::test]
+    async fn held_watch_tick_arms() {
+        let plane = plane_with(&[session("s1")]);
+        let feed = EventFeed::new();
+        let watches = HeldWatches::new(Duration::ZERO);
+        // No watches → early return.
+        watches.tick(&plane, &feed).await;
+        // Watches but nobody listening → early return.
+        watches.watch("s1", None);
+        watches.watch("gone", Some("devin"));
+        watches.tick(&plane, &feed).await;
+        // Subscribed: the listed row emits its baseline diff, the
+        // vanished id emits {"deleted": true}.
+        let mut rx = feed.subscribe();
+        watches.tick(&plane, &feed).await;
+        let mut got = Vec::new();
+        while let Ok(e) = rx.try_recv() {
+            got.push(e);
+        }
+        assert!(got.iter().any(|e| e.payload["patch"]["deleted"] == true));
+        // Baseline now matches — the steady tick emits nothing new.
+        watches.tick(&plane, &feed).await;
+        watches.unwatch("s1", None);
+        watches.unwatch("gone", Some("devin"));
+        // `spawn_ticker` on a disabled interval returns at once.
+        watches.spawn_ticker(plane, feed);
+    }
+}

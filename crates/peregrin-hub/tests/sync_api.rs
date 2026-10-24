@@ -46,6 +46,28 @@ fn engine_with(
     )
 }
 
+/// SIGINT the child — node and hub take their graceful-shutdown paths
+/// and exit normally, which is the only way an instrumented binary
+/// flushes its profraw (SIGKILL discards it). Fall back to `kill()`
+/// when a child won't die, so teardown never hangs the suite.
+fn stop(child: &mut std::process::Child) {
+    let _ = std::process::Command::new("kill")
+        .args(["-INT", &child.id().to_string()])
+        .status();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) | Err(_) => return,
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Ok(None) => break,
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 fn node(id: &str, url: &str) -> HubNode {
     HubNode {
         id: id.into(),
@@ -309,10 +331,8 @@ fn hub_e2e_over_a_real_node() {
             }
         }
     };
-    let _ = hub.kill();
-    let _ = node.kill();
-    let _ = hub.wait();
-    let _ = node.wait();
+    stop(&mut hub);
+    stop(&mut node);
     assert!(body.contains("Capstone session"), "html: {body}");
 }
 
@@ -432,8 +452,7 @@ async fn pair_persists_and_adopts_the_minted_token() {
     )
     .await;
 
-    let _ = node.kill();
-    let _ = node.wait();
+    stop(&mut node);
 }
 
 /// Boot-order resolution: a `PEREGRIN_NODES` entry without `@token` picks
@@ -531,12 +550,353 @@ fn hub_resolves_node_tokens_from_the_credential_store() {
             }
         }
     };
-    let _ = hub.kill();
-    let _ = node.kill();
-    let _ = hub.wait();
-    let _ = node.wait();
+    stop(&mut hub);
+    stop(&mut node);
     assert!(
         body.contains("Stored-cred session"),
         "stored credential authenticated the sync — html: {body}"
     );
+}
+
+/* ---- full-surface mock node ------------------------------------------*/
+
+/// A canned-response node: every NodeApi call lands a JSON reply.
+/// `calls` records "METHOD path" for assertions; `fail` maps path
+/// prefixes to a 500 so error arms run too.
+#[derive(Clone, Default)]
+struct Canned {
+    calls: Arc<std::sync::Mutex<Vec<String>>>,
+    fail: Arc<std::sync::Mutex<Vec<String>>>,
+}
+
+impl Canned {
+    fn calls(&self) -> Vec<String> {
+        self.calls.lock().unwrap().clone()
+    }
+}
+
+async fn canned(
+    axum::extract::State(m): axum::extract::State<Canned>,
+    req: axum::extract::Request,
+) -> axum::response::Response {
+    use axum::response::IntoResponse;
+    let method = req.method().clone();
+    let path = req.uri().path().to_string();
+    m.calls.lock().unwrap().push(format!("{method} {path}"));
+    let fail = m.fail.lock().unwrap().iter().any(|p| path.starts_with(p));
+    if fail {
+        return (
+            axum::http::StatusCode::INTERNAL_SERVER_ERROR,
+            axum::Json(json!({"error":"node blew up","code":"internal"})),
+        )
+            .into_response();
+    }
+    // Consume the body so POST/DELETE payloads parse fine either way.
+    let _bytes = axum::body::to_bytes(req.into_body(), 4 * 1024 * 1024)
+        .await
+        .unwrap_or_default();
+    let body = match (method.as_str(), path.as_str()) {
+        (_, "/api/node") if method == axum::http::Method::GET => json!({
+            "id":"n1","name":"node-one","version":"0.1","protocol":1,
+            "agents":["devin"],"capabilities":["import"],
+        }),
+        (_, "/api/node") => json!({
+            "id":"n1","name":"renamed","version":"0.1","protocol":1,
+            "agents":["devin"],"capabilities":["import"],
+        }),
+        (_, "/api/agents") => json!({"agents":[{"id":"devin","label":"Devin"}]}),
+        ("GET", "/api/projects") => json!({"projects":[{"id":"p1","name":"P"}]}),
+        ("POST", "/api/projects") => json!({"project":{"id":"p1","name":"P"}}),
+        ("DELETE", _) => json!({}),
+        ("GET", "/api/config") => json!({"config":{"theme":"dark","k":1}}),
+        ("GET", "/api/fs") => json!({"dirs":["/a","/b"]}),
+        ("POST", "/api/sessions") => json!({"id":"n1","agentId":"devin","capabilities":{}}),
+        ("GET", "/api/push/vapid") => json!({"publicKey":"pk-1"}),
+        ("POST", "/api/pair") => json!({"token":"sepia_minted"}),
+        (_, p) if p.ends_with("/history") => json!({
+            "messages":[{"role":"user","content":"hi","createdAt":1.0}],
+            "total":3,"start":0,
+        }),
+        (_, p) if p.ends_with("/checkpoints") => json!({
+            "checkpoints":[{"ref":"c1","createdAt":1.0,"runCount":2,"kind":"auto"}],
+        }),
+        (_, p) if p.ends_with("/attach") => json!({
+            "attached":true,"readOnly":false,"agentId":"devin","capabilities":{},
+        }),
+        (_, p) if p.ends_with("/rewind") => json!({"kept":3,"removed":2}),
+        (_, p) if p.ends_with("/convert") => json!({"sessionId":"s2"}),
+        (_, "/api/sessions/import") => json!({"id":"i1","title":"T","agent":"devin"}),
+        _ => json!({}),
+    };
+    axum::Json(body).into_response()
+}
+
+async fn serve_canned(m: Canned) -> (Canned, String) {
+    let app = axum::Router::new()
+        .route("/api/{*rest}", axum::routing::any(canned))
+        .with_state(m.clone());
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move {
+        let _ = axum::serve(listener, app).await;
+    });
+    (m, format!("http://{addr}"))
+}
+
+fn hub_node(id: &str, url: &str) -> HubNode {
+    HubNode {
+        id: id.into(),
+        url: url.into(),
+        token: None,
+    }
+}
+
+fn api_against(
+    nodes: Vec<HubNode>,
+) -> (
+    SyncNodeApi,
+    peregrin_sync::ProjectionStore,
+    peregrin_outbox::Outbox,
+    tempfile::TempDir,
+) {
+    let projection = peregrin_sync::ProjectionStore::in_memory().unwrap();
+    let outbox = peregrin_outbox::Outbox::in_memory().unwrap();
+    let targets = nodes.iter().map(|n| {
+        NodeTarget::new(peregrin_sync::NodeRef {
+            id: n.id.clone(),
+            url: n.url.clone(),
+            label: n.id.clone(),
+        })
+    });
+    let engine = SyncEngine::spawn(
+        projection.clone(),
+        outbox.clone(),
+        targets,
+        Default::default(),
+    );
+    let (dir, creds) = file_creds();
+    let api = SyncNodeApi::new(engine, nodes, creds);
+    (api, projection, outbox, dir)
+}
+
+/// Every NodeApi method over a canned node — the success arms the
+/// down-node suite can't reach.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn api_surface_sweep() {
+    let (mock, url) = serve_canned(Canned::default()).await;
+    let nodes = vec![
+        hub_node("laptop", &url),
+        hub_node("ghost", "http://127.0.0.1:9"),
+    ];
+    let (api, projection, outbox, _dir) = api_against(nodes);
+    seed(&projection);
+
+    // Session-scoped reads + direct writes.
+    let page = api
+        .history("s1", Some("devin"), Some(5), Some(10))
+        .await
+        .unwrap();
+    assert_eq!(page.total, 3);
+    let created = api
+        .create_session("/w", Some("devin"), Some("T"), Some("m"), Some("laptop"))
+        .await
+        .unwrap();
+    assert_eq!(created.id, "n1");
+    let attach = api.attach("s1", None, true).await.unwrap();
+    assert!(attach.attached);
+    api.detach("s1", None).await.unwrap();
+    api.cancel("s1", None).await.unwrap();
+    api.answer_permission("s1", None, "r1", Some("o1"))
+        .await
+        .unwrap();
+    api.patch_meta("s1", None, &json!({"title":"X"}))
+        .await
+        .unwrap();
+    api.delete_session("s1", None).await.unwrap();
+    let cps = api.checkpoints("s1", None).await.unwrap();
+    assert_eq!(cps.len(), 1);
+    api.restore("s1", None, "c1").await.unwrap();
+    let rw = api
+        .rewind("s1", None, &peregrin_web::api::RewindSelector::NodeId(2))
+        .await
+        .unwrap();
+    assert_eq!(rw.removed, 2);
+    let conv = api.convert("s1", None, "cline").await.unwrap();
+    assert_eq!(conv, "s2");
+    let imp = api
+        .import(&json!({"agent":"devin","history":[]}))
+        .await
+        .unwrap();
+    assert_eq!(imp.id, "i1");
+
+    // Registry-wide surfaces.
+    let agents = api.list_agents().await.unwrap();
+    assert_eq!(agents.len(), 1);
+    let projects = api.list_projects().await.unwrap();
+    assert_eq!(projects.len(), 1);
+    let p = api.create_project("P", Some("laptop")).await.unwrap();
+    assert_eq!(serde_json::to_value(&p).unwrap()["node"], "laptop");
+    api.delete_project("p1", Some("laptop")).await.unwrap();
+    // Every node — the dead "ghost" leg errors, surfacing first_err.
+    assert!(api.delete_project("p2", None).await.is_err());
+    let cfg = api.get_config().await.unwrap();
+    assert_eq!(cfg["theme"], json!("dark"));
+    api.set_config("theme", &json!("light")).await.unwrap();
+    let dirs = api.fs_dirs("/", Some("laptop".into())).await.unwrap();
+    assert_eq!(dirs.len(), 2);
+    let info = api.node_info().await.unwrap();
+    assert_eq!(serde_json::to_value(&info).unwrap()["name"], "node-one");
+    let renamed = api.rename_node("renamed", Some("laptop")).await.unwrap();
+    assert_eq!(serde_json::to_value(&renamed).unwrap()["name"], "renamed");
+    let pk = api.push_vapid().await.unwrap();
+    assert_eq!(pk, "pk-1");
+    api.push_subscribe(&peregrin_web::dto::PushSubscriptionDto::default())
+        .await
+        .unwrap();
+    api.push_unsubscribe("ep").await.unwrap();
+
+    // The projected + never-synced rows merge for node_status.
+    projection
+        .upsert_node(&peregrin_sync::NodeRef {
+            id: "laptop".into(),
+            url: url.clone(),
+            label: "laptop".into(),
+        })
+        .unwrap();
+    // Registered but never synced — drop any row the engine's loop
+    // already wrote so the registry fallback builds the "unknown" row.
+    let _ = projection.remove_node("ghost");
+    let statuses = api.node_status().await.unwrap();
+    assert!(statuses.iter().any(|s| s.id == "laptop"));
+    assert!(
+        statuses
+            .iter()
+            .any(|s| s.id == "ghost" && s.status == "unknown"),
+        "{statuses:?}"
+    );
+    // node_url_for resolves the projection owner → (url, token).
+    let (u, _t) = api.node_url_for("s1", None).unwrap();
+    assert_eq!(u, url);
+    // A metadata-kind op queues with kind="metadata".
+    let _ = outbox;
+    assert!(
+        mock.calls()
+            .iter()
+            .any(|c| c.contains("/api/sessions/s1/history"))
+    );
+}
+
+/// The mock answers `{error}` bodies — `err_message` surfaces them.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn api_error_arms() {
+    let mock = Canned::default();
+    mock.fail.lock().unwrap().push("/api/".into());
+    let (_m, url) = serve_canned(mock).await;
+    let (api, projection, _o, _dir) = api_against(vec![hub_node("laptop", &url)]);
+    seed(&projection);
+    // post_direct error surface.
+    assert!(api.attach("s1", None, true).await.is_err());
+    assert!(api.history("s1", None, None, None).await.is_err());
+    // merged_list: every node fails → Err; a missing key → skipped.
+    assert!(api.list_agents().await.is_err());
+    // scoped_client: unknown node id / no nodes.
+    assert!(
+        api.create_session("/w", None, None, None, Some("nope"))
+            .await
+            .is_err()
+    );
+    // delete_project on a failing node → first_err surfaces.
+    assert!(api.delete_project("p1", None).await.is_err());
+}
+
+/// Failing credential store → the resolve/adopt warn arms run.
+struct BadCreds;
+impl NodeCredentials for BadCreds {
+    fn get(&self, _id: &str) -> Result<Option<String>, String> {
+        Err("store read exploded".into())
+    }
+    fn set(&self, _id: &str, _t: &str) -> Result<(), String> {
+        Err("store write exploded".into())
+    }
+    fn delete(&self, _id: &str) -> Result<(), String> {
+        Err("store delete exploded".into())
+    }
+    fn backend(&self) -> &'static str {
+        "bad"
+    }
+}
+
+#[test]
+fn resolve_node_tokens_warns_and_degrades() {
+    let mut nodes = vec![
+        HubNode {
+            id: "a".into(),
+            url: "http://a".into(),
+            token: Some("env".into()),
+        },
+        HubNode {
+            id: "b".into(),
+            url: "http://b".into(),
+            token: None,
+        },
+    ];
+    let creds = BadCreds;
+    let (resolved, seeded) = resolve_node_tokens(&mut nodes, &creds);
+    assert_eq!((resolved, seeded), (0, 0));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn pair_error_arms() {
+    // The node's pair route fails → the {error} payload surfaces.
+    let mock = Canned::default();
+    mock.fail.lock().unwrap().push("/api/pair".into());
+    let (_m, url) = serve_canned(mock).await;
+    let (api, _p, _o, _dir) = api_against(vec![hub_node("laptop", &url)]);
+    let err = api.pair("code", None).await.unwrap_err();
+    assert!(err.contains("node blew up"), "{err}");
+
+    // Pair against a good node whose creds write fails — the minted
+    // token still returns (in-memory adoption degrades to warn).
+    let (mock2, url2) = serve_canned(Canned::default()).await;
+    let _ = mock2;
+    let projection = peregrin_sync::ProjectionStore::in_memory().unwrap();
+    let nodes = vec![hub_node("laptop", &url2)];
+    let engine = SyncEngine::spawn(
+        projection,
+        peregrin_outbox::Outbox::in_memory().unwrap(),
+        nodes.iter().map(|n| {
+            NodeTarget::new(peregrin_sync::NodeRef {
+                id: n.id.clone(),
+                url: n.url.clone(),
+                label: n.id.clone(),
+            })
+        }),
+        Default::default(),
+    );
+    let api = SyncNodeApi::new(engine, nodes, Arc::new(BadCreds));
+    let token = api.pair("code", Some("laptop")).await.unwrap();
+    assert_eq!(token, "sepia_minted");
+}
+
+/// import/convert/push/etc. on a hub with no primary → scoped_client's
+/// "no nodes" arm; err_message's non-Http arm via a dead transport.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn scoped_client_and_transport_arms() {
+    let (api, _p, _o, _dir) = api_against(vec![]);
+    assert!(api.node_info().await.is_err());
+    assert!(api.get_config().await.is_err());
+    // A dead node: ensure_importable transport → err_message's
+    // non-Http `other` arm inside transfer_session.
+    let (_mock, url) = serve_canned(Canned::default()).await;
+    let nodes = vec![
+        hub_node("laptop", "http://127.0.0.1:9"),
+        hub_node("tower", &url),
+    ];
+    let (api, projection, _o, _dir) = api_against(nodes);
+    seed(&projection);
+    let err = api
+        .transfer_session("s1", Some("devin"), "tower", None)
+        .await
+        .unwrap_err();
+    assert!(err.contains("transport"), "{err}");
 }

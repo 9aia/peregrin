@@ -494,9 +494,18 @@ async fn settings_ssr_renders_config_keys() {
         html.contains("theme") && html.contains("historyLimit"),
         "SSR'd settings should contain the stubbed config keys; got:\n{html}"
     );
+    // `subscribed` is `None` until the client-side probe, but coverage
+    // builds seed it `Some(true)` — the subscribed (Disable) arm
+    // renders instead of the subscribe one.
+    #[cfg(not(coverage))]
     assert!(
         html.contains("Enable notifications"),
         "push section should render the subscribe button; got:\n{html}"
+    );
+    #[cfg(coverage)]
+    assert!(
+        html.contains("Disable notifications"),
+        "push section should render the seeded subscribed state; got:\n{html}"
     );
 }
 

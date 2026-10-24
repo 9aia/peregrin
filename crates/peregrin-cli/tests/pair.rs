@@ -14,6 +14,18 @@ fn peregrin(args: &[&str]) -> Output {
         .unwrap()
 }
 
+#[test]
+fn failed_verb_exits_one() {
+    // A verb that can't reach the node exits 1 and prints the error —
+    // covers `main`'s Err arm in the spawned binary.
+    let out = peregrin(&["sessions", "list", "--url", "http://127.0.0.1:1"]);
+    assert!(!out.status.success());
+    assert!(
+        !String::from_utf8_lossy(&out.stderr).is_empty(),
+        "stderr should carry the error"
+    );
+}
+
 /// Crockford base32 — no I/L/O/U, `XXXX-XXXX` (~40 bits).
 fn is_crockford_code(code: &str) -> bool {
     let alphabet = |c: char| {

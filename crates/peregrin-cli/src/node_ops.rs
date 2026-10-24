@@ -921,3 +921,21 @@ pub fn push_unsubscribe(endpoint: &str, args: &TargetArgs) -> Result<(), CliErro
     println!("Unsubscribed");
     Ok(())
 }
+
+#[cfg(test)]
+mod cov_tests {
+    //! Private-helper arms the canned-node integration tests can't
+    //! drive.
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn iso_fallbacks() {
+        // Non-finite and out-of-range timestamps land on the epoch
+        // fallback; a sane value formats.
+        assert_eq!(iso_of_ms(f64::NAN), "1970-01-01T00:00:00.000Z");
+        assert_eq!(iso_of_ms(f64::INFINITY), "1970-01-01T00:00:00.000Z");
+        assert_eq!(iso_of_ms(1e40), "1970-01-01T00:00:00.000Z");
+        assert!(iso_of_ms(1_700_000_000_000.0).starts_with("2023-"));
+    }
+}

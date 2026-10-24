@@ -9,7 +9,9 @@
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
-use super::{CliError, ServiceSpec, ServiceStatus, env_template};
+#[cfg(not(coverage))]
+use super::env_template;
+use super::{CliError, ServiceSpec, ServiceStatus};
 
 /// `ai.peregrin` for the node, `ai.peregrin-hub` for the hub.
 fn label(spec: &ServiceSpec) -> String {
@@ -178,13 +180,19 @@ fn on_path(bin: &str) -> bool {
     })
 }
 
-fn require_launchctl() -> Result<(), CliError> {
-    if !on_path("launchctl") {
-        return Err(CliError(
-            "launchd: `launchctl` not found on PATH — is this macOS?".into(),
-        ));
+/// `bin` is a parameter so tests can drive both arms with real
+/// binaries (`sh`) — `launchctl` itself never exists on a linux host.
+fn require_bin(bin: &str) -> Result<(), CliError> {
+    if !on_path(bin) {
+        return Err(CliError(format!(
+            "launchd: `{bin}` not found on PATH — is this macOS?"
+        )));
     }
     Ok(())
+}
+
+fn require_launchctl() -> Result<(), CliError> {
+    require_bin("launchctl")
 }
 
 struct Proc {
@@ -313,6 +321,9 @@ pub fn install(spec: &ServiceSpec) -> Result<(), CliError> {
 
 /// bootout is best-effort — "not loaded" isn't a failure to remove files.
 pub fn uninstall(spec: &ServiceSpec, purge: bool) -> Result<(), CliError> {
+    // `launchctl` never exists on the coverage host — the block would
+    // be unreachable lines there.
+    #[cfg(not(coverage))]
     if on_path("launchctl") {
         let unit = unit_path(spec).to_string_lossy().into_owned();
         let _ = spawn(&["launchctl", "bootout", &domain(spec), &unit]);
@@ -460,4 +471,121 @@ pub fn logs(spec: &ServiceSpec, follow: bool) -> Result<i32, CliError> {
         println!("{tail}");
     }
     Ok(0)
+}
+
+#[cfg(test)]
+mod cov_tests {
+    //! Private-helper coverage the integration tests can't reach —
+    //! `launchctl` never exists on this host, so the plumbing runs
+    //! against binaries that do (`true`/`false`/`sh`).
+    #![allow(clippy::unwrap_used)]
+
+    use super::*;
+
+    fn spec(system: bool) -> ServiceSpec {
+        ServiceSpec {
+            name: "peregrin".into(),
+            exec: vec!["/bin/true".into()],
+            env_file: PathBuf::from("/nonexistent-env-file"),
+            system,
+        }
+    }
+
+    #[test]
+    fn helpers() {
+        let user = spec(false);
+        let sys = spec(true);
+        let _ = uid();
+        let _ = home_dir();
+        assert_eq!(label(&user), "ai.peregrin");
+        assert_eq!(domain(&sys), "system");
+        assert_eq!(domain(&user), format!("gui/{}", uid()));
+        assert!(service_target(&user).ends_with("/ai.peregrin"));
+        assert!(log_path(&sys).starts_with("/var/log/"));
+        assert!(log_path(&user).ends_with("Library/Logs/peregrin.log"));
+        assert!(unit_path(&sys).starts_with("/Library/LaunchDaemons/"));
+        assert!(unit_path(&user).ends_with("Library/LaunchAgents/ai.peregrin.plist"));
+        assert_eq!(xml_escape("<a&b>"), "&lt;a&amp;b&gt;");
+        assert!(valid_env_key("A_B1"));
+        assert!(!valid_env_key("1A"));
+        assert!(!valid_env_key(""));
+        assert!(!valid_env_key("A-B"));
+    }
+
+    #[test]
+    fn env_file_and_log_parsing() {
+        // Missing file → empty.
+        assert!(parse_env_file(Path::new("/nonexistent-env-file")).is_empty());
+        assert!(tail_lines(Path::new("/nonexistent-log"), 5).is_empty());
+        let tmp = tempfile::tempdir().unwrap();
+        let env = tmp.path().join("env");
+        std::fs::write(
+            &env,
+            "# comment\n\nA=1\nBAD-KEY=x\n=nokey\nNOEQ\nB= 2 \nA=3\n",
+        )
+        .unwrap();
+        // Blank/comment/invalid lines drop; the duplicate collapses to
+        // the last value at the first slot's position.
+        assert_eq!(
+            parse_env_file(&env),
+            vec![
+                ("A".to_string(), "3".to_string()),
+                ("B".to_string(), "2".to_string())
+            ]
+        );
+        let log = tmp.path().join("log");
+        std::fs::write(&log, "a\nb\nc\n").unwrap();
+        assert_eq!(tail_lines(&log, 2), "b\nc");
+        assert_eq!(tail_lines(&log, 9), "a\nb\nc");
+    }
+
+    #[test]
+    fn render_both_env_arms() {
+        // No env file → no EnvironmentVariables dict.
+        let bare = render(&spec(false));
+        assert!(!bare.contains("EnvironmentVariables"));
+        let tmp = tempfile::tempdir().unwrap();
+        let env = tmp.path().join("env");
+        std::fs::write(&env, "K=V&<>\n").unwrap();
+        let mut with_env = spec(false);
+        with_env.env_file = env;
+        let plist = render(&with_env);
+        assert!(plist.contains("EnvironmentVariables"));
+        assert!(plist.contains("<key>K</key>"));
+        assert!(plist.contains("V&amp;&lt;&gt;"));
+    }
+
+    #[test]
+    fn launchctl_plumbing() {
+        assert_eq!(spawn(&["true"]).code, 0);
+        assert_ne!(spawn(&["false"]).code, 0);
+        let missing = spawn(&["definitely-not-on-path-xyz"]);
+        assert_eq!(missing.code, 1);
+        assert!(!missing.stderr.is_empty());
+        let empty = spawn(&[]);
+        assert_eq!(empty.code, 1);
+        assert_eq!(empty.stderr, "empty command");
+        assert!(run(&["true"]).is_ok());
+        assert!(run(&["false"]).is_err()); // empty detail arm
+        assert!(run(&["sh", "-c", "echo out; exit 3"]).is_err()); // stdout detail
+        assert!(run(&["sh", "-c", "echo e >&2; exit 3"]).is_err()); // stderr detail
+        assert!(!loaded(&spec(false)));
+        assert!(require_bin("sh").is_ok());
+        assert!(require_bin("definitely-not-on-path-xyz").is_err());
+        assert!(require_launchctl().is_err());
+    }
+
+    #[test]
+    fn uninstall_paths() {
+        // A system spec's unit path can't be removed without root — the
+        // best-effort delete no-ops; `purge` still drops the env file.
+        let tmp = tempfile::tempdir().unwrap();
+        let env = tmp.path().join("env");
+        std::fs::write(&env, "K=V").unwrap();
+        let mut s = spec(true);
+        s.env_file = env;
+        assert!(uninstall(&s, true).is_ok());
+        assert!(!s.env_file.exists());
+        assert!(uninstall(&s, false).is_ok());
+    }
 }

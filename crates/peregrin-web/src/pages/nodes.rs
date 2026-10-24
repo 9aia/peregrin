@@ -375,7 +375,7 @@ fn PairCard() -> impl IntoView {
                     // still execute (a single render can't take both).
                     let ok_view = res
                         .clone()
-                        .and_then(|r| r.ok())
+                        .and_then(Result::ok)
                         .map(|token| {
                             view! {
                                 <div data-name="PairSuccess" class="mt-3">
@@ -389,7 +389,7 @@ fn PairCard() -> impl IntoView {
                             }
                             .into_any()
                         });
-                    let err_view = res.and_then(|r| r.err()).map(|e| {
+                    let err_view = res.and_then(Result::err).map(|e| {
                         view! {
                             <p
                                 data-name="PairError"
@@ -439,6 +439,7 @@ mod status_variant_tests {
 /// When the node answers, the descriptor refresh invalidates the
 /// shared `node_info`/`node_status` queries.
 #[component]
+#[allow(clippy::needless_pass_by_value)] // component props are owned
 pub(crate) fn NicknameEdit(
     #[prop(into)] name: String,
     #[prop(into, optional)] node: Option<String>,

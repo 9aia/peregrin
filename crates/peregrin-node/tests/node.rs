@@ -13,6 +13,28 @@ fn free_port() -> u16 {
         .unwrap_or(18787)
 }
 
+/// SIGINT the child — the node's graceful-shutdown path exits normally,
+/// which is the only way an instrumented binary flushes its profraw
+/// (SIGKILL discards it). Fall back to `kill()` when it won't die, so
+/// teardown never hangs the suite.
+fn stop(child: &mut std::process::Child) {
+    let _ = std::process::Command::new("kill")
+        .args(["-INT", &child.id().to_string()])
+        .status();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) | Err(_) => return,
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Ok(None) => break,
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 #[test]
 fn node_serves_sessions_over_http() {
     let tmp = tempfile::tempdir().unwrap();
@@ -69,12 +91,9 @@ fn node_serves_sessions_over_http() {
             }
         }
     };
-    let _ = child.kill();
-    let _ = child.wait();
-    assert!(body.contains("devin-1"), "body: {body}");
-
     // RSS smoke budget — a headless node must idle small (plan's
     // lightweight rule; adjust if real work lands, never silently).
+    // Read *before* stopping: a reaped child has no /proc entry.
     if let Ok(status) = std::fs::read_to_string(format!("/proc/{}/status", child.id())) {
         let rss_kb = status
             .lines()
@@ -87,6 +106,27 @@ fn node_serves_sessions_over_http() {
             "node RSS {rss_kb} kB over 100 MB budget"
         );
     }
+    assert!(body.contains("devin-1"), "body: {body}");
+
+    // Convert + import ride the store seams wired in `serve` — a real
+    // node with a devin store exercises both closures (the conversion
+    // itself may fail on the mock session; the route still ran).
+    for (path, payload) in [
+        (
+            "/api/sessions/devin-1/convert",
+            serde_json::json!({"agent": "devin"}),
+        ),
+        (
+            "/api/sessions/import",
+            serde_json::json!({
+                "agent": "devin",
+                "history": [{"role":"user","content":"hi","createdAt":1_700_000_000_000.0}]
+            }),
+        ),
+    ] {
+        let _ = ureq::post(format!("http://127.0.0.1:{port}{path}")).send_json(&payload);
+    }
+    stop(&mut child);
 }
 
 /// Full stack: node -> driver store + mock ACP agent over HTTP.
@@ -194,7 +234,10 @@ fn node_attach_prompt_stream_e2e() {
             Err(_) => break,
         }
     }
-    let _ = child.kill();
-    let _ = child.wait();
     assert!(body.contains("echo: hello"), "stream body: {body}");
+    // The SSE stream is an in-flight request — graceful shutdown waits
+    // for it forever unless the client drops the connection first.
+    drop(resp);
+    drop(client);
+    stop(&mut child);
 }

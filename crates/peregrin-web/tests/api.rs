@@ -703,6 +703,35 @@ async fn http_api_error_paths() {
     let bad = Stub::serve(vec![("GET", "/api", 200, "not json")]);
     assert!(bad.client().list_agents().await.is_err());
 
+    // One non-2xx per verb — each lands on its `error_of` arm (the
+    // stub's catch-all 404 already fails anything without a route).
+    for res in [
+        c.cancel("s1", None).await.err(),
+        c.detach("s1", None).await.err(),
+        c.answer_permission("s1", None, "r1", Some("o1"))
+            .await
+            .err(),
+        c.patch_meta("s1", None, &json!({"title":"t"})).await.err(),
+        c.delete_session("s1", None).await.err(),
+        c.restore("s1", None, "cp1").await.err(),
+        c.rewind("s1", None, &RewindSelector::NodeId(3)).await.err(),
+        c.convert("s1", None, "cline").await.err(),
+        c.import(&json!({"x":1})).await.err(),
+        c.delete_project("p1", None).await.err(),
+        c.set_config("k", &json!(2)).await.err(),
+        c.rename_node("x", None).await.err(),
+        c.push_subscribe(&PushSubscriptionDto {
+            endpoint: "e".into(),
+            keys: PushKeysDto::default(),
+            prefs: None,
+        })
+        .await
+        .err(),
+        c.push_unsubscribe("e").await.err(),
+    ] {
+        assert!(res.is_some(), "expected an Err from the failing stub");
+    }
+
     // Connection refused → transport error (`get` → `e.to_string()`).
     let dead = HttpNodeApi::new("http://127.0.0.1:1", None);
     assert!(dead.list_sessions().await.is_err());

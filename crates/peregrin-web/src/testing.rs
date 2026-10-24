@@ -200,6 +200,33 @@ impl FakeNodeApi {
                         role: "user".into(),
                         node_id: Some(2),
                         content: "please fix the flaky login spec".into(),
+                        // Non-text blocks ride as attachment chips —
+                        // one variant per `attachment_views` arm:
+                        // data-inline image, uri image, src-less image
+                        // (chip fallback), mime/sized files (B/KB/MB),
+                        // uri-named, and the bare "file" fallback.
+                        blocks: Some(vec![
+                            json!({"type": "text", "text": "(attached below)"}),
+                            json!({
+                                "type": "image",
+                                "data": "aGk=",
+                                "mimeType": "image/png"
+                            }),
+                            json!({
+                                "type": "image",
+                                "uri": "https://x.dev/pic.png"
+                            }),
+                            json!({"type": "image", "name": "no-src"}),
+                            json!({
+                                "type": "file",
+                                "uri": "spec.md",
+                                "mimeType": "text/markdown"
+                            }),
+                            json!({"type": "file", "name": "small", "size": 512.0}),
+                            json!({"type": "file", "name": "mid", "size": 2048.0}),
+                            json!({"type": "file", "name": "big", "size": 2_097_152.0}),
+                            json!({"type": "file"}),
+                        ]),
                         created_at: 1_791_441_600_000.0,
                         ..HistoryMessageDto::default()
                     },
@@ -268,7 +295,12 @@ impl FakeNodeApi {
                         diffs: Some(vec![ToolCallDiff {
                             path: "/work/acme-api/tests/login.rs".into(),
                             old_text: Some("let db = shared_db();".into()),
-                            new_text: Some("let db = TestDb::isolated();".into()),
+                            // The `⋮` fold marker + a plain context
+                            // line exercise DiffBlock's muted arms.
+                            new_text: Some(
+                                "let db = TestDb::isolated();\n⋮ 2 more\nlet conn = db.conn();"
+                                    .into(),
+                            ),
                         }]),
                         locations: Some(vec![ToolCallLocation {
                             path: "/work/acme-api/tests/login.rs".into(),

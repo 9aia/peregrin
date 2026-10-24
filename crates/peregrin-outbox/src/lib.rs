@@ -429,3 +429,85 @@ struct EnvelopeOwned {
     kind: OpKind,
     payload: Value,
 }
+
+#[cfg(test)]
+mod cov_tests {
+    //! Arms the happy-path suite can't drive: enum arms that are dead
+    //! in the SQL paths (`Status` literals win there) and the sqlite
+    //! error propagation behind `?`.
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn status_names_cover_every_variant() {
+        assert_eq!(Status::Pending.as_str(), "pending");
+        assert_eq!(Status::InFlight.as_str(), "in_flight");
+        assert_eq!(Status::Done.as_str(), "done");
+        assert_eq!(Status::Dead.as_str(), "dead");
+    }
+
+    #[test]
+    fn busy_db_surfaces_sqlite_errors() {
+        // A second connection holding an exclusive write lock makes
+        // every write path hit its `?` arm.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("o.db");
+        let outbox = Outbox::open(&path).unwrap();
+        let blocker = Connection::open(&path).unwrap();
+        blocker.execute_batch("BEGIN EXCLUSIVE").unwrap();
+        assert!(
+            outbox
+                .enqueue(
+                    "n1",
+                    "s1",
+                    "prompt",
+                    OpKind::Turn,
+                    serde_json::json!(1),
+                    "k",
+                    None,
+                )
+                .is_err(),
+            "INSERT should fail on a locked db"
+        );
+        assert!(
+            outbox.peek("n1", "s1").is_err(),
+            "peek's expire sweep should fail on a locked db"
+        );
+        drop(blocker);
+    }
+
+    #[test]
+    fn corrupt_rows_surface_decode_errors() {
+        // Non-TEXT payload → `row.get("payload")?`; unparseable JSON →
+        // the envelope `map_err`. Both ride `row?`/`?` out.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("o.db");
+        let outbox = Outbox::open(&path).unwrap();
+        let e = outbox
+            .enqueue(
+                "n1",
+                "s1",
+                "prompt",
+                OpKind::Turn,
+                serde_json::json!(1),
+                "k",
+                None,
+            )
+            .unwrap();
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute("UPDATE outbox SET payload=42 WHERE id=?", params![e.id])
+                .unwrap();
+        }
+        assert!(outbox.mark_failed(&e.id, "x").is_err());
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute(
+                "UPDATE outbox SET payload='not json' WHERE id=?",
+                params![e.id],
+            )
+            .unwrap();
+        }
+        assert!(outbox.mark_failed(&e.id, "x").is_err());
+    }
+}

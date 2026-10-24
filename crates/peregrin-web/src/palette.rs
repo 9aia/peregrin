@@ -86,11 +86,17 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
     // The palette opens on ⌘K — seeded open under coverage so the
     // listbox rows render (closed elsewhere for the hidden arms).
     // `/nodes` carries a no-match query for the "No results." arm;
-    // `/?session=…` exercises the pin/archive action rows.
+    // `/?session=…` exercises the pin/archive action rows. List-filter
+    // deep links (`?q=`, `?agents=`, …) keep it closed — the seeded
+    // rows list every title regardless of the panel filter, which
+    // would mask the deep-link tests' row-absence assertions.
     #[cfg(coverage)]
     {
         let path = leptos_router::hooks::use_location().pathname.get();
-        open.set(path == "/" || path == "/nodes");
+        let filtered = ["q", "status", "agents", "sort", "recency", "archived"]
+            .iter()
+            .any(|k| query_map.read_untracked().get(k).is_some());
+        open.set(path == "/nodes" || (path == "/" && !filtered));
         session_rows.set(vec![
             crate::dto::SessionSummaryDto {
                 id: "s1".into(),
@@ -111,7 +117,7 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
         ]);
         if path == "/nodes" {
             query.set("zzz-no-match".into());
-        } else if path == "/" {
+        } else if path == "/" && !filtered {
             query.set("dev".into());
             active.set(1);
         }

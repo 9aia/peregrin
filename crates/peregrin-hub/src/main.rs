@@ -30,5 +30,13 @@ async fn main() -> std::io::Result<()> {
         site_root = %config.site_root,
         "peregrin-hub listening"
     );
-    axum::serve(listener, app).await
+    // Graceful SIGINT — mirrors the node's shutdown so an operator's
+    // ^C (or a test child's stop signal) closes listeners cleanly
+    // instead of dying on the signal.
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async {
+            let _ = tokio::signal::ctrl_c().await;
+            tracing::info!("peregrin-hub shutting down");
+        })
+        .await
 }

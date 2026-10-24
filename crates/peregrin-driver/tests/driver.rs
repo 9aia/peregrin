@@ -21,12 +21,12 @@ async fn outcome_and_error() {
             &peregrin_core::Node {
                 id: "n".into(),
                 driver: "x".into(),
-                params: Default::default(),
+                params: serde_json::Value::default(),
                 on: vec![],
             },
             &peregrin_core::Event {
                 kind: "k".into(),
-                payload: Default::default(),
+                payload: serde_json::Value::default(),
             },
         )
         .await

@@ -24,6 +24,28 @@ fn file_creds() -> (tempfile::TempDir, Arc<dyn NodeCredentials>) {
     (dir, creds)
 }
 
+/// SIGINT the child — the node's graceful-shutdown path exits normally,
+/// which is the only way an instrumented binary flushes its profraw
+/// (SIGKILL discards it). Fall back to `kill()` when it won't die, so
+/// teardown never hangs the suite.
+fn stop(child: &mut std::process::Child) {
+    let _ = std::process::Command::new("kill")
+        .args(["-INT", &child.id().to_string()])
+        .status();
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) | Err(_) => return,
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(50));
+            }
+            Ok(None) => break,
+        }
+    }
+    let _ = child.kill();
+    let _ = child.wait();
+}
+
 /* ---- mock node -------------------------------------------------------*/
 
 /// A canned node. Every request lands in `calls` as `"METHOD path"`;
@@ -559,10 +581,8 @@ async fn transfer_over_two_real_nodes() {
         .transfer_session("xfer-1", Some("devin"), "tower", Some("/remapped"))
         .await
         .unwrap();
-    let _ = node_a.kill();
-    let _ = node_b.kill();
-    let _ = node_a.wait();
-    let _ = node_b.wait();
+    stop(&mut node_a);
+    stop(&mut node_b);
     assert_eq!(res.source_node, "laptop");
     assert_eq!(res.target_node, "tower");
     // The target minted a fresh id — transfers are copies.

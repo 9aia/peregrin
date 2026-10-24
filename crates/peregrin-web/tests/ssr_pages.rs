@@ -94,15 +94,27 @@ async fn shell_rail_renders_desktop_menu() {
     assert_contains(&html, "data-aim-menu");
     assert_contains(&html, "data-name=\"AimDot\"");
     assert_contains(&html, "role=\"status\"");
-    assert_contains(&html, "Checking nodes");
     assert_contains(&html, "data-name=\"AimSummary\"");
     assert_contains(&html, "data-name=\"AimDirSubmenu\"");
     assert_contains(&html, "Directory");
     assert_contains(&html, "Most recent");
-    assert_contains(&html, "No known directories");
     assert_contains(&html, "data-name=\"AimSettings\"");
     assert_contains(&html, "data-name=\"AimShortcuts\"");
     assert_contains(&html, "Keyboard shortcuts");
+    // Coverage seeds the menu mirrors directly (a loaded probe, a
+    // two-node registry, a picked aim) — the populated arms render
+    // where the unloaded "Checking"/empty states otherwise would.
+    #[cfg(not(coverage))]
+    {
+        assert_contains(&html, "Checking nodes");
+        assert_contains(&html, "No known directories");
+    }
+    #[cfg(coverage)]
+    {
+        assert_contains(&html, "workbench online");
+        assert_contains(&html, "data-name=\"AimNodeSubmenu\"");
+        assert_contains(&html, "Reset desktop");
+    }
 }
 
 #[tokio::test]
@@ -237,9 +249,14 @@ async fn session_list_create_button_waits_for_the_node_probe() {
     // post-hydration (SSR and first-hydration markup agree on its
     // absence). The old form is gone entirely (the import Sheet's
     // own cwd override remains, behind its dialog).
+    #[cfg(not(coverage))]
     assert!(!html.contains("data-name=\"NewSessionButton\""));
     assert!(!html.contains("<form"));
     assert!(!html.contains("cwd-suggest"));
+    // Coverage seeds `node_connected` so the gated half renders too —
+    // under it the button is the expected shape.
+    #[cfg(coverage)]
+    assert_contains(&html, "data-name=\"NewSessionButton\"");
     // The import affordance + its always-mounted Sheet do SSR.
     assert_contains(&html, "data-name=\"ImportCard\"");
     assert_contains(&html, "Import session…");
@@ -406,7 +423,12 @@ async fn session_detail_renders_summary_history_and_prompt() {
     assert_contains(&html, "<textarea");
     assert_contains(&html, "Prompt the agent");
     assert_contains(&html, "data-name=\"SendButton\"");
+    // The seeded live feed marks s1 running under coverage — the
+    // button is the stop control there instead.
+    #[cfg(not(coverage))]
     assert_contains(&html, "aria-label=\"Send\"");
+    #[cfg(coverage)]
+    assert_contains(&html, "aria-label=\"Stop\"");
     assert_contains(&html, "data-name=\"ModelInput\"");
     assert_contains(&html, "placeholder=\"agent default\"");
     assert_contains(&html, "aria-label=\"Attach files\"");
@@ -579,7 +601,16 @@ async fn settings_renders_all_sections() {
     assert_contains(&html, "workbench");
     assert_contains(&html, "theme");
     assert_contains(&html, "historyLimit");
+    // `subscribed` is `None` pre-probe (Enable) but coverage seeds it
+    // `Some(true)` — the subscribed arm (Disable + per-kind prefs)
+    // renders instead.
+    #[cfg(not(coverage))]
     assert_contains(&html, "Enable notifications");
+    #[cfg(coverage)]
+    {
+        assert_contains(&html, "Disable notifications");
+        assert_contains(&html, "data-name=\"NotifyPrefs\"");
+    }
 }
 
 #[tokio::test]
@@ -615,8 +646,16 @@ async fn settings_keyboard_section_lists_bindable_actions() {
         assert_contains(&html, label);
     }
     // Default chords render as kbd glyphs — ⌘K's second binding `/`
-    // and the `?` help key both show.
+    // and the `?` help key both show. Coverage seeds the palette
+    // binding disabled + the help binding recording, so those seeded
+    // arms show instead.
+    #[cfg(not(coverage))]
     assert_contains(&html, "⌘K / /");
+    #[cfg(coverage)]
+    {
+        assert_contains(&html, ">Disabled<");
+        assert_contains(&html, "Press keys…");
+    }
     assert_contains(&html, ">n<");
     assert_contains(&html, ">?<");
     // Sessions/App groups + the fixed-Escape note.

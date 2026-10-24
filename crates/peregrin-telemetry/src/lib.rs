@@ -172,12 +172,21 @@ impl Drop for TelemetryGuard {
 /// If a global subscriber is already installed (same contract as
 /// `tracing_subscriber::fmt::init`).
 pub fn init() -> TelemetryGuard {
+    let config = config_from(|k| std::env::var(k).ok());
+    init_with(config)
+}
+
+/// [`init`]'s body with the env read lifted out — tests inject the
+/// config (process env can't be set under `forbid(unsafe_code)`).
+/// Same once-per-process subscriber contract as [`init`]; each test
+/// process gets one call.
+fn init_with(config: Option<TelemetryConfig>) -> TelemetryGuard {
     let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
     global::set_text_map_propagator(TraceContextPropagator::new());
 
-    let config = config_from(|k| std::env::var(k).ok());
-    let (otel_layer, provider, build_err) = match &config {
-        Some(config) => match build_provider(config) {
+    let configured = config.is_some();
+    let (otel_layer, provider, build_err) = match config {
+        Some(config) => match build_provider(&config) {
             Ok(provider) => {
                 let tracer = provider.tracer(env!("CARGO_PKG_NAME"));
                 (
@@ -198,7 +207,7 @@ pub fn init() -> TelemetryGuard {
 
     if let Some(e) = build_err {
         tracing::warn!("OTEL endpoint configured but exporter build failed; tracing-only: {e}");
-    } else if config.is_some() {
+    } else if configured {
         tracing::info!("OTEL tracing enabled (OTLP/HTTP)");
     }
     TelemetryGuard { provider }
@@ -276,6 +285,11 @@ pub fn record_response(span: &tracing::Span, status: u16) {
 
 #[cfg(test)]
 mod tests {
+    #![allow(
+        clippy::unwrap_used,
+        clippy::expect_used,
+        clippy::items_after_statements
+    )]
     use super::*;
     use std::collections::HashMap;
 
@@ -381,12 +395,49 @@ mod tests {
 
     #[test]
     fn init_installs_tracing_only_when_unconfigured() {
-        // One-shot global — this is the only init() call in the suite.
+        // One-shot global — one init() call per test process (nextest
+        // isolates tests into their own processes).
         let guard = init();
         assert_eq!(
             guard.provider.is_some(),
             config_from(|k| std::env::var(k).ok()).is_some()
         );
+    }
+
+    #[test]
+    fn init_with_builds_the_otlp_layer() {
+        // The `Some(config)` → provider arm: real exporter build, no
+        // connection needed.
+        let guard = init_with(Some(TelemetryConfig {
+            endpoint: Some("http://127.0.0.1:4318/v1/traces".into()),
+            service_name: "test".into(),
+        }));
+        assert!(guard.is_enabled());
+    }
+
+    #[test]
+    fn init_with_degrades_on_a_bad_endpoint() {
+        // `build_provider` fails → tracing-only + the warn arm.
+        let guard = init_with(Some(TelemetryConfig {
+            endpoint: Some(":// definitely not a url".into()),
+            service_name: "test".into(),
+        }));
+        assert!(!guard.is_enabled());
+    }
+
+    #[test]
+    fn drop_logs_shutdown_errors() {
+        // A second shutdown errs — Drop takes the eprintln arm.
+        let provider = build_provider(&TelemetryConfig {
+            endpoint: Some("http://127.0.0.1:4318/v1/traces".into()),
+            service_name: "test".into(),
+        })
+        .expect("exporter builds without connecting");
+        let _ = provider.shutdown();
+        let guard = TelemetryGuard {
+            provider: Some(provider),
+        };
+        drop(guard);
     }
 
     #[test]

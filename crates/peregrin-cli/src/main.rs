@@ -960,6 +960,7 @@ mod tests {
     //! Dispatch coverage — every `Commands`/`SessionsCommands`/… arm is
     //! reached by parsing argv and running `dispatch` against either a
     //! dead node (fast Err) or the canned node in `tests/node_ops.rs`.
+    #![allow(clippy::unwrap_used)]
     use super::*;
 
     fn rt() -> tokio::runtime::Runtime {

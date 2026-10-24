@@ -920,7 +920,7 @@ impl HttpNodeApi {
         if let Some(token) = &self.token {
             req = req.header("Authorization", format!("Bearer {token}"));
         }
-        req.send_json(body).map_err(|e| e.to_string())
+        req.send_json(body).map_err(err_msg)
     }
 
     /// `DELETE` with a JSON body — ureq's `delete` builder is
@@ -931,7 +931,7 @@ impl HttpNodeApi {
         body: &serde_json::Value,
     ) -> Result<ureq::http::Response<ureq::Body>, String> {
         let url = format!("{}{}", self.base, path);
-        let bytes = serde_json::to_vec(body).map_err(|e| e.to_string())?;
+        let bytes = serde_json::to_vec(body).map_err(err_msg)?;
         let mut builder = ureq::http::Request::builder().method("DELETE").uri(&url);
         if let Some(token) = &self.token {
             builder = builder.header("Authorization", format!("Bearer {token}"));
@@ -939,12 +939,12 @@ impl HttpNodeApi {
         let req = builder
             .header("Content-Type", "application/json")
             .body(bytes)
-            .map_err(|e| e.to_string())?;
-        self.agent.run(req).map_err(|e| e.to_string())
+            .map_err(err_msg)?;
+        self.agent.run(req).map_err(err_msg)
     }
 
     fn get(&self, path: &str) -> Result<ureq::http::Response<ureq::Body>, String> {
-        self.request("GET", path).call().map_err(|e| e.to_string())
+        self.request("GET", path).call().map_err(err_msg)
     }
 
     /// The single-node registry row for an unreachable upstream.
@@ -957,6 +957,14 @@ impl HttpNodeApi {
             last_seen_at: None,
         }
     }
+}
+
+/// `map_err` target for `Result<_, E: Display>` → `String` — named so
+/// error arms (join/serialize failures that tests can't trigger)
+/// don't carry a per-site closure region.
+#[cfg(feature = "ssr")]
+fn err_msg(e: impl std::fmt::Display) -> String {
+    e.to_string()
 }
 
 /// `Err` carries the node's `{error}` payload when there is one.
@@ -982,7 +990,7 @@ fn read_json<T: serde::de::DeserializeOwned>(
 ) -> Result<T, String> {
     if res.status().is_success() {
         let mut res = res;
-        return res.body_mut().read_json::<T>().map_err(|e| e.to_string());
+        return res.body_mut().read_json::<T>().map_err(err_msg);
     }
     Err(error_of(res, what))
 }
@@ -1064,7 +1072,7 @@ impl NodeApi for HttpNodeApi {
                 .map(|b| b.sessions)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn history(
@@ -1080,7 +1088,7 @@ impl NodeApi for HttpNodeApi {
             read_json::<HistoryPageDto>(api.get(&path)?, "get history")
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn get_session(
@@ -1094,7 +1102,7 @@ impl NodeApi for HttpNodeApi {
             read_json::<SessionSummaryDto>(api.get(&path)?, "get session")
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn prompt(
@@ -1116,7 +1124,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
@@ -1131,7 +1139,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn create_session(
@@ -1160,7 +1168,7 @@ impl NodeApi for HttpNodeApi {
             )
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn attach(
@@ -1176,7 +1184,7 @@ impl NodeApi for HttpNodeApi {
             read_json::<AttachResultDto>(api.send_json("POST", &path, &body)?, "attach")
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn detach(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
@@ -1191,7 +1199,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn answer_permission(
@@ -1213,7 +1221,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn patch_meta(&self, id: &str, agent: Option<&str>, patch: &Value) -> Result<(), String> {
@@ -1229,17 +1237,14 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn delete_session(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
         let path = format!("/api/sessions/{}{}", url_encode(id), id_query(agent));
         let api = self.clone();
         tokio::task::spawn_blocking(move || {
-            let res = api
-                .request("DELETE", &path)
-                .call()
-                .map_err(|e| e.to_string())?;
+            let res = api.request("DELETE", &path).call().map_err(err_msg)?;
             if res.status().is_success() {
                 Ok(())
             } else {
@@ -1247,7 +1252,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn checkpoints(
@@ -1266,7 +1271,7 @@ impl NodeApi for HttpNodeApi {
             read_json::<CheckpointsBody>(api.get(&path)?, "list checkpoints").map(|b| b.checkpoints)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn restore(&self, id: &str, agent: Option<&str>, checkpoint: &str) -> Result<(), String> {
@@ -1282,7 +1287,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn rewind(
@@ -1299,13 +1304,13 @@ impl NodeApi for HttpNodeApi {
             if res.status().is_success() {
                 res.into_body()
                     .read_json::<RewindResultDto>()
-                    .map_err(|e| e.to_string())
+                    .map_err(err_msg)
             } else {
                 Err(error_of(res, "rewind"))
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn convert(&self, id: &str, agent: Option<&str>, target: &str) -> Result<String, String> {
@@ -1329,7 +1334,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn import(&self, body: &Value) -> Result<ImportResultDto, String> {
@@ -1342,7 +1347,7 @@ impl NodeApi for HttpNodeApi {
             )
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn transfer_session(
@@ -1378,7 +1383,7 @@ impl NodeApi for HttpNodeApi {
             read_json::<AgentsBody>(api.get("/api/agents")?, "list agents").map(|b| b.agents)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn list_projects(&self) -> Result<Vec<ProjectDto>, String> {
@@ -1393,7 +1398,7 @@ impl NodeApi for HttpNodeApi {
                 .map(|b| b.projects)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn create_project(&self, name: &str, _node: Option<&str>) -> Result<ProjectDto, String> {
@@ -1408,17 +1413,14 @@ impl NodeApi for HttpNodeApi {
             read_json::<CreatedBody>(res, "create project").map(|b| b.project)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn delete_project(&self, id: &str, _node: Option<&str>) -> Result<(), String> {
         let api = self.clone();
         let path = format!("/api/projects/{}", url_encode(id));
         tokio::task::spawn_blocking(move || {
-            let res = api
-                .request("DELETE", &path)
-                .call()
-                .map_err(|e| e.to_string())?;
+            let res = api.request("DELETE", &path).call().map_err(err_msg)?;
             if res.status().is_success() {
                 Ok(())
             } else {
@@ -1426,7 +1428,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn get_config(&self) -> Result<BTreeMap<String, Value>, String> {
@@ -1440,7 +1442,7 @@ impl NodeApi for HttpNodeApi {
             read_json::<ConfigBody>(api.get("/api/config")?, "get config").map(|b| b.config)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn set_config(&self, key: &str, value: &Value) -> Result<(), String> {
@@ -1456,7 +1458,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn rename_node(&self, name: &str, _node: Option<&str>) -> Result<NodeInfoDto, String> {
@@ -1468,7 +1470,7 @@ impl NodeApi for HttpNodeApi {
             read_json::<NodeInfoDto>(api.send_json("PATCH", "/api/node", &body)?, "rename node")
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn fs_dirs(&self, path: &str, _node: Option<String>) -> Result<Vec<String>, String> {
@@ -1485,7 +1487,7 @@ impl NodeApi for HttpNodeApi {
             read_json::<FsBody>(api.get(&api_path)?, "list directories").map(|b| b.dirs)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn pair(&self, code: &str, _node: Option<&str>) -> Result<String, String> {
@@ -1510,7 +1512,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn node_info(&self) -> Result<NodeInfoDto, String> {
@@ -1519,7 +1521,7 @@ impl NodeApi for HttpNodeApi {
             read_json::<NodeInfoDto>(api.get("/api/node")?, "get node")
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn node_status(&self) -> Result<Vec<NodeStatusDto>, String> {
@@ -1544,7 +1546,7 @@ impl NodeApi for HttpNodeApi {
             Ok(vec![row])
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn pending_writes(&self) -> Result<Vec<PendingWriteDto>, String> {
@@ -1565,12 +1567,12 @@ impl NodeApi for HttpNodeApi {
                 .map(|b| b.public_key)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn push_subscribe(&self, subscription: &PushSubscriptionDto) -> Result<(), String> {
         let api = self.clone();
-        let body = serde_json::to_value(subscription).map_err(|e| e.to_string())?;
+        let body = serde_json::to_value(subscription).map_err(err_msg)?;
         tokio::task::spawn_blocking(move || {
             let res = api.send_json("POST", "/api/push/subscribe", &body)?;
             if res.status().is_success() {
@@ -1580,7 +1582,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 
     async fn push_unsubscribe(&self, endpoint: &str) -> Result<(), String> {
@@ -1595,7 +1597,7 @@ impl NodeApi for HttpNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(err_msg)?
     }
 }
 

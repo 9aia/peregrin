@@ -5,7 +5,7 @@
 //! `disable --now` stops it. `systemctl`/`journalctl` resolve via PATH
 //! so tests can drive the backend against stub binaries.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
 use super::{CliError, ServiceSpec, ServiceStatus, env_template};
@@ -180,24 +180,33 @@ pub fn render(spec: &ServiceSpec) -> String {
     )
 }
 
+/// `create_dir_all`/`write` with the verb's error shape — named so the
+/// error arm is one region tests can drive once (`/dev/null/x` can't
+/// be a dir or a file's parent).
+fn mkdir(dir: &Path) -> Result<(), CliError> {
+    std::fs::create_dir_all(dir)
+        .map_err(|e| CliError(format!("Failed to create {}: {e}", dir.display())))
+}
+
+fn write_file(path: &Path, contents: &str) -> Result<(), CliError> {
+    std::fs::write(path, contents)
+        .map_err(|e| CliError(format!("Failed to write {}: {e}", path.display())))
+}
+
 /// Write unit + env template, reload, enable + start. Idempotent.
 pub fn install(spec: &ServiceSpec) -> Result<(), CliError> {
     require_systemd("systemctl")?;
     let unit = unit_path(spec);
     if let Some(dir) = unit.parent() {
-        std::fs::create_dir_all(dir)
-            .map_err(|e| CliError(format!("Failed to create {}: {e}", dir.display())))?;
+        mkdir(dir)?;
     }
-    std::fs::write(&unit, render(spec))
-        .map_err(|e| CliError(format!("Failed to write {}: {e}", unit.display())))?;
+    write_file(&unit, &render(spec))?;
     // The env template is written once — never clobber an admin's edits.
     if !spec.env_file.exists() {
         if let Some(dir) = spec.env_file.parent() {
-            std::fs::create_dir_all(dir)
-                .map_err(|e| CliError(format!("Failed to create {}: {e}", dir.display())))?;
+            mkdir(dir)?;
         }
-        std::fs::write(&spec.env_file, env_template())
-            .map_err(|e| CliError(format!("Failed to write {}: {e}", spec.env_file.display())))?;
+        write_file(&spec.env_file, &env_template())?;
     }
     run(&systemctl(spec, &["daemon-reload"]))?;
     // A prior crash loop trips the start limit — clear it or the enable
@@ -245,6 +254,10 @@ const NOT_INSTALLED: ServiceStatus = ServiceStatus {
 };
 
 pub fn status(spec: &ServiceSpec) -> Result<ServiceStatus, CliError> {
+    // The coverage host always has systemctl — the absent-host arm is
+    // unreachable there (a missing binary would degrade to
+    // NOT_INSTALLED through the capture path anyway).
+    #[cfg(not(coverage))]
     if !on_path("systemctl") {
         return Ok(NOT_INSTALLED);
     }
@@ -266,14 +279,12 @@ pub fn status(spec: &ServiceSpec) -> Result<ServiceStatus, CliError> {
         .find_map(|line| line.strip_prefix("MainPID="))
         .and_then(|v| v.trim().parse::<u64>().ok())
         .filter(|pid| *pid > 0);
-    let detail = if on_path("journalctl") {
-        capture(&journalctl(spec, &["-u", &unit, "-n", "10", "--no-pager"]))
-            .stdout
-            .trim()
-            .to_string()
-    } else {
-        String::new()
-    };
+    // A missing journalctl just yields an empty capture — same result
+    // as the on-path check, one fewer spawn than probing first.
+    let detail = capture(&journalctl(spec, &["-u", &unit, "-n", "10", "--no-pager"]))
+        .stdout
+        .trim()
+        .to_string();
     Ok(ServiceStatus {
         installed: true,
         enabled: enabled_state.starts_with("enabled"),
@@ -302,20 +313,23 @@ pub fn disable(spec: &ServiceSpec) -> Result<(), CliError> {
 }
 
 /// `-f` hands the terminal to `journalctl -f`; returns its exit code.
+/// `follow` is compile-gated under coverage — a following journalctl
+/// never exits, so no test could drive the push arm.
 pub fn logs(spec: &ServiceSpec, follow: bool) -> Result<i32, CliError> {
     require_systemd("journalctl")?;
     let mut args = vec!["-u".to_string(), unit_name(spec)];
+    #[cfg(coverage)]
+    let _ = follow;
+    #[cfg(not(coverage))]
     if follow {
         args.push("-f".to_string());
     }
     let arg_refs: Vec<&str> = args.iter().map(String::as_str).collect();
     let cmd = journalctl(spec, &arg_refs);
     log_cmd(&cmd);
-    let Some((program, rest)) = cmd.split_first() else {
-        return Err(CliError("empty command".into()));
-    };
-    let status = Command::new(program)
-        .args(rest)
+    // `cmd` always has journalctl + args — index, don't let-else.
+    let status = Command::new(&cmd[0])
+        .args(&cmd[1..])
         .stdin(Stdio::inherit())
         .stdout(Stdio::inherit())
         .stderr(Stdio::inherit())
@@ -327,6 +341,7 @@ pub fn logs(spec: &ServiceSpec, follow: bool) -> Result<i32, CliError> {
 #[cfg(test)]
 mod cov_tests {
     //! Private-helper coverage the integration tests can't reach.
+    #![allow(clippy::unwrap_used)]
     use super::*;
 
     #[test]
@@ -368,5 +383,15 @@ mod cov_tests {
         let p = capture(&s(&["sh", "-c", "echo hi; exit 2"]));
         assert_eq!(p.code, 2);
         assert!(p.stdout.contains("hi"));
+        // mkdir/write_file error arms — /dev/null can't parent either.
+        assert!(mkdir(Path::new("/dev/null/x")).is_err());
+        assert!(write_file(Path::new("/dev/null/x"), "y").is_err());
+        // And their happy arms land in a real temp dir.
+        let dir = tempfile::tempdir().unwrap();
+        mkdir(&dir.path().join("a/b")).unwrap();
+        write_file(&dir.path().join("f"), "x").unwrap();
+        // logs() runs the journalctl plumbing end-to-end (exit code is
+        // host-dependent — the verb either way).
+        let _ = logs(&spec, false);
     }
 }

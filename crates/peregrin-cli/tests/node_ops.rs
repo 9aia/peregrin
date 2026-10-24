@@ -384,11 +384,20 @@ fn api_requests_happy_and_errors() {
         code: None,
     }
     .into();
+
+    // CliError's own Display + Error impls.
+    assert_eq!(format!("{}", CliError("boom".into())), "boom");
+    let _: &dyn std::error::Error = &CliError("boom".into());
 }
 
 #[test]
 fn api_friendly_statuses() {
-    for (code, needle) in [(400u16, "rejected"), (403, "denied"), (418, "418")] {
+    for (code, needle) in [
+        (400u16, "rejected"),
+        (403, "denied"),
+        (409, "busy or locked"),
+        (418, "418"),
+    ] {
         let stub = Stub::serve(vec![("GET", "/api/health", code, "{}")]);
         let e = api::get_health(&stub.target()).unwrap_err();
         assert!(e.message.contains(needle), "{code}: {}", e.message);
@@ -1063,4 +1072,20 @@ fn wire_request_shapes() {
     let lines = stub.lines();
     assert!(lines.iter().any(|l| l.contains("withLocks")));
     assert!(lines.iter().any(|l| l == "GET /api/sessions HTTP/1.1"));
+}
+
+#[test]
+fn verb_output_arms() {
+    // attach's mode line — "not attached" + "read-only" (the canned
+    // node only ever answers writable).
+    for body in [
+        r#"{"attached":false,"agentId":"devin"}"#,
+        r#"{"attached":true,"readOnly":true,"agentId":"devin"}"#,
+    ] {
+        let stub = Stub::serve(vec![("POST", "/api/sessions/s1/attach", 200, body)]);
+        node_ops::sessions_attach("s1", false, None, &[], None, &stub.node_args(false)).unwrap();
+    }
+    // config get on a non-object payload — the if-let misses.
+    let stub = Stub::serve(vec![("GET", "/api/config", 200, r#"{"other":1}"#)]);
+    node_ops::config_get(&stub.node_args(false)).unwrap();
 }
