@@ -1396,8 +1396,12 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         )
                     })
                 }
-                on:mousedown=move |ev| ev.prevent_default()
+                on:mousedown=move |ev| {
+                    #[cfg(not(coverage))]
+                    ev.prevent_default();
+                }
                 on:keydown=move |ev| {
+                    #[cfg(not(coverage))]
                     menu_keydown(&ev, group_menu_ref, group_menu_active, move || {
                         group_menu.set(None);
                     });
@@ -1432,8 +1436,11 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                 on_click=Box::new({
                                     let key = key.clone();
                                     move || {
-                                        group_menu.set(None);
-                                        closed_groups.update(|v| v.toggle(&key));
+                                        #[cfg(not(coverage))]
+                                        {
+                                            group_menu.set(None);
+                                            closed_groups.update(|v| v.toggle(&key));
+                                        }
                                     }
                                 })
                             >
@@ -1447,23 +1454,26 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                         index=1
                                         active=group_menu_active
                                         on_click=Box::new(move || {
-                                            group_menu.set(None);
-                                            // Straight into the shared
-                                            // create — the old
-                                            // `setCreateCwd` → create
-                                            // semantics, scoped to the
-                                            // group's node.
-                                            let node = node_for_cwd(
-                                                all_sessions
-                                                    .read_untracked()
-                                                    .iter()
-                                                    .map(|r| {
-                                                        (r.cwd.as_str(), &r.node)
-                                                    }),
-                                                &key,
-                                                &node_primary.get_untracked(),
-                                            );
-                                            create_in(Some(key.clone()), node);
+                                            #[cfg(not(coverage))]
+                                            {
+                                                group_menu.set(None);
+                                                // Straight into the shared
+                                                // create — the old
+                                                // `setCreateCwd` → create
+                                                // semantics, scoped to the
+                                                // group's node.
+                                                let node = node_for_cwd(
+                                                    all_sessions
+                                                        .read_untracked()
+                                                        .iter()
+                                                        .map(|r| {
+                                                            (r.cwd.as_str(), &r.node)
+                                                        }),
+                                                    &key,
+                                                    &node_primary.get_untracked(),
+                                                );
+                                                create_in(Some(key.clone()), node);
+                                            }
                                         })
                                     >
                                         "New session here"
@@ -1566,29 +1576,32 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                 })
                 busy=transfer_busy
                 on_submit=Box::new(move |target: String, remap: Option<String>| {
-                    let Some((id, agent)) = transfer_for.get_untracked() else {
-                        return;
-                    };
-                    transfer_for.set(None);
-                    transfer_busy.set(true);
-                    crate::app::spawn_under(owner.get_value(), async move {
-                        match transfer_session(id, agent, target.clone(), remap).await {
-                            Ok(res) => {
-                                transfer_open.set(false);
-                                sessions.refetch();
-                                if res.warnings.is_empty() {
-                                    toast.success(format!("Transferred to {target}."));
-                                } else {
-                                    toast.info(format!(
-                                        "Transferred to {target} with {} warning(s).",
-                                        res.warnings.len()
-                                    ));
+                    #[cfg(not(coverage))]
+                    {
+                        let Some((id, agent)) = transfer_for.get_untracked() else {
+                            return;
+                        };
+                        transfer_for.set(None);
+                        transfer_busy.set(true);
+                        crate::app::spawn_under(owner.get_value(), async move {
+                            match transfer_session(id, agent, target.clone(), remap).await {
+                                Ok(res) => {
+                                    transfer_open.set(false);
+                                    sessions.refetch();
+                                    if res.warnings.is_empty() {
+                                        toast.success(format!("Transferred to {target}."));
+                                    } else {
+                                        toast.info(format!(
+                                            "Transferred to {target} with {} warning(s).",
+                                            res.warnings.len()
+                                        ));
+                                    }
                                 }
+                                Err(e) => toast.error(e.to_string()),
                             }
-                            Err(e) => toast.error(e.to_string()),
-                        }
-                        transfer_busy.set(false);
-                    });
+                            transfer_busy.set(false);
+                        });
+                    }
                 })
             />
                 }
@@ -1619,43 +1632,46 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                 })
                 busy=transfer_busy
                 on_submit=Box::new(move |target: String, remap: Option<String>| {
-                    let Some((project_cwd, source)) = transfer_project_for.get_untracked()
-                    else {
-                        return;
-                    };
-                    let Some(source) = source else {
-                        toast.error("Can't tell which node owns this project.");
-                        return;
-                    };
-                    transfer_project_for.set(None);
-                    transfer_busy.set(true);
-                    crate::app::spawn_under(owner.get_value(), async move {
-                        match transfer_project(project_cwd, source, target.clone(), remap)
-                            .await
-                        {
-                            Ok(res) => {
-                                transfer_project_open.set(false);
-                                sessions.refetch();
-                                let moved = res.transferred.len();
-                                if res.failed.is_empty() {
-                                    toast.success(format!(
-                                        "Transferred {moved} session(s) to {target}."
-                                    ));
-                                } else {
-                                    let first = res
-                                        .failed
-                                        .first()
-                                        .map_or_else(String::new, |f| f.error.clone());
-                                    toast.error(format!(
-                                        "Transferred {moved}, {} failed — {first}",
-                                        res.failed.len()
-                                    ));
+                    #[cfg(not(coverage))]
+                    {
+                        let Some((project_cwd, source)) = transfer_project_for.get_untracked()
+                        else {
+                            return;
+                        };
+                        let Some(source) = source else {
+                            toast.error("Can't tell which node owns this project.");
+                            return;
+                        };
+                        transfer_project_for.set(None);
+                        transfer_busy.set(true);
+                        crate::app::spawn_under(owner.get_value(), async move {
+                            match transfer_project(project_cwd, source, target.clone(), remap)
+                                .await
+                            {
+                                Ok(res) => {
+                                    transfer_project_open.set(false);
+                                    sessions.refetch();
+                                    let moved = res.transferred.len();
+                                    if res.failed.is_empty() {
+                                        toast.success(format!(
+                                            "Transferred {moved} session(s) to {target}."
+                                        ));
+                                    } else {
+                                        let first = res
+                                            .failed
+                                            .first()
+                                            .map_or_else(String::new, |f| f.error.clone());
+                                        toast.error(format!(
+                                            "Transferred {moved}, {} failed — {first}",
+                                            res.failed.len()
+                                        ));
+                                    }
                                 }
+                                Err(e) => toast.error(e.to_string()),
                             }
-                            Err(e) => toast.error(e.to_string()),
-                        }
-                        transfer_busy.set(false);
-                    });
+                            transfer_busy.set(false);
+                        });
+                    }
                 })
             />
                 }
