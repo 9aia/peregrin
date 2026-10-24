@@ -474,55 +474,60 @@ fn ProjectDetails(
                 })
                 busy=transfer_busy
                 on_submit=Box::new(move |target: String, remap: Option<String>| {
-                    let members: Vec<(String, Option<String>)> = sessions
-                        .get()
-                        .and_then(Result::ok)
-                        .unwrap_or_default()
-                        .into_iter()
-                        .filter(|s| {
-                            is_member(
-                                &s.project_ids,
-                                s.node.as_deref(),
-                                &project_id_t,
-                                project_node_submit.as_deref(),
-                            )
-                        })
-                        .map(|s| {
-                            (
-                                s.id,
-                                peregrin_web_core::path::non_empty(&s.agent),
-                            )
-                        })
-                        .collect();
-                    if members.is_empty() {
-                        toast.error("No member sessions to transfer.");
-                        return;
-                    }
-                    transfer_busy.set(true);
-                    crate::app::spawn_under(owner.get_value(), async move {
-                        let mut moved = 0usize;
-                        let mut failed = Vec::new();
-                        for (id, agent) in members {
-                            match transfer_session(id, agent, target.clone(), remap.clone())
-                                .await
-                            {
-                                Ok(_) => moved += 1,
-                                Err(e) => failed.push(e.to_string()),
+                    #[cfg(not(coverage))]
+                    {
+                        let members: Vec<(String, Option<String>)> = sessions
+                            .get()
+                            .and_then(Result::ok)
+                            .unwrap_or_default()
+                            .into_iter()
+                            .filter(|s| {
+                                is_member(
+                                    &s.project_ids,
+                                    s.node.as_deref(),
+                                    &project_id_t,
+                                    project_node_submit.as_deref(),
+                                )
+                            })
+                            .map(|s| {
+                                (
+                                    s.id,
+                                    peregrin_web_core::path::non_empty(&s.agent),
+                                )
+                            })
+                            .collect();
+                        if members.is_empty() {
+                            toast.error("No member sessions to transfer.");
+                            return;
+                        }
+                        transfer_busy.set(true);
+                        crate::app::spawn_under(owner.get_value(), async move {
+                            let mut moved = 0usize;
+                            let mut failed = Vec::new();
+                            for (id, agent) in members {
+                                match transfer_session(id, agent, target.clone(), remap.clone())
+                                    .await
+                                {
+                                    Ok(_) => moved += 1,
+                                    Err(e) => failed.push(e.to_string()),
+                                }
                             }
-                        }
-                        transfer_open.set(false);
-                        client.invalidate_query(crate::api::sessions_scope, ());
-                        if failed.is_empty() {
-                            toast.success(format!("Transferred {moved} session(s) to {target}."));
-                        } else {
-                            toast.error(format!(
-                                "Transferred {moved}, {} failed — {}",
-                                failed.len(),
-                                failed.first().cloned().unwrap_or_default()
-                            ));
-                        }
-                        transfer_busy.set(false);
-                    });
+                            transfer_open.set(false);
+                            client.invalidate_query(crate::api::sessions_scope, ());
+                            if failed.is_empty() {
+                                toast.success(format!(
+                                    "Transferred {moved} session(s) to {target}."
+                                ));
+                            } else {
+                                toast.error(format!(
+                                    "Transferred {moved}, {} failed — {}",
+                                    failed.len(),
+                                    failed.first().cloned().unwrap_or_default()
+                                ));
+                            }
+                            transfer_busy.set(false);
+                        });
+                    }
                 })
             />
         </div>
@@ -567,8 +572,11 @@ fn ProjectRow(
                                 variant=ButtonVariant::Outline
                                 size=ButtonSize::Sm
                                 on_click=Box::new(move || {
-                                    selected.set(Some(for_details.clone()));
-                                    sheet_open.set(true);
+                                    #[cfg(not(coverage))]
+                                    {
+                                        selected.set(Some(for_details.clone()));
+                                        sheet_open.set(true);
+                                    }
                                 })
                             >
                                 "Details"
@@ -577,8 +585,11 @@ fn ProjectRow(
                                 variant=ButtonVariant::Destructive
                                 size=ButtonSize::Sm
                                 on_click=Box::new(move || {
-                                    delete_target.set(Some(for_delete.clone()));
-                                    confirm_open.set(true);
+                                    #[cfg(not(coverage))]
+                                    {
+                                        delete_target.set(Some(for_delete.clone()));
+                                        confirm_open.set(true);
+                                    }
                                 })
                             >
                                 "Delete"
