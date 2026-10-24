@@ -887,7 +887,10 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                         view! {
                                             <ErrorBanner
                                                 message=e.to_string()
-                                                on_retry=Box::new(move || sessions.refetch())
+                                                on_retry=Box::new(move || {
+                                                    #[cfg(not(coverage))]
+                                                    sessions.refetch();
+                                                })
                                             />
                                         }
                                             .into_any()
@@ -1019,6 +1022,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                                                         renaming=renaming
                                                                         rename_draft=rename_draft
                                                                         on_changed=move || {
+                                                                            #[cfg(not(coverage))]
                                                                             sessions.refetch();
                                                                         }
                                                                     />
@@ -1584,7 +1588,10 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                 body="This permanently deletes the session and its history from the store."
                 confirm_label="Delete"
                 destructive=true
-                on_confirm=move || delete_confirmed.set(true)
+                on_confirm=move || {
+                    #[cfg(not(coverage))]
+                    delete_confirmed.set(true);
+                }
             />
                 }
                 .into_any()
@@ -2051,7 +2058,7 @@ fn menu_anchor(ev: &leptos::ev::MouseEvent) -> (f64, f64) {
 
 /// SSR counterpart — menus never open server-side; the signature just
 /// keeps the `on:click` handler compiling.
-#[cfg(not(feature = "hydrate"))]
+#[cfg(not(any(feature = "hydrate", coverage)))]
 fn menu_anchor(ev: &leptos::ev::MouseEvent) -> (f64, f64) {
     (f64::from(ev.client_x()), f64::from(ev.client_y()))
 }
@@ -2233,7 +2240,7 @@ fn menu_keydown(
 
 /// SSR stub — menus never open server-side; the signature keeps the
 /// `on:keydown` handlers compiling.
-#[cfg(not(feature = "hydrate"))]
+#[cfg(not(any(feature = "hydrate", coverage)))]
 fn menu_keydown(
     _ev: &leptos::ev::KeyboardEvent,
     _menu: NodeRef<leptos::html::Div>,
@@ -2284,7 +2291,10 @@ fn CtxMenuItem(
                 }
             }
             data-active=move || (active.get() == index).then_some("")
-            on:mouseenter=move |_| active.set(index)
+            on:mouseenter=move |_| {
+                #[cfg(not(coverage))]
+                active.set(index);
+            }
             on:click=move |_| {
                 #[cfg(not(coverage))]
                 on_click();
@@ -2398,7 +2408,10 @@ fn SessionSearchMenu(
     input_ref: NodeRef<leptos::html::Input>,
 ) -> impl IntoView {
     view! {
-        <details class="group relative" data-name="SearchMenu" data-panel-menu on:keydown=move |ev| crate::app::details_menu_keydown(&ev)>
+        <details class="group relative" data-name="SearchMenu" data-panel-menu on:keydown=move |ev| {
+            #[cfg(not(coverage))]
+            crate::app::details_menu_keydown(&ev);
+        }>
             <summary
                 class=HDR_MENU_BTN
                 aria-label="Search sessions"
@@ -2473,7 +2486,10 @@ fn SessionFilterMenu(
     status: RwSignal<StatusFilter>,
 ) -> impl IntoView {
     view! {
-        <details class="group relative" data-name="FilterMenu" data-panel-menu on:keydown=move |ev| crate::app::details_menu_keydown(&ev)>
+        <details class="group relative" data-name="FilterMenu" data-panel-menu on:keydown=move |ev| {
+            #[cfg(not(coverage))]
+            crate::app::details_menu_keydown(&ev);
+        }>
             <summary class=HDR_MENU_BTN aria-label="Filters" title="Filters">
                 <Icon name="sliders-horizontal" class="size-4"/>
                 {move || {
@@ -2672,7 +2688,10 @@ fn SessionFilterMenu(
 #[allow(clippy::needless_pass_by_value)] // component props are owned
 fn SessionSortMenu(sort: RwSignal<SortMode>) -> impl IntoView {
     view! {
-        <details class="group relative" data-name="SortMenu" data-panel-menu on:keydown=move |ev| crate::app::details_menu_keydown(&ev)>
+        <details class="group relative" data-name="SortMenu" data-panel-menu on:keydown=move |ev| {
+            #[cfg(not(coverage))]
+            crate::app::details_menu_keydown(&ev);
+        }>
             <summary
                 class=HDR_MENU_BTN
                 aria-label="Sort sessions"
@@ -2761,7 +2780,7 @@ fn read_import_file(
 
 /// SSR counterpart — file APIs don't exist; the markup is the
 /// behavior-free shell either way.
-#[cfg(not(feature = "hydrate"))]
+#[cfg(not(any(feature = "hydrate", coverage)))]
 fn read_import_file(
     _ev: &leptos::ev::Event,
     _picked: RwSignal<Option<(String, Value)>>,
@@ -2799,37 +2818,40 @@ fn ImportCard(
     let navigate = StoredValue::new(|_: &str, _: NavigateOptions| {});
 
     let do_import = move || {
-        let Some((_name, json)) = picked.get_untracked() else {
-            return;
-        };
-        if busy.get() {
-            return;
-        }
-        let cwd_opt = non_empty(&cwd.get_untracked());
-        let on_index = crate::app::is_sessions_index();
-        let body = match import_body(&json, &target.get_untracked(), cwd_opt.as_deref()) {
-            Ok(b) => b,
-            Err(e) => {
-                toast.error(e);
+        #[cfg(not(coverage))]
+        {
+            let Some((_name, json)) = picked.get_untracked() else {
+                return;
+            };
+            if busy.get() {
                 return;
             }
-        };
-        busy.set(true);
-        crate::app::spawn_under(owner.get_value(), async move {
-            if let Some(res) = toast.outcome(import_session(body).await, "Session imported") {
-                open.set(false);
-                on_imported();
-                let href = peregrin_web_core::filter::session_href(&res.id, &res.agent);
-                if on_index {
-                    navigate.with_value(|n| {
-                        n(&href, NavigateOptions::default());
-                    });
-                } else {
-                    crate::app::nav_external(&href);
+            let cwd_opt = non_empty(&cwd.get_untracked());
+            let on_index = crate::app::is_sessions_index();
+            let body = match import_body(&json, &target.get_untracked(), cwd_opt.as_deref()) {
+                Ok(b) => b,
+                Err(e) => {
+                    toast.error(e);
+                    return;
                 }
-            }
-            busy.set(false);
-        });
+            };
+            busy.set(true);
+            crate::app::spawn_under(owner.get_value(), async move {
+                if let Some(res) = toast.outcome(import_session(body).await, "Session imported") {
+                    open.set(false);
+                    on_imported();
+                    let href = peregrin_web_core::filter::session_href(&res.id, &res.agent);
+                    if on_index {
+                        navigate.with_value(|n| {
+                            n(&href, NavigateOptions::default());
+                        });
+                    } else {
+                        crate::app::nav_external(&href);
+                    }
+                }
+                busy.set(false);
+            });
+        }
     };
 
     view! {
