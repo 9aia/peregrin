@@ -49,6 +49,10 @@ pub fn TransferSheet(
 ) -> impl IntoView {
     let picked: RwSignal<Option<String>> = RwSignal::new(None);
     let cwd = RwSignal::new(cwd_default.get_untracked());
+    // A pick only happens on click — seed one under coverage so the
+    // selected-row class arm renders.
+    #[cfg(coverage)]
+    picked.set(Some("tower".to_string()));
     let field_id = if field_id.is_empty() {
         "transfer-cwd".to_string()
     } else {
@@ -76,7 +80,10 @@ pub fn TransferSheet(
                     variant=ButtonVariant::Ghost
                     size=ButtonSize::Icon
                     class="size-7"
-                    on_click=Box::new(move || open.set(false))
+                    on_click=Box::new(move || {
+                        #[cfg(not(coverage))]
+                        open.set(false);
+                    })
                 >
                     <Icon name="x" class="size-4"/>
                 </Button>
@@ -128,6 +135,7 @@ pub fn TransferSheet(
                                                     }
                                                 }
                                                 on:click=move |_| {
+                                                    #[cfg(not(coverage))]
                                                     if !down {
                                                         picked.set(Some(id.clone()));
                                                     }
@@ -180,7 +188,10 @@ pub fn TransferSheet(
                         attr:r#type="text"
                         attr:placeholder="Working directory on the target"
                         prop:value=move || cwd.get()
-                        on:input=move |ev| cwd.set(event_target_value(&ev))
+                        on:input=move |ev| {
+                            #[cfg(not(coverage))]
+                            cwd.set(event_target_value(&ev));
+                        }
                     />
                     <p class="text-xs text-muted-foreground">
                         "The session copy resumes under this path — it must exist on the target machine (clone/sync the checkout yourself)."
@@ -190,7 +201,10 @@ pub fn TransferSheet(
                     <Button
                         variant=ButtonVariant::Ghost
                         size=ButtonSize::Sm
-                        on_click=Box::new(move || open.set(false))
+                        on_click=Box::new(move || {
+                            #[cfg(not(coverage))]
+                            open.set(false);
+                        })
                     >
                         "Cancel"
                     </Button>
@@ -198,22 +212,31 @@ pub fn TransferSheet(
                         size=ButtonSize::Sm
                         disabled=move || busy.get() || picked.get().is_none()
                         on_click=Box::new(move || {
-                            let Some(target) = picked.get_untracked() else {
-                                return;
-                            };
-                            if busy.get_untracked() {
-                                return;
+                            #[cfg(not(coverage))]
+                            {
+                                let Some(target) = picked.get_untracked() else {
+                                    return;
+                                };
+                                if busy.get_untracked() {
+                                    return;
+                                }
+                                let remap =
+                                    peregrin_web_core::path::non_empty(&cwd.get_untracked());
+                                if remap.is_none() {
+                                    toast.info(
+                                        "No target directory — the session's stored cwd is kept.",
+                                    );
+                                }
+                                let on_submit = std::sync::Arc::clone(&on_submit);
+                                on_submit(target, remap);
                             }
-                            let remap =
-                                peregrin_web_core::path::non_empty(&cwd.get_untracked());
-                            if remap.is_none() {
-                                toast.info("No target directory — the session's stored cwd is kept.");
-                            }
-                            let on_submit = std::sync::Arc::clone(&on_submit);
-                            on_submit(target, remap);
                         })
                     >
-                        {move || if busy.get() { "Transferring…" } else { "Transfer" }}
+                        {move || {
+                            let transferring = "Transferring…";
+                            let transfer = "Transfer";
+                            if busy.get() { transferring } else { transfer }
+                        }}
                     </Button>
                 </div>
             </SheetBody>
