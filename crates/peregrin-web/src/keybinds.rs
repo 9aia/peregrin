@@ -88,3 +88,23 @@ pub fn provide_keybinds() -> Keybinds {
 pub fn use_keybinds() -> Keybinds {
     expect_context::<Keybinds>()
 }
+
+#[cfg(test)]
+mod resolve_tests {
+    use super::*;
+
+    #[test]
+    fn recording_parks_global_keys() {
+        let owner = leptos::prelude::Owner::new();
+        owner.with(|| {
+            let keybinds = Keybinds {
+                overrides: RwSignal::new(KeyOverrides::default()),
+                recording: RwSignal::new(Some(Action::TogglePalette)),
+            };
+            // Recording owns the keyboard — resolve is inert.
+            assert_eq!(keybinds.resolve("?", Mods::NONE, KeyCtx::Global), None);
+            keybinds.recording.set(None);
+            let _ = keybinds.resolve("?", Mods::NONE, KeyCtx::Global);
+        });
+    }
+}

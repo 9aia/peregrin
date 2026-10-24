@@ -198,8 +198,26 @@ mod tests {
     }
 
     #[test]
+    fn parse_edge_cases() {
+        // A `.` with no digits and a non-Z/no-offset suffix reject.
+        assert_eq!(parse_iso_ms("1970-01-01T00:00:00.Z"), None);
+        assert_eq!(parse_iso_ms("1970-01-01T00:00:00x"), None);
+        // A `+HH:MM` offset suffix is accepted (ignored, display-only).
+        assert!(parse_iso_ms("1970-01-01T00:00:00.250+01:00").is_some());
+        // Single-digit fraction scales to ms.
+        assert_eq!(parse_iso_ms("1970-01-01T00:00:00.5Z"), Some(500.0));
+    }
+
+    #[test]
+    fn short_date_fallbacks() {
+        // Out-of-range month → the raw date prefix, no panic.
+        assert_eq!(short_date("2026-99-40"), "2026-99-40");
+    }
+
+    #[test]
     fn relative_windows() {
         let iso = "1970-01-01T00:00:00Z";
+        assert_eq!(relative(iso, -1.0), "just now");
         assert_eq!(relative(iso, 0.0), "just now");
         assert_eq!(relative(iso, 45_000.0), "45s ago");
         assert_eq!(relative(iso, 12.0 * 60_000.0), "12m ago");
@@ -212,6 +230,11 @@ mod tests {
     #[test]
     fn relative_ms_matches_the_ladder() {
         assert_eq!(relative_ms(0.0, 0.0), "just now");
+        // A future timestamp reads "just now", never negative.
+        assert_eq!(relative_ms(1000.0, 0.0), "just now");
+        assert_eq!(relative_ms(0.0, 45_000.0), "45s ago");
+        assert_eq!(relative_ms(0.0, 3.0 * 3_600_000.0), "3h ago");
+        assert_eq!(relative_ms(0.0, 5.0 * 86_400_000.0), "5d ago");
         assert_eq!(relative_ms(0.0, 12.0 * 60_000.0), "12m ago");
         // 2026-10-08T06:40:34.123Z rendered long after the fact.
         assert_eq!(
