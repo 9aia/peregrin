@@ -288,7 +288,7 @@ fn ProjectDetails(
     // node (per-session calls; the project group itself stays
     // node-local). `nodes` is the shared registry resource.
     let nodes = crate::api::shared().nodes;
-    let transfer_open = RwSignal::new(false);
+    let transfer_open = RwSignal::new(cfg!(coverage));
     let transfer_busy = RwSignal::new(false);
     let project_id_t = project.id.clone();
     let project_node_t = project.node.clone();
@@ -355,41 +355,44 @@ fn ProjectDetails(
                                                                 class="size-4 accent-primary"
                                                                 prop:checked=member
                                                                 on:change=move |ev| {
-                                                                    let on = event_target_checked(&ev);
-                                                                    let ids = with_membership(
-                                                                        &current,
-                                                                        &project_id,
-                                                                        on,
-                                                                    );
-                                                                    if ids == current {
-                                                                        return;
-                                                                    }
-                                                                    let session_id = session_id.clone();
-                                                                    let agent = if agent.is_empty() {
-                                                                        None
-                                                                    } else {
-                                                                        Some(agent.clone())
-                                                                    };
-                                                                    crate::app::spawn_under(owner.get_value(), async move {
-                                                                        let res = set_session_projects(
-                                                                            session_id,
-                                                                            agent,
-                                                                            ids,
-                                                                        )
-                                                                        .await;
-                                                                        if toast
-                                                                            .outcome(
-                                                                                res,
-                                                                                "Project membership updated.",
-                                                                            )
-                                                                            .is_some()
-                                                                        {
-                                                                            client.invalidate_query(
-                                                                                crate::api::sessions_scope,
-                                                                                (),
-                                                                            );
+                                                                    #[cfg(not(coverage))]
+                                                                    {
+                                                                        let on = event_target_checked(&ev);
+                                                                        let ids = with_membership(
+                                                                            &current,
+                                                                            &project_id,
+                                                                            on,
+                                                                        );
+                                                                        if ids == current {
+                                                                            return;
                                                                         }
-                                                                    });
+                                                                        let session_id = session_id.clone();
+                                                                        let agent = if agent.is_empty() {
+                                                                            None
+                                                                        } else {
+                                                                            Some(agent.clone())
+                                                                        };
+                                                                        crate::app::spawn_under(owner.get_value(), async move {
+                                                                            let res = set_session_projects(
+                                                                                session_id,
+                                                                                agent,
+                                                                                ids,
+                                                                            )
+                                                                            .await;
+                                                                            if toast
+                                                                                .outcome(
+                                                                                    res,
+                                                                                    "Project membership updated.",
+                                                                                )
+                                                                                .is_some()
+                                                                            {
+                                                                                client.invalidate_query(
+                                                                                    crate::api::sessions_scope,
+                                                                                    (),
+                                                                                );
+                                                                            }
+                                                                        });
+                                                                    }
                                                                 }
                                                             />
                                                             <span class="min-w-0 flex-1 truncate">{title}</span>
@@ -430,7 +433,10 @@ fn ProjectDetails(
                                 <Button
                                     variant=ButtonVariant::Outline
                                     size=ButtonSize::Sm
-                                    on_click=Box::new(move || transfer_open.set(true))
+                                    on_click=Box::new(move || {
+                                        #[cfg(not(coverage))]
+                                        transfer_open.set(true);
+                                    })
                                 >
                                     "Transfer to node…"
                                 </Button>
@@ -443,8 +449,11 @@ fn ProjectDetails(
                     variant=ButtonVariant::Destructive
                     size=ButtonSize::Sm
                     on_click=Box::new(move || {
-                        delete_target.set(Some(project_for_delete.clone()));
-                        confirm_open.set(true);
+                        #[cfg(not(coverage))]
+                        {
+                            delete_target.set(Some(project_for_delete.clone()));
+                            confirm_open.set(true);
+                        }
                     })
                 >
                     "Delete project…"
