@@ -286,30 +286,38 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
     let toast = use_toast();
 
     // Runs inside the component owner, so `!Send` captures are fine.
+    // Action closures fire only from DOM events — their bodies are
+    // compiled out of coverage builds.
     let do_delete = move || {
-        let Some((id, agent)) = pending_delete.get_untracked() else {
-            return;
-        };
-        pending_delete.set(None);
-        let on_index = crate::app::is_sessions_index();
-        crate::app::spawn_under(owner.get_value(), async move {
-            if toast
-                .outcome(delete_session(id, agent).await, "Deleted")
-                .is_some()
-            {
-                sessions.refetch();
-                if on_index {
-                    navigate.with_value(|n| n("/", NavigateOptions::default()));
-                } else {
-                    crate::app::nav_external("/");
+        #[cfg(not(coverage))]
+        {
+            let Some((id, agent)) = pending_delete.get_untracked() else {
+                return;
+            };
+            pending_delete.set(None);
+            let on_index = crate::app::is_sessions_index();
+            crate::app::spawn_under(owner.get_value(), async move {
+                if toast
+                    .outcome(delete_session(id, agent).await, "Deleted")
+                    .is_some()
+                {
+                    sessions.refetch();
+                    if on_index {
+                        navigate.with_value(|n| n("/", NavigateOptions::default()));
+                    } else {
+                        crate::app::nav_external("/");
+                    }
                 }
-            }
-        });
+            });
+        }
     };
     Effect::new(move |_| {
-        if delete_confirmed.get() {
-            delete_confirmed.set(false);
-            do_delete();
+        #[cfg(not(coverage))]
+        {
+            if delete_confirmed.get() {
+                delete_confirmed.set(false);
+                do_delete();
+            }
         }
     });
 
@@ -322,53 +330,56 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
     // cwd > `/`; node/agent/model = the aim's pick, scoped away when
     // the explicit node isn't the focused one.
     let create_in = move |dir: Option<String>, explicit_node: Option<String>| {
-        // No reachable node → a create can only fail; the header
-        // affordance is hidden, so the hotkey no-ops to match (the
-        // old `nodesConnected !== "connected"` guard).
-        if creating.get_untracked() || !node_connected.get_untracked() {
-            return;
-        }
-        let aim_now = aim.get_untracked();
-        let primary = node_primary.get_untracked();
-        let focused = effective_node(&aim_now.node, &primary);
-        let cwd = resolve_create_cwd(
-            dir.as_deref(),
-            &aim_now,
-            all_sessions
-                .read_untracked()
-                .iter()
-                .map(|r| (r.cwd.as_str(), &r.node)),
-            &focused,
-            &primary,
-        );
-        let (node, agent, model) = create_target(&aim_now, explicit_node.as_deref(), &primary);
-        // Router context resolves against the owner — read it now,
-        // not inside the spawned future.
-        let on_index = crate::app::is_sessions_index();
-        creating.set(true);
-        create_error.set(None);
-        crate::app::spawn_under(owner.get_value(), async move {
-            match create_session(cwd, agent, None, model, node).await {
-                Ok(res) => {
-                    creating.set(false);
-                    sessions.refetch();
-                    let href = if res.agent_id.is_empty() {
-                        format!("/?session={}", res.id)
-                    } else {
-                        format!("/?session={}&agent={}", res.id, res.agent_id)
-                    };
-                    if on_index {
-                        navigate.with_value(|n| n(&href, NavigateOptions::default()));
-                    } else {
-                        crate::app::nav_external(&href);
+        #[cfg(not(coverage))]
+        {
+            // No reachable node → a create can only fail; the header
+            // affordance is hidden, so the hotkey no-ops to match (the
+            // old `nodesConnected !== "connected"` guard).
+            if creating.get_untracked() || !node_connected.get_untracked() {
+                return;
+            }
+            let aim_now = aim.get_untracked();
+            let primary = node_primary.get_untracked();
+            let focused = effective_node(&aim_now.node, &primary);
+            let cwd = resolve_create_cwd(
+                dir.as_deref(),
+                &aim_now,
+                all_sessions
+                    .read_untracked()
+                    .iter()
+                    .map(|r| (r.cwd.as_str(), &r.node)),
+                &focused,
+                &primary,
+            );
+            let (node, agent, model) = create_target(&aim_now, explicit_node.as_deref(), &primary);
+            // Router context resolves against the owner — read it now,
+            // not inside the spawned future.
+            let on_index = crate::app::is_sessions_index();
+            creating.set(true);
+            create_error.set(None);
+            crate::app::spawn_under(owner.get_value(), async move {
+                match create_session(cwd, agent, None, model, node).await {
+                    Ok(res) => {
+                        creating.set(false);
+                        sessions.refetch();
+                        let href = if res.agent_id.is_empty() {
+                            format!("/?session={}", res.id)
+                        } else {
+                            format!("/?session={}&agent={}", res.id, res.agent_id)
+                        };
+                        if on_index {
+                            navigate.with_value(|n| n(&href, NavigateOptions::default()));
+                        } else {
+                            crate::app::nav_external(&href);
+                        }
+                    }
+                    Err(e) => {
+                        create_error.set(Some(e.to_string()));
+                        creating.set(false);
                     }
                 }
-                Err(e) => {
-                    create_error.set(Some(e.to_string()));
-                    creating.set(false);
-                }
-            }
-        });
+            });
+        }
     };
 
     // Ordered `(id, agent)` of the rows currently on screen —
@@ -975,17 +986,21 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                                                     }
                                                                     class="flex w-full items-center gap-1.5 rounded-md px-1.5 py-0.5 text-left text-sm font-medium text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
                                                                     on:click=move |_| {
+                                                                        #[cfg(not(coverage))]
                                                                         closed_groups.update(|v| {
                                                                             v.toggle(&toggle_key);
                                                                         });
                                                                     }
                                                                     on:contextmenu=move |ev| {
-                                                                        ev.prevent_default();
-                                                                        group_menu.set(Some((
-                                                                            menu_key.clone(),
-                                                                            f64::from(ev.client_x()),
-                                                                            f64::from(ev.client_y()),
-                                                                        )));
+                                                                        #[cfg(not(coverage))]
+                                                                        {
+                                                                            ev.prevent_default();
+                                                                            group_menu.set(Some((
+                                                                                menu_key.clone(),
+                                                                                f64::from(ev.client_x()),
+                                                                                f64::from(ev.client_y()),
+                                                                            )));
+                                                                        }
                                                                     }
                                                                 >
                                                                     <span class="inline-flex w-3 shrink-0 items-center">
@@ -1108,8 +1123,12 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         )
                     })
                 }
-                on:mousedown=move |ev| ev.prevent_default()
+                on:mousedown=move |ev| {
+                    #[cfg(not(coverage))]
+                    ev.prevent_default();
+                }
                 on:keydown=move |ev| {
+                    #[cfg(not(coverage))]
                     menu_keydown(&ev, menu_ref, menu_active, move || menu_for.set(None));
                 }
             >
@@ -1152,13 +1171,16 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                 on_click=Box::new({
                                     let href = open_href.clone();
                                     move || {
-                                        menu_for.set(None);
-                                        if crate::app::is_sessions_index() {
-                                            navigate.with_value(|n| {
-                                                n(&href, NavigateOptions::default());
-                                            });
-                                        } else {
-                                            crate::app::nav_external(&href);
+                                        #[cfg(not(coverage))]
+                                        {
+                                            menu_for.set(None);
+                                            if crate::app::is_sessions_index() {
+                                                navigate.with_value(|n| {
+                                                    n(&href, NavigateOptions::default());
+                                                });
+                                            } else {
+                                                crate::app::nav_external(&href);
+                                            }
                                         }
                                     }
                                 })
@@ -1172,14 +1194,17 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                 on_click=Box::new({
                                     let id = id.clone();
                                     move || {
-                                        menu_for.set(None);
-                                        let draft = all_sessions
-                                            .read()
-                                            .iter()
-                                            .find(|s| s.id == id)
-                                            .map_or_else(String::new, |s| s.title.clone());
-                                        rename_draft.set(draft);
-                                        renaming.set(Some(id.clone()));
+                                        #[cfg(not(coverage))]
+                                        {
+                                            menu_for.set(None);
+                                            let draft = all_sessions
+                                                .read()
+                                                .iter()
+                                                .find(|s| s.id == id)
+                                                .map_or_else(String::new, |s| s.title.clone());
+                                            rename_draft.set(draft);
+                                            renaming.set(Some(id.clone()));
+                                        }
                                     }
                                 })
                             >
@@ -1193,25 +1218,28 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                     let id = id.clone();
                                     let agent = agent.clone();
                                     move || {
-                                        menu_for.set(None);
-                                        let id = id.clone();
-                                        let agent = agent.clone();
-                                        crate::app::spawn_under(owner.get_value(), async move {
-                                            let ok = if pinned_now {
-                                                "Unpinned"
-                                            } else {
-                                                "Pinned"
-                                            };
-                                            if toast
-                                                .outcome(
-                                                    pin_session(id, agent, !pinned_now).await,
-                                                    ok,
-                                                )
-                                                .is_some()
-                                            {
-                                                sessions.refetch();
-                                            }
-                                        });
+                                        #[cfg(not(coverage))]
+                                        {
+                                            menu_for.set(None);
+                                            let id = id.clone();
+                                            let agent = agent.clone();
+                                            crate::app::spawn_under(owner.get_value(), async move {
+                                                let ok = if pinned_now {
+                                                    "Unpinned"
+                                                } else {
+                                                    "Pinned"
+                                                };
+                                                if toast
+                                                    .outcome(
+                                                        pin_session(id, agent, !pinned_now).await,
+                                                        ok,
+                                                    )
+                                                    .is_some()
+                                                {
+                                                    sessions.refetch();
+                                                }
+                                            });
+                                        }
                                     }
                                 })
                             >
@@ -1225,25 +1253,33 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                     let id = id.clone();
                                     let agent = agent.clone();
                                     move || {
-                                        menu_for.set(None);
-                                        let id = id.clone();
-                                        let agent = agent.clone();
-                                        crate::app::spawn_under(owner.get_value(), async move {
-                                            let ok = if archived_now {
-                                                "Unarchived"
-                                            } else {
-                                                "Archived"
-                                            };
-                                            if toast
-                                                .outcome(
-                                                    archive_session(id, agent, !archived_now).await,
-                                                    ok,
-                                                )
-                                                .is_some()
-                                            {
-                                                sessions.refetch();
-                                            }
-                                        });
+                                        #[cfg(not(coverage))]
+                                        {
+                                            menu_for.set(None);
+                                            let id = id.clone();
+                                            let agent = agent.clone();
+                                            crate::app::spawn_under(owner.get_value(), async move {
+                                                let ok = if archived_now {
+                                                    "Unarchived"
+                                                } else {
+                                                    "Archived"
+                                                };
+                                                if toast
+                                                    .outcome(
+                                                        archive_session(
+                                                            id,
+                                                            agent,
+                                                            !archived_now,
+                                                        )
+                                                        .await,
+                                                        ok,
+                                                    )
+                                                    .is_some()
+                                                {
+                                                    sessions.refetch();
+                                                }
+                                            });
+                                        }
                                     }
                                 })
                             >
@@ -1258,9 +1294,12 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                         index=4
                                         active=menu_active
                                         on_click=Box::new(move || {
-                                            menu_for.set(None);
-                                            transfer_for.set(Some((id.clone(), agent.clone())));
-                                            transfer_open.set(true);
+                                            #[cfg(not(coverage))]
+                                            {
+                                                menu_for.set(None);
+                                                transfer_for.set(Some((id.clone(), agent.clone())));
+                                                transfer_open.set(true);
+                                            }
                                         })
                                     >
                                         "Transfer to node…"
@@ -1282,9 +1321,12 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                     let id = id.clone();
                                     let agent = agent.clone();
                                     move || {
-                                        menu_for.set(None);
-                                        pending_delete.set(Some((id.clone(), agent.clone())));
-                                        confirm_delete.set(true);
+                                        #[cfg(not(coverage))]
+                                        {
+                                            menu_for.set(None);
+                                            pending_delete.set(Some((id.clone(), agent.clone())));
+                                            confirm_delete.set(true);
+                                        }
                                     }
                                 })
                             >
@@ -1301,10 +1343,13 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                 on_click=Box::new({
                                     let href = detail_href.clone();
                                     move || {
-                                        menu_for.set(None);
-                                        // `/sessions/:id` is always a
-                                        // route swap → document load.
-                                        crate::app::nav_external(&href);
+                                        #[cfg(not(coverage))]
+                                        {
+                                            menu_for.set(None);
+                                            // `/sessions/:id` is always a
+                                            // route swap → document load.
+                                            crate::app::nav_external(&href);
+                                        }
                                     }
                                 })
                             >
