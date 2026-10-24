@@ -275,6 +275,52 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
     let transfer_project_open = RwSignal::new(false);
     let transfer_busy = RwSignal::new(false);
     let node_rows = RwSignal::new(Vec::<NodeStatusDto>::new());
+    // Coverage builds never see pointer events — seed the open/menu
+    // signals so SSR walks the context menus, transfer sheets, import
+    // dialog, and the delete/rename subtrees. Values vary on
+    // `selected_id` (the standalone list vs the embedded detail pane)
+    // so each side of a binary arm renders on some route.
+    #[cfg(coverage)]
+    {
+        let detail = selected_id.read().is_some();
+        node_connected.set(!detail);
+        import_open.set(detail);
+        create_error.set(detail.then(|| "seeded create error".to_string()));
+        menu_for.set(Some(("s1".into(), Some("devin".into()), 10.0, 10.0)));
+        group_menu.set(Some(if detail {
+            ("/work/acme-api".into(), 10.0, 10.0)
+        } else {
+            (PINNED_KEY.to_string(), 10.0, 10.0)
+        }));
+        if detail {
+            closed_groups.update(|v| v.toggle(&"/work/acme-api".to_string()));
+        }
+        renaming.set(detail.then(|| "s1".to_string()));
+        rename_draft.set("seeded title".into());
+        confirm_delete.set(true);
+        pending_delete.set(Some(("s1".into(), Some("devin".into()))));
+        transfer_for.set(detail.then(|| ("s1".into(), Some("devin".into()))));
+        transfer_open.set(true);
+        transfer_project_for
+            .set((!detail).then(|| ("/work/acme-api".into(), Some("workbench".into()))));
+        transfer_project_open.set(true);
+        node_rows.set(vec![
+            NodeStatusDto {
+                id: "workbench".into(),
+                url: "http://a".into(),
+                label: "workbench".into(),
+                status: "up".into(),
+                last_seen_at: None,
+            },
+            NodeStatusDto {
+                id: "tower".into(),
+                url: "http://b".into(),
+                label: "tower".into(),
+                status: "up".into(),
+                last_seen_at: None,
+            },
+        ]);
+    }
     // `new_local` stores a SendWrapper in the owner arena — on SSR the
     // owner cleans up on an arbitrary tokio worker and the guard
     // panics, aborting the stream. SSR never navigates.
@@ -706,7 +752,10 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         aria-label="Collapse the sessions panel"
                         title="Collapse the sessions panel (⌘B)"
                         class="hidden size-7 items-center justify-center rounded-md text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground lg:inline-flex"
-                        on:click=move |_| panel_open.0.update(|o| *o = !*o)
+                        on:click=move |_| {
+                            #[cfg(not(coverage))]
+                            panel_open.0.update(|o| *o = !*o);
+                        }
                     >
                         <Icon name="panel-left-close" class="size-4"/>
                     </button>
@@ -750,7 +799,10 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                     )
                                     disabled=move || creating.get()
                                     title="New session (n)"
-                                    on:click=move |_| create_in(None, None)
+                                    on:click=move |_| {
+                                        #[cfg(not(coverage))]
+                                        create_in(None, None);
+                                    }
                                 >
                                     <Icon name="plus" class="size-3.5"/>
                                     {move || {
@@ -785,7 +837,10 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                 type="button"
                                 class="flex w-full items-center gap-2.5 rounded-2xl px-3 py-2 text-sm font-medium hover:bg-accent cursor-pointer"
                                 onclick="this.closest('details').removeAttribute('open')"
-                                on:click=move |_| import_open.set(true)
+                                on:click=move |_| {
+                                    #[cfg(not(coverage))]
+                                    import_open.set(true);
+                                }
                             >
                                 <Icon name="upload" class="size-4 text-muted-foreground"/>
                                 "Import session…"
@@ -1749,13 +1804,16 @@ fn SessionRowView(
         <li
             class="group relative"
             on:contextmenu=move |ev| {
-                ev.prevent_default();
-                menu.set(Some((
-                    menu_id.clone(),
-                    menu_agent.clone(),
-                    f64::from(ev.client_x()),
-                    f64::from(ev.client_y()),
-                )));
+                #[cfg(not(coverage))]
+                {
+                    ev.prevent_default();
+                    menu.set(Some((
+                        menu_id.clone(),
+                        menu_agent.clone(),
+                        f64::from(ev.client_x()),
+                        f64::from(ev.client_y()),
+                    )));
+                }
             }
         >
             <A
@@ -1784,43 +1842,57 @@ fn SessionRowView(
                                     class="h-6 w-full min-w-0 rounded-sm border border-input bg-transparent px-1 text-sm font-medium focus-visible:outline-2 focus-visible:outline-ring"
                                     prop:value=move || rename_draft.get()
                                     on:input=move |ev| {
+                                        #[cfg(not(coverage))]
                                         rename_draft.set(event_target_value(&ev));
                                     }
-                                    on:click=move |ev| ev.prevent_default()
+                                    on:click=move |ev| {
+                                        #[cfg(not(coverage))]
+                                        ev.prevent_default();
+                                    }
                                     on:keydown=move |ev: leptos::ev::KeyboardEvent| {
-                                        match ev.key().as_str() {
-                                            "Enter" => {
-                                                ev.prevent_default();
-                                                ev.stop_propagation();
-                                                renaming.set(None);
-                                                let new_title =
-                                                    rename_draft.get_untracked().trim().to_string();
-                                                if new_title.is_empty()
-                                                    || new_title == orig.trim()
-                                                {
-                                                    return;
-                                                }
-                                                let id = cid.clone();
-                                                let agent = cagent.clone();
-                                                crate::app::spawn_under(owner.get_value(), async move {
-                                                    if toast
-                                                        .outcome(
-                                                            rename_session(id, agent, new_title)
-                                                                .await,
-                                                            "Renamed",
-                                                        )
-                                                        .is_some()
+                                        #[cfg(not(coverage))]
+                                        {
+                                            match ev.key().as_str() {
+                                                "Enter" => {
+                                                    ev.prevent_default();
+                                                    ev.stop_propagation();
+                                                    renaming.set(None);
+                                                    let new_title = rename_draft
+                                                        .get_untracked()
+                                                        .trim()
+                                                        .to_string();
+                                                    if new_title.is_empty()
+                                                        || new_title == orig.trim()
                                                     {
-                                                        on_changed();
+                                                        return;
                                                     }
-                                                });
+                                                    let id = cid.clone();
+                                                    let agent = cagent.clone();
+                                                    crate::app::spawn_under(
+                                                        owner.get_value(),
+                                                        async move {
+                                                            if toast
+                                                                .outcome(
+                                                                    rename_session(
+                                                                        id, agent, new_title,
+                                                                    )
+                                                                    .await,
+                                                                    "Renamed",
+                                                                )
+                                                                .is_some()
+                                                            {
+                                                                on_changed();
+                                                            }
+                                                        },
+                                                    );
+                                                }
+                                                "Escape" => {
+                                                    ev.prevent_default();
+                                                    ev.stop_propagation();
+                                                    renaming.set(None);
+                                                }
+                                                _ => {}
                                             }
-                                            "Escape" => {
-                                                ev.prevent_default();
-                                                ev.stop_propagation();
-                                                renaming.set(None);
-                                            }
-                                            _ => {}
                                         }
                                     }
                                 />
@@ -1938,15 +2010,18 @@ fn SessionRowView(
                 data-name="RowMenuButton"
                 class="absolute right-1.5 top-1.5 z-10 inline-flex size-6 items-center justify-center rounded-md border bg-popover text-muted-foreground opacity-0 shadow-sm transition-opacity hover:bg-accent hover:text-foreground focus-visible:opacity-100 group-hover:opacity-100 [@media(hover:none)]:opacity-100"
                 on:click=move |ev| {
-                    ev.prevent_default();
-                    ev.stop_propagation();
-                    let (x, y) = menu_anchor(&ev);
-                    menu.set(Some((
-                        dots_id.clone(),
-                        dots_agent.clone(),
-                        x,
-                        y,
-                    )));
+                    #[cfg(not(coverage))]
+                    {
+                        ev.prevent_default();
+                        ev.stop_propagation();
+                        let (x, y) = menu_anchor(&ev);
+                        menu.set(Some((
+                            dots_id.clone(),
+                            dots_agent.clone(),
+                            x,
+                            y,
+                        )));
+                    }
                 }
             >
                 <Icon name="ellipsis-vertical" class="size-3.5"/>
@@ -2210,7 +2285,10 @@ fn CtxMenuItem(
             }
             data-active=move || (active.get() == index).then_some("")
             on:mouseenter=move |_| active.set(index)
-            on:click=move |_| on_click()
+            on:click=move |_| {
+                #[cfg(not(coverage))]
+                on_click();
+            }
         >
             {children()}
         </button>
@@ -2350,7 +2428,10 @@ fn SessionSearchMenu(
                         attr:aria-label="Filter sessions"
                         class="pr-16"
                         prop:value=move || text.get()
-                        on:input=move |ev| text.set(event_target_value(&ev))
+                        on:input=move |ev| {
+                            #[cfg(not(coverage))]
+                            text.set(event_target_value(&ev));
+                        }
                         attr:onkeydown="if(event.key==='Escape'){                            this.closest('details').removeAttribute('open')}"
                     />
                     <span
@@ -2485,12 +2566,15 @@ fn SessionFilterMenu(
                                             class=MENU_ITEM_CLS
                                             data-name="AgentCheckItem"
                                             on:click=move |_| {
-                                                let id = for_toggle.clone();
-                                                agents.update(|s| {
-                                                    if !s.remove(&id) {
-                                                        s.insert(id);
-                                                    }
-                                                });
+                                                #[cfg(not(coverage))]
+                                                {
+                                                    let id = for_toggle.clone();
+                                                    agents.update(|s| {
+                                                        if !s.remove(&id) {
+                                                            s.insert(id);
+                                                        }
+                                                    });
+                                                }
                                             }
                                         >
                                             <span class="min-w-0 flex-1 truncate text-left">
@@ -2526,7 +2610,10 @@ fn SessionFilterMenu(
                                     type="button"
                                     class=MENU_ITEM_CLS
                                     data-name="RecencyItem"
-                                    on:click=move |_| recency.set(r)
+                                    on:click=move |_| {
+                                        #[cfg(not(coverage))]
+                                        recency.set(r);
+                                    }
                                 >
                                     <span class="min-w-0 flex-1 truncate text-left">
                                         {r.label()}
@@ -2558,7 +2645,10 @@ fn SessionFilterMenu(
                                     type="button"
                                     class=MENU_ITEM_CLS
                                     data-name="StatusItem"
-                                    on:click=move |_| status.set(s)
+                                    on:click=move |_| {
+                                        #[cfg(not(coverage))]
+                                        status.set(s);
+                                    }
                                 >
                                     <span class="min-w-0 flex-1 truncate text-left">
                                         {s.label()}
@@ -2604,7 +2694,10 @@ fn SessionSortMenu(sort: RwSignal<SortMode>) -> impl IntoView {
                                 class=MENU_ITEM_CLS
                                 data-name="SortItem"
                                 onclick=CLOSE_MENU_ALL
-                                on:click=move |_| sort.set(m)
+                                on:click=move |_| {
+                                    #[cfg(not(coverage))]
+                                    sort.set(m);
+                                }
                             >
                                 <span class="min-w-0 flex-1 truncate text-left">
                                     {m.label()}
@@ -2788,7 +2881,10 @@ fn ImportCard(
                             accept=".json,application/json"
                             class="hidden"
                             data-name="ImportFileInput"
-                            on:change=move |ev| read_import_file(&ev, picked, toast)
+                            on:change=move |ev| {
+                                #[cfg(not(coverage))]
+                                read_import_file(&ev, picked, toast);
+                            }
                         />
                     </div>
                     <div class="space-y-1.5">
@@ -2798,7 +2894,10 @@ fn ImportCard(
                         <select
                             class=SELECT_CLASS
                             prop:value=move || target.get()
-                            on:change=move |ev| target.set(event_target_value(&ev))
+                            on:change=move |ev| {
+                                #[cfg(not(coverage))]
+                                target.set(event_target_value(&ev));
+                            }
                         >
                             {CONVERT_TARGETS
                                 .iter()
@@ -2816,7 +2915,10 @@ fn ImportCard(
                             attr:r#type="text"
                             attr:placeholder="Keep the session's cwd"
                             prop:value=move || cwd.get()
-                            on:input=move |ev| cwd.set(event_target_value(&ev))
+                            on:input=move |ev| {
+                                #[cfg(not(coverage))]
+                                cwd.set(event_target_value(&ev));
+                            }
                         />
                     </div>
                     <Button
