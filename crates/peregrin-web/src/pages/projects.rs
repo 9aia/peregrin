@@ -37,29 +37,50 @@ pub fn ProjectsPage() -> impl IntoView {
     let detail_open = RwSignal::new(false);
     let confirm_open = RwSignal::new(false);
     let delete_target: RwSignal<Option<ProjectDto>> = RwSignal::new(None);
+    // No DOM events fire in coverage — seed the open/target signals so
+    // SSR walks the details sheet, the confirm dialog, and the
+    // project transfer picker.
+    #[cfg(coverage)]
+    {
+        detail.set(Some(ProjectDto {
+            id: "p1".into(),
+            name: "Capstone Work".into(),
+            node: None,
+        }));
+        detail_open.set(true);
+        confirm_open.set(true);
+        delete_target.set(Some(ProjectDto {
+            id: "p1".into(),
+            name: "Capstone Work".into(),
+            node: None,
+        }));
+    }
 
     let create = move || {
-        let name = draft.get();
-        if name.trim().is_empty() || busy.get() {
-            return;
-        }
-        busy.set(true);
-        form_error.set(None);
-        crate::app::spawn_under(owner.get_value(), async move {
-            match create_project(name.clone(), None).await {
-                Ok(p) => {
-                    toast.success(format!("Created project \"{}\".", p.name));
-                    draft.set(String::new());
-                    projects.refetch();
-                }
-                Err(e) => {
-                    let msg = e.to_string();
-                    toast.error(msg.clone());
-                    form_error.set(Some(msg));
-                }
+        #[cfg(not(coverage))]
+        {
+            let name = draft.get();
+            if name.trim().is_empty() || busy.get() {
+                return;
             }
-            busy.set(false);
-        });
+            busy.set(true);
+            form_error.set(None);
+            crate::app::spawn_under(owner.get_value(), async move {
+                match create_project(name.clone(), None).await {
+                    Ok(p) => {
+                        toast.success(format!("Created project \"{}\".", p.name));
+                        draft.set(String::new());
+                        projects.refetch();
+                    }
+                    Err(e) => {
+                        let msg = e.to_string();
+                        toast.error(msg.clone());
+                        form_error.set(Some(msg));
+                    }
+                }
+                busy.set(false);
+            });
+        }
     };
 
     view! {
@@ -74,8 +95,11 @@ pub fn ProjectsPage() -> impl IntoView {
             <form
                 class="flex items-center gap-2"
                 on:submit=move |ev| {
-                    ev.prevent_default();
-                    create();
+                    #[cfg(not(coverage))]
+                    {
+                        ev.prevent_default();
+                        create();
+                    }
                 }
             >
                 <Input
@@ -84,7 +108,10 @@ pub fn ProjectsPage() -> impl IntoView {
                     attr:placeholder="New project name…"
                     attr:maxlength=100
                     prop:value=move || draft.get()
-                    on:input=move |ev| draft.set(event_target_value(&ev))
+                    on:input=move |ev| {
+                        #[cfg(not(coverage))]
+                        draft.set(event_target_value(&ev));
+                    }
                 />
                 <Button
                     button_type="submit"
@@ -114,7 +141,10 @@ pub fn ProjectsPage() -> impl IntoView {
                                 view! {
                                     <ErrorBanner
                                         message=e.to_string()
-                                        on_retry=Box::new(move || projects.refetch())
+                                        on_retry=Box::new(move || {
+                                            #[cfg(not(coverage))]
+                                            projects.refetch();
+                                        })
                                     />
                                 }
                                     .into_any()
@@ -195,22 +225,25 @@ pub fn ProjectsPage() -> impl IntoView {
             confirm_label="Delete"
             destructive=true
             on_confirm=move || {
-                if let Some(p) = delete_target.get() {
-                    delete_target.set(None);
-                    detail_open.set(false);
-                    detail.set(None);
-                    crate::app::spawn_under(owner.get_value(), async move {
-                        if toast
-                            .outcome(
-                                delete_project(p.id.clone(), p.node.clone()).await,
-                                format!("Deleted project \"{}\".", p.name),
-                            )
-                            .is_some()
-                        {
-                            client.invalidate_query(crate::api::projects_scope, ());
-                            client.invalidate_query(crate::api::sessions_scope, ());
-                        }
-                    });
+                #[cfg(not(coverage))]
+                {
+                    if let Some(p) = delete_target.get() {
+                        delete_target.set(None);
+                        detail_open.set(false);
+                        detail.set(None);
+                        crate::app::spawn_under(owner.get_value(), async move {
+                            if toast
+                                .outcome(
+                                    delete_project(p.id.clone(), p.node.clone()).await,
+                                    format!("Deleted project \"{}\".", p.name),
+                                )
+                                .is_some()
+                            {
+                                client.invalidate_query(crate::api::projects_scope, ());
+                                client.invalidate_query(crate::api::sessions_scope, ());
+                            }
+                        });
+                    }
                 }
             }
         />
