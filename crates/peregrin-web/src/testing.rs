@@ -225,6 +225,23 @@ impl FakeNodeApi {
                         ..HistoryMessageDto::default()
                     },
                     HistoryMessageDto {
+                        role: "assistant".into(),
+                        node_id: None,
+                        // Rich markdown — exercises every `render_block`
+                        // + `render_inline` arm: three heading levels,
+                        // strong/em/code/link spans, both list kinds,
+                        // a GFM table with center/right/left aligns,
+                        // and a plain code fence.
+                        content: "# Root\n\n## Mid\n\n### Leaf\n\n\
+                                  Text **bold** *em* `code` [link](https://x.dev).\n\n\
+                                  - first\n- second\n\n1. one\n2. two\n\n\
+                                  | Name | Cost | Note |\n| :--: | ---: | --- |\n| a | 1 | z |\n\n\
+                                  ```rust\nfn main() {}\n```"
+                            .into(),
+                        created_at: 1_791_441_615_000.0,
+                        ..HistoryMessageDto::default()
+                    },
+                    HistoryMessageDto {
                         role: "tool".into(),
                         node_id: Some(4),
                         content: "42 passed, 0 failed".into(),

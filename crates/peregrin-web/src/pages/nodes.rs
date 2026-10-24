@@ -425,11 +425,14 @@ mod status_variant_tests {
 
     #[test]
     fn every_status_bucket_maps() {
-        assert_eq!(status_variant("up"), BadgeVariant::Success);
-        assert_eq!(status_variant("queued"), BadgeVariant::Info);
-        assert_eq!(status_variant("locked"), BadgeVariant::Warning);
-        assert_eq!(status_variant("down"), BadgeVariant::Destructive);
-        assert_eq!(status_variant("mystery"), BadgeVariant::Muted);
+        assert!(matches!(status_variant("up"), BadgeVariant::Success));
+        assert!(matches!(status_variant("queued"), BadgeVariant::Info));
+        assert!(matches!(status_variant("locked"), BadgeVariant::Warning));
+        assert!(matches!(
+            status_variant("down"),
+            BadgeVariant::Destructive
+        ));
+        assert!(matches!(status_variant("mystery"), BadgeVariant::Muted));
     }
 }
 

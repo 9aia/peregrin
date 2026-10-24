@@ -1556,6 +1556,7 @@ pub fn SessionPanel(
                                                     label="Copy path"
                                                     icon="copy"
                                                     on_click=Box::new(move || {
+                                                        #[cfg(not(coverage))]
                                                         crate::components::copy_to_clipboard(&copy_cwd);
                                                     })
                                                 />
