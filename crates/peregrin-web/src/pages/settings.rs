@@ -1059,12 +1059,11 @@ fn PushSection() -> impl IntoView {
                                                 subscribed
                                                     .get()
                                                     .map(|on| {
+                                                        let success = BadgeVariant::Success;
+                                                        let muted = BadgeVariant::Muted;
+                                                        let variant = if on { success } else { muted };
                                                         view! {
-                                                            <Badge variant=move || {
-                                                                let s = BadgeVariant::Success;
-                                                                let m = BadgeVariant::Muted;
-                                                                if on { s } else { m }
-                                                            }>
+                                                            <Badge variant=variant>
                                                                 {move || {
                                                                     let e = "enabled";
                                                                     let d = "disabled";
