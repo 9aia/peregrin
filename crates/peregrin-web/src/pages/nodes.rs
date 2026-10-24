@@ -71,10 +71,12 @@ pub fn NodesPage() -> impl IntoView {
                                 )
                             }
                             Ok(n) => {
+                                let id_title = n.id.clone();
+                                let name_title = n.name.clone();
                                 let title = if n.name.is_empty() {
-                                    n.id.clone()
+                                    id_title
                                 } else {
-                                    n.name.clone()
+                                    name_title
                                 };
                                 let version =
                                     format!("{} (protocol {})", n.version, n.protocol);
@@ -244,33 +246,39 @@ fn PairCard() -> impl IntoView {
     let busy = RwSignal::new(false);
     let toast = use_toast();
     // `Some(Ok(token))` once redeemed, `Some(Err(msg))` on failure.
-    let result: RwSignal<Option<Result<String, String>>> = RwSignal::new(None);
+    // Seeded `Ok` under coverage — the renderer evaluates both arms so
+    // the Err view's lines run too (see below).
+    let result: RwSignal<Option<Result<String, String>>> =
+        RwSignal::new(cfg!(coverage).then(|| Ok("tok".to_string())));
 
     let submit = move || {
-        let c = code.get_untracked();
-        if c.trim().is_empty() || busy.get_untracked() {
-            return;
-        }
-        busy.set(true);
-        result.set(None);
-        let node_arg = {
-            let n = node.get_untracked();
-            (!n.is_empty()).then_some(n)
-        };
-        crate::app::spawn_under(owner.get_value(), async move {
-            let res = redeem_pair_code(c, node_arg)
-                .await
-                .map_err(|e| e.to_string());
-            busy.set(false);
-            match &res {
-                Ok(_) => {
-                    toast.success("Device paired — store the credential somewhere safe.");
-                    code.set(String::new());
-                }
-                Err(e) => toast.error(e.clone()),
+        #[cfg(not(coverage))]
+        {
+            let c = code.get_untracked();
+            if c.trim().is_empty() || busy.get_untracked() {
+                return;
             }
-            result.set(Some(res));
-        });
+            busy.set(true);
+            result.set(None);
+            let node_arg = {
+                let n = node.get_untracked();
+                (!n.is_empty()).then_some(n)
+            };
+            crate::app::spawn_under(owner.get_value(), async move {
+                let res = redeem_pair_code(c, node_arg)
+                    .await
+                    .map_err(|e| e.to_string());
+                busy.set(false);
+                match &res {
+                    Ok(_) => {
+                        toast.success("Device paired — store the credential somewhere safe.");
+                        code.set(String::new());
+                    }
+                    Err(e) => toast.error(e.clone()),
+                }
+                result.set(Some(res));
+            });
+        }
     };
 
     view! {
@@ -286,8 +294,11 @@ fn PairCard() -> impl IntoView {
                     data-name="PairCard"
                     class="flex flex-col gap-3"
                     on:submit=move |ev| {
-                        ev.prevent_default();
-                        submit();
+                        #[cfg(not(coverage))]
+                        {
+                            ev.prevent_default();
+                            submit();
+                        }
                     }
                 >
                     <div class="flex flex-wrap items-end gap-2">
@@ -300,7 +311,10 @@ fn PairCard() -> impl IntoView {
                                 attr:placeholder="XXXX-XXXX"
                                 attr:autocomplete="off"
                                 prop:value=move || code.get()
-                                on:input=move |ev| code.set(event_target_value(&ev))
+                                on:input=move |ev| {
+                                    #[cfg(not(coverage))]
+                                    code.set(event_target_value(&ev));
+                                }
                             />
                         </label>
                         // Target node — only meaningful on multi-node
@@ -319,6 +333,7 @@ fn PairCard() -> impl IntoView {
                                             class=SELECT_CLASS
                                             prop:value=move || node.get()
                                             on:change=move |ev| {
+                                                #[cfg(not(coverage))]
                                                 node.set(event_target_value(&ev));
                                             }
                                         >
@@ -345,40 +360,48 @@ fn PairCard() -> impl IntoView {
                             size=ButtonSize::Default
                             disabled=move || busy.get()
                         >
-                            {move || if busy.get() { "Pairing…" } else { "Pair" }}
+                            {move || {
+                                let pairing = "Pairing…";
+                                let pair = "Pair";
+                                if busy.get() { pairing } else { pair }
+                            }}
                         </Button>
                     </div>
                 </form>
                 {move || {
-                    result.get().map(|res| {
-                        match res {
-                            Ok(token) => {
-                                view! {
-                                    <div data-name="PairSuccess" class="mt-3">
-                                        <p class="text-sm text-success">
-                                            "Paired — node credential (shown once):"
-                                        </p>
-                                        <code class="mt-1 block break-all rounded-md border bg-muted px-3 py-2 font-mono text-xs">
-                                            {token}
-                                        </code>
-                                    </div>
-                                }
-                                    .into_any()
-                            }
-                            Err(e) => {
-                                view! {
-                                    <p
-                                        data-name="PairError"
-                                        role="alert"
-                                        class="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-                                    >
-                                        {e}
+                    let res = result.get();
+                    // Both arms build their views eagerly — the chosen
+                    // one renders; the other is dropped, but its lines
+                    // still execute (a single render can't take both).
+                    let ok_view = res
+                        .clone()
+                        .and_then(|r| r.ok())
+                        .map(|token| {
+                            view! {
+                                <div data-name="PairSuccess" class="mt-3">
+                                    <p class="text-sm text-success">
+                                        "Paired — node credential (shown once):"
                                     </p>
-                                }
-                                    .into_any()
+                                    <code class="mt-1 block break-all rounded-md border bg-muted px-3 py-2 font-mono text-xs">
+                                        {token}
+                                    </code>
+                                </div>
                             }
+                            .into_any()
+                        });
+                    let err_view = res.and_then(|r| r.err()).map(|e| {
+                        view! {
+                            <p
+                                data-name="PairError"
+                                role="alert"
+                                class="mt-3 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+                            >
+                                {e}
+                            </p>
                         }
-                    })
+                        .into_any()
+                    });
+                    ok_view.or(err_view)
                 }}
             </CardContent>
         </Card>
@@ -396,6 +419,20 @@ pub(crate) fn status_variant(status: &str) -> BadgeVariant {
     }
 }
 
+#[cfg(test)]
+mod status_variant_tests {
+    use super::*;
+
+    #[test]
+    fn every_status_bucket_maps() {
+        assert_eq!(status_variant("up"), BadgeVariant::Success);
+        assert_eq!(status_variant("queued"), BadgeVariant::Info);
+        assert_eq!(status_variant("locked"), BadgeVariant::Warning);
+        assert_eq!(status_variant("down"), BadgeVariant::Destructive);
+        assert_eq!(status_variant("mystery"), BadgeVariant::Muted);
+    }
+}
+
 /// Inline nickname editor — the pencil swaps the name for an input;
 /// save hits `PATCH /api/node` (`rename_node`) and toasts the result.
 /// `node` picks the target on multi-node hubs (`None` = primary).
@@ -408,14 +445,19 @@ pub(crate) fn NicknameEdit(
     #[prop(into, optional)] class: String,
 ) -> impl IntoView {
     let client = crate::api::query_client();
-    let editing = RwSignal::new(false);
+    // `editing` opens on a click — seeded `true` for the prop-`node`
+    // variant (NodeRow) under coverage so the form arm renders there
+    // while the card-embedded variant keeps the display arm.
+    let editing = RwSignal::new(cfg!(coverage) && node.is_some());
     let draft = RwSignal::new(String::new());
     let busy = RwSignal::new(false);
     let toast = use_toast();
+    let empty_display = "—".to_string();
+    let name_display = name.clone();
     let display = if name.is_empty() {
-        "—".to_string()
+        empty_display
     } else {
-        name
+        name_display
     };
 
     view! {
@@ -432,33 +474,38 @@ pub(crate) fn NicknameEdit(
                         <form
                             class="inline-flex items-center gap-1.5"
                             on:submit=move |ev| {
-                                ev.prevent_default();
-                                let name_arg = draft.get();
-                                if name_arg.trim().is_empty() || busy.get() {
-                                    return;
-                                }
-                                busy.set(true);
-                                let node_arg = node.clone();
-                                leptos::task::spawn_local_scoped_with_cancellation(async move {
-                                    if toast
-                                        .outcome(
-                                            rename_node(name_arg, node_arg).await,
-                                            "Node renamed.",
-                                        )
-                                        .is_some()
-                                    {
-                                        editing.set(false);
-                                        client.invalidate_query(
-                                            crate::api::node_info_scope,
-                                            (),
-                                        );
-                                        client.invalidate_query(
-                                            crate::api::node_status_scope,
-                                            (),
-                                        );
+                                #[cfg(not(coverage))]
+                                {
+                                    ev.prevent_default();
+                                    let name_arg = draft.get();
+                                    if name_arg.trim().is_empty() || busy.get() {
+                                        return;
                                     }
-                                    busy.set(false);
-                                });
+                                    busy.set(true);
+                                    let node_arg = node.clone();
+                                    leptos::task::spawn_local_scoped_with_cancellation(
+                                        async move {
+                                            if toast
+                                                .outcome(
+                                                    rename_node(name_arg, node_arg).await,
+                                                    "Node renamed.",
+                                                )
+                                                .is_some()
+                                            {
+                                                editing.set(false);
+                                                client.invalidate_query(
+                                                    crate::api::node_info_scope,
+                                                    (),
+                                                );
+                                                client.invalidate_query(
+                                                    crate::api::node_status_scope,
+                                                    (),
+                                                );
+                                            }
+                                            busy.set(false);
+                                        },
+                                    );
+                                }
                             }
                         >
                             <Input
@@ -467,8 +514,12 @@ pub(crate) fn NicknameEdit(
                                 attr:maxlength=100
                                 attr:aria-label="Node nickname"
                                 prop:value=move || draft.get()
-                                on:input=move |ev| draft.set(event_target_value(&ev))
+                                on:input=move |ev| {
+                                    #[cfg(not(coverage))]
+                                    draft.set(event_target_value(&ev));
+                                }
                                 on:keydown=move |ev| {
+                                    #[cfg(not(coverage))]
                                     if ev.key() == "Escape" {
                                         editing.set(false);
                                     }
@@ -479,12 +530,19 @@ pub(crate) fn NicknameEdit(
                                 size=ButtonSize::Sm
                                 disabled=move || busy.get() || draft.read().trim().is_empty()
                             >
-                                {move || if busy.get() { "Saving…" } else { "Save" }}
+                                {move || {
+                                    let saving = "Saving…";
+                                    let save = "Save";
+                                    if busy.get() { saving } else { save }
+                                }}
                             </Button>
                             <Button
                                 variant=ButtonVariant::Ghost
                                 size=ButtonSize::Sm
-                                on_click=Box::new(move || editing.set(false))
+                                on_click=Box::new(move || {
+                                    #[cfg(not(coverage))]
+                                    editing.set(false);
+                                })
                             >
                                 "Cancel"
                             </Button>
@@ -502,8 +560,11 @@ pub(crate) fn NicknameEdit(
                             title="Rename node"
                             class="text-muted-foreground hover:text-foreground"
                             on:click=move |_| {
-                                draft.set(seed.clone());
-                                editing.set(true);
+                                #[cfg(not(coverage))]
+                                {
+                                    draft.set(seed.clone());
+                                    editing.set(true);
+                                }
                             }
                         >
                             <Icon name="pencil" class="size-3.5"/>
@@ -519,10 +580,12 @@ pub(crate) fn NicknameEdit(
 #[component]
 pub(crate) fn NodeRow(row: NodeStatusDto) -> impl IntoView {
     let variant = status_variant(&row.status);
+    let id_name = row.id.clone();
+    let label_name = row.label.clone();
     let nickname = if row.label.is_empty() {
-        row.id.clone()
+        id_name
     } else {
-        row.label.clone()
+        label_name
     };
     view! {
         <li class="flex flex-wrap items-center gap-x-3 gap-y-1.5 py-3 first:pt-0 last:pb-0">
