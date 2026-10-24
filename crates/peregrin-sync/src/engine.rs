@@ -287,11 +287,10 @@ impl SyncHandle {
             let agent = write.agent.clone();
             let op = write.op.clone();
             let payload = write.payload.clone();
-            let result = tokio::task::spawn_blocking(move || {
-                client.post_op(&session_id, agent.as_deref(), &op, &payload)
+            let result = blocking(client.clone(), move |c| {
+                c.post_op(&session_id, agent.as_deref(), &op, &payload)
             })
-            .await
-            .unwrap_or_else(|e| Err(NodeError::Task(e.to_string())));
+            .await;
             match result {
                 Ok(value) => return Ok(SubmitOutcome::Applied(value)),
                 Err(e) if e.is_transport() => {
@@ -391,17 +390,21 @@ async fn supervise(shared: Arc<Shared>, mut rx: mpsc::Receiver<Cmd>, cancel: Can
                 }
                 None => break,
             },
-            Some(Err(e)) = set.join_next() => {
-                if e.is_panic() {
-                    tracing::error!("node sync loop panicked: {e}");
-                }
-            }
+            Some(Err(e)) = set.join_next() => report_join_error(&e),
             () = cancel.cancelled() => break,
         }
     }
     // `shutdown` aborts whatever didn't observe the token yet; the
     // loops' own `cancelled` arms exit promptly regardless.
     set.shutdown().await;
+}
+
+/// A node-loop task died — panics are the only noteworthy cause.
+/// Named so the arm is one region tests can drive directly.
+fn report_join_error(e: &tokio::task::JoinError) {
+    if e.is_panic() {
+        tracing::error!("node sync loop panicked: {e}");
+    }
 }
 
 /* ---- per-node loop --------------------------------------------------*/
@@ -437,10 +440,10 @@ async fn node_loop(target: NodeTarget, shared: Arc<Shared>, cancel: Cancellation
     let mut delay = shared.options.backoff_min;
     loop {
         if cancel.is_cancelled() {
-            return;
+            break;
         }
         match connect_once(&target.node, &client, &shared, &cancel).await {
-            CycleEnd::Cancelled => return,
+            CycleEnd::Cancelled => break,
             CycleEnd::PreConnect(e) => {
                 tracing::debug!(node = %node_id, "connect failed: {e}");
             }
@@ -462,7 +465,7 @@ async fn node_loop(target: NodeTarget, shared: Arc<Shared>, cancel: Cancellation
         delay = delay.saturating_mul(2).min(shared.options.backoff_max);
         tokio::select! {
             () = tokio::time::sleep(wait) => {}
-            () = cancel.cancelled() => return,
+            () = cancel.cancelled() => break,
         }
     }
 }
@@ -502,9 +505,12 @@ async fn connect_once(
         msg = rx.recv() => match msg {
             Some(PumpMsg::Subscribed) => true,
             Some(PumpMsg::Closed(e)) => {
-                return CycleEnd::PreConnect(e.unwrap_or_else(|| {
-                    NodeError::Malformed("event stream closed before subscribe".into())
-                }));
+                // Pre-subscribe closes always carry the connect error —
+                // `unwrap_or` keeps the fallback a plain evaluated arg
+                // instead of a dead closure.
+                return CycleEnd::PreConnect(e.unwrap_or(NodeError::Malformed(
+                    "event stream closed before subscribe".into(),
+                )));
             }
             Some(PumpMsg::Event(_)) | None => {
                 return CycleEnd::Disconnected(NodeError::Malformed(
@@ -789,4 +795,162 @@ fn jittered(base: Duration) -> Duration {
     );
     let pct = 75 + u32::try_from(hasher.finish() % 51).unwrap_or(25);
     base.mul_f64(f64::from(pct) / 100.0)
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+    use super::*;
+    use std::io::{Read, Write};
+
+    fn options() -> SyncOptions {
+        SyncOptions {
+            connect_timeout: Duration::from_millis(300),
+            request_timeout: Duration::from_secs(2),
+            sse_idle_timeout: Duration::from_secs(5),
+            backoff_min: Duration::from_millis(30),
+            backoff_max: Duration::from_millis(200),
+            resync_interval: Duration::from_secs(3600),
+            feed_channel: 8,
+            on_event: None,
+        }
+    }
+
+    fn shared() -> Arc<Shared> {
+        Arc::new(Shared {
+            projection: ProjectionStore::in_memory().unwrap(),
+            outbox: Outbox::in_memory().unwrap(),
+            options: options(),
+            targets: Mutex::new(HashMap::new()),
+            active_pumps: Arc::new(AtomicUsize::new(0)),
+        })
+    }
+
+    fn node(url: String) -> NodeRef {
+        NodeRef {
+            id: "n".into(),
+            url,
+            label: "n".into(),
+        }
+    }
+
+    /// Tiny canned node: `/api/events` → a held-open SSE stream with a
+    /// heartbeat cadence; anything else → `status` + `body`.
+    fn canned_node(status: &'static str, body: &'static str) -> u16 {
+        let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        std::thread::spawn(move || {
+            while let Ok((mut conn, _)) = listener.accept() {
+                let mut buf = [0u8; 8192];
+                let n = conn.read(&mut buf).unwrap_or(0);
+                let req = String::from_utf8_lossy(&buf[..n]);
+                if req.contains("/api/events") {
+                    let _ = conn
+                        .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\n");
+                    for _ in 0..100 {
+                        if conn.write_all(b"event: heartbeat\ndata: {}\n\n").is_err() {
+                            break;
+                        }
+                        let _ = conn.flush();
+                        std::thread::sleep(Duration::from_millis(30));
+                    }
+                } else {
+                    let _ = conn.write_all(
+                        format!(
+                            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                            body.len()
+                        )
+                        .as_bytes(),
+                    );
+                }
+            }
+        });
+        port
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn blocking_join_error_maps_to_task() {
+        let shared = shared();
+        let client =
+            NodeClient::with_config("http://127.0.0.1:1", None, shared.options.client_config())
+                .unwrap();
+        // A panicking closure → JoinError → `NodeError::Task`.
+        let result: Result<(), NodeError> = blocking(client, |_| panic!("boom")).await;
+        assert!(matches!(result, Err(NodeError::Task(_))));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn report_join_error_both_arms() {
+        let panicked = tokio::spawn(async { panic!("loop died") });
+        report_join_error(&panicked.await.unwrap_err());
+        let cancelled = tokio::spawn(async { std::future::pending::<()>().await });
+        cancelled.abort();
+        report_join_error(&cancelled.await.unwrap_err());
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn connect_once_pre_connect_close() {
+        // Connection refused → pump reports `Closed` before `Subscribed`.
+        let shared = shared();
+        let node = node("http://127.0.0.1:1".into());
+        let client =
+            NodeClient::with_config(&node.url, None, shared.options.client_config()).unwrap();
+        let end = connect_once(&node, &client, &shared, &CancellationToken::new()).await;
+        assert!(matches!(end, CycleEnd::PreConnect(_)));
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn connect_once_cancelled_during_handshake() {
+        // Pre-cancelled → the handshake `select` takes the cancel arm and
+        // drops `rx`; when the pump's `events()` call lands, its
+        // `Subscribed` send fails and the pump self-decrements.
+        let port = canned_node("200 OK", "[]");
+        let shared = shared();
+        let node = node(format!("http://127.0.0.1:{port}"));
+        let client =
+            NodeClient::with_config(&node.url, None, shared.options.client_config()).unwrap();
+        let cancel = CancellationToken::new();
+        cancel.cancel();
+        let end = connect_once(&node, &client, &shared, &cancel).await;
+        assert!(matches!(end, CycleEnd::Cancelled));
+        // Give the pump thread room to finish `events()` and hit the
+        // failed `Subscribed` send (rx is gone).
+        tokio::time::sleep(Duration::from_millis(800)).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn connect_once_full_cycle_then_stop() {
+        // A live canned node: subscribe → list → drain → tail. Cancelling
+        // mid-run makes connect_once set `stop`; the pump observes it at
+        // its loop top between heartbeat frames.
+        let port = canned_node("200 OK", "[]");
+        let shared = shared();
+        let node = node(format!("http://127.0.0.1:{port}"));
+        let client =
+            NodeClient::with_config(&node.url, None, shared.options.client_config()).unwrap();
+        let cancel = CancellationToken::new();
+        let task = {
+            let node = node.clone();
+            let client = client.clone();
+            let shared = Arc::clone(&shared);
+            let cancel = cancel.clone();
+            tokio::spawn(async move { connect_once(&node, &client, &shared, &cancel).await })
+        };
+        tokio::time::sleep(Duration::from_millis(500)).await;
+        cancel.cancel();
+        let end = task.await.unwrap();
+        assert!(matches!(end, CycleEnd::Cancelled));
+        tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn refetch_non_404_error_propagates() {
+        // 500 → neither the Ok nor the 404 arm — `Err(e)` returns.
+        let port = canned_node("500 Internal Server Error", "{\"error\":\"down\"}");
+        let shared = shared();
+        let node = node(format!("http://127.0.0.1:{port}"));
+        let client =
+            NodeClient::with_config(&node.url, None, shared.options.client_config()).unwrap();
+        assert!(refetch(&node, &client, &shared, "s1").await.is_err());
+    }
 }

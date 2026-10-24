@@ -680,6 +680,9 @@ mod tests {
         let toks = kinds("js", "let s = \"oops\nlet t = 1;");
         assert!(toks.contains(&(TokenKind::Keyword, "let".to_string())));
         assert_eq!(toks.iter().filter(|(k, _)| *k == TokenKind::Str).count(), 0);
+        // Unterminated at EOF still classifies as a string span.
+        let toks = kinds("js", "let s = \"unterminated");
+        assert!(toks.contains(&(TokenKind::Str, "\"unterminated".to_string())));
     }
 
     #[test]
@@ -742,5 +745,12 @@ mod tests {
         // Triple-quoted may span lines.
         let toks = highlight("python", "s = \'\'\'multi\nline\'\'\'");
         assert!(toks.iter().any(|t| t.kind == TokenKind::Str));
+    }
+
+    #[test]
+    fn unterminated_string_at_eof_still_counts() {
+        // The dangling quote reads as one Str token to EOF.
+        let toks = kinds("js", "let s = \"abc");
+        assert!(toks.contains(&(TokenKind::Str, "\"abc".to_string())));
     }
 }

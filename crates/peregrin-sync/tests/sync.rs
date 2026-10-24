@@ -25,8 +25,8 @@ use peregrin_outbox::{OpKind, Outbox};
 use peregrin_session::LocalPlane;
 use peregrin_sync::engine::SubmitOutcome;
 use peregrin_sync::{
-    IndexedSession, NodeClient, NodeRef, NodeStatus, NodeTarget, NodeWrite, ProjectionStore,
-    SyncEngine, SyncOptions,
+    IndexedSession, NodeClient, NodeRef, NodeStatus, NodeTarget, NodeWrite, PatchStatus,
+    ProjectionStore, SyncEngine, SyncOptions,
 };
 use sepia_core::storage::SessionRepository;
 use sepia_core::{Session, StorageError};
@@ -806,4 +806,364 @@ async fn shutdown_stops_all_loops_and_pumps() {
 
     stub.down();
     dead.down();
+}
+
+/* ---- NodeClient directly --------------------------------------------*/
+
+/// Canned-HTTP stub: answers every accepted connection with one fixed
+/// response until the port is dropped. Returns the bound port.
+fn canned_server(status: &str, body: &str) -> u16 {
+    let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let res = format!(
+        "HTTP/1.1 {status}\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    );
+    std::thread::spawn(move || {
+        loop {
+            let Ok((mut conn, _)) = listener.accept() else {
+                return;
+            };
+            use std::io::Write;
+            let _ = conn.write_all(res.as_bytes());
+        }
+    });
+    port
+}
+
+#[test]
+fn client_rejects_bad_base_url_and_classifies_errors() {
+    let err = NodeClient::new("ftp://node", None).err().unwrap();
+    assert!(err.to_string().contains("http(s)://"));
+    assert!(!err.is_transport());
+    let http = peregrin_sync::client::NodeError::Http {
+        status: 500,
+        body: "x".into(),
+    };
+    assert!(!http.is_transport());
+    let io: peregrin_sync::client::NodeError = std::io::Error::other("reset").into();
+    assert!(io.is_transport());
+    // ureq transport — a refused connect.
+    let client = NodeClient::new("http://127.0.0.1:1/", None).unwrap();
+    assert!(client.health().unwrap_err().is_transport());
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn client_calls_against_the_stub_app() {
+    let stub = start_stub(vec![session("s1", "S1")]).await;
+    let client = NodeClient::new(&stub.url(), Some("tok".into())).unwrap();
+    tokio::task::spawn_blocking(move || {
+        client.health().unwrap();
+        let sessions = client.list_sessions(true).unwrap();
+        assert_eq!(sessions.len(), 1);
+        let summary = client.get_summary("s1", Some("devin")).unwrap();
+        assert_eq!(summary["id"], "s1");
+        let page = client
+            .get_history("s1", Some(10), Some(5), Some("devin"))
+            .unwrap();
+        // The stub's seeded session carries whatever history its
+        // fixture has — the call path is what matters.
+        assert!(page.total <= 1);
+        // Every `post_op` arm reaches the node — the stub answers each
+        // route (the bodies' statuses don't matter to coverage).
+        for op in ["prompt", "cancel", "permission", "meta.patch", "delete"] {
+            let _ = client.post_op("s1", Some("devin"), op, &json!({}));
+        }
+        let err = client.post_op("s1", None, "bogus", &json!({})).unwrap_err();
+        assert!(err.to_string().contains("unsupported op"));
+        let _ = client.get_json("/api/node").unwrap();
+        let _ = client.send_json("POST", "/api/config", &json!({"k": 1}));
+        let _ = client.send_json("DELETE", "/api/config/k", &json!(null));
+        // Both SSE opens — the node feed and a session stream (its
+        // status depends on agent liveness; either path is fine).
+        let _stream = client.events().unwrap();
+        let _ = client.session_stream("s1", Some("devin"));
+    })
+    .await
+    .unwrap();
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn client_malformed_bodies_and_http_errors() {
+    // `sessions` field not an array.
+    let port = canned_server("200 OK", "{}");
+    let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
+    let err = tokio::task::spawn_blocking(move || client.list_sessions(false))
+        .await
+        .unwrap()
+        .unwrap_err();
+    assert!(err.to_string().contains("missing sessions array"));
+
+    // Non-2xx on `health` → the `expect_json` Http arm.
+    let port = canned_server("503 Service Unavailable", "{\"error\":\"down\"}");
+    let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
+    let err = tokio::task::spawn_blocking(move || client.health())
+        .await
+        .unwrap()
+        .unwrap_err();
+    assert!(err.to_string().contains("503"));
+
+    // Non-2xx on the SSE open → Http with the error body.
+    let port = canned_server("404 Not Found", "{\"error\":\"no\"}");
+    let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
+    let err = tokio::task::spawn_blocking(move || client.events())
+        .await
+        .unwrap()
+        .err()
+        .unwrap();
+    assert!(err.to_string().contains("404"));
+
+    // History pages missing each required field → Malformed arms.
+    for body in ["{}", "{\"messages\":[]}", "{\"messages\":[],\"total\":0}"] {
+        let port = canned_server("200 OK", body);
+        let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
+        let err = tokio::task::spawn_blocking(move || client.get_history("s1", None, None, None))
+            .await
+            .unwrap()
+            .unwrap_err();
+        assert!(err.to_string().contains("malformed"), "{body}: {err}");
+    }
+    // A well-formed page and a non-2xx both parse through expect_json.
+    let port = canned_server("200 OK", "{\"messages\":[1],\"total\":3,\"start\":2}");
+    let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
+    let page = tokio::task::spawn_blocking(move || client.get_history("s1", None, None, None))
+        .await
+        .unwrap()
+        .unwrap();
+    assert_eq!(page.start, 2);
+    let port = canned_server("500 Internal Server Error", "boom");
+    let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
+    let err = tokio::task::spawn_blocking(move || client.get_history("s1", None, None, None))
+        .await
+        .unwrap()
+        .unwrap_err();
+    assert!(err.to_string().contains("500"));
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn client_sse_stream_ends_cleanly_at_eof() {
+    // A 200 that closes after one frame — the pump sees `Ok(None)`,
+    // the clean-EOF `Closed(None)` path (not a dropped connection).
+    let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    // A plain thread, not `spawn_blocking` — an infinite accept loop on
+    // the blocking pool keeps the runtime from shutting down at test
+    // end (blocking tasks can't be aborted → 120s nextest kill).
+    std::thread::spawn(move || {
+        use std::io::Write;
+        loop {
+            let Ok((mut conn, _)) = listener.accept() else {
+                return;
+            };
+            let _ = conn.write_all(
+                b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\nConnection: close\r\n\r\n\
+                  event: heartbeat\ndata: {}\n\n",
+            );
+        }
+    });
+    let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
+    // std::thread + mpsc — a hung `spawn_blocking` can't be aborted and
+    // would stall runtime shutdown past the watchdog.
+    let (tx, rx) = std::sync::mpsc::channel();
+    std::thread::spawn(move || {
+        let events = {
+            let mut stream = client.events().unwrap();
+            let first = stream.next_event().unwrap();
+            let second = stream.next_event().unwrap();
+            (first, second)
+        };
+        let _ = tx.send(events);
+    });
+    let events = rx
+        .recv_timeout(std::time::Duration::from_secs(20))
+        .expect("SSE EOF watchdog lapsed");
+    assert_eq!(
+        events,
+        (Some(peregrin_sync::client::FeedEvent::Heartbeat), None)
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn remove_node_stops_its_loop_and_drops_state() {
+    let mut stub = start_stub(vec![session("s1", "S1")]).await;
+    let projection = ProjectionStore::in_memory().unwrap();
+    let handle = SyncEngine::spawn(
+        projection.clone(),
+        Outbox::in_memory().unwrap(),
+        [NodeTarget::new(stub.node_ref("n1"))],
+        fast_options(),
+    );
+    let proj = projection.clone();
+    wait_until(
+        || indexed("n1", "s1")(&proj).is_some(),
+        Duration::from_secs(10),
+        "synced",
+    )
+    .await;
+    handle.remove_node("n1").await.unwrap();
+    assert!(proj.node("n1").unwrap().is_none());
+    assert!(indexed("n1", "s1")(&proj).is_none());
+    stub.down();
+    handle.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn supervisor_warns_when_node_upsert_fails() {
+    // A `nodes`-less projection → `upsert_node` errors → the supervisor's
+    // warn arm (the loop still spawns and connects normally).
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("proj.db");
+    let projection = ProjectionStore::open(&path).unwrap();
+    {
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute_batch("DROP TABLE nodes").unwrap();
+    }
+    let handle = SyncEngine::spawn(
+        projection,
+        Outbox::in_memory().unwrap(),
+        [NodeTarget::new(NodeRef {
+            id: "n1".into(),
+            url: "http://127.0.0.1:1".into(),
+            label: "n".into(),
+        })],
+        fast_options(),
+    );
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    handle.shutdown().await;
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn resync_tick_and_lagged_frame_relist() {
+    let mut stub = start_stub(vec![session("s1", "S1")]).await;
+    let projection = ProjectionStore::in_memory().unwrap();
+    let handle = SyncEngine::spawn(
+        projection.clone(),
+        Outbox::in_memory().unwrap(),
+        [NodeTarget::new(stub.node_ref("n1"))],
+        SyncOptions {
+            resync_interval: Duration::from_millis(80),
+            ..fast_options()
+        },
+    );
+    let proj = projection.clone();
+    wait_until(
+        || indexed("n1", "s1")(&proj).is_some(),
+        Duration::from_secs(10),
+        "synced",
+    )
+    .await;
+    // A `lagged` frame forces a full relist through apply_event.
+    stub.feed.emit("lagged", json!({}));
+    // And a `project` diff is inert on session rows.
+    stub.feed.emit("project", json!({"id": "p1", "patch": {}}));
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    stub.down();
+    handle.shutdown().await;
+}
+
+#[test]
+fn projection_remove_node_and_cursor_roundtrip() {
+    let store = ProjectionStore::in_memory().unwrap();
+    store
+        .upsert_node(&NodeRef {
+            id: "n1".into(),
+            url: "http://x".into(),
+            label: "l".into(),
+        })
+        .unwrap();
+    store
+        .upsert_summary(
+            "n1",
+            &json!({"id":"s1","title":"T","updatedAt":"2024-01-01T00:00:00.000Z"}),
+        )
+        .unwrap();
+    store.set_cursor("n1", "cur-1").unwrap();
+    assert_eq!(store.cursor("n1").unwrap().as_deref(), Some("cur-1"));
+    store.set_cursor("n1", "cur-2").unwrap();
+    assert_eq!(store.cursor("n1").unwrap().as_deref(), Some("cur-2"));
+
+    store.remove_node("n1").unwrap();
+    assert!(store.node("n1").unwrap().is_none());
+    assert!(store.session("n1", "s1").unwrap().is_none());
+    assert_eq!(store.cursor("n1").unwrap(), None);
+}
+
+#[test]
+fn projection_surfaces_corrupt_rows() {
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("proj.db");
+    let store = ProjectionStore::open(&path).unwrap();
+    store
+        .upsert_node(&NodeRef {
+            id: "n1".into(),
+            url: "http://x".into(),
+            label: "l".into(),
+        })
+        .unwrap();
+    // A raw_json that isn't JSON — the row_to_indexed / apply_patch
+    // decode error arms.
+    {
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute(
+            "INSERT INTO session_index (node_id, session_id, raw_json)
+             VALUES ('n1', 'bad', 'not json')",
+            [],
+        )
+        .unwrap();
+    }
+    assert!(store.session("n1", "bad").is_err());
+    assert!(store.apply_patch("n1", "bad", &json!({"x": 1})).is_err());
+}
+
+#[test]
+fn apply_listing_summary_without_updated_at() {
+    // Missing `updatedAt` → the `if let Some(u)` else arm; the cursor
+    // stays unset.
+    let store = ProjectionStore::in_memory().unwrap();
+    store
+        .apply_listing("n1", &[json!({"id":"s1","title":"T"})])
+        .unwrap();
+    assert!(store.session("n1", "s1").unwrap().is_some());
+    assert_eq!(store.cursor("n1").unwrap(), None);
+}
+
+#[test]
+fn apply_patch_write_failure_surfaces() {
+    // `apply_patch`'s trailing `write_row?` — swap the table under the
+    // store so the re-INSERT fails after the patch merges.
+    let dir = tempfile::tempdir().unwrap();
+    let path = dir.path().join("proj.db");
+    let store = ProjectionStore::open(&path).unwrap();
+    store
+        .upsert_summary("n1", &json!({"id":"s1","title":"T"}))
+        .unwrap();
+    {
+        let conn = rusqlite::Connection::open(&path).unwrap();
+        conn.execute_batch(
+            "DROP TABLE session_index;
+             CREATE TABLE session_index (node_id TEXT, session_id TEXT, raw_json TEXT);
+             INSERT INTO session_index VALUES ('n1','s1','{}');",
+        )
+        .unwrap();
+    }
+    assert!(
+        store
+            .apply_patch("n1", "s1", &json!({"title": "T2"}))
+            .is_err()
+    );
+}
+
+#[test]
+fn apply_patch_non_object_skips_merge() {
+    // A non-object patch → the `if let (Some, Some)` else arm: the row
+    // is rewritten unchanged.
+    let store = ProjectionStore::in_memory().unwrap();
+    store
+        .upsert_summary("n1", &json!({"id":"s1","title":"T"}))
+        .unwrap();
+    assert_eq!(
+        store.apply_patch("n1", "s1", &json!([1, 2])).unwrap(),
+        PatchStatus::Applied
+    );
+    assert_eq!(store.session("n1", "s1").unwrap().unwrap().title, "T");
 }

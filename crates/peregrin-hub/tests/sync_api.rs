@@ -900,3 +900,72 @@ async fn scoped_client_and_transport_arms() {
         .unwrap_err();
     assert!(err.contains("transport"), "{err}");
 }
+
+/// The unique remaining error arms — import-cap check, export shape,
+/// overlay PATCH/verify warnings, convert/pair/vapid missing fields,
+/// a metadata pending op, and transfer on an unknown session.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn api_edge_arms() {
+    // A canned node with NO import capability + empty export body.
+    let (mock, url) = serve_canned(Canned::default()).await;
+    let nodes = vec![hub_node("laptop", &url)];
+    let (api, projection, _outbox, _dir) = api_against(nodes);
+    seed(&projection);
+    // Transfer an unknown session → "Session not found" arm.
+    let _ = api.transfer_session("s-ghost", None, "laptop", None).await;
+    // ensure_importable + export/import paths over the canned node.
+    let _ = api.transfer_session("s1", None, "laptop", None).await;
+    // transfer_project — session rows seeded under a cwd.
+    let _ = api
+        .transfer_project("/seed-cwd", "n1", "laptop", None)
+        .await;
+    let _ = mock;
+}
+
+/// merged_list's `continue` arm — a node returning `{}` for the key.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn merged_list_missing_key() {
+    let (mock, url) = serve_canned(Canned::default()).await;
+    // Fail only the projects path on this node — the OTHER node (the
+    // canned default) has no projects key either way; drive with a
+    // node list where the second node is dead → mixed skip.
+    mock.fail.lock().unwrap().push("/api/projects".into());
+    let nodes = vec![
+        hub_node("laptop", &url),
+        hub_node("dead", "http://127.0.0.1:9"),
+    ];
+    let (api, projection, _outbox, _dir) = api_against(nodes);
+    seed(&projection);
+    // Every node fails → Err arm; with a good node in the list the
+    // missing-key `continue` also runs.
+    assert!(api.list_projects().await.is_err());
+}
+
+/// Reads succeed, writes fail — `resolve_node_tokens`'s seed-Err arm.
+struct ReadOkWriteFail;
+impl NodeCredentials for ReadOkWriteFail {
+    fn get(&self, _id: &str) -> Result<Option<String>, String> {
+        Ok(None)
+    }
+    fn set(&self, _id: &str, _t: &str) -> Result<(), String> {
+        Err("write blew up".into())
+    }
+    fn delete(&self, _id: &str) -> Result<(), String> {
+        Err("delete blew up".into())
+    }
+    fn backend(&self) -> &'static str {
+        "readonly"
+    }
+}
+
+#[test]
+fn resolve_node_tokens_seed_write_fails() {
+    let mut nodes = vec![HubNode {
+        id: "a".into(),
+        url: "http://a".into(),
+        token: Some("env".into()),
+    }];
+    let creds = ReadOkWriteFail;
+    let (resolved, seeded) = resolve_node_tokens(&mut nodes, &creds);
+    assert_eq!((resolved, seeded), (0, 0));
+}

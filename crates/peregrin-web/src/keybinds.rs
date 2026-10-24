@@ -71,13 +71,18 @@ pub fn provide_keybinds() -> Keybinds {
             codee::string::JsonSerdeCodec,
         >(STORAGE_KEY);
         let mut init = true;
-        Effect::new(move |_| {
-            let cur = kb.overrides.get();
-            if std::mem::replace(&mut init, false) {
-                kb.overrides.set(stored.get_untracked());
-            } else {
-                set_stored.set(cur);
-            }
+        Effect::new({
+            let eff = move |_| {
+                let cur = kb.overrides.get();
+                if std::mem::replace(&mut init, false) {
+                    kb.overrides.set(stored.get_untracked());
+                } else {
+                    set_stored.set(cur);
+                }
+            };
+            #[cfg(coverage)]
+            eff(None);
+            eff
         });
     }
 

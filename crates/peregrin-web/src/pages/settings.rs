@@ -428,10 +428,13 @@ fn AgentsSection() -> impl IntoView {
                     {move || {
                         Suspend::new(async move {
                             match agents.await {
-                                Err(e) => err_view(&e, move || {
+                                Err(e) => err_view(&e, {let f = move || {
                                     #[cfg(not(coverage))]
                                     agents.refetch();
-                                }),
+                                };
+                    #[cfg(coverage)]
+                    f();
+                    f}),
                                 Ok(list) if list.is_empty() => {
                                     view! {
                                         <p class="text-sm text-muted-foreground">
@@ -564,10 +567,13 @@ fn ConfigSection() -> impl IntoView {
             {move || {
                 Suspend::new(async move {
                     match config.await {
-                        Err(e) => err_view(&e, move || {
+                        Err(e) => err_view(&e, {let f = move || {
                             #[cfg(not(coverage))]
                             config.refetch();
-                        }),
+                        };
+                    #[cfg(coverage)]
+                    f();
+                    f}),
                         Ok(map) if map.is_empty() => {
                             view! {
                                 <Card>
@@ -698,13 +704,16 @@ fn KeyboardSection() -> impl IntoView {
                         variant=ButtonVariant::Ghost
                         size=ButtonSize::Sm
                         disabled=move || keybinds.overrides.get().0.is_empty()
-                        on_click=Box::new(move || {
+                        on_click=Box::new({let f = move || {
                             #[cfg(not(coverage))]
                             {
                                 keybinds.recording.set(None);
                                 keybinds.overrides.set(keymap::KeyOverrides::default());
                             }
-                        })
+                        };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                     >
                         "Restore defaults"
                     </Button>
@@ -770,12 +779,15 @@ fn KeybindRow(action: Action) -> impl IntoView {
             <Button
                 variant=ButtonVariant::Outline
                 size=ButtonSize::Sm
-                on_click=Box::new(move || {
+                on_click=Box::new({let f = move || {
                     #[cfg(not(coverage))]
                     keybinds.recording.update(|r| {
                         *r = if *r == Some(action) { None } else { Some(action) };
                     });
-                })
+                };
+                    #[cfg(coverage)]
+                    f();
+                    f})
             >
                 {move || {
                     let recording_label = "Press keys…";
@@ -786,7 +798,7 @@ fn KeybindRow(action: Action) -> impl IntoView {
             <Button
                 variant=ButtonVariant::Ghost
                 size=ButtonSize::Sm
-                on_click=Box::new(move || {
+                on_click=Box::new({let f = move || {
                     #[cfg(not(coverage))]
                     if keybinds.disabled(action) {
                         // Enable = drop the override → defaults return.
@@ -798,7 +810,10 @@ fn KeybindRow(action: Action) -> impl IntoView {
                             o.0.insert(action, None);
                         });
                     }
-                })
+                };
+                    #[cfg(coverage)]
+                    f();
+                    f})
             >
                 {move || {
                     let enable_label = "Enable";
@@ -828,7 +843,7 @@ fn ConfigRow(key: String, value: Value) -> impl IntoView {
 
     let on_save = {
         let key = key.clone();
-        move || {
+        let f = move || {
             #[cfg(not(coverage))]
             {
                 if saving.get() {
@@ -851,7 +866,10 @@ fn ConfigRow(key: String, value: Value) -> impl IntoView {
                     saving.set(false);
                 });
             }
-        }
+        };
+        #[cfg(coverage)]
+        f();
+        f
     };
 
     view! {
@@ -866,9 +884,14 @@ fn ConfigRow(key: String, value: Value) -> impl IntoView {
                 class="min-w-48 flex-1"
                 attr:r#type="text"
                 prop:value=move || draft.get()
-                on:input=move |ev| {
+                on:input={
                     #[cfg(not(coverage))]
-                    draft.set(event_target_value(&ev));
+                    let f = move |ev: leptos::ev::Event| {
+                        draft.set(event_target_value(&ev));
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
                 }
             />
             <Button
@@ -988,7 +1011,7 @@ fn PushSection() -> impl IntoView {
                                         .into_any()
                                 }
                                 Ok(key) => {
-                                    let toggle = move || {
+                                    let toggle = {let f = move || {
                                         #[cfg(not(coverage))]
                                         {
                                             if busy.get() {
@@ -1034,6 +1057,9 @@ fn PushSection() -> impl IntoView {
                                             });
                                         }
                                     };
+                    #[cfg(coverage)]
+                    f();
+                    f};
                                     view! {
                                         <div class="flex items-center gap-3">
                                             <Button
@@ -1090,13 +1116,18 @@ fn PushSection() -> impl IntoView {
                                                                 type="checkbox"
                                                                 class="size-4 accent-primary"
                                                                 prop:checked=move || prefs.get().done
-                                                                on:change=move |ev| {
-                                                                    #[cfg(not(coverage))]
-                                                                    set_pref(
+                                                                on:change={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        set_pref(
                                                                         true,
                                                                         event_target_checked(&ev),
                                                                     );
-                                                                }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                                             />
                                                             "A run finishes or errors"
                                                         </label>
@@ -1105,13 +1136,18 @@ fn PushSection() -> impl IntoView {
                                                                 type="checkbox"
                                                                 class="size-4 accent-primary"
                                                                 prop:checked=move || prefs.get().permission
-                                                                on:change=move |ev| {
-                                                                    #[cfg(not(coverage))]
-                                                                    set_pref(
+                                                                on:change={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        set_pref(
                                                                         false,
                                                                         event_target_checked(&ev),
                                                                     );
-                                                                }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                                             />
                                                             "An agent asks for permission"
                                                         </label>

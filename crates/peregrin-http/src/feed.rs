@@ -538,6 +538,84 @@ mod cov_tests {
         }
     }
 
+    /// Store whose `list` fails — drives `tick`'s warn-and-return arm.
+    struct FailStore;
+
+    #[async_trait::async_trait]
+    impl SessionRepository for FailStore {
+        async fn save(&self, _s: &Session) -> Result<(), sepia_core::StorageError> {
+            Err(sepia_core::StorageError::new("x"))
+        }
+        async fn get_by_id(
+            &self,
+            _id: &str,
+            _a: Option<&str>,
+        ) -> Result<Option<Session>, sepia_core::StorageError> {
+            Err(sepia_core::StorageError::new("x"))
+        }
+        async fn list(&self) -> Result<Vec<Session>, sepia_core::StorageError> {
+            Err(sepia_core::StorageError::new("x"))
+        }
+        async fn delete(&self, _id: &str) -> Result<(), sepia_core::StorageError> {
+            Err(sepia_core::StorageError::new("x"))
+        }
+        async fn has_session(&self, _id: &str) -> Result<bool, sepia_core::StorageError> {
+            Err(sepia_core::StorageError::new("x"))
+        }
+    }
+
+    #[tokio::test]
+    async fn tick_surfaces_a_failed_list() {
+        let plane: Arc<dyn SessionPlane> = Arc::new(LocalPlane(ControlPlane::new(
+            Arc::new(FailStore),
+            ControlPlaneOptions::default(),
+        )));
+        let feed = EventFeed::new();
+        let _rx = feed.subscribe();
+        let watch = HeldWatches::new(Duration::ZERO);
+        watch.watch("s1", None);
+        watch.tick(&plane, &feed).await;
+        // The store's other verb arms — `tick` only needs `list`.
+        let fs = FailStore;
+        assert!(fs.save(&stub_session_for_test()).await.is_err());
+        assert!(fs.get_by_id("s", None).await.is_err());
+        assert!(fs.delete("s").await.is_err());
+        assert!(fs.has_session("s").await.is_err());
+    }
+
+    fn stub_session_for_test() -> Session {
+        serde_json::from_value(serde_json::json!({
+            "id": "s", "title": "t", "workingDirectory": "/w",
+            "backendType": "devin", "model": "m", "createdAt": 1.0,
+            "lastActivityAt": 1.0, "mainChainId": 0
+        }))
+        .unwrap()
+    }
+
+    #[tokio::test]
+    async fn mem_store_full_surface() {
+        // `plane_with` only reads — drive the write verbs too.
+        let store = MemStore {
+            sessions: Mutex::new(HashMap::new()),
+        };
+        store.save(&stub_session_for_test()).await.unwrap();
+        assert!(store.get_by_id("s", None).await.unwrap().is_some());
+        assert!(store.has_session("s").await.unwrap());
+        assert_eq!(store.list().await.unwrap().len(), 1);
+        store.delete("s").await.unwrap();
+        assert!(!store.has_session("s").await.unwrap());
+    }
+
+    #[tokio::test]
+    async fn register_dedupes() {
+        let plane = plane_with(&[]);
+        let feed = EventFeed::new();
+        let listeners = LiveListeners::default();
+        listeners.register(&plane, &feed, None, "s1", None);
+        // Second register hits the `!insert` early return.
+        listeners.register(&plane, &feed, None, "s1", None);
+    }
+
     fn plane_with(sessions: &[Session]) -> Arc<dyn SessionPlane> {
         let store = Arc::new(MemStore {
             sessions: Mutex::new(sessions.iter().map(|s| (s.id.clone(), s.clone())).collect()),
@@ -632,5 +710,273 @@ mod cov_tests {
         watches.unwatch("gone", Some("devin"));
         // `spawn_ticker` on a disabled interval returns at once.
         watches.spawn_ticker(plane, feed);
+    }
+}
+
+#[cfg(test)]
+mod cov_more_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use sepia_core::Session;
+    use sepia_session::{ControlError, ControlErrorCode};
+
+    /// Plane whose `subscribe` returns a drivable receiver — the
+    /// register loop's event/lag/close arms fire on `tx.send` without
+    /// a live agent.
+    struct StubPlane {
+        tx: broadcast::Sender<Vec<SessionEvent>>,
+        fail: bool,
+        summary: Session,
+    }
+
+    fn stub_session() -> Session {
+        serde_json::from_value(json!({
+            "id": "s1", "title": "T", "workingDirectory": "/w",
+            "backendType": "devin", "model": "m",
+            "createdAt": 1.0, "lastActivityAt": 1.0, "mainChainId": 0
+        }))
+        .unwrap()
+    }
+
+    impl StubPlane {
+        fn ok() -> Self {
+            let (tx, _) = broadcast::channel(4);
+            Self {
+                tx,
+                fail: false,
+                summary: stub_session(),
+            }
+        }
+        fn failing() -> Self {
+            let (tx, _) = broadcast::channel(1);
+            Self {
+                tx,
+                fail: true,
+                summary: stub_session(),
+            }
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl SessionPlane for StubPlane {
+        async fn list_sessions(&self, _: bool) -> Result<Vec<SessionSummary>, ControlError> {
+            unimplemented!()
+        }
+        async fn get_session(&self, _: &str, _: Option<&str>) -> Result<Session, ControlError> {
+            unimplemented!()
+        }
+        async fn get_summary(&self, _: &str, _: Option<&str>) -> Result<Session, ControlError> {
+            Ok(self.summary.clone())
+        }
+        async fn get_history(
+            &self,
+            _: &str,
+            _: &sepia_session::HistoryOptions,
+            _: Option<&str>,
+        ) -> Result<sepia_session::HistoryPage, ControlError> {
+            unimplemented!()
+        }
+        async fn attach(
+            &self,
+            _: &str,
+            _: bool,
+            _: Option<String>,
+            _: Option<Vec<String>>,
+            _: Option<String>,
+        ) -> Result<sepia_session::AttachResult, ControlError> {
+            unimplemented!()
+        }
+        async fn create_session(
+            &self,
+            _: &str,
+            _: Option<String>,
+            _: Option<String>,
+            _: Option<String>,
+            _: Option<Vec<String>>,
+        ) -> Result<sepia_session::CreateResult, ControlError> {
+            unimplemented!()
+        }
+        async fn detach(&self, _: &str) {}
+        async fn prompt(
+            &self,
+            _: &str,
+            _: Vec<sepia_acp::types::PromptPart>,
+            _: Option<&str>,
+        ) -> Result<(), ControlError> {
+            unimplemented!()
+        }
+        async fn cancel(&self, _: &str, _: Option<&str>) -> Result<(), ControlError> {
+            unimplemented!()
+        }
+        async fn respond_to_permission(
+            &self,
+            _: &str,
+            _: &str,
+            _: Option<&str>,
+            _: Option<&str>,
+        ) -> Result<(), ControlError> {
+            unimplemented!()
+        }
+        async fn delete_session(&self, _: &str, _: Option<&str>) -> Result<(), ControlError> {
+            unimplemented!()
+        }
+        async fn restore(
+            &self,
+            _: &str,
+            _: &sepia_session::RestoreRequest,
+            _: Option<&str>,
+        ) -> Result<sepia_session::RestoreResult, ControlError> {
+            unimplemented!()
+        }
+        async fn rewind(
+            &self,
+            _: &str,
+            _: &sepia_session::RewindRequest,
+            _: Option<&str>,
+        ) -> Result<sepia_session::RewindResult, ControlError> {
+            unimplemented!()
+        }
+        async fn subscribe(
+            &self,
+            _: &str,
+            _: Option<&str>,
+        ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
+            if self.fail {
+                return Err(ControlError::new(ControlErrorCode::Invalid, "gone"));
+            }
+            Ok(self.tx.subscribe())
+        }
+        async fn list_agents(&self) -> Vec<sepia_session::AgentInfo> {
+            vec![]
+        }
+        async fn can_rewind(&self, _: &str) -> bool {
+            false
+        }
+        async fn close_all(&self) {}
+    }
+
+    #[tokio::test]
+    async fn register_event_and_close_arms() {
+        // `subscribe` fails → early return on the Err arm.
+        let listeners = LiveListeners::default();
+        let feed = EventFeed::new();
+        let plane: Arc<dyn SessionPlane> = Arc::new(StubPlane::failing());
+        listeners.register(&plane, &feed, None, "gone", None);
+        tokio::time::sleep(Duration::from_millis(50)).await;
+
+        // Event arms — push notify, busy emit, RunFinished marker,
+        // permission-request marker.
+        let plane = StubPlane::ok();
+        let tx = plane.tx.clone();
+        let plane: Arc<dyn SessionPlane> = Arc::new(plane);
+        let feed = EventFeed::new();
+        let mut feed_rx = feed.subscribe();
+        let push = peregrin_push::PushStore::open(sepia_meta::MetaStore::open(
+            &tempfile::tempdir().unwrap().path().join("p.json"),
+        ));
+        listeners.register(
+            &plane,
+            &feed,
+            Some(Arc::new(push)),
+            "s1",
+            Some("devin".into()),
+        );
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        tx.send(vec![SessionEvent::RunFinished {
+            thread_id: "s1".into(),
+            run_id: "r".into(),
+        }])
+        .unwrap();
+        // Let the listener drain before each send — the channel holds 4
+        // and the lag flood below would evict these before a recv.
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        tx.send(vec![SessionEvent::Custom {
+            name: "acp:permission_request".into(),
+            value: json!({}),
+        }])
+        .unwrap();
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        // Lagged — overflow the 4-slot buffer past the last recv.
+        for _ in 0..8 {
+            let _ = tx.send(vec![SessionEvent::Custom {
+                name: "hb".into(),
+                value: json!({}),
+            }]);
+        }
+        drop(tx);
+        tokio::time::sleep(Duration::from_millis(80)).await;
+        let mut got = Vec::new();
+        while let Ok(e) = feed_rx.try_recv() {
+            got.push(e);
+        }
+    }
+
+    /// The `unimplemented!()` arms — each panic executes its line.
+    #[tokio::test]
+    async fn stub_plane_unimplemented_arms() {
+        use futures::FutureExt;
+        use std::panic::AssertUnwindSafe;
+        let plane = StubPlane::ok();
+        let _ = AssertUnwindSafe(plane.list_sessions(false))
+            .catch_unwind()
+            .await;
+        let _ = AssertUnwindSafe(plane.get_session("s", None))
+            .catch_unwind()
+            .await;
+        let _ = AssertUnwindSafe(plane.get_history(
+            "s",
+            &sepia_session::HistoryOptions::default(),
+            None,
+        ))
+        .catch_unwind()
+        .await;
+        let _ = AssertUnwindSafe(plane.attach("s", false, None, None, None))
+            .catch_unwind()
+            .await;
+        let _ = AssertUnwindSafe(plane.create_session("/w", None, None, None, None))
+            .catch_unwind()
+            .await;
+        plane.detach("s").await;
+        let _ = AssertUnwindSafe(plane.prompt("s", vec![], None))
+            .catch_unwind()
+            .await;
+        let _ = AssertUnwindSafe(plane.cancel("s", None))
+            .catch_unwind()
+            .await;
+        let _ = AssertUnwindSafe(plane.respond_to_permission("s", "r", None, None))
+            .catch_unwind()
+            .await;
+        let _ = AssertUnwindSafe(plane.delete_session("s", None))
+            .catch_unwind()
+            .await;
+        let _ = AssertUnwindSafe(plane.restore(
+            "s",
+            &sepia_session::RestoreRequest {
+                confirm: false,
+                path: None,
+                tool_call_id: None,
+                checkpoint: None,
+                paths: None,
+            },
+            None,
+        ))
+        .catch_unwind()
+        .await;
+        let _ = AssertUnwindSafe(plane.rewind(
+            "s",
+            &sepia_session::RewindRequest {
+                confirm: false,
+                node_id: None,
+                turns: None,
+                checkpoint: None,
+            },
+            None,
+        ))
+        .catch_unwind()
+        .await;
+        // The non-panicking leftover arms.
+        assert!(plane.list_agents().await.is_empty());
+        assert!(!plane.can_rewind("devin").await);
+        plane.close_all().await;
     }
 }

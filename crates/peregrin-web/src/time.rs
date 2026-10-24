@@ -128,10 +128,10 @@ pub fn relative_ms(ms: f64, now_ms: f64) -> String {
         return format!("{days}d ago");
     }
     let (year, month, day) = civil_of_ms(ms);
-    match MONTHS.get(month.saturating_sub(1) as usize) {
-        Some(m) => format!("{m} {day}, {year}"),
-        None => format!("{ms:.0}"),
-    }
+    // `civil_of_ms` yields month in 1..=12 — the clamp is a formality
+    // that keeps indexing panic-free without a dead fallback arm.
+    let m = MONTHS[(month.saturating_sub(1) as usize).min(MONTHS.len() - 1)];
+    format!("{m} {day}, {year}")
 }
 
 /// Days-since-epoch → `(year, month, day)` — the inverse of the

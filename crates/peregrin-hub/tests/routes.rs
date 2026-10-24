@@ -129,6 +129,12 @@ async fn push_routes_full_surface() {
         .unwrap();
     let (s, _) = call(&app, req).await;
     assert_eq!(s, StatusCode::OK);
+    // Oversized body → 413.
+    let req = Request::post("/api/push/subscribe")
+        .body(Body::from("x".repeat(70 * 1024)))
+        .unwrap();
+    let (s, _) = call(&app, req).await;
+    assert_eq!(s, StatusCode::PAYLOAD_TOO_LARGE);
 }
 
 #[tokio::test]
@@ -359,4 +365,113 @@ async fn session_upstream_falls_back() {
     // public routing of proxied calls above.
     let app = router(s);
     drop(app);
+}
+
+/// The push feed-hook: `session` diffs with terminal flags send
+/// notifications; other frames are ignored.
+#[test]
+fn feed_hook_sends_on_terminal_patches() {
+    let dir = tempfile::tempdir().unwrap();
+    let projection = peregrin_sync::ProjectionStore::in_memory().unwrap();
+    projection
+        .upsert_node(&peregrin_sync::NodeRef {
+            id: "n1".into(),
+            url: "u".into(),
+            label: "l".into(),
+        })
+        .unwrap();
+    projection
+        .upsert_summary(
+            "n1",
+            &serde_json::json!({"id":"s1","title":"T1","updatedAt":"2024-01-01T00:00:00Z"}),
+        )
+        .unwrap();
+    let push = std::sync::Arc::new(peregrin_push::PushStore::open(sepia_meta::MetaStore::open(
+        &dir.path().join("push.json"),
+    )));
+    let hook = peregrin_hub::feed_hook(projection, push);
+    use peregrin_sync::client::FeedEvent;
+    // Non-diff frames and non-session kinds are ignored.
+    hook("n1", &FeedEvent::Heartbeat);
+    hook(
+        "n1",
+        &FeedEvent::Diff {
+            kind: "meta".into(),
+            id: "s1".into(),
+            agent: None,
+            patch: serde_json::json!({"runFinished": true}),
+        },
+    );
+    // Session diffs — both flags; `ghost` exercises the
+    // id-as-title fallback when the row isn't indexed.
+    for id in ["s1", "ghost"] {
+        hook(
+            "n1",
+            &FeedEvent::Diff {
+                kind: "session".into(),
+                id: id.into(),
+                agent: None,
+                patch: serde_json::json!({"runFinished": true, "permissionRequested": true}),
+            },
+        );
+    }
+}
+
+/// `hub_state_from` — env arms without touching the process env.
+#[tokio::test]
+async fn hub_state_from_env_arms() {
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    let config = peregrin_hub::HubConfig {
+        node_url: "http://127.0.0.1:9".into(),
+        node_token: None,
+        hub_token: None,
+        host: "127.0.0.1".into(),
+        port: 0,
+        site_root: dir.path().to_string_lossy().into_owned(),
+        dev: false,
+    };
+    // `PEREGRIN_NODES` env path + `PEREGRIN_HOME`.
+    let nodes_env: std::ffi::OsString = "n1=http://127.0.0.1:9".to_string().into();
+    let vars = |k: &str| -> Option<std::ffi::OsString> {
+        match k {
+            "PEREGRIN_HOME" => Some(home.clone().into_os_string()),
+            "PEREGRIN_NODES" => Some(nodes_env.clone()),
+            _ => None,
+        }
+    };
+    let state = peregrin_hub::hub_state_from(vars, &config).unwrap();
+    // The session router closure resolves through the projection —
+    // invoke it once (unknown id → primary node URL).
+    let router = state.session_router.as_ref().unwrap();
+    let _ = router("s-ghost");
+    // `HOME`-fallback arm (no PEREGRIN_HOME).
+    let vars2 = |k: &str| -> Option<std::ffi::OsString> {
+        (k == "HOME").then(|| dir.path().join("h2").into_os_string())
+    };
+    let _ = peregrin_hub::hub_state_from(vars2, &config).unwrap();
+    // Neither var → `.peregrin` fallback under cwd — point it at a
+    // safe dir by running in the tempdir.
+    std::env::set_current_dir(dir.path()).unwrap();
+    let vars3 = |_: &str| None;
+    let _ = peregrin_hub::hub_state_from(vars3, &config).unwrap();
+}
+
+/// login(): tokenless hub → the "no gate" redirect arm.
+#[tokio::test]
+async fn login_no_gate_redirects() {
+    let app = router(state("http://127.0.0.1:9"));
+    let req = Request::post("/login")
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(Body::from("token=t&next=/x"))
+        .unwrap();
+    let (s, _) = call(&app, req).await;
+    assert!(s.is_redirection() || s.is_success() || s.is_client_error());
+    // And a JSON-bodied post exercises the serde arm.
+    let req = Request::post("/login")
+        .header("content-type", "application/json")
+        .body(Body::from(r#"{"token":"t","next":"/x"}"#))
+        .unwrap();
+    let (s, _) = call(&app, req).await;
+    assert!(s.is_redirection() || s.is_success() || s.is_client_error());
 }

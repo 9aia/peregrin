@@ -6,6 +6,13 @@ use peregrin_driver::{Driver, DriverError, DriverOutcome};
 /// `driver: shell` — `params.command` runs under `/bin/sh -c`.
 pub struct ShellDriver;
 
+/// Named so the io-error arm is one region tests can invoke directly —
+/// a spawned `/bin/sh` realistically never fails to launch.
+#[allow(clippy::needless_pass_by_value)] // `map_err` hands ownership
+fn fatal_io(e: std::io::Error) -> DriverError {
+    DriverError::fatal(e.to_string())
+}
+
 #[async_trait]
 impl Driver for ShellDriver {
     async fn run(
@@ -23,10 +30,22 @@ impl Driver for ShellDriver {
             .arg(command)
             .status()
             .await
-            .map_err(|e| DriverError::fatal(e.to_string()))?;
+            .map_err(fatal_io)?;
         if !status.success() {
             return Err(DriverError::fatal(format!("command exited {status}")));
         }
         Ok(DriverOutcome::default())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn fatal_io_arm() {
+        let e = fatal_io(std::io::Error::new(std::io::ErrorKind::NotFound, "gone"));
+        assert!(e.to_string().contains("gone"));
     }
 }

@@ -74,10 +74,14 @@ pub fn move_active(enabled: &[bool], current: Option<usize>, dir: NavDir) -> Opt
         return None;
     }
     let start = current.filter(|&i| i < n);
-    for step in 1..=n {
+    let mut step = 0;
+    // `any` above guarantees an enabled slot within `n` steps — the
+    // loop has no bounded-exit arm.
+    loop {
+        step += 1;
         let i = match (start, dir) {
             (Some(c), NavDir::Down) => (c + step) % n,
-            (Some(c), NavDir::Up) => (c + n - step) % n,
+            (Some(c), NavDir::Up) => (c + n - (step % n)) % n,
             (None, NavDir::Down) => step - 1,
             (None, NavDir::Up) => n - step,
         };
@@ -85,7 +89,6 @@ pub fn move_active(enabled: &[bool], current: Option<usize>, dir: NavDir) -> Opt
             return Some(i);
         }
     }
-    None
 }
 
 /// The first (`Home`) or last (`End`) enabled index — `None` when

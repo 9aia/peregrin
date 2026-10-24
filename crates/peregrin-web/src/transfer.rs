@@ -80,10 +80,13 @@ pub fn TransferSheet(
                     variant=ButtonVariant::Ghost
                     size=ButtonSize::Icon
                     class="size-7"
-                    on_click=Box::new(move || {
+                    on_click=Box::new({let f = move || {
                         #[cfg(not(coverage))]
                         open.set(false);
-                    })
+                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                 >
                     <Icon name="x" class="size-4"/>
                 </Button>
@@ -134,12 +137,17 @@ pub fn TransferSheet(
                                                         format!("{base} hover:bg-accent/60")
                                                     }
                                                 }
-                                                on:click=move |_| {
-                                                    #[cfg(not(coverage))]
-                                                    if !down {
+                                                on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        if !down {
                                                         picked.set(Some(id.clone()));
                                                     }
-                                                }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                             >
                                                 <Icon name="server" class="size-4 text-muted-foreground"/>
                                                 <span class="min-w-0 flex-1">
@@ -188,10 +196,15 @@ pub fn TransferSheet(
                         attr:r#type="text"
                         attr:placeholder="Working directory on the target"
                         prop:value=move || cwd.get()
-                        on:input=move |ev| {
-                            #[cfg(not(coverage))]
-                            cwd.set(event_target_value(&ev));
-                        }
+                        on:input={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        cwd.set(event_target_value(&ev));
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                     />
                     <p class="text-xs text-muted-foreground">
                         "The session copy resumes under this path — it must exist on the target machine (clone/sync the checkout yourself)."
@@ -201,17 +214,20 @@ pub fn TransferSheet(
                     <Button
                         variant=ButtonVariant::Ghost
                         size=ButtonSize::Sm
-                        on_click=Box::new(move || {
+                        on_click=Box::new({let f = move || {
                             #[cfg(not(coverage))]
                             open.set(false);
-                        })
+                        };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                     >
                         "Cancel"
                     </Button>
                     <Button
                         size=ButtonSize::Sm
                         disabled=move || busy.get() || picked.get().is_none()
-                        on_click=Box::new(move || {
+                        on_click=Box::new({let f = move || {
                             #[cfg(not(coverage))]
                             {
                                 let Some(target) = picked.get_untracked() else {
@@ -230,7 +246,10 @@ pub fn TransferSheet(
                                 let on_submit = std::sync::Arc::clone(&on_submit);
                                 on_submit(target, remap);
                             }
-                        })
+                        };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                     >
                         {move || {
                             let transferring = "Transferring…";

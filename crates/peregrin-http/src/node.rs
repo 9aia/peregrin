@@ -75,3 +75,34 @@ pub fn load_node_identity(path: &Path, name: &str) -> NodeIdentity {
     let _ = save_node_identity(path, &identity);
     identity
 }
+
+#[cfg(test)]
+mod cov_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn save_and_load_arms() {
+        let dir = tempfile::tempdir().unwrap();
+        let id = NodeIdentity {
+            id: "i".into(),
+            name: "n".into(),
+            version: "v".into(),
+        };
+        // Happy path.
+        let p = dir.path().join("deep/nest/node.json");
+        save_node_identity(&p, &id).unwrap();
+        // An unwritable parent (a file, not a dir) → create_dir_all error.
+        let blocker = dir.path().join("file");
+        std::fs::write(&blocker, "x").unwrap();
+        assert!(save_node_identity(&blocker.join("node.json"), &id).is_err());
+        // A stored file with an empty name falls back to the default.
+        std::fs::write(&p, r#"{"id":"keep","name":""}"#).unwrap();
+        let loaded = load_node_identity(&p, "fallback");
+        assert_eq!(loaded.id, "keep");
+        assert_eq!(loaded.name, "fallback");
+        // A corrupt file → fresh identity minted + persisted.
+        std::fs::write(&p, "garbage").unwrap();
+        let _ = load_node_identity(&p, "n");
+    }
+}

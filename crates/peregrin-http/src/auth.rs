@@ -296,3 +296,42 @@ fn with_expired_cookie(res: Response) -> Response {
     );
     res
 }
+
+#[cfg(test)]
+mod cov_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    fn req_with_cookie(cookie: &str) -> Request<Body> {
+        Request::builder()
+            .header(header::COOKIE, cookie)
+            .body(Body::empty())
+            .unwrap()
+    }
+
+    #[test]
+    fn cookie_and_percent_decode_arms() {
+        // No header / no sepia_token / hit.
+        assert_eq!(
+            cookie_token(&req_with_cookie("other=1; sepia_token=a%20b")).as_deref(),
+            Some("a b")
+        );
+        assert_eq!(cookie_token(&req_with_cookie("other=1")), None);
+        // percent_decode: uppercase hex, bad hex, lone %, '+', short tail.
+        assert_eq!(percent_decode("%41"), "A");
+        assert_eq!(percent_decode("%4z%5"), "%4z%5");
+        assert_eq!(percent_decode("a+b%"), "a+b%");
+        assert_eq!(percent_decode("%"), "%");
+    }
+
+    #[test]
+    fn query_token_path_arms() {
+        assert!(is_query_token_path("/api/events"));
+        assert!(is_query_token_path("/api/sessions/s1/stream"));
+        // Empty id / nested id / non-stream suffix → false.
+        assert!(!is_query_token_path("/api/sessions//stream"));
+        assert!(!is_query_token_path("/api/sessions/a/b/stream"));
+        assert!(!is_query_token_path("/api/sessions/s1/other"));
+        assert!(!is_query_token_path("/api/health"));
+    }
+}

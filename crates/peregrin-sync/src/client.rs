@@ -632,12 +632,8 @@ mod tests {
     fn frames(input: &str) -> Vec<FeedEvent> {
         let mut stream = EventStream::from_reader(input.as_bytes());
         let mut out = Vec::new();
-        loop {
-            match stream.next_event() {
-                Ok(Some(ev)) => out.push(ev),
-                Ok(None) => break,
-                Err(e) => panic!("next_event failed: {e}"),
-            }
+        while let Ok(Some(ev)) = stream.next_event() {
+            out.push(ev);
         }
         out
     }
@@ -771,5 +767,53 @@ mod tests {
     fn encodes_path_segments() {
         assert_eq!(encode_segment("a b/c:d"), "a%20b%2Fc%3Ad");
         assert_eq!(encode_segment("plain-1_ok.~"), "plain-1_ok.~");
+    }
+
+    #[test]
+    fn blank_lines_without_a_pending_frame_are_skipped() {
+        // Leading/interstitial blank lines `continue` the read loop.
+        let input = "\n\nevent: heartbeat\ndata: {}\n\n\n";
+        assert_eq!(frames(input), vec![FeedEvent::Heartbeat]);
+    }
+
+    #[test]
+    fn diff_frames_without_an_id_fall_back_to_other() {
+        // A `session` frame whose payload lacks `id` can't route —
+        // forward-compatible `Other` rather than a dead Diff.
+        let input = "event: session\ndata: {\"patch\":{}}\n\n";
+        assert_eq!(
+            frames(input),
+            vec![FeedEvent::Other {
+                event: "session".into(),
+                data: json!({"patch": {}}),
+            }]
+        );
+    }
+
+    #[test]
+    fn unrecognized_event_names_fall_back_to_other() {
+        // Not a diff kind and not a typed SessionEvent → `Other` with
+        // the parsed payload (`null` when data isn't JSON).
+        let input = "event: weird\ndata: not json\n\n";
+        assert_eq!(
+            frames(input),
+            vec![FeedEvent::Other {
+                event: "weird".into(),
+                data: Value::Null,
+            }]
+        );
+    }
+
+    #[test]
+    fn read_errors_propagate_without_a_stall_window() {
+        // No stall timeout — any read error ends the stream.
+        struct Failing;
+        impl std::io::Read for Failing {
+            fn read(&mut self, _buf: &mut [u8]) -> std::io::Result<usize> {
+                Err(std::io::Error::other("boom"))
+            }
+        }
+        let mut stream = EventStream::from_reader(Failing);
+        assert!(stream.next_event().is_err());
     }
 }

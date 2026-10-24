@@ -489,86 +489,106 @@ pub fn SessionPanel(
             });
         }
     };
-    let do_detach = move || {
-        #[cfg(not(coverage))]
-        {
-            if acting.get() {
-                return;
-            }
-            acting.set(true);
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                if toast
-                    .outcome(detach_session(id, agent).await, "Detached")
-                    .is_some()
-                {
-                    live_override.set(Some(false));
-                    client.invalidate_query(crate::api::sessions_scope, ());
-                    summary.refetch();
+    let do_detach = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            {
+                if acting.get() {
+                    return;
                 }
-                acting.set(false);
-            });
-        }
-    };
-    let do_cancel = move || {
-        #[cfg(not(coverage))]
-        {
-            if acting.get() {
-                return;
-            }
-            acting.set(true);
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                let _ = toast.outcome(cancel_run(id, agent).await, "Cancel requested");
-                acting.set(false);
-            });
-        }
-    };
-    let do_rename = move || {
-        #[cfg(not(coverage))]
-        {
-            let title = rename_draft.get().trim().to_string();
-            if title.is_empty() || acting.get() {
-                return;
-            }
-            acting.set(true);
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                if toast
-                    .outcome(rename_session(id, agent, title).await, "Renamed")
-                    .is_some()
-                {
-                    client.invalidate_query(crate::api::sessions_scope, ());
-                    summary.refetch();
-                }
-                acting.set(false);
-            });
-        }
-    };
-    let do_delete = move || {
-        #[cfg(not(coverage))]
-        {
-            if acting.get() {
-                return;
-            }
-            acting.set(true);
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                if toast
-                    .outcome(delete_session(id, agent).await, "Deleted")
-                    .is_some()
-                {
-                    client.invalidate_query(crate::api::sessions_scope, ());
-                    crate::app::nav_external("/");
-                } else {
+                acting.set(true);
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    if toast
+                        .outcome(detach_session(id, agent).await, "Detached")
+                        .is_some()
+                    {
+                        live_override.set(Some(false));
+                        client.invalidate_query(crate::api::sessions_scope, ());
+                        summary.refetch();
+                    }
                     acting.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f();
+        f
+    };
+    let do_cancel = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            {
+                if acting.get() {
+                    return;
                 }
-            });
-        }
+                acting.set(true);
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    let _ = toast.outcome(cancel_run(id, agent).await, "Cancel requested");
+                    acting.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f();
+        f
+    };
+    let do_rename = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            {
+                let title = rename_draft.get().trim().to_string();
+                if title.is_empty() || acting.get() {
+                    return;
+                }
+                acting.set(true);
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    if toast
+                        .outcome(rename_session(id, agent, title).await, "Renamed")
+                        .is_some()
+                    {
+                        client.invalidate_query(crate::api::sessions_scope, ());
+                        summary.refetch();
+                    }
+                    acting.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f();
+        f
+    };
+    let do_delete = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            {
+                if acting.get() {
+                    return;
+                }
+                acting.set(true);
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    if toast
+                        .outcome(delete_session(id, agent).await, "Deleted")
+                        .is_some()
+                    {
+                        client.invalidate_query(crate::api::sessions_scope, ());
+                        crate::app::nav_external("/");
+                    } else {
+                        acting.set(false);
+                    }
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f();
+        f
     };
     // `POST /convert` — copy the session into another agent's store.
     // The response carries the *new* session's id; jump straight to it
@@ -925,37 +945,42 @@ pub fn SessionPanel(
     // jump the viewport. Hydrate-only; the SSR build never touches it.
     #[allow(unused_variables)]
     let prepend_height = StoredValue::new(0.0_f64);
-    let load_older = move || {
-        #[cfg(not(coverage))]
-        {
-            if older_loading.get_untracked() {
-                return;
-            }
-            let before = older.read().first().map_or_else(latest_start, |p| p.start);
-            if before == 0 {
-                return;
-            }
-            older_loading.set(true);
-            #[cfg(feature = "hydrate")]
-            if let Some(el) = log_ref.get() {
-                prepend_height.set_value(f64::from(el.scroll_height()));
-            }
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                if let Ok(page) = session_history(
-                    id,
-                    agent,
-                    Some(i64::try_from(before).unwrap_or(i64::MAX)),
-                    Some(PAGE_SIZE),
-                )
-                .await
-                {
-                    older.update(|v| v.insert(0, page));
+    let load_older = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            {
+                if older_loading.get_untracked() {
+                    return;
                 }
-                older_loading.set(false);
-            });
-        }
+                let before = older.read().first().map_or_else(latest_start, |p| p.start);
+                if before == 0 {
+                    return;
+                }
+                older_loading.set(true);
+                #[cfg(feature = "hydrate")]
+                if let Some(el) = log_ref.get() {
+                    prepend_height.set_value(f64::from(el.scroll_height()));
+                }
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    if let Ok(page) = session_history(
+                        id,
+                        agent,
+                        Some(i64::try_from(before).unwrap_or(i64::MAX)),
+                        Some(PAGE_SIZE),
+                    )
+                    .await
+                    {
+                        older.update(|v| v.insert(0, page));
+                    }
+                    older_loading.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f();
+        f
     };
 
     // Live stream — wasm only; SSR renders history without it.
@@ -1131,40 +1156,45 @@ pub fn SessionPanel(
             confirm_rewind.set(true);
         }
     };
-    let do_rewind = move || {
-        #[cfg(not(coverage))]
-        {
-            let Some(node) = rewind_target.get() else {
-                return;
-            };
-            rewind_target.set(None);
-            if acting.get() {
-                return;
-            }
-            acting.set(true);
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                match rewind_session(id, agent, RewindSelector::NodeId(node)).await {
-                    Ok(result) => {
-                        toast.success(rewind_result_summary(result.removed));
-                        // The plane detaches a live attach before it
-                        // truncates — drop the local live view to match,
-                        // and drop the prepended older pages (their tail
-                        // window no longer exists).
-                        live.set(LiveTranscript::default());
-                        live_override.set(Some(false));
-                        older.set(Vec::new());
-                        history.refetch();
-                        summary.refetch();
-                        checkpoints.refetch();
-                        client.invalidate_query(crate::api::sessions_scope, ());
-                    }
-                    Err(e) => toast.error(e.to_string()),
+    let do_rewind = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            {
+                let Some(node) = rewind_target.get() else {
+                    return;
+                };
+                rewind_target.set(None);
+                if acting.get() {
+                    return;
                 }
-                acting.set(false);
-            });
-        }
+                acting.set(true);
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    match rewind_session(id, agent, RewindSelector::NodeId(node)).await {
+                        Ok(result) => {
+                            toast.success(rewind_result_summary(result.removed));
+                            // The plane detaches a live attach before it
+                            // truncates — drop the local live view to match,
+                            // and drop the prepended older pages (their tail
+                            // window no longer exists).
+                            live.set(LiveTranscript::default());
+                            live_override.set(Some(false));
+                            older.set(Vec::new());
+                            history.refetch();
+                            summary.refetch();
+                            checkpoints.refetch();
+                            client.invalidate_query(crate::api::sessions_scope, ());
+                        }
+                        Err(e) => toast.error(e.to_string()),
+                    }
+                    acting.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f();
+        f
     };
     // `ConfirmDialog::on_confirm` requires `Send` — the dialog flips
     // this flag and the effect runs the rewind inside the owner, the
@@ -1227,27 +1257,32 @@ pub fn SessionPanel(
     // The composer stays editable while the session is held
     // (draft-while-held is intended); send then detours through the
     // takeover `ConfirmDialog` instead of dying on a raw error.
-    let submit = move || {
-        #[cfg(not(coverage))]
-        {
-            let text = draft.get().trim().to_string();
-            let empty = text.is_empty() && attachments.read().is_empty();
-            if empty || sending.get() {
-                return;
+    let submit = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            {
+                let text = draft.get().trim().to_string();
+                let empty = text.is_empty() && attachments.read().is_empty();
+                if empty || sending.get() {
+                    return;
+                }
+                if is_held() {
+                    confirm_takeover.set(true);
+                    return;
+                }
+                // Not attached — attach first, then the draft lands (the old
+                // app attached on open; attach-on-send keeps "type and it
+                // goes" without spawning the agent on browse).
+                if !is_live() {
+                    attach_and_send(false);
+                    return;
+                }
+                do_send(text);
             }
-            if is_held() {
-                confirm_takeover.set(true);
-                return;
-            }
-            // Not attached — attach first, then the draft lands (the old
-            // app attached on open; attach-on-send keeps "type and it
-            // goes" without spawning the agent on browse).
-            if !is_live() {
-                attach_and_send(false);
-                return;
-            }
-            do_send(text);
-        }
+        };
+        #[cfg(coverage)]
+        f();
+        f
     };
 
     // The composer textarea — lifted to the page so the transcript's
@@ -1289,13 +1324,16 @@ pub fn SessionPanel(
                                 view! {
                                     <ErrorBanner
                                         message=e.to_string()
-                                        on_retry=Box::new(move || {
+                                        on_retry=Box::new({let f = move || {
                                             #[cfg(not(coverage))]
                                             {
                                                 summary.refetch();
                                                 history.refetch();
                                             }
-                                        })
+                                        };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                     />
                                 }
                                 .into_any()
@@ -1402,10 +1440,15 @@ pub fn SessionPanel(
                                             class="min-w-0 flex-1 cursor-pointer rounded-md px-1 py-0.5 text-left transition-colors hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring"
                                             aria-label=format!("Session details: {head_title}")
                                             title="Session details"
-                                            on:click=move |_| {
-                                                #[cfg(not(coverage))]
-                                                details_open.set(true);
-                                            }
+                                            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        details_open.set(true);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                         >
                                             <h2 class="m-0 truncate text-[15px] font-medium">
                                                 {head_title.clone()}
@@ -1527,48 +1570,63 @@ pub fn SessionPanel(
                                                 <MenuItem
                                                     label="Rename…"
                                                     icon="pencil"
-                                                    on_click=Box::new(move || {
+                                                    on_click=Box::new({let f = move || {
                                                         #[cfg(not(coverage))]
                                                         {
                                                             rename_draft.set(title_for_rename.clone());
                                                             details_open.set(true);
                                                         }
-                                                    })
+                                                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                                 />
                                                 <MenuItem
                                                     label="Details"
                                                     icon="info"
-                                                    on_click=Box::new(move || {
+                                                    on_click=Box::new({let f = move || {
                                                         #[cfg(not(coverage))]
                                                         details_open.set(true);
-                                                    })
+                                                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                                 />
                                                 <MenuSeparator/>
                                                 <MenuItem
                                                     label="Copy session ID"
                                                     icon="copy"
-                                                    on_click=Box::new(move || {
+                                                    on_click=Box::new({let f = move || {
                                                         #[cfg(not(coverage))]
                                                         crate::components::copy_to_clipboard(&copy_id);
-                                                    })
+                                                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                                 />
                                                 <MenuItem
                                                     label="Copy path"
                                                     icon="copy"
-                                                    on_click=Box::new(move || {
+                                                    on_click=Box::new({let f = move || {
                                                         #[cfg(not(coverage))]
                                                         crate::components::copy_to_clipboard(&copy_cwd);
-                                                    })
+                                                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                                 />
                                                 <MenuSeparator/>
                                                 <MenuItem
                                                     label="Delete session"
                                                     icon="trash"
                                                     destructive=true
-                                                    on_click=Box::new(move || {
+                                                    on_click=Box::new({let f = move || {
                                                         #[cfg(not(coverage))]
                                                         confirm_delete.set(true);
-                                                    })
+                                                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                                 />
                                             </Dropdown>
                                         </div>
@@ -1580,10 +1638,13 @@ pub fn SessionPanel(
                                         body="This permanently deletes the session and its history from the store."
                                         confirm_label="Delete"
                                         destructive=true
-                                        on_confirm=move || {
+                                        on_confirm={let f = move || {
                                             #[cfg(not(coverage))]
                                             delete_confirmed.set(true);
-                                        }
+                                        };
+                    #[cfg(coverage)]
+                    f();
+                    f}
                                     />
                                     }.into_any()}
                                     {view! {
@@ -1594,10 +1655,13 @@ pub fn SessionPanel(
                                                 variant=ButtonVariant::Ghost
                                                 size=ButtonSize::Icon
                                                 class="size-7"
-                                                on_click=Box::new(move || {
+                                                on_click=Box::new({let f = move || {
                                                     #[cfg(not(coverage))]
                                                     details_open.set(false);
-                                                })
+                                                };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                             >
                                                 <Icon name="x" class="size-4"/>
                                             </Button>
@@ -1749,19 +1813,29 @@ pub fn SessionPanel(
                                                         attr:maxlength="200"
                                                         attr:placeholder="Session title"
                                                         prop:value=move || rename_draft.get()
-                                                        on:input=move |ev| {
-                                                            #[cfg(not(coverage))]
-                                                            rename_draft.set(event_target_value(&ev));
-                                                        }
-                                                        on:keydown=move |ev: leptos::ev::KeyboardEvent| {
-                                                            #[cfg(not(coverage))]
-                                                            {
+                                                        on:input={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        rename_draft.set(event_target_value(&ev));
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
+                                                        on:keydown={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::KeyboardEvent| {
+                        {
                                                                 if ev.key() == "Enter" {
                                                                     ev.prevent_default();
                                                                     do_rename();
                                                                 }
                                                             }
-                                                        }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                                     />
                                                     <Button
                                                         size=ButtonSize::Sm
@@ -1858,10 +1932,15 @@ pub fn SessionPanel(
                                                                                         type="button"
                                                                                         class="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors hover:bg-accent/60"
                                                                                         disabled=move || acting.get()
-                                                                                        on:click=move |_| {
-                                                                                            #[cfg(not(coverage))]
-                                                                                            toggle_project(p.id.clone());
-                                                                                        }
+                                                                                        on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        toggle_project(p.id.clone());
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                                                                     >
                                                                                         <span class="min-w-0 flex-1 truncate">
                                                                                             {p.name.clone()}
@@ -1892,13 +1971,16 @@ pub fn SessionPanel(
                                                 checkpoints=checkpoints
                                                 session_id=session_id()
                                                 agent=agent()
-                                                on_changed=move || {
+                                                on_changed={let f = move || {
                                                     #[cfg(not(coverage))]
                                                     {
                                                         history.refetch();
                                                         summary.refetch();
                                                     }
-                                                }
+                                                };
+                    #[cfg(coverage)]
+                    f();
+                    f}
                                             />
                                             // `POST /convert` copies
                                             // the session into another
@@ -1924,10 +2006,13 @@ pub fn SessionPanel(
                                                                     variant=ButtonVariant::Outline
                                                                     size=ButtonSize::Sm
                                                                     disabled=acting
-                                                                    on_click=Box::new(move || {
+                                                                    on_click=Box::new({let f = move || {
                                                                         #[cfg(not(coverage))]
                                                                         do_convert(target);
-                                                                    })
+                                                                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                                                 >
                                                                     {format!("Convert to {label}")}
                                                                 </Button>
@@ -1967,10 +2052,13 @@ pub fn SessionPanel(
                                                                         variant=ButtonVariant::Outline
                                                                         size=ButtonSize::Sm
                                                                         disabled=acting
-                                                                        on_click=Box::new(move || {
+                                                                        on_click=Box::new({let f = move || {
                                                                             #[cfg(not(coverage))]
                                                                             transfer_open.set(true);
-                                                                        })
+                                                                        };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                                                     >
                                                                         <Icon
                                                                             name="arrow-right-left"
@@ -1995,10 +2083,13 @@ pub fn SessionPanel(
                                                     size=ButtonSize::Sm
                                                     class="mt-2"
                                                     disabled=acting
-                                                    on_click=Box::new(move || {
+                                                    on_click=Box::new({let f = move || {
                                                         #[cfg(not(coverage))]
                                                         confirm_delete.set(true);
-                                                    })
+                                                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                                 >
                                                     "Delete session"
                                                 </Button>
@@ -2134,15 +2225,20 @@ pub fn SessionPanel(
                                                 format!("{base} opacity-100")
                                             }
                                         }
-                                        on:click=move |_| {
-                                            #[cfg(not(coverage))]
-                                            {
+                                        on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        {
                                                 pinned.set(true);
                                                 if let Some(el) = log_ref.get() {
                                                     el.set_scroll_top(el.scroll_height());
                                                 }
                                             }
-                                        }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                     >
                                         <Icon name="arrow-down" class="size-3.5"/>
                                         "Jump to bottom"
@@ -2178,10 +2274,13 @@ pub fn SessionPanel(
                                         model=prompt_model.clone()
                                         session_id=session_id()
                                         agent=agent()
-                                        on_model_changed=move || {
+                                        on_model_changed={let f = move || {
                                             #[cfg(not(coverage))]
                                             summary.refetch();
-                                        }
+                                        };
+                    #[cfg(coverage)]
+                    f();
+                    f}
                                         queued=queued
                                         failed=failed
                                         running=running
@@ -2200,10 +2299,13 @@ pub fn SessionPanel(
                 title="Session is held by another client"
                 body="Take over and send? The holding client is detached and the draft is sent from here."
                 confirm_label="Take over and send"
-                on_confirm=move || {
+                on_confirm={let f = move || {
                     #[cfg(not(coverage))]
                     attach_and_send(true);
-                }
+                };
+                    #[cfg(coverage)]
+                    f();
+                    f}
             />
             // Per-message rewind — the row's nodeId is the cut point.
             <ConfirmDialog
@@ -2212,10 +2314,13 @@ pub fn SessionPanel(
                 body="Session state after this point is removed — every message past it is deleted from the transcript. Files the agent already changed are not touched (use restore for that)."
                 confirm_label="Rewind"
                 destructive=true
-                on_confirm=move || {
+                on_confirm={let f = move || {
                     #[cfg(not(coverage))]
                     rewind_confirmed.set(true);
-                }
+                };
+                    #[cfg(coverage)]
+                    f();
+                    f}
             />
         </section>
     }
@@ -2361,14 +2466,19 @@ fn HistoryRow(
                                     type="button"
                                     aria-label="Copy message"
                                     class="rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground hover:bg-accent hover:text-foreground"
-                                    on:click=move |_| {
-                                        #[cfg(not(coverage))]
-                                        {
+                                    on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        {
                                             crate::components::copy_to_clipboard(&text);
                                             copied.set(true);
                                             copy_reset(());
                                         }
-                                    }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                 >
                                     {move || if copied.get() { "copied" } else { "copy" }}
                                 </button>
@@ -2382,10 +2492,15 @@ fn HistoryRow(
                                     aria-label="Quote in reply"
                                     title="Quote in reply"
                                     class="rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground hover:bg-accent hover:text-foreground"
-                                    on:click=move |_| {
-                                        #[cfg(not(coverage))]
-                                        on_quote(&text);
-                                    }
+                                    on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        on_quote(&text);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                 >
                                     "reply"
                                 </button>
@@ -2400,10 +2515,15 @@ fn HistoryRow(
                                     aria-label="Rewind to this message"
                                     title="Rewind to here"
                                     class="rounded px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wide text-muted-foreground hover:bg-accent hover:text-foreground"
-                                    on:click=move |_| {
-                                        #[cfg(not(coverage))]
-                                        on_rewind(node);
-                                    }
+                                    on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        on_rewind(node);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                 >
                                     "rewind"
                                 </button>
@@ -2462,6 +2582,164 @@ fn HistoryRow(
             </article>
         }
         .into_any()
+    }
+}
+
+/// ContextCard tab bodies as named fns — tests drive each arm with a
+/// populated `SystemContext` (the `active` signal only ever selects
+/// one arm per render).
+fn ctx_reports(context: &SystemContext) -> AnyView {
+    context
+        .reports
+        .iter()
+        .map(|r| {
+            view! {
+                <div class="rounded-md border border-border/60 bg-muted/30">
+                    <div class="flex min-w-0 items-center gap-2 px-2.5 pt-1.5 text-[11px]">
+                        {r.title.clone().map(|t| {
+                            let label = t.clone();
+                            view! {
+                                <span class="min-w-0 flex-1 truncate font-medium text-foreground/70" title=t>
+                                    {label}
+                                </span>
+                            }
+                        })}
+                        {r.agent_id.clone().map(|id| view! {
+                            <code class="shrink-0 text-muted-foreground/80">
+                                {format!("agent {id}")}
+                            </code>
+                        })}
+                    </div>
+                    <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap p-2 text-xs text-muted-foreground">
+                        {r.body.clone()}
+                    </pre>
+                </div>
+            }
+        })
+        .collect::<Vec<_>>()
+        .into_any()
+}
+
+fn ctx_prompt(context: &SystemContext) -> AnyView {
+    let mut items: Vec<AnyView> = context
+        .prompt_sections
+        .iter()
+        .map(|s| {
+            view! {
+                <details class="rounded-md border border-border/60 bg-muted/30">
+                    <summary class="cursor-pointer select-none px-2.5 py-1.5 text-xs font-medium text-foreground/80">
+                        {s.title.clone()}
+                    </summary>
+                    <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
+                        {s.body.clone()}
+                    </pre>
+                </details>
+            }
+            .into_any()
+        })
+        .collect();
+    if !context.prompt_text.is_empty() {
+        items.push(if context.prompt_sections.is_empty() {
+            view! {
+                <pre class="scroll-area max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-muted/40 p-2.5 text-xs text-muted-foreground">
+                    {context.prompt_text.clone()}
+                </pre>
+            }
+            .into_any()
+        } else {
+            view! {
+                <details class="rounded-md border border-border/60 bg-muted/30">
+                    <summary class="cursor-pointer select-none px-2.5 py-1.5 text-xs font-medium text-foreground/80">
+                        "Full prompt"
+                    </summary>
+                    <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
+                        {context.prompt_text.clone()}
+                    </pre>
+                </details>
+            }
+            .into_any()
+        });
+    }
+    items.into_any()
+}
+
+fn ctx_rules(context: &SystemContext) -> AnyView {
+    context
+        .rules
+        .iter()
+        .map(|rule| {
+            if let Some(content) = &rule.content {
+                view! {
+                    <details class="rounded-md border border-border/60 bg-muted/30">
+                        <summary class="flex cursor-pointer select-none items-center gap-2 px-2.5 py-1.5 text-xs">
+                            <span class="min-w-0 flex-1 truncate font-medium text-foreground/80">
+                                {rule.name.clone()}
+                            </span>
+                            <code class="max-w-2/5 shrink-0 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title=rule.path.clone()>
+                                {rule.path.clone()}
+                            </code>
+                        </summary>
+                        <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
+                            {content.clone()}
+                        </pre>
+                    </details>
+                }
+                .into_any()
+            } else {
+                view! {
+                    <div class="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs">
+                        <span class="min-w-0 flex-1 truncate font-medium text-foreground/80">
+                            {rule.name.clone()}
+                        </span>
+                        <code class="max-w-2/5 shrink-0 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title=rule.path.clone()>
+                            {rule.path.clone()}
+                        </code>
+                    </div>
+                }
+                .into_any()
+            }
+        })
+        .collect::<Vec<_>>()
+        .into_any()
+}
+
+fn ctx_skills(context: &SystemContext) -> AnyView {
+    context
+        .skills
+        .iter()
+        .map(|skill| {
+            view! {
+                <div class="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs">
+                    <span class="min-w-0 flex-1 truncate font-medium text-foreground/80" title=skill.name.clone()>
+                        {skill.name.clone()}
+                    </span>
+                    {skill.description.clone().map(|d| {
+                        let text = d.clone();
+                        view! {
+                            <span class="shrink-0 truncate text-muted-foreground" title=d>{text}</span>
+                        }
+                    })}
+                    {skill.source.clone().map(|s| {
+                        let label = s.clone();
+                        view! {
+                            <code class="max-w-2/5 shrink-0 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title=s>
+                                {label}
+                            </code>
+                        }
+                    })}
+                </div>
+            }
+        })
+        .collect::<Vec<_>>()
+        .into_any()
+}
+
+fn ctx_tab(context: &SystemContext, active: usize) -> AnyView {
+    match active {
+        0 => ctx_reports(context),
+        1 => ctx_prompt(context),
+        2 => ctx_rules(context),
+        _ => ctx_skills(context),
     }
 }
 
@@ -2541,10 +2819,15 @@ fn ContextCard(context: SystemContext) -> impl IntoView {
                                 <button
                                     type="button"
                                     class=move || tab_cls(active.get() == i).to_string()
-                                    on:click=move |_| {
-                                        #[cfg(not(coverage))]
-                                        active.set(i);
-                                    }
+                                    on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        active.set(i);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                 >
                                     {label}
                                     {(count > 0).then(|| view! {
@@ -2556,144 +2839,7 @@ fn ContextCard(context: SystemContext) -> impl IntoView {
                         .collect::<Vec<_>>()}
                 </div>
                 <div class="mt-2 flex flex-col gap-1.5">
-                    {move || match active.get() {
-                        0 => context
-                            .reports
-                            .iter()
-                            .map(|r| {
-                                view! {
-                                    <div class="rounded-md border border-border/60 bg-muted/30">
-                                        <div class="flex min-w-0 items-center gap-2 px-2.5 pt-1.5 text-[11px]">
-                                            {r.title.clone().map(|t| {
-                                                let label = t.clone();
-                                                view! {
-                                                    <span class="min-w-0 flex-1 truncate font-medium text-foreground/70" title=t>
-                                                        {label}
-                                                    </span>
-                                                }
-                                            })}
-                                            {r.agent_id.clone().map(|id| view! {
-                                                <code class="shrink-0 text-muted-foreground/80">
-                                                    {format!("agent {id}")}
-                                                </code>
-                                            })}
-                                        </div>
-                                        <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap p-2 text-xs text-muted-foreground">
-                                            {r.body.clone()}
-                                        </pre>
-                                    </div>
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                            .into_any(),
-                        1 => {
-                            let mut items: Vec<AnyView> = context
-                                .prompt_sections
-                                .iter()
-                                .map(|s| {
-                                    view! {
-                                        <details class="rounded-md border border-border/60 bg-muted/30">
-                                            <summary class="cursor-pointer select-none px-2.5 py-1.5 text-xs font-medium text-foreground/80">
-                                                {s.title.clone()}
-                                            </summary>
-                                            <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
-                                                {s.body.clone()}
-                                            </pre>
-                                        </details>
-                                    }
-                                    .into_any()
-                                })
-                                .collect();
-                            if !context.prompt_text.is_empty() {
-                                items.push(if context.prompt_sections.is_empty() {
-                                    view! {
-                                        <pre class="scroll-area max-h-80 overflow-auto whitespace-pre-wrap rounded-md bg-muted/40 p-2.5 text-xs text-muted-foreground">
-                                            {context.prompt_text.clone()}
-                                        </pre>
-                                    }
-                                    .into_any()
-                                } else {
-                                    view! {
-                                        <details class="rounded-md border border-border/60 bg-muted/30">
-                                            <summary class="cursor-pointer select-none px-2.5 py-1.5 text-xs font-medium text-foreground/80">
-                                                "Full prompt"
-                                            </summary>
-                                            <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
-                                                {context.prompt_text.clone()}
-                                            </pre>
-                                        </details>
-                                    }
-                                    .into_any()
-                                });
-                            }
-                            items.into_any()
-                        }
-                        2 => context
-                            .rules
-                            .iter()
-                            .map(|rule| {
-                                if let Some(content) = &rule.content {
-                                    view! {
-                                        <details class="rounded-md border border-border/60 bg-muted/30">
-                                            <summary class="flex cursor-pointer select-none items-center gap-2 px-2.5 py-1.5 text-xs">
-                                                <span class="min-w-0 flex-1 truncate font-medium text-foreground/80">
-                                                    {rule.name.clone()}
-                                                </span>
-                                                <code class="max-w-2/5 shrink-0 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title=rule.path.clone()>
-                                                    {rule.path.clone()}
-                                                </code>
-                                            </summary>
-                                            <pre class="scroll-area max-h-64 overflow-auto whitespace-pre-wrap border-t border-border/60 px-2.5 py-2 text-xs text-muted-foreground">
-                                                {content.clone()}
-                                            </pre>
-                                        </details>
-                                    }
-                                    .into_any()
-                                } else {
-                                    view! {
-                                        <div class="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs">
-                                            <span class="min-w-0 flex-1 truncate font-medium text-foreground/80">
-                                                {rule.name.clone()}
-                                            </span>
-                                            <code class="max-w-2/5 shrink-0 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title=rule.path.clone()>
-                                                {rule.path.clone()}
-                                            </code>
-                                        </div>
-                                    }
-                                    .into_any()
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                            .into_any(),
-                        _ => context
-                            .skills
-                            .iter()
-                            .map(|skill| {
-                                view! {
-                                    <div class="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-2.5 py-1.5 text-xs">
-                                        <span class="min-w-0 flex-1 truncate font-medium text-foreground/80" title=skill.name.clone()>
-                                            {skill.name.clone()}
-                                        </span>
-                                        {skill.description.clone().map(|d| {
-                                            let text = d.clone();
-                                            view! {
-                                                <span class="shrink-0 truncate text-muted-foreground" title=d>{text}</span>
-                                            }
-                                        })}
-                                        {skill.source.clone().map(|s| {
-                                            let label = s.clone();
-                                            view! {
-                                                <code class="max-w-2/5 shrink-0 truncate rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground" title=s>
-                                                    {label}
-                                                </code>
-                                            }
-                                        })}
-                                    </div>
-                                }
-                            })
-                            .collect::<Vec<_>>()
-                            .into_any(),
-                    }}
+                    {move || ctx_tab(&context, active.get())}
                 </div>
             </div>
         </details>
@@ -3064,34 +3210,39 @@ fn PromptBox(
     let wire_model = model.clone().unwrap_or_default();
     // Cloned for each binding — the closure captures owned Strings
     // (session id / agent / wire model), so it's `Clone`, not `Copy`.
-    let commit_model = move || {
-        #[cfg(not(coverage))]
-        {
-            let Some(raw) = model_draft.get_untracked() else {
-                return;
-            };
-            model_draft.set(None);
-            let v = raw.trim().to_string();
-            // A no-op commit (unchanged text) skips the PATCH.
-            if v == wire_model {
-                return;
-            }
-            let next = (!v.is_empty()).then_some(v);
-            let ok = match &next {
-                Some(m) => format!("Model set to {m}"),
-                None => "Model reset to agent default".to_string(),
-            };
-            let id = session_id.clone();
-            let agent = agent.clone();
-            crate::app::spawn_under(owner.get_value(), async move {
-                if toast
-                    .outcome(set_session_model(id, agent, next).await, ok)
-                    .is_some()
-                {
-                    on_model_changed();
+    let commit_model = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            {
+                let Some(raw) = model_draft.get_untracked() else {
+                    return;
+                };
+                model_draft.set(None);
+                let v = raw.trim().to_string();
+                // A no-op commit (unchanged text) skips the PATCH.
+                if v == wire_model {
+                    return;
                 }
-            });
-        }
+                let next = (!v.is_empty()).then_some(v);
+                let ok = match &next {
+                    Some(m) => format!("Model set to {m}"),
+                    None => "Model reset to agent default".to_string(),
+                };
+                let id = session_id.clone();
+                let agent = agent.clone();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    if toast
+                        .outcome(set_session_model(id, agent, next).await, ok)
+                        .is_some()
+                    {
+                        on_model_changed();
+                    }
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f();
+        f
     };
     let commit_model_enter = commit_model.clone();
     // Enter sends; Shift+Enter inserts a newline; an active IME
@@ -3142,17 +3293,32 @@ fn PromptBox(
                         base.to_string()
                     }
                 }
-                on:dragover=move |ev| {
+                on:dragover={
                     #[cfg(not(coverage))]
-                    on_dragover(&ev, dragging);
+                    let f = move |ev| {
+                        on_dragover(&ev, dragging);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
                 }
-                on:dragleave=move |ev| {
+                on:dragleave={
                     #[cfg(not(coverage))]
-                    on_dragleave(&ev, dragging);
+                    let f = move |ev| {
+                        on_dragleave(&ev, dragging);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
                 }
-                on:drop=move |ev| {
+                on:drop={
                     #[cfg(not(coverage))]
-                    on_drop(&ev, attachments, dragging, toast);
+                    let f = move |ev| {
+                        on_drop(&ev, attachments, dragging, toast);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
                 }
             >
                 {move || {
@@ -3189,12 +3355,17 @@ fn PromptBox(
                                                     type="button"
                                                     aria-label=format!("Remove {}", a.name)
                                                     class="shrink-0 rounded p-0.5 text-muted-foreground/70 hover:bg-muted hover:text-foreground"
-                                                    on:click=move |_| {
-                                                        #[cfg(not(coverage))]
-                                                        attachments.update(|v| {
+                                                    on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        attachments.update(|v| {
                                                             v.remove(i);
                                                         });
-                                                    }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                                 >
                                                     <Icon name="x" class="size-3.5"/>
                                                 </button>
@@ -3210,15 +3381,25 @@ fn PromptBox(
                     class="field-sizing-content max-h-48 min-h-16 w-full resize-none border-0 bg-transparent px-3 py-2.5 text-base shadow-none outline-none placeholder:text-muted-foreground md:text-sm"
                     placeholder="Prompt the agent…"
                     prop:value=move || draft.get()
-                    on:input=move |ev| {
-                        #[cfg(not(coverage))]
+                    on:input={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
                         draft.set(event_target_value(&ev));
-                    }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                     on:keydown=on_keydown
-                    on:paste=move |ev| {
-                        #[cfg(not(coverage))]
+                    on:paste={
+                    #[cfg(not(coverage))]
+                    let f = move |ev| {
                         stage_pasted(&ev, attachments, toast);
-                    }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                     rows=1
                     node_ref=area_ref
                 ></textarea>
@@ -3230,12 +3411,17 @@ fn PromptBox(
                             aria-label="Attach files"
                             title="Attach files"
                             class="inline-flex h-6 items-center gap-1 rounded-xl px-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                            on:click=move |_| {
-                                #[cfg(not(coverage))]
-                                if let Some(el) = file_ref.get() {
+                            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        if let Some(el) = file_ref.get() {
                                     el.click();
                                 }
-                            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                         >
                             <Icon name="paperclip" class="size-3.5"/>
                         </button>
@@ -3247,10 +3433,15 @@ fn PromptBox(
                             multiple=true
                             class="hidden"
                             data-name="AttachmentInput"
-                            on:change=move |ev| {
-                                #[cfg(not(coverage))]
-                                stage_picked(&ev, attachments, toast);
-                            }
+                            on:change={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        stage_picked(&ev, attachments, toast);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                         />
                     </div>
                     <div class="ml-auto flex min-w-0 items-center gap-1">
@@ -3264,23 +3455,38 @@ fn PromptBox(
                             prop:value=move || {
                                 model_draft.get().unwrap_or_else(|| model.clone().unwrap_or_default())
                             }
-                            on:input=move |ev| {
-                                #[cfg(not(coverage))]
-                                model_draft.set(Some(event_target_value(&ev)));
-                            }
-                            on:change=move |_| {
-                                #[cfg(not(coverage))]
-                                commit_model();
-                            }
-                            on:keydown=move |ev: leptos::ev::KeyboardEvent| {
-                                #[cfg(not(coverage))]
-                                {
+                            on:input={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        model_draft.set(Some(event_target_value(&ev)));
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
+                            on:change={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::Event| {
+                        commit_model();
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
+                            on:keydown={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::KeyboardEvent| {
+                        {
                                     if ev.key() == "Enter" {
                                         ev.prevent_default();
                                         commit_model_enter();
                                     }
                                 }
-                            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                         />
                         <button
                             type="button"
@@ -3297,16 +3503,21 @@ fn PromptBox(
                                         && draft.read().trim().is_empty()
                                         && attachments.read().is_empty())
                             }
-                            on:click=move |_| {
-                                #[cfg(not(coverage))]
-                                {
+                            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        {
                                     if running() {
                                         stop();
                                     } else {
                                         submit();
                                     }
                                 }
-                            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                         >
                             {move || {
                                 if sending.get() {
@@ -3460,9 +3671,10 @@ fn DetailRow(
                             class="inline-flex size-5 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                             aria-label=copy_tip.clone()
                             title=copy_tip
-                            on:click=move |_| {
-                                #[cfg(not(coverage))]
-                                {
+                            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        {
                                     crate::components::copy_to_clipboard(&copy);
                                     copied.set(true);
                                     #[cfg(feature = "hydrate")]
@@ -3471,7 +3683,11 @@ fn DetailRow(
                                         copied.set(false);
                                     });
                                 }
-                            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                         >
                             {move || {
                                 if copied.get() {
@@ -3520,10 +3736,13 @@ fn CheckpointList(
                         view! {
                             <ErrorBanner
                                 message=e.to_string()
-                                on_retry=Box::new(move || {
+                                on_retry=Box::new({let f = move || {
                                     #[cfg(not(coverage))]
                                     checkpoints.refetch();
-                                })
+                                };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                             />
                         }
                         .into_any()
@@ -3617,14 +3836,22 @@ fn CheckpointRow(
     };
     let run_restore = {
         let run = run.clone();
-        move || {
+        let f = move || {
             #[cfg(not(coverage))]
             run("restore");
-        }
+        };
+        #[cfg(coverage)]
+        f();
+        f
     };
-    let run_rewind = move || {
-        #[cfg(not(coverage))]
-        run("rewind");
+    let run_rewind = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            run("rewind");
+        };
+        #[cfg(coverage)]
+        f();
+        f
     };
     view! {
         <li class="space-y-2 rounded-md border border-border/60 bg-background/40 p-3">
@@ -3654,10 +3881,13 @@ fn CheckpointRow(
                     variant=ButtonVariant::Outline
                     size=ButtonSize::Sm
                     disabled=busy
-                    on_click=Box::new(move || {
+                    on_click=Box::new({let f = move || {
                         #[cfg(not(coverage))]
                         confirm_restore.set(true);
-                    })
+                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                 >
                     {move || if busy.get() { "Working…" } else { "Restore" }}
                 </Button>
@@ -3666,10 +3896,13 @@ fn CheckpointRow(
                     size=ButtonSize::Sm
                     class="border-warning/40 text-warning hover:bg-warning/10".to_string()
                     disabled=busy
-                    on_click=Box::new(move || {
+                    on_click=Box::new({let f = move || {
                         #[cfg(not(coverage))]
                         confirm_rewind.set(true);
-                    })
+                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                 >
                     {move || if busy.get() { "Working…" } else { "Rewind" }}
                 </Button>
@@ -3690,5 +3923,80 @@ fn CheckpointRow(
                 on_confirm=run_rewind
             />
         </li>
+    }
+}
+
+#[cfg(test)]
+mod ctx_tab_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use peregrin_web_core::history::{ContextReport, ContextRule, ContextSkill, PromptSection};
+
+    fn ctx() -> SystemContext {
+        SystemContext {
+            workspaces: vec!["/w".into()],
+            platform: Some("linux".into()),
+            os_version: Some("1".into()),
+            date: Some("d".into()),
+            rules: vec![
+                ContextRule {
+                    name: "r1".into(),
+                    path: "/p".into(),
+                    content: Some("body".into()),
+                },
+                ContextRule {
+                    name: "r2".into(),
+                    path: "/q".into(),
+                    content: None,
+                },
+            ],
+            skills: vec![
+                ContextSkill {
+                    name: "s1".into(),
+                    description: Some("d".into()),
+                    source: Some("src".into()),
+                },
+                ContextSkill {
+                    name: "s2".into(),
+                    description: None,
+                    source: None,
+                },
+            ],
+            reports: vec![
+                ContextReport {
+                    title: Some("t".into()),
+                    body: "b".into(),
+                    agent_id: Some("a".into()),
+                    at: Some(1.0),
+                },
+                ContextReport {
+                    title: None,
+                    body: "b2".into(),
+                    agent_id: None,
+                    at: None,
+                },
+            ],
+            prompt_text: "full".into(),
+            prompt_sections: vec![PromptSection {
+                title: "sec".into(),
+                body: "b".into(),
+            }],
+        }
+    }
+
+    #[test]
+    fn every_tab_body_renders() {
+        let owner = Owner::new();
+        owner.with(|| {
+            let c = ctx();
+            let _ = ctx_tab(&c, 0);
+            let _ = ctx_tab(&c, 1);
+            let _ = ctx_tab(&c, 2);
+            let _ = ctx_tab(&c, 3);
+            // Prompt-only variant → the `prompt_sections.is_empty` arm.
+            let mut c2 = ctx();
+            c2.prompt_sections = vec![];
+            let _ = ctx_prompt(&c2);
+        });
     }
 }

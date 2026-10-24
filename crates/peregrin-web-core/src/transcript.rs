@@ -371,6 +371,23 @@ mod tests {
     }
 
     #[test]
+    fn tool_call_update_backfills_default_title() {
+        let mut t = LiveTranscript::default();
+        // First update carries no title → the entry is created under the
+        // "tool" placeholder; a later update backfills the real name.
+        t.apply(&SessionEvent::Custom {
+            name: "acp:tool_call_update".into(),
+            value: serde_json::json!({"toolCallId": "tc"}),
+        });
+        t.apply(&SessionEvent::Custom {
+            name: "acp:tool_call_update".into(),
+            value: serde_json::json!({"toolCallId": "tc", "title": "edit_file"}),
+        });
+        let e = t.entries.iter().find(|e| e.kind == LiveKind::Tool).unwrap();
+        assert_eq!(e.title, "edit_file");
+    }
+
+    #[test]
     fn tool_call_end_carries_locations_diffs_and_failed_status() {
         let mut t = LiveTranscript::default();
         t.apply(&SessionEvent::ToolCallStart {
@@ -540,5 +557,44 @@ mod tests {
             value: serde_json::json!("garbage"),
         });
         assert!(t.pending_permission.is_none());
+    }
+
+    #[test]
+    fn late_tool_names_replace_the_placeholder() {
+        let mut t = LiveTranscript::default();
+        t.push_user("go");
+        // ToolCallEnd naming a real tool → title set directly.
+        t.apply(&SessionEvent::ToolCallEnd {
+            tool_call_id: "tc1".into(),
+            status: Some("completed".into()),
+            tool_call_name: Some("bash".into()),
+            locations: Some(vec![]),
+            diffs: Some(vec![]),
+            contents: Some(vec![]),
+        });
+        // Same id with a different name → the placeholder overwrite arm.
+        t.apply(&SessionEvent::Custom {
+            name: "acp:tool_call_update".into(),
+            value: serde_json::json!({"toolCallId": "tc1", "title": "edit"}),
+        });
+        // An id-less update → the `id.is_empty` skip.
+        t.apply(&SessionEvent::Custom {
+            name: "acp:tool_call_update".into(),
+            value: serde_json::json!({"title": "x"}),
+        });
+        // A second ToolCallEnd with a new name → entry.title update arm.
+        t.apply(&SessionEvent::Custom {
+            name: "acp:tool_call_update".into(),
+            value: serde_json::json!({"toolCallId": "tc2"}),
+        });
+        t.apply(&SessionEvent::ToolCallEnd {
+            tool_call_id: "tc2".into(),
+            status: Some("error".into()),
+            tool_call_name: Some("write".into()),
+            locations: None,
+            diffs: None,
+            contents: None,
+        });
+        assert!(t.entries.iter().any(|e| e.error));
     }
 }

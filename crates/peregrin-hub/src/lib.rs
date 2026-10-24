@@ -336,18 +336,26 @@ async fn trace_layer(req: Request<Body>, next: Next) -> Response {
 /// # Errors
 /// `String` on a missing/empty node list or a projection/outbox open failure.
 pub fn hub_state(config: &HubConfig) -> Result<HubState, String> {
-    let home = std::env::var_os("PEREGRIN_HOME")
+    hub_state_from(|k| std::env::var_os(k), config)
+}
+
+/// [`hub_state`] with the environment injected — the test seam that
+/// drives every env arm (`PEREGRIN_HOME`/`HOME`/`PEREGRIN_NODES`)
+/// without touching the process env.
+#[doc(hidden)]
+pub fn hub_state_from(
+    get: impl Fn(&str) -> Option<std::ffi::OsString>,
+    config: &HubConfig,
+) -> Result<HubState, String> {
+    let home = get("PEREGRIN_HOME")
         .map(std::path::PathBuf::from)
-        .or_else(|| {
-            std::env::var_os("HOME")
-                .map(|h| std::path::PathBuf::from(h).join(".local/share/peregrin"))
-        })
+        .or_else(|| get("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share/peregrin")))
         .unwrap_or_else(|| std::path::PathBuf::from(".peregrin"))
         .join("hub");
     std::fs::create_dir_all(&home).map_err(|e| format!("create {}: {e}", home.display()))?;
     let creds = credentials::open(&home);
-    let mut nodes = std::env::var("PEREGRIN_NODES")
-        .ok()
+    let mut nodes = get("PEREGRIN_NODES")
+        .and_then(|v| v.into_string().ok())
         .filter(|v| !v.trim().is_empty())
         .map(|raw| sync_api::parse_nodes(&raw))
         .filter(|v| !v.is_empty())
@@ -393,43 +401,8 @@ pub fn hub_state(config: &HubConfig) -> Result<HubState, String> {
     let push = Arc::new(peregrin_push::PushStore::open(sepia_meta::MetaStore::open(
         &home.join("push.json"),
     )));
-    let projection_for_hook = projection.clone();
-    let push_for_hook = Arc::clone(&push);
     let options = peregrin_sync::engine::SyncOptions {
-        on_event: Some(Arc::new(
-            move |node_id: &str, event: &peregrin_sync::client::FeedEvent| {
-                let peregrin_sync::client::FeedEvent::Diff {
-                    kind, id, patch, ..
-                } = event
-                else {
-                    return;
-                };
-                if kind != "session" {
-                    return;
-                }
-                let title = projection_for_hook.session(node_id, id).map_or_else(
-                    |_| id.clone(),
-                    |opt| opt.map_or_else(|| id.clone(), |r| r.title),
-                );
-                let url = format!("/?session={id}");
-                if patch.get("runFinished") == Some(&serde_json::Value::Bool(true)) {
-                    push_for_hook.send(
-                        peregrin_push::Kind::Done,
-                        "Session finished",
-                        &format!("{title} finished its run."),
-                        &url,
-                    );
-                }
-                if patch.get("permissionRequested") == Some(&serde_json::Value::Bool(true)) {
-                    push_for_hook.send(
-                        peregrin_push::Kind::Permission,
-                        "Approval needed",
-                        &format!("{title} is waiting for you."),
-                        &url,
-                    );
-                }
-            },
-        ) as peregrin_sync::engine::FeedHook),
+        on_event: Some(feed_hook(projection.clone(), Arc::clone(&push))),
         ..peregrin_sync::engine::SyncOptions::default()
     };
     let engine = peregrin_sync::SyncEngine::spawn(projection, outbox, targets, options);
@@ -449,6 +422,51 @@ pub fn hub_state(config: &HubConfig) -> Result<HubState, String> {
     let router_api = Arc::clone(&api);
     state.session_router = Some(Arc::new(move |id| router_api.node_url_for(id, None)));
     Ok(state)
+}
+
+/// The hub's push-notification feed hook — `session` diffs carrying
+/// `runFinished`/`permissionRequested` patch flags become Web Push
+/// sends. Extracted so tests can drive the body directly (the live
+/// hook only fires on real node feeds).
+#[doc(hidden)]
+pub fn feed_hook(
+    projection: peregrin_sync::ProjectionStore,
+    push: Arc<peregrin_push::PushStore>,
+) -> peregrin_sync::engine::FeedHook {
+    Arc::new(
+        move |node_id: &str, event: &peregrin_sync::client::FeedEvent| {
+            let peregrin_sync::client::FeedEvent::Diff {
+                kind, id, patch, ..
+            } = event
+            else {
+                return;
+            };
+            if kind != "session" {
+                return;
+            }
+            let title = projection.session(node_id, id).map_or_else(
+                |_| id.clone(),
+                |opt| opt.map_or_else(|| id.clone(), |r| r.title),
+            );
+            let url = format!("/?session={id}");
+            if patch.get("runFinished") == Some(&serde_json::Value::Bool(true)) {
+                push.send(
+                    peregrin_push::Kind::Done,
+                    "Session finished",
+                    &format!("{title} finished its run."),
+                    &url,
+                );
+            }
+            if patch.get("permissionRequested") == Some(&serde_json::Value::Bool(true)) {
+                push.send(
+                    peregrin_push::Kind::Permission,
+                    "Approval needed",
+                    &format!("{title} is waiting for you."),
+                    &url,
+                );
+            }
+        },
+    )
 }
 
 fn leptos_options(config: &HubConfig) -> LeptosOptions {

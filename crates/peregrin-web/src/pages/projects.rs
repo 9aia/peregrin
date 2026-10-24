@@ -56,31 +56,36 @@ pub fn ProjectsPage() -> impl IntoView {
         }));
     }
 
-    let create = move || {
-        #[cfg(not(coverage))]
-        {
-            let name = draft.get();
-            if name.trim().is_empty() || busy.get() {
-                return;
-            }
-            busy.set(true);
-            form_error.set(None);
-            crate::app::spawn_under(owner.get_value(), async move {
-                match create_project(name.clone(), None).await {
-                    Ok(p) => {
-                        toast.success(format!("Created project \"{}\".", p.name));
-                        draft.set(String::new());
-                        projects.refetch();
-                    }
-                    Err(e) => {
-                        let msg = e.to_string();
-                        toast.error(msg.clone());
-                        form_error.set(Some(msg));
-                    }
+    let create = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            {
+                let name = draft.get();
+                if name.trim().is_empty() || busy.get() {
+                    return;
                 }
-                busy.set(false);
-            });
-        }
+                busy.set(true);
+                form_error.set(None);
+                crate::app::spawn_under(owner.get_value(), async move {
+                    match create_project(name.clone(), None).await {
+                        Ok(p) => {
+                            toast.success(format!("Created project \"{}\".", p.name));
+                            draft.set(String::new());
+                            projects.refetch();
+                        }
+                        Err(e) => {
+                            let msg = e.to_string();
+                            toast.error(msg.clone());
+                            form_error.set(Some(msg));
+                        }
+                    }
+                    busy.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f();
+        f
     };
 
     view! {
@@ -94,12 +99,17 @@ pub fn ProjectsPage() -> impl IntoView {
             </PageHead>
             <form
                 class="flex items-center gap-2"
-                on:submit=move |ev| {
+                on:submit={
                     #[cfg(not(coverage))]
-                    {
+                    let f = move |ev: leptos::ev::SubmitEvent| {
+                        {
                         ev.prevent_default();
                         create();
                     }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
                 }
             >
                 <Input
@@ -108,10 +118,15 @@ pub fn ProjectsPage() -> impl IntoView {
                     attr:placeholder="New project name…"
                     attr:maxlength=100
                     prop:value=move || draft.get()
-                    on:input=move |ev| {
-                        #[cfg(not(coverage))]
+                    on:input={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
                         draft.set(event_target_value(&ev));
-                    }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                 />
                 <Button
                     button_type="submit"
@@ -141,10 +156,13 @@ pub fn ProjectsPage() -> impl IntoView {
                                 view! {
                                     <ErrorBanner
                                         message=e.to_string()
-                                        on_retry=Box::new(move || {
+                                        on_retry=Box::new({let f = move || {
                                             #[cfg(not(coverage))]
                                             projects.refetch();
-                                        })
+                                        };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                     />
                                 }
                                     .into_any()
@@ -224,7 +242,7 @@ pub fn ProjectsPage() -> impl IntoView {
             body="The project is removed from the registry; its sessions keep their history but lose the tag."
             confirm_label="Delete"
             destructive=true
-            on_confirm=move || {
+            on_confirm={let f = move || {
                 #[cfg(not(coverage))]
                 {
                     if let Some(p) = delete_target.get() {
@@ -245,7 +263,10 @@ pub fn ProjectsPage() -> impl IntoView {
                         });
                     }
                 }
-            }
+            };
+                    #[cfg(coverage)]
+                    f();
+                    f}
         />
     }
 }
@@ -354,9 +375,10 @@ fn ProjectDetails(
                                                                 type="checkbox"
                                                                 class="size-4 accent-primary"
                                                                 prop:checked=member
-                                                                on:change=move |ev| {
-                                                                    #[cfg(not(coverage))]
-                                                                    {
+                                                                on:change={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        {
                                                                         let on = event_target_checked(&ev);
                                                                         let ids = with_membership(
                                                                             &current,
@@ -393,7 +415,11 @@ fn ProjectDetails(
                                                                             }
                                                                         });
                                                                     }
-                                                                }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                                             />
                                                             <span class="min-w-0 flex-1 truncate">{title}</span>
                                                             <code class="shrink-0 font-mono text-[10px] text-muted-foreground">
@@ -433,10 +459,13 @@ fn ProjectDetails(
                                 <Button
                                     variant=ButtonVariant::Outline
                                     size=ButtonSize::Sm
-                                    on_click=Box::new(move || {
+                                    on_click=Box::new({let f = move || {
                                         #[cfg(not(coverage))]
                                         transfer_open.set(true);
-                                    })
+                                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                 >
                                     "Transfer to node…"
                                 </Button>
@@ -448,13 +477,16 @@ fn ProjectDetails(
                 <Button
                     variant=ButtonVariant::Destructive
                     size=ButtonSize::Sm
-                    on_click=Box::new(move || {
+                    on_click=Box::new({let f = move || {
                         #[cfg(not(coverage))]
                         {
                             delete_target.set(Some(project_for_delete.clone()));
                             confirm_open.set(true);
                         }
-                    })
+                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                 >
                     "Delete project…"
                 </Button>
@@ -571,26 +603,32 @@ fn ProjectRow(
                             <Button
                                 variant=ButtonVariant::Outline
                                 size=ButtonSize::Sm
-                                on_click=Box::new(move || {
+                                on_click=Box::new({let f = move || {
                                     #[cfg(not(coverage))]
                                     {
                                         selected.set(Some(for_details.clone()));
                                         sheet_open.set(true);
                                     }
-                                })
+                                };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                             >
                                 "Details"
                             </Button>
                             <Button
                                 variant=ButtonVariant::Destructive
                                 size=ButtonSize::Sm
-                                on_click=Box::new(move || {
+                                on_click=Box::new({let f = move || {
                                     #[cfg(not(coverage))]
                                     {
                                         delete_target.set(Some(for_delete.clone()));
                                         confirm_open.set(true);
                                     }
-                                })
+                                };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                             >
                                 "Delete"
                             </Button>

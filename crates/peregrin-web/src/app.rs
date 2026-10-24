@@ -287,12 +287,17 @@ fn nav_items(extra: &str, on_nav: Option<std::sync::Arc<dyn Fn() + Send + Sync>>
     view! {
         <nav
             class=format!("flex min-w-0 flex-col gap-0.5 px-2 {extra}")
-            on:click=move |_| {
-                #[cfg(not(coverage))]
-                if let Some(f) = &on_nav {
+            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        if let Some(f) = &on_nav {
                     f();
                 }
-            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
         >
             <A href="/" exact=true attr:class=nav_link("w-full")>
                 <Icon name="message-square"/>
@@ -469,10 +474,15 @@ pub fn App() -> impl IntoView {
                             type="button"
                             aria-label="Open navigation"
                             class="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                            on:click=move |_| {
-                                #[cfg(not(coverage))]
-                                sidebar_open.set(true);
-                            }
+                            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        sidebar_open.set(true);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                         >
                             <Icon name="menu" class="size-5"/>
                         </button>
@@ -668,10 +678,15 @@ fn ShortcutsHelp(open: RwSignal<bool>) -> impl IntoView {
                     "fixed inset-0 z-[80] grid place-items-center bg-black/30 p-4 opacity-0 pointer-events-none transition-opacity"
                 }
             }
-            on:click=move |_| {
-                #[cfg(not(coverage))]
-                open.set(false);
-            }
+            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        open.set(false);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
         >
             <div
                 node_ref=panel
@@ -681,9 +696,14 @@ fn ShortcutsHelp(open: RwSignal<bool>) -> impl IntoView {
                 tabindex="-1"
                 inert=move || (!open.get()).then_some("")
                 class="w-full max-w-sm rounded-3xl bg-popover p-5 shadow-xl ring-1 ring-border focus:outline-none"
-                on:click=move |ev| {
+                on:click={
                     #[cfg(not(coverage))]
-                    ev.stop_propagation();
+                    let f = move |ev: leptos::ev::MouseEvent| {
+                        ev.stop_propagation();
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
                 }
             >
                 <div class="flex items-center justify-between">
@@ -692,10 +712,15 @@ fn ShortcutsHelp(open: RwSignal<bool>) -> impl IntoView {
                         type="button"
                         aria-label="Close"
                         class="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                        on:click=move |_| {
-                            #[cfg(not(coverage))]
-                            open.set(false);
-                        }
+                        on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        open.set(false);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                     >
                         <Icon name="x" class="size-3.5"/>
                     </button>

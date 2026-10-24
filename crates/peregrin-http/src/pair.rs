@@ -249,3 +249,25 @@ impl Pairing {
             .contains(&hash_pair_token(token))
     }
 }
+
+#[cfg(test)]
+mod cov_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn code_file_and_open_arms() {
+        let dir = tempfile::tempdir().unwrap();
+        let code_file = dir.path().join("pair-code");
+        // Non-finite expiry → None.
+        std::fs::write(&code_file, r#"{"code":"c","expiresAt":1e999}"#).unwrap();
+        assert_eq!(read_pair_code_file(&code_file), None);
+        // A tokens file with non-string entries is skipped.
+        let tokens_file = dir.path().join("tokens.json");
+        std::fs::write(&tokens_file, r#"{"tokens":[1,"h",null]}"#).unwrap();
+        let pairing = Pairing::open(code_file.clone(), tokens_file);
+        // An already-expired code file is absorbed but not registered.
+        std::fs::write(&code_file, r#"{"code":"c","expiresAt":1.0}"#).unwrap();
+        pairing.absorb_code_file();
+    }
+}

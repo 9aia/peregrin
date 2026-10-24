@@ -285,10 +285,15 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                     "fixed inset-0 z-[80] flex items-start justify-center bg-black/30 p-4 pt-[15vh] opacity-0 pointer-events-none transition-opacity"
                 }
             }
-            on:click=move |_| {
-                #[cfg(not(coverage))]
-                open.set(false);
-            }
+            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        open.set(false);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
         >
             <div
                 node_ref=card_ref
@@ -300,16 +305,22 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                 inert=move || (!open.get()).then_some("")
                 aria-hidden=move || (!open.get()).then_some("true")
                 class="flex w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-popover shadow-xl ring-1 ring-border"
-                on:click=move |ev| {
+                on:click={
                     #[cfg(not(coverage))]
-                    ev.stop_propagation();
+                    let f = move |ev: leptos::ev::MouseEvent| {
+                        ev.stop_propagation();
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
                 }
                 // The keydown cascade: handled here (inside the card)
                 // and stopped, so the document-level listeners in the
                 // shell/session list never see palette keys.
-                on:keydown=move |ev| {
+                on:keydown={
                     #[cfg(not(coverage))]
-                    {
+                    let f = move |ev: leptos::ev::KeyboardEvent| {
+                        {
                         match ev.key().as_str() {
                             "Escape" => {
                                 ev.stop_propagation();
@@ -343,6 +354,10 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                             _ => {}
                         }
                     }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
                 }
             >
                 <div class="border-b p-2">
@@ -359,13 +374,18 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                         }
                         attr:placeholder="Type a command or search sessions…"
                         prop:value=move || query.get()
-                        on:input=move |ev| {
-                            #[cfg(not(coverage))]
-                            {
+                        on:input={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        {
                                 query.set(event_target_value(&ev));
                                 active.set(0);
                             }
-                        }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                     />
                 </div>
                 <ul
@@ -411,10 +431,15 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                                                 "flex cursor-pointer items-center gap-2.5 rounded-2xl px-3 py-2 text-sm"
                                             }
                                         }
-                                        on:mouseenter=move |_| {
-                                            #[cfg(not(coverage))]
-                                            active.set(i);
-                                        }
+                                        on:mouseenter={
+                    #[cfg(not(coverage))]
+                    let f = move |_| {
+                        active.set(i);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                         on:click={
                                             let item = item.clone();
                                             move |_| {

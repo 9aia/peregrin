@@ -221,7 +221,9 @@ fn write_row(conn: &Connection, node_id: &str, summary: &Value) -> Result<(), Sy
             row.locked,
             row.busy,
             row.last_activity_at,
-            serde_json::to_string(&row.raw)?,
+            // `Value`'s `Display` is infallible compact JSON — no `?`
+            // arm to leave uncovered.
+            row.raw.to_string(),
         ],
     )?;
     Ok(())

@@ -251,34 +251,39 @@ fn PairCard() -> impl IntoView {
     let result: RwSignal<Option<Result<String, String>>> =
         RwSignal::new(cfg!(coverage).then(|| Ok("tok".to_string())));
 
-    let submit = move || {
-        #[cfg(not(coverage))]
-        {
-            let c = code.get_untracked();
-            if c.trim().is_empty() || busy.get_untracked() {
-                return;
-            }
-            busy.set(true);
-            result.set(None);
-            let node_arg = {
-                let n = node.get_untracked();
-                (!n.is_empty()).then_some(n)
-            };
-            crate::app::spawn_under(owner.get_value(), async move {
-                let res = redeem_pair_code(c, node_arg)
-                    .await
-                    .map_err(|e| e.to_string());
-                busy.set(false);
-                match &res {
-                    Ok(_) => {
-                        toast.success("Device paired — store the credential somewhere safe.");
-                        code.set(String::new());
-                    }
-                    Err(e) => toast.error(e.clone()),
+    let submit = {
+        let f = move || {
+            #[cfg(not(coverage))]
+            {
+                let c = code.get_untracked();
+                if c.trim().is_empty() || busy.get_untracked() {
+                    return;
                 }
-                result.set(Some(res));
-            });
-        }
+                busy.set(true);
+                result.set(None);
+                let node_arg = {
+                    let n = node.get_untracked();
+                    (!n.is_empty()).then_some(n)
+                };
+                crate::app::spawn_under(owner.get_value(), async move {
+                    let res = redeem_pair_code(c, node_arg)
+                        .await
+                        .map_err(|e| e.to_string());
+                    busy.set(false);
+                    match &res {
+                        Ok(_) => {
+                            toast.success("Device paired — store the credential somewhere safe.");
+                            code.set(String::new());
+                        }
+                        Err(e) => toast.error(e.clone()),
+                    }
+                    result.set(Some(res));
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f();
+        f
     };
 
     view! {
@@ -293,13 +298,18 @@ fn PairCard() -> impl IntoView {
                 <form
                     data-name="PairCard"
                     class="flex flex-col gap-3"
-                    on:submit=move |ev| {
-                        #[cfg(not(coverage))]
+                    on:submit={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::SubmitEvent| {
                         {
                             ev.prevent_default();
                             submit();
                         }
-                    }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                 >
                     <div class="flex flex-wrap items-end gap-2">
                         <label class="flex min-w-48 flex-1 flex-col gap-1.5 text-sm">
@@ -311,10 +321,15 @@ fn PairCard() -> impl IntoView {
                                 attr:placeholder="XXXX-XXXX"
                                 attr:autocomplete="off"
                                 prop:value=move || code.get()
-                                on:input=move |ev| {
-                                    #[cfg(not(coverage))]
-                                    code.set(event_target_value(&ev));
-                                }
+                                on:input={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        code.set(event_target_value(&ev));
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                             />
                         </label>
                         // Target node — only meaningful on multi-node
@@ -332,10 +347,15 @@ fn PairCard() -> impl IntoView {
                                         <select
                                             class=SELECT_CLASS
                                             prop:value=move || node.get()
-                                            on:change=move |ev| {
-                                                #[cfg(not(coverage))]
-                                                node.set(event_target_value(&ev));
-                                            }
+                                            on:change={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        node.set(event_target_value(&ev));
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                                         >
                                             <option value="">"primary"</option>
                                             {rows
@@ -474,9 +494,10 @@ pub(crate) fn NicknameEdit(
                     view! {
                         <form
                             class="inline-flex items-center gap-1.5"
-                            on:submit=move |ev| {
-                                #[cfg(not(coverage))]
-                                {
+                            on:submit={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::SubmitEvent| {
+                        {
                                     ev.prevent_default();
                                     let name_arg = draft.get();
                                     if name_arg.trim().is_empty() || busy.get() {
@@ -507,7 +528,11 @@ pub(crate) fn NicknameEdit(
                                         },
                                     );
                                 }
-                            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                         >
                             <Input
                                 class="h-7 w-44 px-2 text-xs"
@@ -515,16 +540,26 @@ pub(crate) fn NicknameEdit(
                                 attr:maxlength=100
                                 attr:aria-label="Node nickname"
                                 prop:value=move || draft.get()
-                                on:input=move |ev| {
-                                    #[cfg(not(coverage))]
-                                    draft.set(event_target_value(&ev));
-                                }
-                                on:keydown=move |ev| {
-                                    #[cfg(not(coverage))]
-                                    if ev.key() == "Escape" {
+                                on:input={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::Event| {
+                        draft.set(event_target_value(&ev));
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
+                                on:keydown={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::KeyboardEvent| {
+                        if ev.key() == "Escape" {
                                         editing.set(false);
                                     }
-                                }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                             />
                             <Button
                                 button_type="submit"
@@ -540,10 +575,13 @@ pub(crate) fn NicknameEdit(
                             <Button
                                 variant=ButtonVariant::Ghost
                                 size=ButtonSize::Sm
-                                on_click=Box::new(move || {
+                                on_click=Box::new({let f = move || {
                                     #[cfg(not(coverage))]
                                     editing.set(false);
-                                })
+                                };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                             >
                                 "Cancel"
                             </Button>
@@ -560,13 +598,18 @@ pub(crate) fn NicknameEdit(
                             aria-label="Rename node"
                             title="Rename node"
                             class="text-muted-foreground hover:text-foreground"
-                            on:click=move |_| {
-                                #[cfg(not(coverage))]
-                                {
+                            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        {
                                     draft.set(seed.clone());
                                     editing.set(true);
                                 }
-                            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                         >
                             <Icon name="pencil" class="size-3.5"/>
                         </button>

@@ -266,3 +266,34 @@ where
     }
     found.ok_or_else(|| format!("Session not found: {session}"))
 }
+
+#[cfg(test)]
+mod cov_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn pick_owner_agent_arms() {
+        let rows = [
+            OwnershipRow {
+                session_id: "s1".into(),
+                node_id: "n1".into(),
+                agent: "devin".into(),
+            },
+            OwnershipRow {
+                session_id: "s1".into(),
+                node_id: "n2".into(),
+                agent: "cline".into(),
+            },
+        ];
+        // Agent match → the specific row's node.
+        assert_eq!(
+            pick_owner(rows.iter(), "s1", Some("cline")).unwrap().0,
+            "n2"
+        );
+        // No agent → first match.
+        assert_eq!(pick_owner(rows.iter(), "s1", None).unwrap().0, "n1");
+        // No session → Err arm.
+        assert!(pick_owner(rows.iter(), "ghost", None).is_err());
+    }
+}

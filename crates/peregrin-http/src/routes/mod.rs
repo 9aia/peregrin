@@ -340,3 +340,38 @@ impl SummaryWire {
 }
 
 pub mod push;
+
+#[cfg(test)]
+mod cov_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    // Ok but unserializable → 500 arm.
+    struct Bad;
+    impl serde::Serialize for Bad {
+        fn serialize<S: serde::Serializer>(&self, _: S) -> Result<S::Ok, S::Error> {
+            Err(serde::ser::Error::custom("no"))
+        }
+    }
+
+    #[test]
+    fn respond_and_helper_arms() {
+        // Err → error_response.
+        let _ = respond::<()>(
+            Err(ControlError::new(ControlErrorCode::Internal, "x")),
+            StatusCode::OK,
+        );
+        let _ = respond(Ok(Bad), StatusCode::OK);
+        // Query helpers.
+        assert!(query_params(None).is_empty());
+        assert_eq!(query_params(Some("a=1&b=2")).get("b").unwrap(), "2");
+        assert_eq!(query_param(Some("a=1"), "a").as_deref(), Some("1"));
+        assert_eq!(query_param(None, "a"), None);
+        // iso_of_ms — overflow → "", normal → ISO.
+        assert!(iso_of_ms(f64::MAX).is_empty());
+        assert!(iso_of_ms(0.0).starts_with("1970-"));
+        // Error-response shapes.
+        let _ = invalid_json();
+        let _ = payload_too_large();
+    }
+}

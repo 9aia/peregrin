@@ -888,3 +888,47 @@ impl SessionPlane for ServicePlane {
         let _ = self.0.shutdown().await;
     }
 }
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    /// Minimal JSON-RPC "service" as a shell script — enough for
+    /// `spawn`'s handshake. `respawn` short-circuits before it would
+    /// ever need a second spawn, so no `shutdown` arm is required.
+    fn script_spec(dir: &std::path::Path) -> Spec {
+        let script = dir.join("stub-service.sh");
+        std::fs::write(
+            &script,
+            "#!/bin/sh\n\
+             while IFS= read -r line; do\n\
+             id=$(printf '%s' \"$line\" | sed -n 's/.*\"id\":\\([0-9][0-9]*\\).*/\\1/p')\n\
+             case \"$line\" in\n\
+             *manifest*) printf '{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"name\":\"stub\",\"version\":\"0\",\"protocol\":1,\"methods\":[]}}\\n' \"${id:-0}\" ;;\n\
+             *) printf '{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{}}\\n' \"${id:-0}\" ;;\n\
+             esac\n\
+             done\n",
+        )
+        .unwrap();
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755)).unwrap();
+        }
+        Spec {
+            binary: script,
+            env: Vec::new(),
+        }
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn respawn_alive_client_early_returns() {
+        let dir = tempfile::tempdir().unwrap();
+        let service = SepiaService::spawn(script_spec(dir.path())).await.unwrap();
+        // Client alive → `respawn`'s `!is_closed` early return.
+        let client = service.respawn().await.unwrap();
+        assert!(!client.is_closed());
+        let _ = service.shutdown().await;
+    }
+}

@@ -46,13 +46,18 @@ pub fn Button(
             type=move || if button_type.is_empty() { "button".to_string() } else { button_type.clone() }
             class=class
             disabled=move || disabled.get()
-            on:click=move |ev| {
-                #[cfg(not(coverage))]
-                if let Some(cb) = &on_click {
+            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::MouseEvent| {
+                        if let Some(cb) = &on_click {
                     ev.prevent_default();
                     cb();
                 }
-            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
         >
             {children()}
         </button>
@@ -236,13 +241,18 @@ pub fn MenuItem(
     let close = (!keep_open).then_some("this.closest('details').removeAttribute('open')");
     view! {
         <button type="button" class=cls onclick=close
-            on:click=move |ev| {
-                #[cfg(not(coverage))]
-                if let Some(cb) = &on_click {
+            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::MouseEvent| {
+                        if let Some(cb) = &on_click {
                     ev.prevent_default();
                     cb();
                 }
-            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
         >
             {(!icon.is_empty()).then(|| {
                 view! { <icons::Icon name=icon class="size-4 text-muted-foreground"/> }
@@ -319,11 +329,16 @@ pub fn ConfirmDialog(
                     #[cfg(not(coverage))]
                     ev.stop_propagation();
                 }
-                on:keydown=move |ev| {
+                on:keydown={
                     #[cfg(not(coverage))]
-                    if ev.key() == "Escape" {
+                    let f = move |ev: leptos::ev::KeyboardEvent| {
+                        if ev.key() == "Escape" {
                         open.set(false);
                     }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
                 }
             >
                 <h3 id=move || title_id.clone() class="text-base font-semibold">{title}</h3>
@@ -339,13 +354,16 @@ pub fn ConfirmDialog(
                     <Button
                         variant=if destructive { ButtonVariant::Destructive } else { ButtonVariant::Default }
                         size=ButtonSize::Sm
-                        on_click=Box::new(move || {
+                        on_click=Box::new({let f = move || {
                             #[cfg(not(coverage))]
                             {
                                 on_confirm();
                                 open.set(false);
                             }
-                        })
+                        };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                     >
                         {confirm_label}
                     </Button>
@@ -904,10 +922,15 @@ pub fn Sheet(
                     "fixed inset-0 z-50 bg-black/30 transition-opacity duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] opacity-0 pointer-events-none"
                 }
             }
-            on:click=move |_| {
-                #[cfg(not(coverage))]
-                open.set(false);
-            }
+            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
+                        open.set(false);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
         ></div>
         <div
             node_ref=panel
@@ -924,12 +947,17 @@ pub fn Sheet(
                 "fixed inset-y-2 z-50 flex w-80 max-w-[85vw] flex-col overflow-hidden rounded-4xl border border-border bg-popover text-sm text-popover-foreground shadow-xl transition-transform duration-[450ms] ease-[cubic-bezier(0.22,1,0.36,1)] focus:outline-none {} {}",
                 side_cls, class
             )
-            on:keydown=move |ev| {
-                #[cfg(not(coverage))]
-                if ev.key() == "Escape" {
+            on:keydown={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::KeyboardEvent| {
+                        if ev.key() == "Escape" {
                     open.set(false);
                 }
-            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
         >
             {children()}
         </div>

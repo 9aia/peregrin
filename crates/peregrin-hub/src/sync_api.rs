@@ -109,7 +109,7 @@ fn owner<'a>(
     // when ids collide; otherwise the first match wins.
     let rows: Vec<peregrin_control::OwnershipRow> = projection
         .sessions(None)
-        .map_err(|e| format!("projection: {e}"))?
+        .map_err(proj_err)?
         .into_iter()
         .map(|row| peregrin_control::OwnershipRow {
             session_id: row.session_id,
@@ -253,7 +253,7 @@ impl SyncNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(join_err)?
     }
 
     /// The upstream `(url, token)` for a session — the proxy uses it to
@@ -305,8 +305,8 @@ impl SyncNodeApi {
         let path = Self::session_path(id, suffix, agent);
         tokio::task::spawn_blocking(move || client.send_json("POST", &path, &payload))
             .await
-            .map_err(|e| e.to_string())?
-            .map_err(|e| e.to_string())
+            .map_err(join_err)?
+            .map_err(err_string)
     }
 
     async fn submit(
@@ -334,7 +334,7 @@ impl SyncNodeApi {
             })
             .await
             .map(|_| ())
-            .map_err(|e| e.to_string())
+            .map_err(err_string)
     }
 
     /// Persist a minted credential and start using it: store → registry
@@ -348,15 +348,10 @@ impl SyncNodeApi {
         let creds = Arc::clone(&self.creds);
         let id = node_id.to_string();
         let tok = token.to_string();
-        match tokio::task::spawn_blocking(move || creds.set(&id, &tok)).await {
-            Ok(Ok(())) => {}
-            Ok(Err(e)) => {
-                tracing::warn!(node = %node_id, "credential store write failed: {e}");
-            }
-            Err(e) => {
-                tracing::warn!(node = %node_id, "credential store write failed: {e}");
-            }
-        }
+        cred_store_warn(
+            tokio::task::spawn_blocking(move || creds.set(&id, &tok)).await,
+            node_id,
+        );
         let target = {
             let mut registry = self.registry_mut();
             let (node_ref, token_opt) = {
@@ -558,10 +553,7 @@ fn pending_dto(e: &OutboxEntry) -> PendingWriteDto {
 #[async_trait::async_trait]
 impl NodeApi for SyncNodeApi {
     async fn list_sessions(&self) -> Result<Vec<SessionSummaryDto>, String> {
-        let sessions: Vec<IndexedSession> = self
-            .projection()
-            .sessions(None)
-            .map_err(|e| format!("projection: {e}"))?;
+        let sessions: Vec<IndexedSession> = self.projection().sessions(None).map_err(proj_err)?;
         // The raw wire summary carries every field the DTO needs;
         // annotate the owning node so the UI can show + route it.
         Ok(sessions
@@ -588,13 +580,13 @@ impl NodeApi for SyncNodeApi {
         let row = self
             .projection()
             .session(&node_id, id)
-            .map_err(|e| format!("projection: {e}"))?
+            .map_err(proj_err)?
             .ok_or_else(|| format!("Session not found: {id}"))?;
         let mut raw = row.raw.clone();
         if let Value::Object(m) = &mut raw {
             m.insert("node".into(), Value::String(node_id));
         }
-        serde_json::from_value(raw).map_err(|e| format!("decode: {e}"))
+        serde_json::from_value(raw).map_err(decode_err)
     }
 
     async fn history(
@@ -611,8 +603,8 @@ impl NodeApi for SyncNodeApi {
             client.get_history(&id_owned, limit, before, agent_owned.as_deref())
         })
         .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
+        .map_err(join_err)?
+        .map_err(err_string)?;
         Ok(HistoryPageDto {
             messages: page
                 .messages
@@ -672,9 +664,9 @@ impl NodeApi for SyncNodeApi {
         }
         tokio::task::spawn_blocking(move || client.send_json("POST", "/api/sessions", &body))
             .await
-            .map_err(|e| e.to_string())?
-            .map_err(|e| e.to_string())
-            .and_then(|v| serde_json::from_value(v).map_err(|e| format!("decode: {e}")))
+            .map_err(join_err)?
+            .map_err(err_string)
+            .and_then(|v| serde_json::from_value(v).map_err(decode_err))
     }
 
     async fn attach(
@@ -693,7 +685,7 @@ impl NodeApi for SyncNodeApi {
                 serde_json::json!({ "takeover": takeover }),
             )
             .await?;
-        serde_json::from_value(body).map_err(|e| format!("decode: {e}"))
+        serde_json::from_value(body).map_err(decode_err)
     }
 
     async fn detach(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
@@ -742,8 +734,8 @@ impl NodeApi for SyncNodeApi {
         let path = Self::session_path(id, "checkpoints", agent);
         let body = tokio::task::spawn_blocking(move || client.get_json(&path))
             .await
-            .map_err(|e| e.to_string())?
-            .map_err(|e| e.to_string())?;
+            .map_err(join_err)?
+            .map_err(err_string)?;
         Ok(body
             .get("checkpoints")
             .and_then(Value::as_array)
@@ -781,7 +773,7 @@ impl NodeApi for SyncNodeApi {
             body.extend(sel);
         }
         let body = self.post_direct(id, agent, "rewind", payload).await?;
-        serde_json::from_value(body).map_err(|e| format!("decode: {e}"))
+        serde_json::from_value(body).map_err(decode_err)
     }
 
     async fn convert(&self, id: &str, agent: Option<&str>, target: &str) -> Result<String, String> {
@@ -806,9 +798,9 @@ impl NodeApi for SyncNodeApi {
             client.send_json("POST", "/api/sessions/import", &body)
         })
         .await
-        .map_err(|e| e.to_string())?
-        .map_err(|e| e.to_string())?;
-        serde_json::from_value(res).map_err(|e| format!("decode: {e}"))
+        .map_err(join_err)?
+        .map_err(err_string)?;
+        serde_json::from_value(res).map_err(decode_err)
     }
 
     async fn transfer_session(
@@ -834,7 +826,7 @@ impl NodeApi for SyncNodeApi {
         let row = self
             .projection()
             .session(&source_id, id)
-            .map_err(|e| format!("projection: {e}"))?
+            .map_err(proj_err)?
             .ok_or_else(|| format!("Session not found: {id}"))?;
         let target_id = target_node.to_string();
         let cwd = cwd.map(str::to_string);
@@ -850,7 +842,7 @@ impl NodeApi for SyncNodeApi {
             )
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(join_err)?
     }
 
     async fn transfer_project(
@@ -870,7 +862,7 @@ impl NodeApi for SyncNodeApi {
         let rows: Vec<IndexedSession> = self
             .projection()
             .sessions(Some(source_node))
-            .map_err(|e| format!("projection: {e}"))?
+            .map_err(proj_err)?
             .into_iter()
             .filter(|r| r.cwd == project_cwd)
             .collect();
@@ -907,7 +899,7 @@ impl NodeApi for SyncNodeApi {
             Ok(out)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(join_err)?
     }
 
     async fn pair(&self, code: &str, node: Option<&str>) -> Result<String, String> {
@@ -918,7 +910,7 @@ impl NodeApi for SyncNodeApi {
         let body = serde_json::json!({ "code": code });
         let res = tokio::task::spawn_blocking(move || client.send_json("POST", "/api/pair", &body))
             .await
-            .map_err(|e| e.to_string())?
+            .map_err(join_err)?
             .map_err(|e| match e {
                 // Surface the node's `{error}` payload, not the raw body.
                 peregrin_sync::client::NodeError::Http { body, .. } => {
@@ -962,13 +954,13 @@ impl NodeApi for SyncNodeApi {
         let body =
             tokio::task::spawn_blocking(move || client.send_json("POST", "/api/projects", &body))
                 .await
-                .map_err(|e| e.to_string())?
-                .map_err(|e| e.to_string())?;
+                .map_err(join_err)?
+                .map_err(err_string)?;
         let mut row = body.get("project").cloned().unwrap_or(Value::Null);
         if let Value::Object(m) = &mut row {
             m.insert("node".into(), Value::String(node_id));
         }
-        serde_json::from_value(row).map_err(|e| format!("decode: {e}"))
+        serde_json::from_value(row).map_err(decode_err)
     }
 
     async fn delete_project(&self, id: &str, node: Option<&str>) -> Result<(), String> {
@@ -1000,13 +992,13 @@ impl NodeApi for SyncNodeApi {
             }
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(join_err)?
     }
 
     async fn get_config(&self) -> Result<BTreeMap<String, Value>, String> {
         let (_, client) = self.scoped_client(None)?;
         tokio::task::spawn_blocking(move || {
-            let body = client.get_json("/api/config").map_err(|e| e.to_string())?;
+            let body = client.get_json("/api/config").map_err(err_string)?;
             let map = body
                 .get("config")
                 .and_then(Value::as_object)
@@ -1015,7 +1007,7 @@ impl NodeApi for SyncNodeApi {
             Ok(map.into_iter().collect())
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(join_err)?
     }
 
     async fn set_config(&self, key: &str, value: &Value) -> Result<(), String> {
@@ -1024,9 +1016,9 @@ impl NodeApi for SyncNodeApi {
         let body = serde_json::json!({ "value": value });
         tokio::task::spawn_blocking(move || client.send_json("PATCH", &path, &body))
             .await
-            .map_err(|e| e.to_string())?
+            .map_err(join_err)?
             .map(|_| ())
-            .map_err(|e| e.to_string())
+            .map_err(err_string)
     }
 
     async fn fs_dirs(&self, path: &str, node: Option<String>) -> Result<Vec<String>, String> {
@@ -1039,8 +1031,8 @@ impl NodeApi for SyncNodeApi {
         );
         tokio::task::spawn_blocking(move || client.get_json(&api_path))
             .await
-            .map_err(|e| e.to_string())?
-            .map_err(|e| e.to_string())
+            .map_err(join_err)?
+            .map_err(err_string)
             .map(|v| {
                 v.get("dirs")
                     .and_then(Value::as_array)
@@ -1057,9 +1049,9 @@ impl NodeApi for SyncNodeApi {
         let (_, client) = self.scoped_client(None)?;
         tokio::task::spawn_blocking(move || client.get_json("/api/node"))
             .await
-            .map_err(|e| e.to_string())?
-            .map_err(|e| e.to_string())
-            .and_then(|v| serde_json::from_value(v).map_err(|e| format!("decode: {e}")))
+            .map_err(join_err)?
+            .map_err(err_string)
+            .and_then(|v| serde_json::from_value(v).map_err(decode_err))
     }
 
     async fn rename_node(&self, name: &str, node: Option<&str>) -> Result<NodeInfoDto, String> {
@@ -1069,9 +1061,9 @@ impl NodeApi for SyncNodeApi {
         let body = serde_json::json!({ "name": name });
         tokio::task::spawn_blocking(move || client.send_json("PATCH", "/api/node", &body))
             .await
-            .map_err(|e| e.to_string())?
-            .map_err(|e| e.to_string())
-            .and_then(|v| serde_json::from_value(v).map_err(|e| format!("decode: {e}")))
+            .map_err(join_err)?
+            .map_err(err_string)
+            .and_then(|v| serde_json::from_value(v).map_err(decode_err))
     }
 
     async fn node_status(&self) -> Result<Vec<NodeStatusDto>, String> {
@@ -1080,7 +1072,7 @@ impl NodeApi for SyncNodeApi {
         tokio::task::spawn_blocking(move || {
             let mut rows: Vec<NodeStatusDto> = projection
                 .nodes()
-                .map_err(|e| format!("projection: {e}"))?
+                .map_err(proj_err)?
                 .into_iter()
                 .map(|n| NodeStatusDto {
                     id: n.id,
@@ -1106,7 +1098,7 @@ impl NodeApi for SyncNodeApi {
             Ok(rows)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(join_err)?
     }
 
     async fn pending_writes(&self) -> Result<Vec<PendingWriteDto>, String> {
@@ -1119,25 +1111,25 @@ impl NodeApi for SyncNodeApi {
         tokio::task::spawn_blocking(move || -> Result<Vec<PendingWriteDto>, String> {
             let mut out = Vec::new();
             for id in &node_ids {
-                for entry in &outbox.pending_for_node(id).map_err(|e| e.to_string())? {
+                for entry in &outbox.pending_for_node(id).map_err(err_string)? {
                     out.push(pending_dto(entry));
                 }
             }
-            for entry in &outbox.dead_letters().map_err(|e| e.to_string())? {
+            for entry in &outbox.dead_letters().map_err(err_string)? {
                 out.push(pending_dto(entry));
             }
             Ok(out)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(join_err)?
     }
 
     async fn push_vapid(&self) -> Result<String, String> {
         let (_, client) = self.scoped_client(None)?;
         tokio::task::spawn_blocking(move || client.get_json("/api/push/vapid"))
             .await
-            .map_err(|e| e.to_string())?
-            .map_err(|e| e.to_string())
+            .map_err(join_err)?
+            .map_err(err_string)
             .and_then(|v| {
                 v.get("publicKey")
                     .and_then(Value::as_str)
@@ -1148,12 +1140,12 @@ impl NodeApi for SyncNodeApi {
 
     async fn push_subscribe(&self, subscription: &PushSubscriptionDto) -> Result<(), String> {
         let (_, client) = self.scoped_client(None)?;
-        let body = serde_json::to_value(subscription).map_err(|e| e.to_string())?;
+        let body = serde_json::to_value(subscription).map_err(err_string)?;
         tokio::task::spawn_blocking(move || client.send_json("POST", "/api/push/subscribe", &body))
             .await
-            .map_err(|e| e.to_string())?
+            .map_err(join_err)?
             .map(|_| ())
-            .map_err(|e| e.to_string())
+            .map_err(err_string)
     }
 
     async fn push_unsubscribe(&self, endpoint: &str) -> Result<(), String> {
@@ -1163,8 +1155,79 @@ impl NodeApi for SyncNodeApi {
             client.send_json("DELETE", "/api/push/subscribe", &body)
         })
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(join_err)?
         .map(|_| ())
-        .map_err(|e| e.to_string())
+        .map_err(err_string)
+    }
+}
+
+/// `e.to_string()` as a fn item — one body shared by every `map_err`
+/// tail (the closure per site would need an error per site to score).
+fn err_string(e: impl std::fmt::Display) -> String {
+    e.to_string()
+}
+
+/// `format!("decode: {e}")` — see [`err_string`].
+fn decode_err(e: impl std::fmt::Display) -> String {
+    format!("decode: {e}")
+}
+
+/// `format!("projection: {e}")` — see [`err_string`].
+fn proj_err(e: impl std::fmt::Display) -> String {
+    format!("projection: {e}")
+}
+
+/// The `JoinError` arm of `spawn_blocking(…).await` — a panic inside
+/// a blocking task is unreachable in practice; a named body tests can
+/// call instead of racing a panic.
+#[allow(clippy::needless_pass_by_value)]
+fn join_err(e: tokio::task::JoinError) -> String {
+    e.to_string()
+}
+
+/// The `adopt_credential` store-write outcome → warn log — split out so
+/// the JoinError arm (a panic inside the blocking task) is testable.
+fn cred_store_warn(r: Result<Result<(), String>, tokio::task::JoinError>, node_id: &str) {
+    let msg = match r {
+        Ok(Ok(())) => None,
+        Ok(Err(e)) => Some(e),
+        Err(e) => Some(e.to_string()),
+    };
+    if let Some(e) = msg {
+        tracing::warn!(node = %node_id, "credential store write failed: {e}");
+    }
+}
+
+#[cfg(test)]
+mod cov_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn shared_error_fns() {
+        let e = std::io::Error::other("x");
+        assert_eq!(err_string(&e), "x");
+        assert_eq!(decode_err(&e), "decode: x");
+        assert_eq!(proj_err(&e), "projection: x");
+        // A real JoinError via abort.
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap();
+        rt.block_on(async {
+            let h = tokio::spawn(async { std::future::pending::<()>().await });
+            h.abort();
+            let err = h.await.unwrap_err();
+            assert!(join_err(err).contains("cancelled"));
+        });
+    }
+
+    #[tokio::test]
+    async fn cred_store_warn_arms() {
+        cred_store_warn(Ok(Ok(())), "n1");
+        cred_store_warn(Ok(Err("x".into())), "n1");
+        let h = tokio::spawn(async { std::future::pending::<Result<(), String>>().await });
+        h.abort();
+        cred_store_warn(h.await, "n1");
     }
 }

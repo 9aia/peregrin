@@ -79,6 +79,19 @@ fn serve() {
                     "sessionId":sid,
                     "events":[{"type":"runStarted","thread_id":"t","run_id":"r"}]}}));
             }
+            // One agent that can rewind (`devin`) and one that can't —
+            // `can_rewind`'s find/and_then/is_some_and closures all fire.
+            "agents.list" => emit(json!({
+                "jsonrpc":"2.0","id":id,
+                "result":[
+                    {"id":"devin","label":"Devin","capabilities":{
+                        "loadSession":true,"sessionList":true,
+                        "promptCapabilities":{"image":true,"audio":false,
+                            "embeddedContext":true},
+                        "sessionCapabilities":{"list":true,"delete":true,
+                            "fork":true,"resume":true,"close":true,
+                            "additionalDirectories":false}}},
+                    {"id":"cline","label":"Cline","capabilities":null}]})),
             "shutdown" => {
                 emit(json!({"jsonrpc":"2.0","id":id,"result":{}}));
                 out.flush().unwrap();
@@ -148,6 +161,20 @@ async fn stub_drives_full_surface() {
             .iter()
             .any(|l| l.contains("stub"))
     );
+    // `can_rewind` — the `find`/`and_then`/`is_some_and` closures over a
+    // populated agent list: matching agent with loadSession → true;
+    // matching agent with null capabilities → false; unknown backend →
+    // scanned but unmatched.
+    assert!(plane.can_rewind("devin").await);
+    assert!(!plane.can_rewind("cline").await);
+    assert!(!plane.can_rewind("cursor").await);
+    // Dropping the plane drops the service's `notifications` sender (and
+    // the respawn-forwarder's clone once the child dies) — the subscribe
+    // fan-out task's `recv` then errs and the spawned block completes.
+    let _rx = plane.subscribe("s1", None).await.unwrap();
+    plane.0.shutdown().await.unwrap();
+    drop(plane);
+    tokio::time::sleep(std::time::Duration::from_millis(400)).await;
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -289,9 +316,21 @@ fn sepia_binary_resolution_arms() {
         ],
         pbin.join("sepia").to_str().unwrap(),
     );
-    // Nothing resolves → None.
+    // HOME set but no shared-target sepia → the `is_file` false arm
+    // inside the HOME loop, then PATH fallback finds nothing → None.
     let empty = t.join("empty");
     std::fs::create_dir_all(&empty).unwrap();
+    let nohome = t.join("nohome");
+    std::fs::create_dir_all(&nohome).unwrap();
+    probe_env(
+        &[
+            ("HOME", nohome.to_str().unwrap()),
+            ("PATH", empty.to_str().unwrap()),
+        ],
+        &["PEREGRIN_SEPIA", "CARGO_MANIFEST_DIR", "TESTKIT_BIN_DIRS"],
+        "NONE",
+    );
+    // Nothing resolves → None.
     probe_env(
         &[("PATH", empty.to_str().unwrap())],
         &[

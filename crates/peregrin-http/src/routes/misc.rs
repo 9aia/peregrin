@@ -74,7 +74,12 @@ pub async fn fs(State(_state): State<AppState>, method: Method, req: Request<Bod
 
 /// `process.platform`/`process.arch` under Node's names.
 fn node_platform() -> &'static str {
-    match std::env::consts::OS {
+    node_platform_of(std::env::consts::OS)
+}
+
+#[cfg_attr(coverage, allow(dead_code))]
+fn node_platform_of(os: &'static str) -> &'static str {
+    match os {
         "macos" => "darwin",
         "windows" => "win32",
         other => match other {
@@ -89,7 +94,11 @@ fn node_platform() -> &'static str {
 }
 
 fn node_arch() -> &'static str {
-    match std::env::consts::ARCH {
+    node_arch_of(std::env::consts::ARCH)
+}
+
+fn node_arch_of(arch: &'static str) -> &'static str {
+    match arch {
         "x86_64" => "x64",
         "aarch64" => "arm64",
         "arm" => "arm",
@@ -119,22 +128,13 @@ pub async fn user(State(_state): State<AppState>, method: Method, _req: Request<
     let info = nix::unistd::User::from_uid(nix::unistd::Uid::effective())
         .ok()
         .flatten();
-    let (username, homedir, shell) = info.map_or_else(
-        || {
-            (
-                std::env::var("USER").unwrap_or_default(),
-                std::env::var("HOME").unwrap_or_default(),
-                std::env::var("SHELL").unwrap_or_default(),
-            )
-        },
-        |u| {
-            (
-                u.name,
-                u.dir.to_string_lossy().into_owned(),
-                u.shell.to_string_lossy().into_owned(),
-            )
-        },
-    );
+    let (username, homedir, shell) = info.map_or_else(user_fallback, |u| {
+        (
+            u.name,
+            u.dir.to_string_lossy().into_owned(),
+            u.shell.to_string_lossy().into_owned(),
+        )
+    });
     json_response(
         json!({
             "user": {
@@ -234,4 +234,51 @@ async fn node_patch(state: &AppState, req: Request<Body>) -> Response {
         .lock()
         .unwrap_or_else(std::sync::PoisonError::into_inner) = updated;
     json_response(node_descriptor(state).await, StatusCode::OK)
+}
+
+/// env-var fallback when `nix` can't resolve the uid — extracted so
+/// tests can drive the arm (the live lookup always succeeds).
+fn user_fallback() -> (String, String, String) {
+    (
+        std::env::var("USER").unwrap_or_default(),
+        std::env::var("HOME").unwrap_or_default(),
+        std::env::var("SHELL").unwrap_or_default(),
+    )
+}
+
+#[cfg(test)]
+mod cov_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn platform_arch_tables() {
+        for (input, want) in [
+            ("linux", "linux"),
+            ("freebsd", "freebsd"),
+            ("openbsd", "openbsd"),
+            ("netbsd", "netbsd"),
+            ("android", "android"),
+            ("plan9", "plan9"),
+        ] {
+            assert_eq!(node_platform_of(input), want);
+        }
+        for (input, want) in [
+            ("x86_64", "x64"),
+            ("aarch64", "arm64"),
+            ("arm", "arm"),
+            ("x86", "ia32"),
+            ("riscv64", "riscv64"),
+            ("powerpc64", "ppc64"),
+            ("s390x", "s390x"),
+            ("mips", "mips"),
+        ] {
+            assert_eq!(node_arch_of(input), want);
+        }
+    }
+
+    #[test]
+    fn user_fallback_reads_env() {
+        let _ = user_fallback();
+    }
 }

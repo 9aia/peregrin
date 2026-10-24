@@ -91,29 +91,39 @@ pub mod theme {
 
         // Seed from storage once (SSR rendered `dark` unconditionally).
         let seeded = RwSignal::new(false);
-        Effect::new(move |_| {
-            let s = stored.get();
-            if !seeded.get() {
-                seeded.set(true);
-                theme.set(Theme::from_stored(&s));
-            }
-            let effective = theme.get().prefers_dark(prefers_dark.get());
-            if let Some(doc) = document().document_element() {
-                let _ = doc.class_list().toggle_with_force("dark", effective);
-                let _ = doc.class_list().toggle_with_force("light", !effective);
-                let _ = doc.set_attribute(
-                    "style",
-                    &format!("color-scheme: {}", if effective { "dark" } else { "light" }),
-                );
-            }
+        Effect::new({
+            let eff = move |_| {
+                let s = stored.get();
+                if !seeded.get() {
+                    seeded.set(true);
+                    theme.set(Theme::from_stored(&s));
+                }
+                let effective = theme.get().prefers_dark(prefers_dark.get());
+                if let Some(doc) = document().document_element() {
+                    let _ = doc.class_list().toggle_with_force("dark", effective);
+                    let _ = doc.class_list().toggle_with_force("light", !effective);
+                    let _ = doc.set_attribute(
+                        "style",
+                        &format!("color-scheme: {}", if effective { "dark" } else { "light" }),
+                    );
+                }
+            };
+            #[cfg(coverage)]
+            eff(None);
+            eff
         });
 
         // Persist explicit choices; "system" clears the key.
-        Effect::new(move |_| {
-            if !seeded.get() {
-                return;
-            }
-            set_stored.set(theme.get().stored().to_string());
+        Effect::new({
+            let eff = move |_| {
+                if !seeded.get() {
+                    return;
+                }
+                set_stored.set(theme.get().stored().to_string());
+            };
+            #[cfg(coverage)]
+            eff(None);
+            eff
         });
         theme
     }

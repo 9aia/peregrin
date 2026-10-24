@@ -116,6 +116,11 @@ fn node_serves_sessions_over_http() {
             "/api/sessions/devin-1/convert",
             serde_json::json!({"agent": "devin"}),
         ),
+        // `agent: cline` → `ImportTarget::Cline` → `install_cline` arm.
+        (
+            "/api/sessions/devin-1/convert",
+            serde_json::json!({"agent": "cline"}),
+        ),
         (
             "/api/sessions/import",
             serde_json::json!({
@@ -125,6 +130,47 @@ fn node_serves_sessions_over_http() {
         ),
     ] {
         let _ = ureq::post(format!("http://127.0.0.1:{port}{path}")).send_json(&payload);
+    }
+    stop(&mut child);
+}
+
+/// Node without a devin store → `merged_store().for_agent("devin")` is
+/// `None` → the plain `AppState::from_env` arm (no convert seams).
+#[test]
+fn node_without_devin_store_serves() {
+    let tmp = tempfile::tempdir().unwrap();
+    let driver_dir = tmp.path().join("drivers");
+    let home = tmp.path().join("home");
+    std::fs::create_dir_all(&driver_dir).unwrap();
+    std::fs::create_dir_all(&home).unwrap();
+
+    let port = free_port();
+    let mut child = std::process::Command::new(sepia_testkit::ensure_driver_bin("peregrin-node"))
+        .env("SEPIA_DRIVER_DIR", &driver_dir)
+        .env("PEREGRIN_HOME", &home)
+        .env("PEREGRIN_META", home.join("meta.json"))
+        .env("PEREGRIN_NODE", home.join("node.json"))
+        .env("PEREGRIN_PORT", port.to_string())
+        .env("PEREGRIN_HOST", "127.0.0.1")
+        .env("HOME", tmp.path())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+    loop {
+        match ureq::get(format!("http://127.0.0.1:{port}/api/health")).call() {
+            Ok(_) => break,
+            Err(_) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err(e) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                panic!("node never came up: {e}");
+            }
+        }
     }
     stop(&mut child);
 }

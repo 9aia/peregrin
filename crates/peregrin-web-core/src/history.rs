@@ -118,7 +118,8 @@ pub fn strip_ansi(text: &str) -> String {
                     i += 1;
                 }
             }
-            Some(b'(' | b')' | b'=' | b'>') => i += 2,
+            Some(b'(' | b')') => i += 2,
+            Some(b'=' | b'>') => i += 1,
             _ => {}
         }
     }
@@ -592,15 +593,20 @@ fn split_parsed_out(text: &str) -> (Option<String>, &str) {
         return (None, text);
     };
     let note = &tail[tick..];
-    // Validate the counts: `(N of M [total ]lines shown).`
-    let Some(open) = note.find(" was parsed out (") else {
-        return (None, text);
-    };
+    // Validate the counts: `(N of M [total ]lines shown).` — the marker
+    // span is guaranteed inside `note` (`pos` found it), and `counts`
+    // always ends at the `)` the `lines shown).` tail supplies. Bad
+    // counts fall through to the `valid` check below.
+    let open = pos - tick + 1;
     let counts = &note[open + " was parsed out (".len()..];
-    let Some(close) = counts.find(')') else {
-        return (None, text);
-    };
+    let close = counts.find(')').unwrap_or(counts.len());
+    // `(N of M [total ]lines shown)` — the `lines shown` tail is part
+    // of the marker, not the M count.
     let counts = counts[..close].replace("total ", "");
+    let counts = counts
+        .trim_end()
+        .strip_suffix("lines shown")
+        .map_or_else(|| counts.trim_end(), str::trim_end);
     let mut parts = counts.split(" of ");
     let valid = matches!(
         (parts.next(), parts.next()),
@@ -1703,18 +1709,17 @@ fn insert_model_markers(rows: &mut Vec<ChatRow>, messages: &[RowInput<'_>]) {
     let mut current: Option<&str> = None;
     let mut index = 0;
     while index < rows.len() {
-        let model = match &rows[index] {
-            ChatRow::History { index, .. } if messages[*index].role == "assistant" => {
-                messages[*index].model
-            }
+        // A `Some` hit is always a History row — carry the timestamp out
+        // of the same match instead of re-matching for `at`.
+        let hit = match &rows[index] {
+            ChatRow::History { index, .. } if messages[*index].role == "assistant" => messages
+                [*index]
+                .model
+                .map(|m| (m, messages[*index].created_at)),
             _ => None,
         };
-        if let Some(model) = model {
+        if let Some((model, at)) = hit {
             if current.is_some_and(|c| c != model) {
-                let at = match &rows[index] {
-                    ChatRow::History { index, .. } => messages[*index].created_at,
-                    _ => 0.0,
-                };
                 rows.insert(
                     index,
                     ChatRow::Marker {
@@ -2866,5 +2871,125 @@ mod tests {
             rows.iter()
                 .any(|r| matches!(r, ChatRow::Marker { label, .. } if label == "model: m2"))
         );
+    }
+
+    #[test]
+    fn ansi_charset_and_misc_escape_arms() {
+        // `(` `)` `=` `>` sequences and unknown escapes are dropped.
+        assert_eq!(strip_ansi("a\x1b(0b\x1b>Z"), "abZ");
+    }
+
+    #[test]
+    fn scan_and_result_text_edge_arms() {
+        // A non-opener first char → scan's fallthrough `None`.
+        let (values, rest) = split_leading_json("x");
+        assert!(values.is_empty());
+        assert_eq!(rest, "x");
+        // An object with no text-ish field pretty-prints.
+        assert_eq!(result_to_text(&json!({"foo": 1})), "{\n  \"foo\": 1\n}");
+        // Trailing non-JSON text after a decoded value is appended.
+        let (text, raw) = result_text("\"a\" rest");
+        assert_eq!(text, "a\nrest");
+        assert!(raw.is_some());
+    }
+
+    #[test]
+    fn trunc_and_parsed_out_edge_arms() {
+        assert_eq!(split_trunc_lines("… (5 lines nope").0, None);
+        // Ends with the marker tail but no note → all bail arms.
+        assert_eq!(split_parsed_out("x lines shown).").0, None);
+        assert_eq!(
+            split_parsed_out("` was parsed out (1 of 2 lines shown).").0,
+            None
+        );
+        // Backtick opened but counts aren't digits → invalid.
+        assert_eq!(
+            split_parsed_out("body `cmd` was parsed out (a of b lines shown).").0,
+            None
+        );
+        // The real marker — note extracted, body kept.
+        let (note, body) = split_parsed_out("work `cmd` was parsed out (1 of 3 lines shown).");
+        assert_eq!(
+            note.as_deref(),
+            Some("cmd was parsed out (1 of 3 lines shown).")
+        );
+        assert_eq!(body, "work ");
+        // An exec result carrying the marker routes it into notes.
+        let parsed = parse_exec_result("out `cmd` was parsed out (1 of 3 lines shown).");
+        assert!(
+            parsed
+                .notes
+                .iter()
+                .any(|n| matches!(n, ToolSegment::Note { .. }))
+        );
+    }
+
+    #[test]
+    fn fetch_read_and_diff_edge_arms() {
+        assert_eq!(
+            parse_fetch_query("# Web Search Results for \"rust\"").as_deref(),
+            Some("rust")
+        );
+        // A file-view-shaped read with an empty code body → no segments.
+        let d = build_read(None, &("File: /x\n".to_string(), None));
+        assert!(d.segments.is_empty() || d.label == "Read file");
+        // build_diff_text with an empty new_text skips the `+` block.
+        assert_eq!(build_diff_text("old\n", ""), "- old");
+    }
+
+    #[test]
+    fn tag_drain_and_system_info_edge_arms() {
+        // Unclosed tag — the rest stays literal.
+        let (out, bodies) = drain_tag("a <system_info>oops", "system_info");
+        assert!(bodies.is_empty());
+        assert!(out.contains("oops"));
+        // `path=` preceded by a word char isn't a boundary → skipped.
+        assert_eq!(tag_attr("xpath=/x", "path"), None);
+        assert_eq!(tag_attr(" path=/x ", "path"), Some("/x"));
+        // parse_system_info: a nonempty keyed field inserts.
+        let mut ws = Vec::new();
+        let mut fields = std::collections::BTreeMap::new();
+        parse_system_info("Platform: linux\nOS Version: 1", &mut ws, &mut fields);
+        assert_eq!(fields.get("Platform").map(String::as_str), Some("linux"));
+        // parse_report: `[hdr]` alone leaves an empty body → None.
+        assert!(parse_report("[h]", 1.0).is_none());
+        // A `~~~` inside a ``` fence is ignored (mismatched marker);
+        // the `#` heading parses only once the fence closes.
+        let secs = split_prompt_sections("```\nx\n~~~\n```\n# H\nb");
+        assert_eq!(secs.len(), 1);
+        // span_label falls back to the agent when node is empty.
+        assert_eq!(
+            span_label(&RunSpan {
+                at: 0.0,
+                agent: "a".into(),
+                node: String::new(),
+            }),
+            "a"
+        );
+        assert!(format_duration(-1.0).is_empty());
+        assert!(format_duration(f64::NAN).is_empty());
+    }
+
+    #[test]
+    fn coverage_leftover_arms() {
+        // `scan_json_value` on a non-opener byte → the `_` arm.
+        assert_eq!(scan_json_value("x=1", 0), None);
+        // ESC followed by an unhandled byte, and ESC at EOF → `_ => {}`.
+        assert_eq!(strip_ansi("a\x1bzb"), "azb");
+        assert_eq!(strip_ansi("a\x1b"), "a");
+        // A present-but-empty text field → the `!s.is_empty()` else arm.
+        assert!(result_to_text(&json!({"content": ""})).contains("content"));
+        // Incomplete JSON → `values.last()` is None → the `if let` else.
+        assert_eq!(result_text("{"), ("{".to_string(), None));
+        // Read display with no extracted code → empty segments.
+        let d = tool_summary("read_file", Some(r#"{"file_path":"/a"}"#), "", None);
+        assert!(d.segments.is_empty());
+        // `parse_system_info`: a key line without a colon → else arm.
+        let mut ws = Vec::new();
+        let mut fields = std::collections::BTreeMap::new();
+        parse_system_info("Platform x\nOS Version", &mut ws, &mut fields);
+        assert!(fields.is_empty());
+        // `parse_report`: `[` with no `]` → the `if let Some(end)` else.
+        let _ = parse_report("[unclosed header", 0.0);
     }
 }

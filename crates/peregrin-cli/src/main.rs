@@ -944,15 +944,19 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
     }
 }
 
-fn main() -> ExitCode {
-    let cli = Cli::parse();
-    match runtime().and_then(|rt| dispatch(&cli, &rt)) {
+fn exit_code(result: Result<(), CliError>) -> ExitCode {
+    match result {
         Ok(()) => ExitCode::SUCCESS,
         Err(e) => {
             eprintln!("{e}");
             ExitCode::FAILURE
         }
     }
+}
+
+fn main() -> ExitCode {
+    let cli = Cli::parse();
+    exit_code(runtime().and_then(|rt| dispatch(&cli, &rt)))
 }
 
 #[cfg(test)]
@@ -1092,6 +1096,12 @@ mod tests {
         let _ = default_peregrin_home();
         let _ = default_pair_url();
         assert!(!PEREGRIN_VERSION.is_empty());
+    }
+
+    #[test]
+    fn exit_code_both_arms() {
+        assert_eq!(exit_code(Ok(())), ExitCode::SUCCESS);
+        assert_eq!(exit_code(Err(CliError("boom".into()))), ExitCode::FAILURE);
     }
 
     #[test]

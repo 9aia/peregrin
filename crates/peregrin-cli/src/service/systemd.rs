@@ -197,15 +197,11 @@ fn write_file(path: &Path, contents: &str) -> Result<(), CliError> {
 pub fn install(spec: &ServiceSpec) -> Result<(), CliError> {
     require_systemd("systemctl")?;
     let unit = unit_path(spec);
-    if let Some(dir) = unit.parent() {
-        mkdir(dir)?;
-    }
+    unit.parent().map_or(Ok(()), mkdir)?;
     write_file(&unit, &render(spec))?;
     // The env template is written once — never clobber an admin's edits.
     if !spec.env_file.exists() {
-        if let Some(dir) = spec.env_file.parent() {
-            mkdir(dir)?;
-        }
+        spec.env_file.parent().map_or(Ok(()), mkdir)?;
         write_file(&spec.env_file, &env_template())?;
     }
     run(&systemctl(spec, &["daemon-reload"]))?;
@@ -393,5 +389,41 @@ mod cov_tests {
         // logs() runs the journalctl plumbing end-to-end (exit code is
         // host-dependent — the verb either way).
         let _ = logs(&spec, false);
+    }
+}
+
+#[cfg(test)]
+mod cov_extra_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn mkdir_and_write_error_arms() {
+        // `/dev/null/x` — parent is a file, not a dir.
+        let bad = PathBuf::from("/dev/null/x");
+        assert!(mkdir(&bad).is_err());
+        assert!(write_file(&bad, "x").is_err());
+        // install() reaches the env-file mkdir under /dev/null → error arm.
+        let spec = ServiceSpec {
+            name: "x".into(),
+            exec: vec!["peregrin".into()],
+            env_file: bad.join("env"),
+            system: false,
+        };
+        let _ = install(&spec);
+        let _ = std::fs::remove_file(unit_path(&spec)); // no host litter
+        // env file already present → the `!exists` false arm.
+        let dir = tempfile::tempdir().unwrap();
+        let env = dir.path().join("env");
+        write_file(&env, "X=1\n").unwrap();
+        let spec = ServiceSpec {
+            name: "cov-env".into(),
+            exec: vec!["/bin/true".into()],
+            env_file: env,
+            system: false,
+        };
+        let _ = install(&spec);
+        let _ = std::fs::remove_file(unit_path(&spec)); // no host litter
     }
 }

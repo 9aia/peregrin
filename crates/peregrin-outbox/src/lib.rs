@@ -510,4 +510,68 @@ mod cov_tests {
         }
         assert!(outbox.mark_failed(&e.id, "x").is_err());
     }
+
+    #[test]
+    fn missing_entry_returns_none() {
+        let outbox = Outbox::in_memory().unwrap();
+        let _ = outbox.mark_in_flight("nope");
+        let _ = outbox.retry_dead("nope");
+        // `by_id_locked`'s None arm — `mark_failed` looks the row up.
+        let _ = outbox.mark_failed("nope", "x");
+    }
+
+    #[test]
+    fn next_seq_query_error_surfaces() {
+        // Swap the schema out from under the outbox: `by_key_locked`
+        // still resolves (idempotency_key exists), then `next_seq_locked`'s
+        // `MAX(seq)` fails on the missing column → the `?` arm.
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("o.db");
+        let outbox = Outbox::open(&path).unwrap();
+        {
+            let conn = Connection::open(&path).unwrap();
+            conn.execute_batch("DROP TABLE outbox; CREATE TABLE outbox(idempotency_key TEXT);")
+                .unwrap();
+        }
+        assert!(
+            outbox
+                .enqueue(
+                    "n1",
+                    "s1",
+                    "op",
+                    OpKind::Turn,
+                    serde_json::json!(1),
+                    "k",
+                    None
+                )
+                .is_err()
+        );
+    }
+
+    #[test]
+    fn expire_sweep_dead_letters() {
+        // An entry whose TTL already elapsed is swept to dead-letter on
+        // the next peek (`expire_locked`), and `by_id_locked` sees the
+        // row on the Some arm.
+        let outbox = Outbox::in_memory().unwrap();
+        let e = outbox
+            .enqueue(
+                "n1",
+                "s1",
+                "op",
+                OpKind::Metadata,
+                serde_json::json!({}),
+                "k1",
+                Some(0),
+            )
+            .unwrap();
+        let _ = outbox.peek("n1", "s1").unwrap();
+        assert_eq!(outbox.dead_letters().unwrap().len(), 1);
+        // `mark_failed`/`mark_done`/`retry_dead` walk `by_id_locked`'s
+        // Some row decode.
+        let _ = outbox.mark_failed(&e.id, "x");
+        let _ = outbox.retry_dead(&e.id);
+        let _ = outbox.mark_done(&e.id);
+        let _ = outbox.mark_in_flight(&e.id);
+    }
 }

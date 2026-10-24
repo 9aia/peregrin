@@ -127,3 +127,137 @@ fn keyring_store_shape() {
     store.delete("peregrin-hub-probe").unwrap();
     assert_eq!(store.get("peregrin-hub-probe").unwrap(), None);
 }
+
+/// Everything keyring, one process: the mock backend answers the
+/// happy paths; a failing builder drives the `Err(e)` arms. One test
+/// because the default builder is process-global.
+#[test]
+fn keyring_mock_and_failing_backends() {
+    use keyring::credential::{Credential, CredentialApi, CredentialBuilderApi};
+
+    #[derive(Debug)]
+    struct FailCred;
+    impl CredentialApi for FailCred {
+        fn set_secret(&self, _: &[u8]) -> keyring::Result<()> {
+            Err(keyring::Error::Invalid("boom".into(), "x".into()))
+        }
+        fn get_secret(&self) -> keyring::Result<Vec<u8>> {
+            Err(keyring::Error::Invalid("boom".into(), "x".into()))
+        }
+        fn delete_credential(&self) -> keyring::Result<()> {
+            Err(keyring::Error::Invalid("boom".into(), "x".into()))
+        }
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+    }
+    #[derive(Debug)]
+    struct FailBuilder;
+    impl CredentialBuilderApi for FailBuilder {
+        fn build(
+            &self,
+            _target: Option<&str>,
+            _service: &str,
+            _user: &str,
+        ) -> keyring::Result<Box<Credential>> {
+            Ok(Box::new(FailCred))
+        }
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+    }
+
+    let store = KeyringCredentials;
+    assert_eq!(store.backend(), "os-keyring");
+
+    // Mock backend — get/set/delete happy paths + NoEntry arms.
+    // `keyring::mock` credentials don't share state across Entry
+    // instances (set on one, get on another → NoEntry), so this test
+    // installs a builder backed by a shared map instead.
+    type MockMap = std::sync::Arc<std::sync::Mutex<std::collections::HashMap<String, Vec<u8>>>>;
+    #[derive(Debug)]
+    struct SharedCred {
+        map: MockMap,
+        key: String,
+    }
+    impl CredentialApi for SharedCred {
+        fn set_secret(&self, s: &[u8]) -> keyring::Result<()> {
+            self.map
+                .lock()
+                .unwrap()
+                .insert(self.key.clone(), s.to_vec());
+            Ok(())
+        }
+        fn get_secret(&self) -> keyring::Result<Vec<u8>> {
+            self.map
+                .lock()
+                .unwrap()
+                .get(&self.key)
+                .cloned()
+                .ok_or(keyring::Error::NoEntry)
+        }
+        fn delete_credential(&self) -> keyring::Result<()> {
+            if self.map.lock().unwrap().remove(&self.key).is_some() {
+                Ok(())
+            } else {
+                Err(keyring::Error::NoEntry)
+            }
+        }
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+    }
+    #[derive(Debug)]
+    struct SharedBuilder(MockMap);
+    impl CredentialBuilderApi for SharedBuilder {
+        fn build(
+            &self,
+            _target: Option<&str>,
+            _service: &str,
+            user: &str,
+        ) -> keyring::Result<Box<Credential>> {
+            Ok(Box::new(SharedCred {
+                map: self.0.clone(),
+                key: user.to_string(),
+            }))
+        }
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+    }
+    keyring::set_default_credential_builder(Box::new(SharedBuilder(MockMap::default())));
+    assert!(credentials::keyring_probe().is_ok());
+    assert_eq!(store.get("n-mock").unwrap(), None);
+    store.set("n-mock", "tok-9").unwrap();
+    assert_eq!(store.get("n-mock").unwrap().as_deref(), Some("tok-9"));
+    store.delete("n-mock").unwrap();
+    store.delete("n-mock").unwrap();
+    let dir = tempfile::tempdir().unwrap();
+    // `auto` + live probe → keyring selected.
+    let sel = credentials::from_lookup(dir.path(), |_| None);
+    assert_eq!(sel.backend(), "os-keyring");
+
+    // Failing backend — every entry errors → `Err(e)` arms.
+    keyring::set_default_credential_builder(Box::new(FailBuilder));
+    assert!(credentials::keyring_probe().is_err());
+    assert!(store.get("n-err").is_err());
+    assert!(store.set("n-err", "t").is_err());
+    assert!(store.delete("n-err").is_err());
+    // `keyring` forced with a dead probe → warn + keyring anyway.
+    let mut vars = HashMap::new();
+    vars.insert(STORE_ENV.to_string(), "keyring".to_string());
+    let sel = credentials::from_lookup(dir.path(), lookup(&vars));
+    assert_eq!(sel.backend(), "os-keyring");
+    // `auto` + dead probe → file fallback (log line).
+    vars.insert(STORE_ENV.to_string(), "auto".to_string());
+    let sel = credentials::from_lookup(dir.path(), lookup(&vars));
+    assert_eq!(sel.backend(), "file");
+    // Unknown value → warn + file fallback.
+    vars.insert(STORE_ENV.to_string(), "junk".to_string());
+    let sel = credentials::from_lookup(dir.path(), lookup(&vars));
+    assert_eq!(sel.backend(), "file");
+    // `file` forced.
+    vars.insert(STORE_ENV.to_string(), "file".to_string());
+    let sel = credentials::from_lookup(dir.path(), lookup(&vars));
+    assert_eq!(sel.backend(), "file");
+}

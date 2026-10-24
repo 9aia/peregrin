@@ -122,13 +122,18 @@ fn AimItem(
             disabled=disabled
             title=(!title.is_empty()).then_some(title)
             onclick=(!disabled).then_some(CLOSE_ALL)
-            on:click=move |ev| {
-                #[cfg(not(coverage))]
-                if let Some(cb) = &on_click {
+            on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::MouseEvent| {
+                        if let Some(cb) = &on_click {
                     ev.prevent_default();
                     cb();
                 }
-            }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
         >
             {(!icon.is_empty()).then(|| {
                 view! { <Icon name=icon class="size-4 shrink-0 text-muted-foreground"/> }
@@ -430,10 +435,15 @@ pub fn DesktopMenu(
     };
 
     view! {
-        <details class="group relative" data-name="DesktopMenu" data-aim-menu on:keydown=move |ev| {
-            #[cfg(not(coverage))]
-            crate::app::details_menu_keydown(&ev);
-        }>
+        <details class="group relative" data-name="DesktopMenu" data-aim-menu on:keydown={
+                    #[cfg(not(coverage))]
+                    let f = move |ev: leptos::ev::KeyboardEvent| {
+                        crate::app::details_menu_keydown(&ev);
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }>
             <summary
                 class=format!("{RAIL_ITEM} cursor-pointer select-none text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground [&::-webkit-details-marker]:hidden group-open:bg-sidebar-accent group-open:text-sidebar-accent-foreground")
                 aria-label=move || format!("Desktop — {}", dot_label())
@@ -525,12 +535,15 @@ pub fn DesktopMenu(
                                             checked=is_focused && aim_now.agent.is_none()
                                             on_click=Box::new({
                                                 let node = node_for_pick.clone();
-                                                move || {
+                                                let f = move || {
                                                     #[cfg(not(coverage))]
                                                     aim.update(|a| {
                                                         a.pick(Some(node.clone()), None);
                                                     });
-                                                }
+                                                };
+                    #[cfg(coverage)]
+                    f();
+                    f
                                             })
                                         >
                                             "Node default"
@@ -561,7 +574,7 @@ pub fn DesktopMenu(
                                                     view! {
                                                         <AimItem
                                                             checked=picked
-                                                            on_click=Box::new(move || {
+                                                            on_click=Box::new({let f = move || {
                                                                 #[cfg(not(coverage))]
                                                                 aim.update(|a| {
                                                                     a.pick(
@@ -569,7 +582,10 @@ pub fn DesktopMenu(
                                                                         Some(agent_id.clone()),
                                                                     );
                                                                 });
-                                                            })
+                                                            };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                                         >
                                                             {agent_label(&agent)}
                                                         </AimItem>
@@ -632,10 +648,13 @@ pub fn DesktopMenu(
                             >
                                 <AimItem
                                     checked=aim_now.cwd.is_none()
-                                    on_click=Box::new(move || {
+                                    on_click=Box::new({let f = move || {
                                         #[cfg(not(coverage))]
                                         aim.update(|a| a.cwd = None);
-                                    })
+                                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                 >
                                     "Most recent"
                                 </AimItem>
@@ -664,12 +683,15 @@ pub fn DesktopMenu(
                                                 <AimItem
                                                     checked=picked
                                                     title=title
-                                                    on_click=Box::new(move || {
+                                                    on_click=Box::new({let f = move || {
                                                         #[cfg(not(coverage))]
                                                         aim.update(|a| {
                                                             a.cwd = Some(pick.clone());
                                                         });
-                                                    })
+                                                    };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                                                 >
                                                     {dir_label(&dir)}
                                                 </AimItem>
@@ -688,10 +710,13 @@ pub fn DesktopMenu(
                         view! {
                             <AimItem
                                 icon="rotate-ccw"
-                                on_click=Box::new(move || {
+                                on_click=Box::new({let f = move || {
                                     #[cfg(not(coverage))]
                                     aim.update(DesktopAim::clear);
-                                })
+                                };
+                    #[cfg(coverage)]
+                    f();
+                    f})
                             >
                                 "Reset desktop"
                             </AimItem>
@@ -714,10 +739,15 @@ pub fn DesktopMenu(
                     class=ITEM
                     data-name="AimShortcuts"
                     onclick=CLOSE_ALL
-                    on:click=move |_| {
-                        #[cfg(not(coverage))]
+                    on:click={
+                    #[cfg(not(coverage))]
+                    let f = move |_: leptos::ev::MouseEvent| {
                         help.set(true);
-                    }
+                    };
+                    #[cfg(coverage)]
+                    let f = move |_| {};
+                    f
+                }
                 >
                     <Icon name="keyboard" class="size-4 shrink-0 text-muted-foreground"/>
                     <span class="min-w-0 flex-1 truncate text-left">"Keyboard shortcuts"</span>

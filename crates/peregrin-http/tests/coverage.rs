@@ -665,6 +665,12 @@ async fn route_sweep_arms() {
         json!({"nodeId":3}),
         json!({"nodeId":"x"}),
         json!({"agent":"devin"}),
+        // `confirm: true` passes the gate — string/array body fields.
+        json!({"confirm":true,"path":"/a","toolCallId":"t1"}),
+        json!({"confirm":true,"checkpoint":"c1","paths":["/a","/b"]}),
+        json!({"confirm":true,"toolCallId":1}),
+        json!({"confirm":true,"paths":"x"}),
+        json!({"confirm":true,"paths":[1]}),
     ] {
         call(
             &app,
@@ -1424,4 +1430,344 @@ async fn serve_binds_and_answers() {
     let _ = serve.await;
     // with_origins builder arm.
     let _ = AppState::new(Arc::new(OkPlane)).with_origins(vec!["http://a".into()]);
+}
+
+/// Malformed-body arms on the validated session routes + the
+/// un-wired import executor.
+#[tokio::test]
+async fn malformed_body_arms() {
+    let (app, _dir) = seeded();
+    // create(): non-string scalar fields → 400s; a valid `fallbacks`
+    // array exercises the collect arm.
+    for body in [
+        json!({"title": 5}),
+        json!({"model": 5}),
+        json!({"fallbacks": [1]}),
+        json!({"title": "t", "fallbacks": ["m1"]}),
+    ] {
+        let _ = call(&app, Method::POST, "/api/sessions", Some(body)).await;
+    }
+    // permission(): `optionId` must be string|null.
+    let _ = call(
+        &app,
+        Method::POST,
+        "/api/sessions/s1/permission",
+        Some(json!({"requestId": "r", "optionId": 5})),
+    )
+    .await;
+    let _ = call(
+        &app,
+        Method::POST,
+        "/api/sessions/s1/permission",
+        Some(json!({"requestId": "r"})),
+    )
+    .await;
+    // restore(): every non-string field arm + a valid payload.
+    for body in [
+        json!({"path": 5}),
+        json!({"toolCallId": 5}),
+        json!({"checkpoint": 5}),
+        json!({"paths": [1]}),
+        json!({"path": "p", "toolCallId": "t", "checkpoint": "c", "paths": ["a"]}),
+    ] {
+        let _ = call(&app, Method::POST, "/api/sessions/s1/restore", Some(body)).await;
+    }
+    // rewind(): non-string checkpoint + a valid payload.
+    let _ = call(
+        &app,
+        Method::POST,
+        "/api/sessions/s1/rewind",
+        Some(json!({"checkpoint": 5})),
+    )
+    .await;
+    let _ = call(
+        &app,
+        Method::POST,
+        "/api/sessions/s1/rewind",
+        Some(json!({"checkpoint": "c"})),
+    )
+    .await;
+    // import(): a flat history list including a `tool` role reaches
+    // the un-wired executor error (seeded has import_session=None).
+    let _ = call(
+        &app,
+        Method::POST,
+        "/api/sessions/import",
+        Some(json!({"history": [
+            {"role": "user", "content": "hi"},
+            {"role": "tool", "content": "t", "toolName": "x"},
+            {"role": "bogus", "content": "b"},
+            "not-an-object",
+        ]})),
+    )
+    .await;
+    let _ = call(
+        &app,
+        Method::POST,
+        "/api/sessions/import",
+        Some(json!({"history": [{"role": "user", "content": "hi"}]})),
+    )
+    .await;
+}
+
+/// Auth/pair/misc gates — non-POST methods, unconfigured pairing,
+/// oversized login bodies, unwritable node paths, a dead plane.
+#[tokio::test]
+async fn auth_pair_and_misc_arms() {
+    let (app, _dir) = seeded();
+    // pair(): non-POST → 404; POST without a pairing config → 501.
+    let _ = call(&app, Method::GET, "/api/pair", None).await;
+    let _ = call(&app, Method::POST, "/api/pair", Some(json!({}))).await;
+    // auth handle: non-login path → 404; logout → expired cookie.
+    let _ = call(&app, Method::GET, "/api/auth/login", None).await;
+    let _ = call(&app, Method::POST, "/api/auth/logout", Some(json!({}))).await;
+    let _ = call(&app, Method::GET, "/api/auth/logout", None).await;
+    // login with an over-limit body → the read_json_body error arm.
+    let big = json!({"token": "x".repeat(70 * 1024)});
+    let _ = call(&app, Method::POST, "/api/auth/login", Some(big)).await;
+    // node PATCH: bad name → 400; unwritable node_path → persist error.
+    let _ = call(&app, Method::PATCH, "/api/node", Some(json!({"name": ""}))).await;
+    let app2 = seeded_with_node_path("/nonexistent-dir/that/cannot/be/created/node.json");
+    let _ = call(
+        &app2,
+        Method::PATCH,
+        "/api/node",
+        Some(json!({"name": "n"})),
+    )
+    .await;
+    // health against a plane whose list fails → 503 arm.
+    let plane = FailPlane;
+    let state = AppState::new(Arc::new(plane));
+    let app3 = peregrin_http::app(state);
+    let _ = call(&app3, Method::GET, "/api/health", None).await;
+}
+
+fn seeded_with_node_path(path: &str) -> Router {
+    let meta = MetaStore::open(&tempfile::tempdir().unwrap().path().join("meta.json"));
+    let store = Arc::new(MemStore {
+        sessions: Mutex::new(HashMap::new()),
+    });
+    let plane = ControlPlane::new(store, ControlPlaneOptions::default());
+    let state = AppState::new(Arc::new(LocalPlane(plane)))
+        .with_meta(meta)
+        .with_node_path(path.into());
+    app(state)
+}
+
+/// Push/projects/config small-route arms.
+#[tokio::test]
+async fn push_projects_config_arms() {
+    // Push wired → exercise every validation arm + delete arm.
+    let (app, _dir) = seeded_with_push();
+    for body in [
+        // Empty body → Ok(None) → invalid.
+        json!(null),
+        // Non-object body → invalid.
+        json!([1]),
+        // Missing keys.
+        json!({"endpoint": "e"}),
+        // Keys present but incomplete.
+        json!({"endpoint": "e", "keys": {"auth": "a"}}),
+        // Full subscription incl. prefs (done opt-out).
+        json!({"endpoint": "e", "keys": {"auth": "a", "p256dh": "p"},
+               "prefs": {"done": false, "permission": true}}),
+    ] {
+        let _ = call(&app, Method::POST, "/api/push/subscribe", Some(body)).await;
+    }
+    // Empty-body post → the Ok(None) arm (null isn't empty — send none).
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri("/api/push/subscribe")
+        .body(Body::empty())
+        .unwrap();
+    let _ = app.clone().oneshot(req).await;
+    // DELETE with an endpoint → remove arm.
+    let _ = call(
+        &app,
+        Method::DELETE,
+        "/api/push/subscribe",
+        Some(json!({"endpoint": "e"})),
+    )
+    .await;
+    let _ = call(&app, Method::DELETE, "/api/push/subscribe", Some(json!({}))).await;
+
+    // Projects — meta-less app → meta_missing arms.
+    let app2 = seeded_no_meta();
+    let _ = call(
+        &app2,
+        Method::POST,
+        "/api/projects",
+        Some(json!({"name":"n"})),
+    )
+    .await;
+    let _ = call(
+        &app2,
+        Method::PATCH,
+        "/api/projects/p1",
+        Some(json!({"name":"n"})),
+    )
+    .await;
+    let _ = call(&app2, Method::DELETE, "/api/projects/p1", None).await;
+    // With meta — PUT → not_found; PATCH bad body/name.
+    let (app3, _dir3) = seeded();
+    let _ = call(&app3, Method::PUT, "/api/projects", None).await;
+    let _ = call(
+        &app3,
+        Method::PATCH,
+        "/api/projects/p1",
+        Some(json!({"name":5})),
+    )
+    .await;
+    let _ = call(
+        &app3,
+        Method::PATCH,
+        "/api/projects/ghost",
+        Some(json!({"name":"x"})),
+    )
+    .await;
+    let _ = call(&app3, Method::DELETE, "/api/projects/p1", None).await;
+
+    // Config — non-GET/non-PATCH methods.
+    let _ = call(&app3, Method::POST, "/api/config", Some(json!({}))).await;
+    let _ = call(
+        &app3,
+        Method::PUT,
+        "/api/config/k",
+        Some(json!({"value":1})),
+    )
+    .await;
+    let _ = call(
+        &app3,
+        Method::PATCH,
+        "/api/config/k",
+        Some(json!({"value":1})),
+    )
+    .await;
+}
+
+fn seeded_with_push() -> (Router, tempfile::TempDir) {
+    let dir = tempfile::tempdir().unwrap();
+    let meta = MetaStore::open(&dir.path().join("meta.json"));
+    let store = Arc::new(MemStore {
+        sessions: Mutex::new(HashMap::new()),
+    });
+    let plane = ControlPlane::new(store, ControlPlaneOptions::default());
+    let state = AppState::new(Arc::new(LocalPlane(plane)))
+        .with_meta(meta)
+        .with_push(Some(std::sync::Arc::new(peregrin_push::PushStore::open(
+            sepia_meta::MetaStore::open(&dir.path().join("push.json")),
+        ))));
+    (app(state), dir)
+}
+
+fn seeded_no_meta() -> Router {
+    let store = Arc::new(MemStore {
+        sessions: Mutex::new(HashMap::new()),
+    });
+    let plane = ControlPlane::new(store, ControlPlaneOptions::default());
+    app(AppState::new(Arc::new(LocalPlane(plane))))
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn session_handler_bad_field_arms() {
+    let (app, _dir) = seeded();
+    let j = |v: Value| Some(v);
+    // `create` — every `_ =>` typed-field arm.
+    for body in [
+        json!({"cwd": "/w", "title": 1}),
+        json!({"cwd": "/w", "model": 1}),
+        json!({"cwd": "/w", "fallbacks": 1}),
+        json!({"cwd": "/w", "fallbacks": [1]}),
+    ] {
+        let (s, _) = call_str(
+            &app,
+            Method::POST,
+            "/api/sessions",
+            &body.to_string(),
+            "application/json",
+        )
+        .await;
+        assert_eq!(s, StatusCode::BAD_REQUEST, "{body}");
+    }
+    // `restore` — typed-field arms for path/toolCallId/checkpoint/paths.
+    for body in [
+        json!({"confirm": true, "path": 1}),
+        json!({"confirm": true, "toolCallId": 1}),
+        json!({"confirm": true, "checkpoint": 1}),
+        json!({"confirm": true, "paths": 1}),
+        json!({"confirm": true, "paths": [1]}),
+    ] {
+        let (s, _) = call_str(
+            &app,
+            Method::POST,
+            "/api/sessions/s1/restore",
+            &body.to_string(),
+            "application/json",
+        )
+        .await;
+        assert_eq!(s, StatusCode::BAD_REQUEST, "{body}");
+    }
+    // `rewind` — checkpoint `_` arm.
+    let (s, _) = call_str(
+        &app,
+        Method::POST,
+        "/api/sessions/s1/rewind",
+        &json!({"confirm": true, "checkpoint": 1}).to_string(),
+        "application/json",
+    )
+    .await;
+    assert_eq!(s, StatusCode::BAD_REQUEST);
+    // `attach` — `Err(res)` for a truncated body; the fallbacks-array
+    // happy path also walks `filter_map`.
+    let (s, _) = call_str(
+        &app,
+        Method::POST,
+        "/api/sessions/s1/attach",
+        "{bad",
+        "application/json",
+    )
+    .await;
+    assert_eq!(s, StatusCode::BAD_REQUEST);
+    let _ = call(
+        &app,
+        Method::POST,
+        "/api/sessions/s1/attach",
+        j(json!({"fallbacks": ["m1", "m2"]})),
+    )
+    .await;
+    // `permission` — `Err(res)` on a bad body.
+    let (s, _) = call_str(
+        &app,
+        Method::POST,
+        "/api/sessions/s1/permission",
+        "{bad",
+        "application/json",
+    )
+    .await;
+    assert_eq!(s, StatusCode::BAD_REQUEST);
+    // `import_session` — `convert` wired but no `import` executor →
+    // Internal arm (the Internal wiring-bug bucket).
+    let convert: peregrin_http::ConvertSession = Arc::new(|_id, _target| {
+        Box::pin(async { Ok("x".to_string()) })
+            as futures::future::BoxFuture<'static, Result<String, _>>
+    });
+    let dir = tempfile::tempdir().unwrap();
+    let meta = MetaStore::open(&dir.path().join("meta.json"));
+    let store = Arc::new(MemStore {
+        sessions: Mutex::new(HashMap::new()),
+    });
+    let plane = ControlPlane::new(store, ControlPlaneOptions::default());
+    let state = AppState::new(Arc::new(LocalPlane(plane)))
+        .with_meta(meta)
+        .with_convert(convert);
+    let app2 = peregrin_http::app(state);
+    let (s, _) = call_str(
+        &app2,
+        Method::POST,
+        "/api/sessions/import",
+        &json!({"agent": "devin", "session": {"id":"s2","title":"T","workingDirectory":"/w","backendType":"devin","model":"m","createdAt":1.0,"lastActivityAt":1.0,"mainChainId":0}}).to_string(),
+        "application/json",
+    )
+    .await;
+    assert_eq!(s, StatusCode::INTERNAL_SERVER_ERROR);
 }
