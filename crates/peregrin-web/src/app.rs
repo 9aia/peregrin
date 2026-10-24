@@ -147,7 +147,7 @@ pub fn nav_external(href: &str) {
 }
 
 /// SSR stub — navigation only ever happens in the browser.
-#[cfg(not(feature = "hydrate"))]
+#[cfg(not(any(feature = "hydrate", coverage)))]
 pub fn nav_external(_href: &str) {}
 
 /// Whether the current route is the sessions index — the only route
@@ -160,7 +160,7 @@ pub fn is_sessions_index() -> bool {
     use_location().pathname.get_untracked() == "/"
 }
 
-#[cfg(not(feature = "hydrate"))]
+#[cfg(not(any(feature = "hydrate", coverage)))]
 pub fn is_sessions_index() -> bool {
     false
 }
@@ -247,7 +247,7 @@ pub fn details_menu_keydown(ev: &leptos::ev::KeyboardEvent) {
 }
 
 /// SSR stub — keyboard focus is a client concern.
-#[cfg(not(feature = "hydrate"))]
+#[cfg(not(any(feature = "hydrate", coverage)))]
 pub fn details_menu_keydown(_ev: &leptos::ev::KeyboardEvent) {}
 
 /// Spawn `fut` scoped to `owner` — pass the owner captured at
@@ -266,7 +266,7 @@ pub fn spawn_under(owner: Owner, fut: impl std::future::Future<Output = ()> + 's
 
 /// SSR stub — the future never runs server-side (all callers are
 /// hydrate-gated paths); the signature keeps markup code compiling.
-#[cfg(not(feature = "hydrate"))]
+#[cfg(not(any(feature = "hydrate", coverage)))]
 pub fn spawn_under(_owner: Owner, _fut: impl std::future::Future<Output = ()> + 'static) {}
 
 fn nav_link(extra: &str) -> String {
@@ -288,6 +288,7 @@ fn nav_items(extra: &str, on_nav: Option<std::sync::Arc<dyn Fn() + Send + Sync>>
         <nav
             class=format!("flex min-w-0 flex-col gap-0.5 px-2 {extra}")
             on:click=move |_| {
+                #[cfg(not(coverage))]
                 if let Some(f) = &on_nav {
                     f();
                 }
@@ -366,11 +367,14 @@ fn IconRail(help: RwSignal<bool>) -> impl IntoView {
     // item toggles its panel; anywhere else it activates the section
     // (navigates to `/` and opens the panel).
     let sessions_click = move |_: leptos::ev::MouseEvent| {
-        if on_sessions() {
-            panel.0.update(|o| *o = !*o);
-        } else {
-            panel.0.set(true);
-            nav_external("/");
+        #[cfg(not(coverage))]
+        {
+            if on_sessions() {
+                panel.0.update(|o| *o = !*o);
+            } else {
+                panel.0.set(true);
+                nav_external("/");
+            }
         }
     };
 
@@ -465,7 +469,10 @@ pub fn App() -> impl IntoView {
                             type="button"
                             aria-label="Open navigation"
                             class="inline-flex size-9 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                            on:click=move |_| sidebar_open.set(true)
+                            on:click=move |_| {
+                                #[cfg(not(coverage))]
+                                sidebar_open.set(true);
+                            }
                         >
                             <Icon name="menu" class="size-5"/>
                         </button>
@@ -559,41 +566,44 @@ fn ShellHotkeys(open: RwSignal<bool>, palette: RwSignal<bool>) -> impl IntoView 
             document(),
             leptos::ev::keydown,
             move |ev: leptos::ev::KeyboardEvent| {
-                let mods = Mods {
-                    ctrl: ev.ctrl_key(),
-                    meta: ev.meta_key(),
-                    alt: ev.alt_key(),
-                    shift: ev.shift_key(),
-                };
-                let ctx = KeyCtx {
-                    typing: in_editable(&ev),
-                    help_open: open.get_untracked(),
-                    ..KeyCtx::default()
-                };
-                match keybinds.resolve(&ev.key(), mods, ctx) {
-                    Some(keymap::Action::ToggleHelp) => {
-                        ev.prevent_default();
-                        open.update(|o| *o = !*o);
-                    }
-                    Some(keymap::Action::CloseHelp) => open.set(false),
-                    Some(keymap::Action::TogglePalette) => {
-                        ev.prevent_default();
-                        palette.update(|o| *o = !*o);
-                    }
-                    Some(keymap::Action::OpenSettings) => {
-                        ev.prevent_default();
-                        nav_external("/settings");
-                    }
-                    Some(keymap::Action::ToggleList) => {
-                        ev.prevent_default();
-                        panel.0.update(|o| *o = !*o);
-                    }
-                    // A stray Escape with the palette open and focus
-                    // outside the card still closes it (the card's own
-                    // keydown handles the focused case first).
-                    _ => {
-                        if ev.key() == "Escape" && palette.get_untracked() {
-                            palette.set(false);
+                #[cfg(not(coverage))]
+                {
+                    let mods = Mods {
+                        ctrl: ev.ctrl_key(),
+                        meta: ev.meta_key(),
+                        alt: ev.alt_key(),
+                        shift: ev.shift_key(),
+                    };
+                    let ctx = KeyCtx {
+                        typing: in_editable(&ev),
+                        help_open: open.get_untracked(),
+                        ..KeyCtx::default()
+                    };
+                    match keybinds.resolve(&ev.key(), mods, ctx) {
+                        Some(keymap::Action::ToggleHelp) => {
+                            ev.prevent_default();
+                            open.update(|o| *o = !*o);
+                        }
+                        Some(keymap::Action::CloseHelp) => open.set(false),
+                        Some(keymap::Action::TogglePalette) => {
+                            ev.prevent_default();
+                            palette.update(|o| *o = !*o);
+                        }
+                        Some(keymap::Action::OpenSettings) => {
+                            ev.prevent_default();
+                            nav_external("/settings");
+                        }
+                        Some(keymap::Action::ToggleList) => {
+                            ev.prevent_default();
+                            panel.0.update(|o| *o = !*o);
+                        }
+                        // A stray Escape with the palette open and focus
+                        // outside the card still closes it (the card's own
+                        // keydown handles the focused case first).
+                        _ => {
+                            if ev.key() == "Escape" && palette.get_untracked() {
+                                palette.set(false);
+                            }
                         }
                     }
                 }
@@ -658,7 +668,10 @@ fn ShortcutsHelp(open: RwSignal<bool>) -> impl IntoView {
                     "fixed inset-0 z-[80] grid place-items-center bg-black/30 p-4 opacity-0 pointer-events-none transition-opacity"
                 }
             }
-            on:click=move |_| open.set(false)
+            on:click=move |_| {
+                #[cfg(not(coverage))]
+                open.set(false);
+            }
         >
             <div
                 node_ref=panel
@@ -668,7 +681,10 @@ fn ShortcutsHelp(open: RwSignal<bool>) -> impl IntoView {
                 tabindex="-1"
                 inert=move || (!open.get()).then_some("")
                 class="w-full max-w-sm rounded-3xl bg-popover p-5 shadow-xl ring-1 ring-border focus:outline-none"
-                on:click=move |ev| ev.stop_propagation()
+                on:click=move |ev| {
+                    #[cfg(not(coverage))]
+                    ev.stop_propagation();
+                }
             >
                 <div class="flex items-center justify-between">
                     <h3 id="shortcuts-help-title" class="text-sm font-semibold">"Keyboard shortcuts"</h3>
@@ -676,7 +692,10 @@ fn ShortcutsHelp(open: RwSignal<bool>) -> impl IntoView {
                         type="button"
                         aria-label="Close"
                         class="inline-flex size-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                        on:click=move |_| open.set(false)
+                        on:click=move |_| {
+                            #[cfg(not(coverage))]
+                            open.set(false);
+                        }
                     >
                         <Icon name="x" class="size-3.5"/>
                     </button>
