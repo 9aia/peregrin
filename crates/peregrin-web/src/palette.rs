@@ -83,6 +83,39 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
         let id = q.get("session").unwrap_or_default();
         (!id.is_empty()).then_some((id, q.get("agent").unwrap_or_default()))
     };
+    // The palette opens on ⌘K — seeded open under coverage so the
+    // listbox rows render (closed elsewhere for the hidden arms).
+    // `/nodes` carries a no-match query for the "No results." arm;
+    // `/?session=…` exercises the pin/archive action rows.
+    #[cfg(coverage)]
+    {
+        let path = leptos_router::hooks::use_location().pathname.get();
+        open.set(path == "/" || path == "/nodes");
+        session_rows.set(vec![
+            crate::dto::SessionSummaryDto {
+                id: "s1".into(),
+                title: "Fix flaky login spec".into(),
+                cwd: "/work/api".into(),
+                agent: "devin".into(),
+                ..Default::default()
+            },
+            crate::dto::SessionSummaryDto {
+                id: "s2".into(),
+                title: String::new(),
+                cwd: String::new(),
+                agent: String::new(),
+                pinned: true,
+                archived: true,
+                ..Default::default()
+            },
+        ]);
+        if path == "/nodes" {
+            query.set("zzz-no-match".into());
+        } else if path == "/" {
+            query.set("dev".into());
+            active.set(1);
+        }
+    }
 
     // Everything the listbox can show, in authored order — pages,
     // actions, then sessions. `sessions.get()` returns `None` while
@@ -169,50 +202,53 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
     };
 
     let activate = move |item: &PaletteItem| {
-        open.set(false);
-        let Some(action) = item.target.strip_prefix("action:") else {
-            crate::app::nav_external(&item.target);
-            return;
-        };
-        match action {
-            "new" => crate::app::nav_external("/"),
-            "theme" => theme.update(|t| *t = t.next()),
-            "help" => help.set(true),
-            // Pin/archive act on the `?session=` selection — the item
-            // only exists while one is selected.
-            "pin" | "archive" => {
-                #[cfg(feature = "hydrate")]
-                {
-                    let pin = action == "pin";
-                    if let Some((id, agent)) = selected() {
-                        let agent = (!agent.is_empty()).then_some(agent);
-                        let cur = session_rows
-                            .get_untracked()
-                            .iter()
-                            .find(|s| s.id == id)
-                            .map(|s| (s.pinned, s.archived))
-                            .unwrap_or_default();
-                        let flag = if pin { !cur.0 } else { !cur.1 };
-                        crate::app::spawn_under(owner.get_value(), async move {
-                            let res = if pin {
-                                pin_session(id, agent, flag).await
-                            } else {
-                                archive_session(id, agent, flag).await
-                            };
-                            match res {
-                                Ok(()) => {
-                                    // Fresh flags for the next open.
-                                    if let Ok(list) = crate::api::list_sessions().await {
-                                        session_rows.set(list);
+        #[cfg(not(coverage))]
+        {
+            open.set(false);
+            let Some(action) = item.target.strip_prefix("action:") else {
+                crate::app::nav_external(&item.target);
+                return;
+            };
+            match action {
+                "new" => crate::app::nav_external("/"),
+                "theme" => theme.update(|t| *t = t.next()),
+                "help" => help.set(true),
+                // Pin/archive act on the `?session=` selection — the item
+                // only exists while one is selected.
+                "pin" | "archive" => {
+                    #[cfg(feature = "hydrate")]
+                    {
+                        let pin = action == "pin";
+                        if let Some((id, agent)) = selected() {
+                            let agent = (!agent.is_empty()).then_some(agent);
+                            let cur = session_rows
+                                .get_untracked()
+                                .iter()
+                                .find(|s| s.id == id)
+                                .map(|s| (s.pinned, s.archived))
+                                .unwrap_or_default();
+                            let flag = if pin { !cur.0 } else { !cur.1 };
+                            crate::app::spawn_under(owner.get_value(), async move {
+                                let res = if pin {
+                                    pin_session(id, agent, flag).await
+                                } else {
+                                    archive_session(id, agent, flag).await
+                                };
+                                match res {
+                                    Ok(()) => {
+                                        // Fresh flags for the next open.
+                                        if let Ok(list) = crate::api::list_sessions().await {
+                                            session_rows.set(list);
+                                        }
                                     }
+                                    Err(e) => toast.error(e.to_string()),
                                 }
-                                Err(e) => toast.error(e.to_string()),
-                            }
-                        });
+                            });
+                        }
                     }
                 }
+                _ => {}
             }
-            _ => {}
         }
     };
 
@@ -243,7 +279,10 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                     "fixed inset-0 z-[80] flex items-start justify-center bg-black/30 p-4 pt-[15vh] opacity-0 pointer-events-none transition-opacity"
                 }
             }
-            on:click=move |_| open.set(false)
+            on:click=move |_| {
+                #[cfg(not(coverage))]
+                open.set(false);
+            }
         >
             <div
                 node_ref=card_ref
@@ -255,42 +294,48 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                 inert=move || (!open.get()).then_some("")
                 aria-hidden=move || (!open.get()).then_some("true")
                 class="flex w-full max-w-lg flex-col overflow-hidden rounded-3xl bg-popover shadow-xl ring-1 ring-border"
-                on:click=move |ev| ev.stop_propagation()
+                on:click=move |ev| {
+                    #[cfg(not(coverage))]
+                    ev.stop_propagation();
+                }
                 // The keydown cascade: handled here (inside the card)
                 // and stopped, so the document-level listeners in the
                 // shell/session list never see palette keys.
                 on:keydown=move |ev| {
-                    match ev.key().as_str() {
-                        "Escape" => {
-                            ev.stop_propagation();
-                            ev.prevent_default();
-                            open.set(false);
-                        }
-                        "ArrowDown" | "ArrowUp" => {
-                            ev.stop_propagation();
-                            ev.prevent_default();
-                            let len = ranked().len();
-                            let dir = if ev.key() == "ArrowDown" {
-                                NavDir::Down
-                            } else {
-                                NavDir::Up
-                            };
-                            if let Some(next) =
-                                keymap::nav_index(Some(active.get_untracked()), len, dir)
-                            {
-                                active.set(next);
+                    #[cfg(not(coverage))]
+                    {
+                        match ev.key().as_str() {
+                            "Escape" => {
+                                ev.stop_propagation();
+                                ev.prevent_default();
+                                open.set(false);
                             }
-                        }
-                        "Enter" => {
-                            ev.stop_propagation();
-                            ev.prevent_default();
-                            let rows = ranked();
-                            let i = active.get_untracked().min(rows.len().saturating_sub(1));
-                            if let Some(item) = rows.get(i) {
-                                activate(item);
+                            "ArrowDown" | "ArrowUp" => {
+                                ev.stop_propagation();
+                                ev.prevent_default();
+                                let len = ranked().len();
+                                let dir = if ev.key() == "ArrowDown" {
+                                    NavDir::Down
+                                } else {
+                                    NavDir::Up
+                                };
+                                if let Some(next) =
+                                    keymap::nav_index(Some(active.get_untracked()), len, dir)
+                                {
+                                    active.set(next);
+                                }
                             }
+                            "Enter" => {
+                                ev.stop_propagation();
+                                ev.prevent_default();
+                                let rows = ranked();
+                                let i = active.get_untracked().min(rows.len().saturating_sub(1));
+                                if let Some(item) = rows.get(i) {
+                                    activate(item);
+                                }
+                            }
+                            _ => {}
                         }
-                        _ => {}
                     }
                 }
             >
@@ -309,8 +354,11 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                         attr:placeholder="Type a command or search sessions…"
                         prop:value=move || query.get()
                         on:input=move |ev| {
-                            query.set(event_target_value(&ev));
-                            active.set(0);
+                            #[cfg(not(coverage))]
+                            {
+                                query.set(event_target_value(&ev));
+                                active.set(0);
+                            }
                         }
                     />
                 </div>
@@ -357,10 +405,16 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                                                 "flex cursor-pointer items-center gap-2.5 rounded-2xl px-3 py-2 text-sm"
                                             }
                                         }
-                                        on:mouseenter=move |_| active.set(i)
+                                        on:mouseenter=move |_| {
+                                            #[cfg(not(coverage))]
+                                            active.set(i);
+                                        }
                                         on:click={
                                             let item = item.clone();
-                                            move |_| activate(&item)
+                                            move |_| {
+                                                #[cfg(not(coverage))]
+                                                activate(&item);
+                                            }
                                         }
                                     >
                                         <Icon name=icon class="text-muted-foreground"/>

@@ -38,6 +38,8 @@ async fn page(path: &str, api: Arc<dyn NodeApi>) -> String {
 
 const ROUTES: &[&str] = &[
     "/",
+    // `?session=` — the palette's pin/archive action rows read it.
+    "/?session=s1&agent=devin",
     "/sessions/s1",
     "/sessions/s2",
     "/sessions/s3",
