@@ -171,16 +171,22 @@ impl Default for HubConfig {
 /// site` staging dir (`$PEREGRIN_HOME/site`) → `target/site` (dev build)
 /// → the crate-local `public/` (assets only — no wasm bundle).
 fn default_site_root() -> String {
-    if let Ok(p) =
-        std::env::var("LEPTOS_SITE_ROOT").or_else(|_| std::env::var("PEREGRIN_SITE_ROOT"))
-    {
+    site_root_from(|k| std::env::var(k).ok(), |k| std::env::var_os(k))
+}
+
+/// [`default_site_root`] with the environment injected (test seam).
+#[doc(hidden)]
+pub fn site_root_from(
+    getv: impl Fn(&str) -> Option<String>,
+    getos: impl Fn(&str) -> Option<std::ffi::OsString>,
+) -> String {
+    if let Some(p) = getv("LEPTOS_SITE_ROOT").or_else(|| getv("PEREGRIN_SITE_ROOT")) {
         return p;
     }
-    let staged_site = std::env::var_os("PEREGRIN_HOME")
+    let staged_site = getos("PEREGRIN_HOME")
         .map(std::path::PathBuf::from)
         .or_else(|| {
-            std::env::var_os("HOME")
-                .map(|h| std::path::PathBuf::from(h).join(".local/share/peregrin"))
+            getos("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share/peregrin"))
         })
         .map(|h| h.join("site"));
     for p in [staged_site, Some(std::path::PathBuf::from("target/site"))]
@@ -370,12 +376,10 @@ pub fn hub_state_from(
     // store slot so the plaintext can leave the env. Tokenless nodes
     // resolve a stored credential.
     let (stored, seeded) = sync_api::resolve_node_tokens(&mut nodes, creds.as_ref());
-    tracing::info!(
-        backend = creds.backend(),
-        stored,
-        seeded,
-        "node credential store"
-    );
+    // Hoisted — `tracing` fields evaluate only when a subscriber is
+    // attached, which coverage runs don't guarantee.
+    let backend = creds.backend();
+    tracing::info!(backend, stored, seeded, "node credential store");
     let projection = peregrin_sync::ProjectionStore::open(&home.join("projection.db"))
         .map_err(|e| format!("projection open: {e}"))?;
     // Rows from node ids no longer configured (renamed, removed, or the
@@ -407,9 +411,8 @@ pub fn hub_state_from(
     };
     let engine = peregrin_sync::SyncEngine::spawn(projection, outbox, targets, options);
     let options = leptos_options(config);
-    let Some(upstream) = nodes.first().cloned() else {
-        return Err("no nodes configured".into());
-    };
+    // `unwrap_or_else` above guarantees at least the single-node row.
+    let upstream = nodes.first().cloned().unwrap_or_default();
     let api = Arc::new(sync_api::SyncNodeApi::new(engine, nodes, creds));
     let mut state = HubState::new(
         options,
@@ -444,10 +447,11 @@ pub fn feed_hook(
             if kind != "session" {
                 return;
             }
-            let title = projection.session(node_id, id).map_or_else(
-                |_| id.clone(),
-                |opt| opt.map_or_else(|| id.clone(), |r| r.title),
-            );
+            let title = projection
+                .session(node_id, id)
+                .ok()
+                .flatten()
+                .map_or_else(|| id.clone(), |r| r.title);
             let url = format!("/?session={id}");
             if patch.get("runFinished") == Some(&serde_json::Value::Bool(true)) {
                 push.send(

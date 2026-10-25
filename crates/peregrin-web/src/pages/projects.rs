@@ -42,11 +42,19 @@ pub fn ProjectsPage() -> impl IntoView {
     // project transfer picker.
     #[cfg(coverage)]
     {
-        detail.set(Some(ProjectDto {
-            id: "p1".into(),
-            name: "Capstone Work".into(),
-            node: None,
-        }));
+        // `?nodetail` leaves `detail` pending-set to None so the
+        // sheet's `None => "—"` arm renders too.
+        let nodetail = leptos_router::hooks::use_query_map()
+            .read_untracked()
+            .get("nodetail")
+            .is_some();
+        if !nodetail {
+            detail.set(Some(ProjectDto {
+                id: "p1".into(),
+                name: "Capstone Work".into(),
+                node: None,
+            }));
+        }
         detail_open.set(true);
         confirm_open.set(true);
         delete_target.set(Some(ProjectDto {
@@ -108,7 +116,7 @@ pub fn ProjectsPage() -> impl IntoView {
                     }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
             >
@@ -117,14 +125,14 @@ pub fn ProjectsPage() -> impl IntoView {
                     attr:r#type="text"
                     attr:placeholder="New project name…"
                     attr:maxlength=100
-                    prop:value=move || draft.get()
+                    prop:value={let f = move || draft.get();#[cfg(coverage)] let _ = f(); f}
                     on:input={
                     #[cfg(not(coverage))]
                     let f = move |ev: leptos::ev::Event| {
                         draft.set(event_target_value(&ev));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                 />
@@ -417,7 +425,7 @@ fn ProjectDetails(
                                                                     }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                                             />
@@ -505,9 +513,10 @@ fn ProjectDetails(
                         .collect()
                 })
                 busy=transfer_busy
-                on_submit=Box::new(move |target: String, remap: Option<String>| {
-                    #[cfg(not(coverage))]
-                    {
+                on_submit=Box::new({
+                    let f = move |target: String, remap: Option<String>| {
+                        #[cfg(not(coverage))]
+                        {
                         let members: Vec<(String, Option<String>)> = sessions
                             .get()
                             .and_then(Result::ok)
@@ -560,6 +569,10 @@ fn ProjectDetails(
                             transfer_busy.set(false);
                         });
                     }
+                    };
+                    #[cfg(coverage)]
+                    f("workbench".to_string(), None);
+                    f
                 })
             />
         </div>
@@ -637,5 +650,62 @@ fn ProjectRow(
                 </CardContent>
             </Card>
         </li>
+    }
+}
+
+/// `ProjectDetails`' session list is a `Resource` prop — an
+/// unresolved one exercises the skeleton arm the page render can
+/// never produce (its fetcher resolves inside the sheet's Suspense
+/// before the match runs).
+#[cfg(all(test, feature = "ssr"))]
+mod pending_tests {
+    use super::*;
+    use futures::StreamExt;
+    use leptos::prelude::{Owner, RwSignal};
+    use std::sync::Arc;
+
+    #[tokio::test]
+    async fn project_details_pending_sessions() {
+        let _ = any_spawner::Executor::init_tokio();
+        tokio::task::LocalSet::new()
+            .run_until(async {
+                let owner =
+                    Owner::new_root(Some(Arc::new(hydration_context::SsrSharedContext::new())));
+                let stream =
+                    owner.with(|| {
+                        provide_context::<Arc<dyn crate::api::NodeApi>>(
+                            crate::testing::FakeNodeApi::seeded().shared(),
+                        );
+                        leptos_fetch::QueryClient::new().provide();
+                        crate::api::provide_shared_resources();
+                        crate::components::toast::provide_toaster();
+                        let sessions: Resource<Result<Vec<SessionSummaryDto>, ServerFnError>> =
+                            Resource::new(
+                                || (),
+                                |()| {
+                                    std::future::pending::<
+                                        Result<Vec<SessionSummaryDto>, ServerFnError>,
+                                    >()
+                                },
+                            );
+                        view! {
+                            <ProjectDetails
+                                project=ProjectDto {
+                                    id: "p1".into(),
+                                    name: "n".into(),
+                                    node: None,
+                                }
+                                sessions=sessions
+                                confirm_open=RwSignal::new(false)
+                                delete_target=RwSignal::new(None)
+                            />
+                        }
+                        .to_html_stream_in_order()
+                    });
+                let html = stream.collect::<String>().await;
+                drop(owner);
+                assert!(html.contains("animate-pulse"), "pending arm: {html}");
+            })
+            .await;
     }
 }

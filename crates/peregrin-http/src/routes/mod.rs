@@ -361,6 +361,8 @@ mod cov_tests {
             Err(ControlError::new(ControlErrorCode::Internal, "x")),
             StatusCode::OK,
         );
+        // Ok + serializable → the success arm.
+        let _ = respond(Ok("x"), StatusCode::OK);
         let _ = respond(Ok(Bad), StatusCode::OK);
         // Query helpers.
         assert!(query_params(None).is_empty());
@@ -373,5 +375,21 @@ mod cov_tests {
         // Error-response shapes.
         let _ = invalid_json();
         let _ = payload_too_large();
+    }
+
+    #[tokio::test]
+    async fn read_json_body_stream_error_is_invalid() {
+        // A body that errors mid-stream (not a length limit) → the
+        // `invalid_json` arm of the `to_bytes` map_err.
+        let body = Body::from_stream(futures::stream::once(async {
+            Err::<axum::body::Bytes, std::io::Error>(std::io::Error::other("boom"))
+        }));
+        let req = Request::builder()
+            .method("POST")
+            .uri("/x")
+            .body(body)
+            .unwrap();
+        let res = read_json_body(req, SMALL_JSON_BODY).await;
+        assert!(res.is_err());
     }
 }

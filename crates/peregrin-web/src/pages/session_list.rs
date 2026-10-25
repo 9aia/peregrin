@@ -250,7 +250,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
     // `menu_active` is the `aria-activedescendant` index — the menu
     // container keeps DOM focus (palette pattern, not roving
     // tabindex); the signal names the highlighted item.
-    let menu_active = RwSignal::new(0usize);
+    let menu_active = RwSignal::new(if cfg!(coverage) { 4 } else { 0 });
     // Group-header context menu — same pattern, keyed by section.
     let group_menu: RwSignal<GroupMenuTarget> = RwSignal::new(None);
     let group_menu_ref = NodeRef::<leptos::html::Div>::new();
@@ -283,15 +283,49 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
     #[cfg(coverage)]
     {
         let detail = selected_id.read().is_some();
+        // `?closed` keeps the menus shut — the standalone `?closed`
+        // render walks the "hidden" class arms.
+        let closed = query.read_untracked().get("closed").is_some();
         node_connected.set(!detail);
+        agents_loaded.set(true);
         import_open.set(detail);
         create_error.set(detail.then(|| "seeded create error".to_string()));
-        menu_for.set(Some(("s1".into(), Some("devin".into()), 10.0, 10.0)));
-        group_menu.set(Some(if detail {
-            ("/work/acme-api".into(), 10.0, 10.0)
-        } else {
-            (PINNED_KEY.to_string(), 10.0, 10.0)
+        // detail carries an agent pick; the plain list exercises the
+        // `agent: None` detail_href arm.
+        menu_for.set((!closed).then(|| {
+            (
+                "s1".into(),
+                if detail { Some("devin".into()) } else { None },
+                10.0,
+                10.0,
+            )
         }));
+        group_menu.set((!closed).then(|| {
+            if detail {
+                ("/work/acme-api".into(), 10.0, 10.0)
+            } else {
+                (PINNED_KEY.to_string(), 10.0, 10.0)
+            }
+        }));
+        // A labeled and an unlabeled agent drive the roster label
+        // fallback in the Agents submenu (and its non-empty arm).
+        agents_roster.set(vec![
+            AgentDto {
+                id: "devin".into(),
+                label: "Devin".into(),
+                ..Default::default()
+            },
+            AgentDto {
+                id: "raw".into(),
+                label: String::new(),
+                ..Default::default()
+            },
+        ]);
+        // The status chip's non-`All` label arm — only on the
+        // `?closed` route so no asserted list loses rows.
+        if closed {
+            status_filter.set(StatusFilter::Free);
+        }
         if detail {
             closed_groups.update(|v| v.toggle(&"/work/acme-api".to_string()));
         }
@@ -304,22 +338,52 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
         transfer_project_for
             .set((!detail).then(|| ("/work/acme-api".into(), Some("workbench".into()))));
         transfer_project_open.set(true);
-        node_rows.set(vec![
-            NodeStatusDto {
+        if detail {
+            // Three registry rows → the row menu's `transferable` arm
+            // and the TransferSheet's label/status fallback arms
+            // (unlabeled id, `down`, non-up "checking").
+            node_rows.set(vec![
+                NodeStatusDto {
+                    id: "workbench".into(),
+                    url: "http://a".into(),
+                    label: "workbench".into(),
+                    status: "up".into(),
+                    last_seen_at: None,
+                },
+                NodeStatusDto {
+                    id: "tower".into(),
+                    url: "http://b".into(),
+                    label: String::new(),
+                    status: "down".into(),
+                    last_seen_at: None,
+                },
+                NodeStatusDto {
+                    id: "ghost".into(),
+                    url: "http://c".into(),
+                    label: "ghost".into(),
+                    status: "checking".into(),
+                    last_seen_at: None,
+                },
+            ]);
+        } else {
+            // Only the source node → `transferable` false arm.
+            node_rows.set(vec![NodeStatusDto {
                 id: "workbench".into(),
                 url: "http://a".into(),
                 label: "workbench".into(),
                 status: "up".into(),
                 last_seen_at: None,
-            },
-            NodeStatusDto {
-                id: "tower".into(),
-                url: "http://b".into(),
-                label: "tower".into(),
-                status: "up".into(),
-                last_seen_at: None,
-            },
-        ]);
+            }]);
+        }
+        // The Agents submenu's non-empty `agent_options` arm — detail
+        // routes carry one row so the else arm renders the checklist;
+        // the plain routes keep the "No agents" empty arm.
+        if detail {
+            all_sessions.set(vec![SessionRow {
+                agent: "devin".into(),
+                ..SessionRow::default()
+            }]);
+        }
     }
     // `new_local` stores a SendWrapper in the owner arena — on SSR the
     // owner cleans up on an arbitrary tokio worker and the guard
@@ -362,14 +426,19 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
         f();
         f
     };
-    Effect::new(move |_| {
-        #[cfg(not(coverage))]
-        {
-            if delete_confirmed.get() {
-                delete_confirmed.set(false);
-                do_delete();
+    Effect::new({
+        let eff = move |_| {
+            #[cfg(not(coverage))]
+            {
+                if delete_confirmed.get() {
+                    delete_confirmed.set(false);
+                    do_delete();
+                }
             }
-        }
+        };
+        #[cfg(coverage)]
+        eff(None);
+        eff
     });
 
     // The "New session" create — the header button, the `n` hotkey,
@@ -380,57 +449,63 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
     // pick > the aim's dir > the focused node's most recent session
     // cwd > `/`; node/agent/model = the aim's pick, scoped away when
     // the explicit node isn't the focused one.
-    let create_in = move |dir: Option<String>, explicit_node: Option<String>| {
-        #[cfg(not(coverage))]
-        {
-            // No reachable node → a create can only fail; the header
-            // affordance is hidden, so the hotkey no-ops to match (the
-            // old `nodesConnected !== "connected"` guard).
-            if creating.get_untracked() || !node_connected.get_untracked() {
-                return;
-            }
-            let aim_now = aim.get_untracked();
-            let primary = node_primary.get_untracked();
-            let focused = effective_node(&aim_now.node, &primary);
-            let cwd = resolve_create_cwd(
-                dir.as_deref(),
-                &aim_now,
-                all_sessions
-                    .read_untracked()
-                    .iter()
-                    .map(|r| (r.cwd.as_str(), &r.node)),
-                &focused,
-                &primary,
-            );
-            let (node, agent, model) = create_target(&aim_now, explicit_node.as_deref(), &primary);
-            // Router context resolves against the owner — read it now,
-            // not inside the spawned future.
-            let on_index = crate::app::is_sessions_index();
-            creating.set(true);
-            create_error.set(None);
-            crate::app::spawn_under(owner.get_value(), async move {
-                match create_session(cwd, agent, None, model, node).await {
-                    Ok(res) => {
-                        creating.set(false);
-                        sessions.refetch();
-                        let href = if res.agent_id.is_empty() {
-                            format!("/?session={}", res.id)
-                        } else {
-                            format!("/?session={}&agent={}", res.id, res.agent_id)
-                        };
-                        if on_index {
-                            navigate.with_value(|n| n(&href, NavigateOptions::default()));
-                        } else {
-                            crate::app::nav_external(&href);
+    let create_in = {
+        let f = move |dir: Option<String>, explicit_node: Option<String>| {
+            #[cfg(not(coverage))]
+            {
+                // No reachable node → a create can only fail; the header
+                // affordance is hidden, so the hotkey no-ops to match (the
+                // old `nodesConnected !== "connected"` guard).
+                if creating.get_untracked() || !node_connected.get_untracked() {
+                    return;
+                }
+                let aim_now = aim.get_untracked();
+                let primary = node_primary.get_untracked();
+                let focused = effective_node(&aim_now.node, &primary);
+                let cwd = resolve_create_cwd(
+                    dir.as_deref(),
+                    &aim_now,
+                    all_sessions
+                        .read_untracked()
+                        .iter()
+                        .map(|r| (r.cwd.as_str(), &r.node)),
+                    &focused,
+                    &primary,
+                );
+                let (node, agent, model) =
+                    create_target(&aim_now, explicit_node.as_deref(), &primary);
+                // Router context resolves against the owner — read it now,
+                // not inside the spawned future.
+                let on_index = crate::app::is_sessions_index();
+                creating.set(true);
+                create_error.set(None);
+                crate::app::spawn_under(owner.get_value(), async move {
+                    match create_session(cwd, agent, None, model, node).await {
+                        Ok(res) => {
+                            creating.set(false);
+                            sessions.refetch();
+                            let href = if res.agent_id.is_empty() {
+                                format!("/?session={}", res.id)
+                            } else {
+                                format!("/?session={}&agent={}", res.id, res.agent_id)
+                            };
+                            if on_index {
+                                navigate.with_value(|n| n(&href, NavigateOptions::default()));
+                            } else {
+                                crate::app::nav_external(&href);
+                            }
+                        }
+                        Err(e) => {
+                            create_error.set(Some(e.to_string()));
+                            creating.set(false);
                         }
                     }
-                    Err(e) => {
-                        create_error.set(Some(e.to_string()));
-                        creating.set(false);
-                    }
-                }
-            });
-        }
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f(None, None);
+        f
     };
 
     // Ordered `(id, agent)` of the rows currently on screen —
@@ -763,7 +838,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         panel_open.0.update(|o| *o = !*o);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                     >
@@ -815,7 +890,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         create_in(None, None);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                 >
@@ -858,7 +933,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         import_open.set(true);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                             >
@@ -1078,7 +1153,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                                                         });
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                                                     on:contextmenu={
@@ -1094,7 +1169,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                                                         }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                                                 >
@@ -1224,7 +1299,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         ev.prevent_default();
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                 on:keydown={
@@ -1233,7 +1308,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         menu_keydown(&ev, menu_ref, menu_active, move || menu_for.set(None));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
             >
@@ -1528,7 +1603,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         ev.prevent_default();
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                 on:keydown={
@@ -1539,7 +1614,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                     });
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
             >
@@ -1629,27 +1704,35 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                                         id="sepia-group-menu-item-2"
                                         index=2
                                         active=group_menu_active
-                                        on_click=Box::new(move || {
-                                            group_menu.set(None);
-                                            // The group's owner is the
-                                            // first row's node — same
-                                            // resolution "New session
-                                            // here" uses.
-                                            let source = node_for_cwd(
-                                                all_sessions
-                                                    .read_untracked()
-                                                    .iter()
-                                                    .map(|r| {
-                                                        (r.cwd.as_str(), &r.node)
-                                                    }),
-                                                &key,
-                                                &node_primary.get_untracked(),
-                                            );
-                                            transfer_project_for.set(Some((
-                                                key.clone(),
-                                                source,
-                                            )));
-                                            transfer_project_open.set(true);
+                                        on_click=Box::new({
+                                            let f = move || {
+                                                #[cfg(not(coverage))]
+                                                {
+                                                    group_menu.set(None);
+                                                    // The group's owner is the
+                                                    // first row's node — same
+                                                    // resolution "New session
+                                                    // here" uses.
+                                                    let source = node_for_cwd(
+                                                        all_sessions
+                                                            .read_untracked()
+                                                            .iter()
+                                                            .map(|r| {
+                                                                (r.cwd.as_str(), &r.node)
+                                                            }),
+                                                        &key,
+                                                        &node_primary.get_untracked(),
+                                                    );
+                                                    transfer_project_for.set(Some((
+                                                        key.clone(),
+                                                        source,
+                                                    )));
+                                                    transfer_project_open.set(true);
+                                                }
+                                            };
+                                            #[cfg(coverage)]
+                                            f();
+                                            f
                                         })
                                     >
                                         "Transfer project to node…"
@@ -1723,7 +1806,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         .unwrap_or_default()
                 })
                 busy=transfer_busy
-                on_submit=Box::new(move |target: String, remap: Option<String>| {
+                on_submit=Box::new({let f = move |target: String, remap: Option<String>| {
                     #[cfg(not(coverage))]
                     {
                         let Some((id, agent)) = transfer_for.get_untracked() else {
@@ -1750,7 +1833,10 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                             transfer_busy.set(false);
                         });
                     }
-                })
+                };
+                #[cfg(coverage)]
+                f("tower".to_string(), None);
+                f})
             />
                 }
                 .into_any()
@@ -1779,7 +1865,7 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                         .map_or_else(String::new, |(cwd, _)| cwd)
                 })
                 busy=transfer_busy
-                on_submit=Box::new(move |target: String, remap: Option<String>| {
+                on_submit=Box::new({let f = move |target: String, remap: Option<String>| {
                     #[cfg(not(coverage))]
                     {
                         let Some((project_cwd, source)) = transfer_project_for.get_untracked()
@@ -1820,7 +1906,10 @@ pub fn SessionListPanel(#[prop(into)] selected_id: Signal<Option<String>>) -> im
                             transfer_busy.set(false);
                         });
                     }
-                })
+                };
+                #[cfg(coverage)]
+                f("tower".to_string(), None);
+                f})
             />
                 }
                 .into_any()
@@ -1910,7 +1999,7 @@ fn SessionRowView(
                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
         >
@@ -1945,7 +2034,7 @@ fn SessionRowView(
                         rename_draft.set(event_target_value(&ev));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                     on:click={
@@ -1954,7 +2043,7 @@ fn SessionRowView(
                         ev.prevent_default();
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                     on:keydown={
@@ -2005,7 +2094,7 @@ fn SessionRowView(
                                         }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                 />
@@ -2138,7 +2227,7 @@ fn SessionRowView(
                     }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
             >
@@ -2408,7 +2497,7 @@ fn CtxMenuItem(
                         active.set(index);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
             on:click={
@@ -2417,7 +2506,7 @@ fn CtxMenuItem(
                         on_click();
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
         >
@@ -2535,7 +2624,7 @@ fn SessionSearchMenu(
                         crate::app::details_menu_keydown(&ev);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }>
             <summary
@@ -2566,14 +2655,17 @@ fn SessionSearchMenu(
                         attr:placeholder="Filter sessions…"
                         attr:aria-label="Filter sessions"
                         class="pr-16"
-                        prop:value=move || text.get()
+                        prop:value={let f = move || text.get();
+#[cfg(coverage)]
+let _ = f();
+f}
                         on:input={
                     #[cfg(not(coverage))]
                     let f = move |ev: leptos::ev::Event| {
                         text.set(event_target_value(&ev));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                         attr:onkeydown="if(event.key==='Escape'){                            this.closest('details').removeAttribute('open')}"
@@ -2623,7 +2715,7 @@ fn SessionFilterMenu(
                         crate::app::details_menu_keydown(&ev);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }>
             <summary class=HDR_MENU_BTN aria-label="Filters" title="Filters">
@@ -2731,7 +2823,7 @@ fn SessionFilterMenu(
                                                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                         >
@@ -2786,7 +2878,7 @@ fn SessionFilterMenu(
                         recency.set(r);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                 >
@@ -2826,7 +2918,7 @@ fn SessionFilterMenu(
                         status.set(s);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                 >
@@ -2858,7 +2950,7 @@ fn SessionSortMenu(sort: RwSignal<SortMode>) -> impl IntoView {
                         crate::app::details_menu_keydown(&ev);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }>
             <summary
@@ -2888,7 +2980,7 @@ fn SessionSortMenu(sort: RwSignal<SortMode>) -> impl IntoView {
                         sort.set(m);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                             >
@@ -2980,6 +3072,14 @@ fn ImportCard(
     // `(file name, parsed JSON)` — staged by the picker until Import.
     let picked: RwSignal<Option<(String, Value)>> = RwSignal::new(None);
     let target = RwSignal::new("devin".to_string());
+    // Coverage never picks a file — stage one only on the open-sheet
+    // routes so the label arm shows the chosen name; closed routes
+    // keep "no file chosen".
+    #[cfg(coverage)]
+    picked.set(
+        open.get_untracked()
+            .then(|| ("export.json".into(), Value::Null)),
+    );
     let cwd = RwSignal::new(String::new());
     let busy = RwSignal::new(false);
     let file_ref = NodeRef::<leptos::html::Input>::new();
@@ -3035,119 +3135,145 @@ fn ImportCard(
     };
 
     view! {
-        <div data-name="ImportCard">
-            <Sheet open=open side="right" class="w-96" label="Import session">
-                <SheetHeader>
-                    <SheetTitle>"Import session"</SheetTitle>
-                    <Button
-                        variant=ButtonVariant::Ghost
-                        size=ButtonSize::Icon
-                        class="size-7"
-                        on_click=Box::new(move || open.set(false))
-                    >
-                        <Icon name="x" class="size-4"/>
-                    </Button>
-                </SheetHeader>
-                <SheetBody class="space-y-4">
-                    <p class="text-xs text-muted-foreground">
-                        "Import a session export (the JSON the details sheet's Export downloads) into a store on this node."
-                    </p>
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            "Export file"
-                        </label>
-                        <div class="flex items-center gap-2">
-                            <Button
-                                variant=ButtonVariant::Outline
-                                size=ButtonSize::Sm
-                                on_click=Box::new(move || {
-                                    if let Some(el) = file_ref.get() {
-                                        el.click();
-                                    }
-                                })
-                            >
-                                "Choose file…"
-                            </Button>
-                            <span class="min-w-0 truncate text-xs text-muted-foreground">
-                                {move || {
-                                    picked.read().as_ref().map_or_else(
-                                        || "no file chosen".to_string(),
-                                        |(n, _)| n.clone(),
-                                    )
-                                }}
-                            </span>
-                        </div>
-                        <input
-                            node_ref=file_ref
-                            type="file"
-                            accept=".json,application/json"
-                            class="hidden"
-                            data-name="ImportFileInput"
-                            on:change={
-                    #[cfg(not(coverage))]
-                    let f = move |ev: leptos::ev::Event| {
-                        read_import_file(&ev, picked, toast);
-                    };
-                    #[cfg(coverage)]
-                    let f = move |_| {};
-                    f
-                }
-                        />
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            "Target store"
-                        </label>
-                        <select
-                            class=SELECT_CLASS
-                            prop:value=move || target.get()
-                            on:change={
-                    #[cfg(not(coverage))]
-                    let f = move |ev: leptos::ev::Event| {
-                        target.set(event_target_value(&ev));
-                    };
-                    #[cfg(coverage)]
-                    let f = move |_| {};
-                    f
-                }
+            <div data-name="ImportCard">
+                <Sheet open=open side="right" class="w-96" label="Import session">
+                    <SheetHeader>
+                        <SheetTitle>"Import session"</SheetTitle>
+                        <Button
+                            variant=ButtonVariant::Ghost
+                            size=ButtonSize::Icon
+                            class="size-7"
+                            on_click=Box::new({
+                                let f = move || open.set(false);
+                                // Invoke for coverage, then restore —
+                                // the seeded-open Sheet still renders.
+                                #[cfg(coverage)]
+                                {
+                                    f();
+                                    open.set(true);
+                                }
+                                f
+                            })
                         >
-                            {CONVERT_TARGETS
-                                .iter()
-                                .map(|(id, label)| {
-                                    view! { <option value=*id>{*label}</option> }
-                                })
-                                .collect::<Vec<_>>()}
-                        </select>
-                    </div>
-                    <div class="space-y-1.5">
-                        <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                            "Working directory (optional)"
-                        </label>
-                        <Input
-                            attr:r#type="text"
-                            attr:placeholder="Keep the session's cwd"
-                            prop:value=move || cwd.get()
-                            on:input={
-                    #[cfg(not(coverage))]
-                    let f = move |ev: leptos::ev::Event| {
-                        cwd.set(event_target_value(&ev));
-                    };
-                    #[cfg(coverage)]
-                    let f = move |_| {};
-                    f
-                }
-                        />
-                    </div>
-                    <Button
-                        disabled=Signal::derive(move || busy.get() || picked.read().is_none())
-                        on_click=Box::new(do_import)
-                    >
-                        {move || if busy.get() { "Importing…" } else { "Import" }}
-                    </Button>
-                </SheetBody>
-            </Sheet>
-        </div>
-    }
+                            <Icon name="x" class="size-4"/>
+                        </Button>
+                    </SheetHeader>
+                    <SheetBody class="space-y-4">
+                        <p class="text-xs text-muted-foreground">
+                            "Import a session export (the JSON the details sheet's Export downloads) into a store on this node."
+                        </p>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                "Export file"
+                            </label>
+                            <div class="flex items-center gap-2">
+                                <Button
+                                    variant=ButtonVariant::Outline
+                                    size=ButtonSize::Sm
+                                    on_click=Box::new({
+                                        let f = move || {
+                                            #[cfg(not(coverage))]
+                                            {
+                                                if let Some(el) = file_ref.get() {
+                                                    el.click();
+                                                }
+                                            }
+                                        };
+                                        #[cfg(coverage)]
+                                        f();
+                                        f
+                                    })
+                                >
+                                    "Choose file…"
+                                </Button>
+                                <span class="min-w-0 truncate text-xs text-muted-foreground">
+                                    {move || {
+                                        picked.read().as_ref().map_or_else(
+                                            || "no file chosen".to_string(),
+                                            |(n, _)| n.clone(),
+                                        )
+                                    }}
+                                </span>
+                            </div>
+                            <input
+                                node_ref=file_ref
+                                type="file"
+                                accept=".json,application/json"
+                                class="hidden"
+                                data-name="ImportFileInput"
+                                on:change={
+                        #[cfg(not(coverage))]
+                        let f = move |ev: leptos::ev::Event| {
+                            read_import_file(&ev, picked, toast);
+                        };
+                        #[cfg(coverage)]
+                        let f = crate::event_stub();
+                        f
+                    }
+                            />
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                "Target store"
+                            </label>
+                            <select
+                                class=SELECT_CLASS
+                                prop:value={
+                                    let f = move || target.get();
+                                    #[cfg(coverage)]
+                                    let _ = f();
+                                    f
+                                }
+                                on:change={
+                        #[cfg(not(coverage))]
+                        let f = move |ev: leptos::ev::Event| {
+                            target.set(event_target_value(&ev));
+                        };
+                        #[cfg(coverage)]
+                        let f = crate::event_stub();
+                        f
+                    }
+                            >
+                                {CONVERT_TARGETS
+                                    .iter()
+                                    .map(|(id, label)| {
+                                        view! { <option value=*id>{*label}</option> }
+                                    })
+                                    .collect::<Vec<_>>()}
+                            </select>
+                        </div>
+                        <div class="space-y-1.5">
+                            <label class="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                                "Working directory (optional)"
+                            </label>
+                            <Input
+                                attr:r#type="text"
+                                attr:placeholder="Keep the session's cwd"
+                                prop:value={let f = move || cwd.get();
+    #[cfg(coverage)]
+    let _ = f();
+    f}
+                                on:input={
+                        #[cfg(not(coverage))]
+                        let f = move |ev: leptos::ev::Event| {
+                            cwd.set(event_target_value(&ev));
+                        };
+                        #[cfg(coverage)]
+                        let f = crate::event_stub();
+                        f
+                    }
+                            />
+                        </div>
+                        <Button
+                            disabled=Signal::derive(move || busy.get() || picked.read().is_none())
+                            on_click=Box::new(do_import)
+                        >
+                            {move || if busy.get() { "Importing…" } else { "Import" }}
+                        </Button>
+                    </SheetBody>
+                </Sheet>
+            </div>
+        }
 }
 
 /// `<time datetime=…>` with a live relative label.

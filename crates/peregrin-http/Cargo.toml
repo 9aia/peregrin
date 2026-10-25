@@ -39,3 +39,4 @@ tokio = { workspace = true, features = ["test-util"] }
 tower = { version = "0.5", features = ["util"] }
 tempfile.workspace = true
 sepia-testkit.workspace = true
+tracing-subscriber = { version = "0.3", features = ["fmt"] }

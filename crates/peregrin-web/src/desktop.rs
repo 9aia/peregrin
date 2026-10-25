@@ -131,7 +131,7 @@ fn AimItem(
                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
         >
@@ -255,7 +255,53 @@ pub fn DesktopMenu(
     {
         let path = leptos_router::hooks::use_location().pathname.get();
         match path.as_str() {
-            "/settings" => probe_loaded.set(true),
+            "/settings" => {
+                probe_loaded.set(true);
+                // Primary known but absent from the registry → the
+                // "unavailable" row arm + node_label's empty-name
+                // fallback.
+                info.set(crate::dto::NodeInfoDto {
+                    id: "workbench".into(),
+                    name: String::new(),
+                    ..Default::default()
+                });
+            }
+            "/agents" => {
+                // Registry contains the primary (empty label → id
+                // fallback) and the aim is unset → focused_id's
+                // `find(primary)` hit arm.
+                probe_loaded.set(true);
+                statuses.set(vec![NodeStatusDto {
+                    id: "workbench".into(),
+                    url: "http://a".into(),
+                    label: String::new(),
+                    status: "up".into(),
+                    last_seen_at: None,
+                }]);
+                info.set(crate::dto::NodeInfoDto {
+                    id: "workbench".into(),
+                    name: "bench".into(),
+                    ..Default::default()
+                });
+            }
+            "/projects" => {
+                // Focused id matches no registry row and no primary →
+                // node_label's bare-`id.to_string()` arm.
+                probe_loaded.set(true);
+                statuses.set(vec![NodeStatusDto {
+                    id: "workbench".into(),
+                    url: "http://a".into(),
+                    label: "workbench".into(),
+                    status: "up".into(),
+                    last_seen_at: None,
+                }]);
+                info.set(crate::dto::NodeInfoDto {
+                    id: "workbench".into(),
+                    name: "bench".into(),
+                    ..Default::default()
+                });
+                aim.update(|a| a.pick(Some("ghost".into()), None));
+            }
             "/" | "/nodes" => {
                 probe_loaded.set(true);
                 statuses.set(vec![
@@ -312,6 +358,17 @@ pub fn DesktopMenu(
                         a.cwd = Some("/work/acme-api".into());
                     });
                 }
+            }
+            "/totally-unknown" => {
+                // Primary focused but missing from the registry, and
+                // the info probe carries a name → `node_label`'s
+                // `n.name.clone()` arm.
+                probe_loaded.set(true);
+                info.set(crate::dto::NodeInfoDto {
+                    id: "workbench".into(),
+                    name: "bench".into(),
+                    ..Default::default()
+                });
             }
             _ => {}
         }
@@ -441,7 +498,7 @@ pub fn DesktopMenu(
                         crate::app::details_menu_keydown(&ev);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }>
             <summary
@@ -745,7 +802,7 @@ pub fn DesktopMenu(
                         help.set(true);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                 >

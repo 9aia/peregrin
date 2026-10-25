@@ -3644,6 +3644,7 @@ dependencies = [
  "tokio",
  "tower",
  "tracing",
+ "tracing-subscriber",
  "uuid",
 ]
 
@@ -3680,6 +3681,7 @@ dependencies = [
  "tower",
  "tower-http",
  "tracing",
+ "tracing-subscriber",
  "ureq",
  "uuid",
 ]

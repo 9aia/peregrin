@@ -37,6 +37,21 @@ fn file_store_round_trip() {
     store.delete("n1").unwrap();
     store.delete("n1").unwrap();
     assert_eq!(store.get("n1").unwrap(), None);
+    assert!(store.path().ends_with("credentials.json"));
+}
+
+#[test]
+fn file_store_error_arms() {
+    let dir = tempfile::tempdir().unwrap();
+    // `load` — a non-NotFound read error (a directory as the file).
+    let as_dir = dir.path().join("asdir");
+    std::fs::create_dir(&as_dir).unwrap();
+    let store = FileCredentials::new(as_dir);
+    assert!(store.get("n1").is_err());
+    // `store` — `path.parent()` is None at the filesystem root (the
+    // create_dir_all guard's else arm; the write fails anyway).
+    let root = FileCredentials::new(std::path::PathBuf::from("/"));
+    let _ = root.set("n", "t");
 }
 
 #[cfg(unix)]
@@ -133,6 +148,11 @@ fn keyring_store_shape() {
 /// because the default builder is process-global.
 #[test]
 fn keyring_mock_and_failing_backends() {
+    // A live subscriber — `tracing::warn!`/`info!` args only evaluate
+    // when a callsite is enabled.
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::level_filters::LevelFilter::INFO)
+        .try_init();
     use keyring::credential::{Credential, CredentialApi, CredentialBuilderApi};
 
     #[derive(Debug)]

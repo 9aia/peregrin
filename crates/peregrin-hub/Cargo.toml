@@ -38,6 +38,7 @@ uuid = { workspace = true, features = ["v4"] }
 tokio = { workspace = true, features = ["rt"] }
 tower = { workspace = true, features = ["util"] }
 sepia-testkit.workspace = true
+tracing-subscriber = { version = "0.3", features = ["fmt"] }
 sepia-driver-devin.workspace = true
 sepia-core.workspace = true
 peregrin-http = { workspace = true }

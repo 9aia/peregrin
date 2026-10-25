@@ -198,6 +198,15 @@ async fn route_sweep() {
         "application/json",
     )
     .await;
+    // Malformed JSON → read_json_body's Err arm.
+    call_str(
+        &app,
+        Method::PATCH,
+        "/api/projects/p1",
+        "{bad",
+        "application/json",
+    )
+    .await;
     call(&app, Method::DELETE, "/api/projects/p1", None).await;
     // Sessions collection + item.
     call(&app, Method::GET, "/api/sessions", None).await;
@@ -1405,6 +1414,19 @@ async fn auth_pair_and_env_arms() {
     )
     .unwrap();
     let _reopened = Pairing::open(dir.path().join("pair-code"), dir.path().join("tokens.json"));
+    // `flush_tokens` write-fail arm — the tokens path lives under a
+    // parent that can't be created (a file used as a directory), and
+    // a registered code drives `redeem` into the flush.
+    let blocker = dir.path().join("blocker");
+    std::fs::write(&blocker, "x").unwrap();
+    let code_path = dir.path().join("pc2");
+    std::fs::write(
+        &code_path,
+        r#"{"code":"ZZZZWW","expiresAt":99999999999999}"#,
+    )
+    .unwrap();
+    let bad = Pairing::open(code_path, blocker.join("tokens.json"));
+    let _ = bad.redeem("ZZZZWW");
     let _ = now;
 }
 
@@ -1770,4 +1792,329 @@ async fn session_handler_bad_field_arms() {
     )
     .await;
     assert_eq!(s, StatusCode::INTERNAL_SERVER_ERROR);
+}
+
+/* ---- tail arms: meta-less config, stream pumps, serve ---------------*/
+
+/// `subscribe` hands out a receiver over a sender the plane keeps —
+/// the stream pump then has live events to forward.
+struct StreamPlane {
+    tx: tokio::sync::broadcast::Sender<Vec<SessionEvent>>,
+    lagged_rx: std::sync::Mutex<Option<broadcast::Receiver<Vec<SessionEvent>>>>,
+}
+
+impl StreamPlane {
+    fn new() -> Self {
+        let (tx, _warm) = broadcast::channel(8);
+        Self {
+            tx,
+            lagged_rx: std::sync::Mutex::new(None),
+        }
+    }
+
+    /// A receiver already past the ring — the first recv is `Lagged`.
+    fn lagged() -> Self {
+        let (tx, rx) = broadcast::channel(2);
+        for _ in 0..4 {
+            let _ = tx.send(vec![SessionEvent::Custom {
+                name: "hb".into(),
+                value: json!({}),
+            }]);
+        }
+        Self {
+            tx,
+            lagged_rx: std::sync::Mutex::new(Some(rx)),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl SessionPlane for StreamPlane {
+    async fn list_sessions(&self, _l: bool) -> Result<Vec<SessionSummary>, ControlError> {
+        Ok(vec![])
+    }
+    async fn get_session(&self, id: &str, _a: Option<&str>) -> Result<Session, ControlError> {
+        Ok(wire_session(id))
+    }
+    async fn get_summary(&self, id: &str, _a: Option<&str>) -> Result<Session, ControlError> {
+        Ok(wire_session(id))
+    }
+    async fn get_history(
+        &self,
+        _id: &str,
+        _o: &HistoryOptions,
+        _a: Option<&str>,
+    ) -> Result<HistoryPage, ControlError> {
+        Ok(HistoryPage {
+            messages: vec![],
+            total: 0,
+            start: 0,
+        })
+    }
+    async fn attach(
+        &self,
+        _id: &str,
+        _t: bool,
+        _m: Option<String>,
+        _f: Option<Vec<String>>,
+        _a: Option<String>,
+    ) -> Result<AttachResult, ControlError> {
+        Err(boom())
+    }
+    async fn create_session(
+        &self,
+        _c: &str,
+        _a: Option<String>,
+        _t: Option<String>,
+        _m: Option<String>,
+        _f: Option<Vec<String>>,
+    ) -> Result<CreateResult, ControlError> {
+        Err(boom())
+    }
+    async fn detach(&self, _id: &str) {}
+    async fn prompt(
+        &self,
+        _id: &str,
+        _p: Vec<PromptPart>,
+        _a: Option<&str>,
+    ) -> Result<(), ControlError> {
+        Ok(())
+    }
+    async fn cancel(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
+        Ok(())
+    }
+    async fn respond_to_permission(
+        &self,
+        _id: &str,
+        _r: &str,
+        _o: Option<&str>,
+        _a: Option<&str>,
+    ) -> Result<(), ControlError> {
+        Ok(())
+    }
+    async fn delete_session(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
+        Ok(())
+    }
+    async fn restore(
+        &self,
+        _id: &str,
+        _r: &RestoreRequest,
+        _a: Option<&str>,
+    ) -> Result<RestoreResult, ControlError> {
+        Ok(RestoreResult {
+            restored: vec![],
+            skipped: vec![],
+        })
+    }
+    async fn rewind(
+        &self,
+        _id: &str,
+        _r: &RewindRequest,
+        _a: Option<&str>,
+    ) -> Result<RewindResult, ControlError> {
+        Ok(RewindResult {
+            kept: 3,
+            removed: 2,
+        })
+    }
+    async fn subscribe(
+        &self,
+        _id: &str,
+        _a: Option<&str>,
+    ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
+        if let Some(rx) = self.lagged_rx.lock().unwrap().take() {
+            return Ok(rx);
+        }
+        Ok(self.tx.subscribe())
+    }
+    async fn list_agents(&self) -> Vec<AgentInfo> {
+        vec![]
+    }
+    async fn can_rewind(&self, _b: &str) -> bool {
+        true
+    }
+    async fn close_all(&self) {}
+}
+
+/// `GET /api/events` + `/api/sessions/{id}/stream` — the pump's
+/// Lagged arm and `try_send` failure arms, driven deterministically on
+/// a single-thread runtime (the spawned pump can't race the flood).
+#[tokio::test(flavor = "current_thread")]
+async fn sse_pump_lagged_and_dropped_client_arms() {
+    let mk_app = |plane: StreamPlane| {
+        let dir = tempfile::tempdir().unwrap();
+        let meta = MetaStore::open(&dir.path().join("meta.json"));
+        let feed = peregrin_http::EventFeed::new();
+        let mut state = AppState::new(Arc::new(plane))
+            .with_meta(meta)
+            .with_keep_alive(Duration::ZERO);
+        state.feed = feed.clone();
+        (peregrin_http::app(state), feed, dir)
+    };
+
+    // Node feed — flood 600 events past the 500-slot ring while the
+    // pump hasn't polled (synchronous emits, no awaits between).
+    let (app, feed, _dir) = mk_app(StreamPlane::new());
+    let res = app
+        .clone()
+        .oneshot(Request::get("/api/events").body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    for _ in 0..600 {
+        feed.emit("meta", json!({"x":1}));
+    }
+    tokio::time::sleep(Duration::from_millis(50)).await;
+    drop(res);
+
+    // Session stream — a dropped client makes `try_send` fail on the
+    // next event (the mpsc receiver is gone).
+    let plane = StreamPlane::new();
+    let tx = plane.tx.clone();
+    let (app, _feed, _dir) = mk_app(plane);
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get("/api/sessions/s1/stream")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    drop(res);
+    let _ = tx.send(vec![SessionEvent::Custom {
+        name: "hb".into(),
+        value: json!({}),
+    }]);
+    tokio::time::sleep(Duration::from_millis(50)).await;
+
+    // Lagged session receiver — the stored rx overflowed before the
+    // pump's first recv; the dropped client fails its try_send too.
+    let plane = StreamPlane::lagged();
+    let (app, _feed, _dir) = mk_app(plane);
+    let res = app
+        .clone()
+        .oneshot(
+            Request::get("/api/sessions/s1/stream")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    drop(res);
+    tokio::time::sleep(Duration::from_millis(50)).await;
+}
+
+/// PATCH /api/config on a meta-less app → `meta_missing`; bad bodies
+/// through the projects + push JSON readers; a subscriber-enabled
+/// request for the log line's tracing args.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn meta_less_and_body_error_arms() {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::level_filters::LevelFilter::INFO)
+        .try_init();
+    let plane = ControlPlane::new(
+        Arc::new(MemStore {
+            sessions: Mutex::new(HashMap::new()),
+        }),
+        ControlPlaneOptions::default(),
+    );
+    let app = peregrin_http::app(AppState::new(Arc::new(LocalPlane(plane))));
+    // No meta → the `meta_missing` arms everywhere.
+    call(&app, Method::PATCH, "/api/config/theme", Some(json!("x"))).await;
+    // Bad JSON body → the `Err(res)` readers.
+    call_str(
+        &app,
+        Method::PATCH,
+        "/api/projects/p1",
+        "{bad",
+        "application/json",
+    )
+    .await;
+    // A normal request under the subscriber → `log_layer`'s info! args.
+    call(&app, Method::GET, "/api/user", None).await;
+
+    // Push wired → the subscribe reader's `Err(res)` arm.
+    let dir = tempfile::tempdir().unwrap();
+    let plane = ControlPlane::new(
+        Arc::new(MemStore {
+            sessions: Mutex::new(HashMap::new()),
+        }),
+        ControlPlaneOptions::default(),
+    );
+    let state = AppState::new(Arc::new(LocalPlane(plane))).with_push(Some(Arc::new(
+        peregrin_push::PushStore::open(MetaStore::open(&dir.path().join("p.json"))),
+    )));
+    let app = peregrin_http::app(state);
+    call_str(
+        &app,
+        Method::POST,
+        "/api/push/subscribe",
+        "{bad",
+        "application/json",
+    )
+    .await;
+}
+
+/// `POST /api/sessions` fallbacks array + `attach` non-string
+/// fallbacks else + `rewind` Ok arm (confirm:true).
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn create_fallbacks_and_rewind_ok() {
+    let (app, _dir) = state_for(OkPlane);
+    let j = |v: Value| Some(v);
+    call(
+        &app,
+        Method::POST,
+        "/api/sessions",
+        j(json!({"cwd":"/w","fallbacks":["a","b"]})),
+    )
+    .await;
+    call(
+        &app,
+        Method::POST,
+        "/api/sessions/s1/attach",
+        j(json!({"fallbacks":[1,"a"]})),
+    )
+    .await;
+    assert_eq!(
+        call(
+            &app,
+            Method::POST,
+            "/api/sessions/s1/rewind",
+            j(json!({"confirm":true,"checkpoint":"c"}))
+        )
+        .await,
+        StatusCode::OK
+    );
+}
+
+/// `serve` — bind a loopback port, run the accept loop briefly, abort.
+/// The `.await` region covers on entry; the task is cancelled after.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn serve_binds_and_loops() {
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().to_path_buf();
+    let env = Env::from_lookup(|k| match k {
+        "PEREGRIN_PORT" => Some(port.to_string()),
+        "PEREGRIN_HOST" => Some("127.0.0.1".into()),
+        "PEREGRIN_HOME" => Some(home.to_string_lossy().into_owned()),
+        _ => None,
+    })
+    .unwrap();
+    let plane = ControlPlane::new(
+        Arc::new(MemStore {
+            sessions: Mutex::new(HashMap::new()),
+        }),
+        ControlPlaneOptions::default(),
+    );
+    let state = AppState::new(Arc::new(LocalPlane(plane)));
+    let task = tokio::spawn(async move {
+        let _ = peregrin_http::serve(&env, state).await;
+    });
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    task.abort();
 }

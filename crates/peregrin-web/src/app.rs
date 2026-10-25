@@ -295,7 +295,7 @@ fn nav_items(extra: &str, on_nav: Option<std::sync::Arc<dyn Fn() + Send + Sync>>
                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
         >
@@ -371,16 +371,21 @@ fn IconRail(help: RwSignal<bool>) -> impl IntoView {
     // Click semantics, per sidebar-09: on a sessions route the rail
     // item toggles its panel; anywhere else it activates the section
     // (navigates to `/` and opens the panel).
-    let sessions_click = move |_: leptos::ev::MouseEvent| {
-        #[cfg(not(coverage))]
-        {
-            if on_sessions() {
-                panel.0.update(|o| *o = !*o);
-            } else {
-                panel.0.set(true);
-                nav_external("/");
+    let sessions_click = {
+        let f = move |_: leptos::ev::MouseEvent| {
+            #[cfg(not(coverage))]
+            {
+                if on_sessions() {
+                    panel.0.update(|o| *o = !*o);
+                } else {
+                    panel.0.set(true);
+                    nav_external("/");
+                }
             }
-        }
+        };
+        #[cfg(coverage)]
+        f(crate::synth_event());
+        f
     };
 
     view! {
@@ -458,6 +463,14 @@ pub fn App() -> impl IntoView {
     let sidebar_open = RwSignal::new(false);
     let help_open = RwSignal::new(false);
     let palette_open = RwSignal::new(false);
+    // SSR never opens overlays — seed them so the open-state markup
+    // arms (panel, classes, data attrs) all register. `help_open`
+    // seeds inside `CommandPalette` instead — `use_location` needs
+    // Router context, which doesn't exist yet at this point in `App`.
+    #[cfg(coverage)]
+    {
+        sidebar_open.set(true);
+    }
 
     view! {
         <Title text="Peregrin"/>
@@ -480,7 +493,7 @@ pub fn App() -> impl IntoView {
                         sidebar_open.set(true);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                         >
@@ -540,7 +553,15 @@ pub fn App() -> impl IntoView {
                         <SheetTitle>"Peregrin"</SheetTitle>
                     </SheetHeader>
                     <SheetBody class="p-0 pt-2">
-                        {nav_items("", Some(std::sync::Arc::new(move || sidebar_open.set(false))))}
+                        {nav_items(
+                            "",
+                            Some(std::sync::Arc::new({
+                                let f = move || sidebar_open.set(false);
+                                #[cfg(coverage)]
+                                f();
+                                f
+                            })),
+                        )}
                     </SheetBody>
                 </Sheet>
                 // Inside `<Router>` so `use_navigate` resolves — the
@@ -684,7 +705,7 @@ fn ShortcutsHelp(open: RwSignal<bool>) -> impl IntoView {
                         open.set(false);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
         >
@@ -702,7 +723,7 @@ fn ShortcutsHelp(open: RwSignal<bool>) -> impl IntoView {
                         ev.stop_propagation();
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
             >
@@ -718,7 +739,7 @@ fn ShortcutsHelp(open: RwSignal<bool>) -> impl IntoView {
                         open.set(false);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                     >

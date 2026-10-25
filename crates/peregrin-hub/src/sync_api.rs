@@ -10,7 +10,8 @@ use std::collections::BTreeMap;
 
 use peregrin_sync::client::NodeClient;
 use peregrin_sync::{
-    IndexedSession, NodeRef, NodeTarget, NodeWrite, OpKind, OutboxEntry, OutboxStatus, SyncHandle,
+    IndexedSession, NodeRef, NodeTarget, NodeWrite, OpKind, OutboxEntry, OutboxStatus, SyncError,
+    SyncHandle,
 };
 
 use crate::credentials::NodeCredentials;
@@ -23,7 +24,7 @@ use peregrin_web::dto::{
 use serde_json::Value;
 
 /// Node registry entry — url + optional bearer token.
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct HubNode {
     pub id: String,
     pub url: String,
@@ -121,6 +122,41 @@ fn owner<'a>(
     nodes
         .get(&node_id)
         .map(|n| (node_id.clone(), n))
+        .ok_or_else(|| format!("node {node_id} not registered"))
+}
+
+/// `owner` + the session row it picked — the row comes from the same
+/// index read, so it's guaranteed present; callers that need the row
+/// skip a second lookup whose `None` arm could never fire. Mirrors
+/// `pick_owner`'s policy (agent narrows, else first match).
+fn owner_row<'a>(
+    projection: &peregrin_sync::ProjectionStore,
+    id: &str,
+    agent: Option<&str>,
+    nodes: &'a HashMap<String, HubNode>,
+) -> Result<(String, &'a HubNode, peregrin_sync::IndexedSession), String> {
+    let rows = projection.sessions(None).map_err(proj_err)?;
+    let mut found: Option<peregrin_sync::IndexedSession> = None;
+    for row in rows {
+        if row.session_id != id {
+            continue;
+        }
+        if let Some(want) = agent {
+            if row.agent == want {
+                found = Some(row);
+                break;
+            }
+        } else if found.is_none() {
+            found = Some(row);
+        }
+    }
+    let Some(row) = found else {
+        return Err(format!("Session not found: {id}"));
+    };
+    let node_id = row.node_id.clone();
+    nodes
+        .get(&node_id)
+        .map(|n| (node_id.clone(), n, row))
         .ok_or_else(|| format!("node {node_id} not registered"))
 }
 
@@ -381,9 +417,7 @@ impl SyncNodeApi {
             }
             NodeTarget::with_token(node_ref, token)
         };
-        if let Err(e) = self.engine.add_node(target).await {
-            tracing::warn!(node = %node_id, "engine retarget failed: {e}");
-        }
+        retarget_warn(self.engine.add_node(target).await, node_id);
     }
 
     /// Transfer pre-flight — the target must advertise `"import"` in
@@ -573,15 +607,11 @@ impl NodeApi for SyncNodeApi {
         id: &str,
         agent: Option<&str>,
     ) -> Result<SessionSummaryDto, String> {
-        let node_id = {
+        let (node_id, row) = {
             let registry = self.registry();
-            owner(&self.projection(), id, agent, &registry.nodes)?.0
+            let (node_id, _node, row) = owner_row(&self.projection(), id, agent, &registry.nodes)?;
+            (node_id, row)
         };
-        let row = self
-            .projection()
-            .session(&node_id, id)
-            .map_err(proj_err)?
-            .ok_or_else(|| format!("Session not found: {id}"))?;
         let mut raw = row.raw.clone();
         if let Value::Object(m) = &mut raw {
             m.insert("node".into(), Value::String(node_id));
@@ -813,21 +843,17 @@ impl NodeApi for SyncNodeApi {
         // The source is whatever the projection says owns the id —
         // callers can't name it reliably (a session's `node` annotation
         // is absent on single-node projections).
-        let (source_id, source) = self.resolve(id, agent)?;
+        let (source_id, source, row) = {
+            let registry = self.registry();
+            let (node_id, _node, row) = owner_row(&self.projection(), id, agent, &registry.nodes)?;
+            (node_id.clone(), self.client(&node_id)?, row)
+        };
         if source_id == target_node {
             return Err(format!(
                 "session {id} already lives on {target_node} — use convert within a node"
             ));
         }
         let target = self.client(target_node)?;
-        // The projected row carries the overlay fields the import body
-        // re-applies (title/model) plus the pinned/archived flags the
-        // follow-up meta PATCH copies.
-        let row = self
-            .projection()
-            .session(&source_id, id)
-            .map_err(proj_err)?
-            .ok_or_else(|| format!("Session not found: {id}"))?;
         let target_id = target_node.to_string();
         let cwd = cwd.map(str::to_string);
         tokio::task::spawn_blocking(move || {
@@ -1187,6 +1213,16 @@ fn join_err(e: tokio::task::JoinError) -> String {
 
 /// The `adopt_credential` store-write outcome → warn log — split out so
 /// the JoinError arm (a panic inside the blocking task) is testable.
+/// `engine.add_node` outcome → warn log — split out like
+/// `cred_store_warn` so the Shutdown arm is directly testable (an
+/// `add_node` failure needs a dead engine, awkward to stage inside a
+/// live api).
+fn retarget_warn(r: Result<(), SyncError>, node_id: &str) {
+    if let Err(e) = r {
+        tracing::warn!(node = %node_id, "engine retarget failed: {e}");
+    }
+}
+
 fn cred_store_warn(r: Result<Result<(), String>, tokio::task::JoinError>, node_id: &str) {
     let msg = match r {
         Ok(Ok(())) => None,
@@ -1229,5 +1265,58 @@ mod cov_tests {
         let h = tokio::spawn(async { std::future::pending::<Result<(), String>>().await });
         h.abort();
         cred_store_warn(h.await, "n1");
+    }
+
+    #[tokio::test]
+    async fn adopt_credential_arms() {
+        // `node_id` missing from the registry → the early return.
+        let (api, _p, _o) = api_for(&[("n1", "http://127.0.0.1:1")]);
+        api.adopt_credential("ghost", "tok").await;
+        // Re-adopting on an already-registered node → `add_node`
+        // retargets cleanly (no warn).
+        let (api, _p, _o) = api_for(&[("n1", "http://127.0.0.1:1")]);
+        api.adopt_credential("n1", "tok").await;
+        // A URL `NodeClient::new` rejects → the rebuild warn arm —
+        // the node entered the registry with no client.
+        let (api, _p, _o) = api_for(&[("n1", "not a url")]);
+        api.adopt_credential("n1", "tok").await;
+        // A dead engine → `add_node` Shutdown → the warn arm.
+        retarget_warn(Err(SyncError::Shutdown), "n1");
+    }
+
+    fn api_for(
+        nodes: &[(&str, &str)],
+    ) -> (
+        SyncNodeApi,
+        peregrin_sync::ProjectionStore,
+        peregrin_outbox::Outbox,
+    ) {
+        let projection = peregrin_sync::ProjectionStore::in_memory().unwrap();
+        let outbox = peregrin_outbox::Outbox::in_memory().unwrap();
+        let nodes: Vec<HubNode> = nodes
+            .iter()
+            .map(|(id, url)| HubNode {
+                id: (*id).to_string(),
+                url: (*url).to_string(),
+                token: None,
+            })
+            .collect();
+        let engine = peregrin_sync::SyncEngine::spawn(
+            projection.clone(),
+            outbox.clone(),
+            nodes.iter().map(|n| {
+                NodeTarget::new(peregrin_sync::NodeRef {
+                    id: n.id.clone(),
+                    url: n.url.clone(),
+                    label: n.id.clone(),
+                })
+            }),
+            peregrin_sync::engine::SyncOptions::default(),
+        );
+        let dir = tempfile::tempdir().unwrap();
+        let creds = Arc::new(crate::credentials::FileCredentials::new(
+            dir.keep().join("credentials.json"),
+        ));
+        (SyncNodeApi::new(engine, nodes, creds), projection, outbox)
     }
 }

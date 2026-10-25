@@ -1003,6 +1003,28 @@ async fn remove_node_stops_its_loop_and_drops_state() {
     handle.remove_node("n1").await.unwrap();
     assert!(proj.node("n1").unwrap().is_none());
     assert!(indexed("n1", "s1")(&proj).is_none());
+    // The supervisor applies `Cmd::Remove` asynchronously — `shutdown`
+    // racing the queued command could skip the arm entirely. Probe
+    // `submit_op` until the target table loses n1 (`UnknownNode`) so
+    // the Remove arm has definitely run before cancel.
+    let deadline = std::time::Instant::now() + Duration::from_secs(10);
+    loop {
+        let res = handle
+            .submit_op(write(
+                "n1",
+                "s1",
+                "meta.patch",
+                OpKind::Metadata,
+                json!({}),
+                "probe-remove",
+            ))
+            .await;
+        if matches!(res, Err(peregrin_sync::SyncError::UnknownNode(_))) {
+            break;
+        }
+        assert!(std::time::Instant::now() < deadline, "remove never applied");
+        tokio::time::sleep(Duration::from_millis(10)).await;
+    }
     stub.down();
     handle.shutdown().await;
 }

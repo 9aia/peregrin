@@ -54,7 +54,7 @@ fn api() -> Option<Arc<dyn NodeApi>> {
 async fn server_fns_happy_paths() {
     let a = api();
     scoped(a.clone(), async {
-        assert_eq!(api::list_sessions().await.unwrap().len(), 6);
+        assert_eq!(api::list_sessions().await.unwrap().len(), 7);
         assert_eq!(api::list_agents().await.unwrap().len(), 2);
         assert_eq!(api::list_projects().await.unwrap().len(), 2);
         assert_eq!(api::node_info().await.unwrap().id, "n1");
@@ -365,7 +365,7 @@ async fn server_fns_upstream_and_context_errors() {
 async fn query_scopes_delegate() {
     let a = api();
     scoped(a.clone(), async {
-        assert_eq!(api::sessions_scope(()).await.unwrap().len(), 6);
+        assert_eq!(api::sessions_scope(()).await.unwrap().len(), 7);
         assert!(api::pending_scope(()).await.unwrap().is_empty());
         assert_eq!(api::agents_scope(()).await.unwrap().len(), 2);
         assert_eq!(api::projects_scope(()).await.unwrap().len(), 2);

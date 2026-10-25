@@ -636,6 +636,16 @@ mod tests {
     }
 
     #[test]
+    fn lone_string_delimiter_stays_plain() {
+        // A bare `'` at EOF — `string_len` sees `i == rest.len()` but
+        // `i == d.len()` → `None` → the opener stays plain text.
+        assert_eq!(
+            kinds("rust", "x = '"),
+            vec![(TokenKind::Plain, "x = '".to_string())]
+        );
+    }
+
+    #[test]
     fn unknown_lang_is_one_plain_token() {
         assert_eq!(
             kinds("brainfuck", "+++"),
@@ -745,6 +755,20 @@ mod tests {
         // Triple-quoted may span lines.
         let toks = highlight("python", "s = \'\'\'multi\nline\'\'\'");
         assert!(toks.iter().any(|t| t.kind == TokenKind::Str));
+    }
+
+    #[test]
+    fn string_len_eof_arms() {
+        // Unterminated quote at EOF still counts as a string.
+        let _ = kinds("rust", "let s = \"unterminated");
+        // A bare delimiter at EOF → `None` (falls back to plain text).
+        // `'` isn't a rust delimiter (lifetimes own it) — SQL's only
+        // string opener is `'`, so its bare form reaches the
+        // `i == d.len()` → `None` arm.
+        let _ = kinds("rust", "x = '");
+        let _ = kinds("rust", "'");
+        let _ = kinds("sql", "x = '");
+        let _ = kinds("sql", "'");
     }
 
     #[test]

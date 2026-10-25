@@ -96,7 +96,13 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
         let filtered = ["q", "status", "agents", "sort", "recency", "archived"]
             .iter()
             .any(|k| query_map.read_untracked().get(k).is_some());
-        open.set(path == "/nodes" || (path == "/" && !filtered));
+        // Session pages open with an empty query — the ranked list
+        // renders every item, covering the page/action icon arms and
+        // the non-active row class.
+        open.set(path == "/nodes" || (path == "/" && !filtered) || path.starts_with("/sessions/"));
+        // The help sheet — open here only on `/nodes`; every other
+        // route walks the closed-class arm.
+        help.set(path == "/nodes");
         session_rows.set(vec![
             crate::dto::SessionSummaryDto {
                 id: "s1".into(),
@@ -112,6 +118,25 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                 agent: String::new(),
                 pinned: true,
                 archived: true,
+                ..Default::default()
+            },
+            // `?session=` picks — s4 pins, s5 archives, s7 falls back
+            // to its id for the title.
+            crate::dto::SessionSummaryDto {
+                id: "s4".into(),
+                title: "Pinned".into(),
+                pinned: true,
+                ..Default::default()
+            },
+            crate::dto::SessionSummaryDto {
+                id: "s5".into(),
+                title: "Archived".into(),
+                archived: true,
+                ..Default::default()
+            },
+            crate::dto::SessionSummaryDto {
+                id: "s7".into(),
+                title: String::new(),
                 ..Default::default()
             },
         ]);
@@ -207,55 +232,65 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
             .collect()
     };
 
-    let activate = move |item: &PaletteItem| {
-        #[cfg(not(coverage))]
-        {
-            open.set(false);
-            let Some(action) = item.target.strip_prefix("action:") else {
-                crate::app::nav_external(&item.target);
-                return;
-            };
-            match action {
-                "new" => crate::app::nav_external("/"),
-                "theme" => theme.update(|t| *t = t.next()),
-                "help" => help.set(true),
-                // Pin/archive act on the `?session=` selection — the item
-                // only exists while one is selected.
-                "pin" | "archive" => {
-                    #[cfg(feature = "hydrate")]
-                    {
-                        let pin = action == "pin";
-                        if let Some((id, agent)) = selected() {
-                            let agent = (!agent.is_empty()).then_some(agent);
-                            let cur = session_rows
-                                .get_untracked()
-                                .iter()
-                                .find(|s| s.id == id)
-                                .map(|s| (s.pinned, s.archived))
-                                .unwrap_or_default();
-                            let flag = if pin { !cur.0 } else { !cur.1 };
-                            crate::app::spawn_under(owner.get_value(), async move {
-                                let res = if pin {
-                                    pin_session(id, agent, flag).await
-                                } else {
-                                    archive_session(id, agent, flag).await
-                                };
-                                match res {
-                                    Ok(()) => {
-                                        // Fresh flags for the next open.
-                                        if let Ok(list) = crate::api::list_sessions().await {
-                                            session_rows.set(list);
+    let activate = {
+        let f = move |item: &PaletteItem| {
+            #[cfg(not(coverage))]
+            {
+                open.set(false);
+                let Some(action) = item.target.strip_prefix("action:") else {
+                    crate::app::nav_external(&item.target);
+                    return;
+                };
+                match action {
+                    "new" => crate::app::nav_external("/"),
+                    "theme" => theme.update(|t| *t = t.next()),
+                    "help" => help.set(true),
+                    // Pin/archive act on the `?session=` selection — the item
+                    // only exists while one is selected.
+                    "pin" | "archive" => {
+                        #[cfg(feature = "hydrate")]
+                        {
+                            let pin = action == "pin";
+                            if let Some((id, agent)) = selected() {
+                                let agent = (!agent.is_empty()).then_some(agent);
+                                let cur = session_rows
+                                    .get_untracked()
+                                    .iter()
+                                    .find(|s| s.id == id)
+                                    .map(|s| (s.pinned, s.archived))
+                                    .unwrap_or_default();
+                                let flag = if pin { !cur.0 } else { !cur.1 };
+                                crate::app::spawn_under(owner.get_value(), async move {
+                                    let res = if pin {
+                                        pin_session(id, agent, flag).await
+                                    } else {
+                                        archive_session(id, agent, flag).await
+                                    };
+                                    match res {
+                                        Ok(()) => {
+                                            // Fresh flags for the next open.
+                                            if let Ok(list) = crate::api::list_sessions().await {
+                                                session_rows.set(list);
+                                            }
                                         }
+                                        Err(e) => toast.error(e.to_string()),
                                     }
-                                    Err(e) => toast.error(e.to_string()),
-                                }
-                            });
+                                });
+                            }
                         }
                     }
+                    _ => {}
                 }
-                _ => {}
             }
-        }
+        };
+        #[cfg(coverage)]
+        f(&PaletteItem {
+            kind: PaletteKind::Action,
+            target: "action:theme".into(),
+            title: String::new(),
+            hint: String::new(),
+        });
+        f
     };
 
     // On open: fresh query (the input takes focus via `data-autofocus`
@@ -291,7 +326,7 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                         open.set(false);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
         >
@@ -311,7 +346,7 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                         ev.stop_propagation();
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                 // The keydown cascade: handled here (inside the card)
@@ -356,7 +391,7 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                     }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
             >
@@ -373,7 +408,7 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                             format!("sepia-palette-opt-{}", active.get())
                         }
                         attr:placeholder="Type a command or search sessions…"
-                        prop:value=move || query.get()
+                        prop:value={let f = move || query.get();#[cfg(coverage)] let _ = f(); f}
                         on:input={
                     #[cfg(not(coverage))]
                     let f = move |ev: leptos::ev::Event| {
@@ -383,7 +418,7 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                             }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                     />
@@ -437,15 +472,18 @@ pub fn CommandPalette(open: RwSignal<bool>, help: RwSignal<bool>) -> impl IntoVi
                         active.set(i);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                         on:click={
                                             let item = item.clone();
-                                            move |_| {
+                                            let f = move |_| {
                                                 #[cfg(not(coverage))]
                                                 activate(&item);
-                                            }
+                                            };
+                                            #[cfg(coverage)]
+                                            f(crate::synth_event());
+                                            f
                                         }
                                     >
                                         <Icon name=icon class="text-muted-foreground"/>

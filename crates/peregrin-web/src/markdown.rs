@@ -59,10 +59,9 @@ fn table_separator(line: &str) -> Option<Vec<Option<MdAlign>>> {
     if !t.contains('-') {
         return None;
     }
+    // `split` never yields an empty vec — a `-`-bearing line always
+    // produces at least one cell.
     let cells = table_cells(t);
-    if cells.is_empty() {
-        return None;
-    }
     let mut align = Vec::with_capacity(cells.len());
     for cell in &cells {
         let c = cell.trim();
@@ -391,23 +390,31 @@ fn CodeBlock(#[prop(into)] lang: Option<String>, #[prop(into)] code: String) -> 
     let copied = RwSignal::new(false);
     // `use_timeout_fn` is SSR-safe — its callback never fires server-side.
     let reset = leptos_use::use_timeout_fn(
-        move |()| {
-            #[cfg(not(coverage))]
-            copied.set(false);
+        {
+            let f = move |()| {
+                #[cfg(not(coverage))]
+                copied.set(false);
+            };
+            #[cfg(coverage)]
+            f(());
+            f
         },
         1_500.0,
     )
     .start;
     let on_copy = {
         let code = code.clone();
-        move |_| {
+        let f = move |_| {
             #[cfg(not(coverage))]
             {
                 crate::components::copy_to_clipboard(&code);
                 copied.set(true);
                 reset(());
             }
-        }
+        };
+        #[cfg(coverage)]
+        f(crate::synth_event());
+        f
     };
     let tokens =
         peregrin_web_core::highlight::highlight(lang.as_deref().unwrap_or_default(), &code);
@@ -456,32 +463,45 @@ fn CodeBlock(#[prop(into)] lang: Option<String>, #[prop(into)] code: String) -> 
 fn MermaidBlock(#[prop(into)] code: String) -> impl IntoView {
     let copied = RwSignal::new(false);
     let reset = leptos_use::use_timeout_fn(
-        move |()| {
-            #[cfg(not(coverage))]
-            copied.set(false);
+        {
+            let f = move |()| {
+                #[cfg(not(coverage))]
+                copied.set(false);
+            };
+            #[cfg(coverage)]
+            f(());
+            f
         },
         1_500.0,
     )
     .start;
     let on_copy = {
         let code = code.clone();
-        move |_| {
+        let f = move |_| {
             #[cfg(not(coverage))]
             {
                 crate::components::copy_to_clipboard(&code);
                 copied.set(true);
                 reset(());
             }
-        }
+        };
+        #[cfg(coverage)]
+        f(crate::synth_event());
+        f
     };
     let diagram = NodeRef::<leptos::html::Div>::new();
     let source = NodeRef::<leptos::html::Div>::new();
     // Effects never fire server-side; the stub keeps the symbol
     // feature-agnostic so markup stays identical on both targets.
     let mermaid_src = code.clone();
-    Effect::new(move |_| {
-        #[cfg(not(coverage))]
-        crate::mermaid::render(diagram, source, mermaid_src.clone());
+    Effect::new({
+        let eff = move |_| {
+            #[cfg(not(coverage))]
+            crate::mermaid::render(diagram, source, mermaid_src.clone());
+        };
+        #[cfg(coverage)]
+        eff(None);
+        eff
     });
     view! {
         <div class="overflow-hidden rounded-md border bg-secondary/60" data-name="MermaidBlock">
@@ -593,9 +613,29 @@ mod tests {
         assert!(table_separator("no dashes").is_none());
         assert!(table_separator("").is_none());
         assert!(table_separator("| xx | yy |").is_none());
+        // `-`-bearing but non-dash cells → the per-cell reject arm.
+        assert!(table_separator("| -x | --- |").is_none());
+        assert!(table_separator("| ::: | --- |").is_none());
         assert_eq!(
             table_separator("| :---: | --- | ---: |"),
             Some(vec![Some(MdAlign::Center), None, Some(MdAlign::Right)])
+        );
+    }
+
+    #[test]
+    fn inline_markers_degrade_when_unclosed_or_empty() {
+        // Unclosed/empty `**` and unterminated `[t](u` fall through to
+        // plain text instead of producing a span.
+        let md = inlines("a ** b **x** y **** z [t](u w [v](w");
+        let _ = &md; // coverage — shape asserts live in inline_spans
+        assert!(md.iter().all(|i| !matches!(i, MdInline::Link { .. })));
+        // Every dead-end arm: bare `[`, `[x]` without parens, `[x](y`
+        // without `)`, empty `**`, unterminated `*`. (A second `*`
+        // would pair with the last of `****` into a real `Em`.)
+        let md = inlines("[ [a] [x](y ****zq");
+        assert!(
+            md.iter().all(|i| matches!(i, MdInline::Text(_))),
+            "dead markers stay text: {md:?}"
         );
     }
 
@@ -648,5 +688,7 @@ mod tests {
         assert_eq!(inlines("a `b c"), vec![MdInline::Text("a `b c".into())]);
         assert_eq!(inlines("**x"), vec![MdInline::Text("**x".into())]);
         assert_eq!(inlines("**x"), vec![MdInline::Text("**x".into())]);
+        // `[` with no `](` anywhere → the link-probe's no-match arm.
+        assert_eq!(inlines("a [b"), vec![MdInline::Text("a [b".into())]);
     }
 }

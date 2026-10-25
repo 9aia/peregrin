@@ -183,6 +183,10 @@ async fn get_session_returns_the_raw_wire_summary() {
     let s = api.get_session("s1", None).await.unwrap();
     assert_eq!(s.title, "Alpha");
     assert!(api.get_session("missing", None).await.is_err());
+    // owner_row's agent-mismatch skip — s1 is `devin`; asking for it
+    // as `claude` narrows past the row → "Session not found".
+    let err = api.get_session("s1", Some("claude")).await.unwrap_err();
+    assert!(err.contains("Session not found"), "{err}");
     // The test runtime drop aborts the engine loops.
 }
 
@@ -212,8 +216,12 @@ async fn pending_writes_reports_queued_and_dead() {
     let api = SyncNodeApi::new(engine, nodes, creds);
 
     // One queued write via the API, one forced dead-letter straight
-    // into the outbox (a `turn` op dies on its first failure).
+    // into the outbox (a `turn` op dies on its first failure). The
+    // `patch_meta` queue is a `metadata`-kind op — the DTO arm.
     api.prompt("s1", None, "hello offline", &[]).await.unwrap();
+    api.patch_meta("s1", None, &json!({"title": "x"}))
+        .await
+        .unwrap();
     let dead = outbox
         .enqueue(
             "laptop",
@@ -231,7 +239,7 @@ async fn pending_writes_reports_queued_and_dead() {
     );
 
     let writes = api.pending_writes().await.unwrap();
-    assert_eq!(writes.len(), 2);
+    assert_eq!(writes.len(), 3);
     let queued = writes.iter().find(|w| w.op == "prompt").unwrap();
     assert_eq!(queued.status, "queued");
     assert_eq!(queued.node_id, "laptop");
@@ -561,12 +569,15 @@ fn hub_resolves_node_tokens_from_the_credential_store() {
 /* ---- full-surface mock node ------------------------------------------*/
 
 /// A canned-response node: every NodeApi call lands a JSON reply.
-/// `calls` records "METHOD path" for assertions; `fail` maps path
-/// prefixes to a 500 so error arms run too.
+/// `calls` records "METHOD path" for assertions; `fail` maps
+/// `{METHOD} {path}` (or bare-path) prefixes to a 500; `blank` maps
+/// path prefixes to a `200 {}` — the "shape is fine but the key is
+/// absent" arms.
 #[derive(Clone, Default)]
 struct Canned {
     calls: Arc<std::sync::Mutex<Vec<String>>>,
     fail: Arc<std::sync::Mutex<Vec<String>>>,
+    blank: Arc<std::sync::Mutex<Vec<String>>>,
 }
 
 impl Canned {
@@ -583,13 +594,27 @@ async fn canned(
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     m.calls.lock().unwrap().push(format!("{method} {path}"));
-    let fail = m.fail.lock().unwrap().iter().any(|p| path.starts_with(p));
+    let key = format!("{method} {path}");
+    let fail = m
+        .fail
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|p| key.starts_with(p.as_str()) || path.starts_with(p.as_str()));
     if fail {
         return (
             axum::http::StatusCode::INTERNAL_SERVER_ERROR,
             axum::Json(json!({"error":"node blew up","code":"internal"})),
         )
             .into_response();
+    }
+    if m.blank
+        .lock()
+        .unwrap()
+        .iter()
+        .any(|p| path.starts_with(p.as_str()))
+    {
+        return axum::Json(json!({})).into_response();
     }
     // Consume the body so POST/DELETE payloads parse fine either way.
     let _bytes = axum::body::to_bytes(req.into_body(), 4 * 1024 * 1024)
@@ -625,6 +650,9 @@ async fn canned(
         }),
         (_, p) if p.ends_with("/rewind") => json!({"kept":3,"removed":2}),
         (_, p) if p.ends_with("/convert") => json!({"sessionId":"s2"}),
+        (_, p) if p.ends_with("/export") => json!({
+            "session":{"id":"ir-1","title":"exported","cwd":"/w"}
+        }),
         (_, "/api/sessions/import") => json!({"id":"i1","title":"T","agent":"devin"}),
         _ => json!({}),
     };
@@ -922,6 +950,85 @@ async fn api_edge_arms() {
     let _ = mock;
 }
 
+/// The transfer pipeline's mid-arms over two canned nodes — blanked
+/// capability lists, missing export IR, overlay/verify failures
+/// degrading to warnings, plus the merged-list missing-key `continue`
+/// and pair/convert missing-field arms.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn transfer_and_shape_arms() {
+    let src = Canned::default();
+    let (_s, src_url) = serve_canned(src.clone()).await;
+    let tgt = Canned::default();
+    let (_t, tgt_url) = serve_canned(tgt.clone()).await;
+    let nodes = vec![
+        hub_node("laptop", &src_url),
+        hub_node("tower", &tgt_url),
+        hub_node("dead", "http://127.0.0.1:9"),
+    ];
+    let (api, projection, _outbox, _dir) = api_against(nodes);
+    seed(&projection);
+    // A pinned row on a non-convert-target agent → the "devin" store
+    // fallback and a non-empty overlay PATCH.
+    projection
+        .upsert_summary(
+            "laptop",
+            &json!({
+                "id":"s9","title":"Nine","cwd":"/w",
+                "agent":"claude","source":"claude","pinned":true,
+                "updatedAt":"2024-01-02T00:00:00Z",
+            }),
+        )
+        .unwrap();
+
+    // No `capabilities` key at all → ensure_importable's lenient arm.
+    tgt.blank.lock().unwrap().push("/api/node".into());
+    // `{}` for the export → "no session IR" arm.
+    src.blank
+        .lock()
+        .unwrap()
+        .push("/api/sessions/s1/export".into());
+    let err = api
+        .transfer_session("s1", None, "tower", None)
+        .await
+        .unwrap_err();
+    assert!(err.contains("no session IR"), "{err}");
+
+    // Full pipeline — the PATCH + verify failures land as warnings.
+    src.blank.lock().unwrap().clear();
+    tgt.fail
+        .lock()
+        .unwrap()
+        .push("PATCH /api/sessions/i1".into());
+    tgt.fail.lock().unwrap().push("GET /api/sessions/i1".into());
+    let res = api
+        .transfer_session("s9", None, "tower", None)
+        .await
+        .unwrap();
+    assert_eq!(res.new_session_id, "i1");
+    assert_eq!(res.warnings.len(), 2, "{:?}", res.warnings);
+
+    // convert on a node that omits `sessionId`.
+    src.blank
+        .lock()
+        .unwrap()
+        .push("/api/sessions/s1/convert".into());
+    let err = api.convert("s1", None, "cline").await.unwrap_err();
+    assert_eq!(err, "convert: missing sessionId");
+
+    // merged_list — a `{}` (no list key) node is skipped, not fatal.
+    tgt.blank.lock().unwrap().push("/api/agents".into());
+    let agents = api.list_agents().await.unwrap();
+    assert_eq!(agents.len(), 1);
+
+    // pair: missing `token` key, then a transport (non-Http) error.
+    src.blank.lock().unwrap().push("/api/pair".into());
+    let err = api.pair("code", Some("laptop")).await.unwrap_err();
+    assert_eq!(err, "node returned no token");
+    src.blank.lock().unwrap().clear();
+    let err = api.pair("code", Some("dead")).await.unwrap_err();
+    assert!(!err.is_empty());
+}
+
 /// merged_list's `continue` arm — a node returning `{}` for the key.
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn merged_list_missing_key() {
@@ -968,4 +1075,64 @@ fn resolve_node_tokens_seed_write_fails() {
     let creds = ReadOkWriteFail;
     let (resolved, seeded) = resolve_node_tokens(&mut nodes, &creds);
     assert_eq!((resolved, seeded), (0, 0));
+}
+
+/* ---- lib.rs seams: site_root_from, hub_state_from, feed_hook --------*/
+
+#[test]
+fn site_root_from_arms() {
+    use std::ffi::OsString;
+    let none = |_: &str| -> Option<OsString> { None };
+    // Env var wins.
+    assert_eq!(
+        peregrin_hub::site_root_from(
+            |k| (k == "PEREGRIN_SITE_ROOT").then(|| "/custom".to_string()),
+            |k| none(k),
+        ),
+        "/custom"
+    );
+    // `$PEREGRIN_HOME/site` with a pkg dir wins over the crate default.
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("site/pkg")).unwrap();
+    let home = dir.path().to_string_lossy().into_owned();
+    let got = peregrin_hub::site_root_from(
+        |_| None,
+        |k| (k == "PEREGRIN_HOME").then(|| OsString::from(home.clone())),
+    );
+    assert!(got.ends_with("site"), "{got}");
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn hub_state_from_boot_arms() {
+    let _ = tracing_subscriber::fmt()
+        .with_max_level(tracing::level_filters::LevelFilter::INFO)
+        .try_init();
+    let dir = tempfile::tempdir().unwrap();
+    let home = dir.path().join("home");
+    // A site_root with a hashed wasm bundle name → `leptos_options`'s
+    // pkg-scan arm (both matching and non-matching entries).
+    let site = dir.path().join("site");
+    std::fs::create_dir_all(site.join("pkg")).unwrap();
+    std::fs::write(site.join("pkg/peregrin_web_a1b2.js"), "x").unwrap();
+    std::fs::write(site.join("pkg/other.js"), "x").unwrap();
+    std::fs::write(site.join("pkg/peregrin_web_a1b2.bg.wasm"), "x").unwrap();
+    // A read-only projection.db → `purge_unregistered` fails → warn.
+    let hub_home = home.join("hub");
+    std::fs::create_dir_all(&hub_home).unwrap();
+    let db = hub_home.join("projection.db");
+    let _ = peregrin_sync::ProjectionStore::open(&db).unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&db, std::fs::Permissions::from_mode(0o444)).unwrap();
+    }
+    let home_s = home.to_string_lossy().into_owned();
+    let cfg = peregrin_hub::HubConfig {
+        site_root: site.to_string_lossy().into_owned(),
+        ..Default::default()
+    };
+    let _ = peregrin_hub::hub_state_from(
+        |k| (k == "PEREGRIN_HOME").then(|| std::ffi::OsString::from(home_s.clone())),
+        &cfg,
+    );
 }

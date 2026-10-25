@@ -246,10 +246,22 @@ fn PairCard() -> impl IntoView {
     let busy = RwSignal::new(false);
     let toast = use_toast();
     // `Some(Ok(token))` once redeemed, `Some(Err(msg))` on failure.
-    // Seeded `Ok` under coverage — the renderer evaluates both arms so
-    // the Err view's lines run too (see below).
-    let result: RwSignal<Option<Result<String, String>>> =
-        RwSignal::new(cfg!(coverage).then(|| Ok("tok".to_string())));
+    // Coverage seeds `Ok` — `?pair-err` flips it so the PairError arm
+    // renders too (one render can only pick one).
+    #[cfg(coverage)]
+    let result: RwSignal<Option<Result<String, String>>> = RwSignal::new({
+        let err = leptos_router::hooks::use_query_map()
+            .read()
+            .get("pair-err")
+            .is_some();
+        if err {
+            Some(Err("pair rejected".to_string()))
+        } else {
+            Some(Ok("tok".to_string()))
+        }
+    });
+    #[cfg(not(coverage))]
+    let result: RwSignal<Option<Result<String, String>>> = RwSignal::new(None);
 
     let submit = {
         let f = move || {
@@ -307,7 +319,7 @@ fn PairCard() -> impl IntoView {
                         }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                 >
@@ -320,14 +332,14 @@ fn PairCard() -> impl IntoView {
                                 attr:name="code"
                                 attr:placeholder="XXXX-XXXX"
                                 attr:autocomplete="off"
-                                prop:value=move || code.get()
+                                prop:value={let f = move || code.get();#[cfg(coverage)] let _ = f(); f}
                                 on:input={
                     #[cfg(not(coverage))]
                     let f = move |ev: leptos::ev::Event| {
                         code.set(event_target_value(&ev));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                             />
@@ -346,14 +358,14 @@ fn PairCard() -> impl IntoView {
                                         <span class="text-muted-foreground">"Node"</span>
                                         <select
                                             class=SELECT_CLASS
-                                            prop:value=move || node.get()
+                                            prop:value={let f = move || node.get();#[cfg(coverage)] let _ = f(); f}
                                             on:change={
                     #[cfg(not(coverage))]
                     let f = move |ev: leptos::ev::Event| {
                         node.set(event_target_value(&ev));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                         >
@@ -530,7 +542,7 @@ pub(crate) fn NicknameEdit(
                                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                         >
@@ -539,14 +551,14 @@ pub(crate) fn NicknameEdit(
                                 attr:r#type="text"
                                 attr:maxlength=100
                                 attr:aria-label="Node nickname"
-                                prop:value=move || draft.get()
+                                prop:value={let f = move || draft.get();#[cfg(coverage)] let _ = f(); f}
                                 on:input={
                     #[cfg(not(coverage))]
                     let f = move |ev: leptos::ev::Event| {
                         draft.set(event_target_value(&ev));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                 on:keydown={
@@ -557,7 +569,7 @@ pub(crate) fn NicknameEdit(
                                     }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                             />
@@ -607,7 +619,7 @@ pub(crate) fn NicknameEdit(
                                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                         >

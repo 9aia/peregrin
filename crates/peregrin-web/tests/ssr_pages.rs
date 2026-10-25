@@ -520,8 +520,8 @@ async fn projects_renders_names_and_session_counts() {
     assert_contains(&html, "Projects");
     assert_contains(&html, "Capstone Work");
     assert_contains(&html, "Infra");
-    // `p1` is referenced by s1's `projectIds`.
-    assert_contains(&html, "1 sessions");
+    // `p1` is referenced by s1's and s7's `projectIds`.
+    assert_contains(&html, "2 sessions");
     assert_contains(&html, "New project name");
 }
 

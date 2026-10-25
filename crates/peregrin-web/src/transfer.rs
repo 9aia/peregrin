@@ -50,9 +50,10 @@ pub fn TransferSheet(
     let picked: RwSignal<Option<String>> = RwSignal::new(None);
     let cwd = RwSignal::new(cwd_default.get_untracked());
     // A pick only happens on click — seed one under coverage so the
-    // selected-row class arm renders.
+    // selected-row class arm renders. `workbench` is the seeded `up`
+    // row (`down` rows take the disabled arm first).
     #[cfg(coverage)]
-    picked.set(Some("tower".to_string()));
+    picked.set(Some("workbench".to_string()));
     let field_id = if field_id.is_empty() {
         "transfer-cwd".to_string()
     } else {
@@ -145,7 +146,7 @@ pub fn TransferSheet(
                                                     }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                             >
@@ -195,14 +196,14 @@ pub fn TransferSheet(
                         attr:id=field_id
                         attr:r#type="text"
                         attr:placeholder="Working directory on the target"
-                        prop:value=move || cwd.get()
+                        prop:value={let f = move || cwd.get();#[cfg(coverage)] let _ = f(); f}
                         on:input={
                     #[cfg(not(coverage))]
                     let f = move |ev: leptos::ev::Event| {
                         cwd.set(event_target_value(&ev));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                     />

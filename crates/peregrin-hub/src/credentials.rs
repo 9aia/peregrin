@@ -228,11 +228,24 @@ pub fn from_lookup(
     hub_home: &Path,
     get: impl Fn(&str) -> Option<String>,
 ) -> Arc<dyn NodeCredentials> {
-    let forced = get(STORE_ENV);
-    match forced.as_deref().map(str::trim) {
+    pick(
+        hub_home,
+        get(STORE_ENV).as_deref().map(str::trim),
+        keyring_probe(),
+    )
+}
+
+/// The pick itself — env value and probe result injected so every arm
+/// is directly testable (a real probe can't be failed on demand).
+fn pick(
+    hub_home: &Path,
+    forced: Option<&str>,
+    probe: Result<(), String>,
+) -> Arc<dyn NodeCredentials> {
+    match forced {
         Some("file") => file_store(hub_home),
         Some("keyring") => {
-            if let Err(e) = keyring_probe() {
+            if let Err(e) = &probe {
                 tracing::warn!("PEREGRIN_CREDENTIAL_STORE=keyring but the probe failed: {e}");
             }
             Arc::new(KeyringCredentials)
@@ -243,16 +256,71 @@ pub fn from_lookup(
                     "unknown {STORE_ENV}={other:?} — expected auto|keyring|file; using auto"
                 );
             }
-            match keyring_probe() {
+            match probe {
                 Ok(()) => Arc::new(KeyringCredentials),
                 Err(e) => {
+                    // Formatted eagerly — inside `info!`'s lazy arg
+                    // scope it only evaluates when a subscriber is live.
+                    let fallback = hub_home.join(FILE_NAME).display().to_string();
                     tracing::info!(
-                        "OS keyring unavailable ({e}) — node credentials fall back to {}",
-                        hub_home.join(FILE_NAME).display()
+                        "OS keyring unavailable ({e}) — node credentials fall back to {fallback}"
                     );
                     file_store(hub_home)
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod cov_tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+
+    #[test]
+    fn pick_arms() {
+        let home = std::path::Path::new("/tmp/x");
+        // A thread-local subscriber enables the log macros' lazy arg
+        // evaluation (`fallback.display()` sits inside `info!`'s event
+        // scope) — a global `try_init` races subscriber registration
+        // in parallel tests, so scope it to the Err-probe calls.
+        let sub = tracing_subscriber::fmt()
+            .with_max_level(tracing::level_filters::LevelFilter::INFO)
+            .finish();
+        tracing::subscriber::with_default(sub, || {
+            // forced keyring with a failed probe → warn arm.
+            let _ = pick(home, Some("keyring"), Err("no dbus".into()));
+            // unknown value → warn + auto pick; probe-fail → file arm.
+            let _ = pick(home, Some("bogus"), Err("no dbus".into()));
+            let _ = pick(home, None, Err("no dbus".into()));
+        });
+        // A no-op dispatcher → the log macros' disabled paths.
+        tracing::dispatcher::with_default(&tracing::Dispatch::none(), || {
+            let _ = pick(home, Some("keyring"), Err("no dbus".into()));
+            let _ = pick(home, None, Err("no dbus".into()));
+        });
+        // forced keyring with a live probe → the `if let Err` skip arm.
+        let _ = pick(home, Some("keyring"), Ok(()));
+        let _ = pick(home, Some("auto"), Ok(()));
+        let _ = pick(home, Some("file"), Ok(()));
+        let _ = pick(home, None, Ok(()));
+    }
+
+    #[test]
+    fn store_skips_mkdir_when_parent_absent() {
+        // `""` has no parent — the `create_dir_all` guard's skip arm;
+        // the tmp-name write then fails harmlessly.
+        let c = FileCredentials::new(PathBuf::new());
+        let _ = c.set("n", "t");
+    }
+
+    #[test]
+    fn load_non_notfound_error() {
+        // Point the file path at a directory — read fails with
+        // IsADirectory, not NotFound → the `{path}: {e}` arm.
+        // A directory path → `fs::read` fails IsADirectory.
+        let dir = tempfile::tempdir().unwrap();
+        let c = FileCredentials::new(dir.path().to_path_buf());
+        let _ = c.load();
     }
 }

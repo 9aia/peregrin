@@ -499,6 +499,10 @@ async fn connect_once(
     let subscribed = tokio::select! {
         () = cancel.cancelled() => {
             stop.store(true, Ordering::Relaxed);
+            // The pump may be parked in `blocking_send` on a full
+            // channel — dropping `rx` fails that send so the join
+            // below can't hang.
+            drop(rx);
             let _ = tokio::task::spawn_blocking(move || pump.join()).await;
             return CycleEnd::Cancelled;
         }
@@ -527,6 +531,7 @@ async fn connect_once(
         Ok(s) => s,
         Err(e) => {
             stop.store(true, Ordering::Relaxed);
+            drop(rx);
             let _ = tokio::task::spawn_blocking(move || pump.join()).await;
             return CycleEnd::Disconnected(e);
         }
@@ -576,9 +581,10 @@ async fn connect_once(
     };
 
     stop.store(true, Ordering::Relaxed);
-    // Bounded by `sse_idle_timeout` (the read deadline) — keeps the
-    // loop's task slot clean while the pump wakes on the next
-    // heartbeat.
+    // `rx` is dropped first — a pump parked in `blocking_send` on a
+    // full channel fails immediately instead of hanging the join.
+    // Otherwise bounded by `sse_idle_timeout` (the read deadline).
+    drop(rx);
     let _ = tokio::task::spawn_blocking(move || pump.join()).await;
     end
 }
@@ -840,29 +846,34 @@ mod tests {
         let listener = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let port = listener.local_addr().unwrap().port();
         std::thread::spawn(move || {
+            // One thread per connection — a held-open `/api/events`
+            // stream must not block REST calls queued behind it.
             while let Ok((mut conn, _)) = listener.accept() {
-                let mut buf = [0u8; 8192];
-                let n = conn.read(&mut buf).unwrap_or(0);
-                let req = String::from_utf8_lossy(&buf[..n]);
-                if req.contains("/api/events") {
-                    let _ = conn
-                        .write_all(b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\n");
-                    for _ in 0..100 {
-                        if conn.write_all(b"event: heartbeat\ndata: {}\n\n").is_err() {
-                            break;
+                std::thread::spawn(move || {
+                    let mut buf = [0u8; 8192];
+                    let n = conn.read(&mut buf).unwrap_or(0);
+                    let req = String::from_utf8_lossy(&buf[..n]);
+                    if req.contains("/api/events") {
+                        let _ = conn.write_all(
+                            b"HTTP/1.1 200 OK\r\nContent-Type: text/event-stream\r\n\r\n",
+                        );
+                        for _ in 0..100 {
+                            if conn.write_all(b"event: heartbeat\ndata: {}\n\n").is_err() {
+                                break;
+                            }
+                            let _ = conn.flush();
+                            std::thread::sleep(Duration::from_millis(30));
                         }
-                        let _ = conn.flush();
-                        std::thread::sleep(Duration::from_millis(30));
+                    } else {
+                        let _ = conn.write_all(
+                            format!(
+                                "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                                body.len()
+                            )
+                            .as_bytes(),
+                        );
                     }
-                } else {
-                    let _ = conn.write_all(
-                        format!(
-                            "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
-                            body.len()
-                        )
-                        .as_bytes(),
-                    );
-                }
+                });
             }
         });
         port
@@ -923,7 +934,7 @@ mod tests {
         // A live canned node: subscribe → list → drain → tail. Cancelling
         // mid-run makes connect_once set `stop`; the pump observes it at
         // its loop top between heartbeat frames.
-        let port = canned_node("200 OK", "[]");
+        let port = canned_node("200 OK", "{\"sessions\":[]}");
         let shared = shared();
         let node = node(format!("http://127.0.0.1:{port}"));
         let client =
@@ -941,6 +952,65 @@ mod tests {
         let end = task.await.unwrap();
         assert!(matches!(end, CycleEnd::Cancelled));
         tokio::time::sleep(Duration::from_millis(200)).await;
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn node_loop_cancels_during_backoff() {
+        // A dead node: connect fails fast → the loop parks in the
+        // backoff `select!` — cancelling there takes the cancel arm.
+        let shared = shared();
+        let target = NodeTarget::new(node("http://127.0.0.1:1".into()));
+        let cancel = CancellationToken::new();
+        let task = {
+            let shared = Arc::clone(&shared);
+            let cancel = cancel.clone();
+            tokio::spawn(async move { node_loop(target, shared, cancel).await })
+        };
+        // backoff_min is 30ms — at 200ms the loop is almost surely
+        // parked in `sleep(wait)`; the cancel arm is what we're after.
+        tokio::time::sleep(Duration::from_millis(200)).await;
+        cancel.cancel();
+        task.await.unwrap();
+    }
+
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn sse_pump_observes_stop_between_frames() {
+        // Drive `sse_pump` directly: `stop` set while the pump is at its
+        // loop top → the `stop.load` arm decrements and returns.
+        let port = canned_node("200 OK", "{\"sessions\":[]}");
+        let shared = shared();
+        let client = NodeClient::with_config(
+            &format!("http://127.0.0.1:{port}"),
+            None,
+            shared.options.client_config(),
+        )
+        .unwrap();
+        let (tx, mut rx) = mpsc::channel::<PumpMsg>(16);
+        let stop = Arc::new(AtomicBool::new(false));
+        let pump = {
+            let client = client.clone();
+            let stop = Arc::clone(&stop);
+            let shared = Arc::clone(&shared);
+            std::thread::spawn(move || sse_pump(&client, &tx, &stop, &shared))
+        };
+        // Subscribed lands first; then heartbeat events. After one
+        // event is drained, raising `stop` makes the next loop-top
+        // check take the `stop` arm (bounded by the 30ms cadence).
+        assert!(matches!(
+            tokio::time::timeout(Duration::from_secs(5), rx.recv()).await,
+            Ok(Some(PumpMsg::Subscribed))
+        ));
+        assert!(matches!(
+            tokio::time::timeout(Duration::from_secs(5), rx.recv()).await,
+            Ok(Some(PumpMsg::Event(_)))
+        ));
+        stop.store(true, Ordering::Relaxed);
+        // Drain until the sender side drops (pump exited).
+        while tokio::time::timeout(Duration::from_secs(5), rx.recv())
+            .await
+            .is_ok_and(|m| m.is_some())
+        {}
+        pump.join().unwrap();
     }
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 2)]

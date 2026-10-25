@@ -101,8 +101,14 @@ mod cov_tests {
         let loaded = load_node_identity(&p, "fallback");
         assert_eq!(loaded.id, "keep");
         assert_eq!(loaded.name, "fallback");
+        // An object with no usable `id` also mints a fresh identity.
+        std::fs::write(&p, r#"{"id":"","name":"x"}"#).unwrap();
+        let _ = load_node_identity(&p, "n");
         // A corrupt file → fresh identity minted + persisted.
         std::fs::write(&p, "garbage").unwrap();
         let _ = load_node_identity(&p, "n");
+        // `path.parent()` is None for the filesystem root — the
+        // create_dir_all guard's else arm (the write fails anyway).
+        let _ = save_node_identity(Path::new("/"), &id);
     }
 }

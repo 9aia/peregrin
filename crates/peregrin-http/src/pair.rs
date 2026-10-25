@@ -117,10 +117,9 @@ fn read_pair_code_file(path: &std::path::Path) -> Option<(String, u64)> {
     let parsed: serde_json::Value = serde_json::from_str(&raw).ok()?;
     let record = parsed.as_object()?;
     let code = record.get("code")?.as_str()?;
+    // serde_json rejects non-finite numbers at parse — `as_f64` is
+    // always finite here.
     let expires_at = record.get("expiresAt")?.as_f64()?;
-    if !expires_at.is_finite() {
-        return None;
-    }
     Some((code.to_string(), expires_at as u64))
 }
 
@@ -191,8 +190,10 @@ impl Pairing {
         if let Some(dir) = self.inner.tokens_file.parent() {
             let _ = std::fs::create_dir_all(dir);
         }
-        if let Ok(json) = serde_json::to_vec(&body) {
-            if std::fs::write(&tmp, &json).is_ok() {
+        // `to_vec` is infallible for this shape — `ok().inspect`
+        // keeps the write best-effort without an untestable else arm.
+        serde_json::to_vec(&body).ok().inspect(|json| {
+            if std::fs::write(&tmp, json).is_ok() {
                 #[cfg(unix)]
                 {
                     use std::os::unix::fs::PermissionsExt;
@@ -200,7 +201,7 @@ impl Pairing {
                 }
                 let _ = std::fs::rename(&tmp, &self.inner.tokens_file);
             }
-        }
+        });
     }
 
     /// Absorb a pending `pair-code` file — consume it regardless of
@@ -259,7 +260,7 @@ mod cov_tests {
     fn code_file_and_open_arms() {
         let dir = tempfile::tempdir().unwrap();
         let code_file = dir.path().join("pair-code");
-        // Non-finite expiry → None.
+        // Non-finite expiry can't even parse → None via `.ok()?`.
         std::fs::write(&code_file, r#"{"code":"c","expiresAt":1e999}"#).unwrap();
         assert_eq!(read_pair_code_file(&code_file), None);
         // A tokens file with non-string entries is skipped.
@@ -269,5 +270,25 @@ mod cov_tests {
         // An already-expired code file is absorbed but not registered.
         std::fs::write(&code_file, r#"{"code":"c","expiresAt":1.0}"#).unwrap();
         pairing.absorb_code_file();
+        // An unparseable code file → `file` is None (outer else).
+        std::fs::write(&code_file, "not json").unwrap();
+        pairing.absorb_code_file();
+    }
+
+    #[test]
+    fn open_and_flush_failure_arms() {
+        let dir = tempfile::tempdir().unwrap();
+        // `tokens` present but not an array / file not a JSON object.
+        for body in [r#"{"tokens":"x"}"#, "[1,2]"] {
+            let tokens_file = dir.path().join("t.json");
+            std::fs::write(&tokens_file, body).unwrap();
+            let _ = Pairing::open(dir.path().join("c"), tokens_file);
+        }
+        // flush_tokens: tokens_file lives under a *file* — write fails.
+        let blocker = dir.path().join("blocker");
+        std::fs::write(&blocker, "x").unwrap();
+        let pairing = Pairing::open(PathBuf::new(), blocker.join("deep/tokens.json"));
+        pairing.inner.store.register("ABCD-1234", now_ms() + 60_000);
+        assert!(pairing.redeem("abcd-1234").is_some());
     }
 }

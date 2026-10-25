@@ -436,11 +436,13 @@ impl ProjectionStore {
             bind.extend(keep.iter().map(|id| id as &dyn rusqlite::ToSql));
             tx.execute(&sql, rusqlite::params_from_iter(bind.iter()))?;
         }
-        tx.execute(
-            "INSERT INTO sync_state (node_id, cursor, updated_at) VALUES (?,?,?)
-             ON CONFLICT (node_id) DO UPDATE SET cursor=excluded.cursor, updated_at=excluded.updated_at",
-            params![node_id, max_updated, now_rfc3339()],
-        )?;
+        if !max_updated.is_empty() {
+            tx.execute(
+                "INSERT INTO sync_state (node_id, cursor, updated_at) VALUES (?,?,?)
+                 ON CONFLICT (node_id) DO UPDATE SET cursor=excluded.cursor, updated_at=excluded.updated_at",
+                params![node_id, max_updated, now_rfc3339()],
+            )?;
+        }
         tx.commit()?;
         Ok(())
     }

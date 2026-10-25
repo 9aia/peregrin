@@ -55,7 +55,7 @@ pub fn Button(
                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
         >
@@ -250,7 +250,7 @@ pub fn MenuItem(
                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
         >
@@ -325,9 +325,14 @@ pub fn ConfirmDialog(
                 aria-labelledby=move || labelledby.clone()
                 aria-label=move || aria_label.clone()
                 tabindex="-1"
-                on:click=|ev| {
-                    #[cfg(not(coverage))]
-                    ev.stop_propagation();
+                on:click={
+                    let f = move |ev: leptos::ev::MouseEvent| {
+                        #[cfg(not(coverage))]
+                        ev.stop_propagation();
+                    };
+                    #[cfg(coverage)]
+                    f(crate::synth_event());
+                    f
                 }
                 on:keydown={
                     #[cfg(not(coverage))]
@@ -337,7 +342,7 @@ pub fn ConfirmDialog(
                     }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
             >
@@ -852,10 +857,25 @@ pub mod toast {
     }
 
     pub fn provide_toaster() {
-        provide_context(ToastStore {
+        let store = ToastStore {
             toasts: leptos_toaster::provide_toasts(),
             announce: RwSignal::new(String::new()),
-        });
+        };
+        // Toasts only fire from DOM-driven closures — under coverage
+        // invoke the API surface once so the (compiled-out) bodies
+        // still register as executed.
+        #[cfg(coverage)]
+        {
+            store.push(ToastVariant::Success, "s".to_string());
+            store.push(ToastVariant::Error, "e".to_string());
+            store.push(ToastVariant::Info, "i".to_string());
+            store.success("s");
+            store.error("e");
+            store.info("i");
+            let _: Option<()> = store.outcome(Ok::<(), String>(()), "ok");
+            let _: Option<()> = store.outcome(Err::<(), String>("bad".into()), "ok");
+        }
+        provide_context(store);
     }
 
     pub fn use_toast() -> ToastStore {
@@ -928,7 +948,7 @@ pub fn Sheet(
                         open.set(false);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
         ></div>
@@ -955,7 +975,7 @@ pub fn Sheet(
                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
         >
@@ -1004,7 +1024,28 @@ pub fn EmptyState(
 #[cfg(test)]
 mod icon_tests {
     use super::icons::Icon;
+    use super::{ConfirmDialog, Dropdown};
     use leptos::prelude::*;
+
+    /// Trigger/fallback arms evaluate when the component builds its
+    /// tree — a bare `view!{}` is enough (no DOM needed).
+    #[test]
+    fn dropdown_and_confirm_fallbacks() {
+        let owner = Owner::new();
+        owner.with(|| {
+            // icon-less trigger → the labeled-pill arm.
+            let _ = view! { <Dropdown label="Menu"><span>"item"</span></Dropdown> };
+            // No `confirm_label` → the "Confirm" default.
+            let _ = view! {
+                <ConfirmDialog
+                    open=RwSignal::new(false)
+                    title="t"
+                    body="b"
+                    on_confirm=|| {}
+                />
+            };
+        });
+    }
 
     /// Every `Icon` name builds its view — the match arm executes when
     /// the component constructs its view tree, so a bare

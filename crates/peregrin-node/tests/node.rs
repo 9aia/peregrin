@@ -152,6 +152,9 @@ fn node_without_devin_store_serves() {
         .env("PEREGRIN_NODE", home.join("node.json"))
         .env("PEREGRIN_PORT", port.to_string())
         .env("PEREGRIN_HOST", "127.0.0.1")
+        // No drivers anywhere — PATH scan mustn't find a machine-wide
+        // `sepia-driver-*` install (discovery also walks PATH).
+        .env("PATH", &driver_dir)
         .env("HOME", tmp.path())
         .stdout(std::process::Stdio::null())
         .stderr(std::process::Stdio::piped())

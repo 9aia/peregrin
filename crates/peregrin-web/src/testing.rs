@@ -61,6 +61,11 @@ impl FakeNodeApi {
                     busy: true,
                     live: true,
                     can_rewind: true,
+                    // Owning node named → the sheet shows it, the
+                    // same-node project filter empties ("No projects
+                    // yet."), and a pending write with a non-empty
+                    // `node_id` exercises the `(Some, false)` arm.
+                    node: Some("workbench".into()),
                     project_ids: vec!["p1".into()],
                     // A pinned model — the composer's model input
                     // renders it as the override value.
@@ -129,6 +134,24 @@ impl FakeNodeApi {
                     agent: "devin".into(),
                     updated_at: "2026-10-08T06:45:00.000Z".into(),
                     parent_session_id: Some("s1".into()),
+                    ..SessionSummaryDto::default()
+                },
+                SessionSummaryDto {
+                    id: "s7".into(),
+                    // Empty title → "Untitled session" fallbacks on the
+                    // detail header, the sheet, the list rows and the
+                    // palette's session actions.
+                    title: String::new(),
+                    cwd: "/work/docs-site".into(),
+                    agent: "claude".into(),
+                    updated_at: "2026-10-08T06:50:00.000Z".into(),
+                    // Sub-agent identity + import provenance — the
+                    // sheet's "· {agent_id}" chip and Source row.
+                    agent_id: Some("claude-sub-9".into()),
+                    source: "import".into(),
+                    // Member of project p1 — the detail sheet's
+                    // member-row arm (empty title → id fallback).
+                    project_ids: vec!["p1".into()],
                     ..SessionSummaryDto::default()
                 },
             ],
@@ -275,12 +298,18 @@ impl FakeNodeApi {
                         tool_name: Some("run_command".into()),
                         tool_status: Some("success".into()),
                         exit_code: Some(0),
+                        // `durationMs` → the `(1.2s)` chip on the
+                        // marker line.
+                        duration_ms: Some(1_250.0),
                         args: Some(json!({"command": "cargo test -p acme-api"}).to_string()),
                         created_at: 1_791_441_620_000.0,
                         ..HistoryMessageDto::default()
                     },
                     // An edit row carrying recorded diffs + locations —
-                    // exercises ToolEdit + DiffBlock.
+                    // exercises ToolEdit + DiffBlock. The diff shares
+                    // leading/trailing lines so `file_diff_view` emits
+                    // `⋮` elision markers + `  ` context rows — the
+                    // muted DiffBlock arms.
                     HistoryMessageDto {
                         role: "tool".into(),
                         node_id: Some(5),
@@ -294,19 +323,84 @@ impl FakeNodeApi {
                         ),
                         diffs: Some(vec![ToolCallDiff {
                             path: "/work/acme-api/tests/login.rs".into(),
-                            old_text: Some("let db = shared_db();".into()),
-                            // The `⋮` fold marker + a plain context
-                            // line exercise DiffBlock's muted arms.
+                            old_text: Some(
+                                "fn seed() {\n    let db = shared_db();\n    db.migrate()\n}"
+                                    .into(),
+                            ),
                             new_text: Some(
-                                "let db = TestDb::isolated();\n⋮ 2 more\nlet conn = db.conn();"
+                                "fn seed() {\n    let db = TestDb::isolated();\n    db.migrate()\n}"
                                     .into(),
                             ),
                         }]),
-                        locations: Some(vec![ToolCallLocation {
-                            path: "/work/acme-api/tests/login.rs".into(),
-                            line: Some(14),
-                        }]),
+                        locations: Some(vec![
+                            ToolCallLocation {
+                                path: "/work/acme-api/tests/login.rs".into(),
+                                line: Some(14),
+                            },
+                            // A line-less location → the `path`-only
+                            // fallback arm.
+                            ToolCallLocation {
+                                path: "/work/acme-api/src/lib.rs".into(),
+                                line: None,
+                            },
+                        ]),
                         created_at: 1_791_441_625_000.0,
+                        ..HistoryMessageDto::default()
+                    },
+                    // An edit whose args carry old/new strings but whose
+                    // result text doesn't parse — falls through to the
+                    // args-derived `ToolSegment::Diff` arm.
+                    HistoryMessageDto {
+                        role: "tool".into(),
+                        node_id: None,
+                        content: "edit applied".into(),
+                        tool_name: Some("edit_file".into()),
+                        tool_status: Some("success".into()),
+                        args: Some(
+                            json!({
+                                "file_path": "/work/acme-api/src/main.rs",
+                                "old_string": "fn old() {}",
+                                "new_string": "fn new() {}",
+                            })
+                            .to_string(),
+                        ),
+                        created_at: 1_791_441_626_000.0,
+                        ..HistoryMessageDto::default()
+                    },
+                    // A fetch row → `ToolSegment::Markdown`.
+                    HistoryMessageDto {
+                        role: "tool".into(),
+                        node_id: None,
+                        content: "# Web Search Results for \"rust\"\n\nhit".into(),
+                        tool_name: Some("web_fetch".into()),
+                        tool_status: Some("success".into()),
+                        args: Some(json!({"url": "https://x.dev"}).to_string()),
+                        created_at: 1_791_441_627_000.0,
+                        ..HistoryMessageDto::default()
+                    },
+                    // A failed exec row — `status == "failed"` paints the
+                    // destructive surface + `exit 2` note (error arm).
+                    HistoryMessageDto {
+                        role: "tool".into(),
+                        node_id: None,
+                        content: "boom".into(),
+                        tool_name: Some("run_command".into()),
+                        tool_status: Some("failed".into()),
+                        exit_code: Some(2),
+                        args: Some(json!({"command": "false"}).to_string()),
+                        created_at: 1_791_441_628_000.0,
+                        ..HistoryMessageDto::default()
+                    },
+                    // A read with an empty/unparseable body → the
+                    // "no output" fallback.
+                    HistoryMessageDto {
+                        role: "tool".into(),
+                        node_id: None,
+                        content: String::new(),
+                        tool_name: Some("read_file".into()),
+                        tool_status: Some("success".into()),
+                        args: Some(json!({"file_path": "/empty.rs"}).to_string()),
+                        created_at: 1_791_441_629_000.0,
                         ..HistoryMessageDto::default()
                     },
                     // Back-to-back identical assistant rows fold — the
@@ -318,6 +412,8 @@ impl FakeNodeApi {
                         content: "Fixed — each test now gets its own database.\n\n\
                                   | File | Status |\n| --- | --- |\n| db.rs | fixed |"
                             .into(),
+                        // The per-row model chip.
+                        model: Some("swe-1.6".into()),
                         created_at: 1_791_441_630_000.0,
                         ..HistoryMessageDto::default()
                     },
@@ -408,6 +504,54 @@ impl FakeNodeApi {
     #[must_use]
     pub fn with_statuses(mut self, statuses: Vec<NodeStatusDto>) -> Self {
         self.statuses = statuses;
+        self
+    }
+
+    /// Replace the agent roster (e.g. `Vec::new()` for the
+    /// "No agents configured." empty state).
+    #[must_use]
+    pub fn with_agents(mut self, agents: Vec<AgentDto>) -> Self {
+        self.agents = agents;
+        self
+    }
+
+    /// Replace the project list (e.g. `Vec::new()` for the
+    /// "No projects yet." empty state).
+    #[must_use]
+    pub fn with_projects(mut self, projects: Vec<ProjectDto>) -> Self {
+        self.projects = projects;
+        self
+    }
+
+    /// Replace the checkpoint rows (e.g. `Vec::new()` for the
+    /// "No checkpoints recorded." empty state).
+    #[must_use]
+    pub fn with_checkpoints(mut self, checkpoints: Vec<CheckpointDto>) -> Self {
+        self.checkpoints = checkpoints;
+        self
+    }
+
+    /// Replace the config map (e.g. an empty map for the
+    /// "No settings exposed." card).
+    #[must_use]
+    pub fn with_config(mut self, config: BTreeMap<String, Value>) -> Self {
+        self.config = config;
+        self
+    }
+
+    /// Replace the transcript page — context-card/tool-row variants
+    /// (rules-only, prompt-only, diff/markdown segments) ride here.
+    #[must_use]
+    pub fn with_history(mut self, history: HistoryPageDto) -> Self {
+        self.history = history;
+        self
+    }
+
+    /// Replace `GET /api/node` — e.g. an empty `name`/capabilities for
+    /// the identity fallbacks.
+    #[must_use]
+    pub fn with_info(mut self, info: NodeInfoDto) -> Self {
+        self.info = info;
         self
     }
 

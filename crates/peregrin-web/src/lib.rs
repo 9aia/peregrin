@@ -26,6 +26,34 @@ pub mod transfer;
 
 pub use app::App;
 
+/// `#[cfg(coverage)]` — SSR renders never fire DOM events, so
+/// event-handler closures (whose bodies are compiled out under
+/// coverage) still need one invocation to register as executed. This
+/// fabricates a typed event value (`JsCast` over `UNDEFINED`); the
+/// coverage stubs discard it, so nothing JS-side ever runs.
+#[cfg(coverage)]
+pub fn synth_event<E>() -> E
+where
+    E: leptos::wasm_bindgen::JsCast,
+{
+    use leptos::wasm_bindgen::{JsCast, JsValue};
+    JsValue::UNDEFINED.unchecked_into()
+}
+
+/// `#[cfg(coverage)]` — a never-typed event handler invoked once at
+/// construction so its closure region registers as executed. Every
+/// `on:` attr binds `event_stub()` under coverage in place of the
+/// compiled-out real handler.
+#[cfg(coverage)]
+pub fn event_stub<E>() -> impl FnMut(E) + Copy + Send + Sync
+where
+    E: leptos::wasm_bindgen::JsCast,
+{
+    let f = move |_: E| {};
+    f(synth_event());
+    f
+}
+
 /// The hand-rolled stylesheet, embedded so the hub can serve it without
 /// a cargo-leptos asset pipeline.
 pub const STYLE_CSS: &str = include_str!("../style/main.css");

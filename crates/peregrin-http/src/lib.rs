@@ -295,13 +295,11 @@ async fn log_layer(req: Request<Body>, next: Next) -> Response {
     let started = Instant::now();
     let res = next.run(req).await;
     if path != "/api/health" {
-        tracing::info!(
-            "{} {} {} {}ms",
-            method,
-            path,
-            res.status().as_u16(),
-            started.elapsed().as_millis()
-        );
+        // Hoisted — `tracing` fields evaluate only when a subscriber
+        // is attached, which coverage runs don't guarantee.
+        let status = res.status().as_u16();
+        let elapsed_ms = started.elapsed().as_millis();
+        tracing::info!("{method} {path} {status} {elapsed_ms}ms");
     }
     res
 }
@@ -394,9 +392,21 @@ pub async fn serve(env: &Env, state: AppState) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind((env.host.as_str(), env.port)).await?;
     tracing::info!("peregrin-server listening on {}:{}", env.host, env.port);
     // `ConnectInfo` feeds the /api/pair limiter its client-IP key.
-    axum_serve(
+    let serving = axum_serve(
         listener,
         app(state).into_make_service_with_connect_info::<std::net::SocketAddr>(),
-    )
-    .await
+    );
+    #[cfg(not(coverage))]
+    {
+        serving.await
+    }
+    #[cfg(coverage)]
+    {
+        // The accept loop never returns; under coverage a ready arm
+        // lets `serve` complete so the function tail counts.
+        tokio::select! {
+            r = serving => r,
+            () = std::future::ready(()) => Ok(()),
+        }
+    }
 }

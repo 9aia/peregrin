@@ -2704,6 +2704,9 @@ mod tests {
         let _ = tool_summary("read_file", None, "", None);
         // file-view with an empty body → no segments.
         let _ = tool_summary("read_file", None, "<file-view>\n</file-view>", None);
+        // A bare `<file-view>` tag (truncated stream) → the parsed
+        // body is empty → the `Vec::new()` segments arm.
+        let _ = tool_summary("read_file", None, "<file-view>", None);
         // `The file X` without the updated suffix → no parse.
         let _ = tool_summary("edit_file", None, "The file /a.rs whatever", None);
         // Edit with plain text, no diff/created → markdown body.

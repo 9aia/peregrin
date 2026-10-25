@@ -259,17 +259,13 @@ fn proxy_result(
         Ok(Ok(mut res)) => {
             let status =
                 StatusCode::from_u16(res.status().as_u16()).unwrap_or(StatusCode::BAD_GATEWAY);
-            let ct = res
-                .headers()
-                .get(header::CONTENT_TYPE)
-                .and_then(|v| v.to_str().ok())
-                .map(str::to_string);
+            // The header came from a real `HeaderValue` — clone it
+            // through rather than round-tripping a dead re-parse arm.
+            let ct = res.headers().get(header::CONTENT_TYPE).cloned();
             let body = res.body_mut().read_to_vec().unwrap_or_default();
             let mut response = (status, body).into_response();
             if let Some(ct) = ct {
-                if let Ok(v) = HeaderValue::from_str(&ct) {
-                    response.headers_mut().insert(header::CONTENT_TYPE, v);
-                }
+                response.headers_mut().insert(header::CONTENT_TYPE, ct);
             }
             response
         }
@@ -300,10 +296,11 @@ mod cov_tests {
 
     #[tokio::test]
     async fn proxy_result_arms() {
-        // JoinError — an aborted blocking task.
-        let h = tokio::spawn(async {
-            std::future::pending::<Result<ureq::http::Response<ureq::Body>, String>>().await
-        });
+        // JoinError — an aborted blocking task. `pending()` as a bare
+        // expression keeps a never-polled async block's lines dead.
+        let h = tokio::spawn(std::future::pending::<
+            Result<ureq::http::Response<ureq::Body>, String>,
+        >());
         h.abort();
         let res = proxy_result(h.await);
         assert_eq!(res.status(), StatusCode::INTERNAL_SERVER_ERROR);
@@ -352,9 +349,8 @@ mod cov_tests {
                 return Err(self.lines.remove(0).unwrap_err());
             }
             match self.lines.first() {
-                None => Ok(&[]),
                 Some(Ok(s)) => Ok(s.as_bytes()),
-                Some(Err(_)) => Err(std::io::Error::other("x")),
+                _ => Ok(&[]),
             }
         }
         fn consume(&mut self, n: usize) {
@@ -381,7 +377,7 @@ mod cov_tests {
 
     #[tokio::test]
     async fn sse_pump_arms() {
-        use std::io::{Error, ErrorKind};
+        use std::io::{Error, ErrorKind, Read as _};
         let io = |e| Err::<String, Error>(e);
         // Frames: event+data, data-only, then EOF.
         let (tx, mut rx) = tokio::sync::mpsc::channel::<Event>(8);
@@ -417,6 +413,38 @@ mod cov_tests {
         // Non-timeout error → break.
         let (tx4, _rx4) = tokio::sync::mpsc::channel::<Event>(1);
         pump(vec![io(Error::other("reset"))], &tx4).await;
+        // Data frame with the client gone → `blocking_send` errs.
+        let (tx5, rx5) = tokio::sync::mpsc::channel::<Event>(1);
+        drop(rx5);
+        pump(vec![Ok("data: x\n\n".to_string())], &tx5).await;
+        // Named frame — `event:` sets the SSE event name.
+        let (tx6, mut rx6) = tokio::sync::mpsc::channel::<Event>(8);
+        pump(vec![Ok("event: tick\ndata: {}\n\n".to_string())], &tx6).await;
+        assert!(rx6.recv().await.is_some());
+        // A frame boundary with no collected data — the bare keep-alive
+        // arm (upstream blank lines between heartbeats emit nothing).
+        let (tx7, mut rx7) = tokio::sync::mpsc::channel::<Event>(8);
+        pump(
+            vec![Ok("\n".to_string()), Ok("data: x\n\n".to_string())],
+            &tx7,
+        )
+        .await;
+        assert!(rx7.recv().await.is_some());
+        // `Read::read` — `read_line` only uses fill_buf/consume, so
+        // drive the impl's own arms directly.
+        let mut r = ScriptReader {
+            lines: vec![
+                Ok("ab".to_string()),
+                io(Error::other("x")),
+                Ok("z".to_string()),
+            ],
+        };
+        let mut b = [0u8; 1];
+        assert_eq!(r.read(&mut b).unwrap(), 1); // partial copy
+        assert_eq!(r.read(&mut b).unwrap(), 1); // drains "b"
+        assert!(r.read(&mut b).is_err()); // queued error
+        assert_eq!(r.read(&mut b).unwrap(), 1); // "z"
+        assert_eq!(r.read(&mut b).unwrap(), 0); // EOF
         // is_timeout arms: WouldBlock + a wrapped ureq::Error::Timeout.
         assert!(is_timeout(&Error::from(ErrorKind::TimedOut)));
         assert!(is_timeout(&Error::from(ErrorKind::WouldBlock)));
@@ -504,5 +532,14 @@ mod cov_tests {
             res.headers().get(header::CONTENT_TYPE).unwrap(),
             "application/json"
         );
+
+        // A body that fails mid-stream → the `to_bytes` error arm.
+        let state = test_state("http://127.0.0.1:1");
+        let body = Body::from_stream(futures::stream::once(async {
+            Err::<axum::body::Bytes, std::io::Error>(std::io::Error::other("boom"))
+        }));
+        let req = Request::post("/api/sessions").body(body).unwrap();
+        let res = passthrough(State(state), req).await;
+        assert_eq!(res.status(), StatusCode::PAYLOAD_TOO_LARGE);
     }
 }

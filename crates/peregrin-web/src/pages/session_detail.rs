@@ -425,8 +425,10 @@ pub fn SessionPanel(
             node_rows.set(nodes.get().and_then(Result::ok).unwrap_or_default());
         });
     }
-    // The nodes effect is hydrate-only — seed two registry rows under
-    // coverage so the transfer affordance + target list render.
+    // The nodes effect is hydrate-only — seed registry rows under
+    // coverage so the transfer affordance + target list render. The
+    // extra shapes cover the sheet's fallback arms: an unlabeled id +
+    // `down` and a non-up/non-down ("checking") status badge.
     #[cfg(coverage)]
     node_rows.set(vec![
         NodeStatusDto {
@@ -439,8 +441,15 @@ pub fn SessionPanel(
         NodeStatusDto {
             id: "tower".into(),
             url: "http://b".into(),
-            label: "tower".into(),
-            status: "up".into(),
+            label: String::new(),
+            status: "down".into(),
+            last_seen_at: None,
+        },
+        NodeStatusDto {
+            id: "ghost".into(),
+            url: "http://c".into(),
+            label: "ghost".into(),
+            status: "checking".into(),
             last_seen_at: None,
         },
     ]);
@@ -468,26 +477,31 @@ pub fn SessionPanel(
     // Action closures fire only from DOM events — SSR tests never run
     // them, so their bodies are compiled out of coverage builds (the
     // `#[cfg(coverage)]` shell keeps the binding for handler wiring).
-    let do_attach = move |takeover: bool| {
-        #[cfg(not(coverage))]
-        {
-            if acting.get() {
-                return;
-            }
-            acting.set(true);
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                if let Some(res) =
-                    toast.outcome(attach_session(id, agent, takeover).await, "Attached")
-                {
-                    live_override.set(Some(res.attached));
-                    client.invalidate_query(crate::api::sessions_scope, ());
-                    summary.refetch();
+    let do_attach = {
+        let f = move |takeover: bool| {
+            #[cfg(not(coverage))]
+            {
+                if acting.get() {
+                    return;
                 }
-                acting.set(false);
-            });
-        }
+                acting.set(true);
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    if let Some(res) =
+                        toast.outcome(attach_session(id, agent, takeover).await, "Attached")
+                    {
+                        live_override.set(Some(res.attached));
+                        client.invalidate_query(crate::api::sessions_scope, ());
+                        summary.refetch();
+                    }
+                    acting.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f(true);
+        f
     };
     let do_detach = {
         let f = move || {
@@ -593,163 +607,193 @@ pub fn SessionPanel(
     // `POST /convert` — copy the session into another agent's store.
     // The response carries the *new* session's id; jump straight to it
     // on the merged list.
-    let do_convert = move |target: &'static str| {
-        #[cfg(not(coverage))]
-        {
-            if acting.get() {
-                return;
-            }
-            acting.set(true);
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                match convert_session(id, agent, target.to_string()).await {
-                    Ok(new_id) => {
-                        toast.success(format!("Converted to {target}"));
-                        client.invalidate_query(crate::api::sessions_scope, ());
-                        crate::app::nav_external(&session_href(&new_id, target));
-                    }
-                    Err(e) => toast.error(e.to_string()),
+    let do_convert = {
+        let f = move |target: &'static str| {
+            #[cfg(not(coverage))]
+            {
+                if acting.get() {
+                    return;
                 }
-                acting.set(false);
-            });
-        }
+                acting.set(true);
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    match convert_session(id, agent, target.to_string()).await {
+                        Ok(new_id) => {
+                            toast.success(format!("Converted to {target}"));
+                            client.invalidate_query(crate::api::sessions_scope, ());
+                            crate::app::nav_external(&session_href(&new_id, target));
+                        }
+                        Err(e) => toast.error(e.to_string()),
+                    }
+                    acting.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f("devin");
+        f
     };
     // Cross-node transfer — the hub exports the IR off this node and
     // imports it on the picked target (`docs/transfer.md`). `transfer_*`
     // flags are page-level like `acting` so a summary refetch can't
     // drop an in-flight submit's state.
-    let do_transfer = move |target: String, remap: Option<String>| {
-        #[cfg(not(coverage))]
-        {
-            if transfer_busy.get() {
-                return;
-            }
-            transfer_busy.set(true);
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                match transfer_session(id, agent, target.clone(), remap).await {
-                    Ok(res) => {
-                        transfer_open.set(false);
-                        client.invalidate_query(crate::api::sessions_scope, ());
-                        if res.warnings.is_empty() {
-                            toast.success(format!("Transferred to {target}."));
-                        } else {
-                            toast.info(format!(
-                                "Transferred to {target} with {} warning(s).",
-                                res.warnings.len()
-                            ));
-                        }
-                    }
-                    Err(e) => toast.error(e.to_string()),
+    let do_transfer = {
+        let f = move |target: String, remap: Option<String>| {
+            #[cfg(not(coverage))]
+            {
+                if transfer_busy.get() {
+                    return;
                 }
-                transfer_busy.set(false);
-            });
-        }
+                transfer_busy.set(true);
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    match transfer_session(id, agent, target.clone(), remap).await {
+                        Ok(res) => {
+                            transfer_open.set(false);
+                            client.invalidate_query(crate::api::sessions_scope, ());
+                            if res.warnings.is_empty() {
+                                toast.success(format!("Transferred to {target}."));
+                            } else {
+                                toast.info(format!(
+                                    "Transferred to {target} with {} warning(s).",
+                                    res.warnings.len()
+                                ));
+                            }
+                        }
+                        Err(e) => toast.error(e.to_string()),
+                    }
+                    transfer_busy.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f("workbench".to_string(), None);
+        f
     };
     // Meta-overlay toggles — `PATCH /api/sessions/{id}` `{pinned}` /
     // `{archived}` / `{projectIds}`, same write path as the list's
     // context menu.
-    let do_pin = move |pinned: bool| {
-        #[cfg(not(coverage))]
-        {
-            if acting.get() {
-                return;
-            }
-            acting.set(true);
-            let id = session_id();
-            let agent = agent();
-            let ok = if pinned { "Pinned" } else { "Unpinned" };
-            crate::app::spawn_under(owner.get_value(), async move {
-                if toast
-                    .outcome(pin_session(id, agent, pinned).await, ok)
-                    .is_some()
-                {
-                    client.invalidate_query(crate::api::sessions_scope, ());
-                    summary.refetch();
+    let do_pin = {
+        let f = move |pinned: bool| {
+            #[cfg(not(coverage))]
+            {
+                if acting.get() {
+                    return;
                 }
-                acting.set(false);
-            });
-        }
+                acting.set(true);
+                let id = session_id();
+                let agent = agent();
+                let ok = if pinned { "Pinned" } else { "Unpinned" };
+                crate::app::spawn_under(owner.get_value(), async move {
+                    if toast
+                        .outcome(pin_session(id, agent, pinned).await, ok)
+                        .is_some()
+                    {
+                        client.invalidate_query(crate::api::sessions_scope, ());
+                        summary.refetch();
+                    }
+                    acting.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f(true);
+        f
     };
-    let do_archive = move |archived: bool| {
-        #[cfg(not(coverage))]
-        {
-            if acting.get() {
-                return;
-            }
-            acting.set(true);
-            let id = session_id();
-            let agent = agent();
-            let ok = if archived { "Archived" } else { "Unarchived" };
-            crate::app::spawn_under(owner.get_value(), async move {
-                if toast
-                    .outcome(archive_session(id, agent, archived).await, ok)
-                    .is_some()
-                {
-                    client.invalidate_query(crate::api::sessions_scope, ());
-                    summary.refetch();
+    let do_archive = {
+        let f = move |archived: bool| {
+            #[cfg(not(coverage))]
+            {
+                if acting.get() {
+                    return;
                 }
-                acting.set(false);
-            });
-        }
+                acting.set(true);
+                let id = session_id();
+                let agent = agent();
+                let ok = if archived { "Archived" } else { "Unarchived" };
+                crate::app::spawn_under(owner.get_value(), async move {
+                    if toast
+                        .outcome(archive_session(id, agent, archived).await, ok)
+                        .is_some()
+                    {
+                        client.invalidate_query(crate::api::sessions_scope, ());
+                        summary.refetch();
+                    }
+                    acting.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f(true);
+        f
     };
     // `{projectIds}` replaces wholesale — read the freshest summary
     // for the current set so toggling one project keeps the rest.
-    let toggle_project = move |key: String| {
-        #[cfg(not(coverage))]
-        {
-            if acting.get() {
-                return;
-            }
-            acting.set(true);
-            let id = session_id();
-            let agent = agent();
-            let ids = summary.get().and_then(Result::ok).map_or_else(
-                || vec![key.clone()],
-                |s| {
-                    if s.project_ids.contains(&key) {
-                        s.project_ids
-                            .iter()
-                            .filter(|p| **p != key)
-                            .cloned()
-                            .collect()
-                    } else {
-                        let mut ids = s.project_ids.clone();
-                        ids.push(key.clone());
-                        ids
-                    }
-                },
-            );
-            crate::app::spawn_under(owner.get_value(), async move {
-                if toast
-                    .outcome(
-                        set_session_projects(id, agent, ids).await,
-                        "Projects updated",
-                    )
-                    .is_some()
-                {
-                    client.invalidate_query(crate::api::sessions_scope, ());
-                    summary.refetch();
+    let toggle_project = {
+        let f = move |key: String| {
+            #[cfg(not(coverage))]
+            {
+                if acting.get() {
+                    return;
                 }
-                acting.set(false);
-            });
-        }
+                acting.set(true);
+                let id = session_id();
+                let agent = agent();
+                let ids = summary.get().and_then(Result::ok).map_or_else(
+                    || vec![key.clone()],
+                    |s| {
+                        if s.project_ids.contains(&key) {
+                            s.project_ids
+                                .iter()
+                                .filter(|p| **p != key)
+                                .cloned()
+                                .collect()
+                        } else {
+                            let mut ids = s.project_ids.clone();
+                            ids.push(key.clone());
+                            ids
+                        }
+                    },
+                );
+                crate::app::spawn_under(owner.get_value(), async move {
+                    if toast
+                        .outcome(
+                            set_session_projects(id, agent, ids).await,
+                            "Projects updated",
+                        )
+                        .is_some()
+                    {
+                        client.invalidate_query(crate::api::sessions_scope, ());
+                        summary.refetch();
+                    }
+                    acting.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f("p1".to_string());
+        f
     };
     // `ConfirmDialog::on_confirm` requires `Send`, but `do_delete`
     // captures `use_navigate` (the router context holds `!Send`
     // browser handles on wasm), so the dialog flips this flag and the
     // effect performs the delete inside the component owner.
     let delete_confirmed = RwSignal::new(false);
-    Effect::new(move |_| {
-        #[cfg(not(coverage))]
-        {
-            if delete_confirmed.get() {
-                delete_confirmed.set(false);
-                do_delete();
+    Effect::new({
+        let eff = move |_| {
+            #[cfg(not(coverage))]
+            {
+                if delete_confirmed.get() {
+                    delete_confirmed.set(false);
+                    do_delete();
+                }
             }
-        }
+        };
+        #[cfg(coverage)]
+        eff(None);
+        eff
     });
 
     // Older pages prepended on demand — `before` = the oldest loaded
@@ -768,20 +812,31 @@ pub fn SessionPanel(
     // reconnecting pill, the permission card, the "Thinking…" row).
     #[cfg(coverage)]
     {
-        conn_tracker.update(|t| {
-            t.observe(true);
-        });
-        conn_state.set(Some(RwSignal::new(ConnectionReadyState::Closed).into()));
-        older.set(vec![HistoryPageDto {
-            start: 3,
-            total: 8,
-            messages: vec![HistoryMessageDto {
-                role: "user".into(),
-                content: "earlier page".into(),
-                created_at: 1_791_441_000_000.0,
-                ..HistoryMessageDto::default()
-            }],
-        }]);
+        // Only s1 gets the "was open, now Closed" pair — other routes
+        // exercise the `reconnecting == false` pill arm.
+        if session_id() == "s1" {
+            conn_tracker.update(|t| {
+                t.observe(true);
+            });
+            conn_state.set(Some(RwSignal::new(ConnectionReadyState::Closed).into()));
+        }
+        // s1 carries a prepended page *and* `older_loading` — s7 goes
+        // without the page so `has_older`'s empty-`older` arm consults
+        // the resource's `start` (`latest_start`); other sessions
+        // carry the page without the loading flag so the button's
+        // idle label arm also renders.
+        if !matches!(session_id().as_str(), "missing" | "s7") {
+            older.set(vec![HistoryPageDto {
+                start: 3,
+                total: 8,
+                messages: vec![HistoryMessageDto {
+                    role: "user".into(),
+                    content: "earlier page".into(),
+                    created_at: 1_791_441_000_000.0,
+                    ..HistoryMessageDto::default()
+                }],
+            }]);
+        }
         live.set(LiveTranscript {
             entries: vec![
                 peregrin_web_core::transcript::LiveEntry {
@@ -865,6 +920,19 @@ pub fn SessionPanel(
                         "type": "content",
                         "content": {"type": "text", "text": "hello"},
                     })],
+                },
+                // done+error → the `"error"` status arm.
+                peregrin_web_core::transcript::LiveEntry {
+                    key: "c0".into(),
+                    kind: LiveKind::Tool,
+                    title: "run_command".into(),
+                    text: "false".into(),
+                    result: Some("boom".into()),
+                    done: true,
+                    error: true,
+                    locations: Vec::new(),
+                    diffs: Vec::new(),
+                    contents: Vec::new(),
                 },
                 peregrin_web_core::transcript::LiveEntry {
                     key: "c2".into(),
@@ -1103,44 +1171,54 @@ pub fn SessionPanel(
     // Our side of the attach — `true` while this client holds the live
     // attach (the composer sends straight through). Read only from the
     // send closures — the `#[cfg(coverage)]` arm keeps the signature.
-    let is_live = move || {
+    let is_live = {
+        let f = move || {
+            #[cfg(coverage)]
+            {
+                false
+            }
+            #[cfg(not(coverage))]
+            {
+                summary
+                    .get()
+                    .and_then(Result::ok)
+                    .is_some_and(|s| live_override.get().unwrap_or(s.live))
+            }
+        };
         #[cfg(coverage)]
-        {
-            false
-        }
-        #[cfg(not(coverage))]
-        {
-            summary
-                .get()
-                .and_then(Result::ok)
-                .is_some_and(|s| live_override.get().unwrap_or(s.live))
-        }
+        f();
+        f
     };
 
     // POST /prompt — the actual send. Shared by `submit` and the
     // takeover-confirm path.
-    let do_send = move |text: String| {
-        #[cfg(not(coverage))]
-        {
-            sending.set(true);
-            let parts = attachments_payload(&attachments.get_untracked());
-            let echo = prompt_echo(&text, parts.len());
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                match send_prompt(id, agent, text, parts).await {
-                    Ok(()) => {
-                        draft.set(String::new());
-                        attachments.set(Vec::new());
-                        live.update(|t| t.push_user(&echo));
-                        client.invalidate_query(crate::api::pending_scope, ());
-                        client.invalidate_query(crate::api::sessions_scope, ());
+    let do_send = {
+        let f = move |text: String| {
+            #[cfg(not(coverage))]
+            {
+                sending.set(true);
+                let parts = attachments_payload(&attachments.get_untracked());
+                let echo = prompt_echo(&text, parts.len());
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    match send_prompt(id, agent, text, parts).await {
+                        Ok(()) => {
+                            draft.set(String::new());
+                            attachments.set(Vec::new());
+                            live.update(|t| t.push_user(&echo));
+                            client.invalidate_query(crate::api::pending_scope, ());
+                            client.invalidate_query(crate::api::sessions_scope, ());
+                        }
+                        Err(e) => toast.error(e.to_string()),
                     }
-                    Err(e) => toast.error(e.to_string()),
-                }
-                sending.set(false);
-            });
-        }
+                    sending.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f("x".to_string());
+        f
     };
 
     // Per-message rewind — a transcript row's `nodeId` is the cut
@@ -1149,12 +1227,17 @@ pub fn SessionPanel(
     // while the dialog is open.
     let rewind_target: RwSignal<Option<i64>> = RwSignal::new(None);
     let confirm_rewind = RwSignal::new(cfg!(coverage));
-    let on_rewind = move |node: i64| {
-        #[cfg(not(coverage))]
-        {
-            rewind_target.set(Some(node));
-            confirm_rewind.set(true);
-        }
+    let on_rewind = {
+        let f = move |node: i64| {
+            #[cfg(not(coverage))]
+            {
+                rewind_target.set(Some(node));
+                confirm_rewind.set(true);
+            }
+        };
+        #[cfg(coverage)]
+        f(0);
+        f
     };
     let do_rewind = {
         let f = move || {
@@ -1200,58 +1283,68 @@ pub fn SessionPanel(
     // this flag and the effect runs the rewind inside the owner, the
     // same detour `delete_confirmed` uses.
     let rewind_confirmed = RwSignal::new(false);
-    Effect::new(move |_| {
-        #[cfg(not(coverage))]
-        {
-            if rewind_confirmed.get() {
-                rewind_confirmed.set(false);
-                do_rewind();
+    Effect::new({
+        let eff = move |_| {
+            #[cfg(not(coverage))]
+            {
+                if rewind_confirmed.get() {
+                    rewind_confirmed.set(false);
+                    do_rewind();
+                }
             }
-        }
+        };
+        #[cfg(coverage)]
+        eff(None);
+        eff
     });
 
     // Send-through-attach — attach (`takeover` when the dialog asked),
     // then fire the unchanged draft once the lock is ours. A plain
     // attach that lands read-only means the session is held by
     // someone else: the takeover dialog takes it from there.
-    let attach_and_send = move |takeover: bool| {
-        #[cfg(not(coverage))]
-        {
-            let text = draft.get().trim().to_string();
-            let empty = text.is_empty() && attachments.read().is_empty();
-            if empty || sending.get() {
-                return;
-            }
-            sending.set(true);
-            let parts = attachments_payload(&attachments.get_untracked());
-            let echo = prompt_echo(&text, parts.len());
-            let id = session_id();
-            let agent = agent();
-            crate::app::spawn_under(owner.get_value(), async move {
-                match attach_session(id.clone(), agent.clone(), takeover).await {
-                    Ok(res) => {
-                        live_override.set(Some(res.attached));
-                        client.invalidate_query(crate::api::sessions_scope, ());
-                        summary.refetch();
-                        if res.attached && !res.read_only {
-                            match send_prompt(id, agent, text, parts).await {
-                                Ok(()) => {
-                                    draft.set(String::new());
-                                    attachments.set(Vec::new());
-                                    live.update(|t| t.push_user(&echo));
-                                    client.invalidate_query(crate::api::pending_scope, ());
-                                }
-                                Err(e) => toast.error(e.to_string()),
-                            }
-                        } else {
-                            confirm_takeover.set(true);
-                        }
-                    }
-                    Err(e) => toast.error(e.to_string()),
+    let attach_and_send = {
+        let f = move |takeover: bool| {
+            #[cfg(not(coverage))]
+            {
+                let text = draft.get().trim().to_string();
+                let empty = text.is_empty() && attachments.read().is_empty();
+                if empty || sending.get() {
+                    return;
                 }
-                sending.set(false);
-            });
-        }
+                sending.set(true);
+                let parts = attachments_payload(&attachments.get_untracked());
+                let echo = prompt_echo(&text, parts.len());
+                let id = session_id();
+                let agent = agent();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    match attach_session(id.clone(), agent.clone(), takeover).await {
+                        Ok(res) => {
+                            live_override.set(Some(res.attached));
+                            client.invalidate_query(crate::api::sessions_scope, ());
+                            summary.refetch();
+                            if res.attached && !res.read_only {
+                                match send_prompt(id, agent, text, parts).await {
+                                    Ok(()) => {
+                                        draft.set(String::new());
+                                        attachments.set(Vec::new());
+                                        live.update(|t| t.push_user(&echo));
+                                        client.invalidate_query(crate::api::pending_scope, ());
+                                    }
+                                    Err(e) => toast.error(e.to_string()),
+                                }
+                            } else {
+                                confirm_takeover.set(true);
+                            }
+                        }
+                        Err(e) => toast.error(e.to_string()),
+                    }
+                    sending.set(false);
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f(false);
+        f
     };
 
     // The composer stays editable while the session is held
@@ -1289,14 +1382,19 @@ pub fn SessionPanel(
     // per-message "reply" action can focus it after inserting the
     // `> `-quoted block into the draft.
     let composer_ref = NodeRef::<leptos::html::Textarea>::new();
-    let quote_reply = move |text: &str| {
-        #[cfg(not(coverage))]
-        {
-            draft.update(|d| *d = draft_with_quote(d, text));
-            if let Some(el) = composer_ref.get() {
-                let _ = el.focus();
+    let quote_reply = {
+        let f = move |text: &str| {
+            #[cfg(not(coverage))]
+            {
+                draft.update(|d| *d = draft_with_quote(d, text));
+                if let Some(el) = composer_ref.get() {
+                    let _ = el.focus();
+                }
             }
-        }
+        };
+        #[cfg(coverage)]
+        f("q");
+        f
     };
 
     let running = move || live.read().running;
@@ -1446,7 +1544,7 @@ pub fn SessionPanel(
                         details_open.set(true);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                         >
@@ -1812,14 +1910,19 @@ pub fn SessionPanel(
                                                         attr:r#type="text"
                                                         attr:maxlength="200"
                                                         attr:placeholder="Session title"
-                                                        prop:value=move || rename_draft.get()
+                                                        prop:value={
+                                                            let f = move || rename_draft.get();
+                                                            #[cfg(coverage)]
+                                                            let _ = f();
+                                                            f
+                                                        }
                                                         on:input={
                     #[cfg(not(coverage))]
                     let f = move |ev: leptos::ev::Event| {
                         rename_draft.set(event_target_value(&ev));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                                         on:keydown={
@@ -1833,7 +1936,7 @@ pub fn SessionPanel(
                                                             }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                                     />
@@ -1938,7 +2041,7 @@ pub fn SessionPanel(
                         toggle_project(p.id.clone());
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                                                                     >
@@ -2236,7 +2339,7 @@ pub fn SessionPanel(
                                             }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                     >
@@ -2437,9 +2540,14 @@ fn HistoryRow(
         // the FnMut `actions` closure can lend each render a copy.
         let copy_reset = std::sync::Arc::new(
             leptos_use::use_timeout_fn(
-                move |()| {
-                    #[cfg(not(coverage))]
-                    copied.set(false);
+                {
+                    let f = move |()| {
+                        #[cfg(not(coverage))]
+                        copied.set(false);
+                    };
+                    #[cfg(coverage)]
+                    f(());
+                    f
                 },
                 1_500.0,
             )
@@ -2476,7 +2584,7 @@ fn HistoryRow(
                                         }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                 >
@@ -2498,7 +2606,7 @@ fn HistoryRow(
                         on_quote(&text);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                 >
@@ -2521,7 +2629,7 @@ fn HistoryRow(
                         on_rewind(node);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                 >
@@ -2825,7 +2933,7 @@ fn ContextCard(context: SystemContext) -> impl IntoView {
                         active.set(i);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                 >
@@ -3247,14 +3355,19 @@ fn PromptBox(
     let commit_model_enter = commit_model.clone();
     // Enter sends; Shift+Enter inserts a newline; an active IME
     // composition owns Enter entirely.
-    let on_keydown = move |ev: leptos::ev::KeyboardEvent| {
-        #[cfg(not(coverage))]
-        {
-            if ev.key() == "Enter" && !ev.shift_key() && !ev.is_composing() {
-                ev.prevent_default();
-                submit();
+    let on_keydown = {
+        let f = move |ev: leptos::ev::KeyboardEvent| {
+            #[cfg(not(coverage))]
+            {
+                if ev.key() == "Enter" && !ev.shift_key() && !ev.is_composing() {
+                    ev.prevent_default();
+                    submit();
+                }
             }
-        }
+        };
+        #[cfg(coverage)]
+        f(crate::synth_event());
+        f
     };
     view! {
         <div class="space-y-2">
@@ -3299,7 +3412,7 @@ fn PromptBox(
                         on_dragover(&ev, dragging);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                 on:dragleave={
@@ -3308,7 +3421,7 @@ fn PromptBox(
                         on_dragleave(&ev, dragging);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                 on:drop={
@@ -3317,7 +3430,7 @@ fn PromptBox(
                         on_drop(&ev, attachments, dragging, toast);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
             >
@@ -3363,7 +3476,7 @@ fn PromptBox(
                                                         });
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                                 >
@@ -3387,7 +3500,7 @@ fn PromptBox(
                         draft.set(event_target_value(&ev));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                     on:keydown=on_keydown
@@ -3397,7 +3510,7 @@ fn PromptBox(
                         stage_pasted(&ev, attachments, toast);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                     rows=1
@@ -3419,7 +3532,7 @@ fn PromptBox(
                                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                         >
@@ -3439,7 +3552,7 @@ fn PromptBox(
                         stage_picked(&ev, attachments, toast);
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                         />
@@ -3452,8 +3565,13 @@ fn PromptBox(
                             placeholder="agent default"
                             title="Model for the next agent spawn — clear to restore the agent default"
                             maxlength="100"
-                            prop:value=move || {
-                                model_draft.get().unwrap_or_else(|| model.clone().unwrap_or_default())
+                            prop:value={
+                                let f = move || {
+                                    model_draft.get().unwrap_or_else(|| model.clone().unwrap_or_default())
+                                };
+                                #[cfg(coverage)]
+                                f();
+                                f
                             }
                             on:input={
                     #[cfg(not(coverage))]
@@ -3461,7 +3579,7 @@ fn PromptBox(
                         model_draft.set(Some(event_target_value(&ev)));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                             on:change={
@@ -3470,7 +3588,7 @@ fn PromptBox(
                         commit_model();
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                             on:keydown={
@@ -3484,7 +3602,7 @@ fn PromptBox(
                                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                         />
@@ -3515,7 +3633,7 @@ fn PromptBox(
                                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                         >
@@ -3553,27 +3671,32 @@ fn PermissionCard(
     let error: RwSignal<Option<String>> =
         RwSignal::new(cfg!(coverage).then(|| "seeded error".to_string()));
     let request_id = permission.request_id.clone();
-    let respond = move |option_id: Option<String>| {
-        #[cfg(not(coverage))]
-        {
-            if answering.get() {
-                return;
-            }
-            answering.set(true);
-            error.set(None);
-            let id = session_id.clone();
-            let agent = agent.clone();
-            let request_id = request_id.clone();
-            crate::app::spawn_under(owner.get_value(), async move {
-                match answer_permission(id, agent, request_id, option_id).await {
-                    Ok(()) => live.update(|t| t.pending_permission = None),
-                    Err(e) => {
-                        error.set(Some(e.to_string()));
-                        answering.set(false);
-                    }
+    let respond = {
+        let f = move |option_id: Option<String>| {
+            #[cfg(not(coverage))]
+            {
+                if answering.get() {
+                    return;
                 }
-            });
-        }
+                answering.set(true);
+                error.set(None);
+                let id = session_id.clone();
+                let agent = agent.clone();
+                let request_id = request_id.clone();
+                crate::app::spawn_under(owner.get_value(), async move {
+                    match answer_permission(id, agent, request_id, option_id).await {
+                        Ok(()) => live.update(|t| t.pending_permission = None),
+                        Err(e) => {
+                            error.set(Some(e.to_string()));
+                            answering.set(false);
+                        }
+                    }
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f(None);
+        f
     };
     view! {
         <Card class="border-warning/40">
@@ -3650,9 +3773,10 @@ fn DetailRow(
 ) -> impl IntoView {
     #[allow(unused)]
     let owner = StoredValue::new(Owner::current().unwrap_or_default());
-    // `copied` varies per row under coverage — mono rows flash the
-    // check, plain rows keep the copy glyph.
-    let copied = RwSignal::new(cfg!(coverage) && mono);
+    // `copied` varies per row under coverage — the ID row flashes the
+    // check, others keep the copy glyph (the SSR render has no copy
+    // events to drive it).
+    let copied = RwSignal::new(cfg!(coverage) && label == "ID");
     let copy_tip = format!("Copy {label}");
     let value_cls = if mono {
         "min-w-0 flex-1 truncate font-mono text-xs"
@@ -3685,7 +3809,7 @@ fn DetailRow(
                                 }
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                         >
@@ -3834,6 +3958,10 @@ fn CheckpointRow(
             });
         }
     };
+    // Under coverage `run` is never reached through the gated bodies —
+    // invoke it once so its region registers.
+    #[cfg(coverage)]
+    run("restore");
     let run_restore = {
         let run = run.clone();
         let f = move || {
@@ -3993,10 +4121,140 @@ mod ctx_tab_tests {
             let _ = ctx_tab(&c, 1);
             let _ = ctx_tab(&c, 2);
             let _ = ctx_tab(&c, 3);
+            // Full variant → the `prompt_sections` list arm.
+            let _ = ctx_prompt(&c);
             // Prompt-only variant → the `prompt_sections.is_empty` arm.
             let mut c2 = ctx();
             c2.prompt_sections = vec![];
             let _ = ctx_prompt(&c2);
+            // Empty prompt → the `prompt_text.is_empty` skip arm.
+            let mut c3 = ctx();
+            c3.prompt_text = String::new();
+            let _ = ctx_prompt(&c3);
         });
+    }
+
+    /// The `summary.is_empty()` fallback ladder — no
+    /// workspaces/platform/os/date rows means the title line reads off
+    /// the rules count, and ≥2 visible tabs take the off-tab class.
+    /// Rendering (not just building) is required — the `class=`
+    /// closures evaluate during the HTML pass.
+    #[tokio::test]
+    async fn context_card_summary_arms() {
+        use futures::StreamExt;
+        let _ = any_spawner::Executor::init_tokio();
+        tokio::task::LocalSet::new()
+            .run_until(async {
+                async fn render(owner: Owner, c: SystemContext) -> String {
+                    owner
+                        .with(|| view! { <ContextCard context=c/> }.to_html_stream_in_order())
+                        .collect::<String>()
+                        .await
+                }
+                let owner = Owner::new();
+                let mut c = ctx();
+                c.workspaces = Vec::new();
+                c.platform = None;
+                c.os_version = None;
+                c.date = None;
+                c.reports = Vec::new();
+                c.skills = Vec::new();
+                c.prompt_text = String::new();
+                c.prompt_sections = Vec::new();
+                // One rule, no other summary parts → "1 rule".
+                c.rules.truncate(1);
+                let h = render(owner.clone(), c.clone()).await;
+                assert!(h.contains("1 rule"), "rule-count arm: {h}");
+                // Two rules + a prompt → "N rules" and a second visible
+                // tab (the off-tab class arm).
+                let mut c2 = c.clone();
+                c2.rules = ctx().rules;
+                c2.prompt_text = "You are Devin.".into();
+                let h = render(owner.clone(), c2).await;
+                assert!(h.contains("rules"), "rules-count arm: {h}");
+                // No rules, prompt only → "System prompt".
+                c.rules = Vec::new();
+                c.prompt_text = "You are Devin.".into();
+                let h = render(owner.clone(), c).await;
+                assert!(h.contains("System prompt"), "prompt arm: {h}");
+            })
+            .await;
+    }
+}
+
+/// `CheckpointList` drives off a plain `Resource` prop — an
+/// unresolved/pending resource exercises the skeleton arm the SSR
+/// pages can never produce (their fetchers resolve inside Suspense
+/// before the match runs).
+#[cfg(all(test, feature = "ssr"))]
+mod checkpoint_tests {
+    use super::*;
+    use futures::StreamExt;
+    use std::sync::Arc;
+
+    async fn render(
+        make: impl FnOnce() -> Resource<Result<Vec<CheckpointDto>, ServerFnError>>,
+    ) -> String {
+        let owner = Owner::new_root(Some(Arc::new(hydration_context::SsrSharedContext::new())));
+        // Bind the resource to the render's owner — an ambient one is
+        // disposed before the component's reads.
+        let res = owner.with(|| {
+            leptos_fetch::QueryClient::new().provide();
+            crate::components::toast::provide_toaster();
+            make()
+        });
+        // Resolved resources — give the spawned fetcher a turn. A
+        // pending one stays `None`, which is what the skeleton arm
+        // needs.
+        for _ in 0..20 {
+            if res.get().is_some() {
+                break;
+            }
+            tokio::task::yield_now().await;
+        }
+        let stream = owner.with(|| {
+            view! {
+                <CheckpointList
+                    checkpoints=res
+                    session_id="s1".to_string()
+                    agent=None
+                    on_changed=|| {}
+                />
+            }
+            .to_html_stream_in_order()
+        });
+        let html = stream.collect::<String>().await;
+        drop(owner);
+        html
+    }
+
+    #[tokio::test]
+    async fn checkpoint_list_arms() {
+        let _ = any_spawner::Executor::init_tokio();
+        tokio::task::LocalSet::new()
+            .run_until(async {
+                // Pending → skeletons.
+                let h = render(|| {
+                    Resource::new(
+                        || (),
+                        |()| std::future::pending::<Result<Vec<CheckpointDto>, ServerFnError>>(),
+                    )
+                })
+                .await;
+                assert!(h.contains("animate-pulse"), "pending arm: {h}");
+                // Some(Err) → the retry banner.
+                let h = render(|| {
+                    Resource::new(
+                        || (),
+                        |()| async { Err(ServerFnError::new("checkpoint down")) },
+                    )
+                })
+                .await;
+                assert!(h.contains("checkpoint down"), "err arm: {h}");
+                // Some(Ok([])) → the empty state.
+                let h = render(|| Resource::new(|| (), |()| async { Ok(Vec::new()) })).await;
+                assert!(h.contains("No checkpoints recorded."), "empty arm: {h}");
+            })
+            .await;
     }
 }

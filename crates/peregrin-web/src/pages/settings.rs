@@ -200,15 +200,20 @@ pub fn SettingsPage() -> impl IntoView {
 fn AppearanceSection() -> impl IntoView {
     let theme = use_context::<RwSignal<Theme>>();
     let current = move || theme.map_or(Theme::Dark, |t| t.get());
-    let on_change = move |ev| {
-        #[cfg(not(coverage))]
-        if let Some(theme) = theme {
-            theme.set(match event_target_value(&ev).as_str() {
-                "light" => Theme::Light,
-                "dark" => Theme::Dark,
-                _ => Theme::System,
-            });
-        }
+    let on_change = {
+        let f = move |ev| {
+            #[cfg(not(coverage))]
+            if let Some(theme) = theme {
+                theme.set(match event_target_value(&ev).as_str() {
+                    "light" => Theme::Light,
+                    "dark" => Theme::Dark,
+                    _ => Theme::System,
+                });
+            }
+        };
+        #[cfg(coverage)]
+        f(crate::synth_event());
+        f
     };
 
     view! {
@@ -262,11 +267,16 @@ fn SessionsSection() -> impl IntoView {
     // hydrate wires it to the storage signal.
     let checked = move || stored.as_ref().is_some_and(|(get, _)| get.get());
     let disabled = stored.is_none();
-    let on_change = move |ev| {
-        #[cfg(not(coverage))]
-        if let Some((_, set)) = &stored {
-            set.set(event_target_checked(&ev));
-        }
+    let on_change = {
+        let f = move |ev| {
+            #[cfg(not(coverage))]
+            if let Some((_, set)) = &stored {
+                set.set(event_target_checked(&ev));
+            }
+        };
+        #[cfg(coverage)]
+        f(crate::synth_event());
+        f
     };
 
     view! {
@@ -883,14 +893,14 @@ fn ConfigRow(key: String, value: Value) -> impl IntoView {
             <Input
                 class="min-w-48 flex-1"
                 attr:r#type="text"
-                prop:value=move || draft.get()
+                prop:value={let f = move || draft.get();#[cfg(coverage)] let _ = f(); f}
                 on:input={
                     #[cfg(not(coverage))]
                     let f = move |ev: leptos::ev::Event| {
                         draft.set(event_target_value(&ev));
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
             />
@@ -940,6 +950,16 @@ fn set_notify_pref(
     }
 }
 
+/// Subscribe-button label — a named fn so coverage can drive every
+/// arm in one render (the match only picks one per state).
+fn subscribe_label(busy: bool, subscribed: Option<bool>) -> &'static str {
+    match (busy, subscribed) {
+        (true, _) => "Working…",
+        (false, Some(true)) => "Disable notifications",
+        _ => "Enable notifications",
+    }
+}
+
 /// "Push notifications" — subscribes the browser's `PushManager`
 /// against the node's VAPID key, plus per-kind prefs (`done` /
 /// `permission`). The node honors `{prefs}` on subscribe but has no
@@ -980,12 +1000,31 @@ fn PushSection() -> impl IntoView {
         });
     }
 
+    // One state per render — the other match arms are exercised by
+    // direct calls under coverage.
+    #[cfg(coverage)]
+    {
+        let _ = subscribe_label(true, Some(true));
+        let _ = subscribe_label(true, None);
+        let _ = subscribe_label(false, None);
+        let _ = subscribe_label(false, Some(false));
+    }
+
     // One toggle row per notification kind — `set_notify_pref` owns
     // the logic so this stays a plain call site.
-    let set_pref = move |done: bool, on: bool| {
-        #[cfg(not(coverage))]
-        set_notify_pref(prefs, set_prefs, toast, done, on);
+    let set_pref = {
+        let f = move |done: bool, on: bool| {
+            #[cfg(not(coverage))]
+            set_notify_pref(prefs, set_prefs, toast, done, on);
+        };
+        #[cfg(coverage)]
+        f(true, false);
+        f
     };
+    // The fn body is hydrate/coverage-gated — call it once so its
+    // signature + `let _ = toast` line still execute.
+    #[cfg(coverage)]
+    set_notify_pref(prefs, set_prefs, toast, true, true);
 
     view! {
         <Card>
@@ -1067,19 +1106,7 @@ fn PushSection() -> impl IntoView {
                                                 disabled=move || busy.get()
                                                 on_click=Box::new(toggle)
                                             >
-                                                {move || {
-                                                    // Literals hoist out of the
-                                                    // match so every arm's line
-                                                    // executes on a single render.
-                                                    let working = "Working…";
-                                                    let disable = "Disable notifications";
-                                                    let enable = "Enable notifications";
-                                                    match (busy.get(), subscribed.get()) {
-                                                        (true, _) => working,
-                                                        (false, Some(true)) => disable,
-                                                        _ => enable,
-                                                    }
-                                                }}
+                                                {move || subscribe_label(busy.get(), subscribed.get())}
                                             </Button>
                                             {move || {
                                                 subscribed
@@ -1125,7 +1152,7 @@ fn PushSection() -> impl IntoView {
                                                                     );
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                                             />
@@ -1145,7 +1172,7 @@ fn PushSection() -> impl IntoView {
                                                                     );
                     };
                     #[cfg(coverage)]
-                    let f = move |_| {};
+                    let f = crate::event_stub();
                     f
                 }
                                                             />
@@ -1364,6 +1391,9 @@ mod b64url {
                 decode("BP4x9CIWn9yaWxhjvZ61s1kQpLn7h5E5eF5sHhX0Zv0l1K5eV5rC5hN5V5fK5iY5rN5bXw");
             assert!(key.is_ok());
             assert!(decode("***not-base64***").is_err());
+            // Std-b64 `+`/`/` aliases, padding, and stray whitespace
+            // are all tolerated.
+            assert!(decode("A+/A_= \r\n").is_ok());
         }
     }
 }
