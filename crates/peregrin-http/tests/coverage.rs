@@ -292,7 +292,7 @@ async fn route_sweep() {
     // Fallback + CORS preflight.
     call(&app, Method::GET, "/nope", None).await;
     let req = Request::options("/api/sessions")
-        .header("origin", "http://localhost:3000")
+        .header("origin", "http://localhost:13000")
         .body(Body::empty())
         .unwrap();
     app.clone().oneshot(req).await.unwrap();
@@ -397,7 +397,7 @@ async fn from_env_state_builds() {
         dir.path().join("n.json").display().to_string(),
     );
     vars.insert("PEREGRIN_HOST".into(), "127.0.0.1".into());
-    vars.insert("PEREGRIN_PORT".into(), "8787".into());
+    vars.insert("PEREGRIN_PORT".into(), "18787".into());
     vars.insert("PEREGRIN_TOKEN".into(), "t".into());
     vars.insert(
         "PEREGRIN_ORIGINS".into(),

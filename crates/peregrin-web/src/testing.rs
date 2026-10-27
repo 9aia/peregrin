@@ -457,14 +457,14 @@ impl FakeNodeApi {
             statuses: vec![
                 NodeStatusDto {
                     id: "n1".into(),
-                    url: "http://127.0.0.1:8787".into(),
+                    url: "http://127.0.0.1:18787".into(),
                     label: "workbench".into(),
                     status: "up".into(),
                     last_seen_at: Some("2026-10-08T06:40:34.123Z".into()),
                 },
                 NodeStatusDto {
                     id: "tower".into(),
-                    url: "http://192.168.1.10:8787".into(),
+                    url: "http://192.168.1.10:18787".into(),
                     label: "tower".into(),
                     status: "down".into(),
                     last_seen_at: None,

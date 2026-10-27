@@ -875,7 +875,7 @@ pub struct HttpNodeApi {
 
 #[cfg(feature = "ssr")]
 impl HttpNodeApi {
-    /// `base` is the node's origin, e.g. `http://127.0.0.1:8787`.
+    /// `base` is the node's origin, e.g. `http://127.0.0.1:18787`.
     pub fn new(base: impl Into<String>, token: Option<String>) -> Self {
         let config = ureq::Agent::config_builder()
             .http_status_as_error(false)

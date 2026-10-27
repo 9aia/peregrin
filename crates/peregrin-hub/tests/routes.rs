@@ -326,27 +326,27 @@ async fn auth_gate_and_login() {
 #[test]
 fn hub_config_parsing() {
     let d = HubConfig::from_map(&HashMap::new()).unwrap();
-    assert_eq!(d.port, 3000);
+    assert_eq!(d.port, 13000);
     let mut v = HashMap::new();
     v.insert("PEREGRIN_HUB_HOST".into(), "127.0.0.1".into());
-    v.insert("PEREGRIN_HUB_PORT".into(), "3001".into());
-    v.insert("PEREGRIN_NODE_URL".into(), "http://x:8787/".into());
+    v.insert("PEREGRIN_HUB_PORT".into(), "13001".into());
+    v.insert("PEREGRIN_NODE_URL".into(), "http://x:18787/".into());
     v.insert("PEREGRIN_NODE_TOKEN".into(), "".into());
     v.insert("PEREGRIN_HUB_TOKEN".into(), "".into());
     v.insert("LEPTOS_ENV".into(), "prod".into());
     let c = HubConfig::from_map(&v).unwrap();
-    assert_eq!(c.port, 3001);
-    assert_eq!(c.node_url, "http://x:8787");
+    assert_eq!(c.port, 13001);
+    assert_eq!(c.node_url, "http://x:18787");
     assert!(c.node_token.is_none());
     assert!(!c.dev);
     // Bad port → Err.
     v.insert("PEREGRIN_HUB_PORT".into(), "nope".into());
     assert!(HubConfig::from_map(&v).is_err());
-    v.insert("PEREGRIN_HUB_PORT".into(), "3000".into());
-    v.insert("PEREGRIN_PORT".into(), "3002".into());
+    v.insert("PEREGRIN_HUB_PORT".into(), "13000".into());
+    v.insert("PEREGRIN_PORT".into(), "13002".into());
     // `PEREGRIN_PORT` is the fallback — HUB_PORT wins.
     let c = HubConfig::from_map(&v).unwrap();
-    assert_eq!(c.port, 3000);
+    assert_eq!(c.port, 13000);
     // Non-loopback without a hub token → Err.
     v.remove("PEREGRIN_HUB_PORT");
     v.insert("PEREGRIN_HUB_HOST".into(), "0.0.0.0".into());

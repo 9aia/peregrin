@@ -7,8 +7,8 @@ mismatches, failed fetches). Exits 1 if any are found — agents can
 loop on it after UI changes without human eyes.
 
 Usage:
-    tools/browser-smoke.py                       # default localhost:3000, all routes
-    tools/browser-smoke.py http://127.0.0.1:3000/settings
+    tools/browser-smoke.py                       # default localhost:13000, all routes
+    tools/browser-smoke.py http://127.0.0.1:13000/settings
     tools/browser-smoke.py --shot /tmp/app.png URL  # also save a screenshot
 
 Exit codes: 0 clean, 1 console SEVERE / navigation error, 2 setup problem.
@@ -124,7 +124,7 @@ def main():
         die("need chrome + chromedriver (CHROME_BIN / PEREGRIN_CHROMEDRIVER)")
 
     if not urls:
-        urls = [f"http://localhost:3000{r}" for r in ROUTES]
+        urls = [f"http://localhost:13000{r}" for r in ROUTES]
 
     # Bind an ephemeral port ourselves — chromedriver's --port=0 prints
     # the choice on stderr only.

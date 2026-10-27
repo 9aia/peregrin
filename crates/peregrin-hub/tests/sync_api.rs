@@ -91,13 +91,13 @@ fn seed(projection: &peregrin_sync::ProjectionStore) {
 
 #[test]
 fn parses_node_lists() {
-    let nodes = parse_nodes("a=http://10.0.0.1:8787; b = http://laptop:8787@secret ; ");
+    let nodes = parse_nodes("a=http://10.0.0.1:18787; b = http://laptop:18787@secret ; ");
     assert_eq!(nodes.len(), 2);
     assert_eq!(nodes[0].id, "a");
-    assert_eq!(nodes[0].url, "http://10.0.0.1:8787");
+    assert_eq!(nodes[0].url, "http://10.0.0.1:18787");
     assert_eq!(nodes[0].token, None);
     assert_eq!(nodes[1].token.as_deref(), Some("secret"));
-    assert_eq!(nodes[1].url, "http://laptop:8787");
+    assert_eq!(nodes[1].url, "http://laptop:18787");
 }
 
 /// Boot resolution: an env `@token` seeds an empty store slot (the

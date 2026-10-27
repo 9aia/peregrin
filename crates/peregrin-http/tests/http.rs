@@ -207,7 +207,7 @@ fn mk_app(plane: &Arc<ControlPlane>) -> TestApp {
 fn get(path: &str) -> Request<Body> {
     Request::builder()
         .uri(path)
-        .header("origin", "http://localhost:3000")
+        .header("origin", "http://localhost:13000")
         .body(Body::empty())
         .unwrap()
 }
@@ -216,7 +216,7 @@ fn post(path: &str, body: Option<Value>) -> Request<Body> {
     Request::builder()
         .method("POST")
         .uri(path)
-        .header("origin", "http://localhost:3000")
+        .header("origin", "http://localhost:13000")
         .header("content-type", "application/json")
         .body(body.map_or_else(Body::empty, |b| Body::from(serde_json::to_vec(&b).unwrap())))
         .unwrap()
@@ -226,7 +226,7 @@ fn patch(path: &str, body: Value) -> Request<Body> {
     Request::builder()
         .method("PATCH")
         .uri(path)
-        .header("origin", "http://localhost:3000")
+        .header("origin", "http://localhost:13000")
         .header("content-type", "application/json")
         .body(Body::from(serde_json::to_vec(&body).unwrap()))
         .unwrap()
@@ -236,7 +236,7 @@ fn del(path: &str) -> Request<Body> {
     Request::builder()
         .method("DELETE")
         .uri(path)
-        .header("origin", "http://localhost:3000")
+        .header("origin", "http://localhost:13000")
         .body(Body::empty())
         .unwrap()
 }
@@ -266,15 +266,15 @@ async fn call(app: &Router, req: Request<Body>) -> (StatusCode, axum::http::Head
 #[test]
 fn env_parses_defaults_and_fail_fast() {
     let env = Env::from_map(&HashMap::new()).unwrap();
-    assert_eq!(env.port, 8787);
+    assert_eq!(env.port, 18787);
     assert_eq!(env.host, "127.0.0.1");
     assert_eq!(env.sse_keep_alive, Duration::from_millis(15_000));
     assert_eq!(env.held_watch, Duration::from_millis(5_000));
     assert_eq!(
         env.origins,
         vec![
-            "http://localhost:3000".to_string(),
-            "http://127.0.0.1:3000".to_string()
+            "http://localhost:13000".to_string(),
+            "http://127.0.0.1:13000".to_string()
         ]
     );
 
@@ -317,14 +317,14 @@ async fn cors_preflight_answers_204_and_allow_headers() {
     let req = Request::builder()
         .method("OPTIONS")
         .uri("/api/sessions")
-        .header("origin", "http://localhost:3000")
+        .header("origin", "http://localhost:13000")
         .body(Body::empty())
         .unwrap();
     let res = app.router.clone().oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NO_CONTENT);
     assert_eq!(
         res.headers().get("access-control-allow-origin").unwrap(),
-        "http://localhost:3000"
+        "http://localhost:13000"
     );
     assert_eq!(
         res.headers().get("access-control-allow-methods").unwrap(),
@@ -1396,7 +1396,7 @@ async fn oversized_json_bodies_get_413() {
         Request::builder()
             .method("POST")
             .uri(path)
-            .header("origin", "http://localhost:3000")
+            .header("origin", "http://localhost:13000")
             .header("content-type", "application/json")
             .body(Body::from(vec![b' '; n]))
             .unwrap()

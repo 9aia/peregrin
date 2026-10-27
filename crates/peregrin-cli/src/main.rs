@@ -17,7 +17,7 @@ fn default_peregrin_home() -> PathBuf {
 }
 
 fn default_pair_url() -> String {
-    let port = std::env::var("PORT").unwrap_or_else(|_| "8787".into());
+    let port = std::env::var("PORT").unwrap_or_else(|_| "18787".into());
     format!("http://localhost:{port}")
 }
 
@@ -569,7 +569,7 @@ enum Commands {
         /// One-time code printed by `peregrin pair` on the node
         code: String,
         /// Base URL of the peregrin node (default: PEREGRIN_NODE_URL, else
-        /// http://127.0.0.1:8787)
+        /// http://127.0.0.1:18787)
         #[arg(long, default_value_t = api::default_node_url())]
         node: String,
     },

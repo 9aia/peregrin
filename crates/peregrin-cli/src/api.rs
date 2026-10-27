@@ -16,7 +16,7 @@ pub struct NodeTarget {
     pub token: Option<String>,
 }
 
-pub const DEFAULT_NODE_URL: &str = "http://127.0.0.1:8787";
+pub const DEFAULT_NODE_URL: &str = "http://127.0.0.1:18787";
 
 pub fn default_node_url() -> String {
     std::env::var("PEREGRIN_NODE_URL")

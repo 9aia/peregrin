@@ -13,7 +13,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::time::Duration;
 
-pub const DEFAULT_PORT: u16 = 8787;
+pub const DEFAULT_PORT: u16 = 18787;
 pub const DEFAULT_HOST: &str = "127.0.0.1";
 pub const DEFAULT_SSE_KEEPALIVE_MS: u64 = 15_000;
 pub const DEFAULT_HELD_WATCH_MS: u64 = 5_000;
@@ -25,7 +25,7 @@ pub const DEFAULT_SWEEP_MS: u64 = 30_000;
 pub const DEFAULT_PAIR_LIMIT_PER_MIN: u32 = 5;
 pub const DEFAULT_PAIR_LIMIT_PER_DAY: u32 = 20;
 
-const DEFAULT_ORIGINS: [&str; 2] = ["http://localhost:3000", "http://127.0.0.1:3000"];
+const DEFAULT_ORIGINS: [&str; 2] = ["http://localhost:13000", "http://127.0.0.1:13000"];
 
 /// A boot-time configuration error — message mirrors the TS throw text.
 #[derive(Debug, thiserror::Error)]

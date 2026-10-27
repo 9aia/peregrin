@@ -221,6 +221,6 @@ lib-package = "peregrin-web"
 # wasm-bindgen output base name — must match the lib crate name.
 output-name = "peregrin_web"
 site-root = "target/site"
-site-addr = "127.0.0.1:3002"
-reload-port = 3001
+site-addr = "127.0.0.1:13002"
+reload-port = 13001
 assets-dir = "crates/peregrin-hub/public"

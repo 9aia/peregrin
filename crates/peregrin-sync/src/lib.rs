@@ -55,7 +55,7 @@ pub enum SyncError {
 pub struct NodeRef {
     /// Stable node id (`/api/node`'s `id`, or a hub-assigned label-safe id).
     pub id: String,
-    /// Base URL, e.g. `http://192.168.1.10:8787` (no trailing slash needed).
+    /// Base URL, e.g. `http://192.168.1.10:18787` (no trailing slash needed).
     pub url: String,
     /// Display name in the hub UI.
     pub label: String,

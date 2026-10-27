@@ -1,7 +1,7 @@
 //! The node-op verbs; every
 //! handler here talks to a running peregrin node's REST API
 //! (docs/protocol.md). Each takes `--node`/`--token` (defaults:
-//! `PEREGRIN_NODE_URL` → http://127.0.0.1:8787, `PEREGRIN_TOKEN` → none).
+//! `PEREGRIN_NODE_URL` → http://127.0.0.1:18787, `PEREGRIN_TOKEN` → none).
 
 use serde_json::{Map, Value, json};
 
@@ -11,7 +11,7 @@ use crate::api::{self, NodeTarget};
 /// `--node`/`--token`/`--json` — the shared flag block of node verbs.
 #[derive(Clone, clap::Args)]
 pub struct NodeArgs {
-    /// Base URL of the peregrin node (default: PEREGRIN_NODE_URL, else http://127.0.0.1:8787)
+    /// Base URL of the peregrin node (default: PEREGRIN_NODE_URL, else http://127.0.0.1:18787)
     #[arg(long, default_value_t = api::default_node_url())]
     pub node: String,
     /// Bearer token for the node (default: PEREGRIN_TOKEN)
@@ -25,7 +25,7 @@ pub struct NodeArgs {
 /// `--node`/`--token` without `--json`.
 #[derive(Clone, clap::Args)]
 pub struct TargetArgs {
-    /// Base URL of the peregrin node (default: PEREGRIN_NODE_URL, else http://127.0.0.1:8787)
+    /// Base URL of the peregrin node (default: PEREGRIN_NODE_URL, else http://127.0.0.1:18787)
     #[arg(long, default_value_t = api::default_node_url())]
     pub node: String,
     /// Bearer token for the node (default: PEREGRIN_TOKEN)

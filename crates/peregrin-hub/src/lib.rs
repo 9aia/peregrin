@@ -64,7 +64,7 @@ pub struct HubState {
 
 impl HubState {
     /// Build the state from parts. `node_url` is the node's origin
-    /// (`http://127.0.0.1:8787`); `node_token` is forwarded as a bearer
+    /// (`http://127.0.0.1:18787`); `node_token` is forwarded as a bearer
     /// token on hub → node calls, falling back to the browser's own
     /// `Authorization` header when unset.
     pub fn new(
@@ -137,9 +137,9 @@ impl FromRef<HubState> for LeptosOptions {
 pub struct HubConfig {
     /// `PEREGRIN_HUB_HOST` — default `127.0.0.1`.
     pub host: String,
-    /// `PEREGRIN_HUB_PORT` — default `3000`.
+    /// `PEREGRIN_HUB_PORT` — default `13000`.
     pub port: u16,
-    /// `PEREGRIN_NODE_URL` — default `http://127.0.0.1:8787`.
+    /// `PEREGRIN_NODE_URL` — default `http://127.0.0.1:18787`.
     pub node_url: String,
     /// `PEREGRIN_NODE_TOKEN` — bearer token forwarded hub → node.
     pub node_token: Option<String>,
@@ -157,8 +157,8 @@ impl Default for HubConfig {
     fn default() -> Self {
         Self {
             host: "127.0.0.1".into(),
-            port: 3000,
-            node_url: "http://127.0.0.1:8787".into(),
+            port: 13000,
+            node_url: "http://127.0.0.1:18787".into(),
             node_token: None,
             hub_token: None,
             site_root: default_site_root(),

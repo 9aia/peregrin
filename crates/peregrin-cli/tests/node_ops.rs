@@ -437,7 +437,7 @@ fn api_sse_streaming() {
 
 #[test]
 fn api_target_resolution() {
-    assert_eq!(api::DEFAULT_NODE_URL, "http://127.0.0.1:8787");
+    assert_eq!(api::DEFAULT_NODE_URL, "http://127.0.0.1:18787");
     let t = api::resolve_target("http://x/", None);
     assert_eq!(t.base_url, "http://x");
     // PEREGRIN_TOKEN may or may not be set in the ambient env — either

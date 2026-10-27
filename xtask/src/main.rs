@@ -158,8 +158,8 @@ fn testkit_bin_dirs(first: Option<&std::path::Path>) -> String {
 
 /// `cargo xtask dev` — the working-tree loop: `cargo leptos watch`
 /// rebuilds the wasm bundle + the hub on save and auto-refreshes the
-/// browser (the shell's `AutoReload`). Serves on :3002 — the
-/// installed prod hub keeps :3000 and the reload websocket :3001.
+/// browser (the shell's `AutoReload`). Serves on :13002 — the
+/// installed prod hub keeps :13000 and the reload websocket :13001.
 /// Env comes from `~/.config/peregrin/hub-env` (KEY=value, `#`
 /// comments) so the dev hub talks to the same nodes as the unit.
 fn dev() -> anyhow::Result<()> {
@@ -189,8 +189,8 @@ fn dev() -> anyhow::Result<()> {
     // (~/.cargo.lock serializes cargo invocations) — its children
     // still lock-build normally via cargo's own package-cache lock.
     cmd.env("CARGO_LOCK_HELD", "1");
-    cmd.env("PEREGRIN_HUB_PORT", "3002");
-    println!("dev hub → http://127.0.0.1:3002 (prod keeps :3000)");
+    cmd.env("PEREGRIN_HUB_PORT", "13002");
+    println!("dev hub → http://127.0.0.1:13002 (prod keeps :13000)");
     let status = cmd.status()?;
     anyhow::ensure!(status.success(), "cargo leptos watch failed");
     Ok(())

@@ -98,8 +98,8 @@ impl AppState {
             ),
             token: None,
             origins: vec![
-                "http://localhost:3000".to_string(),
-                "http://127.0.0.1:3000".to_string(),
+                "http://localhost:13000".to_string(),
+                "http://127.0.0.1:13000".to_string(),
             ],
             keep_alive: Duration::from_millis(env::DEFAULT_SSE_KEEPALIVE_MS),
             held: HeldWatches::new(Duration::from_millis(env::DEFAULT_HELD_WATCH_MS)),

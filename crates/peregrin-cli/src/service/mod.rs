@@ -70,7 +70,7 @@ pub fn env_template() -> String {
      # $PEREGRIN_HOME/hub/credentials.json); the UI pair flow mints tokens\n\
      # there. An @token set here seeds the store once, so the plaintext\n\
      # can leave this file.\n\
-     # PEREGRIN_NODES=laptop=http://127.0.0.1:8787\n\
+     # PEREGRIN_NODES=laptop=http://127.0.0.1:18787\n\
      # Credential backend: auto|keyring|file (default auto).\n\
      # PEREGRIN_CREDENTIAL_STORE=auto\n\
      # Browser→hub auth — required for non-loopback PEREGRIN_HUB_HOST.\n\
