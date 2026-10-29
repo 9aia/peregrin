@@ -1,5 +1,5 @@
 +++
-id = "ADR-0076"
+id = "ADR-0036"
 title = "0036 — Modular VM Architecture"
 status = "open"
 priority = "medium"

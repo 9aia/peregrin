@@ -1,5 +1,5 @@
 +++
-id = "ADR-0078"
+id = "ADR-0038"
 title = "0038 — Result Host Module"
 status = "open"
 priority = "medium"

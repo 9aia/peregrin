@@ -1,5 +1,5 @@
 +++
-id = "ADR-0053"
+id = "ADR-0015"
 title = "Replace `mode: all` with `dependsOn` glob patterns"
 status = "open"
 priority = "medium"

@@ -1,11 +1,11 @@
 +++
-id = "ADR-0068"
-title = "ADR-0028: Provider-based observability CLI"
+id = "ADR-0040"
+title = "ADR-0040: Provider-based observability CLI"
 status = "open"
 priority = "medium"
 +++
 
-# ADR-0028: Provider-based observability CLI
+# ADR-0040: Provider-based observability CLI
 
 > **Platform note:** Peregrin is an orchestration plugin built on handl.
 > handl provides the language, typechecker, module system, standard library,

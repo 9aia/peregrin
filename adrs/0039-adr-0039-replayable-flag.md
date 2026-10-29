@@ -1,11 +1,11 @@
 +++
-id = "ADR-0066"
-title = "ADR-0027: `replayable` flag"
+id = "ADR-0039"
+title = "ADR-0039: `replayable` flag"
 status = "open"
 priority = "medium"
 +++
 
-# ADR-0027: `replayable` flag
+# ADR-0039: `replayable` flag
 
 > **Platform note:** Peregrin is an orchestration plugin built on handl.
 > handl provides the language, typechecker, module system, standard library,
