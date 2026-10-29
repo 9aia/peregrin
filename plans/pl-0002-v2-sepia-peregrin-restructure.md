@@ -1,7 +1,7 @@
 +++
 id = "PL-002"
 title = "v2 — sepia+peregrin restructure"
-status = "open"
+status = "in-progress"
 created = "2026-10-29"
 priority = "medium"
 +++
