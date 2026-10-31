@@ -10,6 +10,7 @@ export default defineConfig({
       { text: 'How-to', link: '/how-to/' },
       { text: 'Reference', link: '/reference/' },
       { text: 'Explanation', link: '/explanation/architecture' },
+      { text: '9aia', link: 'https://9aia.com' },
     ],
     sidebar: [
       {
