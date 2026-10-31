@@ -1048,20 +1048,7 @@ mod tests {
             vec!["peregrin", "push", "vapid", "--node", dead],
             vec!["peregrin", "push", "subscribe", "{}", "--node", dead],
             vec!["peregrin", "push", "unsubscribe", "e", "--node", dead],
-            // Service verbs: coverage probes return Err — arm covered,
-            // host untouched.
-            vec!["peregrin", "service", "install"],
-            vec!["peregrin", "service", "uninstall"],
-            vec!["peregrin", "service", "enable"],
-            vec!["peregrin", "service", "disable"],
-            vec!["peregrin", "service", "status"],
-            vec!["peregrin", "service", "restart"],
-            vec!["peregrin", "service", "logs"],
-            vec![
-                "peregrin", "service", "install", "--hub", "--system", "--linger",
-            ],
             vec!["peregrin", "events", "--node", dead],
-            vec!["peregrin", "serve"],
             vec![
                 "peregrin",
                 "sessions",
@@ -1076,6 +1063,28 @@ mod tests {
                 "peregrin", "sessions", "resume", "s1", "--to", "devin", "--source", dead,
                 "--node", dead,
             ],
+        ] {
+            let cli = cli(&argv);
+            let _ = dispatch(&cli, &rt);
+        }
+        // Service verbs + `serve`: under `cfg(coverage)` they're compiled
+        // to fast-Err probes, which is the *only* build where dispatching
+        // them in-process is safe — outside coverage `service install`
+        // writes a real unit and runs `systemctl --user enable --now`,
+        // and `serve` binds :18787 and blocks forever.
+        #[cfg(coverage)]
+        for argv in [
+            vec!["peregrin", "service", "install"],
+            vec!["peregrin", "service", "uninstall"],
+            vec!["peregrin", "service", "enable"],
+            vec!["peregrin", "service", "disable"],
+            vec!["peregrin", "service", "status"],
+            vec!["peregrin", "service", "restart"],
+            vec!["peregrin", "service", "logs"],
+            vec![
+                "peregrin", "service", "install", "--hub", "--system", "--linger",
+            ],
+            vec!["peregrin", "serve"],
         ] {
             let cli = cli(&argv);
             let _ = dispatch(&cli, &rt);
