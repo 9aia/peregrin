@@ -108,7 +108,7 @@ fn node_serves_sessions_over_http() {
     }
     assert!(body.contains("devin-1"), "body: {body}");
 
-    // Convert + import ride the store seams wired in `serve` — a real
+    // Convert + import ride the plane seams wired in `serve` — a real
     // node with a devin store exercises both closures (the conversion
     // itself may fail on the mock session; the route still ran).
     for (path, payload) in [
@@ -134,8 +134,8 @@ fn node_serves_sessions_over_http() {
     stop(&mut child);
 }
 
-/// Node without a devin store → `merged_store().for_agent("devin")` is
-/// `None` → the plain `AppState::from_env` arm (no convert seams).
+/// Node with no drivers at all still boots and serves — the plane
+/// comes up empty and the convert/import seams surface agent errors.
 #[test]
 fn node_without_devin_store_serves() {
     let tmp = tempfile::tempdir().unwrap();

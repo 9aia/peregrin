@@ -566,10 +566,10 @@ mod cov_tests {
 
     #[tokio::test]
     async fn tick_surfaces_a_failed_list() {
-        let plane: Arc<dyn SessionPlane> = Arc::new(LocalPlane(ControlPlane::new(
-            Arc::new(FailStore),
-            ControlPlaneOptions::default(),
-        )));
+        let plane: Arc<dyn SessionPlane> = Arc::new(LocalPlane(
+            ControlPlane::new(Arc::new(FailStore), ControlPlaneOptions::default()),
+            None,
+        ));
         let feed = EventFeed::new();
         let _rx = feed.subscribe();
         let watch = HeldWatches::new(Duration::ZERO);
@@ -620,10 +620,10 @@ mod cov_tests {
         let store = Arc::new(MemStore {
             sessions: Mutex::new(sessions.iter().map(|s| (s.id.clone(), s.clone())).collect()),
         });
-        Arc::new(LocalPlane(ControlPlane::new(
-            store,
-            ControlPlaneOptions::default(),
-        )))
+        Arc::new(LocalPlane(
+            ControlPlane::new(store, ControlPlaneOptions::default()),
+            None,
+        ))
     }
 
     fn session(id: &str) -> Session {
@@ -818,6 +818,22 @@ mod cov_more_tests {
             unimplemented!()
         }
         async fn delete_session(&self, _: &str, _: Option<&str>) -> Result<(), ControlError> {
+            unimplemented!()
+        }
+        async fn import_session(
+            &self,
+            _: &str,
+            _: &Session,
+            _: &sepia_session::ImportOverrides,
+        ) -> Result<String, ControlError> {
+            unimplemented!()
+        }
+        async fn convert_session(
+            &self,
+            _: &str,
+            _: &str,
+            _: Option<&str>,
+        ) -> Result<String, ControlError> {
             unimplemented!()
         }
         async fn restore(

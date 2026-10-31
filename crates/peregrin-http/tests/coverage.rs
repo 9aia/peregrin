@@ -71,7 +71,7 @@ fn seeded() -> (Router, tempfile::TempDir) {
     .unwrap();
     store.sessions.lock().unwrap().insert("s1".into(), s);
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
-    let state = AppState::new(Arc::new(LocalPlane(plane)))
+    let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta)
         .with_held_watch(Duration::ZERO)
         .with_keep_alive(Duration::from_millis(40));
@@ -313,7 +313,7 @@ async fn token_gate_and_pairing() {
         });
         let plane = ControlPlane::new(store, ControlPlaneOptions::default());
         (
-            AppState::new(Arc::new(LocalPlane(plane)))
+            AppState::new(Arc::new(LocalPlane(plane, None)))
                 .with_meta(meta)
                 .with_token(Some("sekret".into()))
                 .with_held_watch(Duration::ZERO),
@@ -410,7 +410,7 @@ async fn from_env_state_builds() {
         sessions: Mutex::new(HashMap::new()),
     });
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
-    let state = AppState::from_env(&env, Arc::new(LocalPlane(plane)));
+    let state = AppState::from_env(&env, Arc::new(LocalPlane(plane, None)));
     let app = app(state);
     // The pairing store exists now — /api/pair still answers.
     call_str(&app, Method::POST, "/api/pair", "{}", "application/json").await;
@@ -462,7 +462,7 @@ async fn feed_and_push_wired() {
     });
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
     let push = peregrin_push::PushStore::open(MetaStore::open(&dir.path().join("p.json")));
-    let state = AppState::new(Arc::new(LocalPlane(plane)))
+    let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta)
         .with_push(Some(Arc::new(push)))
         .with_held_watch(Duration::ZERO)
@@ -861,6 +861,22 @@ impl SessionPlane for OkPlane {
     async fn delete_session(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Ok(())
     }
+    async fn import_session(
+        &self,
+        _a: &str,
+        _s: &Session,
+        _o: &sepia_session::ImportOverrides,
+    ) -> Result<String, ControlError> {
+        Ok("imported-1".into())
+    }
+    async fn convert_session(
+        &self,
+        _id: &str,
+        _a: &str,
+        _f: Option<&str>,
+    ) -> Result<String, ControlError> {
+        Ok("converted-1".into())
+    }
     async fn restore(
         &self,
         _id: &str,
@@ -963,6 +979,22 @@ impl SessionPlane for FailPlane {
         Err(boom())
     }
     async fn delete_session(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
+        Err(boom())
+    }
+    async fn import_session(
+        &self,
+        _a: &str,
+        _s: &Session,
+        _o: &sepia_session::ImportOverrides,
+    ) -> Result<String, ControlError> {
+        Err(boom())
+    }
+    async fn convert_session(
+        &self,
+        _id: &str,
+        _a: &str,
+        _f: Option<&str>,
+    ) -> Result<String, ControlError> {
         Err(boom())
     }
     async fn restore(
@@ -1570,7 +1602,7 @@ fn seeded_with_node_path(path: &str) -> Router {
         sessions: Mutex::new(HashMap::new()),
     });
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
-    let state = AppState::new(Arc::new(LocalPlane(plane)))
+    let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta)
         .with_node_path(path.into());
     app(state)
@@ -1674,7 +1706,7 @@ fn seeded_with_push() -> (Router, tempfile::TempDir) {
         sessions: Mutex::new(HashMap::new()),
     });
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
-    let state = AppState::new(Arc::new(LocalPlane(plane)))
+    let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta)
         .with_push(Some(std::sync::Arc::new(peregrin_push::PushStore::open(
             sepia_meta::MetaStore::open(&dir.path().join("push.json")),
@@ -1687,7 +1719,7 @@ fn seeded_no_meta() -> Router {
         sessions: Mutex::new(HashMap::new()),
     });
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
-    app(AppState::new(Arc::new(LocalPlane(plane))))
+    app(AppState::new(Arc::new(LocalPlane(plane, None))))
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -1779,7 +1811,7 @@ async fn session_handler_bad_field_arms() {
         sessions: Mutex::new(HashMap::new()),
     });
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
-    let state = AppState::new(Arc::new(LocalPlane(plane)))
+    let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta)
         .with_convert(convert);
     let app2 = peregrin_http::app(state);
@@ -1894,6 +1926,22 @@ impl SessionPlane for StreamPlane {
     }
     async fn delete_session(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Ok(())
+    }
+    async fn import_session(
+        &self,
+        _a: &str,
+        _s: &Session,
+        _o: &sepia_session::ImportOverrides,
+    ) -> Result<String, ControlError> {
+        Ok("imported-1".into())
+    }
+    async fn convert_session(
+        &self,
+        _id: &str,
+        _a: &str,
+        _f: Option<&str>,
+    ) -> Result<String, ControlError> {
+        Ok("converted-1".into())
     }
     async fn restore(
         &self,
@@ -2018,7 +2066,7 @@ async fn meta_less_and_body_error_arms() {
         }),
         ControlPlaneOptions::default(),
     );
-    let app = peregrin_http::app(AppState::new(Arc::new(LocalPlane(plane))));
+    let app = peregrin_http::app(AppState::new(Arc::new(LocalPlane(plane, None))));
     // No meta → the `meta_missing` arms everywhere.
     call(&app, Method::PATCH, "/api/config/theme", Some(json!("x"))).await;
     // Bad JSON body → the `Err(res)` readers.
@@ -2041,7 +2089,7 @@ async fn meta_less_and_body_error_arms() {
         }),
         ControlPlaneOptions::default(),
     );
-    let state = AppState::new(Arc::new(LocalPlane(plane))).with_push(Some(Arc::new(
+    let state = AppState::new(Arc::new(LocalPlane(plane, None))).with_push(Some(Arc::new(
         peregrin_push::PushStore::open(MetaStore::open(&dir.path().join("p.json"))),
     )));
     let app = peregrin_http::app(state);
@@ -2111,7 +2159,7 @@ async fn serve_binds_and_loops() {
         }),
         ControlPlaneOptions::default(),
     );
-    let state = AppState::new(Arc::new(LocalPlane(plane)));
+    let state = AppState::new(Arc::new(LocalPlane(plane, None)));
     let task = tokio::spawn(async move {
         let _ = peregrin_http::serve(&env, state).await;
     });

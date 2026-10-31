@@ -320,12 +320,25 @@ use sepia_core::Session;
 use sepia_proto::SessionEvent;
 use sepia_session::{
     AgentInfo, AttachResult, ControlError, ControlErrorCode, CreateResult, HistoryOptions,
-    HistoryPage, RestoreRequest, RestoreResult, RewindRequest, RewindResult, SessionSummary,
-    agent_for_backend,
+    HistoryPage, ImportOverrides, Local, RestoreRequest, RestoreResult, RewindRequest,
+    RewindResult, SessionSummary, agent_for_backend,
 };
 
 fn control(code: ControlErrorCode, e: impl std::fmt::Display) -> ControlError {
     ControlError::new(code, e.to_string())
+}
+
+/// `sessions.import` result — `{id, agentId}`.
+#[derive(serde::Deserialize)]
+struct Imported {
+    id: String,
+}
+
+/// `sessions.convert` result — `{sessionId, agentId}`.
+#[derive(serde::Deserialize)]
+struct Converted {
+    #[serde(rename = "sessionId")]
+    session_id: String,
 }
 
 fn to_control(e: RpcError) -> ControlError {
@@ -550,6 +563,56 @@ impl SepiaService {
         self.decode("sessions.rewind", p).await
     }
 
+    /// `sessions.import` — write session IR into `agent`'s store;
+    /// `overrides` re-key/patch the copy before it lands. Returns the
+    /// new session id (imports are copies — a fresh id unless
+    /// `overrides.id` re-keys it).
+    pub async fn import_session_t(
+        &self,
+        agent: &str,
+        session: &Session,
+        overrides: &ImportOverrides,
+    ) -> Result<String, ControlError> {
+        let mut p = json!({
+            "agent": agent,
+            "session": sepia_core::wire::session_to_json(session)
+                .map_err(|e| control(ControlErrorCode::Internal, e))?,
+        });
+        if let Some(id) = &overrides.id {
+            p["id"] = json!(id);
+        }
+        if let Some(cwd) = &overrides.cwd {
+            p["cwd"] = json!(cwd);
+        }
+        if let Some(title) = &overrides.title {
+            p["title"] = json!(title);
+        }
+        if let Some(model) = &overrides.model {
+            p["model"] = json!(model);
+        }
+        self.decode::<Imported>("sessions.import", p)
+            .await
+            .map(|r| r.id)
+    }
+
+    /// `sessions.convert` — node-local store→store copy: read `id`
+    /// (`from` disambiguates cross-store id collisions), write into
+    /// `agent`'s store. Returns the new session id.
+    pub async fn convert_session_t(
+        &self,
+        id: &str,
+        agent: &str,
+        from: Option<&str>,
+    ) -> Result<String, ControlError> {
+        let mut p = json!({ "id": id, "agent": agent });
+        if let Some(from) = from {
+            p["from"] = json!(from);
+        }
+        self.decode::<Converted>("sessions.convert", p)
+            .await
+            .map(|r| r.session_id)
+    }
+
     /// `agents.list`.
     pub async fn list_agents_t(&self) -> Result<Vec<AgentInfo>, ControlError> {
         self.decode("agents.list", json!({})).await
@@ -616,6 +679,23 @@ pub trait SessionPlane: Send + Sync {
     ) -> Result<(), ControlError>;
     /// Delete a session from its store.
     async fn delete_session(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError>;
+    /// `sessions.import` — write session IR into `agent`'s store;
+    /// `overrides` re-key/patch the copy. Returns the new session id.
+    async fn import_session(
+        &self,
+        agent: &str,
+        session: &Session,
+        overrides: &ImportOverrides,
+    ) -> Result<String, ControlError>;
+    /// `sessions.convert` — node-local store→store copy of `id` into
+    /// `agent`'s store (`from` disambiguates the source store).
+    /// Returns the new session id.
+    async fn convert_session(
+        &self,
+        id: &str,
+        agent: &str,
+        from: Option<&str>,
+    ) -> Result<String, ControlError>;
     /// Restore rewindable files.
     async fn restore(
         &self,
@@ -644,9 +724,12 @@ pub trait SessionPlane: Send + Sync {
     async fn close_all(&self);
 }
 
-/// In-process plane — `Arc<ControlPlane>` passthrough. Used by tests and
-/// `PEREGRIN_SESSION_PLANE=inprocess`.
-pub struct LocalPlane(pub Arc<sepia_session::ControlPlane>);
+/// In-process plane — `Arc<ControlPlane>` passthrough plus, when built
+/// from a `Local`, its driver registry: import/convert need a
+/// write-capable driver store, so a bare-`ControlPlane` construction
+/// (unit-test planes) errors `internal` on those two. Used by tests
+/// and `PEREGRIN_SESSION_PLANE=local`/`inprocess`.
+pub struct LocalPlane(pub Arc<sepia_session::ControlPlane>, pub Option<Local>);
 
 #[async_trait::async_trait]
 impl SessionPlane for LocalPlane {
@@ -717,6 +800,34 @@ impl SessionPlane for LocalPlane {
     }
     async fn delete_session(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError> {
         self.0.delete_session(id, agent).await
+    }
+    async fn import_session(
+        &self,
+        agent: &str,
+        session: &Session,
+        overrides: &ImportOverrides,
+    ) -> Result<String, ControlError> {
+        let Some(local) = &self.1 else {
+            return Err(control(
+                ControlErrorCode::Internal,
+                "import needs a write-capable driver store — this plane was built without a Local",
+            ));
+        };
+        local.import_session(agent, session, overrides).await
+    }
+    async fn convert_session(
+        &self,
+        id: &str,
+        agent: &str,
+        from: Option<&str>,
+    ) -> Result<String, ControlError> {
+        let Some(local) = &self.1 else {
+            return Err(control(
+                ControlErrorCode::Internal,
+                "convert needs a write-capable driver store — this plane was built without a Local",
+            ));
+        };
+        local.convert_session(id, agent, from).await
     }
     async fn restore(
         &self,
@@ -823,6 +934,22 @@ impl SessionPlane for ServicePlane {
     }
     async fn delete_session(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError> {
         self.0.delete_session_t(id, agent).await
+    }
+    async fn import_session(
+        &self,
+        agent: &str,
+        session: &Session,
+        overrides: &ImportOverrides,
+    ) -> Result<String, ControlError> {
+        self.0.import_session_t(agent, session, overrides).await
+    }
+    async fn convert_session(
+        &self,
+        id: &str,
+        agent: &str,
+        from: Option<&str>,
+    ) -> Result<String, ControlError> {
+        self.0.convert_session_t(id, agent, from).await
     }
     async fn restore(
         &self,

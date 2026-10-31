@@ -199,7 +199,7 @@ async fn start_stub_with(sessions: Vec<Session>, token: Option<String>) -> StubN
     );
     let dir = tempfile::tempdir().unwrap();
     let meta = MetaStore::open(&dir.path().join("meta.json"));
-    let state = AppState::new(Arc::new(LocalPlane(plane)))
+    let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta.clone())
         .with_token(token)
         .with_held_watch(Duration::ZERO)

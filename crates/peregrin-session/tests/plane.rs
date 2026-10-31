@@ -62,7 +62,10 @@ async fn local() -> LocalPlane {
     }))
     .unwrap();
     store.save(&s).await.unwrap();
-    LocalPlane(ControlPlane::new(store, ControlPlaneOptions::default()))
+    LocalPlane(
+        ControlPlane::new(store, ControlPlaneOptions::default()),
+        None,
+    )
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
@@ -113,6 +116,27 @@ async fn local_plane_full_surface() {
         .respond_to_permission("s1", "r1", Some("o"), None)
         .await;
     let _ = plane.delete_session("s1", None).await;
+    // Store-write ops — a bare-ControlPlane LocalPlane has no Local,
+    // so both error `internal`; the guard arms still run.
+    let _ = plane
+        .import_session(
+            "devin",
+            &serde_json::from_value::<Session>(json!({
+                "id": "s2",
+                "title": "T",
+                "workingDirectory": "/w",
+                "backendType": "devin",
+                "model": "m",
+                "createdAt": 1_700_000_000.0,
+                "lastActivityAt": 1_700_000_100.0,
+                "mainChainId": 0
+            }))
+            .unwrap(),
+            &sepia_session::ImportOverrides::default(),
+        )
+        .await;
+    let _ = plane.convert_session("s1", "devin", Some("devin")).await;
+    let _ = plane.convert_session("s1", "devin", None).await;
     let _ = plane
         .restore(
             "s1",
@@ -225,6 +249,49 @@ async fn service_plane_full_surface() {
         .respond_to_permission("s1", "r1", None, Some("devin"))
         .await;
     let _ = plane.delete_session("s1", None).await;
+    // Store-write ops — the service errors `unknown_agent`/`not_found`
+    // but every param-serialize + decode arm runs, overrides included.
+    let _ = plane
+        .import_session(
+            "devin",
+            &serde_json::from_value::<Session>(json!({
+                "id": "s2",
+                "title": "T",
+                "workingDirectory": "/w",
+                "backendType": "devin",
+                "model": "m",
+                "createdAt": 1_700_000_000.0,
+                "lastActivityAt": 1_700_000_100.0,
+                "mainChainId": 0
+            }))
+            .unwrap(),
+            &sepia_session::ImportOverrides {
+                id: Some("chosen-1".into()),
+                cwd: Some("/elsewhere".into()),
+                title: Some("Imported copy".into()),
+                model: Some("other".into()),
+            },
+        )
+        .await;
+    let _ = plane
+        .import_session(
+            "devin",
+            &serde_json::from_value::<Session>(json!({
+                "id": "s3",
+                "title": "T",
+                "workingDirectory": "/w",
+                "backendType": "devin",
+                "model": "m",
+                "createdAt": 1_700_000_000.0,
+                "lastActivityAt": 1_700_000_100.0,
+                "mainChainId": 0
+            }))
+            .unwrap(),
+            &sepia_session::ImportOverrides::default(),
+        )
+        .await;
+    let _ = plane.convert_session("s1", "devin", Some("devin")).await;
+    let _ = plane.convert_session("s1", "devin", None).await;
     let _ = plane
         .restore(
             "s1",

@@ -39,7 +39,9 @@ pub enum ImportTarget {
 }
 
 impl ImportTarget {
-    fn as_str(self) -> &'static str {
+    /// The wire/store agent id (`"cline"`/`"devin"`) — the `agent`
+    /// param `sessions.import`/`sessions.convert` take.
+    pub fn as_str(self) -> &'static str {
         match self {
             Self::Cline => "cline",
             Self::Devin => "devin",
