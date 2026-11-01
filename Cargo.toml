@@ -11,6 +11,7 @@ members = [
     "crates/peregrin-core",
     "crates/peregrin-dotenv",
     "crates/peregrin-driver",
+    "crates/peregrin-driver-http",
     "crates/peregrin-driver-shell",
     "crates/peregrin-engine",
     "crates/peregrin-http",
@@ -53,6 +54,7 @@ peregrin-control = { path = "crates/peregrin-control" }
 peregrin-core = { path = "crates/peregrin-core" }
 peregrin-dotenv = { path = "crates/peregrin-dotenv" }
 peregrin-driver = { path = "crates/peregrin-driver" }
+peregrin-driver-http = { path = "crates/peregrin-driver-http" }
 peregrin-driver-shell = { path = "crates/peregrin-driver-shell" }
 peregrin-engine = { path = "crates/peregrin-engine" }
 peregrin-http = { path = "crates/peregrin-http" }
