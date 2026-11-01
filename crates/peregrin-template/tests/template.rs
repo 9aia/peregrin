@@ -87,6 +87,7 @@ fn node() -> peregrin_core::Node {
         driver: "shell".into(),
         params: json!({}),
         on: vec![],
+        ..Default::default()
     }
 }
 

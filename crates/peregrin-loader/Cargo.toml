@@ -10,3 +10,4 @@ repository.workspace = true
 workspace = true
 [dependencies]
 peregrin-core.workspace = true
+thiserror.workspace = true

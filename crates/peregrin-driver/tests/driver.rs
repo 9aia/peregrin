@@ -23,6 +23,7 @@ async fn outcome_and_error() {
                 driver: "x".into(),
                 params: serde_json::Value::default(),
                 on: vec![],
+                ..Default::default()
             },
             &peregrin_core::Event {
                 kind: "k".into(),

@@ -116,6 +116,7 @@ tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 semver = "1"
 toml = "0.8"
+serde_yaml_ng = "0.10"
 rusqlite = { version = "0.32" }
 camino = { version = "1", features = ["serde1"] }
 ureq = { version = "3", features = ["json"] }

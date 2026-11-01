@@ -3572,6 +3572,7 @@ version = "0.0.0"
 dependencies = [
  "serde",
  "serde_json",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -3698,6 +3699,7 @@ name = "peregrin-loader"
 version = "0.0.0"
 dependencies = [
  "peregrin-core",
+ "thiserror 2.0.21",
 ]
 
 [[package]]
@@ -3706,6 +3708,9 @@ version = "0.0.0"
 dependencies = [
  "peregrin-core",
  "peregrin-loader",
+ "serde_json",
+ "serde_yaml_ng",
+ "tempfile",
 ]
 
 [[package]]
@@ -5060,6 +5065,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "serde_yaml_ng"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b4db627b98b36d4203a7b458cf3573730f2bb591b28871d916dfa9efabfd41f"
+dependencies = [
+ "indexmap",
+ "itoa",
+ "ryu",
+ "serde",
+ "unsafe-libyaml",
+]
+
+[[package]]
 name = "server_fn"
 version = "0.8.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6034,6 +6052,12 @@ dependencies = [
  "crypto-common 0.2.2",
  "ctutils",
 ]
+
+[[package]]
+name = "unsafe-libyaml"
+version = "0.2.11"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "673aac59facbab8a9007c7f6108d11f63b603f7cabff99fabf650fea5c32b861"
 
 [[package]]
 name = "untrusted"

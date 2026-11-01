@@ -9,6 +9,7 @@ fn node(params: serde_json::Value) -> peregrin_core::Node {
         driver: "shell".into(),
         params,
         on: vec![],
+        ..Default::default()
     }
 }
 fn event() -> peregrin_core::Event {
