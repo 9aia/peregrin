@@ -1,9 +1,13 @@
-//! peregrin-node — the machine daemon. Spawns `sepia serve` as the
-//! session plane (`PEREGRIN_SESSION_PLANE=local`/`inprocess` opts back
-//! into linking `sepia-session` in-process, the dev mode), mounts the
-//! `/api/*` surface, and shuts the plane down on SIGINT/SIGTERM.
-//! Orchestration/policy layers sit above this: campaigns, multi-node
+//! peregrin-node — the machine daemon, hosting two capability planes:
+//! sessions (spawns `sepia serve`; `PEREGRIN_SESSION_PLANE=local`/
+//! `inprocess` opts back into linking `sepia-session` in-process, the
+//! dev mode) and campaigns (the in-process [`campaign`] plane —
+//! `peregrin-engine` + the ported driver impls). Mounts the `/api/*`
+//! surface and shuts the session plane down on SIGINT/SIGTERM.
+//! Orchestration/policy layers sit above this: multi-node
 //! arbitration, the hub.
+
+pub mod campaign;
 
 use std::path::PathBuf;
 use std::sync::Arc;
