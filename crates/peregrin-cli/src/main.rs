@@ -10,7 +10,7 @@ use std::process::ExitCode;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use peregrin_cli::node_ops::{NodeArgs, TargetArgs};
-use peregrin_cli::{CliError, PEREGRIN_VERSION, api, node_ops, pair, service};
+use peregrin_cli::{CliError, PEREGRIN_VERSION, api, campaign, node_ops, pair, service};
 
 fn default_peregrin_home() -> PathBuf {
     peregrin_node::peregrin_home()
@@ -403,6 +403,32 @@ enum ConfigCommands {
     },
 }
 
+// --- campaigns -----------------------------------------------------------------
+
+/// Campaign verbs — the `handl` CLI surface, on this machine's
+/// campaign plane (`peregrin_node::campaign`, in-process).
+#[derive(Subcommand)]
+enum CampaignCommands {
+    /// Load a campaign yaml and execute it locally — prints the run's
+    /// event log, one `ts source type` line per event
+    Run {
+        /// Path to the campaign YAML
+        workflow: PathBuf,
+        /// Simulate the run without driver side effects
+        #[arg(long)]
+        dry_run: bool,
+        /// A JSON/JSONL event log to seed (replay) the run with
+        #[arg(long)]
+        replay: Option<PathBuf>,
+    },
+    /// Expand a campaign yaml and summarize its wiring (includes,
+    /// nodes, unemitting-subscription warnings)
+    Validate {
+        /// Path to the campaign YAML
+        workflow: PathBuf,
+    },
+}
+
 // --- push --------------------------------------------------------------------
 
 #[derive(Subcommand)]
@@ -587,6 +613,10 @@ enum Commands {
     /// Node ops against /api/sessions — run against a live peregrin node
     #[command(subcommand)]
     Sessions(SessionsCommands),
+    /// Campaign ops — load and run campaign yamls on this machine's
+    /// campaign plane (the `handl` verbs: run, validate)
+    #[command(subcommand)]
+    Campaign(CampaignCommands),
     /// Node-local project grouping (/api/projects)
     #[command(subcommand)]
     Projects(ProjectsCommands),
@@ -840,6 +870,17 @@ fn run_projects(cmd: &ProjectsCommands) -> Result<(), CliError> {
     }
 }
 
+fn run_campaign(cmd: &CampaignCommands) -> Result<(), CliError> {
+    match cmd {
+        CampaignCommands::Run {
+            workflow,
+            dry_run,
+            replay,
+        } => campaign::run(workflow, *dry_run, replay.as_deref()).map(|_| ()),
+        CampaignCommands::Validate { workflow } => campaign::validate(workflow).map(|_| ()),
+    }
+}
+
 fn run_config(cmd: &ConfigCommands) -> Result<(), CliError> {
     match cmd {
         ConfigCommands::Get { args } => node_ops::config_get(args),
@@ -931,6 +972,7 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
             args,
         } => node_ops::sessions_prompt(session_id, text, agent.agent.as_deref(), args),
         Commands::Sessions(cmd) => run_sessions(cmd),
+        Commands::Campaign(cmd) => run_campaign(cmd),
         Commands::Projects(cmd) => run_projects(cmd),
         Commands::Config(cmd) => run_config(cmd),
         Commands::Push(cmd) => run_push(cmd),
@@ -1038,6 +1080,18 @@ mod tests {
                 "--node",
                 dead,
             ],
+            // Campaign verbs — load fails fast on a missing file.
+            vec!["peregrin", "campaign", "run", "/nonexistent.yaml"],
+            vec!["peregrin", "campaign", "validate", "/nonexistent.yaml"],
+            vec![
+                "peregrin",
+                "campaign",
+                "run",
+                "/nonexistent.yaml",
+                "--dry-run",
+                "--replay",
+                "/nonexistent.jsonl",
+            ],
             vec!["peregrin", "projects", "list", "--node", dead],
             vec!["peregrin", "projects", "create", "n", "--node", dead],
             vec!["peregrin", "projects", "init", "n", "--node", dead],
@@ -1118,6 +1172,7 @@ mod tests {
         // The derive surface itself: long help renders without panic.
         let _ = Cli::try_parse_from(["peregrin", "--help"]);
         let _ = Cli::try_parse_from(["peregrin", "sessions", "--help"]);
+        let _ = Cli::try_parse_from(["peregrin", "campaign", "--help"]);
         let _ = Cli::try_parse_from(["peregrin", "service", "--help"]);
         let _ = Cli::try_parse_from(["peregrin", "bogus"]);
     }

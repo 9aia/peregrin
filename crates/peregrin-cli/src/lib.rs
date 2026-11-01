@@ -3,6 +3,7 @@
 //! can drive the same code the binary runs.
 
 pub mod api;
+pub mod campaign;
 pub mod node_ops;
 pub mod pair;
 pub mod service;
