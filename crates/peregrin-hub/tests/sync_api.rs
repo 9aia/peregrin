@@ -569,20 +569,28 @@ fn hub_resolves_node_tokens_from_the_credential_store() {
 /* ---- full-surface mock node ------------------------------------------*/
 
 /// A canned-response node: every NodeApi call lands a JSON reply.
-/// `calls` records "METHOD path" for assertions; `fail` maps
+/// `calls` records "METHOD path" for assertions; `bodies` records
+/// "METHOD path body" for payload assertions; `fail` maps
 /// `{METHOD} {path}` (or bare-path) prefixes to a 500; `blank` maps
 /// path prefixes to a `200 {}` — the "shape is fine but the key is
-/// absent" arms.
+/// absent" arms. `ro` maps `/attach` path prefixes to a read-only
+/// result — a session another actor holds.
 #[derive(Clone, Default)]
 struct Canned {
     calls: Arc<std::sync::Mutex<Vec<String>>>,
+    bodies: Arc<std::sync::Mutex<Vec<String>>>,
     fail: Arc<std::sync::Mutex<Vec<String>>>,
     blank: Arc<std::sync::Mutex<Vec<String>>>,
+    ro: Arc<std::sync::Mutex<Vec<String>>>,
 }
 
 impl Canned {
     fn calls(&self) -> Vec<String> {
         self.calls.lock().unwrap().clone()
+    }
+
+    fn bodies(&self) -> Vec<String> {
+        self.bodies.lock().unwrap().clone()
     }
 }
 
@@ -594,6 +602,32 @@ async fn canned(
     let method = req.method().clone();
     let path = req.uri().path().to_string();
     m.calls.lock().unwrap().push(format!("{method} {path}"));
+    // Consume the body so POST/DELETE payloads parse fine either way —
+    // record it for payload assertions before the canned reply.
+    let bytes = axum::body::to_bytes(req.into_body(), 4 * 1024 * 1024)
+        .await
+        .unwrap_or_default();
+    let body_text = String::from_utf8_lossy(&bytes).into_owned();
+    if !body_text.is_empty() {
+        m.bodies
+            .lock()
+            .unwrap()
+            .push(format!("{method} {path} {body_text}"));
+    }
+    // A held session attaches read-only — the arbitration verdict the
+    // hub's contention tests steer by.
+    if path.ends_with("/attach")
+        && m.ro
+            .lock()
+            .unwrap()
+            .iter()
+            .any(|p| path.starts_with(p.as_str()))
+    {
+        return axum::Json(
+            json!({"attached":false,"readOnly":true,"agentId":"devin","capabilities":{}}),
+        )
+        .into_response();
+    }
     let key = format!("{method} {path}");
     let fail = m
         .fail
@@ -616,10 +650,6 @@ async fn canned(
     {
         return axum::Json(json!({})).into_response();
     }
-    // Consume the body so POST/DELETE payloads parse fine either way.
-    let _bytes = axum::body::to_bytes(req.into_body(), 4 * 1024 * 1024)
-        .await
-        .unwrap_or_default();
     let body = match (method.as_str(), path.as_str()) {
         (_, "/api/node") if method == axum::http::Method::GET => json!({
             "id":"n1","name":"node-one","version":"0.1","protocol":1,
@@ -835,6 +865,152 @@ async fn api_error_arms() {
     );
     // delete_project on a failing node → first_err surfaces.
     assert!(api.delete_project("p1", None).await.is_err());
+}
+
+/// Lock-registry wiring: a `locked` projection row registers a foreign
+/// holder; gated writes reject naming it, attach degrades to
+/// read-only, takeover preempts and flips the grant to the hub, and
+/// detach releases it — closing the gate again.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn arbitration_gates_contended_sessions() {
+    let canned = Canned::default();
+    canned
+        .ro
+        .lock()
+        .unwrap()
+        .push("/api/sessions/s1/attach".into());
+    let (mock, url) = serve_canned(canned).await;
+    let (api, projection, outbox, _dir) = api_against(vec![hub_node("laptop", &url)]);
+    // s1 reports locked under a pid the hub never granted.
+    projection
+        .upsert_summary(
+            "laptop",
+            &json!({
+                "id":"s1","title":"Held","agent":"devin","source":"devin",
+                "locked":true,"lockHolderPid":4242,
+            }),
+        )
+        .unwrap();
+
+    // Turn + destructive writes reject fast — the holder is named,
+    // nothing reaches the node, nothing queues.
+    let err = api.prompt("s1", None, "hi", &[]).await.unwrap_err();
+    assert!(err.contains("held by pid:4242"), "{err}");
+    let err = api.delete_session("s1", None).await.unwrap_err();
+    assert!(err.contains("held by pid:4242"), "{err}");
+    let err = api.restore("s1", None, "c1").await.unwrap_err();
+    assert!(err.contains("held by pid:4242"), "{err}");
+    let err = api
+        .rewind("s1", None, &peregrin_web::api::RewindSelector::NodeId(1))
+        .await
+        .unwrap_err();
+    assert!(err.contains("held by pid:4242"), "{err}");
+    let err = api.convert("s1", None, "cline").await.unwrap_err();
+    assert!(err.contains("held by pid:4242"), "{err}");
+    assert!(outbox.pending_for_node("laptop").unwrap().is_empty());
+    for c in mock.calls() {
+        assert!(
+            !c.contains("/prompt")
+                && !c.contains("/restore")
+                && !c.contains("/rewind")
+                && !c.contains("/convert")
+                && !c.starts_with("DELETE /api/sessions/s1"),
+            "gated write reached the node: {c}"
+        );
+    }
+
+    // Reads stay open — a foreign hold never gates them.
+    api.history("s1", None, None, None).await.unwrap();
+    api.get_session("s1", None).await.unwrap();
+
+    // Attach without takeover → the verdict degrades it: no takeover
+    // on the wire, the foreign hold stands.
+    let res = api.attach("s1", None, false).await.unwrap();
+    assert!(!res.attached && res.read_only);
+    assert!(api.prompt("s1", None, "hi", &[]).await.is_err());
+
+    // Takeover → the preempt verdict posts `takeover:true`; the grant
+    // flips to the hub and writes flow again.
+    mock.ro.lock().unwrap().clear();
+    let res = api.attach("s1", None, true).await.unwrap();
+    assert!(res.attached && !res.read_only);
+    api.prompt("s1", None, "hello", &[]).await.unwrap();
+    let bodies = mock.bodies();
+    assert!(
+        bodies
+            .iter()
+            .any(|b| b.contains("/attach") && b.contains("\"takeover\":false")),
+        "{bodies:?}"
+    );
+    assert!(
+        bodies
+            .iter()
+            .any(|b| b.contains("/attach") && b.contains("\"takeover\":true")),
+        "{bodies:?}"
+    );
+
+    // Detach releases the hub grant — the still-locked report puts the
+    // foreign hold back and the gate closes.
+    api.detach("s1", None).await.unwrap();
+    let err = api.prompt("s1", None, "hi", &[]).await.unwrap_err();
+    assert!(err.contains("held"), "{err}");
+}
+
+/// `read_only_on_contention: false` — the strict policy's Queue
+/// verdict surfaces as a structured error, not a silent attach.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn strict_arbitration_rejects_a_contended_attach() {
+    let (_mock, url) = serve_canned(Canned::default()).await;
+    let (api, projection, _o, _dir) = api_against(vec![hub_node("laptop", &url)]);
+    let api = api.with_arbitration(peregrin_control::Arbitration {
+        read_only_on_contention: false,
+        ..peregrin_control::Arbitration::default()
+    });
+    projection
+        .upsert_summary(
+            "laptop",
+            &json!({"id":"s1","agent":"devin","source":"devin","locked":true}),
+        )
+        .unwrap();
+    let err = api.attach("s1", None, false).await.unwrap_err();
+    assert!(err.contains("held on laptop"), "{err}");
+}
+
+/// Uncontended ops are untouched — attach/detach/prompt behave
+/// exactly as before, and a create records the hub's hold so the
+/// first prompt isn't gated by the node's own locked report.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn arbitration_is_transparent_when_uncontended() {
+    let (mock, url) = serve_canned(Canned::default()).await;
+    let (api, projection, _o, _dir) = api_against(vec![hub_node("laptop", &url)]);
+    seed(&projection);
+    let _ = mock;
+
+    let res = api.attach("s1", None, false).await.unwrap();
+    assert!(res.attached);
+    // Same-holder re-attach is free.
+    let res = api.attach("s1", None, false).await.unwrap();
+    assert!(res.attached);
+    api.prompt("s1", None, "hi", &[]).await.unwrap();
+    api.detach("s1", None).await.unwrap();
+    // The row never reported locked — ops stay allowed after detach.
+    api.prompt("s1", None, "hi", &[]).await.unwrap();
+
+    // A created session lives under the node's plane on the hub's
+    // behalf — the grant means a locked report can't gate the prompt.
+    let created = api
+        .create_session("/w", None, None, None, Some("laptop"))
+        .await
+        .unwrap();
+    projection
+        .upsert_summary(
+            "laptop",
+            &json!({
+                "id": created.id, "agent":"devin","source":"devin","locked":true,
+            }),
+        )
+        .unwrap();
+    api.prompt(&created.id, None, "hi", &[]).await.unwrap();
 }
 
 /// Failing credential store → the resolve/adopt warn arms run.

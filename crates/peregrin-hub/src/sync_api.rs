@@ -8,6 +8,7 @@ use std::sync::{Arc, RwLock};
 
 use std::collections::BTreeMap;
 
+use peregrin_control::{Actor, Arbitration, Decision, LockRegistry, NodeId};
 use peregrin_sync::client::NodeClient;
 use peregrin_sync::{
     IndexedSession, NodeRef, NodeTarget, NodeWrite, OpKind, OutboxEntry, OutboxStatus, SyncError,
@@ -168,10 +169,54 @@ struct Registry {
     clients: HashMap<String, Arc<NodeClient>>,
 }
 
+/// The actor every hub-brokered write runs as. One identity covers the
+/// hub itself — foreign holders register separately (pid-keyed when
+/// the node's lock probe names one) so arbitration can tell "our own
+/// hold" from "another actor's".
+const HUB_ACTOR: &str = "hub";
+
+/// Ops that act on the live session the lock protects — the registry
+/// gates them before they queue or post. `meta.patch` rides the node
+/// overlay and never contends.
+const GATED_OPS: &[&str] = &["prompt", "cancel", "permission", "delete"];
+
+/// Lock-registry key — `(node, session)`: session ids are unique per
+/// node but collide across nodes, so the node scopes every grant.
+fn lock_key(node_id: &str, session: &str) -> String {
+    format!("{node_id}:{session}")
+}
+
+fn hub_actor(node_id: &str) -> Actor {
+    Actor {
+        id: HUB_ACTOR.to_string(),
+        node: NodeId(node_id.to_string()),
+    }
+}
+
+/// The holder recorded for a `locked` report the hub never granted —
+/// pid-keyed from the node's `withLocks` probe when it names one.
+fn external_actor(row: &IndexedSession, node_id: &str) -> Actor {
+    Actor {
+        id: row
+            .raw
+            .get("lockHolderPid")
+            .and_then(Value::as_f64)
+            .map_or_else(|| "external".to_string(), |pid| format!("pid:{pid}")),
+        node: NodeId(node_id.to_string()),
+    }
+}
+
 /// `NodeApi` over the sync projection + per-node clients.
 pub struct SyncNodeApi {
     engine: SyncHandle,
     registry: RwLock<Registry>,
+    /// Who holds which session — the hub is the lock authority; the
+    /// projection's `locked` reports plus this hub's own attach
+    /// outcomes populate it.
+    locks: RwLock<LockRegistry>,
+    /// The takeover/contention policy rendered at attach + write
+    /// call sites. `peregrin-control` decides; the node executes.
+    arbitration: Arbitration,
     /// Where `pair` persists minted tokens (keyring or file — picked at
     /// boot by [`crate::credentials::open`]).
     creds: Arc<dyn NodeCredentials>,
@@ -197,8 +242,17 @@ impl SyncNodeApi {
                 nodes: nodes.into_iter().map(|n| (n.id.clone(), n)).collect(),
                 clients,
             }),
+            locks: RwLock::new(LockRegistry::default()),
+            arbitration: Arbitration::default(),
             creds,
         }
+    }
+
+    /// Override the arbitration policy — tests and future hub config.
+    #[must_use]
+    pub fn with_arbitration(mut self, arbitration: Arbitration) -> Self {
+        self.arbitration = arbitration;
+        self
     }
 
     fn registry(&self) -> std::sync::RwLockReadGuard<'_, Registry> {
@@ -211,6 +265,77 @@ impl SyncNodeApi {
         self.registry
             .write()
             .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    fn locks_mut(&self) -> std::sync::RwLockWriteGuard<'_, LockRegistry> {
+        self.locks
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+    }
+
+    /// Fold the projection's lock report for `row` into the registry:
+    /// a reported `locked` registers an external holder the hub never
+    /// granted (or refreshes a known one — a still-reported hold reads
+    /// as live), an unlocked report drops any recorded hold. The book
+    /// only ever trails the node's own probe.
+    fn reconcile_locks(locks: &mut LockRegistry, key: &str, node_id: &str, row: &IndexedSession) {
+        if row.locked {
+            match locks.holder(key) {
+                Some(held) => {
+                    let holder = held.holder.id.clone();
+                    locks.refresh(key, &holder);
+                }
+                None => locks.grant(key, external_actor(row, node_id)),
+            }
+        } else if let Some(holder) = locks.holder(key).map(|h| h.holder.id.clone()) {
+            locks.release(key, &holder);
+        }
+    }
+
+    /// Reconcile the lock book against `row` and ask the arbitration
+    /// policy what the hub may do with `session` — the single decision
+    /// point every session-scoped write consults. Returns the registry
+    /// key alongside so callers can record the outcome.
+    fn decide(
+        &self,
+        node_id: &str,
+        session: &str,
+        row: &IndexedSession,
+        takeover: bool,
+    ) -> (String, Decision) {
+        let key = lock_key(node_id, session);
+        let mut locks = self.locks_mut();
+        Self::reconcile_locks(&mut locks, &key, node_id, row);
+        let decision = self
+            .arbitration
+            .attach(&locks, &key, &hub_actor(node_id), takeover);
+        (key, decision)
+    }
+
+    /// The arbitration gate for session writes — only `Allow` lets a
+    /// write through; a foreign hold rejects with the holder named and
+    /// the remedy, rather than queueing a turn the node would refuse
+    /// (or a delete that would kill another actor's live session).
+    fn ensure_writable(
+        &self,
+        node_id: &str,
+        session: &str,
+        row: &IndexedSession,
+    ) -> Result<(), String> {
+        let (_key, decision) = self.decide(node_id, session, row, false);
+        match decision {
+            Decision::Allow => Ok(()),
+            Decision::AttachReadOnly { holder }
+            | Decision::Preempt {
+                stale_holder: holder,
+            } => Err(format!(
+                "session {session} is held by {holder} on {node_id} — attach with takeover to write"
+            )),
+            Decision::Queue { node } => Err(format!(
+                "session {session} is held on {} — attach with takeover to write",
+                node.0
+            )),
+        }
     }
 
     fn projection(&self) -> peregrin_sync::ProjectionStore {
@@ -329,7 +454,9 @@ impl SyncNodeApi {
 
     /// A session-scoped write the outbox can't carry — posted straight
     /// to the owning node (fails fast when the node is down rather than
-    /// queueing a stale attach/restore).
+    /// queueing a stale attach/restore). The lock book gates it first:
+    /// a foreign hold means the write would contend with another
+    /// actor's live state.
     async fn post_direct(
         &self,
         id: &str,
@@ -337,7 +464,13 @@ impl SyncNodeApi {
         suffix: &str,
         payload: Value,
     ) -> Result<Value, String> {
-        let (_, client) = self.resolve(id, agent)?;
+        let (node_id, row) = {
+            let registry = self.registry();
+            let (node_id, _node, row) = owner_row(&self.projection(), id, agent, &registry.nodes)?;
+            (node_id, row)
+        };
+        self.ensure_writable(&node_id, id, &row)?;
+        let client = self.client(&node_id)?;
         let path = Self::session_path(id, suffix, agent);
         tokio::task::spawn_blocking(move || client.send_json("POST", &path, &payload))
             .await
@@ -353,13 +486,20 @@ impl SyncNodeApi {
         kind: OpKind,
         payload: Value,
     ) -> Result<(), String> {
-        let node_id = {
+        let (node_id, row) = {
             let registry = self.registry();
-            owner(&self.projection(), id, agent, &registry.nodes)?.0
+            let (node_id, _node, row) = owner_row(&self.projection(), id, agent, &registry.nodes)?;
+            (node_id, row)
         };
+        // Session-plane writes consult the lock book — a foreign-held
+        // session rejects fast instead of queueing a turn the node
+        // will refuse on replay anyway.
+        if GATED_OPS.contains(&op) {
+            self.ensure_writable(&node_id, id, &row)?;
+        }
         self.engine
             .submit_op(NodeWrite {
-                node_id,
+                node_id: node_id.clone(),
                 session_id: id.to_string(),
                 agent: agent.map(str::to_string),
                 op: op.to_string(),
@@ -369,8 +509,17 @@ impl SyncNodeApi {
                 ttl_seconds: None,
             })
             .await
-            .map(|_| ())
-            .map_err(err_string)
+            .map_err(err_string)?;
+        if op == "delete" {
+            // The session is gone (or queued to be) — drop any
+            // recorded hold so a re-created id starts clean.
+            let key = lock_key(&node_id, id);
+            let mut locks = self.locks_mut();
+            if let Some(holder) = locks.holder(&key).map(|h| h.holder.id.clone()) {
+                locks.release(&key, &holder);
+            }
+        }
+        Ok(())
     }
 
     /// Persist a minted credential and start using it: store → registry
@@ -681,7 +830,7 @@ impl NodeApi for SyncNodeApi {
         // A create can't route by session id — `node` (or the primary)
         // picks the target. Goes direct: queueing a create in the
         // outbox would hand the UI an id nothing references yet.
-        let (_, client) = self.scoped_client(node)?;
+        let (node_id, client) = self.scoped_client(node)?;
         let mut body = serde_json::json!({ "cwd": cwd });
         if let Some(a) = agent {
             body["agent"] = serde_json::json!(a);
@@ -692,11 +841,18 @@ impl NodeApi for SyncNodeApi {
         if let Some(m) = model {
             body["model"] = serde_json::json!(m);
         }
-        tokio::task::spawn_blocking(move || client.send_json("POST", "/api/sessions", &body))
-            .await
-            .map_err(join_err)?
-            .map_err(err_string)
-            .and_then(|v| serde_json::from_value(v).map_err(decode_err))
+        let created: CreateResultDto =
+            tokio::task::spawn_blocking(move || client.send_json("POST", "/api/sessions", &body))
+                .await
+                .map_err(join_err)?
+                .map_err(err_string)
+                .and_then(|v| serde_json::from_value(v).map_err(decode_err))?;
+        // The node holds a created session live on the hub's behalf —
+        // record the grant so prompts reach it instead of gating on
+        // the node's own `locked` report.
+        self.locks_mut()
+            .grant(&lock_key(&node_id, &created.id), hub_actor(&node_id));
+        Ok(created)
     }
 
     async fn attach(
@@ -705,23 +861,70 @@ impl NodeApi for SyncNodeApi {
         agent: Option<&str>,
         takeover: bool,
     ) -> Result<AttachResultDto, String> {
-        // Direct post — attaching a session on a down node can't queue
-        // meaningfully (the lock state it reacts to is now, not later).
-        let body = self
-            .post_direct(
-                id,
-                agent,
-                "attach",
-                serde_json::json!({ "takeover": takeover }),
-            )
-            .await?;
-        serde_json::from_value(body).map_err(decode_err)
+        // Resolve first — the lock book keys holds (node, session).
+        let (node_id, row) = {
+            let registry = self.registry();
+            let (node_id, _node, row) = owner_row(&self.projection(), id, agent, &registry.nodes)?;
+            (node_id, row)
+        };
+        let client = self.client(&node_id)?;
+        // Arbitration decides — the hub is the lock authority, sepia
+        // executes whatever the verdict maps to on the wire.
+        let (key, decision) = self.decide(&node_id, id, &row, takeover);
+        let effective_takeover = match &decision {
+            Decision::Allow => takeover,
+            Decision::Preempt { stale_holder } => {
+                tracing::info!(session = %id, node = %node_id, holder = %stale_holder,
+                    "arbitration: preempting session holder");
+                true
+            }
+            Decision::AttachReadOnly { holder } => {
+                tracing::info!(session = %id, node = %node_id, holder = %holder,
+                    "arbitration: contended attach downgraded to read-only");
+                false
+            }
+            Decision::Queue { node } => {
+                return Err(format!(
+                    "session {id} is held on {} — retry with takeover to preempt, or wait for the holder to release",
+                    node.0
+                ));
+            }
+        };
+        let path = Self::session_path(id, "attach", agent);
+        let payload = serde_json::json!({ "takeover": effective_takeover });
+        let body = tokio::task::spawn_blocking(move || client.send_json("POST", &path, &payload))
+            .await
+            .map_err(join_err)?
+            .map_err(err_string)?;
+        let result: AttachResultDto = serde_json::from_value(body).map_err(decode_err)?;
+        // Record what the wire reported — the book follows the node's
+        // truth, not the intended verdict.
+        let mut locks = self.locks_mut();
+        if result.attached {
+            locks.grant(&key, hub_actor(&node_id));
+        } else if result.read_only {
+            // Held by someone after all — if the book still says the
+            // hub holds it, that grant was wrong; replace it with the
+            // real (foreign) holder.
+            locks.grant(&key, external_actor(&row, &node_id));
+        }
+        drop(locks);
+        Ok(result)
     }
 
     async fn detach(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
-        self.post_direct(id, agent, "detach", serde_json::json!({}))
-            .await
-            .map(|_| ())
+        let (node_id, client) = self.resolve(id, agent)?;
+        let path = Self::session_path(id, "detach", agent);
+        tokio::task::spawn_blocking(move || {
+            client.send_json("POST", &path, &serde_json::json!({}))
+        })
+        .await
+        .map_err(join_err)?
+        .map_err(err_string)?;
+        // Only the hub's own grant lifts — a foreign hold the node
+        // no-ops on isn't ours to release.
+        self.locks_mut().release(&lock_key(&node_id, id), HUB_ACTOR);
+        Ok(())
     }
 
     async fn answer_permission(
