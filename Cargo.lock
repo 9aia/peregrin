@@ -3596,6 +3596,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-driver-agent"
+version = "0.0.0"
+dependencies = [
+ "peregrin-core",
+ "peregrin-driver",
+ "peregrin-template",
+ "serde_json",
+ "tempfile",
+ "ureq",
+]
+
+[[package]]
 name = "peregrin-driver-http"
 version = "0.0.0"
 dependencies = [
@@ -3604,6 +3616,17 @@ dependencies = [
  "peregrin-template",
  "serde_json",
  "ureq",
+]
+
+[[package]]
+name = "peregrin-driver-human"
+version = "0.0.0"
+dependencies = [
+ "peregrin-core",
+ "peregrin-driver",
+ "peregrin-template",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
