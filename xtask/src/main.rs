@@ -129,8 +129,13 @@ fn stage_bins_and_site(peregrin_dir: Option<&std::path::Path>) -> anyhow::Result
 }
 
 fn link_bin(src: &std::path::Path, dst: &std::path::Path) {
-    if dst.exists() {
-        return;
+    // Relink unconditionally — a staged copy must never shadow a
+    // fresher build. Hard links silently break when cargo replaces
+    // the source inode, leaving dst frozen at whatever it first held
+    // (observed: a stale `target/debug/peregrin` answering spawned-
+    // binary tests with last month's verbs).
+    if dst.symlink_metadata().is_ok() {
+        let _ = std::fs::remove_file(dst);
     }
     if let Some(parent) = dst.parent() {
         let _ = std::fs::create_dir_all(parent);
