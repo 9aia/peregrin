@@ -1,6 +1,9 @@
 //! Evaluation context — the template-relevant slice of the TS
 //! `ExecutionContext` plus the optional resolver inputs.
 
+use std::cell::RefCell;
+use std::rc::Rc;
+
 use serde_json::{Map, Value};
 
 use crate::effects::Effects;
@@ -16,8 +19,11 @@ pub struct Context<'a> {
     /// matched against `capabilities`.
     pub strict: bool,
     /// Secret names the host could not provide — strict mode fails with
-    /// `missing secrets: …` after rendering.
-    pub missing_secrets: Vec<String>,
+    /// `missing secrets: …` after rendering. Shared (`Rc<RefCell>`) so
+    /// driver-backed custom functions writing to the run's ledger are
+    /// visible to the strict check, as the TS shared `ctx.missingSecrets`
+    /// array was.
+    pub missing_secrets: Rc<RefCell<Vec<String>>>,
     /// Per-function grants. Presence of *any* entry whitelists the
     /// function for resolution (`undefined`/`false` preserves the
     /// placeholder); in strict mode the entry — `true`, a glob list, or
@@ -33,7 +39,7 @@ impl<'a> Context<'a> {
     pub fn new(effects: &'a dyn Effects) -> Self {
         Self {
             strict: false,
-            missing_secrets: Vec::new(),
+            missing_secrets: Rc::new(RefCell::new(Vec::new())),
             capabilities: Map::new(),
             effects,
         }

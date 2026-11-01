@@ -75,7 +75,7 @@ fn ctx_with<'a>(
 ) -> Context<'a> {
     Context {
         strict,
-        missing_secrets: Vec::new(),
+        missing_secrets: std::rc::Rc::new(std::cell::RefCell::new(Vec::new())),
         capabilities: caps(caps_entries),
         effects,
     }
@@ -385,8 +385,8 @@ fn strict_flags_pipe_filters_as_unresolved() {
 #[test]
 fn strict_fails_on_missing_secrets() {
     let fx = StubEffects::new();
-    let mut ctx = ctx_with(&[], &fx, true);
-    ctx.missing_secrets = vec!["token".to_string(), "key".to_string()];
+    let ctx = ctx_with(&[], &fx, true);
+    *ctx.missing_secrets.borrow_mut() = vec!["token".to_string(), "key".to_string()];
     let err = resolve_template("nothing to resolve", &ctx).unwrap_err();
     assert_eq!(err.reason, "missing secrets: token, key");
 }

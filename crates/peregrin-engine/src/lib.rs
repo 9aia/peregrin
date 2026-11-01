@@ -1,26 +1,21 @@
 //! peregrin-engine — the graph walker: events in, driver dispatch,
-//! events out, until nothing is ready to fire. Spec: `project/adrs`
-//! and the TS `handl-engine` on `main`.
+//! events out, until nothing is ready to fire. Port of the TS
+//! `ac-engine` (`runner.ts`/`bus.ts`/`registry.ts`) plus the
+//! `ac-safety` pieces it calls. Spec: `project/adrs` and the TS
+//! `handl-engine` on `main`.
+//!
+//! [`Runner`] drives a [`peregrin_core::Campaign`] against a
+//! [`Registry`] of drivers, a [`peregrin_bus::EventBus`], and the
+//! persistence ports in `peregrin-store`, returning the event log of
+//! the run.
 
-use std::sync::Arc;
+mod registry;
+mod runner;
+mod safety;
 
-use peregrin_driver::Driver;
-
-/// A driver registry keyed by `node.driver`.
-#[derive(Default)]
-pub struct Registry {
-    drivers: std::collections::HashMap<String, Arc<dyn Driver>>,
-}
-
-impl Registry {
-    #[must_use]
-    pub fn with(mut self, name: impl Into<String>, driver: Arc<dyn Driver>) -> Self {
-        self.drivers.insert(name.into(), driver);
-        self
-    }
-
-    #[must_use]
-    pub fn get(&self, name: &str) -> Option<Arc<dyn Driver>> {
-        self.drivers.get(name).cloned()
-    }
-}
+pub use registry::Registry;
+pub use runner::{RunOptions, Runner};
+pub use safety::{
+    CapabilityChecker, ResourceGate, SchemaValidator, build_validator, validate_object,
+    validate_record,
+};

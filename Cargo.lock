@@ -3516,8 +3516,9 @@ dependencies = [
 name = "peregrin-bus"
 version = "0.0.0"
 dependencies = [
- "async-trait",
  "peregrin-core",
+ "peregrin-store",
+ "serde_json",
 ]
 
 [[package]]
@@ -3573,6 +3574,7 @@ dependencies = [
  "serde",
  "serde_json",
  "thiserror 2.0.21",
+ "uuid",
 ]
 
 [[package]]
@@ -3587,31 +3589,35 @@ dependencies = [
 name = "peregrin-driver"
 version = "0.0.0"
 dependencies = [
- "async-trait",
  "peregrin-core",
+ "peregrin-store",
  "serde_json",
  "thiserror 2.0.21",
- "tokio",
 ]
 
 [[package]]
 name = "peregrin-driver-shell"
 version = "0.0.0"
 dependencies = [
- "async-trait",
  "peregrin-core",
  "peregrin-driver",
+ "peregrin-template",
  "serde_json",
- "tokio",
 ]
 
 [[package]]
 name = "peregrin-engine"
 version = "0.0.0"
 dependencies = [
- "async-trait",
+ "peregrin-bus",
  "peregrin-core",
  "peregrin-driver",
+ "peregrin-loader",
+ "peregrin-loader-yaml",
+ "peregrin-store",
+ "peregrin-template",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -3818,8 +3824,8 @@ dependencies = [
 name = "peregrin-store"
 version = "0.0.0"
 dependencies = [
- "async-trait",
  "peregrin-core",
+ "serde_json",
 ]
 
 [[package]]

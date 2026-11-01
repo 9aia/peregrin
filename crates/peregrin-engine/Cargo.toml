@@ -9,8 +9,15 @@ repository.workspace = true
 [lints]
 workspace = true
 [dependencies]
+peregrin-bus.workspace = true
 peregrin-core.workspace = true
 peregrin-driver.workspace = true
+peregrin-store.workspace = true
+peregrin-template.workspace = true
+serde_json.workspace = true
 
 [dev-dependencies]
-async-trait.workspace = true
+peregrin-loader.workspace = true
+peregrin-loader-yaml.workspace = true
+serde_json.workspace = true
+tempfile.workspace = true

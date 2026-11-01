@@ -11,14 +11,14 @@ use crate::context::Context;
 use crate::error::TemplateError;
 use crate::js::js_number_value;
 
+// Not `Send + Sync`: driver-backed custom functions capture the
+// single-threaded engine's `Rc` context channels (the TS shared ctx).
 type Call = dyn Fn(
-        &[Value],
-        &Context<'_>,
-        Option<&peregrin_core::Node>,
-        Option<&str>,
-    ) -> Result<Value, TemplateError>
-    + Send
-    + Sync;
+    &[Value],
+    &Context<'_>,
+    Option<&peregrin_core::Node>,
+    Option<&str>,
+) -> Result<Value, TemplateError>;
 
 /// A named `${name(args)}` callable — builtins plus host-registered
 /// custom functions (the TS `customFunctions` map).
@@ -45,8 +45,6 @@ impl TemplateFunction {
                 Option<&peregrin_core::Node>,
                 Option<&str>,
             ) -> Result<Value, TemplateError>
-            + Send
-            + Sync
             + 'static,
     {
         Self {

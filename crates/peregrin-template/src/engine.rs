@@ -48,10 +48,11 @@ pub fn resolve_template_opts(
                 unresolved.join(", ")
             )));
         }
-        if !ctx.missing_secrets.is_empty() {
+        let missing = ctx.missing_secrets.borrow();
+        if !missing.is_empty() {
             return Err(TemplateError::new(format!(
                 "missing secrets: {}",
-                ctx.missing_secrets.join(", ")
+                missing.join(", ")
             )));
         }
     }

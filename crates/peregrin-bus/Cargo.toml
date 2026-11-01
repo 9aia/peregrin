@@ -9,5 +9,6 @@ repository.workspace = true
 [lints]
 workspace = true
 [dependencies]
-async-trait.workspace = true
 peregrin-core.workspace = true
+peregrin-store.workspace = true
+serde_json.workspace = true

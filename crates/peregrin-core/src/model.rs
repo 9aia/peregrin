@@ -171,13 +171,136 @@ fn parse_max_fires(value: Option<&Value>, default: MaxFires) -> MaxFires {
 // Event
 // ---------------------------------------------------------------------------
 
-/// A domain event — the unit the bus carries and nodes react to.
+/// The TS `Event` default payload — `payload ?? {}` on decode.
+fn default_payload() -> Value {
+    Value::Object(Map::new())
+}
+
+/// Epoch milliseconds — `Date.now()` in the TS engine.
+fn now_millis() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| i64::try_from(d.as_millis()).unwrap_or(i64::MAX))
+}
+
+/// A domain event — the unit the bus carries and nodes react to. Port of
+/// the TS `Event`: `type` (here `kind`), `payload`, `source`, `id`, `ts`.
+/// `source` is the emitting node id (`__runner__` for engine-synthetic
+/// events); `id`/`ts` are observational and default on decode.
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Event {
     /// Event type tag — routing key for subscribers and node triggers.
+    /// Serialized as `type` (the TS field name); `kind` reads too.
+    #[serde(rename = "type", alias = "kind", default)]
     pub kind: String,
     /// JSON payload — validated by producers/consumers, opaque here.
+    #[serde(default = "default_payload")]
     pub payload: serde_json::Value,
+    /// Emitting node id, or `__runner__` for engine-synthetic events.
+    #[serde(default)]
+    pub source: String,
+    /// Event id — `crypto.randomUUID().slice(0, 12)` in the TS.
+    #[serde(default)]
+    pub id: String,
+    /// Emission time — `Date.now()` epoch milliseconds.
+    #[serde(default)]
+    pub ts: i64,
+}
+
+impl Event {
+    /// `new Event(type, payload, source)` — fresh `id` and `ts`.
+    #[allow(clippy::needless_pass_by_value)] // payload is stored as-is
+    pub fn new(
+        kind: impl Into<String>,
+        payload: serde_json::Value,
+        source: impl Into<String>,
+    ) -> Self {
+        Self {
+            kind: kind.into(),
+            payload,
+            source: source.into(),
+            id: uuid::Uuid::new_v4().to_string()[..12].to_string(),
+            ts: now_millis(),
+        }
+    }
+
+    /// `Event.start()` — the synthetic run trigger.
+    #[must_use]
+    pub fn start() -> Self {
+        Self::new("start", default_payload(), "__runner__")
+    }
+
+    /// `Event.done()` — the successful-run terminator.
+    #[must_use]
+    pub fn done() -> Self {
+        Self::new("workflow.done", default_payload(), "__runner__")
+    }
+
+    /// `Event.cancel(reason)` — a cancellation request event.
+    #[must_use]
+    pub fn cancel(reason: &str) -> Self {
+        Self::new(
+            "workflow.cancel",
+            serde_json::json!({ "reason": reason }),
+            "__runner__",
+        )
+    }
+
+    /// `Event.nodeFailed(nodeId, error)`.
+    pub fn node_failed(node_id: &str, error: &str) -> Self {
+        Self::new(
+            "node.failed",
+            serde_json::json!({ "error": error, "node": node_id }),
+            node_id,
+        )
+    }
+
+    /// `Event.nodeExhausted(nodeId, maxFires)` — the `max_fires` cap
+    /// retire signal (ADR-0005).
+    pub fn node_exhausted(node_id: &str, max_fires: MaxFires) -> Self {
+        Self::new(
+            "node.exhausted",
+            serde_json::json!({ "node": node_id, "maxFires": max_fires }),
+            node_id,
+        )
+    }
+
+    /// `Event.workflowFailed(nodeId, error)` — runner-sourced.
+    pub fn workflow_failed(node_id: &str, error: &str) -> Self {
+        Self::new(
+            "workflow.failed",
+            serde_json::json!({ "node": node_id, "error": error }),
+            "__runner__",
+        )
+    }
+
+    /// `Event.eventInvalid(eventType, source, errors, payload)`.
+    #[allow(clippy::needless_pass_by_value)] // signature mirrors the TS
+    pub fn event_invalid(
+        kind: &str,
+        source: &str,
+        errors: &[String],
+        payload: serde_json::Value,
+    ) -> Self {
+        Self::new(
+            "event.invalid",
+            serde_json::json!({
+                "eventType": kind,
+                "errors": errors,
+                "payload": payload,
+            }),
+            source,
+        )
+    }
+
+    /// `Event.capabilityViolation(nodeId, violations)`.
+    pub fn capability_violation(node_id: &str, violations: &[String]) -> Self {
+        Self::new(
+            "capability.violation",
+            serde_json::json!({ "node": node_id, "violations": violations }),
+            node_id,
+        )
+    }
 }
 
 // ---------------------------------------------------------------------------

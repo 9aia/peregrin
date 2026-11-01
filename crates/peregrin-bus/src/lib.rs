@@ -1,11 +1,13 @@
-//! peregrin-bus — the event bus port: publish/subscribe for campaign
-//! events. Local impl in-process; remote fan-out lives on the
-//! `peregrin-remote` transport.
+//! peregrin-bus — the campaign event system: glob-pattern matching
+//! (`matches`/`capture_wildcards`), the [`EventBus`] port the runner
+//! publishes through, the in-process [`LocalBus`] impl (port of the TS
+//! `EventBusLive`), and the [`Observer`] hook port. Remote fan-out
+//! lives on the `peregrin-remote` transport.
 
-use async_trait::async_trait;
+mod bus;
+mod matching;
+mod observer;
 
-/// Subscribers receive every published event.
-#[async_trait]
-pub trait Bus: Send + Sync {
-    async fn publish(&self, event: peregrin_core::Event);
-}
+pub use bus::{EventBus, LocalBus, PublishResult};
+pub use matching::{capture_wildcards, matches};
+pub use observer::{NoopObserver, Observer, Span};
