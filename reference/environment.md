@@ -19,7 +19,7 @@ and its drivers) — those are documented in
 | `PEREGRIN_ORIGINS` | localhost:3000 ×2 | CORS allowlist; `*` echoes any origin |
 | `PEREGRIN_CLINE_DIR` | `~/.cline/data` | Cline store dir — the convert target |
 | `PEREGRIN_CLAUDE_DIR` | `~/.claude` | Claude dir — file-history restore |
-| `PEREGRIN_SESSION_PLANE` | `inprocess` | `service` spawns `sepia serve` instead |
+| `PEREGRIN_SESSION_PLANE` | `service` | `local`/`inprocess` links sepia in-process (dev) |
 | `PEREGRIN_SEPIA` | discovery | Explicit path to the `sepia` binary |
 | `PEREGRIN_SSE_KEEPALIVE_MS` | `15000` | SSE keep-alive cadence; `0` disables |
 | `PEREGRIN_HELD_WATCH_MS` | `5000` | Held-session re-probe cadence |

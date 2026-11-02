@@ -43,18 +43,22 @@ token. `/api/pair` is rate-limited — `PEREGRIN_PAIR_LIMIT_PER_MIN` /
 
 ## The session plane
 
-By default the node links sepia in-process (`PEREGRIN_SESSION_PLANE` unset
-or `inprocess`). To run the session plane as a managed subprocess —
-the end-state architecture — set:
+By default the node runs the session plane as a managed subprocess —
+it spawns `sepia serve`, handshakes `manifest`, and respawns it once
+on death. `SEPIA_*` env vars (driver dirs, `SEPIA_DEVIN_DB`, lock
+TTLs) are read by the sepia child — export them on the node.
+`PEREGRIN_SEPIA` overrides binary discovery when needed.
 
 ```bash
-export PEREGRIN_SESSION_PLANE=service
 export PEREGRIN_SEPIA=/path/to/sepia   # optional override for discovery
 ```
 
-The node then spawns `sepia serve`, handshakes `manifest`, and respawns
-it once on death. `SEPIA_*` env vars (driver dirs, `SEPIA_DEVIN_DB`, lock
-TTLs) are read by the sepia child — export them on the node.
+For dev you can link sepia in-process instead (the `LocalPlane` test
+mode) — same `SessionPlane` surface, no subprocess:
+
+```bash
+export PEREGRIN_SESSION_PLANE=local    # or: inprocess
+```
 
 ## Node identity and state
 

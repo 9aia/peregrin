@@ -37,9 +37,10 @@ with the policy decision already made.
 A node never links `sepia-session` into orchestration code. It spawns
 `sepia serve` and drives it over ndjson JSON-RPC stdio — the same
 framing sepia's own store drivers speak — via
-`peregrin-session::ServicePlane`. An in-process `LocalPlane` exists for
-tests (`PEREGRIN_SESSION_PLANE=inprocess`); both implement the same
-`SessionPlane` trait, so `peregrin-http` and everything above it is
+`peregrin-session::ServicePlane`. An in-process `LocalPlane` remains
+selectable for dev (`PEREGRIN_SESSION_PLANE=local`/`inprocess`); both
+implement the same `SessionPlane` trait, so `peregrin-http` and
+everything above it is
 blind to which side of the fork it's on. The manifest handshake
 negotiates protocol versions at spawn.
 
