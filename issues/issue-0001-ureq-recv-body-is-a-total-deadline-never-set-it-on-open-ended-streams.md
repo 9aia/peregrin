@@ -1,7 +1,7 @@
 +++
 id = "I-001"
 title = "ureq recv_body is a total deadline — never set it on open-ended streams"
-status = "open"
+status = "done"
 created = "2026-11-02"
 owner = "devin"
 priority = "medium"
