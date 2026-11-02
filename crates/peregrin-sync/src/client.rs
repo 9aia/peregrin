@@ -393,11 +393,14 @@ impl NodeClient {
     }
 
     /// The SSE request gets its own timeout profile: no global deadline
-    /// (the stream is open-ended), a bounded header wait, and the
-    /// `sse_idle_timeout` body budget. ureq enforces `recv_body` as a
-    /// *total* deadline — once spent, socket reads keep polling on a
-    /// ~1s timeout; [`EventStream::with_stall_timeout`] turns that into
-    /// a real silence bound so a heartbeating stream stays open.
+    /// (the stream is open-ended), a bounded header wait, and *no* body
+    /// budget — ureq enforces `recv_body` as a *total* deadline from
+    /// response start, and once spent `maybe_await_input` fails every
+    /// read instantly without touching the socket: the caller spins and
+    /// a heartbeating stream still dies at the deadline. Feed silence is
+    /// bounded by the engine-side watchdog instead;
+    /// [`EventStream::with_stall_timeout`] keeps the bound for readers
+    /// that do surface transport timeouts.
     fn open_stream(
         &self,
         req: RequestBuilder<ureq::typestate::WithoutBody>,
@@ -406,7 +409,7 @@ impl NodeClient {
             .config()
             .timeout_global(None)
             .timeout_recv_response(Some(self.config.request_timeout))
-            .timeout_recv_body(Some(self.config.sse_idle_timeout))
+            .timeout_recv_body(None)
             .timeout_connect(Some(self.config.connect_timeout))
             .build()
             .call()

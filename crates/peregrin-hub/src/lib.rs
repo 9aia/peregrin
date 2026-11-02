@@ -55,8 +55,10 @@ pub struct HubState {
     /// `PEREGRIN_HUB_TOKEN` — the browser→hub gate. `None` → every route
     /// is open (loopback-only deployments).
     pub hub_token: Option<Arc<str>>,
-    /// Long-lived streams: no global deadline, but a 30s body-recv
-    /// timeout so a half-dead client is detected on the next ping.
+    /// Long-lived streams: no global deadline and no body budget —
+    /// ureq's `recv_body` is a total deadline that fails every read
+    /// instantly once spent; a half-dead client is instead detected
+    /// when the next frame's `blocking_send` fails.
     sse_agent: ureq::Agent,
     /// Bounded request/response passthroughs.
     http_agent: ureq::Agent,
@@ -78,7 +80,7 @@ impl HubState {
                 .http_status_as_error(false)
                 .timeout_global(None)
                 .timeout_connect(Some(std::time::Duration::from_secs(10)))
-                .timeout_recv_body(Some(std::time::Duration::from_secs(30)))
+                .timeout_recv_body(None)
                 .build(),
         );
         let http_agent = ureq::Agent::new_with_config(

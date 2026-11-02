@@ -548,9 +548,19 @@ async fn connect_once(
         tokio::time::Instant::now() + shared.options.resync_interval,
         shared.options.resync_interval,
     );
+    // The stream's silence bound — re-armed by every wire frame (the
+    // node's heartbeats keep a quiet feed alive). Needed because the
+    // ureq body budget can't express a per-read idle timeout (see
+    // `open_stream`), so this deadline is enforced engine-side.
+    let mut silence = tokio::time::Instant::now() + shared.options.sse_idle_timeout;
     let end = loop {
         tokio::select! {
             () = cancel.cancelled() => break CycleEnd::Cancelled,
+            () = tokio::time::sleep_until(silence) => {
+                break CycleEnd::Disconnected(NodeError::Malformed(
+                    "event stream silent".into(),
+                ));
+            }
             msg = rx.recv() => match msg {
                 None => break CycleEnd::Disconnected(NodeError::Malformed("pump ended".into())),
                 // The pump sends Subscribed exactly once, before any
@@ -562,6 +572,7 @@ async fn connect_once(
                     }));
                 }
                 Some(PumpMsg::Event(event)) => {
+                    silence = tokio::time::Instant::now() + shared.options.sse_idle_timeout;
                     if let Err(e) = apply_event(node, client, shared, event).await {
                         tracing::warn!(node = %node.id, "apply event failed: {e}");
                     }
