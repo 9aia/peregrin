@@ -4879,6 +4879,7 @@ dependencies = [
 [[package]]
 name = "sepia-acp"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "async-trait",
  "futures",
@@ -4893,6 +4894,7 @@ dependencies = [
 [[package]]
 name = "sepia-convert"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "async-trait",
  "sepia-core",
@@ -4905,6 +4907,7 @@ dependencies = [
 [[package]]
 name = "sepia-core"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "async-trait",
  "serde",
@@ -4915,6 +4918,7 @@ dependencies = [
 [[package]]
 name = "sepia-driver"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "async-trait",
  "sepia-core",
@@ -4927,6 +4931,7 @@ dependencies = [
 [[package]]
 name = "sepia-driver-cline"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "async-trait",
  "rusqlite",
@@ -4942,6 +4947,7 @@ dependencies = [
 [[package]]
 name = "sepia-driver-devin"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "async-trait",
  "rusqlite",
@@ -4957,6 +4963,7 @@ dependencies = [
 [[package]]
 name = "sepia-host"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "async-trait",
  "sepia-core",
@@ -4971,6 +4978,7 @@ dependencies = [
 [[package]]
 name = "sepia-meta"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "serde",
  "serde_json",
@@ -4980,6 +4988,7 @@ dependencies = [
 [[package]]
 name = "sepia-proto"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "sepia-core",
  "serde",
@@ -4989,6 +4998,7 @@ dependencies = [
 [[package]]
 name = "sepia-session"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "async-trait",
  "futures",
@@ -5011,6 +5021,7 @@ dependencies = [
 [[package]]
 name = "sepia-testkit"
 version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
 dependencies = [
  "async-trait",
  "rusqlite",

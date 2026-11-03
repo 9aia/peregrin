@@ -1,3 +1,5 @@
+#![allow(clippy::assert_is_empty)]
+
 //! peregrin — the CLI. Local store verbs over the
 //! Devin/Cline/Claude/Cursor stores, node ops against a running node's
 //! `/api/*` surface, agent config IR verbs, pairing, `serve` (the node

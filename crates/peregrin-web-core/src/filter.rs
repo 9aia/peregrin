@@ -1,3 +1,5 @@
+#![allow(clippy::assert_is_empty)]
+
 //! Session-list filtering, sorting, and cwd grouping — the pure half
 //! of the `/` page's filter bar. `SessionRow` is the lightweight view
 //! model the list renders; everything here is DOM-free and linear.

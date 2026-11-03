@@ -22,7 +22,7 @@ fn loads_a_minimal_workflow_from_text() {
     let tmp = tempfile::tempdir().unwrap();
     let campaign = load("name: test\nnodes: []", tmp.path()).unwrap();
     assert_eq!(campaign.name, "test");
-    assert!(campaign.nodes.is_empty());
+    assert_eq!(campaign.nodes.len(), 0);
 }
 
 #[test]

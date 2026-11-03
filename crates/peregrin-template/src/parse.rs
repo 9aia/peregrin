@@ -1,3 +1,5 @@
+#![allow(clippy::assert_is_empty)]
+
 //! `${name.method(args)}` call parsing — port of `parse.ts`.
 //!
 //! Grammar (from the TS regex `^([a-zA-Z_]\w*(?:\.[a-zA-Z_]\w*)?)\s*\(\s*(.*?)\s*\)\s*$`):

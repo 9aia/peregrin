@@ -1,3 +1,5 @@
+#![allow(clippy::assert_is_empty)]
+
 //! One `ai.peregrin` job: a
 //! LaunchAgent under `~/Library/LaunchAgents` for `--user` (the only
 //! sensible default for a dev tool) or a LaunchDaemon under

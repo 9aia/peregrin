@@ -1,3 +1,4 @@
+#![allow(clippy::assert_is_empty)]
 #![allow(clippy::unwrap_used)]
 use peregrin_core::Event;
 use peregrin_store::{DeadLetterQueue, EventStore, MemoryDlq, MemoryStore, NoopDlq, StateStore};

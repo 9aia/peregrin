@@ -1,3 +1,5 @@
+#![allow(clippy::assert_is_empty)]
+
 //! Global hotkey resolution — the pure key→action mapping behind the
 //! document `keydown` listeners in `app` and `pages::session_list`.
 //! Each listener translates its `KeyboardEvent` into `(key, Mods,

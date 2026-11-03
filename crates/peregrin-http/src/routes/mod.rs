@@ -1,3 +1,5 @@
+#![allow(clippy::assert_is_empty)]
+
 //! Route helpers — port of `apps/server/src/routes/shared.ts`: the
 //! `ControlError` → HTTP status mapping, the `{error, code?}` body shape,
 //! JSON-body reading, and the wire structs the handlers serialize.

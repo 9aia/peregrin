@@ -1,3 +1,5 @@
+#![allow(clippy::assert_is_empty)]
+
 //! History view-model — the transcript *backlog* half, ported from the
 //! TS app's `toolDisplay.ts`/`systemContext.ts`/`historyRows.ts`/`format.ts`.
 //! Pure data in, pure data out: the Leptos page maps [`ChatRow`]s to

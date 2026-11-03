@@ -1,3 +1,5 @@
+#![allow(clippy::assert_is_empty)]
+
 //! The node event feed behind `GET /api/events`, the meta-store
 //! instrumentation that writes to it, the held-session watch, and the
 //! per-session live listener that turns run lifecycle into `busy` feed

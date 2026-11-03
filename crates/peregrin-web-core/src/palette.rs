@@ -1,3 +1,5 @@
+#![allow(clippy::assert_is_empty)]
+
 //! Command-palette ranking — the pure half of the `⌘K`/`/` overlay in
 //! `peregrin-web`. The DOM layer feeds it `PaletteItem`s built from the
 //! session list, the static page nav, and shell actions; `rank`
