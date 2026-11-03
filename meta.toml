@@ -2,7 +2,7 @@ name = "peregrin"
 
 [next]
 t = 40
-i = 5
+i = 6
 p = 1
 adr = 79
 pl = 3
