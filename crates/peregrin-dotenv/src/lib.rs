@@ -8,6 +8,37 @@ pub struct DotenvSecrets {
     pub path: PathBuf,
 }
 
+/// A usable entry name — non-empty, no `=`/newlines (either would
+/// corrupt the file or inject extra entries on write).
+fn valid_name(name: &str) -> bool {
+    !name.is_empty() && !name.contains('=') && !name.contains(['\n', '\r'])
+}
+
+/// A usable value — no newlines; `.env` is one entry per line, so a
+/// multi-line value would smuggle in extra entries.
+fn valid_value(value: &str) -> bool {
+    !value.contains(['\n', '\r'])
+}
+
+fn invalid_input(detail: &str) -> std::io::Error {
+    std::io::Error::new(std::io::ErrorKind::InvalidInput, detail)
+}
+
+/// Write `contents` to `path` atomically (tmp + rename) at 0600 on
+/// unix — the file holds secrets; umask defaults would leave it
+/// group/world-readable.
+fn write_secret_file(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
+    path.parent().map_or(Ok(()), std::fs::create_dir_all)?;
+    let tmp = path.with_extension(format!("tmp-{}", std::process::id()));
+    std::fs::write(&tmp, contents)?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&tmp, std::fs::Permissions::from_mode(0o600))?;
+    }
+    std::fs::rename(&tmp, path)
+}
+
 impl DotenvSecrets {
     fn read(&self) -> String {
         std::fs::read_to_string(&self.path).unwrap_or_default()
@@ -16,6 +47,9 @@ impl DotenvSecrets {
 
 impl peregrin_secret::Secrets for DotenvSecrets {
     fn get(&self, name: &str) -> Option<String> {
+        if !valid_name(name) {
+            return None;
+        }
         self.read()
             .lines()
             .find_map(|l| l.strip_prefix(name)?.strip_prefix('=').map(str::to_string))
@@ -23,6 +57,14 @@ impl peregrin_secret::Secrets for DotenvSecrets {
     }
 
     fn set(&self, name: &str, value: &str) -> std::io::Result<()> {
+        if !valid_name(name) {
+            return Err(invalid_input(
+                "secret name must be non-empty without '=' or newlines",
+            ));
+        }
+        if !valid_value(value) {
+            return Err(invalid_input("secret value must not contain newlines"));
+        }
         let mut lines: Vec<String> = self
             .read()
             .lines()
@@ -30,10 +72,7 @@ impl peregrin_secret::Secrets for DotenvSecrets {
             .map(str::to_string)
             .collect();
         lines.push(format!("{name}={value}"));
-        // `parent()` is never `None` for a real path — `map_or` keeps the
-        // call unconditional rather than leaving an else-arm region.
-        self.path.parent().map_or(Ok(()), std::fs::create_dir_all)?;
-        std::fs::write(&self.path, lines.join("\n") + "\n")
+        write_secret_file(&self.path, &format!("{}\n", lines.join("\n")))
     }
 }
 

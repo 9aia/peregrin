@@ -19,6 +19,20 @@ use serde_json::Value;
 use thiserror::Error;
 use time::OffsetDateTime;
 
+/// The db holds queued write ops (prompts, payloads) — keep it
+/// owner-only. sqlite creates files at umask defaults; tighten on
+/// every open so a permissive umask can't leak history.
+#[cfg(unix)]
+fn restrict_file_perms(path: &Path) {
+    use std::os::unix::fs::PermissionsExt;
+    if path.exists() {
+        let _ = std::fs::set_permissions(path, std::fs::Permissions::from_mode(0o600));
+    }
+}
+
+#[cfg(not(unix))]
+fn restrict_file_perms(_path: &Path) {}
+
 const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS outbox (
     id TEXT PRIMARY KEY,
@@ -126,6 +140,7 @@ impl Outbox {
             std::fs::create_dir_all(dir).ok();
         }
         let conn = Connection::open(path)?;
+        restrict_file_perms(path);
         conn.pragma_update(None, "journal_mode", "WAL")?;
         conn.pragma_update(None, "busy_timeout", 5000)?;
         conn.execute_batch(SCHEMA)?;

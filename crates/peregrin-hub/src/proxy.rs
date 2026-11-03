@@ -54,7 +54,16 @@ pub async fn sse_session_stream(
     req: Request<Body>,
 ) -> Response {
     let (base, token) = state.session_upstream(&id);
-    let path = path_and_query(&req, &format!("/api/sessions/{id}/stream"));
+    // The id embeds into the upstream URL — encode it or `?`/`#`/`@`
+    // in a session id would smuggle query/authority components into
+    // the node-bound request.
+    let path = path_and_query(
+        &req,
+        &format!(
+            "/api/sessions/{}/stream",
+            peregrin_sync::client::encode_segment(&id)
+        ),
+    );
     let url = format!("{base}{path}");
     sse_bridge(&state, &url, req.headers(), token.as_deref())
 }

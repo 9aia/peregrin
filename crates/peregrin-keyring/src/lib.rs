@@ -19,8 +19,17 @@ impl Default for KeyringSecrets {
     }
 }
 
+/// A usable secret name — non-empty and not `-`-leading (a leading
+/// dash would parse as a `secret-tool` flag, not an attribute value).
+fn valid_name(name: &str) -> bool {
+    !name.is_empty() && !name.starts_with('-')
+}
+
 impl peregrin_secret::Secrets for KeyringSecrets {
     fn get(&self, name: &str) -> Option<String> {
+        if !valid_name(name) {
+            return None;
+        }
         let o = Command::new("secret-tool")
             .args(["lookup", "service", &self.service, "name", name])
             .output()
@@ -32,6 +41,12 @@ impl peregrin_secret::Secrets for KeyringSecrets {
     }
 
     fn set(&self, name: &str, value: &str) -> std::io::Result<()> {
+        if !valid_name(name) {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "secret name must be non-empty and not start with '-'",
+            ));
+        }
         let mut c = Command::new("secret-tool")
             .args([
                 "store",
