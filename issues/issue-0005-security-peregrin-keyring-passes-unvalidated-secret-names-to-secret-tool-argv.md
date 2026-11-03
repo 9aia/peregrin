@@ -1,9 +1,13 @@
 +++
 id = "I-005"
 title = "security: peregrin-keyring passes unvalidated secret names to secret-tool argv"
-status = "open"
+status = "done"
 created = "2026-11-03"
 priority = "low"
 +++
 
 name values starting with '-' parse as flags; empty names hit undefined behavior. Fix: reject empty/'-'-leading names.
+
+## Resolution
+
+Fixed on security/audit-fixes (ee40b83a): names that are empty or '-'-leading rejected before secret-tool spawn.
