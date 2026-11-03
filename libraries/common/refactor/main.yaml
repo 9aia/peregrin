@@ -1,0 +1,242 @@
+# common/refactor: spec-driven refactor workflow.
+#
+# Pipeline:
+#   worktree → analyze (spec + code → plan) → implement → check → test
+#   → (fix + commit) up to 3 times until green
+#   → review → (rework + commit) up to 3 times until approved
+#   → docs → report
+#
+# No PR/merge — in 9aia the pushed branch is the deliverable;
+# merge is a human/sturn call.
+#
+# Usage:
+#   REFACTOR_ID=sturn-resource-uris \
+#   REFACTOR_DESCRIPTION="generalize claims to typed URIs" \
+#   SPEC=project/proposals/proposal-0001-*.md \
+#   TEST_CMD="cargo xtask test" CHECK_CMD="cargo xtask check" \
+#   handl run libraries/common/refactor/main.yaml
+
+name: refactor
+
+annotations:
+  title: Refactor workflow
+  description: Spec-driven refactor — analyze, implement, verify, review, document.
+  author: peregrin
+  tags: [common, refactor, workflow]
+  since: "0.1.0"
+  see: project/adrs/0029-stdlib-design.md
+
+config:
+  repo: "."
+  worktree_base: "."
+  test_cmd: "cargo xtask test"
+  check_cmd: "cargo xtask check"
+  agent_runner: "devin"
+  base: "main"
+  spec: ""
+
+events:
+  - type: start
+  - type: refactor.worktree.ready
+  - type: refactor.worktree.failed
+  - type: refactor.analyze.done
+  - type: refactor.analyze.failed
+  - type: refactor.impl.done
+  - type: refactor.impl.failed
+  - type: refactor.check.passed
+  - type: refactor.check.failed
+  - type: refactor.test.passed
+  - type: refactor.test.failed
+  - type: refactor.fix.done
+  - type: refactor.fix.failed
+  - type: refactor.commit.fix.done
+  - type: refactor.commit.fix.failed
+  - type: refactor.review.approved
+  - type: refactor.review.rejected
+  - type: refactor.rework.done
+  - type: refactor.rework.failed
+  - type: refactor.commit.rework.done
+  - type: refactor.commit.rework.failed
+  - type: refactor.docs.done
+  - type: refactor.docs.failed
+  - type: refactor.complete
+  - type: refactor.aborted
+  - type: node.exhausted
+
+nodes:
+  - include: ../../git/worktree.node.yml
+    id: refactor.worktree
+    emits: [refactor.worktree.ready, refactor.worktree.failed]
+    params:
+      env:
+        BRANCH_PREFIX: refactor
+        WORKTREE_PREFIX: wt
+
+  - include: ../../agent/base.node.yml
+    id: refactor.analyze
+    on: [refactor.worktree.ready]
+    emits: [refactor.analyze.done, refactor.analyze.failed]
+    params:
+      permission_mode: normal
+      timeout: 600
+      prompt: |
+        ${include(./refactor.prompt.yml)}
+        Read the spec (${config.spec}) and the relevant code. Write the
+        implementation plan into PLAN.md in the worktree root: files to
+        touch, design decisions, risks, test coverage. Do NOT change code.
+      emit:
+        0: refactor.analyze.done
+        default: refactor.analyze.failed
+
+  - include: ../../agent/base.node.yml
+    id: refactor.impl
+    on: [refactor.analyze.done]
+    emits: [refactor.impl.done, refactor.impl.failed]
+    params:
+      permission_mode: dangerous
+      timeout: 1200
+      prompt: |
+        ${include(./refactor.prompt.yml)}
+        Implement the refactor per spec (${config.spec}) and PLAN.md.
+        Update tests for the new semantics and add coverage for them.
+        Do NOT commit — the check/test gate runs next.
+      emit:
+        0: refactor.impl.done
+        default: refactor.impl.failed
+
+  - driver: shell
+    id: refactor.check
+    on: [refactor.impl.done, refactor.commit.fix.done]
+    emits: [refactor.check.passed, refactor.check.failed]
+    max_fires: 4
+    params:
+      cmd: |
+        cd "${state.worktree_path}"
+        ${config.check_cmd:-cargo xtask check}
+      timeout: 600
+      emit:
+        0: refactor.check.passed
+        default: refactor.check.failed
+
+  - include: ../../test/run.node.yml
+    id: refactor.test
+    on: [refactor.check.passed]
+    emits: [refactor.test.passed, refactor.test.failed]
+    params:
+      emit:
+        0: refactor.test.passed
+        default: refactor.test.failed
+
+  - include: ../../agent/base.node.yml
+    id: refactor.fix
+    on: [refactor.check.failed, refactor.test.failed]
+    emits: [refactor.fix.done, refactor.fix.failed]
+    max_fires: 3
+    params:
+      permission_mode: dangerous
+      timeout: 900
+      prompt: |
+        ${include(./refactor.prompt.yml)}
+        The refactor "${state.refactor_id}" is failing check or tests in
+        ${state.worktree_path}. Failure output: ${event.payload.stdout}
+        Fix it — do not commit.
+      emit:
+        0: refactor.fix.done
+        default: refactor.fix.failed
+
+  - include: ../../git/commit.node.yml
+    id: refactor.commit-fix
+    on: [refactor.fix.done]
+    emits: [refactor.commit.fix.done, refactor.commit.fix.failed]
+    params:
+      env:
+        COMMIT_SUBJECT: "fix: refactor ${state.refactor_id} — gate failures"
+        COMMIT_BODY: "Generated with agent-campaign refactor workflow"
+      emit:
+        0: refactor.commit.fix.done
+        default: refactor.commit.fix.failed
+
+  - include: ../../agent/base.node.yml
+    id: refactor.review
+    on: [refactor.test.passed, refactor.commit.rework.done]
+    emits: [refactor.review.approved, refactor.review.rejected]
+    params:
+      permission_mode: normal
+      timeout: 600
+      prompt: ${include(./review.prompt.yml)}
+      emit:
+        0: refactor.review.approved
+        default: refactor.review.rejected
+
+  - include: ../../agent/base.node.yml
+    id: refactor.rework
+    on: [refactor.review.rejected]
+    emits: [refactor.rework.done, refactor.rework.failed]
+    max_fires: 3
+    params:
+      permission_mode: dangerous
+      timeout: 900
+      prompt: |
+        ${include(./refactor.prompt.yml)}
+        The refactor "${state.refactor_id}" was rejected on review.
+        Feedback: ${event.payload.stdout}
+        Apply the feedback in ${state.worktree_path}.
+      emit:
+        0: refactor.rework.done
+        default: refactor.rework.failed
+
+  - include: ../../git/commit.node.yml
+    id: refactor.commit-rework
+    on: [refactor.rework.done]
+    emits: [refactor.commit.rework.done, refactor.commit.rework.failed]
+    params:
+      env:
+        COMMIT_SUBJECT: "chore: apply review feedback for ${state.refactor_id}"
+        COMMIT_BODY: "Generated with agent-campaign refactor workflow"
+      emit:
+        0: refactor.commit.rework.done
+        default: refactor.commit.rework.failed
+
+  - include: ../../agent/base.node.yml
+    id: refactor.docs
+    on: [refactor.review.approved]
+    emits: [refactor.docs.done, refactor.docs.failed]
+    params:
+      permission_mode: dangerous
+      timeout: 600
+      prompt: |
+        ${include(./refactor.prompt.yml)}
+        Update docs to match the refactor: AGENTS.md awareness blocks,
+        skills, README/docs references that describe the old behavior,
+        and the spec item's status if it lives in a myco ledger. Commit
+        everything with message "docs: refactor ${state.refactor_id}".
+      emit:
+        0: refactor.docs.done
+        default: refactor.docs.failed
+
+  - include: ../../display/report.node.yml
+    id: refactor.report
+    on: [refactor.docs.done]
+    emits: [refactor.complete]
+    params:
+      emit:
+        0: refactor.complete
+
+  - include: ../../display/abort.node.yml
+    id: refactor.abort
+    on:
+      [
+        refactor.worktree.failed,
+        refactor.analyze.failed,
+        refactor.impl.failed,
+        refactor.fix.failed,
+        refactor.commit.fix.failed,
+        refactor.rework.failed,
+        refactor.commit.rework.failed,
+        refactor.docs.failed,
+        node.exhausted,
+      ]
+    emits: [refactor.aborted]
+    params:
+      emit:
+        0: refactor.aborted
