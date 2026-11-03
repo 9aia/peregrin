@@ -39,6 +39,11 @@ const DEFAULT_ENDPOINT: &str = "http://127.0.0.1:4000/v1/chat/completions";
 const LITELLM_TIMEOUT: Duration = Duration::from_secs(120);
 /// Poll cadence while waiting on the child.
 const POLL: Duration = Duration::from_millis(5);
+/// Cap on captured stdout/stderr — agents can run for `params.timeout`
+/// seconds emitting output the whole time; unbounded capture is a
+/// memory DoS. Past the cap we keep draining (so the child never
+/// blocks on a full pipe) and truncate.
+const MAX_CAPTURE: usize = 10 * 1024 * 1024;
 
 /// `driver: agent`. `effects` backs the driver-side param re-resolve
 /// the TS performs inside `invoke`, plus the `process.cwd()`/
@@ -167,11 +172,16 @@ fn litellm_complete(request: &LiteRequest<'_>) -> Result<String, DriverError> {
         .ok_or_else(|| DriverError::new("litellm response missing choices[0].message.content"))
 }
 
-/// `{...process.env, ...params.env}` plus `params.secrets` entries —
-/// each a `key in ctx.secrets` presence check (no miss audit, unlike
+/// Sanitized base env + `params.env` + `params.secrets` entries — each
+/// a `key in ctx.secrets` presence check (no miss audit, unlike
 /// `ctx.secrets[key]`). Non-string env values coerce via `String(v)`.
+///
+/// The base is [`peregrin_core::child_env`], not the whole process
+/// env: agent binaries must only see the secrets a campaign declares
+/// (`params.secrets`) plus its explicit `params.env` — never ambient
+/// daemon secrets that happened to be materialized in the parent env.
 fn build_env(params: &Map<String, Value>, ctx: &ExecutionContext) -> BTreeMap<String, String> {
-    let mut env: BTreeMap<String, String> = std::env::vars().collect();
+    let mut env: BTreeMap<String, String> = peregrin_core::child_env().into_iter().collect();
     if let Some(resolved) = params.get("env").and_then(Value::as_object) {
         for (key, value) in resolved {
             env.insert(key.clone(), js_string(value));
@@ -187,11 +197,25 @@ fn build_env(params: &Map<String, Value>, ctx: &ExecutionContext) -> BTreeMap<St
     env
 }
 
+/// Drain `pipe` to EOF keeping at most [`MAX_CAPTURE`] bytes — reads
+/// past the cap are discarded (not left in the pipe) so the child
+/// always runs to completion and never deadlocks or dies on EPIPE.
 fn read_pipe(mut pipe: impl Read + Send + 'static) -> thread::JoinHandle<String> {
     thread::spawn(move || {
-        let mut text = String::new();
-        let _ = pipe.read_to_string(&mut text);
-        text
+        let mut kept: Vec<u8> = Vec::new();
+        let mut buf = [0u8; 8192];
+        loop {
+            match pipe.read(&mut buf) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => {
+                    if kept.len() < MAX_CAPTURE {
+                        let room = MAX_CAPTURE - kept.len();
+                        kept.extend_from_slice(&buf[..n.min(room)]);
+                    }
+                }
+            }
+        }
+        String::from_utf8_lossy(&kept).into_owned()
     })
 }
 
@@ -213,6 +237,9 @@ fn spawn_runner(
     command
         .args(argv)
         .current_dir(cwd)
+        // `envs` merges over the inherited env — clear first or the
+        // daemon's ambient env (secrets included) leaks into the child.
+        .env_clear()
         .envs(env)
         .stdin(if input.is_some() {
             Stdio::piped()

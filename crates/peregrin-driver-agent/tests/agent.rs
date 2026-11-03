@@ -592,3 +592,68 @@ fn litellm_failures() {
         .unwrap_err();
     assert!(err.reason.contains("litellm request failed for model 'm'"));
 }
+
+/// Re-exec guard: tests needing a marker var in the process env
+/// respawn the test binary with it set (edition-2024 `set_var` is
+/// unsafe — the child process env is the clean seam).
+fn reexec_with_marker() -> bool {
+    if std::env::var_os("PERE_TEST_SCRUB").is_some() {
+        return false;
+    }
+    let exe = std::env::current_exe().unwrap();
+    let test = std::thread::current().name().unwrap().to_string();
+    let out = std::process::Command::new(exe)
+        .args([test.as_str(), "--exact", "--nocapture"])
+        .env("PERE_TEST_SCRUB", "zzz-secret")
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "inner run failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+    true
+}
+
+#[test]
+fn spawned_runner_does_not_inherit_ambient_env() {
+    if reexec_with_marker() {
+        return;
+    }
+    let out = AgentDriver::new()
+        .invoke(
+            &node(json!({
+                "prompt": "x", "runner": "custom",
+                "binary": "sh", "flags": ["-c", "printf %s \"[$PERE_TEST_SCRUB]\""],
+            })),
+            &[],
+            &ExecutionContext::default(),
+        )
+        .unwrap();
+    assert_eq!(out[0].payload["stdout"], "[]");
+}
+
+#[test]
+fn declared_env_and_secrets_still_reach_the_runner() {
+    let ctx = ExecutionContext {
+        secrets: std::rc::Rc::new(BTreeMap::from_iter([(
+            "MY_SECRET".to_string(),
+            "s3cret".to_string(),
+        )])),
+        ..ExecutionContext::default()
+    };
+    let out = AgentDriver::new()
+        .invoke(
+            &node(json!({
+                "prompt": "x", "runner": "custom",
+                "binary": "sh", "flags": ["-c", "printf %s \"$MY_VAR|$MY_SECRET|$PERE_TEST_SCRUB\""],
+                "env": {"MY_VAR": "vv"},
+                "secrets": ["MY_SECRET"],
+            })),
+            &[],
+            &ctx,
+        )
+        .unwrap();
+    // Declared channels still work; the ambient marker stays out.
+    assert_eq!(out[0].payload["stdout"], "vv|s3cret|");
+}

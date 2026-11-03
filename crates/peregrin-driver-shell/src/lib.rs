@@ -16,10 +16,18 @@ use peregrin_core::{Event, EventSchema, Node};
 use peregrin_driver::{Driver, DriverError, ExecutionContext};
 use peregrin_template::{Context, Effects, Options, SystemEffects, resolve_value_opts};
 
-/// `spawnSync`'s hardcoded timeout — 30 s (ADR-0005 default).
+/// `spawnSync`'s default timeout — 30 s (ADR-0005 default);
+/// `params.timeout` (seconds) overrides, capped at 10 minutes.
 const TIMEOUT: Duration = Duration::from_secs(30);
+/// Ceiling on a yaml-provided `params.timeout` — unbounded children
+/// are the ADR-0005 failure mode.
+const MAX_TIMEOUT: Duration = Duration::from_secs(600);
 /// Poll cadence while waiting on the child.
 const POLL: Duration = Duration::from_millis(5);
+/// Cap on captured stdout/stderr — a chatty or hostile child must not
+/// grow the daemon's memory without bound; past the cap we keep
+/// draining (so the child never blocks on a full pipe) and truncate.
+const MAX_CAPTURE: usize = 10 * 1024 * 1024;
 
 /// `driver: shell`. `effects` backs the driver-side param re-resolve
 /// the TS performs inside `invoke`; `output` holds the TS `output`
@@ -139,23 +147,47 @@ fn shell_command(cmd: &str) -> Command {
     }
 }
 
+/// Drain `pipe` to EOF keeping at most [`MAX_CAPTURE`] bytes — reads
+/// past the cap are discarded (not left in the pipe) so the child
+/// always runs to completion and never deadlocks or dies on EPIPE.
 fn read_pipe(mut pipe: impl Read + Send + 'static) -> thread::JoinHandle<String> {
     thread::spawn(move || {
-        let mut text = String::new();
-        let _ = pipe.read_to_string(&mut text);
-        text
+        let mut kept: Vec<u8> = Vec::new();
+        let mut buf = [0u8; 8192];
+        loop {
+            match pipe.read(&mut buf) {
+                Ok(0) | Err(_) => break,
+                Ok(n) => {
+                    if kept.len() < MAX_CAPTURE {
+                        let room = MAX_CAPTURE - kept.len();
+                        kept.extend_from_slice(&buf[..n.min(room)]);
+                    }
+                }
+            }
+        }
+        String::from_utf8_lossy(&kept).into_owned()
     })
 }
 
-/// Run `cmd` under the system shell, polling to the 30 s deadline —
-/// on timeout the child is killed and `rc` reads `-1`
+/// Run `cmd` under the system shell, polling to `timeout` — on
+/// timeout the child is killed and `rc` reads `-1`
 /// (`result.status ?? -1`). Pipes drain on reader threads so a chatty
 /// child can't deadlock the poll. Returns `(rc, stdout, stderr)`;
 /// `Err` mirrors `result.error`.
-fn spawn_shell(cmd: &str, env: &Map<String, Value>) -> Result<(i64, String, String), String> {
+///
+/// The child sees a sanitized environment
+/// ([`peregrin_core::child_env`]) plus `params.env` — never the
+/// daemon's whole env, which routinely carries secrets a campaign
+/// must not casually inherit.
+fn spawn_shell(
+    cmd: &str,
+    env: &Map<String, Value>,
+    timeout: Duration,
+) -> Result<(i64, String, String), String> {
     let mut command = shell_command(cmd);
     command
-        .envs(std::env::vars())
+        .env_clear()
+        .envs(peregrin_core::child_env())
         .envs(
             env.iter()
                 .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string()))),
@@ -166,7 +198,7 @@ fn spawn_shell(cmd: &str, env: &Map<String, Value>) -> Result<(i64, String, Stri
     let mut child: Child = command.spawn().map_err(|e| e.to_string())?;
     let stdout_handle = child.stdout.take().map(read_pipe);
     let stderr_handle = child.stderr.take().map(read_pipe);
-    let deadline = Instant::now() + TIMEOUT;
+    let deadline = Instant::now() + timeout;
     let status = loop {
         match child.try_wait() {
             Ok(Some(status)) => break Some(status),
@@ -243,7 +275,12 @@ impl Driver for ShellDriver {
             .and_then(Value::as_object)
             .cloned()
             .unwrap_or_default();
-        let (rc, stdout, stderr) = match spawn_shell(cmd, &env) {
+        let timeout = params
+            .get("timeout")
+            .and_then(Value::as_f64)
+            .filter(|s| s.is_finite() && *s > 0.0)
+            .map_or(TIMEOUT, |s| Duration::from_secs_f64(s).min(MAX_TIMEOUT));
+        let (rc, stdout, stderr) = match spawn_shell(cmd, &env, timeout) {
             Err(error) => {
                 return Ok(vec![Event::new(
                     "node.failed",

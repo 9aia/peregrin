@@ -1,3 +1,5 @@
+#![allow(clippy::assert_is_empty)]
+
 //! `from_dict`/`to_dict` normalization tests — the typed-model half of
 //! the TS `model.ts` port (poll nodes, self-trigger defaults, schema
 //! compilation, campaign-level normalization).

@@ -75,7 +75,10 @@ impl Effects for SystemEffects {
     }
 }
 
-/// Node `exec` uses `/bin/sh -c` on unix, `cmd.exe` on Windows.
+/// Node `exec` uses `/bin/sh -c` on unix, `cmd.exe` on Windows. The
+/// child gets the sanitized env (`peregrin_core::child_env`) — a
+/// `${shell()}` inside a resolved param must not inherit the daemon's
+/// ambient secrets.
 #[cfg(unix)]
 fn run_shell(command: &str) -> Result<String, String> {
     let mut cmd = Command::new("sh");
@@ -92,6 +95,7 @@ fn run_shell(command: &str) -> Result<String, String> {
 }
 
 fn shell_output(cmd: &mut Command) -> Result<String, String> {
+    cmd.env_clear().envs(peregrin_core::child_env());
     match cmd.output() {
         Err(e) => Err(e.to_string()),
         Ok(out) if !out.status.success() => {
@@ -155,5 +159,30 @@ mod tests {
         assert_eq!(iso_utc(1_700_000_000_123), "2023-11-14T22:13:20.123Z");
         // Leap day.
         assert_eq!(iso_utc(951_782_400_000), "2000-02-29T00:00:00.000Z");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn shell_does_not_inherit_ambient_env() {
+        // Re-exec with a marker var — edition-2024 `set_var` is
+        // unsafe, so the child process env is the clean seam.
+        if std::env::var_os("PERE_TEST_SCRUB").is_none() {
+            let exe = std::env::current_exe().unwrap();
+            let out = std::process::Command::new(exe)
+                .args([
+                    "effects::tests::shell_does_not_inherit_ambient_env",
+                    "--exact",
+                    "--nocapture",
+                ])
+                .env("PERE_TEST_SCRUB", "zzz-secret")
+                .output()
+                .unwrap();
+            assert!(out.status.success());
+            return;
+        }
+        let stdout = SystemEffects
+            .shell("printf %s \"[$PERE_TEST_SCRUB]\"")
+            .unwrap();
+        assert_eq!(stdout, "[]");
     }
 }
