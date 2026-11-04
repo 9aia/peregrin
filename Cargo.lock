@@ -3866,6 +3866,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-mcp"
+version = "0.0.0"
+dependencies = [
+ "peregrin-bundle",
+ "peregrin-core",
+ "peregrin-engine",
+ "peregrin-node",
+ "peregrin-source",
+ "peregrin-source-fs",
+ "peregrin-source-git",
+ "peregrin-source-http",
+ "peregrin-store",
+ "peregrin-store-json",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "peregrin-node"
 version = "0.0.0"
 dependencies = [

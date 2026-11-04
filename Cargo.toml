@@ -28,6 +28,7 @@ members = [
     "crates/peregrin-keyring",
     "crates/peregrin-loader",
     "crates/peregrin-loader-yaml",
+    "crates/peregrin-mcp",
     "crates/peregrin-node",
     "crates/peregrin-outbox",
     "crates/peregrin-push",
@@ -87,6 +88,7 @@ peregrin-hub = { path = "crates/peregrin-hub" }
 peregrin-keyring = { path = "crates/peregrin-keyring" }
 peregrin-loader = { path = "crates/peregrin-loader" }
 peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml" }
+peregrin-mcp = { path = "crates/peregrin-mcp" }
 peregrin-node = { path = "crates/peregrin-node" }
 peregrin-outbox = { path = "crates/peregrin-outbox" }
 peregrin-push = { path = "crates/peregrin-push" }

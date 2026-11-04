@@ -1,0 +1,29 @@
+[package]
+name = "peregrin-mcp"
+description = "The agent control surface — MCP stdio server exposing the substrate verbs (campaign run/validate, bundle store, run-log observability)"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+[[bin]]
+name = "peregrin-mcp"
+path = "src/main.rs"
+
+[dependencies]
+peregrin-bundle.workspace = true
+peregrin-core.workspace = true
+peregrin-engine.workspace = true
+peregrin-node.workspace = true
+peregrin-source.workspace = true
+peregrin-source-fs.workspace = true
+peregrin-source-git.workspace = true
+peregrin-source-http.workspace = true
+peregrin-store.workspace = true
+peregrin-store-json.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
