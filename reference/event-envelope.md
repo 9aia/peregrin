@@ -94,3 +94,12 @@ Two more driver side channels shape the graph: `ctx.inject(specs)`
 adds nodes mid-run (the `runner` driver reads them from the trigger's
 `payload.nodes` / `payload.workflow.nodes`), and
 `ctx.request_shutdown()` cancels the run after the current batch.
+
+Outside the driver model, the **ingress injection channel**
+(`peregrin_engine::ingress()`) lets external producers — webhook
+listeners, WAL pollers, the supersede queue's cancel signal — push
+`Event`s into a live run without `&mut` access to the bus: the
+`Injector` half is `Send + Sync` and cloneable, the runner drains the
+`Ingress` half into `pending` once per loop iteration, so injected
+events serialize after everything already pending. See
+[Queue & supersede](queue-supersede.md).

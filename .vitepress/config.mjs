@@ -31,6 +31,7 @@ export default defineConfig({
           { text: 'on: event patterns', link: '/reference/on-grammar' },
           { text: 'Campaign schema', link: '/reference/campaign-schema' },
           { text: 'Scope resolution', link: '/reference/scope-resolution' },
+          { text: 'Queue & supersede', link: '/reference/queue-supersede' },
           { text: 'HTTP API', link: '/reference/api' },
           { text: 'Environment', link: '/reference/environment' },
         ],

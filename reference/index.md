@@ -9,5 +9,6 @@
 
 ## Runtime
 
+- [Queue & supersede](queue-supersede.md)
 - [HTTP API](api.md)
 - [Environment](environment.md)
