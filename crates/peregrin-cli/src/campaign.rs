@@ -14,13 +14,21 @@ use peregrin_engine::RunOptions;
 use crate::CliError;
 
 /// `handl run` — load, execute, print the event log one line per
-/// event (`ts source type`), like the TS. Returns the log so callers
-/// (tests, future hub surfaces) can inspect the run.
+/// event (`ts source type`), like the TS. `history` swaps the
+/// in-memory event log for the durable JSONL store at that path
+/// (ADR-0040's `--history` — `peregrin runs`/`explain`/`log` read it
+/// back); omitted keeps the ephemeral default. Returns the log so
+/// callers (tests, future hub surfaces) can inspect the run.
 ///
 /// # Errors
 /// [`CliError`] on replay-log read/parse failure or a campaign-plane
-/// failure (loader, engine).
-pub fn run(workflow: &Path, dry_run: bool, replay: Option<&Path>) -> Result<Vec<Event>, CliError> {
+/// failure (loader, engine, store open).
+pub fn run(
+    workflow: &Path,
+    dry_run: bool,
+    replay: Option<&Path>,
+    history: Option<&Path>,
+) -> Result<Vec<Event>, CliError> {
     let replay_events = match replay {
         Some(path) => load_replay(path)?,
         None => Vec::new(),
@@ -30,8 +38,16 @@ pub fn run(workflow: &Path, dry_run: bool, replay: Option<&Path>) -> Result<Vec<
         replay_events,
         ..RunOptions::default()
     };
-    let log =
-        peregrin_node::campaign::run(workflow, &options).map_err(|e| CliError(e.to_string()))?;
+    let campaign = peregrin_node::campaign::load(workflow).map_err(|e| CliError(e.to_string()))?;
+    let mut runner = match history {
+        Some(path) => {
+            peregrin_node::campaign::runner_with_log(path).map_err(|e| CliError(e.to_string()))?
+        }
+        None => peregrin_node::campaign::runner(),
+    };
+    let log = runner
+        .run(&campaign, &options)
+        .map_err(|e| CliError(e.to_string()))?;
     for event in &log {
         println!("{} {} {}", event.ts, event.source, event.kind);
     }

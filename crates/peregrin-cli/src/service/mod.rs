@@ -248,8 +248,9 @@ fn resolve_exec(hub: bool) -> Result<Vec<String>, CliError> {
 
 // Exec is only meaningful at install time — status/logs/uninstall must
 // not resolve it (these verbs don't need it anyway).
-fn spec(hub: bool, system: bool, env_file: Option<&Path>) -> ServiceSpec {
-    let name = if hub { "peregrin-hub" } else { "peregrin" };
+fn spec(hub: bool, system: bool, env_file: Option<&Path>, unit: Option<&str>) -> ServiceSpec {
+    let default = if hub { "peregrin-hub" } else { "peregrin" };
+    let name = unit.unwrap_or(default);
     ServiceSpec {
         name: name.to_string(),
         exec: Vec::new(),
@@ -271,9 +272,10 @@ pub fn service_install(
     _linger: bool,
     exec: Option<&str>,
     env_file: Option<&Path>,
+    unit: Option<&str>,
 ) -> Result<(), CliError> {
     let _ = backend()?;
-    let _ = spec(hub, system, env_file);
+    let _ = spec(hub, system, env_file, unit);
     let _ = exec.map(str::to_string);
     let _ = resolve_exec(hub);
     Err(CliError(
@@ -289,11 +291,13 @@ pub fn service_install(
     linger: bool,
     exec: Option<&str>,
     env_file: Option<&Path>,
+    unit: Option<&str>,
 ) -> Result<(), CliError> {
     let verb = "install";
     let run = || -> Result<(), CliError> {
         let b = backend()?;
-        let name = if hub { "peregrin-hub" } else { "peregrin" };
+        let default = if hub { "peregrin-hub" } else { "peregrin" };
+        let name = unit.unwrap_or(default);
         let spec = ServiceSpec {
             name: name.to_string(),
             exec: match exec {
@@ -333,19 +337,29 @@ pub fn service_install(
 }
 
 #[cfg(coverage)]
-pub fn service_uninstall(hub: bool, system: bool, _purge: bool) -> Result<(), CliError> {
+pub fn service_uninstall(
+    hub: bool,
+    system: bool,
+    _purge: bool,
+    unit: Option<&str>,
+) -> Result<(), CliError> {
     let _ = backend()?;
-    let _ = spec(hub, system, None);
+    let _ = spec(hub, system, None, unit);
     Err(CliError(
         "service verbs mutate host OS state — excluded under coverage".into(),
     ))
 }
 #[cfg(not(coverage))]
 /// `peregrin service uninstall` — stop, disable and remove the service.
-pub fn service_uninstall(hub: bool, system: bool, purge: bool) -> Result<(), CliError> {
+pub fn service_uninstall(
+    hub: bool,
+    system: bool,
+    purge: bool,
+    unit: Option<&str>,
+) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
         let b = backend()?;
-        let spec = spec(hub, system, None);
+        let spec = spec(hub, system, None, unit);
         b.uninstall(&spec, purge)?;
         println!(
             "removed {} unit at {}",
@@ -364,10 +378,10 @@ pub fn service_uninstall(hub: bool, system: bool, purge: bool) -> Result<(), Cli
 }
 
 /// `peregrin service status` — installed/enabled/running.
-pub fn service_status(hub: bool, system: bool) -> Result<(), CliError> {
+pub fn service_status(hub: bool, system: bool, unit: Option<&str>) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
         let b = backend()?;
-        let st = b.status(&spec(hub, system, None))?;
+        let st = b.status(&spec(hub, system, None, unit))?;
         println!(
             "installed={} enabled={} active={}{}",
             st.installed,
@@ -384,19 +398,19 @@ pub fn service_status(hub: bool, system: bool) -> Result<(), CliError> {
 }
 
 #[cfg(coverage)]
-pub fn service_restart(hub: bool, system: bool) -> Result<(), CliError> {
+pub fn service_restart(hub: bool, system: bool, unit: Option<&str>) -> Result<(), CliError> {
     let _ = backend()?;
-    let _ = spec(hub, system, None);
+    let _ = spec(hub, system, None, unit);
     Err(CliError(
         "service verbs mutate host OS state — excluded under coverage".into(),
     ))
 }
 #[cfg(not(coverage))]
 /// `peregrin service restart`.
-pub fn service_restart(hub: bool, system: bool) -> Result<(), CliError> {
+pub fn service_restart(hub: bool, system: bool, unit: Option<&str>) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
         let b = backend()?;
-        b.restart(&spec(hub, system, None))?;
+        b.restart(&spec(hub, system, None, unit))?;
         println!("restarted");
         Ok(())
     };
@@ -404,19 +418,19 @@ pub fn service_restart(hub: bool, system: bool) -> Result<(), CliError> {
 }
 
 #[cfg(coverage)]
-pub fn service_enable(hub: bool, system: bool) -> Result<(), CliError> {
+pub fn service_enable(hub: bool, system: bool, unit: Option<&str>) -> Result<(), CliError> {
     let _ = backend()?;
-    let _ = spec(hub, system, None);
+    let _ = spec(hub, system, None, unit);
     Err(CliError(
         "service verbs mutate host OS state — excluded under coverage".into(),
     ))
 }
 #[cfg(not(coverage))]
 /// `peregrin service enable` — start now + at boot/login.
-pub fn service_enable(hub: bool, system: bool) -> Result<(), CliError> {
+pub fn service_enable(hub: bool, system: bool, unit: Option<&str>) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
         let b = backend()?;
-        b.enable(&spec(hub, system, None))?;
+        b.enable(&spec(hub, system, None, unit))?;
         println!("enabled + started");
         Ok(())
     };
@@ -424,9 +438,9 @@ pub fn service_enable(hub: bool, system: bool) -> Result<(), CliError> {
 }
 
 #[cfg(coverage)]
-pub fn service_disable(hub: bool, system: bool) -> Result<(), CliError> {
+pub fn service_disable(hub: bool, system: bool, unit: Option<&str>) -> Result<(), CliError> {
     let _ = backend()?;
-    let _ = spec(hub, system, None);
+    let _ = spec(hub, system, None, unit);
     Err(CliError(
         "service verbs mutate host OS state — excluded under coverage".into(),
     ))
@@ -434,10 +448,10 @@ pub fn service_disable(hub: bool, system: bool) -> Result<(), CliError> {
 #[cfg(not(coverage))]
 /// `peregrin service disable` — stop now; stays stopped across
 /// boots/logins until `enable` (the unit file is kept).
-pub fn service_disable(hub: bool, system: bool) -> Result<(), CliError> {
+pub fn service_disable(hub: bool, system: bool, unit: Option<&str>) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
         let b = backend()?;
-        b.disable(&spec(hub, system, None))?;
+        b.disable(&spec(hub, system, None, unit))?;
         println!("disabled + stopped");
         Ok(())
     };
@@ -454,10 +468,15 @@ fn logs_check(code: i32) -> Result<(), CliError> {
 }
 
 /// `peregrin service logs` — print (or follow, `-f`) the service log.
-pub fn service_logs(hub: bool, system: bool, follow: bool) -> Result<(), CliError> {
+pub fn service_logs(
+    hub: bool,
+    system: bool,
+    follow: bool,
+    unit: Option<&str>,
+) -> Result<(), CliError> {
     let run = || -> Result<(), CliError> {
         let b = backend()?;
-        let code = b.logs(&spec(hub, system, None), follow)?;
+        let code = b.logs(&spec(hub, system, None, unit), follow)?;
         logs_check(code)
     };
     run().map_err(|e| CliError(format!("peregrin service logs: {}", e.0)))

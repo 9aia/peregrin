@@ -50,7 +50,7 @@ nodes:
 fn run_executes_and_returns_the_log() {
     let tmp = tempfile::tempdir().unwrap();
     let path = write_chain(tmp.path());
-    let log = peregrin_cli::campaign::run(&path, false, None).unwrap();
+    let log = peregrin_cli::campaign::run(&path, false, None, None).unwrap();
     assert_eq!(log.last().map(|e| e.kind.as_str()), Some("workflow.done"));
     assert_eq!(
         std::fs::read_to_string(tmp.path().join("alpha.txt")).unwrap(),
@@ -62,7 +62,7 @@ fn run_executes_and_returns_the_log() {
 fn run_dry_run_emits_without_side_effects() {
     let tmp = tempfile::tempdir().unwrap();
     let path = write_chain(tmp.path());
-    let log = peregrin_cli::campaign::run(&path, true, None).unwrap();
+    let log = peregrin_cli::campaign::run(&path, true, None, None).unwrap();
     assert_eq!(log.last().map(|e| e.kind.as_str()), Some("workflow.done"));
     assert!(!tmp.path().join("alpha.txt").exists());
 }
@@ -80,7 +80,7 @@ fn run_replay_seeds_from_jsonl_and_json() {
          {\"type\":\"write.done\",\"payload\":{},\"source\":\"write\"}\n",
     )
     .unwrap();
-    let log = peregrin_cli::campaign::run(&path, false, Some(&jsonl)).unwrap();
+    let log = peregrin_cli::campaign::run(&path, false, Some(&jsonl), None).unwrap();
     let kinds: Vec<&str> = log.iter().map(|e| e.kind.as_str()).collect();
     assert_eq!(kinds.last(), Some(&"workflow.done"), "trace: {kinds:?}");
     // JSON array form parses too.
@@ -90,7 +90,7 @@ fn run_replay_seeds_from_jsonl_and_json() {
         "[{\"type\":\"start\",\"payload\":{},\"source\":\"__runner__\"}]",
     )
     .unwrap();
-    let log = peregrin_cli::campaign::run(&path, false, Some(&json)).unwrap();
+    let log = peregrin_cli::campaign::run(&path, false, Some(&json), None).unwrap();
     assert!(!log.is_empty());
 }
 
@@ -99,17 +99,18 @@ fn run_replay_errors_on_missing_and_malformed() {
     let tmp = tempfile::tempdir().unwrap();
     let path = write_chain(tmp.path());
     assert!(
-        peregrin_cli::campaign::run(&path, false, Some(Path::new("/nonexistent.jsonl"))).is_err()
+        peregrin_cli::campaign::run(&path, false, Some(Path::new("/nonexistent.jsonl")), None)
+            .is_err()
     );
     let bad = tmp.path().join("bad.jsonl");
     std::fs::write(&bad, "{not json\n").unwrap();
-    assert!(peregrin_cli::campaign::run(&path, false, Some(&bad)).is_err());
+    assert!(peregrin_cli::campaign::run(&path, false, Some(&bad), None).is_err());
 }
 
 #[test]
 fn run_errors_on_missing_workflow() {
     let tmp = tempfile::tempdir().unwrap();
-    assert!(peregrin_cli::campaign::run(&tmp.path().join("nope.yaml"), false, None).is_err());
+    assert!(peregrin_cli::campaign::run(&tmp.path().join("nope.yaml"), false, None, None).is_err());
 }
 
 #[test]

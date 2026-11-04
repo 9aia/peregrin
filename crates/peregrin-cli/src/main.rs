@@ -13,7 +13,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use peregrin_cli::node_ops::{NodeArgs, TargetArgs};
 use peregrin_cli::{
-    CliError, PEREGRIN_VERSION, api, campaign, distribution, import, node_ops, pair, service,
+    CliError, PEREGRIN_VERSION, api, campaign, distribution, import, node_ops, ops, pair, service,
 };
 
 fn default_peregrin_home() -> PathBuf {
@@ -424,6 +424,10 @@ enum CampaignCommands {
         /// A JSON/JSONL event log to seed (replay) the run with
         #[arg(long)]
         replay: Option<PathBuf>,
+        /// Persist the run's event log to this JSONL file (ADR-0040's
+        /// --history; `peregrin runs`/`explain`/`log` read it back)
+        #[arg(long)]
+        history: Option<PathBuf>,
     },
     /// Expand a campaign yaml and summarize its wiring (includes,
     /// nodes, unemitting-subscription warnings)
@@ -589,6 +593,71 @@ enum BundleCommands {
     },
 }
 
+// --- ops (ADR-0079 provision/teardown + observability) ---------------------------
+
+/// Deployment verbs — the parts of `create` that hit the outside
+/// world (hook registration against the forge API).
+#[derive(Subcommand)]
+enum DeployCommands {
+    /// Register/update each watched repo's push webhook via the
+    /// forge REST API (token + per-repo hook secrets resolve by NAME
+    /// through env → keyring → ~/.config/peregrin/env)
+    Webhook {
+        /// Node config to read (default: ./peregrin.* then
+        /// ~/.config/peregrin/peregrin.*)
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// Public URL the hooks point at (default:
+        /// config.public_url); the hook lands at <url><hook-path>
+        #[arg(long)]
+        url: Option<String>,
+        /// Secret NAME holding the forge token (default:
+        /// config.token_env, else GITHUB_TOKEN)
+        #[arg(long)]
+        token_env: Option<String>,
+    },
+}
+
+/// Teardown counterparts of `deploy`/`create`.
+#[derive(Subcommand)]
+enum DestroyCommands {
+    /// Delete the hooks `deploy webhook` registered — exact URL match
+    Webhook {
+        /// Only this watched repo (or --all)
+        #[arg(long, required_unless_present = "all", conflicts_with = "all")]
+        repo: Option<String>,
+        /// Every repo the node config's github-webhook nodes watch
+        #[arg(long, required_unless_present = "repo", conflicts_with = "repo")]
+        all: bool,
+        /// Node config to read (default: ./peregrin.* then
+        /// ~/.config/peregrin/peregrin.*)
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// Public URL the hooks point at (default: config.public_url)
+        #[arg(long)]
+        url: Option<String>,
+        /// Secret NAME holding the forge token
+        #[arg(long)]
+        token_env: Option<String>,
+    },
+    /// Disable + remove a campaign unit (<name>.service)
+    Service {
+        /// Unit name — the `name` (or --unit) `create` used
+        name: String,
+    },
+    /// Clean leftover run worktrees (tracked ones are destroyed,
+    /// orphans reported)
+    Worktrees {
+        /// Worktree base dir (default: config.worktree_base, else
+        /// ~/.local/share/peregrin/worktrees)
+        #[arg(long)]
+        base: Option<PathBuf>,
+        /// Node config to read the base from
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
+}
+
 // --- root ----------------------------------------------------------------------
 
 /// Drive a peregrin node over its API, or convert sessions between the
@@ -690,8 +759,14 @@ enum Commands {
     Serve,
     /// Manage the peregrin node as an OS service (systemd user unit /
     /// launchd plist)
-    #[command(subcommand)]
-    Service(ServiceCommands),
+    Service {
+        /// Manage this unit instead of `peregrin`/`peregrin-hub` —
+        /// e.g. a unit `create --template` wrote (wins over --hub)
+        #[arg(long, global = true)]
+        unit: Option<String>,
+        #[command(subcommand)]
+        cmd: ServiceCommands,
+    },
     // Distribution verbs (ADR-0079) — local store/cache ops, no node.
     /// Install a bundle — ./path, git:<url>[//subdir][#rev], or an
     /// http(s) .tgz/.tar.gz URL
@@ -744,6 +819,85 @@ enum Commands {
     /// (ADR-0081 bupha importer)
     #[command(subcommand)]
     Import(ImportCommands),
+    // Ops verbs (ADR-0079 provision/teardown) — local store + unit +
+    // forge API ops, no node.
+    /// Materialize a node config + systemd unit from an installed
+    /// bundle — the parameterized install (writes files only; the
+    /// operator enables the service separately)
+    Create {
+        /// Installed bundle name (or name@version)
+        #[arg(long)]
+        template: String,
+        /// Instance name (default: the bundle name) — drives the
+        /// config file <name>.yaml and unit <name>.service
+        #[arg(long)]
+        name: Option<String>,
+        /// Merge KEY=VALUE into the campaign's `config:` — repeatable
+        #[arg(long = "set")]
+        sets: Vec<String>,
+        /// Watch owner/name[:SECRET_ENV] via a github-webhook ingress
+        /// node — repeatable
+        #[arg(long = "repo")]
+        repos: Vec<String>,
+        /// Write the node config here (default:
+        /// ~/.config/peregrin/<name>.yaml)
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// Unit name (default: <name>)
+        #[arg(long)]
+        unit: Option<String>,
+    },
+    /// Deployment verbs (register the configured webhooks)
+    #[command(subcommand)]
+    Deploy(DeployCommands),
+    /// Teardown verbs (hooks, units, worktrees)
+    #[command(subcommand)]
+    Destroy(DestroyCommands),
+    /// Recent runs — per-push records read back from the durable
+    /// JSONL history (newest first)
+    Runs {
+        /// The event log to read (default: $PEREGRIN_HOME/history.jsonl)
+        #[arg(long)]
+        history: Option<PathBuf>,
+        /// Filter to one repo ("owner/name" also matches its job keys)
+        #[arg(long)]
+        repo: Option<String>,
+        /// Limit to the newest N runs
+        #[arg(short = 'n', long)]
+        limit: Option<usize>,
+    },
+    /// Raw event log — the last N lines of the JSONL history
+    Log {
+        /// Lines to show
+        #[arg(short, long, default_value = "50")]
+        n: usize,
+        /// The event log to read (default: $PEREGRIN_HOME/history.jsonl)
+        #[arg(long)]
+        history: Option<PathBuf>,
+    },
+    /// Why a sha did/didn't run — the run's events + outcome, or the
+    /// leftover worktree it died in
+    Explain {
+        /// The pushed sha (any prefix) or an event id
+        target: String,
+        /// The event log to read (default: $PEREGRIN_HOME/history.jsonl)
+        #[arg(long)]
+        history: Option<PathBuf>,
+        /// Node config to read the worktree base from
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
+    /// Check what the node config actually needs on this box —
+    /// config loads, dirs exist, secret NAMES resolve, tools present
+    Doctor {
+        /// Node config to check (default: ./peregrin.* then
+        /// ~/.config/peregrin/peregrin.*)
+        #[arg(long)]
+        config: Option<PathBuf>,
+        /// Machine-readable JSON output — {ok, failures, checks}
+        #[arg(long)]
+        json: bool,
+    },
     /// Print the peregrin version stamp
     Version,
 }
@@ -976,7 +1130,8 @@ fn run_campaign(cmd: &CampaignCommands) -> Result<(), CliError> {
             workflow,
             dry_run,
             replay,
-        } => campaign::run(workflow, *dry_run, replay.as_deref()).map(|_| ()),
+            history,
+        } => campaign::run(workflow, *dry_run, replay.as_deref(), history.as_deref()).map(|_| ()),
         CampaignCommands::Validate { workflow } => campaign::validate(workflow).map(|_| ()),
     }
 }
@@ -998,7 +1153,7 @@ fn run_push(cmd: &PushCommands) -> Result<(), CliError> {
     }
 }
 
-fn run_service(cmd: &ServiceCommands) -> Result<(), CliError> {
+fn run_service(cmd: &ServiceCommands, unit: Option<&str>) -> Result<(), CliError> {
     match cmd {
         ServiceCommands::Install {
             hub,
@@ -1006,19 +1161,26 @@ fn run_service(cmd: &ServiceCommands) -> Result<(), CliError> {
             linger,
             exec,
             env_file,
-        } => service::service_install(*hub, *system, *linger, exec.as_deref(), env_file.as_deref()),
+        } => service::service_install(
+            *hub,
+            *system,
+            *linger,
+            exec.as_deref(),
+            env_file.as_deref(),
+            unit,
+        ),
         ServiceCommands::Uninstall { hub, system, purge } => {
-            service::service_uninstall(*hub, *system, *purge)
+            service::service_uninstall(*hub, *system, *purge, unit)
         }
-        ServiceCommands::Enable { hub, system } => service::service_enable(*hub, *system),
-        ServiceCommands::Disable { hub, system } => service::service_disable(*hub, *system),
-        ServiceCommands::Status { hub, system } => service::service_status(*hub, *system),
-        ServiceCommands::Restart { hub, system } => service::service_restart(*hub, *system),
+        ServiceCommands::Enable { hub, system } => service::service_enable(*hub, *system, unit),
+        ServiceCommands::Disable { hub, system } => service::service_disable(*hub, *system, unit),
+        ServiceCommands::Status { hub, system } => service::service_status(*hub, *system, unit),
+        ServiceCommands::Restart { hub, system } => service::service_restart(*hub, *system, unit),
         ServiceCommands::Logs {
             hub,
             system,
             follow,
-        } => service::service_logs(*hub, *system, *follow),
+        } => service::service_logs(*hub, *system, *follow, unit),
     }
 }
 
@@ -1056,6 +1218,11 @@ fn dist_env() -> distribution::DistEnv {
     distribution::DistEnv::default()
 }
 
+/// The ops roots (bundle store, config dir, unit dir, PEREGRIN_HOME).
+fn ops_env() -> ops::OpsEnv {
+    ops::OpsEnv::default()
+}
+
 fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
     match &cli.command {
         Commands::Health { args } => node_ops::health(args),
@@ -1083,7 +1250,7 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
         Commands::Config(cmd) => run_config(cmd),
         Commands::Push(cmd) => run_push(cmd),
         Commands::Pair { home, url } => pair::pair(home, url),
-        Commands::Service(cmd) => run_service(cmd),
+        Commands::Service { unit, cmd } => run_service(cmd, unit.as_deref()),
         Commands::Install { reference } => {
             distribution::install(&dist_env(), reference).map(|_| ())
         }
@@ -1105,6 +1272,73 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
         }
         Commands::Import(ImportCommands::Bupha { path, out }) => {
             import::import_bupha(path, out.as_deref()).map(|_| ())
+        }
+        Commands::Create {
+            template,
+            name,
+            sets,
+            repos,
+            config,
+            unit,
+        } => ops::create(
+            &ops_env(),
+            template,
+            name.as_deref(),
+            sets,
+            repos,
+            config.as_deref(),
+            unit.as_deref(),
+        )
+        .map(|_| ()),
+        Commands::Deploy(DeployCommands::Webhook {
+            config,
+            url,
+            token_env,
+        }) => ops::deploy_webhook(
+            &ops_env(),
+            config.as_deref(),
+            url.as_deref(),
+            token_env.as_deref(),
+        )
+        .map(|_| ()),
+        Commands::Destroy(DestroyCommands::Webhook {
+            repo,
+            all,
+            config,
+            url,
+            token_env,
+        }) => ops::destroy_webhook(
+            &ops_env(),
+            config.as_deref(),
+            url.as_deref(),
+            token_env.as_deref(),
+            repo.as_deref(),
+            *all,
+        )
+        .map(|_| ()),
+        Commands::Destroy(DestroyCommands::Service { name }) => {
+            ops::destroy_service(&ops_env(), name).map(|_| ())
+        }
+        Commands::Destroy(DestroyCommands::Worktrees { base, config }) => {
+            ops::destroy_worktrees(&ops_env(), config.as_deref(), base.as_deref()).map(|_| ())
+        }
+        Commands::Runs {
+            history,
+            repo,
+            limit,
+        } => ops::runs(&ops_env(), history.as_deref(), repo.as_deref(), *limit).map(|_| ()),
+        Commands::Log { n, history } => ops::log(&ops_env(), history.as_deref(), *n).map(|_| ()),
+        Commands::Explain {
+            target,
+            history,
+            config,
+        } => ops::explain(&ops_env(), history.as_deref(), config.as_deref(), target).map(|_| ()),
+        Commands::Doctor { config, json } => {
+            let report = ops::doctor(&ops_env(), config.as_deref(), *json)?;
+            if report.failures > 0 {
+                return Err(CliError(format!("{} problem(s)", report.failures)));
+            }
+            Ok(())
         }
         Commands::Version => {
             println!("{PEREGRIN_VERSION}");
@@ -1263,6 +1497,43 @@ mod tests {
             vec!["peregrin", "cache", "clean"],
             vec!["peregrin", "bundle", "pack", "/definitely/not/a/dir"],
             vec!["peregrin", "import", "bupha", "/definitely/not/a/file"],
+            // Ops verbs — every arm errs fast on a missing
+            // bundle/config before touching the network or the
+            // filesystem; the read verbs are safe on any home.
+            vec!["peregrin", "create", "--template", "ghost"],
+            vec![
+                "peregrin",
+                "deploy",
+                "webhook",
+                "--config",
+                "/nonexistent.yaml",
+            ],
+            vec![
+                "peregrin",
+                "destroy",
+                "webhook",
+                "--repo",
+                "a/b",
+                "--config",
+                "/nonexistent.yaml",
+            ],
+            // `destroy service` must target a name NO other test
+            // installs — it really removes ~/.config/systemd/user/
+            // <name>.service on this host.
+            vec!["peregrin", "destroy", "service", "peregrin-ops-covtest"],
+            vec![
+                "peregrin",
+                "destroy",
+                "worktrees",
+                "--base",
+                "/definitely/not/a/base",
+            ],
+            vec!["peregrin", "runs"],
+            vec!["peregrin", "runs", "--repo", "a/b", "-n", "1"],
+            vec!["peregrin", "log", "-n", "5"],
+            vec!["peregrin", "explain", "feedbeef"],
+            vec!["peregrin", "doctor"],
+            vec!["peregrin", "doctor", "--json"],
             vec![
                 "peregrin",
                 "import",
@@ -1292,6 +1563,8 @@ mod tests {
             vec![
                 "peregrin", "service", "install", "--hub", "--system", "--linger",
             ],
+            vec!["peregrin", "service", "--unit", "covtest", "status"],
+            vec!["peregrin", "service", "enable", "--unit", "covtest"],
             vec!["peregrin", "serve"],
         ] {
             let cli = cli(&argv);

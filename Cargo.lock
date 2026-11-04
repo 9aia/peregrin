@@ -3545,14 +3545,21 @@ dependencies = [
  "clap",
  "nix",
  "peregrin-bundle",
+ "peregrin-config",
+ "peregrin-config-toml",
  "peregrin-core",
+ "peregrin-dotenv",
  "peregrin-engine",
+ "peregrin-git",
  "peregrin-http",
+ "peregrin-keyring",
  "peregrin-node",
+ "peregrin-secret",
  "peregrin-source",
  "peregrin-source-fs",
  "peregrin-source-git",
  "peregrin-source-http",
+ "peregrin-systemd",
  "peregrin-telemetry",
  "sepia-acp",
  "sepia-convert",
@@ -4110,6 +4117,7 @@ name = "peregrin-systemd"
 version = "0.0.0"
 dependencies = [
  "peregrin-service",
+ "tempfile",
 ]
 
 [[package]]

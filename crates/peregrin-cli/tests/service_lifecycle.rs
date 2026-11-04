@@ -33,8 +33,9 @@ fn backend_dispatch_and_mod_verbs() {
     let _ = b.uninstall(&s, true);
     // The mod-level verbs: only the read-only ones are host-safe —
     // status + logs against a name that doesn't exist.
-    let _ = service::service_status(true, false);
-    let _ = service::service_logs(true, false, false);
+    let _ = service::service_status(true, false, None);
+    let _ = service::service_status(false, false, Some("peregrin-covtest-unit"));
+    let _ = service::service_logs(true, false, false, None);
     let _ = service::default_env_file(std::path::Path::new("/h"), "peregrin");
     let _ = service::default_env_file(std::path::Path::new("/h"), "peregrin-hub");
     assert!(service::env_template().contains("PEREGRIN_NODES"));
