@@ -17,6 +17,7 @@ members = [
     "crates/peregrin-driver-http",
     "crates/peregrin-driver-human",
     "crates/peregrin-driver-shell",
+    "crates/peregrin-driver-sturn",
     "crates/peregrin-engine",
     "crates/peregrin-git",
     "crates/peregrin-http",
@@ -68,6 +69,7 @@ peregrin-driver-github-webhook = { path = "crates/peregrin-driver-github-webhook
 peregrin-driver-http = { path = "crates/peregrin-driver-http" }
 peregrin-driver-human = { path = "crates/peregrin-driver-human" }
 peregrin-driver-shell = { path = "crates/peregrin-driver-shell" }
+peregrin-driver-sturn = { path = "crates/peregrin-driver-sturn" }
 peregrin-engine = { path = "crates/peregrin-engine" }
 peregrin-git = { path = "crates/peregrin-git" }
 peregrin-http = { path = "crates/peregrin-http" }

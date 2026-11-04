@@ -3674,6 +3674,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-driver-sturn"
+version = "0.0.0"
+dependencies = [
+ "peregrin-core",
+ "peregrin-driver",
+ "peregrin-engine",
+ "peregrin-git",
+ "peregrin-loader",
+ "peregrin-loader-yaml",
+ "peregrin-template",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "peregrin-engine"
 version = "0.0.0"
 dependencies = [
