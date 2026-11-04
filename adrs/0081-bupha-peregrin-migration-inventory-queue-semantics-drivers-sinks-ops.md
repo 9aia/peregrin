@@ -62,12 +62,13 @@ against **JSON Schema** (field.yml, ADR-0032). Open: the **event
 envelope** schema — the contract every impl/campaign speaks —
 drafts next before impls.
 
-Cut: **`peregrin` is general — the gate is configuration.** The
-config speaks engine vocabulary: `triggers:` (watch lists per
-source), `campaigns:` (`on:` event filters + driver/sink params).
-bupha's `repos:`/`jobs:` map onto it — repo+secret → trigger entry,
-job branch → `on: ref` filter, runner cmd → driver params — and no
-CI-specific engine code lands beyond the generic ports above.
+Cut: **`peregrin` is general — the gate is configuration.** One
+grammar: node config is itself a workflow file — ingress-driver
+nodes (`github-webhook`, `sturn-poll`) hold watch lists + secrets
+in params; bundle graphs `include:` in and subscribe via `on:`.
+bupha's `repos:`/`jobs:` map onto it — repo+secret → ingress-node
+params, job branch → `on: ref` filter, runner cmd → driver params —
+and no CI-specific engine code lands beyond the generic ports.
 
 ## Consequences
 

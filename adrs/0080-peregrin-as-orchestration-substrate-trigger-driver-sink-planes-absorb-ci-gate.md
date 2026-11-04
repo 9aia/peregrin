@@ -47,20 +47,22 @@ belongs in it as a *distribution*, not a sibling binary.
   enable. (`create --template`, not `init <profile>` — profiles
   aren't hardcoded in the CLI; the template resolves against the
   store so any bundle works.)
-- **Config is engine vocabulary, not CI vocabulary.** bupha's
-  `[[repos]]` conflated two things — which events a source watches
-  and what a campaign does with them. They split: `triggers:` holds
-  the watch list (`kind: github`, `repo:`, `secret_env:` — source
-  config), `campaigns:` hold `on:` filters routing events to
-  params (repo/ref/sha arrive *in the event*, driver-git checks out
-  from `clone_url` — no per-repo `dir`). bupha.toml/yaml maps onto
-  this shape rather than surviving verbatim.
+- **One grammar: the node config IS a workflow file.** No
+  separate `triggers:`/`campaigns:` dialect — `peregrin.yaml` is a
+  `name:`/`config:`/`nodes:` graph like any other, containing
+  *ingress driver nodes* (`driver: github-webhook`, `driver:
+  sturn-poll`; params carry `repos`/`secret_env` — node-level,
+  never in shipped bundles). Bundle graphs attach by `include:` +
+  deep-merge (ADR-0082 #3) and subscribe to what ingress nodes
+  emit. "Which bundles are enabled" = the include list.
+  (v1 purity: webhook/poll/stdin were already driver nodes in
+  workflows; bupha's `[[repos]]`/`jobs:` become ingress-node params
+  + `on:` subscriptions.)
 - **Campaign payload is the v1 workflow DSL**, unchanged:
   `name:`/`config:`/`nodes:` with `id`/`driver`/`on: [events]`/
   `emits:`/`params:` (`d6bf6356~1:examples/` is the grammar).
-  `triggers:`/`campaigns:` in the node config are *wiring*
-  (which sources, which bundles enabled) — the workflow file
-  itself keeps the v1 node-graph shape.
+  repo/ref/sha arrive *in the event*; driver-git checks out from
+  `clone_url` — no per-repo `dir`.
 - **Migration**: build impls → shadow-run posting `ci/peregrin`
   beside `ci/bupha` → compare verdicts → cutover hooks → retire the
   watcher unit + `bupha.toml`→campaign importer for existing configs.

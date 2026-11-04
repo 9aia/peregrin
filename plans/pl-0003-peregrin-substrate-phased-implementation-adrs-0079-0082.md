@@ -188,8 +188,9 @@ New crates by phase:
 - P4: `peregrin-source` port + `peregrin-source-{fs,git,http}`;
   `peregrin-bundle` (manifest, store layout, deep-merge compose).
 - P4 side-car: `peregrin-config-yaml` — node config gets the same
-  yaml-first/toml-permanent treatment bupha landed
-  (`triggers:`/`campaigns:` keys live here).
+  yaml-first/toml-permanent treatment bupha landed; the file IS a
+  workflow document (ingress-driver nodes + `include:` list —
+  ADR-0080 amended, no separate triggers/campaigns grammar).
 - P6: ops verbs land in `peregrin-cli` (+`peregrin-service`/
   `systemd` reuse for deploy/destroy).
 - P7: `peregrin-mcp` + `.agents/skills/`.
