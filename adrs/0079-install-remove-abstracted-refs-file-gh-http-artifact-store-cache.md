@@ -58,9 +58,9 @@ bundle on every boot), and pin/upgrade semantics have to be decided
 ## Consequences
 
 - The 9aia factory shape lands: `libraries/` becomes the upstream
-  for bundles like `ci-gate` (ADR-0080), and `peregrin init ci` is
-  `install` + enable-campaign — a parameterized install, not bespoke
-  setup per repo.
+  for bundles like `ci-gate` (ADR-0080), and `peregrin create
+  --template ci-gate` is `install` + enable-campaign — a
+  parameterized install, not bespoke setup per repo.
 - Bundle *integrity* matters: digested refs + optional sig checks
   are the growth path (ssh-sign like sturn events).
 - Out of scope: a registry — refs point at existing hosts (fs, GH,

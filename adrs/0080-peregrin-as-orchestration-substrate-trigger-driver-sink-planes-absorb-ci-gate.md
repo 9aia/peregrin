@@ -42,14 +42,16 @@ belongs in it as a *distribution*, not a sibling binary.
   driver), `sink-github-status` (commit status posts).
 - **bupha becomes a bundle** (`libraries/ci-gate`, via ADR-0079
   install) — its `bupha.toml/yaml` `[[repos]]`/`jobs`/runner schema
-  survives verbatim as campaign parameters; `peregrin init ci` =
-  install + enable.
+  survives verbatim as campaign parameters; `peregrin create
+  --template ci-gate` = install + enable. (`create --template`, not
+  `init <profile>` — profiles aren't hardcoded in the CLI; the
+  template resolves against the store so any bundle works.)
 - **Migration**: build impls → shadow-run posting `ci/peregrin`
   beside `ci/bupha` → compare verdicts → cutover hooks → retire the
   watcher unit + `bupha.toml`→campaign importer for existing configs.
 - **Node profiles**: a gate node runs a minimal slice (triggers +
-  git driver + status sink — no sessions, no web). `peregrin init
-  <profile>` materializes the unit + config so the gate keeps an
+  git driver + status sink — no sessions, no web). `peregrin create
+  --template <bundle>` materializes the unit + config so the gate keeps an
   "always-up" personality inside the bigger engine.
 
 ## Consequences

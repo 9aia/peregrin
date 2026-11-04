@@ -38,7 +38,8 @@ Capabilities peregrin needs, by plane:
   (`ci/peregrin/<job>` during shadow, `ci/bupha` at cutover).
 - **Secrets** — parity already (env → keyring → env-file).
 - **Ops verbs** — webhook registration + systemd unit deploy/
-  toggle → `peregrin init ci` profile + `deploy` verbs.
+  toggle → `peregrin create --template` (template bundles
+  materialize the unit + config) + `deploy` verbs.
 - **Observability** — `history.jsonl`/`runs`/`explain`/`doctor` →
   run records in peregrin-store + CLI verbs (events feed exists).
 - **Fleet** — `runs_on` labels → node labels; `worker`/`agent`
