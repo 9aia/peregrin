@@ -44,9 +44,10 @@ pub enum CampaignError {
 }
 
 /// `DefaultDriverRegistryLive` — the drivers a stock node resolves:
-/// the four ported `ac-driver-*` impls plus the `runner`/`noop`
-/// builtins. `cli`/`polling`/`python`/`stdin`/`streaming`/`webhook`
-/// and the litellm/apprise plugins are not ported yet.
+/// the four ported `ac-driver-*` impls, the `github-status` egress
+/// sink, plus the `runner`/`noop` builtins. `cli`/`polling`/`python`/
+/// `stdin`/`streaming`/`webhook` and the litellm/apprise plugins are
+/// not ported yet.
 #[must_use]
 pub fn registry() -> Registry {
     Registry::default()
@@ -54,6 +55,7 @@ pub fn registry() -> Registry {
         .with("http", Arc::new(peregrin_driver_http::HttpDriver::new()))
         .with("human", Arc::new(peregrin_driver_human::HumanDriver::new()))
         .with("shell", Arc::new(peregrin_driver_shell::ShellDriver::new()))
+        .with("github-status", Arc::new(peregrin_sink_github_status::GithubStatusSink::new()))
         .with("noop", Arc::new(NoopDriver))
         .with("runner", Arc::new(RunnerDriver))
 }
