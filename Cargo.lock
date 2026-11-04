@@ -3776,6 +3776,7 @@ dependencies = [
  "peregrin-loader-yaml",
  "peregrin-session",
  "peregrin-store",
+ "peregrin-store-json",
  "peregrin-telemetry",
  "sepia-acp",
  "sepia-convert",
@@ -3874,6 +3875,18 @@ version = "0.0.0"
 dependencies = [
  "peregrin-core",
  "serde_json",
+]
+
+[[package]]
+name = "peregrin-store-json"
+version = "0.0.0"
+dependencies = [
+ "peregrin-core",
+ "peregrin-store",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
 ]
 
 [[package]]

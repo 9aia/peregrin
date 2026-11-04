@@ -29,6 +29,7 @@ members = [
     "crates/peregrin-secret",
     "crates/peregrin-service",
     "crates/peregrin-store",
+    "crates/peregrin-store-json",
     "crates/peregrin-sync",
     "crates/peregrin-systemd",
     "crates/peregrin-telemetry",
@@ -74,6 +75,7 @@ peregrin-remote-http = { path = "crates/peregrin-remote-http" }
 peregrin-secret = { path = "crates/peregrin-secret" }
 peregrin-service = { path = "crates/peregrin-service" }
 peregrin-store = { path = "crates/peregrin-store" }
+peregrin-store-json = { path = "crates/peregrin-store-json" }
 peregrin-sync = { path = "crates/peregrin-sync" }
 peregrin-systemd = { path = "crates/peregrin-systemd" }
 peregrin-telemetry = { path = "crates/peregrin-telemetry" }

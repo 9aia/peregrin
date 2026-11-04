@@ -4,22 +4,26 @@
 //! impls, a `LocalBus` over the memory event store, a memory state
 //! store + DLQ, and the sequential `Runner` engine — all in-process.
 //!
-//! Persistence is deliberately ephemeral for now: every run starts a
+//! Persistence defaults to ephemeral — [`run`] starts every run on a
 //! fresh `MemoryStore` log/state and `MemoryDlq` (the TS `handl run`
-//! semantics — the CLI prints the returned log). A durable
-//! `ac-store-json` port plus a daemon-side run surface
-//! (`/api/campaigns/*`) are later items; nothing here binds the plane
-//! to axum, so hub/web can compose the same pieces when that lands.
+//! semantics — the CLI prints the returned log). [`runner_with_log`]
+//! swaps the event log for the durable `peregrin-store-json` JSONL
+//! store (the `ac-store-json` port); a daemon-side run surface
+//! (`/api/campaigns/*`) and store selection via config are later
+//! items. Nothing here binds the plane to axum, so hub/web can
+//! compose the same pieces when that lands.
 
 use std::path::Path;
 use std::sync::Arc;
 
+use peregrin_bus::{LocalBus, NoopObserver};
 use peregrin_core::{Campaign, Event};
 use peregrin_driver::{DriverError, NoopDriver, RunnerDriver};
 use peregrin_engine::{Registry, RunOptions, Runner};
 use peregrin_loader::{LoadError, Loader};
 use peregrin_loader_yaml::YamlLoader;
 use peregrin_store::MemoryDlq;
+use peregrin_store_json::JsonStoreError;
 
 /// Campaign-plane failure — the two error channels a run crosses:
 /// the loader rejecting the source, then the engine failing the run.
@@ -33,6 +37,10 @@ pub enum CampaignError {
     /// (TS `DriverError`).
     #[error("{0}")]
     Run(#[from] DriverError),
+    /// Durable event-log open failed (TS `JsonStoreError`) — only
+    /// reachable via [`runner_with_log`].
+    #[error("{0}")]
+    Store(#[from] JsonStoreError),
 }
 
 /// `DefaultDriverRegistryLive` — the drivers a stock node resolves:
@@ -57,6 +65,22 @@ pub fn registry() -> Registry {
 #[must_use]
 pub fn runner() -> Runner {
     Runner::new(registry()).with_dlq(Box::<MemoryDlq>::default())
+}
+
+/// A runner like [`runner`] but with the event log backed by the
+/// durable JSONL store at `log_path` (`ac-store-json` semantics): the
+/// log survives process exit, and a store reopened on the same path
+/// resumes the run's publish/first-seen order. Run state stays
+/// in-memory — the `JsonStateStore` half of `ac-store-json` is a
+/// later item (ADR-0013).
+///
+/// # Errors
+/// [`CampaignError::Store`] when the log can't be read or a line
+/// fails to parse.
+pub fn runner_with_log(log_path: &Path) -> Result<Runner, CampaignError> {
+    let store = peregrin_store_json::JsonStore::open(log_path)?;
+    let bus = LocalBus::new(Box::new(store), Arc::new(NoopObserver));
+    Ok(runner().with_bus(Box::new(bus)))
 }
 
 /// TS `loadWorkflow` — yaml file → [`Campaign`], with `include:`/

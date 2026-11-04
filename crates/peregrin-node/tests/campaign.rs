@@ -136,6 +136,42 @@ fn load_errors_on_missing_and_malformed() {
 }
 
 #[test]
+fn runner_with_log_persists_the_event_log() {
+    use peregrin_store::EventStore;
+    let tmp = tempfile::tempdir().unwrap();
+    let check = CHECK_NODE.replace("{dir}", &tmp.path().display().to_string());
+    let yaml = write_fixture(tmp.path(), &check);
+    let log_path = tmp.path().join("run.jsonl");
+
+    let loaded = campaign::load(&yaml).unwrap();
+    let mut runner = campaign::runner_with_log(&log_path).unwrap();
+    let log = runner.run(&loaded, &RunOptions::default()).unwrap();
+    assert_eq!(log.last().unwrap().kind, "workflow.done");
+
+    // One durable JSON line per published event; a store reopened on
+    // the same path resumes the run's publish + first-seen order.
+    let store = peregrin_store_json::JsonStore::open(&log_path).unwrap();
+    assert_eq!(store.all().len(), log.len());
+    let mut expected = Vec::new();
+    for e in &log {
+        if !expected.contains(&e.kind) {
+            expected.push(e.kind.clone());
+        }
+    }
+    assert_eq!(store.seen_types(), expected);
+    assert_eq!(store.latest().unwrap().kind, "workflow.done");
+}
+
+#[test]
+fn runner_with_log_errors_on_a_malformed_log() {
+    let tmp = tempfile::tempdir().unwrap();
+    let log_path = tmp.path().join("run.jsonl");
+    std::fs::write(&log_path, "not json\n").unwrap();
+    let err = campaign::runner_with_log(&log_path).err().unwrap();
+    assert!(err.to_string().contains("line 1"), "{err}");
+}
+
+#[test]
 fn run_surfaces_engine_failures() {
     let tmp = tempfile::tempdir().unwrap();
     let yaml = tmp.path().join("unknown-driver.yaml");
