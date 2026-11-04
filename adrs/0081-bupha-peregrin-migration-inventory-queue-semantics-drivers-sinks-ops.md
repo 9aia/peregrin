@@ -60,5 +60,9 @@ CI-specific engine code lands beyond the generic ports above.
 - Ordered build: queue-supersede semantics → driver-git →
   github trigger/status pair → bundle + importer → shadow run →
   cutover. Most other items are config-shape ports.
-- bupha stays runnable for minimal boxes; the substrate absorbs
-  the orchestrated case, not the standalone one.
+- bupha stays runnable for minimal boxes — **frozen binary, shared
+  bundle refs.** Drift is neutralized by integrity: digest-pinned
+  bundles mean remote moves are detected (`verify`/`update`), not
+  silent. `#sha` pins are immutable; `#tag`/`#branch` move on
+  explicit install. The substrate absorbs the orchestrated case,
+  not the standalone one.
