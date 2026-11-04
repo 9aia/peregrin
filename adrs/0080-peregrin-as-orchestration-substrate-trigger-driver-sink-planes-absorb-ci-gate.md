@@ -55,6 +55,12 @@ belongs in it as a *distribution*, not a sibling binary.
   params (repo/ref/sha arrive *in the event*, driver-git checks out
   from `clone_url` — no per-repo `dir`). bupha.toml/yaml maps onto
   this shape rather than surviving verbatim.
+- **Campaign payload is the v1 workflow DSL**, unchanged:
+  `name:`/`config:`/`nodes:` with `id`/`driver`/`on: [events]`/
+  `emits:`/`params:` (`d6bf6356~1:examples/` is the grammar).
+  `triggers:`/`campaigns:` in the node config are *wiring*
+  (which sources, which bundles enabled) — the workflow file
+  itself keeps the v1 node-graph shape.
 - **Migration**: build impls → shadow-run posting `ci/peregrin`
   beside `ci/bupha` → compare verdicts → cutover hooks → retire the
   watcher unit + `bupha.toml`→campaign importer for existing configs.
