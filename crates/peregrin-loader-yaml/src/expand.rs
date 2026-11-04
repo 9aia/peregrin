@@ -84,7 +84,7 @@ fn full_path(include_path: &str, base_dir: &Path) -> PathBuf {
 
 /// TS `deepMerge(local, imported)` — local wins; dicts merge per-key,
 /// arrays concatenate local-first, scalars take local.
-pub(crate) fn deep_merge(local: &Value, imported: &Value) -> Value {
+pub fn deep_merge(local: &Value, imported: &Value) -> Value {
     match (local, imported) {
         (Value::Object(local_map), Value::Object(imported_map)) => {
             let mut result = imported_map.clone();
@@ -104,6 +104,38 @@ pub(crate) fn deep_merge(local: &Value, imported: &Value) -> Value {
         }
         _ => local.clone(),
     }
+}
+
+/// Node-id dedupe — `deep_merge` concatenates arrays local-first, so
+/// an include or overlay that redefines a node `id` would land it
+/// twice in `nodes:` and the engine would fire it twice. Keeping the
+/// *first* occurrence keeps the local definition (local items sort
+/// first after the concat) and the earlier include on a
+/// base-vs-base collision. Non-node items and nodes without a
+/// string `id` pass through untouched.
+pub fn dedupe_node_ids(raw: &mut Map<String, Value>) {
+    let Some(Value::Array(nodes)) = raw.get_mut("nodes") else {
+        return;
+    };
+    let mut seen = HashSet::new();
+    nodes.retain(|node| {
+        let Some(id) = node.get("id").and_then(Value::as_str) else {
+            return true;
+        };
+        seen.insert(id.to_string())
+    });
+}
+
+/// Document merge for bundle overlay composition — [`deep_merge`]
+/// (local wins, arrays local-first) plus [`dedupe_node_ids`] so a
+/// redefined node `id` merges rather than double-firing.
+#[must_use]
+pub fn merge_documents(local: &Value, imported: &Value) -> Value {
+    let mut merged = deep_merge(local, imported);
+    if let Value::Object(map) = &mut merged {
+        dedupe_node_ids(map);
+    }
+    merged
 }
 
 // ---------------------------------------------------------------------------

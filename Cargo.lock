@@ -3513,6 +3513,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-bundle"
+version = "0.0.0"
+dependencies = [
+ "flate2",
+ "hex",
+ "peregrin-loader-yaml",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+ "sha2",
+ "tar",
+ "tempfile",
+ "thiserror 2.0.21",
+ "toml 0.8.23",
+]
+
+[[package]]
 name = "peregrin-bus"
 version = "0.0.0"
 dependencies = [
@@ -3527,10 +3544,15 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "nix",
+ "peregrin-bundle",
  "peregrin-core",
  "peregrin-engine",
  "peregrin-http",
  "peregrin-node",
+ "peregrin-source",
+ "peregrin-source-fs",
+ "peregrin-source-git",
+ "peregrin-source-http",
  "peregrin-telemetry",
  "sepia-acp",
  "sepia-convert",
@@ -3541,6 +3563,7 @@ dependencies = [
  "sepia-testkit",
  "serde",
  "serde_json",
+ "serde_yaml_ng",
  "tempfile",
  "time",
  "tokio",
@@ -3974,6 +3997,44 @@ dependencies = [
  "peregrin-driver",
  "peregrin-template",
  "serde_json",
+ "ureq",
+]
+
+[[package]]
+name = "peregrin-source"
+version = "0.0.0"
+dependencies = [
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "peregrin-source-fs"
+version = "0.0.0"
+dependencies = [
+ "peregrin-bundle",
+ "peregrin-source",
+ "tar",
+ "tempfile",
+]
+
+[[package]]
+name = "peregrin-source-git"
+version = "0.0.0"
+dependencies = [
+ "peregrin-bundle",
+ "peregrin-git",
+ "peregrin-source",
+ "tempfile",
+]
+
+[[package]]
+name = "peregrin-source-http"
+version = "0.0.0"
+dependencies = [
+ "peregrin-bundle",
+ "peregrin-source",
+ "tempfile",
  "ureq",
 ]
 

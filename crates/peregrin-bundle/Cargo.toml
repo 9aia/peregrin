@@ -1,0 +1,24 @@
+[package]
+name = "peregrin-bundle"
+description = "Bundle artifacts (ADR-0079) — manifest, local store + content-addressed fetch cache, deep-merge overlay composition, tar pack/unpack"
+version = "0.0.0"
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+
+[lints]
+workspace = true
+[dependencies]
+peregrin-loader-yaml.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml_ng.workspace = true
+toml.workspace = true
+sha2.workspace = true
+hex.workspace = true
+thiserror.workspace = true
+tar.workspace = true
+flate2.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

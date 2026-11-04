@@ -433,3 +433,63 @@ fn loads_the_meta_create_stdlib_campaign() {
     );
     assert_eq!(campaign.events[1].fields["stdout"], "string");
 }
+
+// --- Node-id dedupe (double-fire guard) -------------------------------------
+
+#[test]
+fn include_redefining_a_node_id_merges_not_duplicates() {
+    let tmp = tempfile::tempdir().unwrap();
+    fs::write(
+        tmp.path().join("base.yaml"),
+        "nodes:\n  - id: gate\n    driver: shell\n    on: [start]\n    params:\n      cmd: base\n  - id: base-only\n    driver: shell\n",
+    )
+    .unwrap();
+    let campaign = load(
+        "name: over\ninclude: base.yaml\nnodes:\n  - id: gate\n    driver: agent\n    on: [go]\n  - id: local-only\n    driver: shell\n",
+        tmp.path(),
+    )
+    .unwrap();
+    // `gate` kept once, from the local definition; base-only survives.
+    let ids: Vec<&str> = campaign.nodes.iter().map(|n| n.id.as_str()).collect();
+    assert_eq!(ids, ["gate", "local-only", "base-only"]);
+    assert_eq!(campaign.nodes[0].driver, "agent");
+    assert_eq!(campaign.nodes[0].on, ["go"]);
+}
+
+#[test]
+fn dedupe_helpers_cover_edges() {
+    use peregrin_loader_yaml::{dedupe_node_ids, deep_merge, merge_documents};
+    use serde_json::{Map, Value, json};
+
+    // dedupe_node_ids: no nodes key / non-array / non-string ids pass.
+    let mut none: Map<String, Value> = Map::new();
+    dedupe_node_ids(&mut none);
+    let mut scalar = Map::from_iter([("nodes".to_string(), json!("x"))]);
+    dedupe_node_ids(&mut scalar);
+    assert_eq!(scalar["nodes"], json!("x"));
+    let mut odd = Map::from_iter([(
+        "nodes".to_string(),
+        json!([{"driver": "shell"}, {"id": 3}, {"id": "a"}, {"id": "a"}, "plain"]),
+    )]);
+    dedupe_node_ids(&mut odd);
+    assert_eq!(
+        odd["nodes"],
+        json!([{"driver": "shell"}, {"id": 3}, {"id": "a"}, "plain"])
+    );
+
+    // merge_documents: deep_merge shape + dedupe.
+    let local = json!({"nodes": [{"id": "n", "params": {"a": 1}}], "x": [1]});
+    let imported = json!({"nodes": [{"id": "n", "params": {"b": 2}}, {"id": "m"}], "x": [2]});
+    let merged = merge_documents(&local, &imported);
+    assert_eq!(
+        merged,
+        json!({"nodes": [{"id": "n", "params": {"a": 1}}, {"id": "m"}], "x": [1, 2]})
+    );
+    // Non-object merge result skips the dedupe branch.
+    assert_eq!(merge_documents(&json!(1), &json!({"a": 2})), json!(1));
+    // deep_merge stays reachable through the re-export.
+    assert_eq!(
+        deep_merge(&json!({"k": "v"}), &Value::Null),
+        json!({"k": "v"})
+    );
+}

@@ -4,6 +4,7 @@
 
 pub mod api;
 pub mod campaign;
+pub mod distribution;
 pub mod node_ops;
 pub mod pair;
 pub mod service;

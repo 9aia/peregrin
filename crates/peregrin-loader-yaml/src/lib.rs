@@ -28,8 +28,9 @@ use peregrin_loader::{LoadError, Loader};
 use serde_json::{Map, Value};
 
 pub use discover::{DiscoveredFiles, Entry, discover};
+pub use expand::{dedupe_node_ids, deep_merge, merge_documents};
 use expand::{
-    deep_merge, resolve_include_dict, resolve_include_strings, resolve_snippet_definitions,
+    resolve_include_dict, resolve_include_strings, resolve_snippet_definitions,
     resolve_snippet_refs, resolve_snippet_strings,
 };
 use parse::{parse_json, parse_yaml, read_text_file};
@@ -193,9 +194,13 @@ impl YamlLoader {
         let raw = resolve_snippet_refs(&Value::Object(raw), &snippets, &mut HashSet::new())?;
         let raw = resolve_snippet_strings(&raw, &snippets, &mut HashSet::new())?;
         let raw = resolve_include_strings(&raw, base_dir, &mut HashSet::new())?;
-        let Value::Object(raw) = raw else {
+        let Value::Object(mut raw) = raw else {
             return Err(LoadError::new("workflow must be a mapping"));
         };
+        // Include/overlay merges concat `nodes:` local-first — a
+        // redefined id would double-fire, so dedupe keeps the first
+        // (local) definition.
+        dedupe_node_ids(&mut raw);
         reject_with_key(&raw)?;
         Ok(raw)
     }

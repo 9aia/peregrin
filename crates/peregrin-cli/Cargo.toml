@@ -18,10 +18,15 @@ sepia-session.workspace = true
 sepia-convert.workspace = true
 sepia-driver.workspace = true
 sepia-host.workspace = true
+peregrin-bundle.workspace = true
 peregrin-core.workspace = true
 peregrin-engine.workspace = true
 peregrin-http.workspace = true
 peregrin-node.workspace = true
+peregrin-source.workspace = true
+peregrin-source-fs.workspace = true
+peregrin-source-git.workspace = true
+peregrin-source-http.workspace = true
 peregrin-telemetry.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -33,4 +38,6 @@ nix = { version = "0.29", default-features = false, features = ["fs", "user"] }
 [dev-dependencies]
 tempfile.workspace = true
 sepia-testkit.workspace = true
+serde_json.workspace = true
+serde_yaml_ng.workspace = true
 tokio = { workspace = true, features = ["rt"] }
