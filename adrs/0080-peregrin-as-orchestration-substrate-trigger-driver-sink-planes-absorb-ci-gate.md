@@ -12,10 +12,56 @@ Status: **proposed** · Created: 2026-11-04
 
 ## Context
 
+The 9aia factory is converging on one event substrate: sturn owns
+ephemeral coordination (WAL in `refs/sturn/*`, claims, topics), myco
+owns durable state, sepia owns session mechanism — and peregrin owns
+policy + orchestration on top. Meanwhile bupha re-implements the same
+vertical in miniature: a GitHub-webhook trigger listener, a queue
+(latest-wins batching), a runner (detached worktree at the pushed
+sha), and a status sink (`ci/bupha`). A "push → run → verdict" gate
+is a degenerate peregrin campaign — one trigger source, one driver,
+one sink.
 
+Two webhook listeners, two queue models, two systemd daemons is
+duplicated machinery. If peregrin is the substrate, the CI gate
+belongs in it as a *distribution*, not a sibling binary.
 
 ## Decision
 
-
+- **Peregrin is the substrate for orchestration/execution.** Event
+  plane in (triggers), execution out (drivers, sinks), campaigns as
+  policy between them. The trigger/driver split already exists;
+  **sinks become a first-class plane** — effect endpoints that
+  publish verdicts out (github commit-status, WAL writes, webhooks)
+  rather than ad-hoc side effects inside runners.
+- **Grow the port families, don't special-case CI.** Missing impls
+  land as generic ports so other campaigns reuse them:
+  `trigger-github` (HMAC listener + payload → trigger event),
+  `trigger-sturn` (WAL ref poller — `sturn snap` → run for free),
+  `driver-git` (checkout sha → detached worktree → invoke inner
+  driver), `sink-github-status` (commit status posts).
+- **bupha becomes a bundle** (`libraries/ci-gate`, via ADR-0079
+  install) — its `bupha.toml/yaml` `[[repos]]`/`jobs`/runner schema
+  survives verbatim as campaign parameters; `peregrin init ci` =
+  install + enable.
+- **Migration**: build impls → shadow-run posting `ci/peregrin`
+  beside `ci/bupha` → compare verdicts → cutover hooks → retire the
+  watcher unit + `bupha.toml`→campaign importer for existing configs.
+- **Node profiles**: a gate node runs a minimal slice (triggers +
+  git driver + status sink — no sessions, no web). `peregrin init
+  <profile>` materializes the unit + config so the gate keeps an
+  "always-up" personality inside the bigger engine.
 
 ## Consequences
+
+- One queue, one event model, one daemon — but the gate's
+  availability now shares the engine's blast radius; the
+  minimal-profile gate node is the mitigation, and bupha stays
+  available for boxes where a full node is overkill.
+- Sinks as a plane lets non-CI campaigns publish verdicts the same
+  way (review verdicts back to sturn, notifications, deploy calls).
+- `trigger-sturn` makes agent-triggered CI native: `snap` → run —
+  the factory's coordination plane feeds its execution plane
+  without a webhook round-trip.
+- ADR-0079 (install/remove + store) is the distribution half of
+  this decision — bundles like `ci-gate` ship through it.
