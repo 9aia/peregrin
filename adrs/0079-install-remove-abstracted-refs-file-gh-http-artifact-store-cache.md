@@ -20,9 +20,12 @@ must be abstracted — a bundle is bytes + manifest whether it lives on
 disk, in a git repo, or behind HTTP:
 
 ```
-peregrin install ./ci-gate               # filepath — dev loop
-peregrin install gh:9aia/peregrin/libraries/ci-gate  # repo path
-peregrin install https://9aia.com/bundles/ci-gate-0.2.tgz
+peregrin install ./ci-gate                                  # filepath — dev loop
+peregrin install git:9aia/peregrin/libraries/ci-gate        # shorthand (github), default branch
+peregrin install git:github.com/9aia/peregrin//libraries/ci-gate#v0.2.0
+peregrin install git:git@github.com:9aia/peregrin//libraries/ci-gate#main
+peregrin install git:https://gitlab.com/grp/sub/repo//dir   # any git url
+peregrin install https://9aia.com/bundles/ci-gate-0.2.tgz   # non-git tarball
 peregrin remove ci-gate
 ```
 
@@ -37,11 +40,17 @@ bundle on every boot), and pin/upgrade semantics have to be decided
 
 - **`peregrin install <ref>` / `peregrin remove <name>`** — a new
   `Loader`-adjacent port (`source`/`fetch` family, same
-  ports-and-adapters discipline): `source-fs`, `source-gh` (git clone/
-  archive API, `gh:` or `github:org/repo/path` grammar, `@ref` pin),
+  ports-and-adapters discipline): `source-fs`, `source-git` (any
+  clone URL — https/ssh/shorthand `org/repo` defaulting to github),
   `source-http` (tarball URL, optional digest). Each resolves to a
   bundle: manifest (`peregrin-bundle.toml`/`.yaml`) + payload
   (workflows, drivers-as-yaml per ADR-0026, field.yml per ADR-0032).
+- **Ref grammar** — `git:<url>[//<subdir>][#<ref>]`. `//subdir`
+  (go-getter convention) splits repo path from in-repo path —
+  required because nested groups make bare `a/b/c/d` ambiguous.
+  `#ref` is branch/tag/sha — the git ref *is* the version pin; no
+  separate `@version` channel. Without `//`, a two-segment prefix
+  is the repo and the remainder parses as the in-repo path.
 - **Local store** — `~/.local/share/peregrin/store/<name>@<version>/`
   unpacked bundles; `name` aliases the installed entry so campaigns
   and `peregrin run` resolve `bundle:<name>` refs.
@@ -49,9 +58,11 @@ bundle on every boot), and pin/upgrade semantics have to be decided
   downloads; install is a two-phase fetch→unpack so repeat installs
   and air-gapped nodes cost nothing. `remove` drops the store entry;
   cache evicts by age only.
-- **Pins** — `@<tag|sha|digest>` on install; unpinned refs record
-  the resolved digest in the store manifest so `remove`/`list` can
-  report "installed: ci-gate 0.2.0 (sha…)". No auto-upgrade.
+- **Pins** — `#<branch|tag|sha>` on install; the resolved commit
+  sha is recorded in the store manifest regardless, so
+  `remove`/`list` can report "installed: ci-gate 0.2.0 (sha…)".
+  No auto-upgrade — re-installing a moving ref (branch) is the
+  explicit upgrade path.
 - **`peregrin list`** (or `install --list`) — installed bundles,
   source refs, digests.
 
