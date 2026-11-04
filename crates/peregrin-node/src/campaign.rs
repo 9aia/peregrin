@@ -13,7 +13,8 @@
 //! items. Nothing here binds the plane to axum, so hub/web can
 //! compose the same pieces when that lands.
 
-use std::path::Path;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use peregrin_bus::{LocalBus, NoopObserver};
@@ -148,7 +149,52 @@ pub fn load(source: &Path) -> Result<Campaign, CampaignError> {
 /// # Errors
 /// [`CampaignError::Load`] for loader failures,
 /// [`CampaignError::Run`] for engine failures.
+/// The run's secrets env file — `XDG_CONFIG_HOME/peregrin/env` →
+/// `~/.config/peregrin/env` (`PEREGRIN_ENV` overrides). `create`
+/// seeds this with the secret NAMES the operator fills in.
+#[must_use]
+pub fn env_file() -> PathBuf {
+    if let Some(p) = std::env::var_os("PEREGRIN_ENV") {
+        return PathBuf::from(p);
+    }
+    std::env::var_os("XDG_CONFIG_HOME")
+        .map(|d| PathBuf::from(d).join("peregrin/env"))
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".config/peregrin/env")))
+        .unwrap_or_else(|| PathBuf::from(".config/peregrin/env"))
+}
+
+/// `KEY=VAL` file → secrets record. Absent/malformed lines are
+/// skipped — the file is the always-available fallback, not the
+/// whole chain (explicit `RunOptions.secrets` entries still win).
+fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
+    std::fs::read_to_string(path)
+        .unwrap_or_default()
+        .lines()
+        .filter_map(|l| l.split_once('='))
+        .filter(|(k, v)| !k.is_empty() && !v.is_empty() && !k.starts_with('#'))
+        .map(|(k, v)| (k.to_string(), v.to_string()))
+        .collect()
+}
+
+/// TS `handl run <workflow>` — load the campaign file and execute it
+/// on a fresh [`runner`]. Returns the run's event log; the last entry
+/// is the terminal event (`workflow.done`, `workflow.failed`, or
+/// `workflow.cancelled`). The runner is synchronous — callers on an
+/// async surface should `spawn_blocking`.
+///
+/// # Errors
+/// [`CampaignError::Load`] for loader failures,
+/// [`CampaignError::Run`] for engine failures.
 pub fn run(source: &Path, options: &RunOptions) -> Result<Vec<Event>, CampaignError> {
     let campaign = load(source)?;
-    runner().run(&campaign, options).map_err(CampaignError::Run)
+    let mut options = RunOptions {
+        dry_run: options.dry_run,
+        secrets: options.secrets.clone(),
+        replay_events: options.replay_events.clone(),
+    };
+    for (k, v) in secrets_from_env_file(&env_file()) {
+        options.secrets.entry(k).or_insert(v);
+    }
+    let (mut runner, _injector) = runner_with_ingress();
+    runner.run(&campaign, &options).map_err(CampaignError::Run)
 }
