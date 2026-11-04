@@ -77,7 +77,8 @@ belongs in it as a *distribution*, not a sibling binary.
 - One queue, one event model, one daemon — but the gate's
   availability now shares the engine's blast radius; the
   minimal-profile gate node is the mitigation, and bupha stays
-  available for boxes where a full node is overkill.
+  as a *frozen* binary for boxes where a full node is overkill
+  (ADR-0081).
 - Sinks as a plane lets non-CI campaigns publish verdicts the same
   way (review verdicts back to sturn, notifications, deploy calls).
 - `trigger-sturn` makes agent-triggered CI native: `snap` → run —

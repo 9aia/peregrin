@@ -22,9 +22,9 @@ planes, so "CI is just a config" is true rather than aspirational.
 Capabilities peregrin needs, by plane:
 
 - **Queue (the real migration)** — semantics live in the engine:
-  latest-wins supersede keyed on `(repo, ref)`, per-campaign
-  sequential mode, `cancel_running` per job. Needs a *supersede
-  key* concept in the engine's queue policy.
+  latest-wins supersede keyed on `(repo, ref)`, sequential mode,
+  `cancel_running` — all **per-campaign configurable** (locked in
+  review). Needs a *supersede key* concept in the queue policy.
 - **Triggers (new)** — `trigger-github` (HMAC listener, per-repo
   secrets, cloudflared tunnel hand-off) and `trigger-sturn` (WAL
   ref poller — `snap → run` natively).
@@ -34,8 +34,10 @@ Capabilities peregrin needs, by plane:
   option (`isolate: scope`, `memory_max` — the OOM-containment
   story from bupha's graphopt loop).
 - **Sinks (new plane per ADR-0080)** — `sink-github-status` with
-  `status_repo` redirect and per-job context naming
-  (`ci/peregrin/<job>` during shadow, `ci/bupha` at cutover).
+  `status_repo` redirect and deterministic `ci/<campaign>` contexts
+  (locked in review): shadow posts `ci/<campaign>` beside legacy
+  `ci/bupha`; cutover migrates protection rules once, then
+  `ci/bupha` retires.
 - **Secrets** — parity already (env → keyring → env-file).
 - **Ops verbs** — webhook registration + systemd unit deploy/
   toggle → `peregrin create --template` (template bundles

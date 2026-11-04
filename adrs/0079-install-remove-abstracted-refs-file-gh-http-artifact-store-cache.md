@@ -1,12 +1,12 @@
 +++
 id = "ADR-0079"
-title = "install/remove — abstracted refs (file/gh/http), artifact store + cache"
+title = "install/remove — abstracted refs (file/git/http), artifact store + cache"
 status = "open"
 created = "2026-11-04"
 priority = "medium"
 +++
 
-# install/remove — abstracted refs (file/gh/http), artifact store + cache
+# install/remove — abstracted refs (file/git/http), artifact store + cache
 
 Status: **proposed** · Created: 2026-11-04
 
@@ -37,13 +37,13 @@ peregrin remove <name>          # drop store entry; cache untouched
 peregrin list                   # installed bundles, refs, digests
 peregrin info <name>            # manifest, source ref, resolved sha, size
 peregrin update <name>|<--all>  # re-resolve the source ref (the upgrade path for moving refs)
-peregrin pin <name> <ref>       # change the recorded pin without refetching payload shape
+peregrin pin <name> <ref>       # retarget the recorded ref (refetches when digest differs)
 peregrin verify <name>          # digest-check store contents vs recorded sha
 peregrin cache clean [--all]    # evict fetch cache (age policy or full)
 peregrin bundle pack <dir>      # authoring — dir + manifest → installable bundle
 ```
 
-Provision/teardown verbs mirror `create`/`deploy` (bupha parity —
+Provision/teardown verbs — bupha parity (today's
 today's `bupha destroy webhook|service|worktrees`):
 
 ```
