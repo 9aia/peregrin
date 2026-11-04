@@ -3639,6 +3639,7 @@ dependencies = [
  "peregrin-driver",
  "peregrin-template",
  "serde_json",
+ "tempfile",
 ]
 
 [[package]]
@@ -3785,6 +3786,7 @@ dependencies = [
  "peregrin-http",
  "peregrin-loader",
  "peregrin-loader-yaml",
+ "peregrin-queue",
  "peregrin-session",
  "peregrin-store",
  "peregrin-store-json",
@@ -3836,6 +3838,15 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "web-push",
+]
+
+[[package]]
+name = "peregrin-queue"
+version = "0.0.0"
+dependencies = [
+ "peregrin-core",
+ "serde",
+ "serde_json",
 ]
 
 [[package]]

@@ -21,6 +21,7 @@ peregrin-driver-shell.workspace = true
 peregrin-engine.workspace = true
 peregrin-loader.workspace = true
 peregrin-loader-yaml.workspace = true
+peregrin-queue.workspace = true
 peregrin-store.workspace = true
 peregrin-store-json.workspace = true
 thiserror.workspace = true

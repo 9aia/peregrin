@@ -8,6 +8,7 @@
 //! arbitration, the hub.
 
 pub mod campaign;
+pub mod supervisor;
 
 use std::path::PathBuf;
 use std::sync::Arc;

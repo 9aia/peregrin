@@ -25,6 +25,7 @@ members = [
     "crates/peregrin-node",
     "crates/peregrin-outbox",
     "crates/peregrin-push",
+    "crates/peregrin-queue",
     "crates/peregrin-remote",
     "crates/peregrin-remote-http",
     "crates/peregrin-secret",
@@ -73,6 +74,7 @@ peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml" }
 peregrin-node = { path = "crates/peregrin-node" }
 peregrin-outbox = { path = "crates/peregrin-outbox" }
 peregrin-push = { path = "crates/peregrin-push" }
+peregrin-queue = { path = "crates/peregrin-queue" }
 peregrin-remote = { path = "crates/peregrin-remote" }
 peregrin-remote-http = { path = "crates/peregrin-remote-http" }
 peregrin-secret = { path = "crates/peregrin-secret" }

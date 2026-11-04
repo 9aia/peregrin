@@ -34,6 +34,7 @@ use peregrin_template::{
     SystemEffects, TemplateError, TemplateFunction, resolve_params, resolve_template_opts,
 };
 
+use crate::ingress::Ingress;
 use crate::registry::Registry;
 use crate::safety::{
     CapabilityChecker, ResourceGate, build_validator, validate_object, validate_record,
@@ -180,6 +181,10 @@ pub struct Runner {
     dlq: Box<dyn DeadLetterQueue>,
     state: Rc<RefCell<Box<dyn StateStore>>>,
     effects: Rc<dyn Effects>,
+    /// The ingress channel's receiver half — external events drained
+    /// into `pending` once per loop iteration (`None` = the run only
+    /// sees internally-produced events, the historical behaviour).
+    ingress: Option<Ingress>,
 
     idempotency_counter: u64,
     retry_counts: HashMap<String, u64>,
@@ -201,6 +206,7 @@ impl Runner {
             dlq: Box::new(NoopDlq),
             state: Rc::new(RefCell::new(Box::new(MemoryStore::default()))),
             effects: Rc::new(SystemEffects),
+            ingress: None,
             idempotency_counter: 0,
             retry_counts: HashMap::new(),
             circuit_states: HashMap::new(),
@@ -241,6 +247,16 @@ impl Runner {
     #[must_use]
     pub fn with_effects(mut self, effects: Rc<dyn Effects>) -> Self {
         self.effects = effects;
+        self
+    }
+
+    /// Attach an ingress channel — external producers push `Event`s
+    /// through the matching [`crate::Injector`] and the run loop
+    /// drains them into `pending` once per iteration, serializing
+    /// them after the events that triggered the current step.
+    #[must_use]
+    pub fn with_ingress(mut self, ingress: Ingress) -> Self {
+        self.ingress = Some(ingress);
         self
     }
 
@@ -308,8 +324,16 @@ impl Runner {
         ready.extend(start.ready);
         pending.extend(start.side_events);
 
-        while (!pending.is_empty() || !ready.is_empty()) && !cancelled {
+        // Draining happens *before* the exit check so events (and due
+        // ticks) that arrive while the last step executes still land —
+        // a check-first loop would drop anything injected during the
+        // final publish batch.
+        loop {
             self.drain_timers(&mut pending);
+            self.drain_ingress(&mut pending);
+            if (pending.is_empty() && ready.is_empty()) || cancelled {
+                break;
+            }
             if !ready.is_empty() {
                 let batch = std::mem::take(&mut ready);
                 for (node, triggers) in batch {
@@ -388,6 +412,15 @@ impl Runner {
         self.observer
             .on_workflow_end(log.len(), cancelled, false, failed);
         Ok(log)
+    }
+
+    /// Move externally-injected events into the pending queue —
+    /// drained once per loop iteration so they serialize after the
+    /// events that triggered the current step.
+    fn drain_ingress(&self, pending: &mut Vec<Event>) {
+        if let Some(ingress) = &self.ingress {
+            ingress.drain_into(pending);
+        }
     }
 
     /// Move due scheduled ticks into the pending queue.

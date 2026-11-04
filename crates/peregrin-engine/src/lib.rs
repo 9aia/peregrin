@@ -9,10 +9,12 @@
 //! persistence ports in `peregrin-store`, returning the event log of
 //! the run.
 
+mod ingress;
 mod registry;
 mod runner;
 mod safety;
 
+pub use ingress::{Ingress, InjectError, Injector, ingress};
 pub use registry::Registry;
 pub use runner::{RunOptions, Runner};
 pub use safety::{
