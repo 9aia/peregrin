@@ -41,11 +41,18 @@ belongs in it as a *distribution*, not a sibling binary.
   `driver-git` (checkout sha → detached worktree → invoke inner
   driver), `sink-github-status` (commit status posts).
 - **bupha becomes a bundle** (`libraries/ci-gate`, via ADR-0079
-  install) — its `bupha.toml/yaml` `[[repos]]`/`jobs`/runner schema
-  survives verbatim as campaign parameters; `peregrin create
-  --template ci-gate` = install + enable. (`create --template`, not
-  `init <profile>` — profiles aren't hardcoded in the CLI; the
-  template resolves against the store so any bundle works.)
+  install) — `peregrin create --template ci-gate` = install +
+  enable. (`create --template`, not `init <profile>` — profiles
+  aren't hardcoded in the CLI; the template resolves against the
+  store so any bundle works.)
+- **Config is engine vocabulary, not CI vocabulary.** bupha's
+  `[[repos]]` conflated two things — which events a source watches
+  and what a campaign does with them. They split: `triggers:` holds
+  the watch list (`kind: github`, `repo:`, `secret_env:` — source
+  config), `campaigns:` hold `on:` filters routing events to
+  params (repo/ref/sha arrive *in the event*, driver-git checks out
+  from `clone_url` — no per-repo `dir`). bupha.toml/yaml maps onto
+  this shape rather than surviving verbatim.
 - **Migration**: build impls → shadow-run posting `ci/peregrin`
   beside `ci/bupha` → compare verdicts → cutover hooks → retire the
   watcher unit + `bupha.toml`→campaign importer for existing configs.

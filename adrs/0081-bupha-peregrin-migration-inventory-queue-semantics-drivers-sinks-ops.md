@@ -49,9 +49,11 @@ Capabilities peregrin needs, by plane:
   ~70-entry live config.
 
 Cut: **`peregrin` is general — the gate is configuration.** The
-repos watchlist, job branch filters, runner kinds, and secrets
-names all become campaign parameters; no CI-specific engine code
-beyond the generic ports above.
+config speaks engine vocabulary: `triggers:` (watch lists per
+source), `campaigns:` (`on:` event filters + driver/sink params).
+bupha's `repos:`/`jobs:` map onto it — repo+secret → trigger entry,
+job branch → `on: ref` filter, runner cmd → driver params — and no
+CI-specific engine code lands beyond the generic ports above.
 
 ## Consequences
 
