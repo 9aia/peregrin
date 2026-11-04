@@ -83,3 +83,57 @@ right answers.
 - Not inherited blindly: v1's stores (`JsonStore`/`MemoryStore`)
   map onto the existing `peregrin-store` port; v2 keeps its own
   adapter set.
+
+## Audit inventory (2026-11-04)
+
+Deep audit of the v1 tree (`d6bf6356~1`: `docs/ac/` +
+`packages/ac-*` + `libraries/`) against the v2 port — what already
+exists, what PL-003 still has to build, and what needs a ruling or
+fix.
+
+### Exists (ported, verified)
+
+- `mode: all` fan-in — first match per distinct `on` pattern
+- Wildcards + captures — `*`/`**`, `match.N`, `shard` alias
+- `runner` injection — `ctx.inject` mid-run node specs
+- 3-layer loop protection — `max_fires` / `until` / `retire_on`
+- Deep-merge `include` — dict-level key + `${include(path)}`
+- Observer trait — `NoopObserver` default, `Span` hooks
+- `emits`/`emits` contract — declaration, strict exact check,
+  `params.emit`, `ctx.emit`, `forward`
+- Driver input/output schemas — `fields`/`schema` compile,
+  node-over-driver override
+- `fan_in` / `forward` node mechanics
+- Custom functions — YAML `functions:` → driver-backed template fns
+- Snippets — `snippets:` table, `snippet:` ref/inheritance,
+  `${snippet(name)}`
+- Strict mode — preflight (`on`/`emits`/event schemas), audit pass
+- Safety filters — capability checker, schema validator,
+  sanitized child env
+- State store — `state.key`/`skip_if` scoped store (memory impl)
+
+### Build (not yet existing — net-new or deferred)
+
+- **Scope resolver** — never existed in v1 (tests assert pass-through);
+  spec now at `docs/reference/scope-resolution.md` — I-009
+- Durable store — durable `EventStore`/`StateStore` adapters
+- Queue-supersede policy — event→key dedup, active-run cancel, drain — I-010
+- `driver-git` + ingress/egress drivers — ADR-0080 surfaces
+- Source port + bundle store — ADR-0079 distribution
+- MCP surface — campaign/engine over MCP
+- `.driver.yml` / `.field.yml` mechanisms — ADR-0026/0032/0033,
+  ship-or-drop — I-011
+- Ingress injection channel — `LocalBus::publish` is `&mut` — I-014
+- `OtelObserver` bridge — observer port → OTEL
+- `**` ADR-0015 text correction — ADR-0015 still says "replace
+  `mode: all`"; `mode: all` exists and stays
+- Duplicate-id dedupe on merge — include/discovery merges can
+  produce duplicate node ids; needs dedupe ruling
+
+### Fix (rulings needed on ported semantics)
+
+- `emits` glob ruling — strict check is exact-match in v1, which
+  blocks wildcard/shard emits under strict — I-012
+- `max_fires: 0` under strict — falls back to the default in both
+  v1 and the port (aspirational there too); strict should reject it
+
