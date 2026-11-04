@@ -9,6 +9,7 @@
 
 ## Runtime
 
+- [Distribution — bundles, store, cache](distribution.md)
 - [Queue & supersede](queue-supersede.md)
 - [HTTP API](api.md)
 - [Environment](environment.md)
