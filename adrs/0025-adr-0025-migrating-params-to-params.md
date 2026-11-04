@@ -1,11 +1,11 @@
 +++
 id = "ADR-0025"
-title = "ADR-0025: Migrating `params` to `params`"
+title = "ADR-0025: Migrating `with:` to `params`"
 status = "open"
 priority = "medium"
 +++
 
-# ADR-0025: Migrating `params` to `params`
+# ADR-0025: Migrating `with:` to `params`
 
 ## Status
 
