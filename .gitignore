@@ -1,0 +1,45 @@
+# Logs
+logs
+*.log
+
+node_modules
+dist
+dist-ssr
+*.local
+docs/.vitepress/cache/
+
+# dotenv environment variable files
+.env
+.env.*
+!.env.example
+
+# Editor directories and files
+
+# Python runtime artifacts (from handl-driver-python and imported examples)
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Agent Campaigns runtime directory (event logs, state, generated schemas)
+.handl/
+*.jsonl
+*.secret.yml
+*.secret.yaml
+
+# AI agent worktrees
+worktrees/
+project/
+
+repos/
+
+/docs/.vitepress/cache/deps
+
+# rust
+target/
+/target
+node_modules
+Cargo.lock.tmp
+.cargo/config.toml
+docs/
