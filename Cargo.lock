@@ -3657,6 +3657,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-git"
+version = "0.0.0"
+dependencies = [
+ "peregrin-core",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "peregrin-http"
 version = "0.0.0"
 dependencies = [
