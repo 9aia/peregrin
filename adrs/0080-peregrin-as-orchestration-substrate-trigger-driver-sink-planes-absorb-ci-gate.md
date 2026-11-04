@@ -60,6 +60,17 @@ belongs in it as a *distribution*, not a sibling binary.
   git driver + status sink — no sessions, no web). `peregrin create
   --template <bundle>` materializes the unit + config so the gate keeps an
   "always-up" personality inside the bigger engine.
+- **Service scoping rule** — execution semantics native; service
+  surfaces stay external or subprocess: sepia (session mechanism,
+  done), arca (secrets vault — configs call it, never embedded),
+  cloudflared tunnels (subprocess, not owned). Telemetry *emit* is
+  native (instrumenting runs is execution data); the OTLP
+  collector/dashboard stack is external infra. `peregrin-web`/hub
+  stays for now but is human UI only — no policy.
+- **Agent surface** — the substrate must be drivable by agents:
+  `.agents/skills/` describing the verbs + an MCP server exposing
+  them (sturn-mcp is the model). Not a side feature — it's the
+  primary control surface alongside the human CLI/UI.
 
 ## Consequences
 
