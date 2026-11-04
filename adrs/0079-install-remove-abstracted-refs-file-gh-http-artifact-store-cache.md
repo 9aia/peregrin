@@ -43,6 +43,17 @@ peregrin cache clean [--all]    # evict fetch cache (age policy or full)
 peregrin bundle pack <dir>      # authoring — dir + manifest → installable bundle
 ```
 
+Provision/teardown verbs mirror `create`/`deploy` (bupha parity —
+today's `bupha destroy webhook|service|worktrees`):
+
+```
+peregrin create --template <bundle>   # materialize unit + config
+peregrin deploy webhook               # register repo hooks
+peregrin destroy webhook              # remove hooks (per repo or all watched)
+peregrin destroy service              # disable + remove the node unit
+peregrin destroy worktrees            # clean leftover run worktrees
+```
+
 Today there is no artifact model at all — bundles are repo files
 (`libraries/` stdlib, ADR-0029) or hand-copied directories. Installed
 artifacts also need a **local store + cache**: fetches must be
