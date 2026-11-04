@@ -165,3 +165,35 @@ secret-name-only configs); docs updated in the same phase.
   signal on that repo until fixed.
 - bupha-ssh drop-orphan test leaks — pre-existing flakes, keep
   out of coverage accounting.
+
+## Module map (vs the 35-crate workspace)
+
+Existing, reused as-is: `peregrin-{core,engine,node,control,
+store,bus,sync,outbox,push,session,auth,remote,remote-http,
+secret,keyring,dotenv,service,systemd,config,config-toml,
+loader,loader-yaml,template,http,hub,web,web-core,telemetry,
+driver,driver-{shell,http,agent,human},testkit,cli}`.
+
+New crates by phase:
+
+- P1: engine work only — queue-supersede + graph gaps live in
+  `peregrin-engine`; worktree helper in a lib spot (`peregrin-git`
+  or inside driver-git — P0 decides).
+- P2: `peregrin-driver-git`, `peregrin-driver-github-webhook`
+  (ingress — HTTP listener + HMAC), `peregrin-driver-sturn`
+  (WAL poller). Isolation option lands on the driver port.
+- P3: `peregrin-sink` port + `peregrin-sink-{github-status,sturn}` —
+  or unified-driver egress shape if P0 audit prefers one registry
+  crate (ADR-0082 #4 says one *registry*, not necessarily one port).
+- P4: `peregrin-source` port + `peregrin-source-{fs,git,http}`;
+  `peregrin-bundle` (manifest, store layout, deep-merge compose).
+- P4 side-car: `peregrin-config-yaml` — node config gets the same
+  yaml-first/toml-permanent treatment bupha landed
+  (`triggers:`/`campaigns:` keys live here).
+- P6: ops verbs land in `peregrin-cli` (+`peregrin-service`/
+  `systemd` reuse for deploy/destroy).
+- P7: `peregrin-mcp` + `.agents/skills/`.
+
+Open for P0: whether `peregrin-telemetry` already *is* the
+observer port (ADR-0082 #7) or the port trait needs extracting
+from it.
