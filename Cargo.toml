@@ -6,7 +6,9 @@ members = [
     "crates/peregrin-bus",
     "crates/peregrin-cli",
     "crates/peregrin-config",
+    "crates/peregrin-config-file",
     "crates/peregrin-config-toml",
+    "crates/peregrin-config-yaml",
     "crates/peregrin-control",
     "crates/peregrin-core",
     "crates/peregrin-dotenv",
@@ -58,7 +60,9 @@ peregrin-auth = { path = "crates/peregrin-auth" }
 peregrin-bus = { path = "crates/peregrin-bus" }
 peregrin-cli = { path = "crates/peregrin-cli" }
 peregrin-config = { path = "crates/peregrin-config" }
+peregrin-config-file = { path = "crates/peregrin-config-file" }
 peregrin-config-toml = { path = "crates/peregrin-config-toml" }
+peregrin-config-yaml = { path = "crates/peregrin-config-yaml" }
 peregrin-control = { path = "crates/peregrin-control" }
 peregrin-core = { path = "crates/peregrin-core" }
 peregrin-dotenv = { path = "crates/peregrin-dotenv" }
@@ -137,6 +141,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 semver = "1"
 toml = "0.8"
 serde_yaml_ng = "0.10"
+serde_norway = "0.9"
 sha2 = "0.10"
 hex = "0.4"
 rusqlite = { version = "0.32" }
