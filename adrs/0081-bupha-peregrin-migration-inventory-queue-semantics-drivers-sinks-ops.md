@@ -48,6 +48,18 @@ Capabilities peregrin needs, by plane:
   `bupha.toml`/`bupha.yaml` → campaign-param importer for the
   ~70-entry live config.
 
+Locked in review (2026-11-04): `on:` filters are **glob** matching
+(repo/ref patterns, no expression language); supersede policy is
+**per-campaign configurable** (key, mode, cancel); **secrets bind
+per-impl in node config** — campaigns get declared capabilities,
+never env-var names (a bundle can't widen a secret's blast
+radius); run worktrees have an **explicit lifecycle** (created →
+kept-for-debug → destroyed, librarizable helper); status contexts
+are **`ci/<campaign>`**, deterministic; bundle params validate
+against **JSON Schema** (field.yml, ADR-0032). Open: the **event
+envelope** schema — the contract every impl/campaign speaks —
+drafts next before impls.
+
 Cut: **`peregrin` is general — the gate is configuration.** The
 config speaks engine vocabulary: `triggers:` (watch lists per
 source), `campaigns:` (`on:` event filters + driver/sink params).
