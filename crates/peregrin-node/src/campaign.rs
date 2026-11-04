@@ -19,7 +19,7 @@ use std::sync::Arc;
 use peregrin_bus::{LocalBus, NoopObserver};
 use peregrin_core::{Campaign, Event};
 use peregrin_driver::{DriverError, NoopDriver, RunnerDriver};
-use peregrin_engine::{Registry, RunOptions, Runner};
+use peregrin_engine::{Injector, Registry, RunOptions, Runner, ingress};
 use peregrin_loader::{LoadError, Loader};
 use peregrin_loader_yaml::YamlLoader;
 use peregrin_store::MemoryDlq;
@@ -79,6 +79,37 @@ pub fn registry() -> Registry {
 #[must_use]
 pub fn runner() -> Runner {
     Runner::new(registry()).with_dlq(Box::<MemoryDlq>::default())
+}
+
+/// A runner like [`runner`] but with a live ingress pair: the
+/// run-scoped ingress drivers (`github-webhook`, `sturn-poll`) are
+/// registered bound to the returned `Injector`, and injected
+/// events drain into the loop each step. Keep the `Injector` to
+/// feed the run from outside (supervisor queue, daemon triggers,
+/// `Event::cancel` from supersede).
+#[must_use]
+pub fn runner_with_ingress() -> (Runner, Injector) {
+    let (injector, ingress) = ingress();
+    let registry = registry()
+        .with("github-webhook", Arc::new(peregrin_driver_github_webhook::GithubWebhookDriver::new(injector.clone())))
+        .with("sturn-poll", Arc::new(peregrin_driver_sturn::SturnDriver::new(injector.clone())));
+    let runner = Runner::new(registry)
+        .with_dlq(Box::<MemoryDlq>::default())
+        .with_ingress(ingress);
+    (runner, injector)
+}
+
+/// A runner like [`runner_with_ingress`] but with the durable JSONL
+/// log at `log_path` too.
+///
+/// # Errors
+/// [`CampaignError::Store`] when the log can't be read or a line
+/// fails to parse.
+pub fn runner_with_log_ingress(log_path: &Path) -> Result<(Runner, Injector), CampaignError> {
+    let (runner, injector) = runner_with_ingress();
+    let store = peregrin_store_json::JsonStore::open(log_path)?;
+    let bus = LocalBus::new(Box::new(store), Arc::new(NoopObserver));
+    Ok((runner.with_bus(Box::new(bus)), injector))
 }
 
 /// A runner like [`runner`] but with the event log backed by the
