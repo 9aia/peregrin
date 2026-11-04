@@ -40,17 +40,75 @@ fn prebuild() -> anyhow::Result<()> {
     }
     run("cargo", &args)?;
     // sepia binaries the suite spawns (drivers, mock agent, the
-    // `sepia serve` subprocess) — built once from the sibling checkout,
-    // then linked into our target/debug so test harnesses that resolve
+    // `sepia serve` subprocess) — built once from the sibling checkout
+    // (or the cargo git checkout when there is none), then linked into
+    // our target/debug so test harnesses that resolve
     // `<root>/target/debug/<bin>` find them uniformly.
-    let sepia = std::path::Path::new("../sepia/Cargo.toml");
-    if sepia.exists() {
+    if let Some(root) = sepia_checkout() {
+        let manifest = root.join("Cargo.toml");
         run(
             "cargo",
-            &["build", "--manifest-path", "../sepia/Cargo.toml", "--bins"],
+            &[
+                "build",
+                "--manifest-path",
+                manifest.to_str().unwrap_or("../sepia/Cargo.toml"),
+                "--bins",
+            ],
         )?;
     }
     stage_bins_and_site(None)
+}
+
+/// Where the sepia workspace sources live for binary building:
+/// the sibling `../sepia` checkout when present, else the cargo git
+/// checkout the committed ssh:// deps resolve to — sepia-testkit's
+/// own `target/debug` fallback points at that checkout's `target/`
+/// dir too, so binaries built there are found even unstaged. Prefers
+/// the rev pinned in Cargo.lock when several checkouts exist.
+fn sepia_checkout() -> Option<std::path::PathBuf> {
+    if std::path::Path::new("../sepia/Cargo.toml").exists() {
+        return std::path::Path::new("../sepia").canonicalize().ok();
+    }
+    let checkouts = std::env::var_os("HOME")
+        .map(std::path::PathBuf::from)?
+        .join(".cargo/git/checkouts");
+    // `source = "git+ssh://…/sepia.git?branch=main#<rev>"` — cargo names
+    // the checkout dir after the rev's short prefix.
+    let lock = std::fs::read_to_string("Cargo.lock").unwrap_or_default();
+    let locked: Vec<String> = lock
+        .split("sepia.git")
+        .skip(1)
+        .filter_map(|tail| {
+            tail.split('#')
+                .nth(1)
+                .map(|rev| rev[..7.min(rev.len())].to_owned())
+        })
+        .collect();
+    let mut first: Option<std::path::PathBuf> = None;
+    for dir in std::fs::read_dir(checkouts).ok()?.flatten() {
+        if !dir
+            .file_name()
+            .to_str()
+            .is_some_and(|n| n.starts_with("sepia-"))
+        {
+            continue;
+        }
+        for rev in std::fs::read_dir(dir.path()).ok()?.flatten() {
+            let candidate = rev.path();
+            if !candidate.join("Cargo.toml").exists() {
+                continue;
+            }
+            if locked.iter().any(|l| {
+                rev.file_name()
+                    .to_str()
+                    .is_some_and(|n| n.starts_with(l.as_str()))
+            }) {
+                return Some(candidate);
+            }
+            first.get_or_insert(candidate);
+        }
+    }
+    first
 }
 
 /// Link freshly built workspace + sepia binaries into `target/debug`
@@ -59,17 +117,17 @@ fn prebuild() -> anyhow::Result<()> {
 /// the coverage arm passes its isolated target dir so staged links are
 /// the instrumented builds, not stale shared-target ones.
 fn stage_bins_and_site(peregrin_dir: Option<&std::path::Path>) -> anyhow::Result<()> {
-    if std::path::Path::new("../sepia/Cargo.toml").exists() {
+    if let Some(sepia_root) = sepia_checkout() {
         // sepia's builds land wherever CARGO_TARGET_DIR points —
-        // shared-target first (the global default here), repo-local
-        // target/debug as fallback.
+        // shared-target first (the global default here), the checkout's
+        // repo-local target/debug as fallback.
         let ours = std::path::Path::new("target/debug");
         std::fs::create_dir_all(ours)?;
         for sepia_target in [
-            "../sepia/target/debug",
-            concat!(env!("HOME"), "/.cargo/shared-target/debug"),
+            sepia_root.join("target/debug"),
+            concat!(env!("HOME"), "/.cargo/shared-target/debug").into(),
         ] {
-            let Ok(read) = std::fs::read_dir(sepia_target) else {
+            let Ok(read) = std::fs::read_dir(&sepia_target) else {
                 continue;
             };
             for entry in read.flatten() {
@@ -278,14 +336,15 @@ fn main() -> anyhow::Result<()> {
                 .env("CARGO_LLVM_COV_TARGET_DIR", &cov_target)
                 .status()?;
             anyhow::ensure!(status.success(), "coverage bin prebuild failed");
-            if std::path::Path::new("../sepia/Cargo.toml").exists() {
+            if let Some(sepia_root) = sepia_checkout() {
+                let sepia_manifest = sepia_root.join("Cargo.toml");
+                let build = format!(
+                    "eval \"$(cargo llvm-cov show-env --export-prefix)\" \
+                     && cargo build --manifest-path {} --bins",
+                    sepia_manifest.display()
+                );
                 let status = Command::new("sh")
-                    .args([
-                        "-c",
-                        "eval \"$(cargo llvm-cov show-env --export-prefix)\" \
-                         && cargo build --manifest-path ../sepia/Cargo.toml \
-                         --bins",
-                    ])
+                    .args(["-c", &build])
                     .env("CARGO_LLVM_COV_TARGET_DIR", &cov_target)
                     .status()?;
                 anyhow::ensure!(status.success(), "sepia bin prebuild failed");
