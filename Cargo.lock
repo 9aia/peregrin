@@ -3623,6 +3623,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-driver-github-webhook"
+version = "0.0.0"
+dependencies = [
+ "axum",
+ "hex",
+ "peregrin-core",
+ "peregrin-driver",
+ "peregrin-engine",
+ "peregrin-loader",
+ "peregrin-loader-yaml",
+ "peregrin-template",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "ureq",
+]
+
+[[package]]
 name = "peregrin-driver-http"
 version = "0.0.0"
 dependencies = [

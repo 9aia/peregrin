@@ -13,6 +13,7 @@ members = [
     "crates/peregrin-driver",
     "crates/peregrin-driver-agent",
     "crates/peregrin-driver-git",
+    "crates/peregrin-driver-github-webhook",
     "crates/peregrin-driver-http",
     "crates/peregrin-driver-human",
     "crates/peregrin-driver-shell",
@@ -63,6 +64,7 @@ peregrin-dotenv = { path = "crates/peregrin-dotenv" }
 peregrin-driver = { path = "crates/peregrin-driver" }
 peregrin-driver-agent = { path = "crates/peregrin-driver-agent" }
 peregrin-driver-git = { path = "crates/peregrin-driver-git" }
+peregrin-driver-github-webhook = { path = "crates/peregrin-driver-github-webhook" }
 peregrin-driver-http = { path = "crates/peregrin-driver-http" }
 peregrin-driver-human = { path = "crates/peregrin-driver-human" }
 peregrin-driver-shell = { path = "crates/peregrin-driver-shell" }
@@ -133,6 +135,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
 semver = "1"
 toml = "0.8"
 serde_yaml_ng = "0.10"
+sha2 = "0.10"
+hex = "0.4"
 rusqlite = { version = "0.32" }
 camino = { version = "1", features = ["serde1"] }
 ureq = { version = "3", features = ["json"] }
