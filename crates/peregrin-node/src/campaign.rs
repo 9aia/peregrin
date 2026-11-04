@@ -92,8 +92,16 @@ pub fn runner() -> Runner {
 pub fn runner_with_ingress() -> (Runner, Injector) {
     let (injector, ingress) = ingress();
     let registry = registry()
-        .with("github-webhook", Arc::new(peregrin_driver_github_webhook::GithubWebhookDriver::new(injector.clone())))
-        .with("sturn-poll", Arc::new(peregrin_driver_sturn::SturnDriver::new(injector.clone())));
+        .with(
+            "github-webhook",
+            Arc::new(peregrin_driver_github_webhook::GithubWebhookDriver::new(
+                injector.clone(),
+            )),
+        )
+        .with(
+            "sturn-poll",
+            Arc::new(peregrin_driver_sturn::SturnDriver::new(injector.clone())),
+        );
     let runner = Runner::new(registry)
         .with_dlq(Box::<MemoryDlq>::default())
         .with_ingress(ingress);
