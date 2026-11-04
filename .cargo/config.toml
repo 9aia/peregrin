@@ -1,0 +1,7 @@
+[alias]
+xtask = "run --package xtask --"
+
+# Local development — to override the sepia git deps with sibling
+# checkouts (~/GitHub/9aia/sepia), append `.cargo/config.toml.example`
+# to this file. CI does exactly that so sepia resolves over the
+# checked-out path instead of unauthenticated ssh:// git fetches.

@@ -2,76 +2,72 @@ name: Rust
 
 on:
   push:
-    branches: [main]
-    paths:
-      - "packages/handl/**"
-      - ".github/workflows/rust.yml"
+    branches: [v2, main]
   pull_request:
-    branches: [main]
-    paths:
-      - "packages/handl/**"
 
 env:
   CARGO_TERM_COLOR: always
 
-defaults:
-  run:
-    working-directory: packages/handl
-
 jobs:
-  fmt:
-    name: Format
+  # `cargo xtask check` = the web markup gate + `cargo fmt --all --check`
+  # + `cargo clippy --workspace --all-targets -- -D warnings` — the same
+  # gate .hooks/pre-push runs. `clippy --all-targets` already typechecks
+  # every target, so a separate `cargo check` pass adds nothing.
+  check:
+    name: Check (markup + fmt + clippy)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: packages/handl
-      - run: cargo fmt --check -p rust-lib-ecma402-icu4x -p rust-lib-ecma402-traits
-
-  clippy:
-    name: Clippy
-    runs-on: ubuntu-latest
-    steps:
+          path: peregrin
+      # sepia is private — needs a read PAT stored as repo secret
+      # SEPIA_PAT. Cargo.toml declares sepia as ssh:// git deps; the
+      # committed example config patches them onto this sibling
+      # checkout so CI never needs ssh access.
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy
+          repository: 9aia/sepia
+          token: ${{ secrets.SEPIA_PAT }}
+          path: sepia
+      - run: cat .cargo/config.toml.example >> .cargo/config.toml
+        working-directory: peregrin
+      - uses: dtolnay/rust-toolchain@1.98.0
+        with:
+          components: rustfmt, clippy
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/handl
-      - run: cargo clippy -p rust-lib-ecma402-icu4x -p rust-lib-ecma402-traits -- -D warnings
+          shared-key: ci
+          cache-on-failure: true
+          workspaces: peregrin
+      - run: cargo xtask check
+        working-directory: peregrin
 
+  # `cargo xtask test` prebuilds the spawned binaries (peregrin-*, plus
+  # sepia-* from ../sepia) and then runs `cargo nextest run
+  # --workspace` — plain nextest would leave N test processes racing
+  # `cargo build` on the package lock.
   test:
-    name: Test
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        package: [rust-lib-ecma402-icu4x, rust-lib-ecma402-traits]
-        # TODO: replace with compiled_data/blob once those Cargo features exist.
-        # For now, default vs --all-features still catches missing feature gates.
-        cargo-flags: ["", "--all-features"]
-    steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: packages/handl
-      - run: cargo test -p ${{ matrix.package }} ${{ matrix.cargo-flags }}
-
-  doc:
-    name: Docs
+    name: Test (nextest)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+        with:
+          path: peregrin
+      - uses: actions/checkout@v4
+        with:
+          repository: 9aia/sepia
+          token: ${{ secrets.SEPIA_PAT }}
+          path: sepia
+      - run: cat .cargo/config.toml.example >> .cargo/config.toml
+        working-directory: peregrin
+      - uses: dtolnay/rust-toolchain@1.98.0
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-nextest
       - uses: Swatinem/rust-cache@v2
         with:
-          workspaces: packages/handl
-      - run: cargo doc -p rust-lib-ecma402-icu4x -p rust-lib-ecma402-traits --no-deps
-        env:
-          RUSTDOCFLAGS: "-D warnings"
+          shared-key: ci
+          cache-on-failure: true
+          workspaces: peregrin
+      - run: cargo xtask test
+        working-directory: peregrin

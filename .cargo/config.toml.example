@@ -1,5 +1,5 @@
 # Local development — override sepia git deps with sibling checkouts.
-# Copy to .cargo/config.toml (gitignored).
+# Append to .cargo/config.toml (committed — it carries the xtask alias).
 [patch."ssh://git@github.com/9aia/sepia.git"]
 sepia-core = { path = "../sepia/crates/sepia-core" }
 sepia-proto = { path = "../sepia/crates/sepia-proto" }

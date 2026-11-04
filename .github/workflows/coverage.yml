@@ -2,7 +2,7 @@ name: Coverage
 
 on:
   push:
-    branches: [v2]
+    branches: [v2, main]
   pull_request:
 
 env:
@@ -22,6 +22,10 @@ jobs:
           repository: 9aia/sepia
           token: ${{ secrets.SEPIA_PAT }}
           path: sepia
+      # Activate the sibling path deps — without this, cargo still
+      # resolves sepia over ssh:// (unauthenticated on a runner).
+      - run: cat .cargo/config.toml.example >> .cargo/config.toml
+        working-directory: peregrin
       - uses: dtolnay/rust-toolchain@1.98.0
         with:
           components: llvm-tools
