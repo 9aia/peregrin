@@ -8,6 +8,7 @@ use serde_json::{Map, Value};
 
 use crate::effects::Effects;
 use crate::function::TemplateFunction;
+use crate::scope::Scope;
 
 /// Context handed to the resolvers and every function — carries the
 /// strict flag, the capability map, the missing-secret list, and the
@@ -55,4 +56,8 @@ pub struct Options<'a> {
     /// Custom functions layered over [`builtins`](crate::builtins) —
     /// same-name entries replace builtins (`{...builtins, ...custom}`).
     pub functions: &'a [TemplateFunction],
+    /// Scope bindings for `${event.*}`/`${config.*}`/`${params.*}`/
+    /// `${state.*}`/`${node.*}`/`${secret.*}` — the default (unbound)
+    /// scope leaves every scope placeholder unresolved.
+    pub scope: Scope<'a>,
 }

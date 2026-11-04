@@ -14,7 +14,10 @@ use serde_json::{Map, Value};
 
 use peregrin_core::{Event, EventSchema, Node};
 use peregrin_driver::{Driver, DriverError, ExecutionContext};
-use peregrin_template::{Context, Effects, Options, SystemEffects, resolve_value_opts};
+use peregrin_template::{
+    Context, Effects, EventScope, NodeScope, Options, ParamsScope, Scope, SystemEffects,
+    resolve_value_opts,
+};
 
 /// `spawnSync`'s default timeout — 30 s (ADR-0005 default);
 /// `params.timeout` (seconds) overrides, capped at 10 minutes.
@@ -69,6 +72,7 @@ impl ShellDriver {
     fn resolve_params(
         &self,
         node: &Node,
+        triggers: &[Event],
         ctx: &ExecutionContext,
     ) -> Result<Map<String, Value>, DriverError> {
         let tctx = Context {
@@ -77,12 +81,27 @@ impl ShellDriver {
             capabilities: (*ctx.capabilities).clone(),
             effects: &*self.effects,
         };
+        let state_view = |key: &str| ctx.state.borrow().get(key);
         let resolved = resolve_value_opts(
             &node.params,
             &tctx,
             &Options {
                 node: Some(node),
                 functions: &[],
+                scope: Scope {
+                    event: triggers.first().map(|event| EventScope {
+                        event,
+                        patterns: &node.on,
+                    }),
+                    config: Some(&ctx.config),
+                    params: ParamsScope::Resolved(&ctx.params),
+                    state: Some(&state_view),
+                    node: Some(NodeScope {
+                        id: &node.id,
+                        fires: ctx.fires,
+                    }),
+                    secrets: Some(&ctx.secrets),
+                },
             },
         )
         .map_err(|error| DriverError::new(error.to_string()))?;
@@ -247,10 +266,10 @@ impl Driver for ShellDriver {
     fn invoke(
         &self,
         node: &Node,
-        _triggers: &[Event],
+        triggers: &[Event],
         ctx: &ExecutionContext,
     ) -> Result<Vec<Event>, DriverError> {
-        let params = self.resolve_params(node, ctx)?;
+        let params = self.resolve_params(node, triggers, ctx)?;
         let cmd = params
             .get("cmd")
             .and_then(Value::as_str)

@@ -10,10 +10,9 @@ use std::sync::Arc;
 
 use serde_json::{Map, Value};
 
-use peregrin_core::{Event, MaxFires, Node, TriggerMode};
+use peregrin_core::{Event, MaxFires, Node, TriggerMode, matches};
 use peregrin_store::EventStore;
 
-use crate::matching::matches;
 use crate::observer::{NoopObserver, Observer};
 
 /// What one publish (or a ready-check) produced.

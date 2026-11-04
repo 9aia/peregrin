@@ -138,6 +138,7 @@ fn preserves_node_placeholders() {
         &Options {
             node: Some(&node),
             functions: &[],
+            ..Default::default()
         },
     )
     .unwrap();
@@ -364,13 +365,19 @@ fn strict_fails_on_unresolved_placeholders() {
 }
 
 #[test]
-fn strict_allows_deferred_scope_expressions() {
+fn strict_flags_leftover_scope_placeholders() {
     let fx = StubEffects::new();
     let ctx = ctx_with(&[], &fx, true);
-    // `config.*`/`event.*` are jinja-scope placeholders — not "unresolved".
+    // The scope pass ran — leftover `config.*`/`event.*` are unresolved.
+    let err = resolve_template("${config.x} ${event.type}", &ctx).unwrap_err();
     assert_eq!(
-        resolve_template("${config.x} ${event.type}", &ctx).unwrap(),
-        "${config.x} ${event.type}"
+        err.reason,
+        "unresolved placeholders: ${config.x}, ${event.type}"
+    );
+    // Deferred I/O-builtin dotted forms still pass the audit.
+    assert_eq!(
+        resolve_template("${env.HOME} ${file.x}", &ctx).unwrap(),
+        "${env.HOME} ${file.x}"
     );
 }
 
@@ -497,6 +504,7 @@ fn custom_functions_resolve_and_override() {
     let opts = Options {
         node: None,
         functions: &[greet, env_override],
+        ..Default::default()
     };
     assert_eq!(
         resolve_template_opts("${greet(\"ada\")} ${env(\"X\")}", &ctx, &opts).unwrap(),
@@ -519,6 +527,7 @@ fn custom_function_receives_node_and_method() {
     let opts = Options {
         node: Some(&node),
         functions: &[probe],
+        ..Default::default()
     };
     assert_eq!(
         resolve_template_opts("${probe.m()}", &ctx, &opts).unwrap(),
@@ -582,9 +591,828 @@ fn number_args_stay_numbers() {
     let opts = Options {
         node: None,
         functions: &[echo],
+        ..Default::default()
     };
     assert_eq!(
         resolve_template_opts("${echo(42)} ${echo(4.5)} ${echo(true)}", &ctx, &opts).unwrap(),
         "42 4.5 true"
+    );
+}
+
+// ---------------------------------------------------------------------
+// Scope resolution (`docs/reference/scope-resolution.md`)
+// ---------------------------------------------------------------------
+
+use peregrin_template::{EventScope, NodeScope, ParamsScope, Scope, resolve_params};
+use std::collections::BTreeMap;
+
+fn scope_event() -> peregrin_core::Event {
+    peregrin_core::Event {
+        kind: "ci.passed".to_string(),
+        payload: json!({"ref": {"sha": "abc123"}, "tags": ["v1", "v2"], "num": 7}),
+        source: "upstream".to_string(),
+        id: "evt-1".to_string(),
+        ts: 42,
+    }
+}
+
+fn scope_config() -> Map<String, Value> {
+    json!({
+        "region": "us-east",
+        "nested": {"deep": {"x": "y"}},
+        "scalar": "leaf",
+        "arr": [1, null, "x"],
+        "obj": {"k": 1},
+        "nil": null,
+        "flag": true,
+        "pi": 2.5
+    })
+    .as_object()
+    .unwrap()
+    .clone()
+}
+
+fn scope_secrets() -> BTreeMap<String, String> {
+    BTreeMap::from([
+        ("TOKEN".to_string(), "s3cr3t".to_string()),
+        ("API.KEY".to_string(), "k".to_string()),
+    ])
+}
+
+fn on_node() -> peregrin_core::Node {
+    peregrin_core::Node {
+        id: "n1".to_string(),
+        on: vec!["ci.*".to_string(), "ci.**".to_string()],
+        ..Default::default()
+    }
+}
+
+fn opts_with_scope(scope: Scope<'_>) -> Options<'_> {
+    Options {
+        node: None,
+        functions: &[],
+        scope,
+    }
+}
+
+// --- event ------------------------------------------------------------
+
+#[test]
+fn scope_event_envelope_fields() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let event = scope_event();
+    let node = on_node();
+    let scope = Scope {
+        event: Some(EventScope {
+            event: &event,
+            patterns: &node.on,
+        }),
+        ..Default::default()
+    };
+    let out = resolve_template_opts(
+        "${event.type}|${event.source}|${event.id}|${event.ts}|${ event.type }",
+        &ctx,
+        &opts_with_scope(scope),
+    )
+    .unwrap();
+    assert_eq!(out, "ci.passed|upstream|evt-1|42|ci.passed");
+}
+
+#[test]
+fn scope_event_payload_walks_nested_paths() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let event = scope_event();
+    let node = on_node();
+    let scope = Scope {
+        event: Some(EventScope {
+            event: &event,
+            patterns: &node.on,
+        }),
+        ..Default::default()
+    };
+    let opts = opts_with_scope(scope);
+    assert_eq!(
+        resolve_template_opts("${event.payload.ref.sha}", &ctx, &opts).unwrap(),
+        "abc123"
+    );
+    assert_eq!(
+        resolve_template_opts("${event.payload.tags}", &ctx, &opts).unwrap(),
+        "v1,v2"
+    );
+    assert_eq!(
+        resolve_template_opts("${event.payload.num}", &ctx, &opts).unwrap(),
+        "7"
+    );
+    // The payload object itself stringifies like a JS object.
+    assert_eq!(
+        resolve_template_opts("${event.payload}", &ctx, &opts).unwrap(),
+        "[object Object]"
+    );
+}
+
+#[test]
+fn scope_event_match_and_shard_captures() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let event = scope_event();
+    let node = on_node();
+    let scope = Scope {
+        event: Some(EventScope {
+            event: &event,
+            patterns: &node.on,
+        }),
+        ..Default::default()
+    };
+    let out = resolve_template_opts(
+        "${event.match.1}/${event.shard}",
+        &ctx,
+        &opts_with_scope(scope),
+    )
+    .unwrap();
+    // `ci.*` matches first — `shard` aliases `match.1`.
+    assert_eq!(out, "passed/passed");
+}
+
+#[test]
+fn scope_event_match_multi_segment_capture() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let mut event = scope_event();
+    event.kind = "ci.a.b".to_string();
+    let node = peregrin_core::Node {
+        on: vec!["other".to_string(), "ci.**".to_string()],
+        ..on_node()
+    };
+    let scope = Scope {
+        event: Some(EventScope {
+            event: &event,
+            patterns: &node.on,
+        }),
+        ..Default::default()
+    };
+    let opts = opts_with_scope(scope);
+    // First *matching* pattern wins — `ci.**` captures "a.b".
+    assert_eq!(
+        resolve_template_opts("${event.match.1}", &ctx, &opts).unwrap(),
+        "a.b"
+    );
+    // Higher-index captures and trailing paths miss.
+    assert_eq!(
+        resolve_template_opts("${event.match.2}", &ctx, &opts).unwrap(),
+        "${event.match.2}"
+    );
+    assert_eq!(
+        resolve_template_opts("${event.shard.x}", &ctx, &opts).unwrap(),
+        "${event.shard.x}"
+    );
+}
+
+#[test]
+fn scope_event_misses_and_unbound() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let event = scope_event();
+    let node = on_node();
+    let scope = Scope {
+        event: Some(EventScope {
+            event: &event,
+            patterns: &node.on,
+        }),
+        ..Default::default()
+    };
+    let opts = opts_with_scope(scope);
+    for text in [
+        "${event.bogus}",          // unknown field
+        "${event.type.x}",         // scalar mid-path
+        "${event.payload.no}",     // missing key
+        "${event.payload.tags.x}", // non-object step
+        "${event.match}",          // bare match
+        "${event.match.x.y}",      // trailing path on a capture
+        "${event}",                // bare namespace
+    ] {
+        assert_eq!(
+            resolve_template_opts(text, &ctx, &opts).unwrap(),
+            text,
+            "{text}"
+        );
+    }
+    // No bound trigger — every event.* lookup misses.
+    let unbound = Options {
+        node: None,
+        functions: &[],
+        scope: Scope::default(),
+    };
+    assert_eq!(
+        resolve_template_opts("${event.type}", &ctx, &unbound).unwrap(),
+        "${event.type}"
+    );
+}
+
+// --- config / state / node --------------------------------------------
+
+#[test]
+fn scope_config_paths_misses_and_stringify() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let config = scope_config();
+    let scope = Scope {
+        config: Some(&config),
+        ..Default::default()
+    };
+    let opts = opts_with_scope(scope);
+    assert_eq!(
+        resolve_template_opts("${config.region}", &ctx, &opts).unwrap(),
+        "us-east"
+    );
+    assert_eq!(
+        resolve_template_opts("${config.nested.deep.x}", &ctx, &opts).unwrap(),
+        "y"
+    );
+    assert_eq!(
+        resolve_template_opts(
+            "${config.arr}|${config.obj}|${config.nil}|${config.flag}|${config.pi}",
+            &ctx,
+            &opts
+        )
+        .unwrap(),
+        "1,,x|[object Object]||true|2.5"
+    );
+    for text in [
+        "${config.missing}",
+        "${config.scalar.x}", // scalar mid-path
+        "${config}",          // bare namespace
+        "${config..x}",       // empty segment
+        "${config.}",         // trailing dot
+    ] {
+        assert_eq!(
+            resolve_template_opts(text, &ctx, &opts).unwrap(),
+            text,
+            "{text}"
+        );
+    }
+    // Unbound config misses too.
+    let unbound = Options {
+        node: None,
+        functions: &[],
+        scope: Scope::default(),
+    };
+    assert_eq!(
+        resolve_template_opts("${config.region}", &ctx, &unbound).unwrap(),
+        "${config.region}"
+    );
+}
+
+#[test]
+fn scope_state_lookup_and_walk() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let record = Map::from_iter([
+        ("greeting".to_string(), json!("hi")),
+        ("deep".to_string(), json!({"a": {"b": "z"}})),
+    ]);
+    let state_view = |key: &str| record.get(key).cloned();
+    let scope = Scope {
+        state: Some(&state_view),
+        ..Default::default()
+    };
+    let opts = opts_with_scope(scope);
+    assert_eq!(
+        resolve_template_opts("${state.greeting}", &ctx, &opts).unwrap(),
+        "hi"
+    );
+    assert_eq!(
+        resolve_template_opts("${state.deep.a.b}", &ctx, &opts).unwrap(),
+        "z"
+    );
+    for text in ["${state.absent}", "${state.greeting.x}", "${state}"] {
+        assert_eq!(
+            resolve_template_opts(text, &ctx, &opts).unwrap(),
+            text,
+            "{text}"
+        );
+    }
+    // Unbound state misses.
+    let unbound = Options {
+        node: None,
+        functions: &[],
+        scope: Scope::default(),
+    };
+    assert_eq!(
+        resolve_template_opts("${state.greeting}", &ctx, &unbound).unwrap(),
+        "${state.greeting}"
+    );
+}
+
+#[test]
+fn scope_node_fields() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let scope = Scope {
+        node: Some(NodeScope { id: "n1", fires: 3 }),
+        ..Default::default()
+    };
+    let opts = opts_with_scope(scope);
+    assert_eq!(
+        resolve_template_opts("${node.id} fired ${node.fires}", &ctx, &opts).unwrap(),
+        "n1 fired 3"
+    );
+    assert_eq!(
+        resolve_template_opts("${node.bogus}", &ctx, &opts).unwrap(),
+        "${node.bogus}"
+    );
+    // Unbound node misses even when options.node is set.
+    let node = node();
+    let unbound = Options {
+        node: Some(&node),
+        functions: &[],
+        scope: Scope::default(),
+    };
+    assert_eq!(
+        resolve_template_opts("${node.id}", &ctx, &unbound).unwrap(),
+        "${node.id}"
+    );
+}
+
+// --- params -------------------------------------------------------------
+
+#[test]
+fn scope_params_resolved_binding() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let resolved = Map::from_iter([
+        ("a".to_string(), json!("va")),
+        ("deep".to_string(), json!({"x": 1})),
+    ]);
+    let scope = Scope {
+        params: ParamsScope::Resolved(&resolved),
+        ..Default::default()
+    };
+    let opts = opts_with_scope(scope);
+    assert_eq!(
+        resolve_template_opts("${params.a}/${params.deep.x}", &ctx, &opts).unwrap(),
+        "va/1"
+    );
+    assert_eq!(
+        resolve_template_opts("${params.missing}", &ctx, &opts).unwrap(),
+        "${params.missing}"
+    );
+    assert_eq!(
+        resolve_template_opts("${params.a.y}", &ctx, &opts).unwrap(),
+        "${params.a.y}"
+    );
+    // Unbound params misses.
+    let unbound = Options {
+        node: None,
+        functions: &[],
+        scope: Scope::default(),
+    };
+    assert_eq!(
+        resolve_template_opts("${params.a}", &ctx, &unbound).unwrap(),
+        "${params.a}"
+    );
+}
+
+#[test]
+fn resolve_params_declared_resolves_cross_references() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let node = peregrin_core::Node {
+        params: json!({
+            "a": "1",
+            "b": "${params.a}-x",
+            "deep": {"x": "v"},
+            "walked": "${params.deep.x}",
+            "miss": "${params.absent}",
+            "via_default": "${params.absent:-fb}",
+            "chain": "${params.absent:-${params.a}}",
+        }),
+        ..node()
+    };
+    let opts = Options {
+        node: Some(&node),
+        functions: &[],
+        scope: Scope {
+            params: ParamsScope::declared(),
+            ..Default::default()
+        },
+    };
+    let out = resolve_params(&node.params, &ctx, &opts).unwrap();
+    assert_eq!(out["a"], json!("1"));
+    assert_eq!(out["b"], json!("1-x"));
+    assert_eq!(out["walked"], json!("v"));
+    // Lookup misses stay verbatim (lenient pass-through).
+    assert_eq!(out["miss"], json!("${params.absent}"));
+    assert_eq!(out["via_default"], json!("fb"));
+    assert_eq!(out["chain"], json!("1"));
+}
+
+#[test]
+fn resolve_params_declared_cycle_is_a_miss() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let node = peregrin_core::Node {
+        params: json!({
+            "self": "${params.self}",
+            "a": "${params.b}",
+            "b": "${params.a}",
+        }),
+        ..Default::default()
+    };
+    let opts = Options {
+        node: Some(&node),
+        functions: &[],
+        scope: Scope {
+            params: ParamsScope::declared(),
+            ..Default::default()
+        },
+    };
+    let out = resolve_params(&node.params, &ctx, &opts).unwrap();
+    // Direct and transitive cycles are in-progress keys — misses.
+    assert_eq!(out["self"], json!("${params.self}"));
+    assert!(matches!(out["a"].as_str(), Some(s) if s.starts_with("${params.")));
+    assert!(matches!(out["b"].as_str(), Some(s) if s.starts_with("${params.")));
+}
+
+#[test]
+fn resolve_params_declared_memoizes() {
+    let fx = StubEffects::new();
+    let calls = std::rc::Rc::new(std::cell::RefCell::new(0_u32));
+    let calls2 = calls.clone();
+    let tick = TemplateFunction::new("tick", false, false, move |_args, _ctx, _node, _m| {
+        *calls2.borrow_mut() += 1;
+        Ok(json!("t"))
+    });
+    let ctx = ctx_with(&[("tick", json!(true))], &fx, false);
+    let node = peregrin_core::Node {
+        params: json!({
+            "a": "${tick()}",
+            "b": "${params.a}",
+            "c": "${params.a}",
+        }),
+        ..Default::default()
+    };
+    let opts = Options {
+        node: Some(&node),
+        functions: &[tick],
+        scope: Scope {
+            params: ParamsScope::declared(),
+            ..Default::default()
+        },
+    };
+    let out = resolve_params(&node.params, &ctx, &opts).unwrap();
+    assert_eq!(out["b"], json!("t"));
+    assert_eq!(out["c"], json!("t"));
+    // The referenced key resolved once, for the whole pass.
+    assert_eq!(*calls.borrow(), 1);
+}
+
+#[test]
+fn resolve_params_fallthrough_and_errors() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let config = scope_config();
+    // Non-object value falls through to plain resolution.
+    let node = peregrin_core::Node {
+        params: json!("${config.region}"),
+        ..Default::default()
+    };
+    let scope = Scope {
+        config: Some(&config),
+        params: ParamsScope::declared(),
+        ..Default::default()
+    };
+    let opts = Options {
+        node: Some(&node),
+        functions: &[],
+        scope,
+    };
+    assert_eq!(
+        resolve_params(&node.params, &ctx, &opts).unwrap(),
+        json!("us-east")
+    );
+    // A non-Declared binding resolves each value plainly.
+    let resolved_map = Map::from_iter([("a".to_string(), json!("va"))]);
+    let node = peregrin_core::Node {
+        params: json!({"x": "${params.a}"}),
+        ..Default::default()
+    };
+    let opts = Options {
+        node: Some(&node),
+        functions: &[],
+        scope: Scope {
+            params: ParamsScope::Resolved(&resolved_map),
+            ..Default::default()
+        },
+    };
+    assert_eq!(
+        resolve_params(&node.params, &ctx, &opts).unwrap(),
+        json!({"x": "va"})
+    );
+    // Declared scope without a bound node — lookups miss.
+    let opts = Options {
+        node: None,
+        functions: &[],
+        scope: Scope {
+            params: ParamsScope::declared(),
+            ..Default::default()
+        },
+    };
+    assert_eq!(
+        resolve_template_opts("${params.a}", &ctx, &opts).unwrap(),
+        "${params.a}"
+    );
+    // Nested resolution errors propagate (strict unresolved audit).
+    let strict = ctx_with(&[], &fx, true);
+    let node = peregrin_core::Node {
+        params: json!({"a": "${params.b}", "b": "${config.nope}"}),
+        ..Default::default()
+    };
+    let opts = Options {
+        node: Some(&node),
+        functions: &[],
+        scope: Scope {
+            params: ParamsScope::declared(),
+            ..Default::default()
+        },
+    };
+    let err = resolve_params(&node.params, &strict, &opts).unwrap_err();
+    assert!(
+        err.reason.starts_with("unresolved placeholders:"),
+        "{}",
+        err.reason
+    );
+}
+
+// --- secret -------------------------------------------------------------
+
+#[test]
+fn scope_secret_gate_lookup_and_misses() {
+    let fx = StubEffects::new();
+    let secrets = scope_secrets();
+    // Ungated — the placeholder is unresolved.
+    let ctx = ctx_with(&[], &fx, false);
+    let scope = Scope {
+        secrets: Some(&secrets),
+        ..Default::default()
+    };
+    let opts = opts_with_scope(scope);
+    assert_eq!(
+        resolve_template_opts("${secret.TOKEN}", &ctx, &opts).unwrap(),
+        "${secret.TOKEN}"
+    );
+    // `secrets: false` is ungated too.
+    let ctx = ctx_with(&[("secrets", json!(false))], &fx, false);
+    assert_eq!(
+        resolve_template_opts("${secret.TOKEN}", &ctx, &opts).unwrap(),
+        "${secret.TOKEN}"
+    );
+    // Gated — hit substitutes, dotted names work, miss substitutes "".
+    let ctx = ctx_with(&[("secrets", json!(true))], &fx, false);
+    assert_eq!(
+        resolve_template_opts("${secret.TOKEN}", &ctx, &opts).unwrap(),
+        "s3cr3t"
+    );
+    assert_eq!(
+        resolve_template_opts("${secret.API.KEY}", &ctx, &opts).unwrap(),
+        "k"
+    );
+    assert_eq!(
+        resolve_template_opts("x${secret.MISSING}y", &ctx, &opts).unwrap(),
+        "xy"
+    );
+    // Miss with a default substitutes the default — no ledger entry.
+    assert_eq!(
+        resolve_template_opts("${secret.MISSING:-fb}", &ctx, &opts).unwrap(),
+        "fb"
+    );
+    // Ungated + default — the default still applies (miss semantics).
+    let ungated = ctx_with(&[], &fx, false);
+    assert_eq!(
+        resolve_template_opts("${secret.MISSING:-fb}", &ungated, &opts).unwrap(),
+        "fb"
+    );
+    // Unbound secrets record + gate — every name misses.
+    let unbound = Options {
+        node: None,
+        functions: &[],
+        scope: Scope::default(),
+    };
+    assert_eq!(
+        resolve_template_opts("x${secret.MISSING}y", &ctx, &unbound).unwrap(),
+        "xy"
+    );
+    assert_eq!(
+        resolve_template_opts("${secret}", &ctx, &opts).unwrap(),
+        "${secret}"
+    );
+    assert_eq!(
+        resolve_template_opts("${secret.}", &ctx, &opts).unwrap(),
+        "${secret.}"
+    );
+}
+
+#[test]
+fn scope_secret_strict_ledger_and_grants() {
+    let fx = StubEffects::new();
+    let secrets = scope_secrets();
+    let scope = Scope {
+        secrets: Some(&secrets),
+        ..Default::default()
+    };
+    // Strict miss substitutes "" and lands in the ledger → audit fails.
+    let strict = ctx_with(&[("secrets", json!(true))], &fx, true);
+    let err =
+        resolve_template_opts("x${secret.MISSING}y", &strict, &opts_with_scope(scope)).unwrap_err();
+    assert_eq!(err.reason, "missing secrets: MISSING");
+    let secrets2 = scope_secrets();
+    let opts = opts_with_scope(Scope {
+        secrets: Some(&secrets2),
+        ..Default::default()
+    });
+    // A non-empty default suppresses the miss entirely.
+    let strict2 = ctx_with(&[("secrets", json!(true))], &fx, true);
+    assert_eq!(
+        resolve_template_opts("${secret.MISSING:-fb}", &strict2, &opts).unwrap(),
+        "fb"
+    );
+    // An empty default counts as no default — "" + ledger.
+    let strict3 = ctx_with(&[("secrets", json!(true))], &fx, true);
+    let err = resolve_template_opts("${secret.MISSING:-}", &strict3, &opts).unwrap_err();
+    assert_eq!(err.reason, "missing secrets: MISSING");
+    // Strict grant matching: list globs must cover the name.
+    let granted = ctx_with(&[("secrets", json!(["TOK*"]))], &fx, true);
+    assert_eq!(
+        resolve_template_opts("${secret.TOKEN}", &granted, &opts).unwrap(),
+        "s3cr3t"
+    );
+    let err = resolve_template_opts("${secret.API.KEY}", &granted, &opts).unwrap_err();
+    assert_eq!(err.reason, "capability 'secrets' not granted for 'API.KEY'");
+    // Ungated under strict — the audit flags the placeholder itself.
+    let ungated = ctx_with(&[], &fx, true);
+    let err = resolve_template_opts("${secret.TOKEN}", &ungated, &opts).unwrap_err();
+    assert_eq!(err.reason, "unresolved placeholders: ${secret.TOKEN}");
+    // Ungated under strict + default — default applies, no flag.
+    assert_eq!(
+        resolve_template_opts("${secret.TOKEN:-fb}", &ungated, &opts).unwrap(),
+        "fb"
+    );
+}
+
+// --- misses, defaults, depth -------------------------------------------
+
+#[test]
+fn scope_defaults_consume_only_on_miss() {
+    let fx = StubEffects::new();
+    let ctx = ctx_with(&[("env", json!(true))], &fx, false);
+    let config = scope_config();
+    let opts = opts_with_scope(Scope {
+        config: Some(&config),
+        ..Default::default()
+    });
+    assert_eq!(
+        resolve_template_opts("${config.miss:-fb}", &ctx, &opts).unwrap(),
+        "fb"
+    );
+    // A hit ignores the default — even when the value stringifies to "".
+    assert_eq!(
+        resolve_template_opts("${config.nil:-fb}", &ctx, &opts).unwrap(),
+        ""
+    );
+    // Defaults chain through the full pipeline.
+    assert_eq!(
+        resolve_template_opts("${config.a:-${config.b:-${config.region}}}", &ctx, &opts).unwrap(),
+        "us-east"
+    );
+    let mut fx2 = StubEffects::new();
+    fx2.env.insert("FALLBACK".to_string(), "envd".to_string());
+    let ctx2 = ctx_with(&[("env", json!(true))], &fx2, false);
+    assert_eq!(
+        resolve_template_opts("${config.a:-${env(\"FALLBACK\")}}", &ctx2, &opts).unwrap(),
+        "envd"
+    );
+}
+
+#[test]
+fn scope_default_chain_depth_cap() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let config = scope_config();
+    let opts = opts_with_scope(Scope {
+        config: Some(&config),
+        ..Default::default()
+    });
+    // Eight chained defaults resolve.
+    let eight = "${config.z0:-${config.z1:-${config.z2:-${config.z3:-${config.z4:-${config.z5:-${config.z6:-${config.z7:-TAIL}}}}}}}}";
+    assert_eq!(resolve_template_opts(eight, &ctx, &opts).unwrap(), "TAIL");
+    // Nine — the innermost expression is past the cap and stays verbatim.
+    let nine = "${config.z0:-${config.z1:-${config.z2:-${config.z3:-${config.z4:-${config.z5:-${config.z6:-${config.z7:-${config.z8:-TAIL}}}}}}}}}";
+    assert_eq!(
+        resolve_template_opts(nine, &ctx, &opts).unwrap(),
+        "${config.z8:-TAIL}"
+    );
+    // Secret miss at the cap substitutes "" like a plain miss.
+    let secrets = scope_secrets();
+    let deep_secret = "${config.a:-${config.b:-${config.c:-${config.d:-${config.e:-${config.f:-${config.g:-${config.h:-${secret.MISS}}}}}}}}}";
+    let ctx = ctx_with(&[("secrets", json!(true))], &fx, false);
+    let opts = opts_with_scope(Scope {
+        config: Some(&config),
+        secrets: Some(&secrets),
+        ..Default::default()
+    });
+    assert_eq!(resolve_template_opts(deep_secret, &ctx, &opts).unwrap(), "");
+}
+
+#[test]
+fn scope_expr_grammar_rejections_stay_verbatim() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let config = scope_config();
+    let opts = opts_with_scope(Scope {
+        config: Some(&config),
+        ..Default::default()
+    });
+    for text in [
+        "${config.get()}",    // parses as a call — left for stage 2
+        "${config.a()}",      // call-shaped
+        "${config.x | trim}", // filters aren't scope exprs
+        "${bogus.x}",         // foreign namespace
+        "${env.PATH}",        // deferred I/O-builtin dotted form
+        "${HOME}",            // bare foreign name
+        "${1abc.x}",          // invalid ns
+        "${config..x}",       // empty segment
+        "${unclosed",
+        "${}",
+    ] {
+        assert_eq!(
+            resolve_template_opts(text, &ctx, &opts).unwrap(),
+            text,
+            "{text}"
+        );
+    }
+    // Foreign namespaces don't consume `:-` defaults.
+    assert_eq!(
+        resolve_template_opts("${bogus.x:-d}", &ctx, &opts).unwrap(),
+        "${bogus.x:-d}"
+    );
+    // Text around placeholders is preserved.
+    assert_eq!(
+        resolve_template_opts("a ${config.region} b", &ctx, &opts).unwrap(),
+        "a us-east b"
+    );
+}
+
+#[test]
+fn strict_audit_catches_leftover_scope_placeholders() {
+    let fx = StubEffects::new();
+    let config = scope_config();
+    let strict = ctx_with(&[], &fx, true);
+    let opts = opts_with_scope(Scope {
+        config: Some(&config),
+        ..Default::default()
+    });
+    // Bound-but-missing keys fail the audit; hits resolve cleanly.
+    let err = resolve_template_opts("${config.miss}", &strict, &opts).unwrap_err();
+    assert_eq!(err.reason, "unresolved placeholders: ${config.miss}");
+    assert_eq!(
+        resolve_template_opts("${config.region} ok", &strict, &opts).unwrap(),
+        "us-east ok"
+    );
+    // A bound miss with a default resolves and audits clean.
+    assert_eq!(
+        resolve_template_opts("${config.miss:-d}", &strict, &opts).unwrap(),
+        "d"
+    );
+}
+
+#[test]
+fn resolve_value_recurses_scope_resolution() {
+    let fx = StubEffects::new();
+    let ctx = Context::new(&fx);
+    let event = scope_event();
+    let config = scope_config();
+    let node = on_node();
+    let scope = Scope {
+        event: Some(EventScope {
+            event: &event,
+            patterns: &node.on,
+        }),
+        config: Some(&config),
+        ..Default::default()
+    };
+    let out = peregrin_template::resolve_value_opts(
+        &json!({
+            "a": "${event.type}",
+            "b": ["${config.region}", 1],
+            "c": {"d": "${event.shard}"},
+        }),
+        &ctx,
+        &opts_with_scope(scope),
+    )
+    .unwrap();
+    assert_eq!(
+        out,
+        json!({"a": "ci.passed", "b": ["us-east", 1], "c": {"d": "passed"}})
     );
 }

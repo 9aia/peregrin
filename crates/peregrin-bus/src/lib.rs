@@ -5,9 +5,10 @@
 //! lives on the `peregrin-remote` transport.
 
 mod bus;
-mod matching;
 mod observer;
 
 pub use bus::{EventBus, LocalBus, PublishResult};
-pub use matching::{capture_wildcards, matches};
+// Pattern matching lives in `peregrin-core` (pure domain — the
+// template scope pass needs it too); re-exported for compatibility.
 pub use observer::{NoopObserver, Observer, Span};
+pub use peregrin_core::{capture_wildcards, matches};

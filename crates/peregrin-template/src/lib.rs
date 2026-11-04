@@ -3,9 +3,11 @@
 //!
 //! Placeholders look like `${...}` inside `params` strings. Two families:
 //!
-//! - *Jinja-style lookups* (`${config.x}`, `${event.type}`, `${secret.k}`,
-//!   `${node.id}`, `${params.y}`, `${state.z}`) are **not** resolved here —
-//!   they pass through untouched for a later scope-resolution pass.
+//! - *Scope lookups* (`${config.x}`, `${event.type}`, `${secret.k}`,
+//!   `${node.id}`, `${params.y}`, `${state.z}`) resolve against the
+//!   [`Scope`] bindings the caller attaches to [`Options`] — unbound
+//!   scopes miss and pass through verbatim (strict mode flags them).
+//!   See `docs/reference/scope-resolution.md`.
 //! - *Function calls* (`${env("VAR")}`, `${random(1, 10)}`, `${file("p")}`,
 //!   `${shell("cmd")}`, `${now()}`, `${now.unix()}`, `${uuid()}`) resolve
 //!   only when the function is whitelisted by a `capabilities` entry.
@@ -22,12 +24,14 @@ mod error;
 mod function;
 mod js;
 mod parse;
+mod scope;
 
 pub use context::{Context, Options};
 pub use effects::{Effects, SystemEffects};
 pub use engine::{
-    resolve_template, resolve_template_opts, resolve_value, resolve_value_for_node,
+    resolve_params, resolve_template, resolve_template_opts, resolve_value, resolve_value_for_node,
     resolve_value_opts,
 };
 pub use error::TemplateError;
 pub use function::{TemplateFunction, builtins};
+pub use scope::{EventScope, NodeScope, ParamScope, ParamsScope, Scope, StateScope};

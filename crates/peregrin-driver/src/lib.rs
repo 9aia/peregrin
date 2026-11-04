@@ -45,6 +45,10 @@ impl DriverError {
 pub struct ExecutionContext {
     /// Workflow `config:` (TS `ctx.config`).
     pub config: Rc<Map<String, Value>>,
+    /// The fire's resolved `params:` object — the `${params.*}` binding
+    /// for driver-side re-resolves (scope-resolution spec); empty until
+    /// the runner fills it post-resolution.
+    pub params: Rc<Map<String, Value>>,
     /// The run's secrets — read via [`ExecutionContext::secret`] /
     /// [`ExecutionContext::get_secret`] so misses are audited
     /// (TS `secrets` proxy).
@@ -95,6 +99,7 @@ impl Default for ExecutionContext {
     fn default() -> Self {
         Self {
             config: Rc::new(Map::new()),
+            params: Rc::new(Map::new()),
             secrets: Rc::new(BTreeMap::new()),
             log: Rc::new(Vec::new()),
             emitted: Rc::new(RefCell::new(Vec::new())),

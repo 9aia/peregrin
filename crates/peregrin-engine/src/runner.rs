@@ -30,8 +30,8 @@ use peregrin_core::{Campaign, Event, EventSchema, FunctionDefinition, MaxFires, 
 use peregrin_driver::{Driver, DriverError, ExecutionContext};
 use peregrin_store::{DeadLetterQueue, MemoryStore, NoopDlq, StateStore};
 use peregrin_template::{
-    Context, Effects, Options, SystemEffects, TemplateError, TemplateFunction,
-    resolve_template_opts, resolve_value_opts,
+    Context, Effects, EventScope, NodeScope, Options, ParamsScope, Scope, StateScope,
+    SystemEffects, TemplateError, TemplateFunction, resolve_params, resolve_template_opts,
 };
 
 use crate::registry::Registry;
@@ -128,6 +128,9 @@ struct CtxSpec<'a> {
     shared: &'a Shared,
     log: Rc<Vec<Event>>,
     state: Rc<RefCell<Box<dyn StateStore>>>,
+    /// The fire's resolved params — `${params.*}` binds it for
+    /// driver-side re-resolves; empty before resolution.
+    params: Rc<Map<String, Value>>,
     traceparent: String,
 }
 
@@ -441,6 +444,7 @@ impl Runner {
         }
         ExecutionContext {
             config: Rc::new(spec.campaign.config.clone()),
+            params: spec.params.clone(),
             secrets: spec.shared.secrets.clone(),
             log: spec.log.clone(),
             emitted: spec.shared.emitted.clone(),
@@ -528,17 +532,26 @@ impl Runner {
             shared,
             log: log.clone(),
             state: self.state.clone(),
+            params: Rc::new(Map::new()),
             traceparent: String::new(),
         };
         let pre_ctx = Self::make_context(&pre_spec, &format!("{}:pre", node.id));
         *slot.borrow_mut() = Some(pre_ctx.clone());
         let tctx = self.template_ctx(&pre_ctx);
-        let resolved = resolve_value_opts(
+        let state_view = |key: &str| self.state.borrow().get(key);
+        let resolved = resolve_params(
             &node.params,
             &tctx,
             &Options {
                 node: Some(node),
                 functions: &custom_functions,
+                scope: scope_for(
+                    &pre_ctx,
+                    node,
+                    triggers,
+                    ParamsScope::declared(),
+                    &state_view,
+                ),
             },
         );
         let resolved_params = match resolved {
@@ -552,7 +565,7 @@ impl Runner {
                 );
                 return Ok(vec![fail]);
             }
-            Ok(value) => value.as_object().cloned().unwrap_or_default(),
+            Ok(value) => Rc::new(value.as_object().cloned().unwrap_or_default()),
         };
 
         if node.driver.is_empty() {
@@ -570,7 +583,7 @@ impl Runner {
                     "node.input",
                     &node.id,
                     &input_errors,
-                    Value::Object(resolved_params.clone()),
+                    Value::Object((*resolved_params).clone()),
                 );
                 if campaign.strict {
                     let fail = Event::node_failed(
@@ -600,6 +613,13 @@ impl Runner {
                     &Options {
                         node: Some(node),
                         functions: &custom_functions,
+                        scope: scope_for(
+                            &pre_ctx,
+                            node,
+                            triggers,
+                            ParamsScope::Resolved(&resolved_params),
+                            &state_view,
+                        ),
                     },
                 )
                 .map_err(|error| DriverError::new(error.reason))?;
@@ -618,17 +638,26 @@ impl Runner {
                             shared,
                             log: log.clone(),
                             state: node_state.clone(),
+                            params: resolved_params.clone(),
                             traceparent: String::new(),
                         };
                         let skip_ctx = Self::make_context(&skip_spec, &format!("{}:skip", node.id));
                         *slot.borrow_mut() = Some(skip_ctx.clone());
                         let tctx = self.template_ctx(&skip_ctx);
+                        let scoped_view = |key: &str| node_state.borrow().get(key);
                         let rendered = resolve_template_opts(
                             skip_if,
                             &tctx,
                             &Options {
                                 node: Some(node),
                                 functions: &custom_functions,
+                                scope: scope_for(
+                                    &skip_ctx,
+                                    node,
+                                    triggers,
+                                    ParamsScope::Resolved(&resolved_params),
+                                    &scoped_view,
+                                ),
                             },
                         )
                         .map_err(|error| DriverError::new(error.reason))?;
@@ -679,6 +708,7 @@ impl Runner {
             shared,
             log: log.clone(),
             state: node_state.clone(),
+            params: resolved_params.clone(),
             traceparent: span.traceparent(),
         };
         let driver_events = if node.fan_in.is_some() {
@@ -967,6 +997,34 @@ fn js_number_coerce(value: &Value) -> f64 {
         Value::String(s) => s.trim().parse::<f64>().unwrap_or(f64::NAN),
         Value::Bool(b) => f64::from(u8::from(*b)),
         _ => f64::NAN,
+    }
+}
+
+/// The [`Scope`] one template resolution at this fire binds — `event`
+/// is `triggers[0]` plus the node's `on` patterns (wildcard captures),
+/// `config`/`secrets`/`node` come from the ctx; `params` and `state`
+/// vary by call site (declared-vs-resolved params, shared-vs-scoped
+/// store).
+fn scope_for<'a>(
+    exec: &'a ExecutionContext,
+    node: &'a Node,
+    triggers: &'a [Event],
+    params: ParamsScope<'a>,
+    state: &'a dyn StateScope,
+) -> Scope<'a> {
+    Scope {
+        event: triggers.first().map(|event| EventScope {
+            event,
+            patterns: &node.on,
+        }),
+        config: Some(&exec.config),
+        params,
+        state: Some(state),
+        node: Some(NodeScope {
+            id: &node.id,
+            fires: exec.fires,
+        }),
+        secrets: Some(&exec.secrets),
     }
 }
 

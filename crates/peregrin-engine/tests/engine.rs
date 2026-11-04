@@ -91,6 +91,7 @@ impl Driver for ShellFake {
             &peregrin_template::Options {
                 node: Some(node),
                 functions: &[],
+                ..Default::default()
             },
         )
         .unwrap_or_else(|_| node.params.clone());
@@ -190,6 +191,62 @@ impl Driver for FlakyDriver {
     }
 }
 
+/// Echoes the fire's resolved params (`ctx.params`) — the runner-bound
+/// `${scope.*}` resolution is observable in the emitted payload.
+struct ScopeEchoDriver;
+impl Driver for ScopeEchoDriver {
+    fn name(&self) -> &'static str {
+        "scope-echo"
+    }
+
+    fn invoke(
+        &self,
+        node: &Node,
+        _t: &[Event],
+        ctx: &ExecutionContext,
+    ) -> Result<Vec<Event>, DriverError> {
+        Ok(vec![Event::new(
+            node.emits
+                .first()
+                .cloned()
+                .unwrap_or_else(|| "echo.done".to_string()),
+            json!({ "params": ctx.params.as_ref().clone() }),
+            &node.id,
+        )])
+    }
+}
+
+/// Writes `{"flag": "yes"}` into the shared store under
+/// `params.state_key` — seeds the scoped store for `state.key` nodes.
+struct StateSetDriver;
+impl Driver for StateSetDriver {
+    fn name(&self) -> &'static str {
+        "state-set"
+    }
+
+    fn invoke(
+        &self,
+        node: &Node,
+        _t: &[Event],
+        ctx: &ExecutionContext,
+    ) -> Result<Vec<Event>, DriverError> {
+        let key = ctx
+            .params
+            .get("state_key")
+            .and_then(Value::as_str)
+            .unwrap_or("k");
+        ctx.state.borrow_mut().set(key, json!({"flag": "yes"}));
+        Ok(vec![Event::new(
+            node.emits
+                .first()
+                .cloned()
+                .unwrap_or_else(|| "set.done".to_string()),
+            json!({}),
+            &node.id,
+        )])
+    }
+}
+
 /// Emits via `ctx.emit` — side-channel events reach the pending queue.
 struct EmitDriver;
 impl Driver for EmitDriver {
@@ -238,6 +295,8 @@ fn registry() -> Registry {
         .with("noop", Arc::new(NoopDriver))
         .with("fail", Arc::new(FailDriver))
         .with("emit", Arc::new(EmitDriver))
+        .with("scope-echo", Arc::new(ScopeEchoDriver))
+        .with("state-set", Arc::new(StateSetDriver))
         .with("shutdown", Arc::new(ShutdownDriver))
         .with("runner", Arc::new(peregrin_driver::RunnerDriver))
 }
@@ -1211,4 +1270,133 @@ fn bus_observer_hooks_fire() {
     let calls = spy.0.lock().unwrap();
     assert!(calls.iter().any(|c| c == "event:start"));
     assert!(calls.iter().any(|c| c == "retire:a"));
+}
+
+// ---------------------------------------------------------------------------
+// Scope resolution (`docs/reference/scope-resolution.md`)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn scope_resolution_binds_event_config_params_node_secrets() {
+    let campaign = load(
+        "
+        name: scope
+        config:
+          region: us-east
+        capabilities:
+          secrets: true
+        nodes:
+          - id: seeder
+            driver: state-set
+            on: [start]
+            emits: [seed.ready]
+          - id: b
+            driver: scope-echo
+            on: [seed.*]
+            emits: [b.done]
+            params:
+              ev: \"${event.type}\"
+              shard: \"${event.shard}\"
+              cap: \"${event.match.1}\"
+              region: \"${config.region}\"
+              missing: \"${config.nope:-fallback}\"
+              nid: \"${node.id}\"
+              fires: \"${node.fires}\"
+              selfref: \"${params.ev}-x\"
+              tok: \"${secret.TOKEN}\"
+        ",
+    );
+    let mut opts = RunOptions::default();
+    opts.secrets.insert("TOKEN".to_string(), "s3".to_string());
+    let log = Runner::new(registry()).run(&campaign, &opts).unwrap();
+    let evt = log.iter().find(|e| e.kind == "b.done").unwrap();
+    let p = &evt.payload["params"];
+    assert_eq!(p["ev"], json!("seed.ready"));
+    assert_eq!(p["shard"], json!("ready"));
+    assert_eq!(p["cap"], json!("ready"));
+    assert_eq!(p["region"], json!("us-east"));
+    assert_eq!(p["missing"], json!("fallback"));
+    assert_eq!(p["nid"], json!("b"));
+    assert_eq!(p["fires"], json!("1"));
+    assert_eq!(p["selfref"], json!("seed.ready-x"));
+    assert_eq!(p["tok"], json!("s3"));
+}
+
+#[test]
+fn scope_resolution_reads_shared_state_and_state_key_templates() {
+    let campaign = load(
+        "
+        name: scope-state
+        nodes:
+          - id: seeder
+            driver: state-set
+            on: [start]
+            emits: [set.done]
+            params:
+              state_key: \"${node.id}-k\"
+          - id: echo
+            driver: scope-echo
+            on: [set.done]
+            emits: [echo.done]
+            params:
+              flag: \"${state.seeder-k.flag}\"
+              absent: \"${state.nothing:-none}\"
+        ",
+    );
+    let log = run(&campaign);
+    let evt = log.iter().find(|e| e.kind == "echo.done").unwrap();
+    let p = &evt.payload["params"];
+    assert_eq!(p["flag"], json!("yes"));
+    assert_eq!(p["absent"], json!("none"));
+}
+
+#[test]
+fn scope_resolution_state_key_and_skip_if_use_scoped_store() {
+    let campaign = load(
+        "
+        name: scope-skip
+        nodes:
+          - id: seeder
+            driver: state-set
+            on: [start]
+            emits: [set.done]
+            params:
+              state_key: b-state
+          - id: b
+            driver: scope-echo
+            on: [set.done]
+            emits: [b.done]
+            state:
+              key: \"${node.id}-state\"
+              skip_if: \"${state.flag}\"
+        ",
+    );
+    let log = run(&campaign);
+    let t = types(&log);
+    // `state.key` resolved `${node.id}` → `b-state`; the scoped store
+    // seeded `{"flag": "yes"}` so `skip_if` skipped the driver.
+    assert!(t.contains(&"node.skipped"));
+    assert!(!t.contains(&"b.done"));
+}
+
+#[test]
+fn scope_resolution_unbound_and_unknown_stay_verbatim() {
+    let campaign = load(
+        "
+        name: scope-verbatim
+        nodes:
+          - id: b
+            driver: scope-echo
+            on: [start]
+            emits: [b.done]
+            params:
+              raw: \"${bogus.ns}\"
+              foreign: \"${env.HOME}\"
+        ",
+    );
+    let log = run(&campaign);
+    let evt = log.iter().find(|e| e.kind == "b.done").unwrap();
+    let p = &evt.payload["params"];
+    assert_eq!(p["raw"], json!("${bogus.ns}"));
+    assert_eq!(p["foreign"], json!("${env.HOME}"));
 }
