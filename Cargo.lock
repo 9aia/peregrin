@@ -3825,6 +3825,7 @@ dependencies = [
  "peregrin-core",
  "peregrin-driver",
  "peregrin-driver-agent",
+ "peregrin-driver-git",
  "peregrin-driver-http",
  "peregrin-driver-human",
  "peregrin-driver-shell",
