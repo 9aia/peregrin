@@ -1,0 +1,118 @@
+# release — the release pipeline campaign (bupha's `release.sh` role:
+# tag → cargo publish on main pushes).
+#
+# Same routed-push mechanics as ci-gate (see libraries/ci-gate's
+# README): the match node re-emits a gated push as
+# `push.release.<clone_url>.<sha>`; the build and sink nodes recover
+# the fields via `${event.match.N}` captures.
+#
+# Difference from ci-gate: a release must NOT be cancelled mid-publish
+# — supersede dedupes pending runs to the newest push but never kills
+# the in-flight one (a half-published crate set is worse than a stale
+# one). The pushed-sha worktree keeps every run hermetic.
+name: release
+
+config:
+  name: release                     # status context base: ci/<name>
+  repo: ""                          # owner/name to release; "" = any watched repo
+  ref: "refs/heads/main"            # the release ref
+  status_repo: ""                   # bupha's redirect; "" = config.repo
+  cmd: "bash scripts/release.sh"    # the release pipeline (tag + cargo publish)
+  worktree_base: "~/.local/share/peregrin/worktrees"
+  token_env: "GITHUB_TOKEN"         # NAME of the forge-token secret — never a value
+  timeout: 600
+
+# Pending jobs dedupe to the newest push (a stale queued release is
+# pointless), but an in-flight publish is never cancelled.
+supersede:
+  key: "{repo}:{ref}"
+  mode: latest-wins
+  cancel_running: false
+
+annotations:
+  title: Release pipeline
+  description: >-
+    Push to the release ref → detached worktree → release command
+    (tag + cargo publish) → GitHub commit status.
+  since: "0.1.0"
+  see: project/adrs/0081-bupha-peregrin-migration-inventory-queue-semantics-drivers-sinks-ops.md
+
+nodes:
+  # Gate on repo + ref, re-route as `push.release.<clone_url>.<sha>`.
+  - id: release.match
+    driver: shell
+    on: [push]
+    max_fires: unlimited
+    emits: [push.release, push.unmatched]
+    params:
+      cmd: |
+        if [ -n "${config.repo}" ] && [ "${event.payload.repo}" != "${config.repo}" ]; then exit 9; fi
+        [ "${event.payload.ref}" = "${config.ref:-refs/heads/main}" ]
+      emit:
+        "0": "push.release.${event.payload.clone_url}.${event.payload.sha}"
+        default: "push.unmatched"
+
+  # `pending` on the commit as soon as the push is gated.
+  - id: release.pending
+    driver: github-status
+    on: [push.release.**.*]
+    max_fires: unlimited
+    emits: [release.status-posted]
+    params:
+      repo: "${config.status_repo:-${config.repo}}"
+      sha: "${event.match.2}"
+      state: pending
+      context: "ci/${config.name}"
+      token_env: "${config.token_env}"
+
+  # Detached worktree at the pushed sha → release command inside it.
+  # `env` resolves the registry token through the capability-gated
+  # secrets record (${secret.*} — "" on a miss) rather than naming it
+  # for the impl; the node config's capabilities.secrets grant must
+  # cover it.
+  - id: release.build
+    driver: git
+    on: [push.release.**.*]
+    max_fires: unlimited
+    emits: [release.done, release.failed]
+    params:
+      url: "${event.match.1}"
+      sha: "${event.match.2}"
+      base: "${config.worktree_base:-~/.local/share/peregrin/worktrees}"
+      token_env: "${config.token_env:-GITHUB_TOKEN}"
+      inner:
+        driver: shell
+        params:
+          cmd: "${config.cmd}"
+          timeout: "${config.timeout:-600}"
+          env:
+            CARGO_REGISTRY_TOKEN: "${secret.CARGO_REGISTRY_TOKEN:-}"
+      emit:
+        "0": release.done
+        default: release.failed
+
+  # driver-git materialization failures land as plain `node.failed` —
+  # re-map onto `<node>.failed.<sha>` so the sink posts `error`.
+  - id: release.failmap
+    driver: shell
+    on: [node.failed]
+    max_fires: unlimited
+    params:
+      cmd: 'test -n "${event.payload.node}" && test -n "${event.payload.sha}"'
+      emit:
+        "0": "${event.payload.node}.failed.${event.payload.sha}"
+        default: "release.unmapped"
+
+  # The verdict — `ci/<campaign>` context; `.done` → success,
+  # `.failed` → failure, `failed.<sha>` → error.
+  - id: release.status
+    driver: github-status
+    on: [release.done, release.failed, release.failed.*]
+    max_fires: unlimited
+    emits: [release.status-posted]
+    params:
+      repo: "${config.status_repo:-${config.repo}}"
+      sha: "${event.payload.sha:-${event.match.1}}"
+      context: "ci/${config.name}"
+      token_env: "${config.token_env}"
+      description: "${event.type}"

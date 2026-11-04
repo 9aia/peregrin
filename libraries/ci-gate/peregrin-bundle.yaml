@@ -1,0 +1,10 @@
+# ci-gate — bupha's CI gate as a peregrin bundle (ADR-0080/ADR-0081).
+# `peregrin install <ref>` fetches this; `peregrin create --template
+# ci-gate` (P6) materializes the node config + service unit around it.
+name: ci-gate
+version: "0.1.0"
+description: >-
+  Push-to-verdict CI gate: github-webhook/sturn push event → detached
+  worktree at the pushed sha → inner shell run → GitHub commit status
+  (ci/<campaign>). Latest-wins supersede on {repo}:{ref} with
+  cancel_running, mirroring bupha's queue semantics.

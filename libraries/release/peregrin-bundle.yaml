@@ -1,0 +1,9 @@
+# release — bupha's release.sh role as a peregrin bundle: pushes to
+# the release ref (default refs/heads/main) run the release pipeline
+# (tag → cargo publish) in a detached worktree and post the verdict.
+name: release
+version: "0.1.0"
+description: >-
+  Release pipeline gate: push to the release ref → detached worktree
+  at the pushed sha → release command (tag + cargo publish via
+  scripts/release.sh or equivalent) → GitHub commit status.

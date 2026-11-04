@@ -1,0 +1,139 @@
+# ci-gate — the gate campaign (ADR-0080: "a push → run → verdict gate
+# is a degenerate peregrin campaign — one trigger source, one driver,
+# one sink").
+#
+# This file is the *policy* half of the gate. The *ingress* half —
+# which events feed `push` — is the operator's node config: a
+# `driver: github-webhook` node carrying `params.repos` +
+# `secret_env` names, or a `driver: sturn-poll` node. Those params
+# hold per-installation secrets and are NEVER shipped in the bundle
+# (ADR-0080: "params carry repos/secret_env — node-level, never in
+# shipped bundles").
+#
+# Mechanics: `on:` matches event *types* only, so the match node
+# re-emits the gated push as a routed type
+# `push.gated.<clone_url>.<sha>` — the payload fields ride the type
+# (the emit value is template-resolved at fire time) and downstream
+# nodes recover them via `${event.match.N}` captures. `**` re-joins
+# clone_url's `.`-separated segments; the trailing `*` is the sha.
+name: ci-gate
+
+# Operator-facing knobs (see params.schema.json + README.md). Every
+# node templates these via ${config.*}.
+config:
+  name: ci-gate                     # status context base: ci/<name>
+  repo: ""                          # owner/name to gate; "" = any watched repo
+  ref: "refs/heads/main"            # the ref to gate
+  status_repo: ""                   # bupha's redirect; "" = config.repo
+  cmd: "bash scripts/ci.sh"         # the gate command (runs inside the worktree)
+  worktree_base: "~/.local/share/peregrin/worktrees"
+  token_env: "GITHUB_TOKEN"         # NAME of the forge-token secret — never a value
+  timeout: 600                      # inner shell cap (seconds; driver caps at 600)
+
+# The queue policy (docs/reference/queue-supersede.md): pushes on the
+# same (repo, ref) are alternative triggers for one logical run — the
+# newest wins, and a newer push cancels the in-flight run.
+supersede:
+  key: "{repo}:{ref}"
+  mode: latest-wins
+  cancel_running: true
+
+annotations:
+  title: CI gate
+  description: >-
+    Push → detached worktree at sha → inner shell → GitHub commit
+    status. The bupha ci/bupha gate expressed as a campaign.
+  since: "0.1.0"
+  see: project/adrs/0081-bupha-peregrin-migration-inventory-queue-semantics-drivers-sinks-ops.md
+
+nodes:
+  # Gate on repo + ref and re-route the push as a typed event
+  # carrying clone_url + sha (type segments — payload fields don't
+  # survive a re-emit). Unmatched pushes emit `push.unmatched` and die
+  # there. `config.repo == ""` gates every repo the ingress watches.
+  - id: ci-gate.match
+    driver: shell
+    on: [push]
+    max_fires: unlimited
+    emits: [push.gated, push.unmatched]
+    params:
+      cmd: |
+        if [ -n "${config.repo}" ] && [ "${event.payload.repo}" != "${config.repo}" ]; then exit 9; fi
+        [ "${event.payload.ref}" = "${config.ref:-refs/heads/main}" ]
+      emit:
+        "0": "push.gated.${event.payload.clone_url}.${event.payload.sha}"
+        default: "push.unmatched"
+
+  # Commit-status `pending` the moment a push is gated — fires on the
+  # routed event (before the build in node order). sha is capture 2 of
+  # `push.gated.<clone_url>.<sha>` (clone_url's dots split segments —
+  # the `**` capture re-joins them).
+  - id: ci-gate.pending
+    driver: github-status
+    on: [push.gated.**.*]
+    max_fires: unlimited
+    emits: [ci-gate.status-posted]
+    params:
+      repo: "${config.status_repo:-${config.repo}}"
+      sha: "${event.match.2}"
+      state: pending
+      context: "ci/${config.name}"
+      token_env: "${config.token_env}"
+
+  # Detached worktree at the pushed sha → inner shell run in it.
+  # `params.url`/`params.sha` come from the routed captures;
+  # `params.emit` collapses the inner rc onto the job's done/failed
+  # types. `token_env`/`ssh_env` bind credential NAMES (secrets
+  # record → ambient env, audited on miss) — never literal secrets.
+  - id: ci-gate.build
+    driver: git
+    on: [push.gated.**.*]
+    max_fires: unlimited
+    emits: [ci-gate.done, ci-gate.failed]
+    params:
+      url: "${event.match.1}"
+      sha: "${event.match.2}"
+      base: "${config.worktree_base:-~/.local/share/peregrin/worktrees}"
+      token_env: "${config.token_env:-GITHUB_TOKEN}"
+      inner:
+        driver: shell
+        params:
+          cmd: "${config.cmd}"
+          timeout: "${config.timeout:-600}"
+      emit:
+        "0": ci-gate.done
+        default: ci-gate.failed
+
+  # driver-git emits plain `node.failed` for clone/checkout/
+  # materialization failures — not the emit-mapped `ci-gate.failed`.
+  # Remap any node.failed that carries {node, sha} onto
+  # `<node>.failed.<sha>` so the status sink sees materialization
+  # failures too (sha rides the type; a missing sha keeps the event
+  # unmapped rather than posting a status against an empty commit).
+  - id: ci-gate.failmap
+    driver: shell
+    on: [node.failed]
+    max_fires: unlimited
+    params:
+      cmd: 'test -n "${event.payload.node}" && test -n "${event.payload.sha}"'
+      emit:
+        "0": "${event.payload.node}.failed.${event.payload.sha}"
+        default: "ci-gate.unmapped"
+
+  # The verdict sink — `ci/<campaign>` context (ADR-0081: deterministic
+  # contexts). `state` auto-maps off the trigger suffix: `.done` →
+  # success, `.failed` → failure, `failed.<sha>` (a materialization
+  # failure re-mapped by ci-gate.failmap) → error. sha comes from the
+  # done/failed payload, or the trailing type segment for mapped
+  # failures — the `:-` default re-resolves `${event.match.1}`.
+  - id: ci-gate.status
+    driver: github-status
+    on: [ci-gate.done, ci-gate.failed, ci-gate.failed.*]
+    max_fires: unlimited
+    emits: [ci-gate.status-posted]
+    params:
+      repo: "${config.status_repo:-${config.repo}}"
+      sha: "${event.payload.sha:-${event.match.1}}"
+      context: "ci/${config.name}"
+      token_env: "${config.token_env}"
+      description: "${event.type}"

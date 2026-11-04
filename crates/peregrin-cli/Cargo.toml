@@ -30,6 +30,9 @@ peregrin-source-http.workspace = true
 peregrin-telemetry.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+serde_norway.workspace = true
+serde_yaml_ng.workspace = true
+toml.workspace = true
 tokio.workspace = true
 clap = { version = "4", features = ["derive"] }
 ureq.workspace = true
@@ -39,5 +42,4 @@ nix = { version = "0.29", default-features = false, features = ["fs", "user"] }
 tempfile.workspace = true
 sepia-testkit.workspace = true
 serde_json.workspace = true
-serde_yaml_ng.workspace = true
 tokio = { workspace = true, features = ["rt"] }

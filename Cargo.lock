@@ -3563,10 +3563,12 @@ dependencies = [
  "sepia-testkit",
  "serde",
  "serde_json",
+ "serde_norway",
  "serde_yaml_ng",
  "tempfile",
  "time",
  "tokio",
+ "toml 0.8.23",
  "ureq",
 ]
 

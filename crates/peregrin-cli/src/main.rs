@@ -13,7 +13,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use peregrin_cli::node_ops::{NodeArgs, TargetArgs};
 use peregrin_cli::{
-    CliError, PEREGRIN_VERSION, api, campaign, distribution, node_ops, pair, service,
+    CliError, PEREGRIN_VERSION, api, campaign, distribution, import, node_ops, pair, service,
 };
 
 fn default_peregrin_home() -> PathBuf {
@@ -561,6 +561,21 @@ enum CacheCommands {
     },
 }
 
+/// `peregrin import <source>` — foreign config → peregrin node-config
+/// workflow conversion (ADR-0081).
+#[derive(Subcommand)]
+enum ImportCommands {
+    /// Convert a bupha.toml/bupha.yaml into a node-config workflow
+    /// (ingress github-webhook node + per-repo/job gate pipelines)
+    Bupha {
+        /// Path to the bupha config (TOML or YAML — extension picks the parser)
+        path: PathBuf,
+        /// Write the emitted workflow to this file (default: stdout)
+        #[arg(long)]
+        out: Option<PathBuf>,
+    },
+}
+
 /// Bundle authoring verbs.
 #[derive(Subcommand)]
 enum BundleCommands {
@@ -725,6 +740,10 @@ enum Commands {
     /// Bundle authoring
     #[command(subcommand)]
     Bundle(BundleCommands),
+    /// Foreign config → peregrin node-config workflow conversion
+    /// (ADR-0081 bupha importer)
+    #[command(subcommand)]
+    Import(ImportCommands),
     /// Print the peregrin version stamp
     Version,
 }
@@ -1084,6 +1103,9 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
         Commands::Bundle(BundleCommands::Pack { dir, out }) => {
             distribution::bundle_pack(dir, out.as_deref()).map(|_| ())
         }
+        Commands::Import(ImportCommands::Bupha { path, out }) => {
+            import::import_bupha(path, out.as_deref()).map(|_| ())
+        }
         Commands::Version => {
             println!("{PEREGRIN_VERSION}");
             Ok(())
@@ -1240,6 +1262,15 @@ mod tests {
             // them here would wipe a real ~/.cache/peregrin.
             vec!["peregrin", "cache", "clean"],
             vec!["peregrin", "bundle", "pack", "/definitely/not/a/dir"],
+            vec!["peregrin", "import", "bupha", "/definitely/not/a/file"],
+            vec![
+                "peregrin",
+                "import",
+                "bupha",
+                "/definitely/not/a/file",
+                "--out",
+                "/tmp/x.yaml",
+            ],
         ] {
             let cli = cli(&argv);
             let _ = dispatch(&cli, &rt);
