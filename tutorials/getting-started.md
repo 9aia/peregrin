@@ -47,6 +47,9 @@ one view — locks, takeover, and routing handled by the control layer.
 
 ## Where next
 
+- [Your first gate](first-gate.md) — install a bundle, materialize a
+  node config, register the webhook, watch pushes become commit
+  statuses.
 - [Architecture](../explanation/architecture.md) — how nodes, hub, and
   the sepia boundary fit together.
 - [Run a node](../how-to/run-a-node.md) — tokens, non-loopback binds,

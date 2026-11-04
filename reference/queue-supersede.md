@@ -35,7 +35,7 @@ small payload-only interpolation:
 - A miss — absent key, non-object step, empty or unclosed
   placeholder, an interior containing `{` — stays **verbatim**
   (`{missing}` in the key is a literal, still deterministic).
-- `{{` emits a literal `{` and rescans: `{{repo}}` → `{a/b}`.
+- `&#123;&#123;` emits a literal `{` and rescans: `&#123;&#123;repo&#125;&#125;` → `{a/b}`.
 
 ## Queue semantics
 
