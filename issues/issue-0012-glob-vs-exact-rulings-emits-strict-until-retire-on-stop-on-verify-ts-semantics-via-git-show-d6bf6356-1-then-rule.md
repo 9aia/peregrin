@@ -1,7 +1,7 @@
 +++
 id = "I-012"
 title = "glob-vs-exact rulings: emits strict, until/retire_on/stop_on — verify TS semantics via git show d6bf6356~1, then rule"
-status = "open"
+status = "done"
 created = "2026-11-04"
 priority = "medium"
 +++
@@ -20,6 +20,8 @@ What is wrong and steps to reproduce.
 - [ ] Rule on glob-match `emits` (the only open ruling below)
 
 ## Resolution
+
+Verified vs v1 source (d6bf6356~1): emits/until/retire_on/stop_on all exact-match, port faithful; Event.state_key never existed; cycle flag real; rulings in pl-0003+adr-0082 inventory.
 
 ### Verified answers (2026-11-04)
 
