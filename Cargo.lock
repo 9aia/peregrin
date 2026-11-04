@@ -3881,6 +3881,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-sink-github-status"
+version = "0.0.0"
+dependencies = [
+ "peregrin-core",
+ "peregrin-driver",
+ "peregrin-template",
+ "serde_json",
+ "ureq",
+]
+
+[[package]]
 name = "peregrin-store"
 version = "0.0.0"
 dependencies = [
