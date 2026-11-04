@@ -1,0 +1,8 @@
+name: dead-letter
+version: "0.1.0"
+description: >-
+  Subscriber-pattern dead-letter fragment — captures *.dead/*.failed
+  events under dlq.captured.*, keeps a dlq.stored inventory, and
+  replays letters on dlq.replay-requested. Resilience as library, per
+  ADR-0082.
+include: []

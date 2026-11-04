@@ -1,0 +1,43 @@
+# retry/retry.node.yml — the retry forwarder: re-emits the request when
+# a failure event arrives.
+#
+# Part of `libraries/retry` (see `main.yaml` for the wired `task.*`
+# fragment and the full event contract). ADR-0082 #6 — resilience as
+# library, not engine.
+#
+# Include inside a `nodes:` entry and set the event contract locally:
+#
+#   - include: ../retry/retry.node.yml
+#     id: mytask.retry
+#     on: [mytask.failed]          # failure signal to retry on
+#     forward: [mytask.request]    # re-emitted type (payload preserved)
+#     until: [mytask.done, mytask.dead]
+#     max_fires: 2                 # re-emissions = max_attempts - 1
+#
+# Deep-merge concatenates arrays local-first, so this preset declares
+# no `on:`/`forward:`/`until:` — the parent owns the event names.
+#
+# `forward:` copies the trigger's payload into the re-emitted event, so
+# an `attempt` field the worker maintains in its failure payload rides
+# back into the next request untouched.
+annotations:
+  title: Retry forwarder
+  description: Re-emits a request event on each failure event, bounded by max_fires, until a done or dead terminator is seen.
+  author: peregrin
+  tags: [retry, resilience, preset]
+  since: "0.1.0"
+  see: project/adrs/0082-v1-architecture-inheritances-event-graph-event-type-abstraction-file-plugins-unified-drivers-self-modification-resilience-as-lib.md
+
+id: retry.forwarder
+driver: shell
+max_fires: 2
+emits: [retry.scheduled]
+params:
+  # `true` — a no-op child; the real output is the forwarded request.
+  # The emit map turns rc 0 into the `retry.scheduled` marker so
+  # observers can count retries without subscribing the work queue.
+  cmd: "true"
+  timeout: 5
+  emit:
+    "0": retry.scheduled
+    default: retry.scheduled

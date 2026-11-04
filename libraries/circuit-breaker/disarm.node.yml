@@ -1,0 +1,27 @@
+# circuit-breaker/disarm.node.yml — removes the `.circuit.open` flag on
+# `circuit.half-open`, letting gated work nodes run again for the
+# half-open trial. `params.dir` must match `arm.node.yml`'s.
+#
+#   - include: ../circuit-breaker/disarm.node.yml
+#     id: mytask.circuit-disarm
+#     on: [mytask.circuit.half-open]
+#     params:
+#       dir: /run/mytask
+annotations:
+  title: Circuit disarm
+  description: Removes the .circuit.open flag on circuit.half-open so gated nodes run again.
+  author: peregrin
+  tags: [circuit-breaker, resilience, preset]
+  since: "0.1.0"
+
+id: circuit-breaker.disarm
+driver: shell
+max_fires: unlimited
+emits: [circuit.disarmed]
+params:
+  dir: "."
+  cmd: 'rm -f "${params.dir:-.}/.circuit.open"'
+  timeout: 5
+  emit:
+    "0": circuit.disarmed
+    default: circuit.disarmed

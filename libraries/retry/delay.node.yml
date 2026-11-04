@@ -1,0 +1,45 @@
+# retry/delay.node.yml — optional backoff between a failure and the
+# re-emitted request. Wire the forwarder's `forward:` at a wait event
+# (`<base>.retry-wait`) instead of `<base>.request` and put this node in
+# between: it sleeps, then forwards the failure payload as the request.
+#
+#   - include: ../retry/retry.node.yml
+#     id: mytask.retry
+#     on: [mytask.failed]
+#     forward: [mytask.retry-wait]
+#     until: [mytask.done, mytask.dead]
+#     max_fires: 2
+#
+#   - include: ../retry/delay.node.yml
+#     id: mytask.retry-delay
+#     on: [mytask.retry-wait]
+#     forward: [mytask.request]
+#     until: [mytask.done, mytask.dead]
+#     max_fires: unlimited
+#
+# The delay is a synchronous `sleep` inside the run — the sequential
+# runner pauses the pending queue for the duration, which is exactly
+# the back-pressure a retry backoff wants. `config.retry.delay`
+# (seconds) drives the default cmd; override `params.cmd` for
+# exponential schedules or external delay services.
+#
+# Note: the `poll:` tick mechanism is *not* used — a poll tick only
+# re-fires the node that emitted it and cannot defer a forwarded event
+# while preserving its payload. Sleep-in-shell is the honest delay.
+annotations:
+  title: Retry backoff delay
+  description: Sleeps for the configured backoff, then forwards the failure payload as a fresh request.
+  author: peregrin
+  tags: [retry, resilience, backoff, preset]
+  since: "0.1.0"
+
+id: retry.delay
+driver: shell
+max_fires: unlimited
+emits: [retry.delayed]
+params:
+  cmd: "sleep ${config.retry.delay:-0}"
+  timeout: 600
+  emit:
+    "0": retry.delayed
+    default: retry.delayed

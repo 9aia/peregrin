@@ -1,0 +1,31 @@
+# retry/dead.node.yml — the exhaustion counter: emits the terminal
+# `<base>.dead` once the failure event has been published N times.
+#
+# Part of `libraries/retry`. `fan_in` counts matching events already in
+# the run log, so the attempt budget is enforced by the event graph —
+# no engine retry state involved.
+#
+#   - include: ../retry/dead.node.yml
+#     id: mytask.dead
+#     on: [mytask.failed]
+#     until: [mytask.done]
+#     fan_in:
+#       count_from: retry.max_attempts   # or `count: 3`
+#       emit: mytask.dead
+#     emits: [mytask.dead]
+#
+# `count_from` resolves a dotted `config:` path to a number (or array
+# length), so the budget is campaign-configurable via `config.retry.*`
+# deep-merge. The emitted payload is `{count, triggers}` — the full
+# failure envelopes that exhausted the budget.
+annotations:
+  title: Retry exhaustion counter
+  description: Emits the terminal dead event once the failure event count reaches the configured attempt budget.
+  author: peregrin
+  tags: [retry, resilience, preset]
+  since: "0.1.0"
+  see: docs/reference/on-grammar.md#fan_in
+
+id: retry.exhaust
+driver: noop
+max_fires: 1

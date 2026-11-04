@@ -1,0 +1,34 @@
+# circuit-breaker/dispatch.node.yml — the gate proper: forwards work
+# requests onto the dispatch channel while the circuit is closed, and
+# stops permanently once `circuit.open` has been seen (`until` is
+# one-way — this is the honest one-shot breaker gate for the
+# sequential runner).
+#
+#   - include: ../circuit-breaker/dispatch.node.yml
+#     id: mytask.dispatch
+#     on: [mytask.request]
+#     forward: [mytask.dispatch]
+#     until: [mytask.circuit.open]
+#
+# Gated work nodes subscribe `<base>.dispatch`, never `<base>.request`.
+# Requests that arrive while the circuit is open die on the dispatcher
+# — pair with `libraries/dead-letter` to quarantine them, or with
+# `probe.node.yml` (included in `main.yaml`) which re-issues exactly
+# one dispatch on `circuit.half-open`.
+annotations:
+  title: Circuit dispatch gate
+  description: Forwards work requests to the dispatch channel until circuit.open is seen.
+  author: peregrin
+  tags: [circuit-breaker, resilience, gate, preset]
+  since: "0.1.0"
+
+id: circuit-breaker.dispatch
+driver: shell
+max_fires: unlimited
+emits: [circuit.dispatching]
+params:
+  cmd: "true"
+  timeout: 5
+  emit:
+    "0": circuit.dispatching
+    default: circuit.dispatching

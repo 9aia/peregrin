@@ -1,0 +1,43 @@
+# dead-letter/capture.node.yml — the wildcard catch: re-emits terminal
+# failure events under the `dlq.captured.*` namespace with the payload
+# preserved. The event log *is* the queue — captured letters persist
+# with the run (durably, under a JSONL event store) and are replayed
+# from it, never through the engine-internal DLQ port.
+#
+#   - include: ../dead-letter/capture.node.yml
+#     id: my.dlq
+#     on: ["**.dead", "**.failed"]  # the catch — edit to your contract
+#     forward: ["dlq.captured.**"]  # letter namespace (capture = prefix)
+#
+# (`*`/`**`-leading patterns must be quoted — a bare `*` is a YAML alias.)
+#
+# `forward:` substitutes wildcard captures from the matching `on`
+# pattern, so `task.dead` → `dlq.captured.task` and
+# `svc.sub.failed` → `dlq.captured.svc.sub`. Engine `node.failed`
+# events land too (`dlq.captured.node`) — the fragment sees the same
+# failures the engine DLQ port would, on the bus.
+#
+# Each catch also emits `dlq.event` (the v1 marker name — deliberately
+# outside `dlq.captured.**` so it isn't itself captured).
+#
+# The emitted letter types are dynamic, so this node can't satisfy a
+# strict `emits:` declaration — campaigns running `strict: true`
+# enumerate the letters they expect (ADR-0082 I-012).
+annotations:
+  title: Dead-letter capture
+  description: Re-emits *.dead/*.failed events under dlq.captured.* with payload preserved — the event log is the queue.
+  author: peregrin
+  tags: [dead-letter, dlq, resilience, preset]
+  since: "0.1.0"
+  see: project/adrs/0082-v1-architecture-inheritances-event-graph-event-type-abstraction-file-plugins-unified-drivers-self-modification-resilience-as-lib.md
+
+id: dead-letter.capture
+driver: shell
+max_fires: unlimited
+emits: [dlq.event]
+params:
+  cmd: "true"
+  timeout: 5
+  emit:
+    "0": dlq.event
+    default: dlq.event

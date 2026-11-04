@@ -1,0 +1,32 @@
+# circuit-breaker/cooldown.node.yml — sleeps `reset_after` seconds on
+# `circuit.open`, then emits `circuit.half-open`. The sleep is
+# synchronous: the sequential runner pauses the pending queue for the
+# cooldown window, so queued requests can't reach gated work until the
+# flag has armed. `disarm.node.yml` clears the flag on `half-open`.
+#
+#   - include: ../circuit-breaker/cooldown.node.yml
+#     id: mytask.circuit-cooldown
+#     on: [mytask.circuit.open]
+#     params:
+#       cmd: "sleep ${config.circuit.reset_after:-60}"
+#
+# Note: `poll:` ticks can't express this — a tick only re-fires its own
+# node and can't gate other subscribers. A blocking sleep is the honest
+# cooldown; external timers fit as a custom ingress driver instead.
+annotations:
+  title: Circuit cooldown
+  description: Sleeps reset_after seconds after circuit.open, then emits circuit.half-open.
+  author: peregrin
+  tags: [circuit-breaker, resilience, preset]
+  since: "0.1.0"
+
+id: circuit-breaker.cooldown
+driver: shell
+max_fires: unlimited
+emits: [circuit.half-open]
+params:
+  cmd: "sleep ${config.circuit.reset_after:-60}"
+  timeout: 600
+  emit:
+    "0": circuit.half-open
+    default: circuit.half-open

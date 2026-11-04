@@ -1,0 +1,40 @@
+# circuit-breaker/gate.node.yml — the work-node gate mixin. Include it
+# in a work node to make the node skip while the `.circuit.open` flag
+# file exists:
+#
+#   - include: ../circuit-breaker/gate.node.yml
+#     id: mytask.work
+#     driver: http                 # the gate keeps the parent's driver
+#     on: [mytask.request]
+#     emits: [mytask.done, mytask.failed]
+#     state:
+#       # override for a non-default flag location — must match
+#       # arm/disarm `params.dir`
+#       skip_if: "${shell('test -f /run/mytask/.circuit.open && echo 1 || echo 0')}"
+#
+# How it works: `state.key` enables the `skip_if` check (a non-empty
+# key is required for the gate to evaluate); `skip_if` shells out to
+# `test -f` — `1` skips the fire with a `node.skipped` event, `0` lets
+# it run. The `${shell(...)}` builtin needs `capabilities.shell`
+# present even outside strict mode; this preset grants it.
+#
+# A file flag stands in for `ctx.state` because no stock driver writes
+# the state store — it's the pure-YAML mutable cell, and the flag's
+# lifetime (written by `arm`, removed by `disarm`) is the breaker's
+# open window.
+annotations:
+  title: Circuit gate (skip_if mixin)
+  description: Work-node mixin — skips the fire while the circuit's .circuit.open flag file exists.
+  author: peregrin
+  tags: [circuit-breaker, resilience, gate, preset]
+  since: "0.1.0"
+  see: docs/reference/campaign-schema.md
+
+id: circuit-breaker.gate
+capabilities:
+  shell: true
+state:
+  # Arbitrary non-empty scoped-store key — required for `skip_if` to
+  # evaluate. Override per work node if it already uses `state.key`.
+  key: circuit.gate
+  skip_if: "${shell('test -f ./.circuit.open && echo 1 || echo 0')}"

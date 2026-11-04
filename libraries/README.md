@@ -9,17 +9,34 @@ workflows. Each file is a domain-namespaced artifact that the loader can
 | Directory   | Id pattern   | Purpose                                            |
 | ----------- | ------------ | -------------------------------------------------- |
 | `agent/`    | `agent.*`    | Agentic node presets: base, fix, review, generate. |
+| `circuit-breaker/` | `circuit-breaker.*` | Failure-count trip, cooldown, half-open probe, dispatch gate. |
 | `common/`   | unprefixed   | Cross-cutting, ready-made workflows.               |
+| `dead-letter/` | `dead-letter.*` | `*.dead`/`*.failed` capture, inventory, replay.  |
 | `display/`  | `display.*`  | User-facing reports and abort controls.            |
 | `git/`      | `git.*`      | Git worktrees, commits, and branches.              |
 | `github/`   | `github.*`   | GitHub PRs, reviews, and merges.                   |
 | `lang/`     | `lang.*`     | handl language reusable field patterns.            |
 | `meta/`     | `meta.*`     | Meta-operations and workspace introspection.       |
 | `peregrin/` | `peregrin.*` | Peregrin-project-specific orchestrations.          |
+| `retry/`    | `retry.*`    | Failure re-emission with an attempt budget and `.dead` terminal. |
 | `test/`     | `test.*`     | Test execution and reporting.                      |
 
 `peregrin/` is the only project-specific namespace. The rest are general
 purpose and may be copied into other projects.
+
+## Installable bundles (ADR-0079/0080)
+
+Directories carrying a `peregrin-bundle.yaml` manifest are installable
+artifacts (`peregrin install <ref>`), not loader fragments:
+
+| Directory  | Bundle    | Purpose                                                              |
+| ---------- | --------- | -------------------------------------------------------------------- |
+| `ci-gate/` | `ci-gate` | Push → worktree-at-sha → shell run → `ci/<campaign>` status gate.   |
+| `release/` | `release` | Release pipeline (tag → `cargo publish`) on release-ref pushes.      |
+
+Both document their operator params in `params.schema.json` + their
+`README.md` — see `peregrin import bupha` for the fleet-shaped
+equivalent.
 
 ## File conventions
 
@@ -113,6 +130,15 @@ The engine ignores annotations, so they have no runtime cost.
 4. Use `events` with `fields` or `schema` to define event payload contracts.
 
 ## Resilience
+
+`retry/`, `circuit-breaker/`, and `dead-letter/` are resilience
+*fragments* (ADR-0082 #6): subscriber-pattern workflows you `include:`
+at top level — the merge dedupes `nodes:` by `id`, so re-declaring a
+node replaces its wiring. Each directory is also a bundle
+(`peregrin-bundle.yaml`) and ships `.node.yml` presets for per-node
+composition plus a `.field.yml` params surface where applicable. Full
+contracts live in the `main.yaml` header comments; e2e coverage in
+`crates/peregrin-node/tests/libraries.rs`.
 
 Library nodes that run external commands or agents should set:
 

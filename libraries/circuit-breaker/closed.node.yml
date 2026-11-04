@@ -1,0 +1,32 @@
+# circuit-breaker/closed.node.yml — the recovery probe: emits
+# `circuit.closed` once a success event exists alongside
+# `circuit.half-open`. `mode: all` binds the first match per pattern,
+# so the marker means "half-open and a done seen".
+#
+#   - include: ../circuit-breaker/closed.node.yml
+#     id: mytask.circuit-closed
+#     on: [mytask.circuit.half-open, mytask.done]
+#     mode: all
+#     emits: [mytask.circuit.closed]
+#
+# Caveat: `mode: all` can't order events — a `<base>.done` logged
+# *before* the trip also satisfies the join, so `circuit.closed` may
+# fire at `half-open` itself when earlier successes exist. For strict
+# post-half-open semantics, scope the contract per circuit run.
+annotations:
+  title: Circuit recovery probe
+  description: Emits circuit.closed when a success is seen alongside circuit.half-open.
+  author: peregrin
+  tags: [circuit-breaker, resilience, preset]
+  since: "0.1.0"
+
+id: circuit-breaker.closed
+driver: shell
+max_fires: 1
+emits: [circuit.closed]
+params:
+  cmd: "true"
+  timeout: 5
+  emit:
+    "0": circuit.closed
+    default: circuit.closed

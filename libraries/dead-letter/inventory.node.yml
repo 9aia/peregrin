@@ -1,0 +1,23 @@
+# dead-letter/inventory.node.yml — re-emits `dlq.stored` every time a
+# letter lands, carrying the whole queue in `payload.triggers` (full
+# `{type, source, payload}` envelopes, oldest first). Ops nodes,
+# dashboards and replay requesters read the queue from the latest
+# `dlq.stored` instead of touching the store directly.
+#
+#   - include: ../dead-letter/inventory.node.yml
+#     id: my.dlq-inventory
+#     on: ["dlq.captured.**"]
+#     fan_in:
+#       count: 1              # ≥1 letter → emit the inventory
+#       emit: dlq.stored
+#     emits: [dlq.stored]
+annotations:
+  title: Dead-letter inventory
+  description: Emits dlq.stored — a snapshot of every captured letter — on each new capture.
+  author: peregrin
+  tags: [dead-letter, dlq, resilience, preset]
+  since: "0.1.0"
+
+id: dead-letter.inventory
+driver: noop
+max_fires: unlimited

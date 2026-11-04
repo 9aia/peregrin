@@ -1,0 +1,29 @@
+# circuit-breaker.field.yml — the `config.circuit` params surface as a
+# reusable handl field pattern (same convention as `libraries/lang/`).
+#
+#   fields:
+#     include: ./circuit-breaker.field.yml
+#
+#   config:
+#     circuit:
+#       threshold: 5
+#       reset_after: 120
+#
+# `threshold` feeds `fan_in.count_from: circuit.threshold` in
+# `trip.node.yml`; `reset_after` feeds `params.cmd` in
+# `cooldown.node.yml`.
+
+fields:
+  circuit:
+    type: object
+    fields:
+      # Failures (cumulative, in the run log) before circuit.open.
+      threshold: { type: number }
+      # Cooldown seconds between circuit.open and circuit.half-open.
+      reset_after: { type: number }
+      # Event-contract names when wiring a non-default base.
+      open: { type: string }
+      half_open: { type: string }
+      closed: { type: string }
+      request: { type: string }
+      dispatch: { type: string }

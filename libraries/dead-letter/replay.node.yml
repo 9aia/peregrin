@@ -1,0 +1,32 @@
+# dead-letter/replay.node.yml — replay a letter into its work queue:
+# `dlq.replay-requested.<name>` re-emits as `<name>.request` with the
+# request's payload. The requester copies the letter payload out of
+# `dlq.captured.<name>` / `dlq.stored.triggers` into the request — the
+# fragment re-issues it verbatim.
+#
+#   - include: ../dead-letter/replay.node.yml
+#     id: my.dlq-replay
+#     on: ["dlq.replay-requested.*"]
+#     forward: ["*.request"]    # <name> → <name>.request
+#     emits: [dlq.replayed]
+#
+# `dlq.replay-requested.task` → `task.request`. For an automatic
+# oldest-letter replay that needs no payload copying, use
+# `replay-stored.node.yml` instead.
+annotations:
+  title: Dead-letter replay
+  description: Re-emits dlq.replay-requested.<name> as <name>.request carrying the request payload.
+  author: peregrin
+  tags: [dead-letter, dlq, replay, resilience, preset]
+  since: "0.1.0"
+
+id: dead-letter.replay
+driver: shell
+max_fires: unlimited
+emits: [dlq.replayed]
+params:
+  cmd: "true"
+  timeout: 5
+  emit:
+    "0": dlq.replayed
+    default: dlq.replayed

@@ -1,0 +1,32 @@
+# circuit-breaker/probe.node.yml — the half-open trial: re-issues one
+# dispatch when the circuit half-opens. It forwards onto the *dispatch*
+# channel (not the raw request channel) so only one trial reaches the
+# gated worker; success feeds `closed.node.yml`.
+#
+#   - include: ../circuit-breaker/probe.node.yml
+#     id: mytask.circuit-probe
+#     on: [mytask.circuit.half-open]
+#     forward: [mytask.dispatch]
+#     until: [mytask.circuit.closed]
+#     max_fires: 1
+#
+# A failed trial stays logged — the cumulative `fan_in` counter can't
+# re-trip, so this fragment is one-cycle-per-run. The engine's
+# `circuit_breaker:` node field covers consecutive-failure re-arming.
+annotations:
+  title: Circuit half-open probe
+  description: Re-issues one dispatch when the circuit half-opens — the single allowed trial.
+  author: peregrin
+  tags: [circuit-breaker, resilience, preset]
+  since: "0.1.0"
+
+id: circuit-breaker.probe
+driver: shell
+max_fires: 1
+emits: [circuit.probing]
+params:
+  cmd: "true"
+  timeout: 5
+  emit:
+    "0": circuit.probing
+    default: circuit.probing

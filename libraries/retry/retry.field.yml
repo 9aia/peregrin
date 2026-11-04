@@ -1,0 +1,30 @@
+# retry.field.yml — the `config.retry` params surface as a reusable
+# handl field pattern (same convention as `libraries/lang/`).
+#
+# Include in any document that wants a typed retry config block:
+#
+#   fields:
+#     include: ./retry.field.yml
+#
+#   config:
+#     retry:
+#       max_attempts: 5
+#       delay: 0.5
+#
+# The values feed `fan_in.count_from: retry.max_attempts` in
+# `dead.node.yml` and `params.cmd` in `delay.node.yml`.
+
+fields:
+  retry:
+    type: object
+    fields:
+      # Total attempts before `<base>.dead` — also the literal
+      # `max_fires` bound on the forwarder minus one.
+      max_attempts: { type: number }
+      # Backoff seconds consumed by `delay.node.yml`.
+      delay: { type: number }
+      # Event-contract names when wiring a non-default base.
+      request: { type: string }
+      failed: { type: string }
+      done: { type: string }
+      dead: { type: string }

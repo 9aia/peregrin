@@ -1,0 +1,35 @@
+# circuit-breaker/arm.node.yml — writes the open flag the moment the
+# circuit trips. `gate.node.yml`'s `skip_if` checks for this flag file
+# on every gated fire, so work nodes skip while the flag exists.
+#
+#   - include: ../circuit-breaker/arm.node.yml
+#     id: mytask.circuit-arm
+#     on: [mytask.circuit.open]
+#     params:
+#       dir: /run/mytask           # flag lives at <dir>/.circuit.open
+#
+# The flag is a *file*, not `ctx.state` — no stock driver writes the
+# state store, so a filesystem marker is the pure-YAML equivalent. The
+# flag must therefore live somewhere the run can write; `params.dir`
+# (default `.`) is interpolated into `cmd` via `${params.dir}`.
+annotations:
+  title: Circuit arm (open flag)
+  description: Writes the .circuit.open flag file gating nodes check via skip_if.
+  author: peregrin
+  tags: [circuit-breaker, resilience, preset]
+  since: "0.1.0"
+
+id: circuit-breaker.arm
+driver: shell
+max_fires: unlimited
+emits: [circuit.armed]
+params:
+  # Directory the `.circuit.open` flag is written into — keep it in
+  # sync with `gate.node.yml`'s `state.skip_if` path and
+  # `disarm.node.yml`'s `params.dir`.
+  dir: "."
+  cmd: 'echo 1 > "${params.dir:-.}/.circuit.open"'
+  timeout: 5
+  emit:
+    "0": circuit.armed
+    default: circuit.armed

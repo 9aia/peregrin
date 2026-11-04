@@ -1,0 +1,31 @@
+# circuit-breaker/trip.node.yml — the trip counter: emits
+# `circuit.open` once the failure event has been published N times.
+#
+# Part of `libraries/circuit-breaker` (see `main.yaml`). `fan_in`
+# counts matching events in the run log — the log is the failure
+# record, no engine breaker state involved.
+#
+#   - include: ../circuit-breaker/trip.node.yml
+#     id: mytask.circuit
+#     on: [mytask.failed]
+#     fan_in:
+#       count_from: circuit.threshold   # or `count: 5`
+#       emit: mytask.circuit.open
+#     emits: [mytask.circuit.open]
+#
+# Semantics note: the count is *cumulative* over the run — the append
+# -only log cannot express "consecutive" or reset-on-success. One trip
+# per run (max_fires: 1); the engine's `circuit_breaker:` node field is
+# the right tool when consecutive-failure counting and automatic reset
+# are required. See ADR-0082 #6.
+annotations:
+  title: Circuit trip counter
+  description: Emits circuit.open once the failure event count reaches the configured threshold.
+  author: peregrin
+  tags: [circuit-breaker, resilience, preset]
+  since: "0.1.0"
+  see: docs/reference/on-grammar.md#fan_in
+
+id: circuit-breaker.trip
+driver: noop
+max_fires: 1

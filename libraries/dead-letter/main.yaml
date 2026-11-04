@@ -1,0 +1,74 @@
+# libraries/dead-letter/main.yaml — the dead-letter fragment. Include
+# at top level:
+#
+#   include: [/path/to/libraries/dead-letter/main.yaml]
+#
+# Contract:
+#   **.dead / **.failed           the catch — terminal failure events
+#                                 (engine `node.failed` included)
+#   dlq.captured.<prefix>         a stored letter — the failure payload
+#                                 rides verbatim (`forward:`); the log
+#                                 is the queue (durable under a JSONL
+#                                 event store)
+#   dlq.event                     marker — one per capture (v1 name)
+#   dlq.stored                    inventory snapshot — {count,
+#                                 triggers:[envelopes]} re-emitted per
+#                                 new letter
+#   dlq.replay-requested.<name>   replay request — replays as
+#                                 <name>.request (payload copied from
+#                                 the letter by the requester)
+#   replay.<name>                 stored-letter replay — the oldest
+#                                 captured letter re-emitted with its
+#                                 stored payload (mode: all join)
+#   dlq.replayed                  marker — one per replay node fire
+#
+# The engine's `DeadLetterQueue` port still records retry-exhausted
+# `node.failed` events internally; this fragment is the bus-level
+# equivalent — letters are ordinary events subscribers can see,
+# transform, and replay without `&mut` store access.
+#
+# Customise by re-declaring node ids (deep-merge dedupes `nodes:` by
+# id, local wins) or by including the `.node.yml` presets directly —
+# e.g. narrower `on:` patterns, a different letter namespace, or
+# `retire_on`/`max_fires` on the stored replay.
+#
+# Load via `include:` rather than running this file directly: loading
+# it as the top document auto-discovers the sibling `*.node.yml`
+# presets into `nodes:`.
+name: dead-letter
+
+annotations:
+  title: Dead-letter fragment
+  description: Captures terminal failure events under dlq.captured.*, exposes a dlq.stored inventory, and replays letters on request. Resilience as library, per ADR-0082.
+  author: peregrin
+  tags: [dead-letter, dlq, resilience, fragment]
+  since: "0.1.0"
+  kind: fragment
+
+nodes:
+  - include: ./capture.node.yml
+    id: dead-letter.capture
+    on: ["**.dead", "**.failed"]
+    forward: ["dlq.captured.**"]
+    emits: [dlq.event]
+
+  - include: ./inventory.node.yml
+    id: dead-letter.inventory
+    on: ["dlq.captured.**"]
+    fan_in:
+      count: 1
+      emit: dlq.stored
+    emits: [dlq.stored]
+
+  - include: ./replay.node.yml
+    id: dead-letter.replay
+    on: ["dlq.replay-requested.*"]
+    forward: ["*.request"]
+    emits: [dlq.replayed]
+
+  - include: ./replay-stored.node.yml
+    id: dead-letter.replay-stored
+    on: ["dlq.replay-requested.*", "dlq.captured.**"]
+    mode: all
+    forward: ["replay.**"]
+    emits: [dlq.replayed]

@@ -1,0 +1,7 @@
+name: retry
+version: "0.1.0"
+description: >-
+  Subscriber-pattern retry fragment — re-emits a work request on each
+  failure event up to a configured attempt budget, then emits a
+  terminal dead event. Resilience as library, per ADR-0082.
+include: []

@@ -1,0 +1,101 @@
+# libraries/circuit-breaker/main.yaml — the circuit-breaker fragment,
+# wired on the default `task.*`/`circuit.*` contract. Include at top
+# level:
+#
+#   include: [/path/to/libraries/circuit-breaker/main.yaml]
+#
+# Contract:
+#   <base>.request     work request (ungated channel)
+#   <base>.dispatch    gated work trigger — gate-aware workers
+#                      subscribe this, not <base>.request
+#   <base>.failed      failure — counted toward the trip
+#   <base>.done        success — feeds the recovery probe
+#   circuit.open       emitted when <base>.failed reaches the threshold
+#   circuit.half-open  emitted after the cooldown sleep
+#   circuit.closed     emitted when a <base>.done exists post-half-open
+#
+# Lifecycle: failures accumulate → circuit.open → dispatch stops
+# forwarding requests + cooldown sleeps → circuit.half-open → probe
+# re-issues one dispatch → on success circuit.closed.
+#
+# One cycle per run: `fan_in` counts log events cumulatively and
+# `until` is one-way, so this is a single open→half-open→(trial)→closed
+# pass. The engine's `circuit_breaker:` node field covers
+# consecutive-failure counting and automatic re-arming.
+#
+# Customise by re-declaring node ids (deep-merge dedupes `nodes:` by
+# id, local wins) or by including the `.node.yml` presets directly.
+# The `gate.node.yml` mixin adds file-flag `skip_if` gating to a work
+# node — it catches requests published between arm and disarm (queued
+# bursts, ingress producers); the `dispatch` channel is the gate for
+# the sequential runner.
+#
+# Load via `include:` rather than running this file directly: loading
+# it as the top document auto-discovers the sibling `*.node.yml`
+# presets into `nodes:`.
+name: circuit-breaker
+
+annotations:
+  title: Circuit-breaker fragment
+  description: Trips a circuit.open after N failures, half-opens after a cooldown, probes once, closes on success. Resilience as library, per ADR-0082.
+  author: peregrin
+  tags: [circuit-breaker, resilience, fragment]
+  since: "0.1.0"
+  kind: fragment
+
+config:
+  circuit:
+    threshold: 3
+    reset_after: 60
+
+nodes:
+  # --- trip: count failures, emit circuit.open ---------------------
+  - include: ./trip.node.yml
+    id: circuit-breaker.trip
+    on: [task.failed]
+    fan_in:
+      count_from: circuit.threshold
+      emit: circuit.open
+    emits: [circuit.open]
+
+  # --- arm: write the open flag for gate.node.yml users ------------
+  - include: ./arm.node.yml
+    id: circuit-breaker.arm
+    on: [circuit.open]
+    emits: [circuit.armed]
+
+  # --- cooldown: sleep reset_after, emit circuit.half-open ---------
+  - include: ./cooldown.node.yml
+    id: circuit-breaker.cooldown
+    on: [circuit.open]
+    until: [circuit.half-open]
+    emits: [circuit.half-open]
+
+  # --- disarm: clear the flag on half-open --------------------------
+  - include: ./disarm.node.yml
+    id: circuit-breaker.disarm
+    on: [circuit.half-open]
+    emits: [circuit.disarmed]
+
+  # --- gate: forward requests to the dispatch channel until open ----
+  - include: ./dispatch.node.yml
+    id: circuit-breaker.dispatch
+    on: [task.request]
+    forward: [task.dispatch]
+    until: [circuit.open]
+    emits: [circuit.dispatching, task.dispatch]
+
+  # --- probe: one dispatch trial on half-open -----------------------
+  - include: ./probe.node.yml
+    id: circuit-breaker.probe
+    on: [circuit.half-open]
+    forward: [task.dispatch]
+    until: [circuit.closed]
+    emits: [circuit.probing, task.dispatch]
+
+  # --- closed: recovery probe on half-open + done -------------------
+  - include: ./closed.node.yml
+    id: circuit-breaker.closed
+    on: [circuit.half-open, task.done]
+    mode: all
+    emits: [circuit.closed]

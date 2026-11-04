@@ -1,0 +1,7 @@
+name: circuit-breaker
+version: "0.1.0"
+description: >-
+  Subscriber-pattern circuit-breaker fragment — trips circuit.open
+  after a threshold of failures, half-opens after a cooldown, probes
+  once, closes on success. Resilience as library, per ADR-0082.
+include: []

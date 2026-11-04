@@ -1,0 +1,39 @@
+# dead-letter/replay-stored.node.yml — automatic stored-letter replay:
+# `mode: all` joins a replay request with the captured-letter log and
+# re-emits the *oldest* captured letter as `replay.<name>` with its
+# stored payload — no payload copying needed.
+#
+#   - include: ../dead-letter/replay-stored.node.yml
+#     id: my.dlq-replay-stored
+#     on: ["dlq.replay-requested.*", "dlq.captured.**"]
+#     mode: all
+#     forward: ["replay.**"]
+#
+# Per `dlq.replay-requested.<name>` two events land: `replay.<name>`
+# (the request echo, request payload) and `replay.<letter>` (the
+# replay, stored payload). Semantics caveats, honest ones:
+#
+# - The log is append-only: letters don't pop, so every request
+#   re-emits the *first* captured letter — "replay oldest", once per
+#   request.
+# - After the first request arms the join, each *new* captured letter
+#   also re-fires the node (mode: all stays satisfied), re-emitting
+#   the oldest letter again. Cap with `max_fires` or retire with
+#   `retire_on` if your consumer can't absorb repeats.
+annotations:
+  title: Dead-letter stored replay
+  description: mode:all join — re-emits the oldest captured letter as replay.<name> on each replay request.
+  author: peregrin
+  tags: [dead-letter, dlq, replay, resilience, preset]
+  since: "0.1.0"
+
+id: dead-letter.replay-stored
+driver: shell
+max_fires: unlimited
+emits: [dlq.replayed]
+params:
+  cmd: "true"
+  timeout: 5
+  emit:
+    "0": dlq.replayed
+    default: dlq.replayed

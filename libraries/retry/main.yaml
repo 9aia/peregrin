@@ -1,0 +1,71 @@
+# libraries/retry/main.yaml — the retry fragment, wired on the default
+# `task.*` event contract. A campaign gains retry behaviour by
+# including this file at top level:
+#
+#   include: [/path/to/libraries/retry/main.yaml]
+#
+# and speaking the contract from its worker nodes:
+#
+#   <base>.request   work trigger — payload rides through each retry
+#                    verbatim (`forward:` preserves it, so an `attempt`
+#                    field the worker maintains re-enters each attempt)
+#   <base>.failed    failure — retried while the attempt budget lasts
+#   <base>.done      success — stops the loop
+#   <base>.dead      terminal — emitted when <base>.failed reaches the
+#                    budget; payload {count, triggers} holds the failures
+#   retry.scheduled  marker — one per re-emission
+#
+# The worker contract: emit `<base>.failed` on failure with the request
+# context in the payload (an `attempt` counter it increments), and
+# `<base>.done` on success.
+#
+# Customise by re-declaring the node ids — deep-merge dedupes `nodes:`
+# by `id` and keeps the local definition, so a campaign entry named
+# `retry.loop`/`retry.dead` with its own `on:`/`forward:`/`until:`/
+# `fan_in:` replaces the default wiring. For per-key control include
+# the `.node.yml` presets directly instead. For backoff, point
+# `retry.loop`'s `forward:` at `<base>.retry-wait` and add
+# `delay.node.yml` between wait and request.
+#
+# Budget invariant: `retry.loop.max_fires` = `config.retry.max_attempts`
+# − 1. `max_fires` can't read config, so keep the two in sync by hand —
+# the forwarder bounds re-emissions, `retry.dead` bounds the failure
+# count that seals the run.
+#
+# Load via `include:` rather than running this file directly: loading
+# it as the top document auto-discovers the sibling `*.node.yml`
+# presets into `nodes:`.
+name: retry
+
+annotations:
+  title: Retry fragment
+  description: Re-emits a work request on each failure up to a configured attempt budget, then emits a terminal dead event. Resilience as library, per ADR-0082.
+  author: peregrin
+  tags: [retry, resilience, fragment]
+  since: "0.1.0"
+  kind: fragment
+
+config:
+  retry:
+    max_attempts: 3
+    # Seconds the optional delay.node.yml sleeps between failure and
+    # re-emission; unused in this direct-forward wiring.
+    delay: 0
+
+nodes:
+  - include: ./retry.node.yml
+    id: retry.loop
+    on: [task.failed]
+    forward: [task.request]
+    until: [task.done, task.dead]
+    emits: [retry.scheduled, task.request]
+    max_fires: 2 # = config.retry.max_attempts - 1
+
+  - include: ./dead.node.yml
+    id: retry.dead
+    on: [task.failed]
+    until: [task.done]
+    fan_in:
+      count_from: retry.max_attempts
+      emit: task.dead
+    emits: [task.dead]
