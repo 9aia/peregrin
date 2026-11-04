@@ -33,11 +33,18 @@ pub fn run(
         Some(path) => load_replay(path)?,
         None => Vec::new(),
     };
-    let options = RunOptions {
+    let mut options = RunOptions {
         dry_run,
         replay_events,
         ..RunOptions::default()
     };
+    // The env file is the always-available secrets leg — explicit
+    // callers pre-fill `secrets` to override.
+    for (k, v) in
+        peregrin_node::campaign::secrets_from_env_file(&peregrin_node::campaign::env_file())
+    {
+        options.secrets.entry(k).or_insert(v);
+    }
     let campaign = peregrin_node::campaign::load(workflow).map_err(|e| CliError(e.to_string()))?;
     // Ingress variants: `github-webhook`/`sturn-poll` nodes get a
     // run-scoped `Injector`, and a campaign declaring one serves

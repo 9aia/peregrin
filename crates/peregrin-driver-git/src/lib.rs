@@ -425,6 +425,30 @@ fn emit_mapped(emit: &Map<String, Value>, rc: i64) -> Option<String> {
         .map(str::to_string)
 }
 
+/// `owner/name` out of a clone source — https, ssh (`git@host:`),
+/// scp-style, or a local path (basename's parent/name). Trailing
+/// `.git` and `/` are stripped; an unparseable source yields `""`
+/// (the caller's `params.repo` override remains the accurate path).
+fn repo_from_url(source: &str) -> String {
+    let trimmed = source.trim_end_matches('/').trim_end_matches(".git");
+    let after_scheme = trimmed.rsplit_once("://").map_or(trimmed, |(_, rest)| rest);
+    let path = match after_scheme.rsplit_once(':') {
+        Some((host, rest)) if !rest.contains('/') => format!("{host}/{rest}"),
+        Some((_, rest)) => rest.to_string(),
+        None => after_scheme.to_string(),
+    };
+    let segments: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    if segments.len() >= 2 {
+        format!(
+            "{}/{}",
+            segments[segments.len() - 2],
+            segments[segments.len() - 1]
+        )
+    } else {
+        segments.last().map_or(String::new(), |s| (*s).to_string())
+    }
+}
+
 /// The emitted `node.failed` for materialization/inner failures —
 /// the event-path failure (driver errors are reserved for params
 /// that couldn't produce a run at all).
@@ -562,6 +586,12 @@ impl<G: Git + Clone> Driver for GitDriver<G> {
         let creds = cred_args(&params, ctx, &*self.effects);
 
         // --- materialize: repo → resolved sha → detached worktree ----
+        // `repo` echoes the logical owner/name (`params.repo`, else
+        // derived from the clone source) into every emitted payload so
+        // downstream routing can carry it — e.g. ci-gate's failmap
+        // re-types `node.failed` as `.failed.<sha>.<repo>`.
+        let repo_label =
+            non_empty_str(&params, "repo").map_or_else(|| repo_from_url(&source), str::to_string);
         let facts = |worktree: &Path| {
             Map::from_iter([
                 (
@@ -569,6 +599,7 @@ impl<G: Git + Clone> Driver for GitDriver<G> {
                     Value::String(worktree.display().to_string()),
                 ),
                 ("sha".to_string(), Value::String(sha.clone())),
+                ("repo".to_string(), Value::String(repo_label.clone())),
             ])
         };
         let fail = |error: String| -> DriverError { DriverError::new(error) };

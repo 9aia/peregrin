@@ -332,7 +332,8 @@ impl Runner {
         // every injector going away, or never. Finite campaigns are
         // unaffected — `serve` is false and the quiet break below
         // fires exactly as before.
-        let serve = self.ingress.is_some()
+        let serve = !options.dry_run
+            && self.ingress.is_some()
             && campaign.nodes.iter().any(|node| {
                 self.registry
                     .resolve(&node.driver)

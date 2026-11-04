@@ -582,6 +582,17 @@ pub fn create(
                 .map(str::to_string)
         })
         .collect();
+    // The forge token completes the name list before the doc writes —
+    // `capabilities.secrets` below grants exactly these names (a
+    // bundle never self-grants; the operator's materialization does).
+    if let Some(token) = config.get("token_env").and_then(Value::as_str) {
+        secrets.push(token.to_string());
+    } else if !secrets.is_empty() {
+        secrets.push(DEFAULT_TOKEN_ENV.to_string());
+    }
+    secrets.sort();
+    secrets.dedup();
+
     let mut nodes = Vec::new();
     if !watches.is_empty() {
         nodes.push(json!({
@@ -604,6 +615,14 @@ pub fn create(
     );
     doc.insert("include".into(), json!([workflow.to_string_lossy()]));
     doc.insert("config".into(), Value::Object(config.clone()));
+    if !secrets.is_empty() {
+        doc.insert(
+            "capabilities".into(),
+            json!({ "secrets": Value::Array(
+                secrets.iter().map(|s| Value::String(s.clone())).collect(),
+            ) }),
+        );
+    }
     if !nodes.is_empty() {
         doc.insert("nodes".into(), Value::Array(nodes));
     }
@@ -644,15 +663,8 @@ pub fn create(
     )
     .map_err(|e| CliError(format!("write unit: {e}")))?;
 
-    // Every secret NAME the deployment references — webhook secrets
-    // per repo plus the forge token.
-    if let Some(token) = config.get("token_env").and_then(Value::as_str) {
-        secrets.push(token.to_string());
-    } else if !secrets.is_empty() {
-        secrets.push(DEFAULT_TOKEN_ENV.to_string());
-    }
-    secrets.sort();
-    secrets.dedup();
+    // The env skeleton lists the same names `capabilities.secrets`
+    // grants — collected above (webhook per-repo + forge token).
     if let Some(env_path) = write_env_skeleton(env, &secrets)? {
         println!("env file: {} (fill the secrets)", env_path.display());
     }

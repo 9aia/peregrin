@@ -178,7 +178,10 @@ pub fn env_file() -> PathBuf {
 /// `KEY=VAL` file → secrets record. Absent/malformed lines are
 /// skipped — the file is the always-available fallback, not the
 /// whole chain (explicit `RunOptions.secrets` entries still win).
-fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
+/// [`run`] uses this against [`env_file`]; callers that build their
+/// own `RunOptions` (the CLI) fold it in the same way.
+#[must_use]
+pub fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
     std::fs::read_to_string(path)
         .unwrap_or_default()
         .lines()

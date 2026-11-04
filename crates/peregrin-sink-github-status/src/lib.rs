@@ -441,12 +441,21 @@ impl Driver for GithubStatusSink {
     ) -> Result<Vec<Event>, DriverError> {
         let params = self.resolve_params(node, triggers, ctx)?;
 
-        // `status_repo` — the bupha redirect — wins over `repo`.
+        // `status_repo` — the bupha redirect — wins over `repo`. An
+        // empty `status_repo` (the usual `"${config.status_repo}"`
+        // wiring when the operator doesn't set it) is a non-override,
+        // not a missing-repo error: filter it *before* the fallback
+        // so `Some("")` doesn't shadow a populated `repo`.
         let repo = params
             .get("status_repo")
-            .or_else(|| params.get("repo"))
             .and_then(Value::as_str)
             .filter(|repo| !repo.is_empty())
+            .or_else(|| {
+                params
+                    .get("repo")
+                    .and_then(Value::as_str)
+                    .filter(|repo| !repo.is_empty())
+            })
             .map(str::to_string);
         let Some(repo) = repo else {
             return Err(DriverError::new(format!(

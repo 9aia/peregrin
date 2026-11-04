@@ -890,7 +890,7 @@ impl Driver for SlowDriver {
 #[test]
 fn push_reaches_the_runner_through_with_ingress() {
     let (injector, chan) = ingress();
-    let driver = Arc::new(GithubWebhookDriver::new(injector));
+    let driver = Arc::new(GithubWebhookDriver::new(injector.clone()));
     let registry = Registry::default()
         .with("github-webhook", driver.clone())
         .with("noop", Arc::new(NoopDriver))
@@ -939,6 +939,13 @@ fn push_reaches_the_runner_through_with_ingress() {
             };
             let (status, text) = post_push(&format!("http://{addr}/hook"), SECRET, &push_body());
             assert_eq!((status, text.as_str()), (202, "queued"));
+            // The campaign declares an ingress driver → the run serves;
+            // cancel is the in-band exit. `slow` (600ms) holds the run
+            // thread, so push+cancel must land in *separate* drains —
+            // cancel inside `slow`'s sleep window would ride the same
+            // batch and starve `build` before its ready step.
+            std::thread::sleep(Duration::from_millis(750));
+            injector.inject(Event::cancel("test done")).unwrap();
         });
         runner
             .run(
@@ -966,5 +973,5 @@ fn push_reaches_the_runner_through_with_ingress() {
     // The `build` node (noop) fired on the injected push — noop's
     // done event is literally `node.done`.
     assert!(kinds.contains(&"node.done"), "{}", kinds.join(", "));
-    assert_eq!(log.last().unwrap().kind, "workflow.done");
+    assert_eq!(log.last().unwrap().kind, "workflow.cancelled");
 }

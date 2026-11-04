@@ -12,7 +12,7 @@
 #
 # Mechanics: `on:` matches event *types* only, so the match node
 # re-emits the gated push as a routed type
-# `push.gated.<clone_url>.<sha>` — the payload fields ride the type
+# `push.gated.<repo>.<clone_url>.<sha>` — the payload fields ride the type
 # (the emit value is template-resolved at fire time) and downstream
 # nodes recover them via `${event.match.N}` captures. `**` re-joins
 # clone_url's `.`-separated segments; the trailing `*` is the sha.
@@ -24,7 +24,7 @@ config:
   name: ci-gate                     # status context base: ci/<name>
   repo: ""                          # owner/name to gate; "" = any watched repo
   ref: "refs/heads/main"            # the ref to gate
-  status_repo: ""                   # bupha's redirect; "" = config.repo
+  status_repo: ""                   # bupha's redirect; "" = the pushed repo
   cmd: "bash scripts/ci.sh"         # the gate command (runs inside the worktree)
   worktree_base: "~/.local/share/peregrin/worktrees"
   token_env: "GITHUB_TOKEN"         # NAME of the forge-token secret — never a value
@@ -48,8 +48,8 @@ annotations:
 
 nodes:
   # Gate on repo + ref and re-route the push as a typed event
-  # carrying clone_url + sha (type segments — payload fields don't
-  # survive a re-emit). Unmatched pushes emit `push.unmatched` and die
+  # carrying repo + clone_url + sha (type segments — payload fields
+  # don't survive a re-emit). Unmatched pushes emit `push.unmatched` and die
   # there. `config.repo == ""` gates every repo the ingress watches.
   - id: ci-gate.match
     driver: shell
@@ -61,21 +61,22 @@ nodes:
         if [ -n "${config.repo}" ] && [ "${event.payload.repo}" != "${config.repo}" ]; then exit 9; fi
         [ "${event.payload.ref}" = "${config.ref:-refs/heads/main}" ]
       emit:
-        "0": "push.gated.${event.payload.clone_url}.${event.payload.sha}"
+        "0": "push.gated.${event.payload.repo}.${event.payload.clone_url}.${event.payload.sha}"
         default: "push.unmatched"
 
   # Commit-status `pending` the moment a push is gated — fires on the
-  # routed event (before the build in node order). sha is capture 2 of
-  # `push.gated.<clone_url>.<sha>` (clone_url's dots split segments —
-  # the `**` capture re-joins them).
+  # routed event (before the build in node order). repo/sha are
+  # captures 1/3 of `push.gated.<repo>.<clone_url>.<sha>` (clone_url's
+  # dots split segments — the `**` capture re-joins them).
   - id: ci-gate.pending
     driver: github-status
-    on: [push.gated.**.*]
+    on: [push.gated.*.**.*]
     max_fires: unlimited
     emits: [ci-gate.status-posted]
     params:
-      repo: "${config.status_repo:-${config.repo}}"
-      sha: "${event.match.2}"
+      repo: "${event.match.1}"
+      status_repo: "${config.status_repo}"
+      sha: "${event.match.3}"
       state: pending
       context: "ci/${config.name}"
       token_env: "${config.token_env}"
@@ -87,12 +88,13 @@ nodes:
   # record → ambient env, audited on miss) — never literal secrets.
   - id: ci-gate.build
     driver: git
-    on: [push.gated.**.*]
+    on: [push.gated.*.**.*]
     max_fires: unlimited
     emits: [ci-gate.done, ci-gate.failed]
     params:
-      url: "${event.match.1}"
-      sha: "${event.match.2}"
+      url: "${event.match.2}"
+      sha: "${event.match.3}"
+      repo: "${event.match.1}"
       base: "${config.worktree_base:-~/.local/share/peregrin/worktrees}"
       token_env: "${config.token_env:-GITHUB_TOKEN}"
       inner:
@@ -101,23 +103,24 @@ nodes:
           cmd: "${config.cmd}"
           timeout: "${config.timeout:-600}"
       emit:
-        "0": ci-gate.done
-        default: ci-gate.failed
+        "0": "ci-gate.done.${event.match.3}.${event.match.1}"
+        default: "ci-gate.failed.${event.match.3}.${event.match.1}"
 
   # driver-git emits plain `node.failed` for clone/checkout/
   # materialization failures — not the emit-mapped `ci-gate.failed`.
-  # Remap any node.failed that carries {node, sha} onto
-  # `<node>.failed.<sha>` so the status sink sees materialization
-  # failures too (sha rides the type; a missing sha keeps the event
-  # unmapped rather than posting a status against an empty commit).
+  # Remap any node.failed that carries {node, sha, repo} onto
+  # `ci-gate.failed.<sha>.<repo>` — the same shape the build emit-map
+  # produces — so the status sink sees materialization failures too
+  # (repo+sha ride the type; a missing repo keeps the event unmapped
+  # rather than posting a status against an empty commit).
   - id: ci-gate.failmap
     driver: shell
     on: [node.failed]
     max_fires: unlimited
     params:
-      cmd: 'test -n "${event.payload.node}" && test -n "${event.payload.sha}"'
+      cmd: 'test -n "${event.payload.sha}" && test -n "${event.payload.repo}"'
       emit:
-        "0": "${event.payload.node}.failed.${event.payload.sha}"
+        "0": "ci-gate.failed.${event.payload.sha}.${event.payload.repo}"
         default: "ci-gate.unmapped"
 
   # The verdict sink — `ci/<campaign>` context (ADR-0081: deterministic
@@ -125,15 +128,16 @@ nodes:
   # success, `.failed` → failure, `failed.<sha>` (a materialization
   # failure re-mapped by ci-gate.failmap) → error. sha comes from the
   # done/failed payload, or the trailing type segment for mapped
-  # failures — the `:-` default re-resolves `${event.match.1}`.
+  # failures — sha/repo are captures 1/2 of the typed emit.
   - id: ci-gate.status
     driver: github-status
-    on: [ci-gate.done, ci-gate.failed, ci-gate.failed.*]
+    on: [ci-gate.done.*.*, ci-gate.failed.*.*]
     max_fires: unlimited
     emits: [ci-gate.status-posted]
     params:
-      repo: "${config.status_repo:-${config.repo}}"
-      sha: "${event.payload.sha:-${event.match.1}}"
+      repo: "${event.match.2}"
+      status_repo: "${config.status_repo}"
+      sha: "${event.match.1}"
       context: "ci/${config.name}"
       token_env: "${config.token_env}"
       description: "${event.type}"

@@ -819,7 +819,7 @@ fn runner_drains_poller_events_into_the_graph() {
     let registry = Registry::default()
         .with("noop", Arc::new(NoopDriver))
         .with("slow", Arc::new(SlowDriver))
-        .with("sturn-poll", Arc::new(SturnDriver::new(injector)));
+        .with("sturn-poll", Arc::new(SturnDriver::new(injector.clone())));
     let campaign = YamlLoader
         .load_str(
             &format!(
@@ -850,12 +850,16 @@ fn runner_drains_poller_events_into_the_graph() {
         .unwrap();
     let mut runner = Runner::new(registry).with_ingress(chan);
     let log = thread::scope(|scope| {
-        scope.spawn(|| {
+        scope.spawn(move || {
             // Well past the poller's baseline seed, well inside the
             // slow node's sleep — the injected wal.update must land
             // while the run is still draining.
             thread::sleep(Duration::from_millis(300));
             bump(&work, "refs/sturn/wal/dev");
+            // The campaign declares an ingress driver → the run
+            // serves; give the bump time to poll+route, then cancel.
+            thread::sleep(Duration::from_millis(500));
+            injector.inject(Event::cancel("test done")).unwrap();
         });
         runner.run(&campaign, &RunOptions::default()).unwrap()
     });
@@ -871,5 +875,5 @@ fn runner_drains_poller_events_into_the_graph() {
         .iter()
         .find(|e| e.kind == "node.done" && e.source == "gate");
     assert!(gate_done.is_some(), "gate fired on wal.update");
-    assert_eq!(log.last().unwrap().kind, "workflow.done");
+    assert_eq!(log.last().unwrap().kind, "workflow.cancelled");
 }

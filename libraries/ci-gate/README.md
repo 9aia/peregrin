@@ -69,7 +69,7 @@ Ingress params live on the webhook node (`repos[].name`,
 ## Event routing
 
 `on:` matches event *types* only, so `ci-gate.match` re-emits a gated
-push as `push.gated.<clone_url>.<sha>` — fields ride the type and
+push as `push.gated.<repo>.<clone_url>.<sha>` — fields ride the type and
 downstream nodes recover them via `${event.match.1}`/`${event.match.2}`
 (`**` re-joins clone_url's `.`-separated segments).
 
