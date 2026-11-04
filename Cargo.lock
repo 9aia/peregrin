@@ -3610,6 +3610,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-driver-git"
+version = "0.0.0"
+dependencies = [
+ "peregrin-core",
+ "peregrin-driver",
+ "peregrin-driver-shell",
+ "peregrin-git",
+ "peregrin-template",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "peregrin-driver-http"
 version = "0.0.0"
 dependencies = [
@@ -3788,6 +3801,7 @@ dependencies = [
  "peregrin-loader-yaml",
  "peregrin-queue",
  "peregrin-session",
+ "peregrin-sink-github-status",
  "peregrin-store",
  "peregrin-store-json",
  "peregrin-telemetry",

@@ -133,6 +133,40 @@ fn params_env_reaches_the_child() {
 }
 
 #[test]
+fn params_cwd_sets_working_dir() {
+    let d = ShellDriver::new();
+    let ctx = ExecutionContext::default();
+    let dir = tempfile::TempDir::new().unwrap();
+    let out = d
+        .invoke(&node(json!({"cmd": "pwd", "cwd": dir.path()})), &[], &ctx)
+        .unwrap();
+    assert_eq!(out[0].kind, "cmd.done");
+    // `pwd` may print a symlink-resolved path — canonicalize both.
+    let stdout = out[0].payload["stdout"].as_str().unwrap();
+    assert_eq!(
+        std::fs::canonicalize(stdout.trim()).unwrap(),
+        std::fs::canonicalize(dir.path()).unwrap()
+    );
+    // An empty cwd is ignored; a bogus one fails the spawn.
+    let out = d
+        .invoke(&node(json!({"cmd": "pwd", "cwd": ""})), &[], &ctx)
+        .unwrap();
+    assert_eq!(out[0].kind, "cmd.done");
+    // Schemas: `cwd` is declared optional in the input contract.
+    let input = d.input().unwrap();
+    assert_eq!(input.fields["cwd"], serde_json::json!("string?"));
+    assert_eq!(d.output().len(), 2);
+    let out = d
+        .invoke(
+            &node(json!({"cmd": "true", "cwd": "/definitely/not/a/dir"})),
+            &[],
+            &ctx,
+        )
+        .unwrap();
+    assert_eq!(out[0].kind, "node.failed");
+}
+
+#[test]
 fn params_timeout_is_honored() {
     let d = ShellDriver::new();
     let ctx = ExecutionContext::default();

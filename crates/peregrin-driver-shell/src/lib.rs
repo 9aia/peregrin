@@ -2,7 +2,10 @@
 //! `params.cmd` runs under the system shell (`spawnSync(cmd,
 //! {shell: true, timeout: 30000})` in the TS — 30 s hardcoded).
 //! `params.emit` maps `rc` → event type; otherwise `rc == 0` emits
-//! `cmd.done` and anything else `node.failed`.
+//! `cmd.done` and anything else `node.failed`. `params.cwd` (a
+//! Rust-side addition) sets the child's working directory — wrappers
+//! like `driver: git` use it to run the inner shell inside a
+//! materialized worktree.
 
 use std::io::Read;
 use std::process::{Child, Command, Stdio};
@@ -109,8 +112,9 @@ impl ShellDriver {
     }
 }
 
-/// `input` contract — `cmd` required, `timeout`/`emit`/`env` optional
-/// (the TS `input` EventSchema).
+/// `input` contract — `cmd` required, `timeout`/`emit`/`env`/`cwd`
+/// optional (the TS `input` EventSchema; `cwd` is a Rust-side
+/// addition so wrappers like `driver: git` can place the child).
 fn input_schema() -> EventSchema {
     EventSchema {
         kind: String::new(),
@@ -119,6 +123,7 @@ fn input_schema() -> EventSchema {
             ("timeout".to_string(), Value::String("integer?".to_string())),
             ("emit".to_string(), Value::String("object?".to_string())),
             ("env".to_string(), Value::String("object?".to_string())),
+            ("cwd".to_string(), Value::String("string?".to_string())),
         ]),
         schema: Map::new(),
         annotations: Map::new(),
@@ -202,8 +207,12 @@ fn spawn_shell(
     cmd: &str,
     env: &Map<String, Value>,
     timeout: Duration,
+    cwd: Option<&str>,
 ) -> Result<(i64, String, String), String> {
     let mut command = shell_command(cmd);
+    if let Some(dir) = cwd {
+        command.current_dir(dir);
+    }
     command
         .env_clear()
         .envs(peregrin_core::child_env())
@@ -299,7 +308,11 @@ impl Driver for ShellDriver {
             .and_then(Value::as_f64)
             .filter(|s| s.is_finite() && *s > 0.0)
             .map_or(TIMEOUT, |s| Duration::from_secs_f64(s).min(MAX_TIMEOUT));
-        let (rc, stdout, stderr) = match spawn_shell(cmd, &env, timeout) {
+        let cwd = params
+            .get("cwd")
+            .and_then(Value::as_str)
+            .filter(|dir| !dir.is_empty());
+        let (rc, stdout, stderr) = match spawn_shell(cmd, &env, timeout, cwd) {
             Err(error) => {
                 return Ok(vec![Event::new(
                     "node.failed",
