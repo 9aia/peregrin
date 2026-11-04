@@ -657,3 +657,130 @@ fn declared_env_and_secrets_still_reach_the_runner() {
     // Declared channels still work; the ambient marker stays out.
     assert_eq!(out[0].payload["stdout"], "vv|s3cret|");
 }
+
+// --- MockAgentDriver -------------------------------------------------
+
+use peregrin_driver_agent::MockAgentDriver;
+use std::sync::Arc;
+
+fn mock_node(params: Value) -> peregrin_core::Node {
+    peregrin_core::Node {
+        driver: "mock-agent".into(),
+        ..node(params)
+    }
+}
+
+#[test]
+fn mock_emits_agent_done_with_canned_response_and_prompt() {
+    let out = MockAgentDriver::new()
+        .invoke(
+            &mock_node(json!({"prompt": "ship it", "response": "done:42"})),
+            &[],
+            &ExecutionContext::default(),
+        )
+        .unwrap();
+    assert_eq!(out[0].kind, "agent.done");
+    assert_eq!(out[0].payload["stdout"], "done:42");
+    assert_eq!(out[0].payload["prompt"], "ship it");
+    assert_eq!(out[0].payload["rc"], 0);
+    assert_eq!(out[0].payload["runner"], "mock");
+}
+
+#[test]
+fn mock_fail_emits_node_failed_with_message() {
+    let out = MockAgentDriver::new()
+        .invoke(
+            &mock_node(json!({"prompt": "x", "fail": true, "fail_message": "planned outage"})),
+            &[],
+            &ExecutionContext::default(),
+        )
+        .unwrap();
+    assert_eq!(out[0].kind, "node.failed");
+    assert_eq!(out[0].payload["error"], "planned outage");
+    assert_eq!(out[0].payload["rc"], 1);
+}
+
+#[test]
+fn mock_fail_default_message() {
+    let out = MockAgentDriver::new()
+        .invoke(
+            &mock_node(json!({"prompt": "x", "fail": true})),
+            &[],
+            &ExecutionContext::default(),
+        )
+        .unwrap();
+    assert_eq!(out[0].payload["error"], "mock-agent scripted failure");
+}
+
+#[test]
+fn mock_prompt_file_resolves_through_effects() {
+    let dir = std::env::temp_dir().join(format!("peregrin-mock-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    std::fs::write(dir.join("prompt.txt"), "from file").unwrap();
+    let driver = MockAgentDriver::with_effects(Arc::new(DirEffects { root: dir.clone() }));
+    let out = driver
+        .invoke(
+            &mock_node(json!({"prompt_file": "prompt.txt"})),
+            &[],
+            &ExecutionContext::default(),
+        )
+        .unwrap();
+    assert_eq!(out[0].payload["prompt"], "from file");
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn mock_prompt_file_read_error_surfaces() {
+    let dir = PathBuf::from("/nonexistent-dir-xyz");
+    let driver = MockAgentDriver::with_effects(Arc::new(DirEffects { root: dir }));
+    let err = MockAgentDriver::with_effects(Arc::new(DirEffects {
+        root: PathBuf::from("/nonexistent-dir-xyz"),
+    }))
+    .invoke(
+        &mock_node(json!({"prompt_file": "missing.txt"})),
+        &[],
+        &ExecutionContext::default(),
+    )
+    .unwrap_err();
+    let _ = driver;
+    assert!(err.to_string().contains("prompt_file"), "{err}");
+}
+
+#[test]
+fn mock_no_prompt_is_an_empty_prompt_not_an_error() {
+    let out = MockAgentDriver::new()
+        .invoke(&mock_node(json!({})), &[], &ExecutionContext::default())
+        .unwrap();
+    assert_eq!(out[0].kind, "agent.done");
+    assert_eq!(out[0].payload["prompt"], "");
+}
+
+#[test]
+fn mock_delay_ms_sleeps() {
+    let started = std::time::Instant::now();
+    MockAgentDriver::new()
+        .invoke(
+            &mock_node(json!({"prompt": "x", "delay_ms": 80})),
+            &[],
+            &ExecutionContext::default(),
+        )
+        .unwrap();
+    assert!(started.elapsed() >= Duration::from_millis(70));
+}
+
+#[test]
+fn mock_absolute_prompt_file_path_used_verbatim() {
+    let dir = std::env::temp_dir().join(format!("peregrin-mock-abs-{}", std::process::id()));
+    std::fs::create_dir_all(&dir).unwrap();
+    let file = dir.join("abs.txt");
+    std::fs::write(&file, "absolute").unwrap();
+    let out = MockAgentDriver::new()
+        .invoke(
+            &mock_node(json!({"prompt_file": file.to_str().unwrap()})),
+            &[],
+            &ExecutionContext::default(),
+        )
+        .unwrap();
+    assert_eq!(out[0].payload["prompt"], "absolute");
+    std::fs::remove_dir_all(&dir).unwrap();
+}

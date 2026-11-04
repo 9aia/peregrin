@@ -69,6 +69,43 @@ impl Ingress {
         out.extend(self.rx.try_iter());
         out.len() - before
     }
+
+    /// Park the run thread until an event lands, `timeout` elapses, or
+    /// every [`Injector`] is gone. The runner calls this at quiet on
+    /// ingress campaigns — `timeout` is the next poll-timer deadline
+    /// so `drain_timers` still fires on schedule. Returns what the
+    /// wait ended with; any event already received is appended to
+    /// `out` before the early return.
+    pub fn wait(&self, timeout: Option<std::time::Duration>, out: &mut Vec<Event>) -> WaitOutcome {
+        let result = match timeout {
+            Some(t) => self.rx.recv_timeout(t),
+            None => self
+                .rx
+                .recv()
+                .map_err(|_| std::sync::mpsc::RecvTimeoutError::Disconnected),
+        };
+        match result {
+            Ok(event) => {
+                out.push(event);
+                self.drain_into(out);
+                WaitOutcome::Event
+            }
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => WaitOutcome::Timeout,
+            Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => WaitOutcome::Disconnected,
+        }
+    }
+}
+
+/// What ended an [`Ingress::wait`].
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum WaitOutcome {
+    /// An event arrived (already drained into `out`) — keep looping.
+    Event,
+    /// The timer deadline elapsed — `drain_timers` picks up any due
+    /// ticks on the next iteration.
+    Timeout,
+    /// Every `Injector` is gone — nothing can wake the run again.
+    Disconnected,
 }
 
 /// `Injector::inject` failed — the run already ended (receiver

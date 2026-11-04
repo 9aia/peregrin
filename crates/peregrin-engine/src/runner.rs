@@ -34,7 +34,7 @@ use peregrin_template::{
     SystemEffects, TemplateError, TemplateFunction, resolve_params, resolve_template_opts,
 };
 
-use crate::ingress::Ingress;
+use crate::ingress::{Ingress, WaitOutcome};
 use crate::registry::Registry;
 use crate::safety::{
     CapabilityChecker, ResourceGate, build_validator, validate_object, validate_record,
@@ -324,6 +324,21 @@ impl Runner {
         ready.extend(start.ready);
         pending.extend(start.side_events);
 
+        // Daemon semantics: a campaign declaring ≥1 ingress-driver
+        // node (`Driver::is_ingress` — webhook listeners, WAL pollers)
+        // is a service, not a finite run. At quiet the loop parks on
+        // the ingress channel (bounded by the next poll-timer
+        // deadline) instead of terminating; it ends on cancel, on
+        // every injector going away, or never. Finite campaigns are
+        // unaffected — `serve` is false and the quiet break below
+        // fires exactly as before.
+        let serve = self.ingress.is_some()
+            && campaign.nodes.iter().any(|node| {
+                self.registry
+                    .resolve(&node.driver)
+                    .is_ok_and(|driver| driver.is_ingress())
+            });
+
         // Draining happens *before* the exit check so events (and due
         // ticks) that arrive while the last step executes still land —
         // a check-first loop would drop anything injected during the
@@ -332,7 +347,22 @@ impl Runner {
             self.drain_timers(&mut pending);
             self.drain_ingress(&mut pending);
             if (pending.is_empty() && ready.is_empty()) || cancelled {
-                break;
+                if !serve || cancelled {
+                    break;
+                }
+                let timeout = self
+                    .timers
+                    .peek()
+                    .map(|tick| tick.deadline.saturating_duration_since(Instant::now()));
+                match self
+                    .ingress
+                    .as_ref()
+                    .map_or(WaitOutcome::Disconnected, |ingress| {
+                        ingress.wait(timeout, &mut pending)
+                    }) {
+                    WaitOutcome::Disconnected => break,
+                    WaitOutcome::Event | WaitOutcome::Timeout => continue,
+                }
             }
             if !ready.is_empty() {
                 let batch = std::mem::take(&mut ready);

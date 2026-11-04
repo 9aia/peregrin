@@ -195,6 +195,13 @@ pub trait Driver: Send + Sync {
     fn output(&self) -> &[EventSchema] {
         &[]
     }
+    /// Ingress drivers (`github-webhook`, `sturn-poll`) mark
+    /// themselves — the runner uses this to keep a campaign that
+    /// declares one alive at quiet instead of terminating. Worker/
+    /// egress drivers leave the default.
+    fn is_ingress(&self) -> bool {
+        false
+    }
     /// Run the node; emitted events feed the graph.
     fn invoke(
         &self,

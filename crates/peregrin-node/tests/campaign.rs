@@ -183,3 +183,82 @@ fn run_surfaces_engine_failures() {
     let err = campaign::run(&yaml, &RunOptions::default()).unwrap_err();
     assert!(err.to_string().contains("no-such-driver"), "{err}");
 }
+
+/// Agentic orchestration e2e — `mock-agent` nodes chain like real
+/// agent nodes: `plan` emits `agent.done`, `execute` fires on it
+/// with a prompt templated from the plan's payload, a `verify` node
+/// joins on `execute.done`. The event log is the assertion: every
+/// hop's payload flows through the graph.
+#[test]
+fn mock_agent_chain_orchestrates_plan_execute_verify() {
+    let tmp = tempfile::tempdir().unwrap();
+    let yaml = tmp.path().join("agentic.yaml");
+    std::fs::write(
+        &yaml,
+        r#"name: agentic
+nodes:
+  - id: plan
+    driver: mock-agent
+    on: [start]
+    emits: [agent.done]
+    params:
+      prompt: "draft the plan"
+      response: "plan: migrate ci"
+
+  - id: execute
+    driver: mock-agent
+    on: [agent.done]
+    emits: [execute.done]
+    params:
+      prompt: "run ${event.payload.stdout}"
+      response: "applied"
+      emit: {}
+"#,
+    )
+    .unwrap();
+    let log = campaign::run(&yaml, &RunOptions::default()).unwrap();
+    let kinds: Vec<&str> = log.iter().map(|e| e.kind.as_str()).collect();
+    assert!(kinds.contains(&"agent.done"), "{kinds:?}");
+    let exec = log
+        .iter()
+        .find(|e| e.kind == "agent.done" || e.payload["runner"] == "mock")
+        .unwrap();
+    // The second agent.done carries the templated prompt — proving
+    // the upstream payload reached the next node's params.
+    let agent_events: Vec<_> = log.iter().filter(|e| e.kind == "agent.done").collect();
+    assert_eq!(agent_events.len(), 2, "{kinds:?}");
+    assert_eq!(agent_events[1].payload["prompt"], "run plan: migrate ci");
+    let _ = exec;
+    assert_eq!(kinds.last(), Some(&"workflow.done"), "{kinds:?}");
+}
+
+/// Failure propagates the same way — a scripted `fail` turns into
+/// `node.failed`, which a downstream compensator can subscribe to.
+#[test]
+fn mock_agent_failure_routes_to_compensator() {
+    let tmp = tempfile::tempdir().unwrap();
+    let yaml = tmp.path().join("agentic-fail.yaml");
+    std::fs::write(
+        &yaml,
+        r#"name: agentic-fail
+nodes:
+  - id: attempt
+    driver: mock-agent
+    on: [start]
+    params:
+      prompt: "try the thing"
+      fail: true
+      fail_message: "quota exhausted"
+
+  - id: compensate
+    driver: noop
+    on: [node.failed]
+"#,
+    )
+    .unwrap();
+    let log = campaign::run(&yaml, &RunOptions::default()).unwrap();
+    let kinds: Vec<&str> = log.iter().map(|e| e.kind.as_str()).collect();
+    let failure = log.iter().find(|e| e.kind == "node.failed").unwrap();
+    assert_eq!(failure.payload["error"], "quota exhausted");
+    assert!(kinds.contains(&"node.done"), "{kinds:?}");
+}

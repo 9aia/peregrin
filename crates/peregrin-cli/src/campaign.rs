@@ -39,11 +39,14 @@ pub fn run(
         ..RunOptions::default()
     };
     let campaign = peregrin_node::campaign::load(workflow).map_err(|e| CliError(e.to_string()))?;
-    let mut runner = match history {
-        Some(path) => {
-            peregrin_node::campaign::runner_with_log(path).map_err(|e| CliError(e.to_string()))?
-        }
-        None => peregrin_node::campaign::runner(),
+    // Ingress variants: `github-webhook`/`sturn-poll` nodes get a
+    // run-scoped `Injector`, and a campaign declaring one serves
+    // (parks on the channel) instead of exiting at quiet — the
+    // systemd unit's daemon mode. Finite campaigns run unchanged.
+    let (mut runner, _injector) = match history {
+        Some(path) => peregrin_node::campaign::runner_with_log_ingress(path)
+            .map_err(|e| CliError(e.to_string()))?,
+        None => peregrin_node::campaign::runner_with_ingress(),
     };
     let log = runner
         .run(&campaign, &options)

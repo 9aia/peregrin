@@ -638,6 +638,10 @@ impl Driver for SturnDriver {
         "sturn-poll"
     }
 
+    fn is_ingress(&self) -> bool {
+        true
+    }
+
     fn input(&self) -> Option<EventSchema> {
         Some(input_schema())
     }

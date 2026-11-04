@@ -14,7 +14,7 @@ mod registry;
 mod runner;
 mod safety;
 
-pub use ingress::{Ingress, InjectError, Injector, ingress};
+pub use ingress::{Ingress, InjectError, Injector, WaitOutcome, ingress};
 pub use registry::Registry;
 pub use runner::{RunOptions, Runner};
 pub use safety::{

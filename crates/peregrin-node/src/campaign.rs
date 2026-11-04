@@ -55,6 +55,10 @@ pub fn registry() -> Registry {
         .with("agent", Arc::new(peregrin_driver_agent::AgentDriver::new()))
         .with("http", Arc::new(peregrin_driver_http::HttpDriver::new()))
         .with("human", Arc::new(peregrin_driver_human::HumanDriver::new()))
+        .with(
+            "mock-agent",
+            Arc::new(peregrin_driver_agent::MockAgentDriver::new()),
+        )
         .with("shell", Arc::new(peregrin_driver_shell::ShellDriver::new()))
         .with(
             "github-status",

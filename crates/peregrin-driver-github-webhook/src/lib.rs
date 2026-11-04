@@ -706,6 +706,10 @@ impl Driver for GithubWebhookDriver {
         "github-webhook"
     }
 
+    fn is_ingress(&self) -> bool {
+        true
+    }
+
     fn output(&self) -> &[EventSchema] {
         &self.output
     }

@@ -535,3 +535,105 @@ impl Driver for AgentDriver {
         )])
     }
 }
+
+/// `mock-agent` — a scripted stand-in for [`AgentDriver`] used by
+/// orchestration tests and dry CI runs. Same `prompt`/`prompt_file`
+/// surface (templating resolves for real), but no agent CLI is
+/// spawned: `params.response` becomes the canned `agent.done`
+/// payload, `params.fail` forces `node.failed`, `params.delay_ms`
+/// sleeps first (timing-sensitive graph tests).
+pub struct MockAgentDriver {
+    agent: AgentDriver,
+}
+
+impl Default for MockAgentDriver {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl MockAgentDriver {
+    /// A mock over [`SystemEffects`].
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            agent: AgentDriver::new(),
+        }
+    }
+
+    /// A mock over custom effects (tests).
+    #[must_use]
+    pub fn with_effects(effects: Arc<dyn Effects>) -> Self {
+        Self {
+            agent: AgentDriver::with_effects(effects),
+        }
+    }
+}
+
+impl Driver for MockAgentDriver {
+    fn name(&self) -> &'static str {
+        "mock-agent"
+    }
+
+    fn invoke(
+        &self,
+        node: &Node,
+        triggers: &[Event],
+        ctx: &ExecutionContext,
+    ) -> Result<Vec<Event>, DriverError> {
+        let params = self.agent.resolve_params(node, triggers, ctx)?;
+        let prompt = if let Some(prompt) = non_empty_str(&params, "prompt") {
+            prompt.to_string()
+        } else if let Some(prompt_file) = non_empty_str(&params, "prompt_file") {
+            let path = PathBuf::from(prompt_file);
+            let path = if path.is_absolute() {
+                path
+            } else {
+                self.agent.effects.cwd().join(path)
+            };
+            let bytes = self.agent.effects.read_file(&path).map_err(|error| {
+                DriverError::new(format!(
+                    "mock-agent node '{}' failed to read prompt_file: {error}",
+                    node.id
+                ))
+            })?;
+            String::from_utf8_lossy(&bytes).into_owned()
+        } else {
+            String::new()
+        };
+
+        if let Some(delay_ms) = params.get("delay_ms").and_then(Value::as_f64) {
+            if delay_ms > 0.0 && delay_ms.is_finite() {
+                std::thread::sleep(Duration::from_secs_f64(delay_ms / 1000.0));
+            }
+        }
+
+        if params.get("fail").and_then(Value::as_bool).unwrap_or(false) {
+            let error = params
+                .get("fail_message")
+                .and_then(Value::as_str)
+                .unwrap_or("mock-agent scripted failure");
+            return Ok(vec![Event::new(
+                "node.failed",
+                serde_json::json!({ "error": error, "rc": 1, "runner": "mock" }),
+                &node.id,
+            )]);
+        }
+
+        let response = params
+            .get("response")
+            .and_then(Value::as_str)
+            .unwrap_or_default();
+        Ok(vec![Event::new(
+            "agent.done",
+            serde_json::json!({
+                "stdout": response,
+                "stderr": "",
+                "rc": 0,
+                "runner": "mock",
+                "prompt": prompt,
+            }),
+            &node.id,
+        )])
+    }
+}

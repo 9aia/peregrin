@@ -308,3 +308,162 @@ fn inject_after_receiver_drop_returns_the_event() {
     assert!(rendered.contains("ingress"), "{rendered}");
     assert!(std::error::Error::source(&err).is_none());
 }
+
+// --- serve mode: ingress campaigns park at quiet ---------------------
+
+/// An ingress-marked fake — `is_ingress()` is what flips a campaign
+/// into serve mode. Emits `<id>.listening` the way the real
+/// listeners do after bind.
+struct FakeIngressDriver;
+
+impl Driver for FakeIngressDriver {
+    fn name(&self) -> &'static str {
+        "fake-ingress"
+    }
+
+    fn is_ingress(&self) -> bool {
+        true
+    }
+
+    fn invoke(
+        &self,
+        node: &Node,
+        _triggers: &[Event],
+        _ctx: &ExecutionContext,
+    ) -> Result<Vec<Event>, DriverError> {
+        Ok(vec![Event::new(
+            format!("{}.listening", node.id),
+            Value::Object(serde_json::Map::new()),
+            &node.id,
+        )])
+    }
+}
+
+#[test]
+fn serve_parks_at_quiet_then_wakes_on_injected_event() {
+    let campaign = load(
+        r#"
+name: gate
+nodes:
+  - id: watch
+    driver: fake-ingress
+    on: [start]
+    emits: [watch.listening]
+  - id: work
+    driver: noop
+    on: [wake]
+"#,
+    );
+    let (injector, chan) = ingress();
+    let registry = registry().with("fake-ingress", Arc::new(FakeIngressDriver));
+    let mut runner = Runner::new(registry).with_ingress(chan);
+
+    let producer = injector.clone();
+    let handle = std::thread::spawn(move || {
+        // Past the initial quiet — proves the run was parked, not
+        // still draining startup work.
+        std::thread::sleep(Duration::from_millis(300));
+        producer
+            .inject(Event::new("wake", json!({}), "test"))
+            .unwrap();
+        std::thread::sleep(Duration::from_millis(100));
+        producer.inject(Event::cancel("test done")).unwrap();
+    });
+    let log = runner.run(&campaign, &RunOptions::default()).unwrap();
+    handle.join().unwrap();
+    let kinds = kinds(&log);
+    assert!(kinds.contains(&"watch.listening"), "{kinds:?}");
+    assert!(kinds.contains(&"wake"), "{kinds:?}");
+    assert!(kinds.contains(&"node.done"), "{kinds:?}");
+    assert_eq!(kinds.last(), Some(&"workflow.cancelled"), "{kinds:?}");
+}
+
+#[test]
+fn finite_campaign_exits_despite_ingress_channel_attached() {
+    // `serve` requires BOTH an attached channel and an ingress-driver
+    // node — a finite campaign on an ingress-aware runner still
+    // terminates at quiet.
+    let campaign = load(
+        r#"
+name: finite
+nodes:
+  - id: one
+    driver: noop
+    on: [start]
+"#,
+    );
+    let (injector, chan) = ingress();
+    let mut runner = Runner::new(registry()).with_ingress(chan);
+    let started = std::time::Instant::now();
+    let log = runner.run(&campaign, &RunOptions::default()).unwrap();
+    assert!(started.elapsed() < Duration::from_secs(2), "must not park");
+    assert_eq!(kinds(&log).last(), Some(&"workflow.done"));
+    drop(injector);
+}
+
+#[test]
+fn serve_exits_when_every_injector_is_gone() {
+    // The driver's own clone lives in the run, so disconnect needs a
+    // registry whose ingress driver drops its clone after invoke —
+    // modelled here by a campaign whose only injector is external.
+    // Simpler faithful shape: cancel is the in-band exit; disconnect
+    // is covered by `wait_*` unit tests below.
+    let campaign = load(
+        r#"
+name: gate
+nodes:
+  - id: watch
+    driver: fake-ingress
+    on: [start]
+    emits: [watch.listening]
+"#,
+    );
+    let (injector, chan) = ingress();
+    let mut runner = Runner::new(registry().with("fake-ingress", Arc::new(FakeIngressDriver)))
+        .with_ingress(chan);
+    let handle = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(200));
+        injector.inject(Event::cancel("shutdown")).unwrap();
+    });
+    let log = runner.run(&campaign, &RunOptions::default()).unwrap();
+    handle.join().unwrap();
+    assert_eq!(kinds(&log).last(), Some(&"workflow.cancelled"));
+}
+
+// --- Ingress::wait ---------------------------------------------------
+
+#[test]
+fn wait_event_appends_and_drains_follow_ups() {
+    let (injector, chan) = ingress();
+    injector.inject(Event::new("a", json!({}), "t")).unwrap();
+    injector.inject(Event::new("b", json!({}), "t")).unwrap();
+    let mut out = Vec::new();
+    assert_eq!(
+        chan.wait(Some(Duration::from_secs(1)), &mut out),
+        peregrin_engine::WaitOutcome::Event
+    );
+    assert_eq!(out.len(), 2, "first recv + follow-up drain");
+}
+
+#[test]
+fn wait_timeout_returns_at_the_deadline() {
+    let (injector, chan) = ingress();
+    let mut out = Vec::new();
+    let started = std::time::Instant::now();
+    let outcome = chan.wait(Some(Duration::from_millis(60)), &mut out);
+    assert_eq!(outcome, peregrin_engine::WaitOutcome::Timeout);
+    assert!(started.elapsed() >= Duration::from_millis(50));
+    assert!(out.is_empty());
+    drop(injector);
+}
+
+#[test]
+fn wait_disconnected_when_every_sender_gone() {
+    let (injector, chan) = ingress();
+    drop(injector);
+    let mut out = Vec::new();
+    assert_eq!(
+        chan.wait(None, &mut out),
+        peregrin_engine::WaitOutcome::Disconnected
+    );
+}
