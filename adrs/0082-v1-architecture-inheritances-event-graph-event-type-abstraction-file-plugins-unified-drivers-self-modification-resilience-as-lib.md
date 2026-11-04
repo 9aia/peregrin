@@ -12,10 +12,74 @@ Status: **proposed** · Created: 2026-11-04
 
 ## Context
 
-
+Peregrin v1 (the TypeScript implementation, tree preserved at
+`d6bf6356~1` — `docs/ac/explanation/` + `packages/ac-*` +
+`libraries/`) contained a complete, battle-tested architecture
+writeup that the v2 Rust rewrite and ADRs 0079–0081 had partially
+re-derived and partially forgotten. Reviewed 2026-11-04; the seven
+load-bearing decisions below are confirmed as inherited — they were
+"EXTREMELY important and well thought out" in v1 and remain the
+right answers.
 
 ## Decision
 
-
+1. **Event graph, not DAG** — nodes subscribe to event types;
+   branching, fan-out, fan-in (`mode: all`), dynamic topology, and
+   wildcards (`shard.*.ready`) are all free consequences of
+   subscription. `on:` filters (ADR-0081's glob decision) subscribe
+   to event types — wildcards included.
+   (v1: `docs/ac/explanation/event-graph-model.md`)
+2. **Abstraction via event types** — nodes emit *abstract intent*
+   (`request-notify`); subscribers implement (desktop, log).
+   Swapping an implementation = swapping one subscriber, zero
+   changes upstream. Sinks and multi-impl dispatch are instances of
+   this — subscribe to intent, not to sources.
+   (v1: `abstraction.md`)
+3. **"No plugin system: files"** — install = drop a YAML file,
+   version = git, compose = `include:`, **override = deep-merge**,
+   remove = delete the include. ADR-0079's bundle distribution is
+   the transport half of exactly this; **deep-merge override
+   composition** (bundles extending/overlaying each other and local
+   values) is the missing half — bundles compose by merge, not by
+   registry.
+   (v1: `plugins.md`, `include-resolution.md`)
+4. **Unified driver registry — triggers are drivers.** v1 had no
+   trigger plane: `webhook` (HTTP server), `cli` (poll), `stdin`,
+   `agent`, `human` were drivers that emit events. v2 keeps that —
+   one registry; "triggers" (ADR-0080) are *ingress drivers*
+   (long-running drivers that emit), sinks are *egress drivers*
+   (drivers that consume terminal events). Preferred over the
+   separate-plane split: fewer concepts, same extension point.
+   (v1: `drivers.md`)
+5. **Self-modifying workflows** — a `runner` driver injects nodes
+   into the live graph from event payloads (`retire_on` scoping);
+   **loop protection in three layers** (`max_fires`, `until`,
+   `retire_on`). Dynamic topology is core, not a feature flag.
+   (v1: `self-modifying.md`, `loop-protection.md`)
+6. **Resilience as library, not engine** — circuit-breaker,
+   dead-letter queue, retry loops are composable workflow artifacts
+   (libraries/ entries), not engine hardcode — the
+   "hardcode → distributable libs" rule again, same spirit as
+   ADR-0081's config-into-campaign mapping.
+   (v1: `resilience.md`, `reference/circuit-breaker.md`,
+   `dead-letter-queue.md`)
+7. **Observers as an adapter port** — `NoopObserver` default,
+   `OTelObserver` — telemetry emit is a swappable port, which is
+   precisely ADR-0080's "emit native, stack external" rule.
+   (v1: `observers.md`, `adapter-ports.md`)
 
 ## Consequences
+
+- ADR-0080's "trigger plane" language is superseded by the unified
+  registry: `trigger-github`/`trigger-sturn` become ingress drivers;
+  `sink-github-status` an egress driver. Plane *names* may stay as
+  docs vocabulary — the registry is one.
+- The v1 explanation docs remain the engine spec source-of-truth
+  for the concepts above; v2 impls should cite them rather than
+  re-invent semantics.
+- Threat-model/safety docs from v1 (`threat-model.md`,
+  `safety.md`) remain worth porting — AI-governed workflow safety
+  is still a first-class concern.
+- Not inherited blindly: v1's stores (`JsonStore`/`MemoryStore`)
+  map onto the existing `peregrin-store` port; v2 keeps its own
+  adapter set.

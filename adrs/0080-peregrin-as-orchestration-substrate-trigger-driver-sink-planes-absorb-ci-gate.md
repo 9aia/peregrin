@@ -30,10 +30,12 @@ belongs in it as a *distribution*, not a sibling binary.
 
 - **Peregrin is the substrate for orchestration/execution.** Event
   plane in (triggers), execution out (drivers, sinks), campaigns as
-  policy between them. The trigger/driver split already exists;
-  **sinks become a first-class plane** — effect endpoints that
-  publish verdicts out (github commit-status, WAL writes, webhooks)
-  rather than ad-hoc side effects inside runners.
+  policy between them. **Sinks become a first-class plane** —
+  effect endpoints that publish verdicts out (github commit-status,
+  WAL writes, webhooks) rather than ad-hoc side effects inside
+  runners. *Amended by ADR-0082:* one unified driver registry —
+  "triggers" are ingress drivers (emit), sinks are egress drivers
+  (consume terminal events); plane names remain docs vocabulary.
 - **Grow the port families, don't special-case CI.** Missing impls
   land as generic ports so other campaigns reuse them:
   `trigger-github` (HMAC listener + payload → trigger event),
