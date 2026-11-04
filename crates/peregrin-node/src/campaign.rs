@@ -50,14 +50,20 @@ pub enum CampaignError {
 /// not ported yet.
 #[must_use]
 pub fn registry() -> Registry {
-    Registry::default()
+    let base = Registry::default()
         .with("agent", Arc::new(peregrin_driver_agent::AgentDriver::new()))
         .with("http", Arc::new(peregrin_driver_http::HttpDriver::new()))
         .with("human", Arc::new(peregrin_driver_human::HumanDriver::new()))
         .with("shell", Arc::new(peregrin_driver_shell::ShellDriver::new()))
         .with("github-status", Arc::new(peregrin_sink_github_status::GithubStatusSink::new()))
         .with("noop", Arc::new(NoopDriver))
-        .with("runner", Arc::new(RunnerDriver))
+        .with("runner", Arc::new(RunnerDriver));
+    let inner = base.clone();
+    // `git` resolves inner drivers against the base set — an inner
+    // `driver: git` is deliberately not supported.
+    base.with("git", Arc::new(peregrin_driver_git::GitDriver::new(
+        move |name: &str| inner.resolve(name).ok(),
+    )))
 }
 
 /// A runner over [`registry`] with the node defaults — `Runner::new`
