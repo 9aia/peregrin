@@ -29,6 +29,20 @@ peregrin install https://9aia.com/bundles/ci-gate-0.2.tgz   # non-git tarball
 peregrin remove ci-gate
 ```
 
+Full verb surface:
+
+```
+peregrin install <ref>          # fetch → store (+ alias)
+peregrin remove <name>          # drop store entry; cache untouched
+peregrin list                   # installed bundles, refs, digests
+peregrin info <name>            # manifest, source ref, resolved sha, size
+peregrin update <name>|<--all>  # re-resolve the source ref (the upgrade path for moving refs)
+peregrin pin <name> <ref>       # change the recorded pin without refetching payload shape
+peregrin verify <name>          # digest-check store contents vs recorded sha
+peregrin cache clean [--all]    # evict fetch cache (age policy or full)
+peregrin bundle pack <dir>      # authoring — dir + manifest → installable bundle
+```
+
 Today there is no artifact model at all — bundles are repo files
 (`libraries/` stdlib, ADR-0029) or hand-copied directories. Installed
 artifacts also need a **local store + cache**: fetches must be
@@ -63,8 +77,10 @@ bundle on every boot), and pin/upgrade semantics have to be decided
   `remove`/`list` can report "installed: ci-gate 0.2.0 (sha…)".
   No auto-upgrade — re-installing a moving ref (branch) is the
   explicit upgrade path.
-- **`peregrin list`** (or `install --list`) — installed bundles,
-  source refs, digests.
+- **Verb surface** — install/remove/list/info/update/pin/verify/
+  cache/bundle-pack per the block above; `update` re-resolves the
+  recorded source ref (moving refs like branches upgrade; pinned
+  tags/shas re-confirm).
 
 ## Consequences
 
