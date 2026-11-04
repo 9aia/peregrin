@@ -198,3 +198,67 @@ New crates by phase:
 Open for P0: whether `peregrin-telemetry` already *is* the
 observer port (ADR-0082 #7) or the port trait needs extracting
 from it.
+
+## Audit addendum (2026-11-04 — v1 deep audit)
+
+A deep audit against the ported v1 tree found ~80% of v1
+event-graph semantics already exist in `peregrin-core`/`bus`/
+`engine` — phase scopes below are corrected accordingly.
+
+**BLOCKER found:** the `${config/event/secret/node/params/state}`
+scope-resolution family is deferred ("deferred to the
+scope-resolution pass", `peregrin-template/src/engine.rs`) and
+*nothing resolves it* — every ported `libraries/` workflow
+(`common/refactor` etc.) is dead without it. P0 becomes the
+scope-resolver phase, not just the envelope phase.
+
+Phase corrections:
+
+- **P0 (contracts) — rescoped:** (a) spec the scope-resolution
+  pass — owning crate, namespace set (`config|event|secret|node|
+  params|state` incl. captures `{1}`/`shard`), `:-` defaults order,
+  strict behavior; (b) full ported node/campaign schema
+  enumeration (the `from_dict` surface: `handler,mode,max_fires,
+  until,retire_on,retry,circuit_breaker,poll,fan_in,forward,
+  resources,capabilities,state,annotations,input,output` +
+  campaign `events,functions,snippets,include,import,stop_on,
+  payload_schemas,capabilities,strict,state`); (c) envelope —
+  **rename `source`→`origin`** (v1 `source` = emitting node id,
+  already taken); keep CI metadata (repo/ref/sha/clone_url) in
+  `payload` or a reserved `origin` block; envelope carries **no
+  secret-related fields** (v1 model: `ctx.secrets` +
+  `capabilities.secrets` allow-list + `${secret.*}` — ours must
+  match, not invent a parallel one); (d) `on:` grammar doc must
+  include `**` zero-or-more segments (impl-authoritative — ADR-0015
+  text says "one or more", likely wrong) + wildcard captures.
+- **P1 — rescoped:** `mode:all`, wildcards, runner injection,
+  loop protection are ALREADY ported — remove. Real work: durable
+  store impl preserving first-seen order (wildcard collection
+  depends on `seen_types` iteration order), queue/supersede spec
+  (location: engine vs node wrapper — I-XXX), ingress injection
+  channel, worktree lifecycle helper.
+- **P2 — added:** external-event injection channel spec —
+  `LocalBus::publish` is `&mut` + runner is single-threaded; a
+  blocking ingress driver stalls the whole loop. Also decide
+  which generic v1 ingress drivers port (`cli`/`polling`/`stdin`/
+  `webhook` — `Node::from_dict` still normalizes them, dangling).
+- **P4 — added:** `.driver.yml` preset discovery + deep-merge
+  (ADR-0026 never shipped; bundles assume it) and the
+  `*.field.yml`/`dependencies` mechanism decision (I-XXX — ADR-0032/
+  0033 never shipped; don't conflate with param JSON Schema).
+- **P5 — added:** `libraries/meta/workflows/create` as a bundle
+  candidate; merge-collision rule: `nodes:`/`on:` arrays concat
+  local-first (never override) → loader must **dedupe node ids**
+  (double-fire edge case).
+- **P6 — added:** provider-flag surface (`--history/--tracing/
+  --metrics`, ADR-0040) + History port for runs/explain; decide
+  `OtelObserver` bridge (Observer trait exists in peregrin-bus,
+  telemetry crate is a tracing layer not an Observer impl).
+- **Deferred with note:** `fmt`/`lint` CLI (ADR-0030/0031),
+  `typegen` (defer but needed for bundle-authoring DX), export
+  verbs (ADR-0006), `replayable` flag (deterministic field exists,
+  unconsumed — decide in P0 whether to wire or drop),
+  `python`/`handler:` driver paths (dead normalization — scope a
+  driver-python phase or delete), `max_fires: 0` strict rejection
+  (impl silently falls back to 1), `.handl/`→`.peregrin/`
+  discovery-root decision (I-XXX).
