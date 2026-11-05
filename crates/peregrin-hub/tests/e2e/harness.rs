@@ -248,7 +248,7 @@ impl E2eEnv {
 
         let driver_bin = bin_path("sepia-driver-devin");
 
-        std::fs::hard_link(&driver_bin, driver_dir.join("sepia-driver-devin")).unwrap();
+        std::fs::copy(&driver_bin, driver_dir.join("sepia-driver-devin")).unwrap(); // cross-device-safe: TMPDIR may be tmpfs
         let db = db_dir.join("sessions.db");
         let store = sepia_driver_devin::store::DevinStore::open(&db, false).unwrap();
         for (id, title, activity) in [

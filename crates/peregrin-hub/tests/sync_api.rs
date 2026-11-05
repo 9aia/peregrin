@@ -264,7 +264,7 @@ fn hub_e2e_over_a_real_node() {
     std::fs::create_dir_all(&node_home).unwrap();
 
     let driver = sepia_testkit::ensure_driver_bin("sepia-driver-devin");
-    std::fs::hard_link(&driver, driver_dir.join("sepia-driver-devin")).unwrap();
+    std::fs::copy(&driver, driver_dir.join("sepia-driver-devin")).unwrap(); // cross-device-safe: TMPDIR may be tmpfs
     let db = db_dir.join("sessions.db");
     let store = sepia_driver_devin::store::DevinStore::open(&db, false).unwrap();
     let mut session =
@@ -477,7 +477,7 @@ fn hub_resolves_node_tokens_from_the_credential_store() {
     std::fs::create_dir_all(&node_home).unwrap();
 
     let driver = sepia_testkit::ensure_driver_bin("sepia-driver-devin");
-    std::fs::hard_link(&driver, driver_dir.join("sepia-driver-devin")).unwrap();
+    std::fs::copy(&driver, driver_dir.join("sepia-driver-devin")).unwrap(); // cross-device-safe: TMPDIR may be tmpfs
     let db = db_dir.join("sessions.db");
     let store = sepia_driver_devin::store::DevinStore::open(&db, false).unwrap();
     let session = sepia_testkit::contract::session("e2e-2", "Stored-cred session", 1_700_000_000.0);

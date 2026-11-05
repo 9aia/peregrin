@@ -493,7 +493,7 @@ async fn transfer_over_two_real_nodes() {
     let driver_dir = tmp.path().join("drivers");
     std::fs::create_dir_all(&driver_dir).unwrap();
     let driver = sepia_testkit::ensure_driver_bin("sepia-driver-devin");
-    std::fs::hard_link(&driver, driver_dir.join("sepia-driver-devin")).unwrap();
+    std::fs::copy(&driver, driver_dir.join("sepia-driver-devin")).unwrap(); // cross-device-safe: TMPDIR may be tmpfs
 
     // Node A's store carries the session to move.
     let db_a = tmp.path().join("a").join("sessions.db");

@@ -46,7 +46,7 @@ fn node_serves_sessions_over_http() {
     std::fs::create_dir_all(&home).unwrap();
 
     let driver = sepia_testkit::ensure_driver_bin("sepia-driver-devin");
-    std::fs::hard_link(&driver, driver_dir.join("sepia-driver-devin")).unwrap();
+    std::fs::copy(&driver, driver_dir.join("sepia-driver-devin")).unwrap(); // cross-device-safe: TMPDIR may be tmpfs
 
     let db = db_dir.join("sessions.db");
     let store = sepia_driver_devin::store::DevinStore::open(&db, false).unwrap();
@@ -191,7 +191,7 @@ fn node_attach_prompt_stream_e2e() {
     std::fs::create_dir_all(&home).unwrap();
 
     let driver = sepia_testkit::ensure_driver_bin("sepia-driver-devin");
-    std::fs::hard_link(&driver, driver_dir.join("sepia-driver-devin")).unwrap();
+    std::fs::copy(&driver, driver_dir.join("sepia-driver-devin")).unwrap(); // cross-device-safe: TMPDIR may be tmpfs
     let mock = sepia_testkit::ensure_mock_acp_agent();
 
     let db = db_dir.join("sessions.db");
