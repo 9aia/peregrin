@@ -376,6 +376,71 @@ fn auto_discovers_nodes_and_snippets_from_the_handl_directory() {
 }
 
 #[test]
+fn auto_discovers_nodes_and_snippets_from_the_peregrin_directory() {
+    // `.peregrin/` is the rebrand discovery root — same scan as
+    // `.handl/`, preferred on dedup (scanned first).
+    let tmp = tempfile::tempdir().unwrap();
+    let pg_dir = tmp.path().join(".peregrin");
+    fs::create_dir(&pg_dir).unwrap();
+    fs::write(
+        pg_dir.join("shared.snippet.yml"),
+        "driver: shell
+params:
+  timeout: 900",
+    )
+    .unwrap();
+    fs::write(
+        pg_dir.join("auto.node.yml"),
+        "id: auto
+driver: shell
+on: [start]",
+    )
+    .unwrap();
+    let campaign = load(
+        "name: test
+nodes:
+  - id: n
+    snippet: shared
+    on: [start]",
+        tmp.path(),
+    )
+    .unwrap();
+    assert_eq!(campaign.nodes.len(), 2);
+    assert_eq!(campaign.nodes[0].id, "auto");
+    assert_eq!(campaign.nodes[1].params["timeout"], 900);
+}
+
+#[test]
+fn peregrin_root_wins_dedup_over_handl() {
+    // Both roots present: `.peregrin` is scanned first, so its entries
+    // claim shared ids/names.
+    let tmp = tempfile::tempdir().unwrap();
+    for (dir, timeout) in [(".peregrin", 100), (".handl", 200)] {
+        let d = tmp.path().join(dir);
+        fs::create_dir(&d).unwrap();
+        fs::write(
+            d.join("shared.snippet.yml"),
+            format!(
+                "driver: shell
+params:
+  timeout: {timeout}"
+            ),
+        )
+        .unwrap();
+    }
+    let campaign = load(
+        "name: test
+nodes:
+  - id: n
+    snippet: shared
+    on: [start]",
+        tmp.path(),
+    )
+    .unwrap();
+    assert_eq!(campaign.nodes[0].params["timeout"], 100);
+}
+
+#[test]
 fn yaml_parse_errors_carry_position() {
     let tmp = tempfile::tempdir().unwrap();
     let err = load("name: ok\nnodes:\n  - id: [", tmp.path()).unwrap_err();

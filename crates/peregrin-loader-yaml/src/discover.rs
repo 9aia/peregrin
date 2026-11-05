@@ -1,7 +1,9 @@
 //! File discovery — port of `ac-file-router`'s `discover()`.
 //!
-//! Scans `.handl/` (when present) then the base directory itself,
-//! recursively, classifying files by suffix. `.handl` wins on duplicate
+//! Scans `.peregrin/` and `.handl/` (when present — `.peregrin` is the
+//! rebrand name and wins dedup; `.handl` stays for v1 compatibility),
+//! then the base directory itself, recursively, classifying files by
+//! suffix. The named roots win on duplicate
 //! names; dot-directories are skipped everywhere.
 
 use std::collections::HashSet;
@@ -67,9 +69,14 @@ fn match_suffix(filename: &str) -> Option<(String, &'static str)> {
 }
 
 /// `collect` — sorted files first, then sorted subdirectories
-/// recursively. Dot-directories are skipped; `.handl` is skipped only
-/// when `skip_ac` (it is scanned as its own root instead).
-fn collect(dir: &Path, skip_ac: bool, out: &mut Vec<(PathBuf, String)>) -> Result<(), LoadError> {
+/// recursively. Dot-directories are skipped; the named discovery roots
+/// (`.peregrin`, `.handl`) are skipped only when `skip_roots` (they are
+/// scanned as their own roots instead).
+fn collect(
+    dir: &Path,
+    skip_roots: bool,
+    out: &mut Vec<(PathBuf, String)>,
+) -> Result<(), LoadError> {
     let mut entries: Vec<_> = std::fs::read_dir(dir)
         .map_err(|e| LoadError::new(e.to_string()))?
         .filter_map(std::result::Result::ok)
@@ -83,7 +90,7 @@ fn collect(dir: &Path, skip_ac: bool, out: &mut Vec<(PathBuf, String)>) -> Resul
         };
         let name = entry.file_name().to_string_lossy().into_owned();
         if file_type.is_dir() {
-            if name == ".handl" && skip_ac {
+            if (name == ".peregrin" || name == ".handl") && skip_roots {
                 continue;
             }
             if name.starts_with('.') {
@@ -101,15 +108,18 @@ fn collect(dir: &Path, skip_ac: bool, out: &mut Vec<(PathBuf, String)>) -> Resul
     Ok(())
 }
 
-/// `discover(baseDir)` — `.handl` first (it wins dedup races), then the
-/// base directory (with its own `.handl` skipped to avoid double-count).
+/// `discover(baseDir)` — named roots first (`.peregrin/` preferred,
+/// `.handl/` compat — both win dedup races in scan order), then the
+/// base directory (with its own named roots skipped to avoid
+/// double-count).
 pub fn discover(base_dir: &Path) -> Result<DiscoveredFiles, LoadError> {
-    let ac_dir = base_dir.join(".handl");
-    let mut roots = Vec::new();
-    if ac_dir.is_dir() {
-        roots.push(ac_dir.clone());
-    }
+    let mut roots: Vec<_> = [".peregrin", ".handl"]
+        .iter()
+        .map(|name| base_dir.join(name))
+        .filter(|dir| dir.is_dir())
+        .collect();
     roots.push(base_dir.to_path_buf());
+    let named = roots[..roots.len() - 1].to_vec();
 
     let mut seen_nodes = HashSet::new();
     let mut seen_snippets = HashSet::new();
@@ -121,7 +131,7 @@ pub fn discover(base_dir: &Path) -> Result<DiscoveredFiles, LoadError> {
 
     for root in roots {
         let mut collected = Vec::new();
-        collect(&root, root != ac_dir, &mut collected)?;
+        collect(&root, !named.contains(&root), &mut collected)?;
         for (fpath, fname) in collected {
             if fname == ".env" {
                 found.env.push(fpath);
