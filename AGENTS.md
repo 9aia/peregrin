@@ -20,7 +20,7 @@ workspace path deps); peregrin owns policy + orchestration.
   (Leptos app) · `peregrin-cli` (`peregrin` binary) ·
   `peregrin-telemetry` · `peregrin-testkit` · `xtask`.
 - `libraries/` — workflow stdlib artifacts. `project/` — nested repo
-  with the engine ADRs (the port spec). `adrs/` — top-level ADRs.
+  with the ADRs (the design history + port spec).
 
 ## Commands
 
