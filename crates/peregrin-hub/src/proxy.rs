@@ -53,7 +53,7 @@ pub async fn sse_session_stream(
     Path(id): Path<String>,
     req: Request<Body>,
 ) -> Response {
-    let (base, token) = state.session_upstream(&id);
+    let (base, token) = state.entity_upstream(&id);
     // The id embeds into the upstream URL — encode it or `?`/`#`/`@`
     // in a session id would smuggle query/authority components into
     // the node-bound request.
@@ -465,8 +465,8 @@ mod cov_tests {
 
     fn test_state(node_url: &str) -> HubState {
         HubState::new(
-            peregrin_node_api::testing::FakeNodeApi::seeded().shared()
-                as std::sync::Arc<dyn peregrin_node_api::api::NodeApi>,
+            peregrin_node_api::testing::FakeEntityApi::seeded().shared()
+                as std::sync::Arc<dyn peregrin_node_api::api::EntityApi>,
             node_url,
             None,
         )

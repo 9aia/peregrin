@@ -1,12 +1,11 @@
-//! peregrin-sync — the hub-side sync layer.
+//! peregrin-sync — the hub-side sync layer (entity plane, ADR-0091).
 //!
 //! Keeps a local SQLite projection ([`ProjectionStore`]) of every paired
-//! node's session index: summary rows only — titles, locks, busy flags —
-//! never message bodies (those stay node-fetched via
-//! [`client::NodeClient::get_history`]). The [`SyncEngine`] runs one
-//! supervised loop per node: connect → `list_sessions` → drain the
-//! durable [`Outbox`] → tail `/api/events` for summary diffs →
-//! reconnect with capped exponential backoff + jitter.
+//! node's entity index: `index_doc` rows only — opaque integration
+//! docs — never detail payloads (those stay node-fetched). The
+//! [`SyncEngine`] runs one supervised loop per node: connect →
+//! `list_entities` → drain the durable [`Outbox`] → tail `/api/events`
+//! for index diffs → reconnect with capped exponential backoff + jitter.
 //!
 //! Writes while a node is down go through [`SyncHandle::submit_op`],
 //! which posts directly when the node is up and enqueues into
@@ -22,7 +21,7 @@ use rusqlite::{Connection, params};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-pub use client::{ClientConfig, EventStream, FeedEvent, HistoryPage, NodeClient, NodeError};
+pub use client::{ClientConfig, EventStream, FeedEvent, NodeClient, NodeError};
 pub use engine::{NodeTarget, SubmitOutcome, SyncEngine, SyncHandle, SyncOptions};
 pub use peregrin_outbox::{OpKind, Outbox, OutboxEntry, Status as OutboxStatus};
 
@@ -104,30 +103,26 @@ pub struct NodeRow {
     pub status: NodeStatus,
 }
 
-/// A `session_index` row — one node's session summary. `raw` keeps the
-/// whole wire object so fields the projection doesn't columnize
-/// (`pinned`, `projectIds`, `spans`, …) still reach the hub UI.
+/// An `entities` row — one node's index doc for an entity. `raw` keeps
+/// the whole wire object; the projection columnizes only the fields it
+/// needs to merge/route on (`kind`, `locked`, `live`, `updatedAt`) —
+/// the doc's *shape* is the integration's, never the substrate's.
 #[derive(Clone, Debug, PartialEq)]
-pub struct IndexedSession {
+pub struct IndexedEntity {
     pub node_id: String,
-    pub session_id: String,
-    pub title: String,
-    pub cwd: String,
-    /// The agent store backend (`source` on the wire).
-    pub backend: String,
-    /// Owning agent id (`agent` on the wire).
-    pub agent: String,
+    pub entity_id: String,
+    /// Entity kind tag (`sepia-session`, `campaign`, …).
+    pub kind: String,
     /// RFC 3339 `updatedAt` from the node.
     pub updated_at: String,
     pub locked: bool,
-    pub busy: bool,
-    /// `lastActivityAt` — same instant as `updated_at` on today's wire.
-    pub last_activity_at: String,
-    /// The full summary `Value` the node sent.
+    /// A live driver/agent is attached (`live` on the wire).
+    pub live: bool,
+    /// The full entity doc `Value` the node sent (the `indexDoc`).
     pub raw: Value,
 }
 
-/// What [`ProjectionStore::apply_patch`] did with a summary diff.
+/// What [`ProjectionStore::apply_patch`] did with an index diff.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum PatchStatus {
     /// Merged into an existing row.
@@ -145,21 +140,17 @@ CREATE TABLE IF NOT EXISTS nodes (
     last_seen_at TEXT,
     status TEXT NOT NULL DEFAULT 'unknown'
 );
-CREATE TABLE IF NOT EXISTS session_index (
+CREATE TABLE IF NOT EXISTS entities (
     node_id TEXT NOT NULL,
-    session_id TEXT NOT NULL,
-    title TEXT NOT NULL DEFAULT '',
-    cwd TEXT NOT NULL DEFAULT '',
-    backend TEXT NOT NULL DEFAULT '',
-    agent TEXT NOT NULL DEFAULT '',
+    entity_id TEXT NOT NULL,
+    kind TEXT NOT NULL DEFAULT '',
     updated_at TEXT NOT NULL DEFAULT '',
     locked INTEGER NOT NULL DEFAULT 0,
-    busy INTEGER NOT NULL DEFAULT 0,
-    last_activity_at TEXT NOT NULL DEFAULT '',
+    live INTEGER NOT NULL DEFAULT 0,
     raw_json TEXT NOT NULL,
-    PRIMARY KEY (node_id, session_id)
+    PRIMARY KEY (node_id, entity_id)
 );
-CREATE INDEX IF NOT EXISTS session_index_node ON session_index (node_id);
+CREATE INDEX IF NOT EXISTS entities_node ON entities (node_id);
 CREATE TABLE IF NOT EXISTS sync_state (
     node_id TEXT PRIMARY KEY,
     cursor TEXT,
@@ -173,54 +164,55 @@ fn now_rfc3339() -> String {
         .unwrap_or_default()
 }
 
-/// Pull the column values out of one wire summary — unknown/missing
-/// fields degrade to defaults rather than failing the row.
-fn columns_of(raw: &Value) -> IndexedSession {
-    let get = |k: &str| raw.get(k).and_then(Value::as_str).unwrap_or_default();
-    let flag = |k: &str| raw.get(k).and_then(Value::as_bool).unwrap_or(false);
-    let updated_at = get("updatedAt").to_string();
-    IndexedSession {
+/// Pull the column values out of one wire entity doc — unknown/missing
+/// fields degrade to defaults rather than failing the row. Docs that
+/// carry `indexDoc` (the interim session wrap) derive their fields from
+/// inside it — `busy` reads as `live`, mirroring the wire lift.
+fn columns_of(raw: &Value) -> IndexedEntity {
+    let doc = match raw.get("indexDoc") {
+        Some(d) if d.is_object() => d,
+        _ => raw,
+    };
+    let get = |k: &str| doc.get(k).and_then(Value::as_str).unwrap_or_default();
+    let flag = |k: &str| doc.get(k).and_then(Value::as_bool).unwrap_or(false);
+    IndexedEntity {
         node_id: String::new(),
-        session_id: get("id").to_string(),
-        title: get("title").to_string(),
-        cwd: get("cwd").to_string(),
-        backend: get("source").to_string(),
-        agent: get("agent").to_string(),
-        last_activity_at: raw
-            .get("lastActivityAt")
+        entity_id: raw
+            .get("id")
+            .or_else(|| doc.get("id"))
             .and_then(Value::as_str)
-            .unwrap_or(&updated_at)
+            .unwrap_or_default()
             .to_string(),
-        updated_at,
+        kind: raw
+            .get("kind")
+            .and_then(Value::as_str)
+            .unwrap_or_default()
+            .to_string(),
+        updated_at: get("updatedAt").to_string(),
         locked: flag("locked"),
-        busy: flag("busy"),
+        live: flag("live") || flag("busy"),
         raw: raw.clone(),
     }
 }
 
-fn write_row(conn: &Connection, node_id: &str, summary: &Value) -> Result<(), SyncError> {
-    let mut row = columns_of(summary);
+fn write_row(conn: &Connection, node_id: &str, doc: &Value) -> Result<(), SyncError> {
+    let mut row = columns_of(doc);
     row.node_id = node_id.to_string();
     conn.execute(
-        "INSERT INTO session_index
-         (node_id, session_id, title, cwd, backend, agent, updated_at, locked, busy, last_activity_at, raw_json)
-         VALUES (?,?,?,?,?,?,?,?,?,?,?)
-         ON CONFLICT (node_id, session_id) DO UPDATE SET
-            title=excluded.title, cwd=excluded.cwd, backend=excluded.backend,
-            agent=excluded.agent, updated_at=excluded.updated_at, locked=excluded.locked,
-            busy=excluded.busy, last_activity_at=excluded.last_activity_at,
+        "INSERT INTO entities
+         (node_id, entity_id, kind, updated_at, locked, live, raw_json)
+         VALUES (?,?,?,?,?,?,?)
+         ON CONFLICT (node_id, entity_id) DO UPDATE SET
+            kind=excluded.kind, updated_at=excluded.updated_at,
+            locked=excluded.locked, live=excluded.live,
             raw_json=excluded.raw_json",
         params![
             row.node_id,
-            row.session_id,
-            row.title,
-            row.cwd,
-            row.backend,
-            row.agent,
+            row.entity_id,
+            row.kind,
             row.updated_at,
             row.locked,
-            row.busy,
-            row.last_activity_at,
+            row.live,
             // `Value`'s `Display` is infallible compact JSON — no `?`
             // arm to leave uncovered.
             row.raw.to_string(),
@@ -229,27 +221,23 @@ fn write_row(conn: &Connection, node_id: &str, summary: &Value) -> Result<(), Sy
     Ok(())
 }
 
-fn row_to_indexed(row: &rusqlite::Row<'_>) -> rusqlite::Result<IndexedSession> {
+fn row_to_indexed(row: &rusqlite::Row<'_>) -> rusqlite::Result<IndexedEntity> {
     let raw_json: String = row.get("raw_json")?;
     let raw = serde_json::from_str(&raw_json).map_err(|e| {
         rusqlite::Error::FromSqlConversionFailure(0, rusqlite::types::Type::Text, Box::new(e))
     })?;
-    Ok(IndexedSession {
+    Ok(IndexedEntity {
         node_id: row.get("node_id")?,
-        session_id: row.get("session_id")?,
-        title: row.get("title")?,
-        cwd: row.get("cwd")?,
-        backend: row.get("backend")?,
-        agent: row.get("agent")?,
+        entity_id: row.get("entity_id")?,
+        kind: row.get("kind")?,
         updated_at: row.get("updated_at")?,
         locked: row.get::<_, i64>("locked")? != 0,
-        busy: row.get::<_, i64>("busy")? != 0,
-        last_activity_at: row.get("last_activity_at")?,
+        live: row.get::<_, i64>("live")? != 0,
         raw,
     })
 }
 
-/// The db holds session summaries the hub caches — keep it owner-only.
+/// The db holds entity index docs the hub caches — keep it owner-only.
 /// sqlite creates files at umask defaults; tighten on every open.
 #[cfg(unix)]
 fn restrict_file_perms(path: &Path) {
@@ -263,7 +251,7 @@ fn restrict_file_perms(path: &Path) {
 fn restrict_file_perms(_path: &Path) {}
 
 /// The local projection — a materialized view of every paired node's
-/// session index plus per-node liveness and resync cursors. `Clone`
+/// entity index plus per-node liveness and resync cursors. `Clone`
 /// shares one connection (same pattern as `peregrin-outbox`).
 #[derive(Clone)]
 pub struct ProjectionStore {
@@ -331,7 +319,7 @@ impl ProjectionStore {
             .conn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        conn.execute("DELETE FROM session_index WHERE node_id=?", params![id])?;
+        conn.execute("DELETE FROM entities WHERE node_id=?", params![id])?;
         conn.execute("DELETE FROM sync_state WHERE node_id=?", params![id])?;
         conn.execute("DELETE FROM nodes WHERE id=?", params![id])?;
         Ok(())
@@ -393,59 +381,55 @@ impl ProjectionStore {
         Ok(())
     }
 
-    /* ---- session_index ----------------------------------------------*/
+    /* ---- entities ---------------------------------------------------*/
 
-    /// Upsert one wire summary row under `node_id`.
+    /// Upsert one wire entity doc under `node_id`.
     ///
     /// # Errors
     /// On sqlite/serde failure.
-    pub fn upsert_summary(&self, node_id: &str, summary: &Value) -> Result<(), SyncError> {
+    pub fn upsert_entity(&self, node_id: &str, doc: &Value) -> Result<(), SyncError> {
         let conn = self
             .conn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        write_row(&conn, node_id, summary)
+        write_row(&conn, node_id, doc)
     }
 
-    /// Replace a node's whole index: upsert every listed summary, delete
-    /// rows the list no longer reports (tombstones), and advance the
-    /// `sync_state` cursor to the max `updatedAt` seen.
+    /// Replace a node's whole index: upsert every listed entity doc,
+    /// delete rows the list no longer reports (tombstones), and advance
+    /// the `sync_state` cursor to the max `updatedAt` seen.
     ///
     /// # Errors
     /// On sqlite/serde failure.
-    pub fn apply_listing(&self, node_id: &str, summaries: &[Value]) -> Result<(), SyncError> {
+    pub fn apply_listing(&self, node_id: &str, docs: &[Value]) -> Result<(), SyncError> {
         let conn = self
             .conn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let tx = conn.unchecked_transaction()?;
-        let mut keep = Vec::with_capacity(summaries.len());
+        let mut keep = Vec::with_capacity(docs.len());
         let mut max_updated = String::new();
-        for summary in summaries {
-            write_row(&tx, node_id, summary)?;
-            if let Some(id) = summary.get("id").and_then(Value::as_str) {
+        for doc in docs {
+            write_row(&tx, node_id, doc)?;
+            if let Some(id) = doc.get("id").and_then(Value::as_str) {
                 keep.push(id.to_string());
             }
-            if let Some(u) = summary.get("updatedAt").and_then(Value::as_str) {
+            if let Some(u) = doc.get("updatedAt").and_then(Value::as_str) {
                 if u > max_updated.as_str() {
                     max_updated = u.to_string();
                 }
             }
         }
         if keep.is_empty() {
-            tx.execute(
-                "DELETE FROM session_index WHERE node_id=?",
-                params![node_id],
-            )?;
+            tx.execute("DELETE FROM entities WHERE node_id=?", params![node_id])?;
         } else {
             // `IN` list — ids come from the node, not the user, but
             // still go through bind params.
             let marks = std::iter::repeat_n("?", keep.len())
                 .collect::<Vec<_>>()
                 .join(",");
-            let sql = format!(
-                "DELETE FROM session_index WHERE node_id=? AND session_id NOT IN ({marks})"
-            );
+            let sql =
+                format!("DELETE FROM entities WHERE node_id=? AND entity_id NOT IN ({marks})");
             let mut bind: Vec<&dyn rusqlite::ToSql> = vec![&node_id];
             bind.extend(keep.iter().map(|id| id as &dyn rusqlite::ToSql));
             tx.execute(&sql, rusqlite::params_from_iter(bind.iter()))?;
@@ -463,14 +447,14 @@ impl ProjectionStore {
 
     /// Merge a `{patch}` diff into an indexed row's `raw_json` and
     /// re-derive its columns. [`PatchStatus::Missing`] when no row
-    /// exists — the caller should fetch the full summary.
+    /// exists — the caller should fetch the full entity doc.
     ///
     /// # Errors
     /// On sqlite/serde failure.
     pub fn apply_patch(
         &self,
         node_id: &str,
-        session_id: &str,
+        entity_id: &str,
         patch: &Value,
     ) -> Result<PatchStatus, SyncError> {
         let conn = self
@@ -479,8 +463,8 @@ impl ProjectionStore {
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         let raw_json: Option<String> = conn
             .query_row(
-                "SELECT raw_json FROM session_index WHERE node_id=? AND session_id=?",
-                params![node_id, session_id],
+                "SELECT raw_json FROM entities WHERE node_id=? AND entity_id=?",
+                params![node_id, entity_id],
                 |r| r.get(0),
             )
             .ok();
@@ -488,7 +472,13 @@ impl ProjectionStore {
             return Ok(PatchStatus::Missing);
         };
         let mut raw: Value = serde_json::from_str(&raw_json)?;
-        if let (Some(obj), Some(patch_obj)) = (raw.as_object_mut(), patch.as_object()) {
+        // Diffs patch the entity's fields — under the interim
+        // `indexDoc` wrap that's the inner doc, else the doc itself.
+        let target = match raw.get_mut("indexDoc") {
+            Some(d) if d.is_object() => d.as_object_mut(),
+            _ => raw.as_object_mut(),
+        };
+        if let (Some(obj), Some(patch_obj)) = (target, patch.as_object()) {
             for (k, v) in patch_obj {
                 obj.insert(k.clone(), v.clone());
             }
@@ -500,8 +490,8 @@ impl ProjectionStore {
     /// Drop every row belonging to a node id that's no longer
     /// registered — a renamed id (`node`→`main`), a node removed from
     /// `PEREGRIN_NODES`, or the single-node shorthand id replaced by a
-    /// real one. Their session rows have no sync loop anymore and
-    /// would serve dead sessions forever (click → "node not found").
+    /// real one. Their entity rows have no sync loop anymore and
+    /// would serve dead entities forever (click → "node not found").
     /// The store is a cache — a still-configured node resyncs itself.
     ///
     /// # Errors
@@ -523,7 +513,7 @@ impl ProjectionStore {
         let bind: Vec<&dyn rusqlite::ToSql> =
             keep.iter().map(|id| id as &dyn rusqlite::ToSql).collect();
         let tx = conn.unchecked_transaction()?;
-        for table in ["session_index", "sync_state"] {
+        for table in ["entities", "sync_state"] {
             tx.execute(
                 &format!("DELETE FROM {table} WHERE node_id NOT IN ({marks})"),
                 rusqlite::params_from_iter(bind.iter()),
@@ -537,63 +527,62 @@ impl ProjectionStore {
         Ok(())
     }
 
-    /// Drop one projected session (tombstone applied).
+    /// Drop one projected entity (tombstone applied).
     ///
     /// # Errors
     /// On sqlite failure.
-    pub fn delete_session(&self, node_id: &str, session_id: &str) -> Result<(), SyncError> {
+    pub fn delete_entity(&self, node_id: &str, entity_id: &str) -> Result<(), SyncError> {
         let conn = self
             .conn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         conn.execute(
-            "DELETE FROM session_index WHERE node_id=? AND session_id=?",
-            params![node_id, session_id],
+            "DELETE FROM entities WHERE node_id=? AND entity_id=?",
+            params![node_id, entity_id],
         )?;
         Ok(())
     }
 
-    /// One projected session row.
+    /// One projected entity row.
     ///
     /// # Errors
     /// On sqlite/serde failure.
-    pub fn session(
+    pub fn entity(
         &self,
         node_id: &str,
-        session_id: &str,
-    ) -> Result<Option<IndexedSession>, SyncError> {
+        entity_id: &str,
+    ) -> Result<Option<IndexedEntity>, SyncError> {
         let conn = self
             .conn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let mut stmt =
-            conn.prepare("SELECT * FROM session_index WHERE node_id=? AND session_id=?")?;
-        let mut rows = stmt.query_map(params![node_id, session_id], row_to_indexed)?;
+        let mut stmt = conn.prepare("SELECT * FROM entities WHERE node_id=? AND entity_id=?")?;
+        let mut rows = stmt.query_map(params![node_id, entity_id], row_to_indexed)?;
         match rows.next() {
             Some(row) => Ok(Some(row?)),
             None => Ok(None),
         }
     }
 
-    /// Every projected session — `node_id` scopes to one node, `None`
-    /// lists all nodes (the hub's merged session list).
+    /// Every projected entity — `node_id` scopes to one node, `None`
+    /// lists all nodes (the hub's merged entity list).
     ///
     /// # Errors
     /// On sqlite/serde failure.
-    pub fn sessions(&self, node_id: Option<&str>) -> Result<Vec<IndexedSession>, SyncError> {
+    pub fn entities(&self, node_id: Option<&str>) -> Result<Vec<IndexedEntity>, SyncError> {
         let conn = self
             .conn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         if let Some(node_id) = node_id {
-            let mut stmt = conn
-                .prepare("SELECT * FROM session_index WHERE node_id=? ORDER BY updated_at DESC")?;
+            let mut stmt =
+                conn.prepare("SELECT * FROM entities WHERE node_id=? ORDER BY updated_at DESC")?;
             let rows = stmt
                 .query_map(params![node_id], row_to_indexed)?
                 .collect::<Result<Vec<_>, _>>()?;
             Ok(rows)
         } else {
-            let mut stmt = conn.prepare("SELECT * FROM session_index ORDER BY updated_at DESC")?;
+            let mut stmt = conn.prepare("SELECT * FROM entities ORDER BY updated_at DESC")?;
             let rows = stmt
                 .query_map([], row_to_indexed)?
                 .collect::<Result<Vec<_>, _>>()?;
@@ -651,24 +640,24 @@ fn node_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<NodeRow> {
 }
 
 /// A write destined for a node — the input to [`SyncHandle::submit_op`].
-/// When the node is down it becomes an [`OutboxEntry`]; `kind` decides
+/// When the node is down it becomes an [`OutboxEntry`]; `policy` decides
 /// retry-vs-dead-letter on replay failure.
 #[derive(Clone, Debug)]
 pub struct NodeWrite {
     /// Target node (must be registered).
     pub node_id: String,
-    /// Session the write applies to.
-    pub session_id: String,
-    /// Agent hint for `?agent=` — the projection's `agent` column is a
-    /// good source.
-    pub agent: Option<String>,
-    /// Outbox op name: `prompt`, `cancel`, `permission`, `meta.patch`,
-    /// `delete`.
+    /// Entity the write applies to.
+    pub entity_id: String,
+    /// Entity kind for `?kind=` disambiguation — the projection's `kind`
+    /// column is a good source.
+    pub entity_kind: Option<String>,
+    /// Outbox op name: `<kind>.<verb>` namespaced (`sepia.prompt`,
+    /// `entity.delete`, …).
     pub op: String,
     /// [`OpKind::Metadata`] retries; [`OpKind::Turn`] dead-letters on a
     /// failed replay.
-    pub kind: OpKind,
-    /// The JSON body (empty object for `cancel`/`delete`).
+    pub policy: OpKind,
+    /// The JSON body (empty object for `entity.delete` etc.).
     pub payload: Value,
     /// Client-supplied dedupe key — re-submitting the same key returns
     /// the same queued entry instead of a duplicate write.

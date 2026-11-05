@@ -10,7 +10,7 @@
 //!   session-scoped calls routed to the owning node on multi-node
 //!   setups (`PEREGRIN_NODES`).
 //!
-//! [`sync_api::SyncNodeApi`] is the hub's [`NodeApi`]: session lists
+//! [`sync_api::SyncEntityApi`] is the hub's [`NodeApi`]: session lists
 //! read the merged projection and writes queue in the durable outbox
 //! when a node is down.
 
@@ -30,24 +30,24 @@ use axum::extract::Request;
 use axum::middleware::{self, Next};
 use axum::response::Response;
 use axum::routing::{any, get};
-use peregrin_node_api::api::NodeApi;
+use peregrin_node_api::api::EntityApi;
 use tracing::Instrument;
 
-/// Everything the router needs — the node-API port (`NodeApi` is a
+/// Everything the router needs — the node-API port (`EntityApi` is a
 /// trait so tests can stub it) and the upstream address for the
 /// HTTP/SSE bridges.
-/// Session id → `(url, token)` of the owning node.
-pub type SessionRouter = Arc<dyn Fn(&str) -> Option<(String, Option<String>)> + Send + Sync>;
+/// Entity id → `(url, token)` of the owning node.
+pub type EntityRouter = Arc<dyn Fn(&str) -> Option<(String, Option<String>)> + Send + Sync>;
 
 #[derive(Clone)]
 pub struct HubState {
-    pub node: Arc<dyn NodeApi>,
+    pub node: Arc<dyn EntityApi>,
     pub node_url: Arc<str>,
     pub node_token: Option<Arc<str>>,
-    /// Multi-node routing — resolves a session id to its owning
-    /// node's `(url, token)` for session-scoped proxy calls.
+    /// Multi-node routing — resolves an entity id to its owning
+    /// node's `(url, token)` for entity-scoped proxy calls.
     /// `None` → everything uses `node_url` (single-node mode).
-    pub session_router: Option<SessionRouter>,
+    pub entity_router: Option<EntityRouter>,
     /// Hub-owned push subscription store — `None` → `/api/push/*` 501s.
     pub push: Option<Arc<peregrin_push::PushStore>>,
     /// `PEREGRIN_HUB_TOKEN` — the client→hub gate. `None` → every route
@@ -68,7 +68,7 @@ impl HubState {
     /// token on hub → node calls, falling back to the caller's own
     /// `Authorization` header when unset.
     pub fn new(
-        node: Arc<dyn NodeApi>,
+        node: Arc<dyn EntityApi>,
         node_url: impl Into<Arc<str>>,
         node_token: Option<Arc<str>>,
     ) -> Self {
@@ -90,7 +90,7 @@ impl HubState {
             node,
             node_url: node_url.into(),
             node_token,
-            session_router: None,
+            entity_router: None,
             push: None,
             hub_token: None,
             sse_agent,
@@ -98,11 +98,11 @@ impl HubState {
         }
     }
 
-    /// Route a session-scoped request: the owning node's url+token when
-    /// a [`session_router`](Self::session_router) resolves, else the
+    /// Route an entity-scoped request: the owning node's url+token when
+    /// a [`entity_router`](Self::entity_router) resolves, else the
     /// default upstream.
-    pub(crate) fn session_upstream(&self, id: &str) -> (String, Option<String>) {
-        self.session_router
+    pub(crate) fn entity_upstream(&self, id: &str) -> (String, Option<String>) {
+        self.entity_router
             .as_ref()
             .and_then(|r| r(id))
             .unwrap_or_else(|| {
@@ -248,7 +248,7 @@ async fn trace_layer(req: Request<Body>, next: Next) -> Response {
     .await
 }
 
-/// HubState for a running hub: the sync engine + [`SyncNodeApi`].
+/// HubState for a running hub: the sync engine + [`SyncEntityApi`].
 /// `PEREGRIN_NODES` (`id=url[@token];…`) wins; `PEREGRIN_NODE_URL`/`PEREGRIN_NODE_TOKEN`
 /// is the single-node shorthand. Nodes listed without a token resolve
 /// one from the [`credentials`] store (OS keyring → file fallback —
@@ -302,7 +302,7 @@ pub fn hub_state_from(
         .map_err(|e| format!("projection open: {e}"))?;
     // Rows from node ids no longer configured (renamed, removed, or the
     // legacy `node` shorthand) have no sync loop — purge them once at
-    // boot so dead sessions stop surfacing in the list.
+    // boot so dead entities stop surfacing in the index.
     let keep: Vec<String> = nodes.iter().map(|n| n.id.clone()).collect();
     if let Err(e) = projection.purge_unregistered(&keep) {
         tracing::warn!("purge_unregistered failed: {e}");
@@ -330,20 +330,20 @@ pub fn hub_state_from(
     let engine = peregrin_sync::SyncEngine::spawn(projection, outbox, targets, options);
     // `unwrap_or_else` above guarantees at least the single-node row.
     let upstream = nodes.first().cloned().unwrap_or_default();
-    let api = Arc::new(sync_api::SyncNodeApi::new(engine, nodes, creds));
+    let api = Arc::new(sync_api::SyncEntityApi::new(engine, nodes, creds));
     let mut state = HubState::new(
-        Arc::clone(&api) as Arc<dyn NodeApi>,
+        Arc::clone(&api) as Arc<dyn EntityApi>,
         upstream.url.as_str(),
         upstream.token.clone().map(Into::into),
     );
     state.push = Some(push);
     state.hub_token = config.hub_token.clone().map(Into::into);
     let router_api = Arc::clone(&api);
-    state.session_router = Some(Arc::new(move |id| router_api.node_url_for(id, None)));
+    state.entity_router = Some(Arc::new(move |id| router_api.node_url_for(id, None)));
     Ok(state)
 }
 
-/// The hub's push-notification feed hook — `session` diffs carrying
+/// The hub's push-notification feed hook — entity diffs carrying
 /// `runFinished`/`permissionRequested` patch flags become Web Push
 /// sends. Extracted so tests can drive the body directly (the live
 /// hook only fires on real node feeds).
@@ -363,11 +363,19 @@ pub fn feed_hook(
             if kind != "session" {
                 return;
             }
-            let title = projection
-                .session(node_id, id)
-                .ok()
-                .flatten()
-                .map_or_else(|| id.clone(), |r| r.title);
+            // INTERIM: push rules read `indexDoc.title` — a
+            // `sepia-session` field. Entity-level notify rules are
+            // the integration's job (PL-004 phase 4).
+            let title = projection.entity(node_id, id).ok().flatten().map_or_else(
+                || id.clone(),
+                |r| {
+                    let doc = r.raw.get("indexDoc").unwrap_or(&r.raw);
+                    doc.get("title")
+                        .and_then(serde_json::Value::as_str)
+                        .unwrap_or(id)
+                        .to_string()
+                },
+            );
             let url = format!("/?session={id}");
             if patch.get("runFinished") == Some(&serde_json::Value::Bool(true)) {
                 push.send(

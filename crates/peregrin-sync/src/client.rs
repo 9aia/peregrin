@@ -1,15 +1,20 @@
-//! `NodeClient` — the hub→node HTTP client (protocol v2).
+//! `NodeClient` — the hub→node HTTP client (entity plane, ADR-0091).
 //!
 //! Blocking on purpose (`ureq`): the sync engine runs it on
-//! `spawn_blocking` threads. Carries a per-node bearer token, reads
-//! `GET /api/sessions*` responses as raw `Value`s (the projection stores
-//! the wire rows verbatim), posts session-scoped ops, and tails the
-//! `/api/events` node feed as a `data: {json}` SSE line reader.
+//! `spawn_blocking` threads. Carries a per-node bearer token, reads the
+//! entity index as raw `Value` docs (the projection stores them
+//! verbatim), posts entity-scoped ops, and tails `/api/events` as a
+//! `data: {json}` SSE line reader.
+//!
+//! INTERIM: today's nodes still expose the session plane — this client
+//! wraps `GET /api/sessions*` rows as `kind="sepia-session"` entity
+//! docs and routes `sepia.<verb>` ops onto session endpoints. When the
+//! node grows the integration-backed `/api/entities` surface (phase 4),
+//! this module shrinks to the generic contract.
 
 use std::io::{BufRead, BufReader};
 use std::time::{Duration, Instant};
 
-use sepia_proto::SessionEvent;
 use serde_json::Value;
 use ureq::http::Response;
 use ureq::{Agent, Body, BodyReader, RequestBuilder};
@@ -76,16 +81,6 @@ impl NodeError {
     pub fn is_transport(&self) -> bool {
         matches!(self, Self::Transport(_) | Self::Io(_))
     }
-}
-
-/// `GET /api/sessions/{id}/history` page — messages stay opaque `Value`s
-/// (history is node-fetched on demand; the hub only caches it).
-#[derive(Clone, Debug, PartialEq)]
-pub struct HistoryPage {
-    pub messages: Vec<Value>,
-    pub total: usize,
-    /// Absolute index of `messages[0]`; `> 0` means earlier history exists.
-    pub start: usize,
 }
 
 /// Blocking client for one paired node.
@@ -161,7 +156,10 @@ impl NodeClient {
         format!("{}{}", self.base, path)
     }
 
-    fn session_url(&self, id: &str, suffix: &str) -> String {
+    fn entity_url(&self, id: &str, suffix: &str) -> String {
+        // INTERIM: `/api/entities` doesn't exist node-side yet — the
+        // session plane is today's only entity kind, so its routes
+        // carry `sepia-session` docs.
         let mut url = format!("{}/api/sessions/{}", self.base, encode_segment(id));
         if !suffix.is_empty() {
             url.push('/');
@@ -204,13 +202,18 @@ impl NodeClient {
         }
     }
 
-    /// `GET /api/sessions` — the raw summary rows (`{sessions: [...]}`),
-    /// meta overlay already applied node-side. `with_locks` adds the
-    /// `withLocks=1` lock-probe fields.
+    /// `GET /api/sessions` — the node's entity index. INTERIM: wraps
+    /// each summary row as a `kind="sepia-session"` entity doc — the
+    /// substrate-side shape until nodes serve `/api/entities` natively.
+    /// `with_locks` adds the `withLocks=1` lock-probe fields.
     ///
     /// # Errors
     /// On transport failure, non-2xx, or a non-array `sessions` field.
-    pub fn list_sessions(&self, with_locks: bool) -> Result<Vec<Value>, NodeError> {
+    pub fn list_entities(
+        &self,
+        kind: Option<&str>,
+        with_locks: bool,
+    ) -> Result<Vec<Value>, NodeError> {
         let mut req = self.auth(self.agent.get(self.url("/api/sessions")));
         if with_locks {
             req = req.query("withLocks", "1");
@@ -218,112 +221,79 @@ impl NodeClient {
         let res = req.call().map_err(NodeError::Transport)?;
         let body = Self::expect_json(res)?;
         match body.get("sessions").and_then(Value::as_array) {
-            Some(sessions) => Ok(sessions.clone()),
+            Some(rows) => Ok(rows
+                .iter()
+                .map(entity_doc_of)
+                .filter(|doc| {
+                    kind.is_none_or(|k| doc.get("kind").and_then(Value::as_str) == Some(k))
+                })
+                .collect()),
             None => Err(NodeError::Malformed(
                 "GET /api/sessions: missing sessions array".into(),
             )),
         }
     }
 
-    /// `GET /api/sessions/{id}` — one summary row (`?agent` disambiguates
-    /// colliding ids across agent stores).
+    /// `GET /api/sessions/{id}` — one entity doc (interim wrap; `?agent`
+    /// disambiguation passes through on the session wire).
     ///
     /// # Errors
     /// On transport failure, non-2xx, or a non-object body.
-    pub fn get_summary(&self, id: &str, agent: Option<&str>) -> Result<Value, NodeError> {
-        let req = self.auth(self.agent.get(self.session_url(id, "")));
-        let res = Self::query_opt(req, "agent", agent)
+    pub fn get_entity(&self, id: &str, kind: Option<&str>) -> Result<Value, NodeError> {
+        let req = self.auth(self.agent.get(self.entity_url(id, "")));
+        let res = Self::query_opt(req, "agent", kind)
             .call()
             .map_err(NodeError::Transport)?;
-        Self::expect_json(res)
+        Self::expect_json(res).map(|d| entity_doc_of(&d))
     }
 
-    /// `GET /api/sessions/{id}/history?limit&before` — paged message
-    /// bodies, fetched on demand only.
-    ///
-    /// # Errors
-    /// On transport failure, non-2xx, or a malformed page.
-    pub fn get_history(
-        &self,
-        id: &str,
-        limit: Option<usize>,
-        before: Option<i64>,
-        agent: Option<&str>,
-    ) -> Result<HistoryPage, NodeError> {
-        let mut req = self.auth(self.agent.get(self.session_url(id, "history")));
-        req = Self::query_opt(req, "agent", agent);
-        if let Some(limit) = limit {
-            req = req.query("limit", limit.to_string());
-        }
-        if let Some(before) = before {
-            req = req.query("before", before.to_string());
-        }
-        let res = req.call().map_err(NodeError::Transport)?;
-        let body = Self::expect_json(res)?;
-        let messages = body
-            .get("messages")
-            .and_then(Value::as_array)
-            .cloned()
-            .ok_or_else(|| NodeError::Malformed("history: missing messages".into()))?;
-        Ok(HistoryPage {
-            messages,
-            total: body
-                .get("total")
-                .and_then(Value::as_u64)
-                .ok_or_else(|| NodeError::Malformed("history: missing total".into()))?
-                as usize,
-            start: body
-                .get("start")
-                .and_then(Value::as_u64)
-                .ok_or_else(|| NodeError::Malformed("history: missing start".into()))?
-                as usize,
-        })
-    }
-
-    /// Post a session-scoped write. `op` is the outbox op name:
-    /// `prompt`, `cancel`, `permission`, `meta.patch`/`meta`, `delete`.
+    /// Post an entity-scoped op — `op` is the outbox op name
+    /// (`<kind>.<verb>` namespaced). INTERIM dispatch: `sepia.<verb>`
+    /// ops route onto the session plane's endpoints; `entity.delete`
+    /// deletes the entity. Un-namespaced ops from older outbox rows
+    /// are treated as `sepia.*` — this table is the bridge until
+    /// phase 4's node-side dispatch.
     ///
     /// # Errors
     /// [`NodeError::Unsupported`] for unknown ops; transport/Http else.
     pub fn post_op(
         &self,
-        session_id: &str,
-        agent: Option<&str>,
+        entity_id: &str,
+        kind: Option<&str>,
         op: &str,
         payload: &Value,
     ) -> Result<Value, NodeError> {
-        let res = match op {
-            "prompt" => Self::query_opt(
-                self.auth(self.agent.post(self.session_url(session_id, "prompt"))),
-                "agent",
-                agent,
-            )
-            .send_json(payload),
-            "cancel" => Self::query_opt(
-                self.auth(self.agent.post(self.session_url(session_id, "cancel"))),
-                "agent",
-                agent,
-            )
-            .send_empty(),
-            "permission" => Self::query_opt(
-                self.auth(self.agent.post(self.session_url(session_id, "permission"))),
-                "agent",
-                agent,
-            )
-            .send_json(payload),
+        let verb = op.strip_prefix("sepia.").unwrap_or(op);
+        let res = match verb {
             "meta.patch" | "meta" => Self::query_opt(
-                self.auth(self.agent.patch(self.session_url(session_id, ""))),
+                self.auth(self.agent.patch(self.entity_url(entity_id, ""))),
                 "agent",
-                agent,
+                kind,
             )
             .send_json(payload),
             "delete" => Self::query_opt(
-                self.auth(self.agent.delete(self.session_url(session_id, ""))),
+                self.auth(self.agent.delete(self.entity_url(entity_id, ""))),
                 "agent",
-                agent,
+                kind,
             )
             .call(),
-            other => return Err(NodeError::Unsupported(other.to_string())),
+            "cancel" => Self::query_opt(
+                self.auth(self.agent.post(self.entity_url(entity_id, verb))),
+                "agent",
+                kind,
+            )
+            .send_empty(),
+            // `sepia.<verb>` → POST `/api/sessions/{id}/<verb>` for
+            // the verbs the session wire defines; unknown verbs are
+            // rejected instead of posting a bogus route.
+            v @ ("prompt" | "permission" | "attach" | "detach" | "restore" | "rewind"
+            | "convert" | "export" | "checkpoint") => Self::query_opt(
+                self.auth(self.agent.post(self.entity_url(entity_id, v))),
+                "agent",
+                kind,
+            )
+            .send_json(payload),
+            _ => return Err(NodeError::Unsupported(op.to_string())),
         }
         .map_err(NodeError::Transport)?;
         Self::expect_json(res)
@@ -377,18 +347,18 @@ impl NodeClient {
         self.open_stream(req)
     }
 
-    /// `GET /api/sessions/{id}/stream` — a session's live `SessionEvent`
-    /// frames (plus `lagged` markers). Same SSE reader as [`Self::events`].
+    /// `GET /api/sessions/{id}/stream` — an entity's live event stream
+    /// (plus `lagged` markers). Same SSE reader as [`Self::events`].
     ///
     /// # Errors
     /// On connect failure or a non-2xx status.
-    pub fn session_stream(
+    pub fn entity_stream(
         &self,
         id: &str,
-        agent: Option<&str>,
+        kind: Option<&str>,
     ) -> Result<EventStream<BodyReader<'static>>, NodeError> {
-        let req = self.auth(self.agent.get(self.session_url(id, "stream")));
-        let req = Self::query_opt(req, "agent", agent);
+        let req = self.auth(self.agent.get(self.entity_url(id, "stream")));
+        let req = Self::query_opt(req, "agent", kind);
         self.open_stream(req)
     }
 
@@ -447,8 +417,6 @@ pub enum FeedEvent {
     Lagged,
     /// `event: heartbeat` — node keep-alive.
     Heartbeat,
-    /// A typed `SessionEvent` (`data:` frames on a session stream).
-    Session(SessionEvent),
     /// Anything else — forward-compatible ignore.
     Other {
         /// SSE `event:` name ("" when absent).
@@ -573,8 +541,8 @@ impl<R: std::io::Read> EventStream<R> {
 }
 
 /// Frame → [`FeedEvent`]. `session`/`meta`/`project` frames carry the
-/// `{id, agent?, patch}` diff shape; unnamed/`message` frames are parsed
-/// as typed `SessionEvent`s (the session-stream wire).
+/// `{id, agent?, patch}` diff shape; unnamed/`message` frames are kept
+/// opaque — the substrate doesn't know entity-detail event types.
 fn classify(event: &str, data: &str) -> FeedEvent {
     let parsed: Value = serde_json::from_str(data).unwrap_or(Value::Null);
     match event {
@@ -598,18 +566,33 @@ fn classify(event: &str, data: &str) -> FeedEvent {
                 },
             }
         }
-        _ => match serde_json::from_str::<SessionEvent>(data) {
-            Ok(session_event) => FeedEvent::Session(session_event),
-            Err(_) => FeedEvent::Other {
-                event: event.to_string(),
-                data: parsed,
-            },
+        _ => FeedEvent::Other {
+            event: event.to_string(),
+            data: parsed,
         },
     }
 }
 
+/// INTERIM: wrap a session-plane summary row as an entity doc —
+/// `{id, kind:"sepia-session", indexDoc: <row>, updatedAt, locked,
+/// live}`. The `indexDoc` carries the whole wire summary so the
+/// integration keeps its fields; substrate columns are lifted to the
+/// top level for the projection.
+fn entity_doc_of(row: &Value) -> Value {
+    let get = |k: &str| row.get(k).and_then(Value::as_str).unwrap_or_default();
+    let flag = |k: &str| row.get(k).and_then(Value::as_bool).unwrap_or(false);
+    serde_json::json!({
+        "id": get("id"),
+        "kind": "sepia-session",
+        "indexDoc": row,
+        "updatedAt": get("updatedAt"),
+        "locked": flag("locked"),
+        "live": flag("busy"),
+    })
+}
+
 /// RFC 3986 unreserved characters pass through; everything else is
-/// percent-encoded — session ids are opaque and may carry `:`/` `/etc.
+/// percent-encoded — entity ids are opaque and may carry `:`/` `/etc.
 pub fn encode_segment(segment: &str) -> String {
     use std::fmt::Write as _;
     let mut out = String::with_capacity(segment.len());
@@ -732,20 +715,17 @@ mod tests {
     }
 
     #[test]
-    fn parses_bare_data_frames_as_session_events() {
-        // The real wire shape: tag is camelCase, fields snake_case.
-        let event = SessionEvent::RunStarted {
-            thread_id: "s1".into(),
-            run_id: "r1".into(),
-        };
-        let input = format!("data: {}\n\n", serde_json::to_string(&event).unwrap());
+    fn bare_data_frames_are_opaque() {
+        // Entity-detail events (`SessionEvent` on the session wire) are
+        // `Other` — the substrate forwards, never interprets, them.
+        let input = "data: {\"tag\":\"runStarted\"}\n\n".to_string();
         let got = frames(&input);
         assert_eq!(
             got,
-            vec![FeedEvent::Session(SessionEvent::RunStarted {
-                thread_id: "s1".into(),
-                run_id: "r1".into(),
-            })]
+            vec![FeedEvent::Other {
+                event: String::new(),
+                data: serde_json::json!({"tag": "runStarted"}),
+            }]
         );
     }
 

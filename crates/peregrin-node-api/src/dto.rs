@@ -1,378 +1,98 @@
-//! Wire DTOs mirroring `peregrin-http`'s response shapes. These are
-//! deliberately tolerant (`#[serde(default)]` everywhere, `Value` for
-//! blocks) so a newer node can add fields without breaking an older
-//! hub — and so one malformed message can't poison a whole page.
+//! Wire DTOs for the entity plane — kind-agnostic by design (ADR-0091).
+//! `index_doc`/`payload` are opaque JSON to peregrin: the *integration*
+//! (e.g. `sepia-peregrin`) defines what they hold for its entity kind.
+//! Tolerant decode everywhere (`#[serde(default)]`, `Value` for blobs).
 
-use sepia_core::{TokenUsage, ToolCallDiff, ToolCallLocation};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-/// `GET /api/sessions` row — `peregrin_http::routes::SummaryWire`.
+/// `GET /api/entities` row — one entity as the node/index projects it.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SessionSummaryDto {
+pub struct EntityDto {
     pub id: String,
-    #[serde(default)]
-    pub title: String,
-    #[serde(default)]
-    pub cwd: String,
-    #[serde(default)]
-    pub agent: String,
-    #[serde(default)]
-    pub updated_at: String,
-    #[serde(default)]
-    pub locked: bool,
-    #[serde(default)]
-    pub lock_holder_pid: Option<f64>,
-    #[serde(default)]
-    pub source: String,
-    #[serde(default)]
-    pub busy: bool,
-    #[serde(default)]
-    pub pinned: bool,
-    #[serde(default)]
-    pub archived: bool,
-    #[serde(default)]
-    pub project_ids: Vec<String>,
-    #[serde(default)]
-    pub model: Option<String>,
-    #[serde(default)]
-    pub parent_session_id: Option<String>,
-    #[serde(default)]
-    pub agent_id: Option<String>,
-    /// Never part of the plain summary GET — it arrives via the feed's
-    /// `{live: bool}` session patch (merged into the hub projection's
-    /// raw row), so absence reads as `false`.
-    #[serde(default)]
-    pub live: bool,
-    /// Run provenance — each attach appends a `{at, agent, node}` span.
-    /// Rides `SummaryWire.spans`; empty until the first attach.
-    #[serde(default)]
-    pub spans: Vec<RunSpanDto>,
-    /// Hub-side annotation — the node id that owns this session.
-    /// Not part of the node's wire summary; absent → `None`.
+    /// Entity kind tag — `sepia-session`, `campaign`, … integration-defined.
+    pub kind: String,
+    /// Owning node id on multi-node setups (empty → unknown/local).
     #[serde(default)]
     pub node: Option<String>,
-    /// `SummaryWire.can_rewind` — the node's control plane has a
-    /// transcript rewinder for this session's backend. Absent on older
-    /// nodes → `false` → the UI hides rewind affordances.
+    /// The integration's list-view document — title, timestamps,
+    /// grouping keys, flags. Opaque to peregrin.
     #[serde(default)]
-    pub can_rewind: bool,
+    pub index_doc: Value,
+    /// Another process holds this entity's lock.
+    #[serde(default)]
+    pub locked: bool,
+    /// A live driver/agent is attached.
+    #[serde(default)]
+    pub live: bool,
+    #[serde(default)]
+    pub updated_at: String,
 }
 
-/// `SummaryWire.spans[]` — `sepia_meta::RunSpan`/`sepia_session::RunSpan`
-/// on the wire (`{at, agent, node}`, `at` epoch ms).
+/// A write targeted at an entity — `kind` is `<entity-kind>.<verb>`
+/// namespaced (`sepia.prompt`, `campaign.signal`); `payload` is the
+/// integration's wire body, opaque to the substrate.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct RunSpanDto {
+pub struct EntityOp {
+    pub kind: String,
     #[serde(default)]
-    pub at: f64,
-    #[serde(default)]
-    pub agent: String,
-    #[serde(default)]
-    pub node: String,
+    pub payload: Value,
 }
 
-/// `POST /api/sessions` → `CreateResultWire` (`{id, agentId,
-/// capabilities}` — the capabilities object is ignored here).
+/// `GET /api/index` — one node's entity index (per-node row on the hub).
+#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EntityIndexDto {
+    pub node: String,
+    #[serde(default)]
+    pub entities: Vec<EntityDto>,
+}
+
+/// `POST /api/entities` → `{id}` + echo of the registered entity.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CreateResultDto {
     pub id: String,
     #[serde(default)]
-    pub agent_id: String,
+    pub entity: Option<EntityDto>,
 }
 
-/// `POST /api/sessions/{id}/attach` → `AttachResultWire`
-/// (`{attached, readOnly, agentId, capabilities}`). `read_only` means a
-/// foreign process holds the store lock.
+/// Queued (`"queued"`) and dead-lettered (`"failed"`) ops in a hub's
+/// durable outbox — the multi-node surface for "the node is down, the
+/// write replays on reconnect". Direct connections return `[]`.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct AttachResultDto {
-    #[serde(default)]
-    pub attached: bool,
-    #[serde(default)]
-    pub read_only: bool,
-    #[serde(default)]
-    pub agent_id: String,
-}
-
-/// `GET /api/sessions/{id}/checkpoints` row — `sepia_core::CheckpointRef`
-/// (`{ref, createdAt, runCount?, kind?}`).
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CheckpointDto {
-    #[serde(default)]
-    pub r#ref: String,
-    /// Epoch milliseconds.
-    #[serde(default)]
-    pub created_at: f64,
-    #[serde(default)]
-    pub run_count: Option<i64>,
-    #[serde(default)]
-    pub kind: Option<String>,
-}
-
-/// `GET /api/sessions/{id}/history` page —
-/// `peregrin_http::routes::HistoryPageWire`.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HistoryPageDto {
-    #[serde(default)]
-    pub messages: Vec<HistoryMessageDto>,
-    #[serde(default)]
-    pub total: usize,
-    /// Node index the first `messages` entry occupies — the `?before`
-    /// cursor for the next-earlier page.
-    #[serde(default)]
-    pub start: usize,
-}
-
-/// One history row — `sepia_session::HistoryMessage`'s wire form.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct HistoryMessageDto {
-    /// `"system" | "user" | "assistant" | "tool"`.
-    #[serde(default)]
-    pub role: String,
-    /// The transcript node this message is — the `nodeId` a per-message
-    /// `POST /rewind` truncates after. `Option` on purpose: a wire that
-    /// omits it must not aim the cut at a default id (node 0 would
-    /// truncate the whole session).
-    #[serde(default)]
-    pub node_id: Option<i64>,
-    #[serde(default)]
-    pub content: String,
-    /// Epoch milliseconds.
-    #[serde(default)]
-    pub created_at: f64,
-    #[serde(default)]
-    pub tool_name: Option<String>,
-    #[serde(default)]
-    pub thinking: Option<String>,
-    /// `"pending" | "success" | "error"` on tool-result rows.
-    #[serde(default)]
-    pub tool_status: Option<String>,
-    #[serde(default)]
-    pub exit_code: Option<i64>,
-    #[serde(default)]
-    pub duration_ms: Option<f64>,
-    /// Tool-call args, JSON-encoded.
-    #[serde(default)]
-    pub args: Option<String>,
-    #[serde(default)]
-    pub tool_call_id: Option<String>,
-    #[serde(default)]
-    pub model: Option<String>,
-    /// Token metrics the store recorded for this message
-    /// (`sepia_core::TokenUsage` — `input`/`output` + optional
-    /// `cacheRead`/`cacheWrite`/`thinking`/`cost`).
-    #[serde(default)]
-    pub usage: Option<TokenUsage>,
-    /// Structured content (`sepia_core::Block`, tagged `"type"`). Kept
-    /// as `Value` so unknown block kinds degrade rather than fail.
-    #[serde(default)]
-    pub blocks: Option<Vec<Value>>,
-    /// Tool-result rows only: files the call touched, joined by
-    /// `tool_call_id`.
-    #[serde(default)]
-    pub locations: Option<Vec<ToolCallLocation>>,
-    /// Tool-result rows only: recorded before/after payloads.
-    #[serde(default)]
-    pub diffs: Option<Vec<ToolCallDiff>>,
-}
-
-impl HistoryMessageDto {
-    /// The message's display text: `content`, or the joined `text`
-    /// blocks when `content` is empty.
-    pub fn text(&self) -> String {
-        if !self.content.is_empty() {
-            return self.content.clone();
-        }
-        let Some(blocks) = &self.blocks else {
-            return String::new();
-        };
-        blocks
-            .iter()
-            .filter(|b| b.get("type").and_then(Value::as_str) == Some("text"))
-            .filter_map(|b| b.get("text").and_then(Value::as_str))
-            .collect::<Vec<_>>()
-            .join("")
-    }
-}
-
-/// `POST /api/sessions/{id}/rewind` response —
-/// `sepia_session::RewindResult` (`{kept, removed}`).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RewindResultDto {
-    /// Nodes that survived the cut.
-    #[serde(default)]
-    pub kept: i64,
-    /// Nodes the cut dropped; `0` means the target was already the tail.
-    #[serde(default)]
-    pub removed: i64,
-}
-
-/// `POST /api/sessions/import` response — the created summary row.
-/// The UI only needs `id` + `agent` to navigate to the imported copy.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ImportResultDto {
+pub struct PendingOpDto {
     pub id: String,
     #[serde(default)]
-    pub title: String,
+    pub node_id: String,
     #[serde(default)]
-    pub agent: String,
+    pub entity_id: String,
+    #[serde(default)]
+    pub kind: String,
+    #[serde(default)]
+    pub status: String,
+    #[serde(default)]
+    pub enqueued_at: String,
+    #[serde(default)]
+    pub attempts: u32,
+    #[serde(default)]
+    pub last_error: Option<String>,
 }
 
-/// One transferred session — the hub's export→import orchestration
-/// result (`docs/transfer.md`). `new_session_id` is the copy the
-/// target minted; transfers always create new ids.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TransferResultDto {
-    /// Source session id.
-    pub session_id: String,
-    /// The imported copy's id on the target node.
-    #[serde(default)]
-    pub new_session_id: String,
-    #[serde(default)]
-    pub title: String,
-    #[serde(default)]
-    pub cwd: String,
-    #[serde(default)]
-    pub agent: String,
-    #[serde(default)]
-    pub source_node: String,
-    #[serde(default)]
-    pub target_node: String,
-    /// Non-fatal follow-up failures (meta copy, verify) — the transfer
-    /// itself landed.
-    #[serde(default)]
-    pub warnings: Vec<String>,
-}
-
-/// A per-session failure inside a `transfer_project` batch — the row
-/// the loop skipped plus why.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct TransferFailureDto {
-    #[serde(default)]
-    pub session_id: String,
-    #[serde(default)]
-    pub title: String,
-    #[serde(default)]
-    pub error: String,
-}
-
-/// `transfer_project` result — every session under the cwd was
-/// attempted; failures don't abort the batch.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectTransferDto {
-    #[serde(default)]
-    pub transferred: Vec<TransferResultDto>,
-    #[serde(default)]
-    pub failed: Vec<TransferFailureDto>,
-    #[serde(default)]
-    pub source_node: String,
-    #[serde(default)]
-    pub target_node: String,
-}
-
-/// `GET /api/agents` row — `peregrin_http::routes::AgentWire`.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentDto {
-    pub id: String,
-    #[serde(default)]
-    pub label: String,
-    #[serde(default)]
-    pub capabilities: Option<AgentCapabilitiesDto>,
-    /// Hub-side annotation — the node that advertises this agent
-    /// (multi-node hubs only; absent → `None`).
-    #[serde(default)]
-    pub node: Option<String>,
-}
-
-/// `AgentWire.capabilities` — `peregrin_http::routes::CapabilitiesWire`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct AgentCapabilitiesDto {
-    #[serde(default)]
-    pub load_session: bool,
-    #[serde(default)]
-    pub session_list: bool,
-    #[serde(default)]
-    pub prompt_capabilities: PromptCapabilitiesDto,
-    #[serde(default)]
-    pub session_capabilities: SessionCapabilitiesDto,
-}
-
-/// `CapabilitiesWire.promptCapabilities` — `AcpPromptCapabilities`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PromptCapabilitiesDto {
-    #[serde(default)]
-    pub image: bool,
-    #[serde(default)]
-    pub audio: bool,
-    #[serde(default)]
-    pub embedded_context: bool,
-}
-
-/// `CapabilitiesWire.sessionCapabilities` — `AcpSessionCapabilities`.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct SessionCapabilitiesDto {
-    #[serde(default)]
-    pub list: bool,
-    #[serde(default)]
-    pub delete: bool,
-    #[serde(default)]
-    pub fork: bool,
-    #[serde(default)]
-    pub resume: bool,
-    #[serde(default)]
-    pub close: bool,
-    #[serde(default)]
-    pub additional_directories: bool,
-}
-
-/// `GET /api/projects` row — `sepia_meta::Project` on the wire.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct ProjectDto {
-    pub id: String,
-    #[serde(default)]
-    pub name: String,
-    /// Hub-side annotation — the node owning this project (multi-node
-    /// hubs only; absent → `None`).
-    #[serde(default)]
-    pub node: Option<String>,
-}
-
-/// `GET /api/node` — the node descriptor (`routes/node.ts` port).
+/// `GET /api/node` — the node descriptor.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeInfoDto {
-    #[serde(default)]
     pub id: String,
     #[serde(default)]
     pub name: String,
-    #[serde(default)]
-    pub version: String,
-    #[serde(default)]
-    pub protocol: u32,
-    #[serde(default)]
-    pub agents: Vec<String>,
-    #[serde(default)]
-    pub capabilities: Vec<String>,
 }
 
-/// One row of hub-side node health — `peregrin_sync::NodeRow` under the
-/// sync engine, or a synthesized single-row probe from `HttpNodeApi`.
+/// Per-node health row — `node_status` on a hub (projection row), or a
+/// synthesized single-row probe on a direct connection.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeStatusDto {
@@ -381,49 +101,33 @@ pub struct NodeStatusDto {
     pub url: String,
     #[serde(default)]
     pub label: String,
-    /// `"up" | "down" | "unknown"`.
+    /// `"up"`, `"down"`, or `"unknown"` — the projection's reachability.
     #[serde(default)]
     pub status: String,
-    /// RFC 3339 — last successful contact (sync engines only).
     #[serde(default)]
     pub last_seen_at: Option<String>,
 }
 
-/// One row of the hub's durable write queue — `peregrin_outbox`'s
-/// `pending_for_node` + `dead_letters` flattened for the UI. Only
-/// sync-engine hubs have an outbox; a single-node `HttpNodeApi` returns
-/// `[]`.
-#[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
+/// `POST /api/push/subscribe` — the keys sub-object.
+#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct PendingWriteDto {
-    pub id: String,
-    /// The node the write is queued for.
-    #[serde(default)]
-    pub node_id: String,
-    #[serde(default)]
-    pub session_id: String,
-    /// Free-form op name (`prompt`, `cancel`, `meta.patch`, …).
-    #[serde(default)]
-    pub op: String,
-    /// `"metadata" | "turn"` — the replay conflict policy.
-    #[serde(default)]
-    pub kind: String,
-    /// `"queued"` (pending/in-flight) or `"failed"` (dead-lettered).
-    #[serde(default)]
-    pub status: String,
-    /// RFC 3339 — when the write was queued.
-    #[serde(default)]
-    pub enqueued_at: String,
-    #[serde(default)]
-    pub attempts: i64,
-    /// The last replay error — what dead-letters failed with.
-    #[serde(default)]
-    pub last_error: Option<String>,
+pub struct PushKeysDto {
+    pub auth: String,
+    pub p256dh: String,
 }
 
-/// `POST /api/push/subscribe` body — `{endpoint, keys:{auth,p256dh},
-/// prefs?}`. Re-posting the same endpoint upserts, so the settings
-/// toggles re-subscribe with the updated `prefs`.
+/// `PushSubscriptionDto.prefs` — `peregrin_push::PushPrefs` on the wire
+/// (both kinds default to on node-side).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PushPrefsDto {
+    /// The flagged event finished (or errored).
+    pub done: bool,
+    /// An entity is waiting on a decision.
+    pub permission: bool,
+}
+
+/// `POST /api/push/subscribe` — `{endpoint, keys, prefs?}`.
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct PushSubscriptionDto {
@@ -433,39 +137,19 @@ pub struct PushSubscriptionDto {
     pub prefs: Option<PushPrefsDto>,
 }
 
-/// `PushSubscriptionDto.prefs` — `peregrin_push::PushPrefs` on the wire
-/// (both kinds default to on node-side). Mirrors
-/// `peregrin_web_core::notify::NotifyPrefs`, which adds the localStorage
-/// plumbing and gets its `From` impl there.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PushPrefsDto {
-    /// Agent run finished / errored.
-    pub done: bool,
-    /// Agent waiting on a permission decision.
-    pub permission: bool,
-}
-
-/// The `keys` sub-object of a push subscription.
-#[derive(Clone, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PushKeysDto {
-    pub auth: String,
-    pub p256dh: String,
-}
-
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
 
     #[test]
-    fn pending_write_serializes_with_wire_names() {
-        let dto = PendingWriteDto {
+    fn pending_op_serializes_with_wire_names() {
+        let dto = PendingOpDto {
             id: "w1".into(),
             node_id: "tower".into(),
-            session_id: "s1".into(),
-            op: "prompt".into(),
-            kind: "turn".into(),
+            entity_id: "s1".into(),
+            kind: "sepia.prompt".into(),
             status: "failed".into(),
             enqueued_at: "2026-10-08T06:40:34.123Z".into(),
             attempts: 5,
@@ -473,37 +157,24 @@ mod tests {
         };
         let v = serde_json::to_value(&dto).unwrap_or_default();
         assert_eq!(v["nodeId"], "tower");
-        assert_eq!(v["sessionId"], "s1");
+        assert_eq!(v["entityId"], "s1");
         assert_eq!(v["enqueuedAt"], "2026-10-08T06:40:34.123Z");
-        assert_eq!(v["lastError"], "node unreachable");
         // Tolerant decode — a missing field defaults, extra fields drop.
-        let parsed: PendingWriteDto =
-            serde_json::from_str(r#"{"id":"w2","op":"cancel","extra":1}"#).unwrap_or_default();
+        let parsed: PendingOpDto =
+            serde_json::from_str(r#"{"id":"w2","kind":"x.y","extra":1}"#).unwrap_or_default();
         assert_eq!(parsed.id, "w2");
-        assert_eq!(parsed.status, "");
         assert_eq!(parsed.attempts, 0);
     }
 
     #[test]
-    fn text_falls_back_to_blocks() {
-        // `content` wins when non-empty.
-        let m = HistoryMessageDto {
-            content: "direct".into(),
-            ..HistoryMessageDto::default()
+    fn entity_index_doc_is_opaque() {
+        let e = EntityDto {
+            id: "s1".into(),
+            kind: "sepia-session".into(),
+            index_doc: serde_json::json!({"title": "T", "cwd": "/x"}),
+            ..EntityDto::default()
         };
-        assert_eq!(m.text(), "direct");
-        // Empty content + no blocks → empty.
-        let m = HistoryMessageDto::default();
-        assert_eq!(m.text(), "");
-        // Text blocks join; non-text blocks drop.
-        let m = HistoryMessageDto {
-            blocks: Some(vec![
-                serde_json::json!({"type": "text", "text": "first "}),
-                serde_json::json!({"type": "image", "text": "ignored"}),
-                serde_json::json!({"type": "text", "text": "second"}),
-            ]),
-            ..HistoryMessageDto::default()
-        };
-        assert_eq!(m.text(), "first second");
+        let back: EntityDto = serde_json::from_value(serde_json::to_value(&e).unwrap()).unwrap();
+        assert_eq!(back.index_doc["title"], "T");
     }
 }

@@ -1,26 +1,31 @@
-//! [`SyncNodeApi`] — the hub's [`NodeApi`] backed by `peregrin-sync`:
-//! session lists read the local projection (merged across every paired
-//! node), history proxies to the owning node live, and writes go
-//! through `SyncEngine::submit_op` so they queue when the node is down.
-
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+//! [`SyncEntityApi`] — the hub's [`EntityApi`] backed by `peregrin-sync`:
+//! the entity list reads the local projection (merged across every
+//! paired node), detail + detail-stream traffic proxies to the owning
+//! node live, and ops go through `SyncEngine::submit_op` so they queue
+//! in the durable outbox when the node is down.
+//!
+//! INTERIM: today's nodes still speak the session plane — op kinds
+//! (`sepia.*`), creates (`kind="sepia-session"`), and snapshots map
+//! onto `/api/sessions*` routes inside [`peregrin_sync::client`]. When
+//! the integration-backed `/api/entities` surface lands (PL-004 phase
+//! 4), the shim dissolves and nothing here names a session.
 
 use std::collections::BTreeMap;
+use std::collections::HashMap;
+use std::sync::{Arc, RwLock};
 
 use peregrin_control::{Actor, Arbitration, Decision, LockRegistry, NodeId};
 use peregrin_sync::client::NodeClient;
 use peregrin_sync::{
-    IndexedSession, NodeRef, NodeTarget, NodeWrite, OpKind, OutboxEntry, OutboxStatus, SyncError,
+    IndexedEntity, NodeRef, NodeTarget, NodeWrite, OpKind, OutboxEntry, OutboxStatus, SyncError,
     SyncHandle,
 };
 
 use crate::credentials::NodeCredentials;
-use peregrin_node_api::api::NodeApi;
+use peregrin_node_api::api::EntityApi;
 use peregrin_node_api::dto::{
-    AgentDto, AttachResultDto, CheckpointDto, CreateResultDto, HistoryMessageDto, HistoryPageDto,
-    ImportResultDto, NodeInfoDto, NodeStatusDto, PendingWriteDto, ProjectDto, ProjectTransferDto,
-    PushSubscriptionDto, RewindResultDto, SessionSummaryDto, TransferFailureDto, TransferResultDto,
+    CreateResultDto, EntityDto, EntityIndexDto, EntityOp, NodeInfoDto, NodeStatusDto, PendingOpDto,
+    PushSubscriptionDto,
 };
 use serde_json::Value;
 
@@ -99,51 +104,49 @@ pub fn resolve_node_tokens(nodes: &mut [HubNode], creds: &dyn NodeCredentials) -
     (resolved, seeded)
 }
 
-/// The node a session belongs to — projection lookup; session ids are
-/// unique per node but may collide across nodes.
+/// The node an entity belongs to — projection lookup; entity ids are
+/// unique per node but may collide across nodes (`kind` narrows).
 fn owner<'a>(
     projection: &peregrin_sync::ProjectionStore,
     id: &str,
-    agent: Option<&str>,
+    kind: Option<&str>,
     nodes: &'a HashMap<String, HubNode>,
 ) -> Result<(String, &'a HubNode), String> {
-    // Routing policy lives in `peregrin-control` — `agent` narrows
-    // when ids collide; otherwise the first match wins.
+    // Routing policy lives in `peregrin-control` — `kind` narrows when
+    // ids collide; otherwise the first match wins.
     let rows: Vec<peregrin_control::OwnershipRow> = projection
-        .sessions(None)
+        .entities(None)
         .map_err(proj_err)?
         .into_iter()
         .map(|row| peregrin_control::OwnershipRow {
-            session_id: row.session_id,
+            entity_id: row.entity_id,
             node_id: row.node_id,
-            agent: row.agent,
+            kind: row.kind,
         })
         .collect();
-    let node_id = peregrin_control::pick_owner(rows.iter(), id, agent)?.0;
+    let node_id = peregrin_control::pick_owner(rows.iter(), id, kind)?.0;
     nodes
         .get(&node_id)
         .map(|n| (node_id.clone(), n))
         .ok_or_else(|| format!("node {node_id} not registered"))
 }
 
-/// `owner` + the session row it picked — the row comes from the same
-/// index read, so it's guaranteed present; callers that need the row
-/// skip a second lookup whose `None` arm could never fire. Mirrors
-/// `pick_owner`'s policy (agent narrows, else first match).
+/// `owner` + the entity row it picked — callers that need the row skip
+/// a second lookup whose `None` arm could never fire.
 fn owner_row<'a>(
     projection: &peregrin_sync::ProjectionStore,
     id: &str,
-    agent: Option<&str>,
+    kind: Option<&str>,
     nodes: &'a HashMap<String, HubNode>,
-) -> Result<(String, &'a HubNode, peregrin_sync::IndexedSession), String> {
-    let rows = projection.sessions(None).map_err(proj_err)?;
-    let mut found: Option<peregrin_sync::IndexedSession> = None;
+) -> Result<(String, &'a HubNode, IndexedEntity), String> {
+    let rows = projection.entities(None).map_err(proj_err)?;
+    let mut found: Option<IndexedEntity> = None;
     for row in rows {
-        if row.session_id != id {
+        if row.entity_id != id {
             continue;
         }
-        if let Some(want) = agent {
-            if row.agent == want {
+        if let Some(want) = kind {
+            if row.kind == want {
                 found = Some(row);
                 break;
             }
@@ -152,7 +155,7 @@ fn owner_row<'a>(
         }
     }
     let Some(row) = found else {
-        return Err(format!("Session not found: {id}"));
+        return Err(format!("Entity not found: {id}"));
     };
     let node_id = row.node_id.clone();
     nodes
@@ -175,15 +178,19 @@ struct Registry {
 /// hold" from "another actor's".
 const HUB_ACTOR: &str = "hub";
 
-/// Ops that act on the live session the lock protects — the registry
-/// gates them before they queue or post. `meta.patch` rides the node
-/// overlay and never contends.
-const GATED_OPS: &[&str] = &["prompt", "cancel", "permission", "delete"];
+/// Op namespaces that act on the live entity the lock protects — the
+/// registry gates them before they queue or post. `*.meta*` rides the
+/// index overlay and never contends.
+fn is_gated_op(op: &str) -> bool {
+    // `sepia.<verb>` writes contend; `entity.delete` kills the live
+    // entity outright — both gate. `sepia.meta*` is overlay-only.
+    op == "entity.delete" || op.starts_with("sepia.") && !op.starts_with("sepia.meta")
+}
 
-/// Lock-registry key — `(node, session)`: session ids are unique per
+/// Lock-registry key — `(node, entity)`: entity ids are unique per
 /// node but collide across nodes, so the node scopes every grant.
-fn lock_key(node_id: &str, session: &str) -> String {
-    format!("{node_id}:{session}")
+fn lock_key(node_id: &str, entity: &str) -> String {
+    format!("{node_id}:{entity}")
 }
 
 fn hub_actor(node_id: &str) -> Actor {
@@ -194,11 +201,14 @@ fn hub_actor(node_id: &str) -> Actor {
 }
 
 /// The holder recorded for a `locked` report the hub never granted —
-/// pid-keyed from the node's `withLocks` probe when it names one.
-fn external_actor(row: &IndexedSession, node_id: &str) -> Actor {
+/// pid-keyed from the index doc's `lockHolderPid` probe when it names
+/// one. INTERIM: reads `indexDoc.lockHolderPid`, a session-plane
+/// field — the entity wire's lock reporting contract arrives with the
+/// integration surface.
+fn external_actor(row: &IndexedEntity, node_id: &str) -> Actor {
+    let doc = row.raw.get("indexDoc").unwrap_or(&row.raw);
     Actor {
-        id: row
-            .raw
+        id: doc
             .get("lockHolderPid")
             .and_then(Value::as_f64)
             .map_or_else(|| "external".to_string(), |pid| format!("pid:{pid}")),
@@ -206,26 +216,26 @@ fn external_actor(row: &IndexedSession, node_id: &str) -> Actor {
     }
 }
 
-/// `NodeApi` over the sync projection + per-node clients.
-pub struct SyncNodeApi {
+/// `EntityApi` over the sync projection + per-node clients.
+pub struct SyncEntityApi {
     engine: SyncHandle,
     registry: RwLock<Registry>,
-    /// Who holds which session — the hub is the lock authority; the
-    /// projection's `locked` reports plus this hub's own attach
-    /// outcomes populate it.
+    /// Who holds which entity — the hub is the lock authority; the
+    /// projection's `locked` reports plus this hub's own op outcomes
+    /// populate it.
     locks: RwLock<LockRegistry>,
-    /// The takeover/contention policy rendered at attach + write
-    /// call sites. `peregrin-control` decides; the node executes.
+    /// The takeover/contention policy rendered at write call sites.
+    /// `peregrin-control` decides; the node executes.
     arbitration: Arbitration,
     /// Where `pair` persists minted tokens (keyring or file — picked at
     /// boot by [`crate::credentials::open`]).
     creds: Arc<dyn NodeCredentials>,
     /// First configured node — the canonical target for registry
-    /// writes (projects/config/push) that have no session to route by.
+    /// writes (config/push) that have no entity to route by.
     primary: Option<String>,
 }
 
-impl SyncNodeApi {
+impl SyncEntityApi {
     pub fn new(engine: SyncHandle, nodes: Vec<HubNode>, creds: Arc<dyn NodeCredentials>) -> Self {
         let clients = nodes
             .iter()
@@ -275,10 +285,9 @@ impl SyncNodeApi {
 
     /// Fold the projection's lock report for `row` into the registry:
     /// a reported `locked` registers an external holder the hub never
-    /// granted (or refreshes a known one — a still-reported hold reads
-    /// as live), an unlocked report drops any recorded hold. The book
-    /// only ever trails the node's own probe.
-    fn reconcile_locks(locks: &mut LockRegistry, key: &str, node_id: &str, row: &IndexedSession) {
+    /// granted (or refreshes a known one), an unlocked report drops
+    /// any recorded hold. The book only ever trails the node's probe.
+    fn reconcile_locks(locks: &mut LockRegistry, key: &str, node_id: &str, row: &IndexedEntity) {
         if row.locked {
             match locks.holder(key) {
                 Some(held) => {
@@ -293,17 +302,17 @@ impl SyncNodeApi {
     }
 
     /// Reconcile the lock book against `row` and ask the arbitration
-    /// policy what the hub may do with `session` — the single decision
-    /// point every session-scoped write consults. Returns the registry
-    /// key alongside so callers can record the outcome.
+    /// policy what the hub may do with `entity` — the single decision
+    /// point every gated write consults. Returns the registry key
+    /// alongside so callers can record the outcome.
     fn decide(
         &self,
         node_id: &str,
-        session: &str,
-        row: &IndexedSession,
+        entity: &str,
+        row: &IndexedEntity,
         takeover: bool,
     ) -> (String, Decision) {
-        let key = lock_key(node_id, session);
+        let key = lock_key(node_id, entity);
         let mut locks = self.locks_mut();
         Self::reconcile_locks(&mut locks, &key, node_id, row);
         let decision = self
@@ -312,27 +321,26 @@ impl SyncNodeApi {
         (key, decision)
     }
 
-    /// The arbitration gate for session writes — only `Allow` lets a
-    /// write through; a foreign hold rejects with the holder named and
-    /// the remedy, rather than queueing a turn the node would refuse
-    /// (or a delete that would kill another actor's live session).
+    /// The arbitration gate for entity writes — only `Allow` lets a
+    /// gated op through; a foreign hold rejects with the holder named
+    /// rather than queueing an op the node would refuse on replay.
     fn ensure_writable(
         &self,
         node_id: &str,
-        session: &str,
-        row: &IndexedSession,
+        entity: &str,
+        row: &IndexedEntity,
     ) -> Result<(), String> {
-        let (_key, decision) = self.decide(node_id, session, row, false);
+        let (_key, decision) = self.decide(node_id, entity, row, false);
         match decision {
             Decision::Allow => Ok(()),
             Decision::AttachReadOnly { holder }
             | Decision::Preempt {
                 stale_holder: holder,
             } => Err(format!(
-                "session {session} is held by {holder} on {node_id} — attach with takeover to write"
+                "entity {entity} is held by {holder} on {node_id} — attach with takeover to write"
             )),
             Decision::Queue { node } => Err(format!(
-                "session {session} is held on {} — attach with takeover to write",
+                "entity {entity} is held on {} — attach with takeover to write",
                 node.0
             )),
         }
@@ -350,19 +358,6 @@ impl SyncNodeApi {
             .ok_or_else(|| format!("node {node_id} not registered"))
     }
 
-    /// Every `(node_id, client)` pair, sorted by id for deterministic
-    /// merged output.
-    fn client_list(&self) -> Vec<(String, Arc<NodeClient>)> {
-        let mut list: Vec<_> = self
-            .registry()
-            .clients
-            .iter()
-            .map(|(id, c)| (id.clone(), Arc::clone(c)))
-            .collect();
-        list.sort_by(|a, b| a.0.cmp(&b.0));
-        list
-    }
-
     /// The client for `node` when given, else the primary's.
     fn scoped_client(&self, node: Option<&str>) -> Result<(String, Arc<NodeClient>), String> {
         let id = match node {
@@ -376,67 +371,25 @@ impl SyncNodeApi {
         Ok((id, client))
     }
 
-    /// `GET {path}` on every registered node, merging the `{key}`
-    /// array each returns. Rows are annotated with the owning `node`
-    /// id; a node that fails is skipped — unless every node fails and
-    /// nothing merged, which surfaces the first error.
-    async fn merged_list(&self, path: &str, key: &str) -> Result<Vec<Value>, String> {
-        let clients = self.client_list();
-        let path = path.to_string();
-        let key = key.to_string();
-        tokio::task::spawn_blocking(move || {
-            let mut out = Vec::new();
-            let mut first_err: Option<String> = None;
-            for (node_id, client) in clients {
-                match client.get_json(&path) {
-                    Ok(body) => {
-                        let Some(rows) = body.get(&key).and_then(Value::as_array) else {
-                            continue;
-                        };
-                        for row in rows {
-                            let mut row = row.clone();
-                            if let Value::Object(m) = &mut row {
-                                m.insert("node".into(), Value::String(node_id.clone()));
-                            }
-                            out.push(row);
-                        }
-                    }
-                    Err(e) => {
-                        if first_err.is_none() {
-                            first_err = Some(format!("{node_id}: {e}"));
-                        }
-                    }
-                }
-            }
-            match (out.is_empty(), first_err) {
-                (true, Some(e)) => Err(e),
-                _ => Ok(out),
-            }
-        })
-        .await
-        .map_err(join_err)?
-    }
-
-    /// The upstream `(url, token)` for a session — the proxy uses it to
-    /// route session-scoped requests to the owning node.
-    pub fn node_url_for(&self, id: &str, agent: Option<&str>) -> Option<(String, Option<String>)> {
+    /// The upstream `(url, token)` for an entity — the proxy uses it
+    /// to route entity-scoped requests to the owning node.
+    pub fn node_url_for(&self, id: &str, kind: Option<&str>) -> Option<(String, Option<String>)> {
         let registry = self.registry();
-        let (node_id, node) = owner(&self.projection(), id, agent, &registry.nodes).ok()?;
-        let _ = node_id;
+        let (_node_id, node) = owner(&self.projection(), id, kind, &registry.nodes).ok()?;
         Some((node.url.clone(), node.token.clone()))
     }
 
-    fn resolve(&self, id: &str, agent: Option<&str>) -> Result<(String, Arc<NodeClient>), String> {
+    fn resolve(&self, id: &str, kind: Option<&str>) -> Result<(String, Arc<NodeClient>), String> {
         let node_id = {
             let registry = self.registry();
-            owner(&self.projection(), id, agent, &registry.nodes)?.0
+            owner(&self.projection(), id, kind, &registry.nodes)?.0
         };
         Ok((node_id.clone(), self.client(&node_id)?))
     }
 
-    /// `/api/sessions/{id}[/{suffix}][?agent=]` — for session-scoped ops
-    /// `NodeClient::post_op` doesn't map (attach/detach/restore/…).
-    fn session_path(id: &str, suffix: &str, agent: Option<&str>) -> String {
+    /// `/api/sessions/{id}[/{suffix}]` — INTERIM: entity-scoped direct
+    /// calls map to the session wire until `/api/entities` lands.
+    fn entity_path(id: &str, suffix: &str) -> String {
         let mut path = format!(
             "/api/sessions/{}",
             peregrin_sync::client::encode_segment(id)
@@ -445,74 +398,44 @@ impl SyncNodeApi {
             path.push('/');
             path.push_str(suffix);
         }
-        if let Some(a) = agent {
-            path.push_str("?agent=");
-            path.push_str(&peregrin_sync::client::encode_segment(a));
-        }
         path
     }
 
-    /// A session-scoped write the outbox can't carry — posted straight
-    /// to the owning node (fails fast when the node is down rather than
-    /// queueing a stale attach/restore). The lock book gates it first:
-    /// a foreign hold means the write would contend with another
-    /// actor's live state.
-    async fn post_direct(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        suffix: &str,
-        payload: Value,
-    ) -> Result<Value, String> {
-        let (node_id, row) = {
-            let registry = self.registry();
-            let (node_id, _node, row) = owner_row(&self.projection(), id, agent, &registry.nodes)?;
-            (node_id, row)
-        };
-        self.ensure_writable(&node_id, id, &row)?;
-        let client = self.client(&node_id)?;
-        let path = Self::session_path(id, suffix, agent);
-        tokio::task::spawn_blocking(move || client.send_json("POST", &path, &payload))
-            .await
-            .map_err(join_err)?
-            .map_err(err_string)
-    }
-
+    /// An entity op through the engine — posts direct when the node is
+    /// up, enqueues (per-entity FIFO) when down. Gated ops consult the
+    /// lock book first.
     async fn submit(
         &self,
         id: &str,
-        agent: Option<&str>,
+        kind: Option<&str>,
         op: &str,
-        kind: OpKind,
+        policy: OpKind,
         payload: Value,
     ) -> Result<(), String> {
         let (node_id, row) = {
             let registry = self.registry();
-            let (node_id, _node, row) = owner_row(&self.projection(), id, agent, &registry.nodes)?;
+            let (node_id, _node, row) = owner_row(&self.projection(), id, kind, &registry.nodes)?;
             (node_id, row)
         };
-        // Session-plane writes consult the lock book — a foreign-held
-        // session rejects fast instead of queueing a turn the node
-        // will refuse on replay anyway.
-        if GATED_OPS.contains(&op) {
+        if is_gated_op(op) {
             self.ensure_writable(&node_id, id, &row)?;
         }
         self.engine
             .submit_op(NodeWrite {
                 node_id: node_id.clone(),
-                session_id: id.to_string(),
-                agent: agent.map(str::to_string),
+                entity_id: id.to_string(),
+                entity_kind: (!row.kind.is_empty()).then(|| row.kind.clone()),
                 op: op.to_string(),
-                kind,
+                policy,
                 payload,
                 idempotency_key: uuid::Uuid::new_v4().to_string(),
                 ttl_seconds: None,
             })
             .await
             .map_err(err_string)?;
-        if op == "delete" {
-            // The session is gone (or queued to be) — drop any
-            // recorded hold so a re-created id starts clean.
+        if op == "entity.delete" {
+            // The entity is gone (or queued to be) — drop any recorded
+            // hold so a re-created id starts clean.
             let key = lock_key(&node_id, id);
             let mut locks = self.locks_mut();
             if let Some(holder) = locks.holder(&key).map(|h| h.holder.id.clone()) {
@@ -569,130 +492,6 @@ impl SyncNodeApi {
         retarget_warn(self.engine.add_node(target).await, node_id);
     }
 
-    /// Transfer pre-flight — the target must advertise `"import"` in
-    /// its `/api/node` capabilities (the store-write seam a node only
-    /// wires when a convertible store exists). A descriptor with no
-    /// capability list is lenient (very old nodes predate the flag);
-    /// the import POST still 501s honestly.
-    fn ensure_importable(client: &NodeClient, node_id: &str) -> Result<(), String> {
-        let desc = client.get_json("/api/node").map_err(Self::err_message)?;
-        let Some(caps) = desc.get("capabilities").and_then(Value::as_array) else {
-            return Ok(());
-        };
-        if caps.iter().any(|c| c.as_str() == Some("import")) {
-            return Ok(());
-        }
-        Err(format!(
-            "node {node_id} does not support session import (no store-write backend configured)"
-        ))
-    }
-
-    /// The blocking transfer pipeline for one projected row —
-    /// export → import → overlay copy → verify (`docs/transfer.md`).
-    /// Callers wrap it in `spawn_blocking` (the whole batch loop for
-    /// `transfer_project` rides one worker).
-    fn transfer_one(
-        source_id: &str,
-        source: &NodeClient,
-        target_id: &str,
-        target: &NodeClient,
-        row: &IndexedSession,
-        cwd: Option<&str>,
-    ) -> Result<TransferResultDto, String> {
-        // 1. Pull the complete session IR off the owning node.
-        let agent = (!row.agent.is_empty()).then_some(row.agent.as_str());
-        let export_path = Self::session_path(&row.session_id, "export", agent);
-        let exported = source.get_json(&export_path).map_err(Self::err_message)?;
-        let Some(session) = exported.get("session").filter(|v| v.is_object()) else {
-            return Err(format!(
-                "export from {source_id} returned no session IR for {}",
-                row.session_id
-            ));
-        };
-
-        // 2. Import on the target — the store the session lives in
-        // when it's a store-write target, else the devin store (the
-        // only target today's seam writes).
-        let target_store = if peregrin_node_api::targets::is_convert_target(&row.agent) {
-            row.agent.as_str()
-        } else {
-            "devin"
-        };
-        let mut body = serde_json::json!({
-            "agent": target_store,
-            "session": session,
-        });
-        if let Some(c) = cwd {
-            body["cwd"] = serde_json::json!(c);
-        }
-        // Overlay fields the summary carries but the IR may lag behind
-        // (a meta PATCH doesn't rewrite the store row).
-        if !row.title.is_empty() {
-            body["title"] = serde_json::json!(row.title);
-        }
-        if let Some(model) = row.raw.get("model").and_then(Value::as_str) {
-            body["model"] = serde_json::json!(model);
-        }
-        let res = target
-            .send_json("POST", "/api/sessions/import", &body)
-            .map_err(Self::err_message)?;
-        let new_id = res
-            .get("id")
-            .and_then(Value::as_str)
-            .ok_or_else(|| "import on target returned no session id".to_string())?
-            .to_string();
-
-        // 3. Overlay copy — pinned/archived flags. `projectIds` is
-        // deliberately skipped: project registries are per-node.
-        // Best-effort — a failed PATCH downgrades to a warning.
-        let mut warnings = Vec::new();
-        let mut patch = serde_json::Map::new();
-        for flag in ["pinned", "archived"] {
-            if row.raw.get(flag).and_then(Value::as_bool) == Some(true) {
-                patch.insert(flag.to_string(), Value::Bool(true));
-            }
-        }
-        if !patch.is_empty() {
-            let patch_path = Self::session_path(&new_id, "", None);
-            if let Err(e) = target.send_json("PATCH", &patch_path, &Value::Object(patch)) {
-                warnings.push(format!(
-                    "meta overlay copy failed: {}",
-                    Self::err_message(e)
-                ));
-            }
-        }
-
-        // 4. Verify — the copy must list on the target. A failed
-        // re-read is a warning, not a failed transfer (the 201 already
-        // vouched for the write).
-        let verify_path = Self::session_path(&new_id, "", None);
-        if let Err(e) = target.get_json(&verify_path) {
-            warnings.push(format!(
-                "imported session did not re-read on {target_id}: {}",
-                Self::err_message(e)
-            ));
-        }
-
-        Ok(TransferResultDto {
-            session_id: row.session_id.clone(),
-            new_session_id: new_id,
-            title: row.title.clone(),
-            cwd: res
-                .get("cwd")
-                .and_then(Value::as_str)
-                .unwrap_or(&row.cwd)
-                .to_string(),
-            agent: res
-                .get("agent")
-                .and_then(Value::as_str)
-                .unwrap_or(target_store)
-                .to_string(),
-            source_node: source_id.to_string(),
-            target_node: target_id.to_string(),
-            warnings,
-        })
-    }
-
     /// `NodeError` → user-facing text: the node's `{error}` payload
     /// when the body is JSON, else the raw status line.
     fn err_message(e: peregrin_sync::client::NodeError) -> String {
@@ -708,19 +507,32 @@ impl SyncNodeApi {
     }
 }
 
-/// `OutboxEntry` → the UI row — pending and in-flight entries read as
-/// `queued`; dead-letters surface as `failed` with their last error.
-fn pending_dto(e: &OutboxEntry) -> PendingWriteDto {
-    PendingWriteDto {
+/// `IndexedEntity` → the DTO — `index_doc` comes out of the raw doc's
+/// `indexDoc` slot when the wire wrapped it, else the row itself.
+fn entity_dto(row: &IndexedEntity) -> EntityDto {
+    EntityDto {
+        id: row.entity_id.clone(),
+        kind: row.kind.clone(),
+        node: Some(row.node_id.clone()),
+        index_doc: row
+            .raw
+            .get("indexDoc")
+            .cloned()
+            .unwrap_or_else(|| row.raw.clone()),
+        locked: row.locked,
+        live: row.live,
+        updated_at: row.updated_at.clone(),
+    }
+}
+
+/// `OutboxEntry` → the wire row — pending and in-flight entries read
+/// as `queued`; dead-letters surface as `failed` with their last error.
+fn pending_dto(e: &OutboxEntry) -> PendingOpDto {
+    PendingOpDto {
         id: e.id.clone(),
         node_id: e.node_id.clone(),
-        session_id: e.session_id.clone(),
-        op: e.op.clone(),
-        kind: match e.kind {
-            OpKind::Metadata => "metadata",
-            OpKind::Turn => "turn",
-        }
-        .to_string(),
+        entity_id: e.entity_id.clone(),
+        kind: e.op.clone(),
         status: if e.status == OutboxStatus::Dead {
             "failed"
         } else {
@@ -728,402 +540,130 @@ fn pending_dto(e: &OutboxEntry) -> PendingWriteDto {
         }
         .to_string(),
         enqueued_at: e.created_at.clone(),
-        attempts: e.attempts,
+        attempts: e.attempts as u32,
         last_error: e.last_error.clone(),
     }
 }
 
 #[async_trait::async_trait]
-impl NodeApi for SyncNodeApi {
-    async fn list_sessions(&self) -> Result<Vec<SessionSummaryDto>, String> {
-        let sessions: Vec<IndexedSession> = self.projection().sessions(None).map_err(proj_err)?;
-        // The raw wire summary carries every field the DTO needs;
-        // annotate the owning node so the UI can show + route it.
-        Ok(sessions
-            .into_iter()
-            .map(|row| {
-                let mut raw = row.raw.clone();
-                if let Value::Object(m) = &mut raw {
-                    m.insert("node".into(), Value::String(row.node_id.clone()));
-                }
-                serde_json::from_value(raw).unwrap_or_default()
-            })
+impl EntityApi for SyncEntityApi {
+    async fn list_entities(&self, kind: Option<&str>) -> Result<Vec<EntityDto>, String> {
+        let rows: Vec<IndexedEntity> = self.projection().entities(None).map_err(proj_err)?;
+        Ok(rows
+            .iter()
+            .filter(|row| kind.is_none_or(|k| row.kind == k))
+            .map(entity_dto)
             .collect())
     }
 
-    async fn get_session(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-    ) -> Result<SessionSummaryDto, String> {
-        let (node_id, row) = {
-            let registry = self.registry();
-            let (node_id, _node, row) = owner_row(&self.projection(), id, agent, &registry.nodes)?;
-            (node_id, row)
-        };
-        let mut raw = row.raw.clone();
-        if let Value::Object(m) = &mut raw {
-            m.insert("node".into(), Value::String(node_id));
-        }
-        serde_json::from_value(raw).map_err(decode_err)
+    async fn entity(&self, id: &str) -> Result<EntityDto, String> {
+        let registry = self.registry();
+        let (_node_id, _node, row) = owner_row(&self.projection(), id, None, &registry.nodes)?;
+        Ok(entity_dto(&row))
     }
 
-    async fn history(
+    async fn create_entity(
         &self,
-        id: &str,
-        agent: Option<&str>,
-        before: Option<i64>,
-        limit: Option<usize>,
-    ) -> Result<HistoryPageDto, String> {
-        let (_, client) = self.resolve(id, agent)?;
-        let agent_owned = agent.map(str::to_string);
-        let id_owned = id.to_string();
-        let page = tokio::task::spawn_blocking(move || {
-            client.get_history(&id_owned, limit, before, agent_owned.as_deref())
-        })
-        .await
-        .map_err(join_err)?
-        .map_err(err_string)?;
-        Ok(HistoryPageDto {
-            messages: page
-                .messages
-                .into_iter()
-                .map(|m| serde_json::from_value(m).unwrap_or_default())
-                .collect::<Vec<HistoryMessageDto>>(),
-            total: page.total,
-            start: page.start,
-        })
-    }
-
-    async fn prompt(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        text: &str,
-        attachments: &[Value],
-    ) -> Result<(), String> {
-        // The payload replays verbatim against `/prompt` — carry the
-        // ACP attachment blocks through the outbox unchanged.
-        self.submit(
-            id,
-            agent,
-            "prompt",
-            OpKind::Turn,
-            serde_json::json!({ "text": text, "attachments": attachments }),
-        )
-        .await
-    }
-
-    async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
-        self.submit(id, agent, "cancel", OpKind::Turn, serde_json::json!({}))
-            .await
-    }
-
-    async fn create_session(
-        &self,
-        cwd: &str,
-        agent: Option<&str>,
-        title: Option<&str>,
-        model: Option<&str>,
+        kind: &str,
+        init: &Value,
         node: Option<&str>,
     ) -> Result<CreateResultDto, String> {
-        // A create can't route by session id — `node` (or the primary)
-        // picks the target. Goes direct: queueing a create in the
-        // outbox would hand the UI an id nothing references yet.
-        let (node_id, client) = self.scoped_client(node)?;
-        let mut body = serde_json::json!({ "cwd": cwd });
-        if let Some(a) = agent {
-            body["agent"] = serde_json::json!(a);
+        // INTERIM: `sepia-session` creates map onto the session wire —
+        // `init` (the indexDoc) carries the create params the node
+        // understands. Other kinds have no registered integration yet.
+        if kind != "sepia-session" && kind != "session" {
+            return Err(format!("entity kind {kind:?} not registered"));
         }
-        if let Some(t) = title {
-            body["title"] = serde_json::json!(t);
-        }
-        if let Some(m) = model {
-            body["model"] = serde_json::json!(m);
-        }
-        let created: CreateResultDto =
+        let (_node_id, client) = self.scoped_client(node)?;
+        let body = init.clone();
+        let res =
             tokio::task::spawn_blocking(move || client.send_json("POST", "/api/sessions", &body))
                 .await
                 .map_err(join_err)?
-                .map_err(err_string)
-                .and_then(|v| serde_json::from_value(v).map_err(decode_err))?;
-        // The node holds a created session live on the hub's behalf —
-        // record the grant so prompts reach it instead of gating on
-        // the node's own `locked` report.
-        self.locks_mut()
-            .grant(&lock_key(&node_id, &created.id), hub_actor(&node_id));
-        Ok(created)
-    }
-
-    async fn attach(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        takeover: bool,
-    ) -> Result<AttachResultDto, String> {
-        // Resolve first — the lock book keys holds (node, session).
-        let (node_id, row) = {
-            let registry = self.registry();
-            let (node_id, _node, row) = owner_row(&self.projection(), id, agent, &registry.nodes)?;
-            (node_id, row)
-        };
-        let client = self.client(&node_id)?;
-        // Arbitration decides — the hub is the lock authority, sepia
-        // executes whatever the verdict maps to on the wire.
-        let (key, decision) = self.decide(&node_id, id, &row, takeover);
-        let effective_takeover = match &decision {
-            Decision::Allow => takeover,
-            Decision::Preempt { stale_holder } => {
-                tracing::info!(session = %id, node = %node_id, holder = %stale_holder,
-                    "arbitration: preempting session holder");
-                true
-            }
-            Decision::AttachReadOnly { holder } => {
-                tracing::info!(session = %id, node = %node_id, holder = %holder,
-                    "arbitration: contended attach downgraded to read-only");
-                false
-            }
-            Decision::Queue { node } => {
-                return Err(format!(
-                    "session {id} is held on {} — retry with takeover to preempt, or wait for the holder to release",
-                    node.0
-                ));
-            }
-        };
-        let path = Self::session_path(id, "attach", agent);
-        let payload = serde_json::json!({ "takeover": effective_takeover });
-        let body = tokio::task::spawn_blocking(move || client.send_json("POST", &path, &payload))
-            .await
-            .map_err(join_err)?
-            .map_err(err_string)?;
-        let result: AttachResultDto = serde_json::from_value(body).map_err(decode_err)?;
-        // Record what the wire reported — the book follows the node's
-        // truth, not the intended verdict.
-        let mut locks = self.locks_mut();
-        if result.attached {
-            locks.grant(&key, hub_actor(&node_id));
-        } else if result.read_only {
-            // Held by someone after all — if the book still says the
-            // hub holds it, that grant was wrong; replace it with the
-            // real (foreign) holder.
-            locks.grant(&key, external_actor(&row, &node_id));
-        }
-        drop(locks);
-        Ok(result)
-    }
-
-    async fn detach(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
-        let (node_id, client) = self.resolve(id, agent)?;
-        let path = Self::session_path(id, "detach", agent);
-        tokio::task::spawn_blocking(move || {
-            client.send_json("POST", &path, &serde_json::json!({}))
+                .map_err(Self::err_message)?;
+        let id = res
+            .get("id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "create returned no entity id".to_string())?;
+        Ok(CreateResultDto {
+            id: id.to_string(),
+            entity: None,
         })
-        .await
-        .map_err(join_err)?
-        .map_err(err_string)?;
-        // Only the hub's own grant lifts — a foreign hold the node
-        // no-ops on isn't ours to release.
-        self.locks_mut().release(&lock_key(&node_id, id), HUB_ACTOR);
-        Ok(())
     }
 
-    async fn answer_permission(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        request_id: &str,
-        option_id: Option<&str>,
-    ) -> Result<(), String> {
-        // Turn-shaped like prompt/cancel: dead-letter on replay failure
-        // rather than answering a request the agent already dropped.
+    async fn submit_op(&self, id: &str, op: &EntityOp) -> Result<(), String> {
+        // Turn-shaped ops dead-letter on replay failure; meta-shaped
+        // ones retry (last-writer-wins is safe for overlay state).
+        let policy = if op.kind == "sepia.meta" || op.kind == "sepia.meta.patch" {
+            OpKind::Metadata
+        } else {
+            OpKind::Turn
+        };
+        self.submit(id, None, &op.kind, policy, op.payload.clone())
+            .await
+    }
+
+    async fn delete_entity(&self, id: &str) -> Result<(), String> {
         self.submit(
             id,
-            agent,
-            "permission",
+            None,
+            "entity.delete",
             OpKind::Turn,
-            serde_json::json!({ "requestId": request_id, "optionId": option_id }),
+            serde_json::json!({}),
         )
         .await
     }
 
-    async fn patch_meta(&self, id: &str, agent: Option<&str>, patch: &Value) -> Result<(), String> {
-        self.submit(id, agent, "meta.patch", OpKind::Metadata, patch.clone())
-            .await
-    }
-
-    async fn delete_session(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
-        // Idempotent node-side (a missing session deletes cleanly), so
-        // Metadata-kind retries are safe.
-        self.submit(id, agent, "delete", OpKind::Metadata, serde_json::json!({}))
-            .await
-    }
-
-    async fn checkpoints(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-    ) -> Result<Vec<CheckpointDto>, String> {
-        let (_, client) = self.resolve(id, agent)?;
-        let path = Self::session_path(id, "checkpoints", agent);
-        let body = tokio::task::spawn_blocking(move || client.get_json(&path))
+    async fn snapshot_export(&self, id: &str) -> Result<Value, String> {
+        let (_node_id, client) = self.resolve(id, None)?;
+        let path = Self::entity_path(id, "export");
+        tokio::task::spawn_blocking(move || client.get_json(&path))
             .await
             .map_err(join_err)?
-            .map_err(err_string)?;
-        Ok(body
-            .get("checkpoints")
-            .and_then(Value::as_array)
-            .map(|rows| {
-                rows.iter()
-                    .map(|r| serde_json::from_value(r.clone()).unwrap_or_default())
-                    .collect()
-            })
-            .unwrap_or_default())
+            .map_err(Self::err_message)
     }
 
-    async fn restore(&self, id: &str, agent: Option<&str>, checkpoint: &str) -> Result<(), String> {
-        self.post_direct(
-            id,
-            agent,
-            "restore",
-            serde_json::json!({ "confirm": true, "checkpoint": checkpoint }),
-        )
-        .await
-        .map(|_| ())
-    }
-
-    async fn rewind(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        selector: &peregrin_node_api::api::RewindSelector,
-    ) -> Result<RewindResultDto, String> {
-        // The selector serializes as the one wire field the node
-        // expects (`nodeId`/`checkpoint`) — merge it onto `confirm`.
-        let mut payload = serde_json::json!({ "confirm": true });
-        if let (Some(body), Ok(Value::Object(sel))) =
-            (payload.as_object_mut(), serde_json::to_value(selector))
-        {
-            body.extend(sel);
-        }
-        let body = self.post_direct(id, agent, "rewind", payload).await?;
-        serde_json::from_value(body).map_err(decode_err)
-    }
-
-    async fn convert(&self, id: &str, agent: Option<&str>, target: &str) -> Result<String, String> {
-        // Direct post like restore/attach — converting against a down
-        // node can't queue: the store state it copies is now.
-        let body = self
-            .post_direct(id, agent, "convert", serde_json::json!({ "agent": target }))
-            .await?;
-        body.get("sessionId")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .ok_or_else(|| "convert: missing sessionId".to_string())
-    }
-
-    async fn import(&self, body: &Value) -> Result<ImportResultDto, String> {
-        // Not session-scoped — the primary node takes it, like
-        // `create_session`. Direct, for the same reason: queueing an
-        // import would hand the UI an id nothing references yet.
-        let (_, client) = self.scoped_client(None)?;
+    async fn snapshot_import(&self, body: &Value, node: Option<&str>) -> Result<EntityDto, String> {
+        let (node_id, client) = self.scoped_client(node)?;
         let body = body.clone();
         let res = tokio::task::spawn_blocking(move || {
             client.send_json("POST", "/api/sessions/import", &body)
         })
         .await
         .map_err(join_err)?
-        .map_err(err_string)?;
-        serde_json::from_value(res).map_err(decode_err)
-    }
-
-    async fn transfer_session(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        target_node: &str,
-        cwd: Option<&str>,
-    ) -> Result<TransferResultDto, String> {
-        // The source is whatever the projection says owns the id —
-        // callers can't name it reliably (a session's `node` annotation
-        // is absent on single-node projections).
-        let (source_id, source, row) = {
-            let registry = self.registry();
-            let (node_id, _node, row) = owner_row(&self.projection(), id, agent, &registry.nodes)?;
-            (node_id.clone(), self.client(&node_id)?, row)
-        };
-        if source_id == target_node {
-            return Err(format!(
-                "session {id} already lives on {target_node} — use convert within a node"
-            ));
-        }
-        let target = self.client(target_node)?;
-        let target_id = target_node.to_string();
-        let cwd = cwd.map(str::to_string);
-        tokio::task::spawn_blocking(move || {
-            Self::ensure_importable(&target, &target_id)?;
-            Self::transfer_one(
-                &source_id,
-                &source,
-                &target_id,
-                &target,
-                &row,
-                cwd.as_deref(),
-            )
+        .map_err(Self::err_message)?;
+        let id = res
+            .get("id")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "import returned no entity id".to_string())?;
+        Ok(EntityDto {
+            id: id.to_string(),
+            kind: res
+                .get("kind")
+                .and_then(Value::as_str)
+                .unwrap_or("sepia-session")
+                .to_string(),
+            node: Some(node_id),
+            index_doc: res,
+            ..EntityDto::default()
         })
-        .await
-        .map_err(join_err)?
     }
 
-    async fn transfer_project(
-        &self,
-        project_cwd: &str,
-        source_node: &str,
-        target_node: &str,
-        cwd: Option<&str>,
-    ) -> Result<ProjectTransferDto, String> {
-        if source_node == target_node {
-            return Err(format!(
-                "project already lives on {target_node} — pick a different target"
-            ));
-        }
-        let source = self.client(source_node)?;
-        let target = self.client(target_node)?;
-        let rows: Vec<IndexedSession> = self
-            .projection()
-            .sessions(Some(source_node))
-            .map_err(proj_err)?
-            .into_iter()
-            .filter(|r| r.cwd == project_cwd)
-            .collect();
-        if rows.is_empty() {
-            return Err(format!("no sessions under {project_cwd} on {source_node}"));
-        }
-        let source_id = source_node.to_string();
-        let target_id = target_node.to_string();
-        let cwd = cwd.map(str::to_string);
+    async fn entity_index(&self) -> Result<Vec<EntityIndexDto>, String> {
+        let projection = self.projection();
         tokio::task::spawn_blocking(move || {
-            Self::ensure_importable(&target, &target_id)?;
-            let mut out = ProjectTransferDto {
-                source_node: source_id.clone(),
-                target_node: target_id.clone(),
-                ..ProjectTransferDto::default()
-            };
-            for row in rows {
-                match Self::transfer_one(
-                    &source_id,
-                    &source,
-                    &target_id,
-                    &target,
-                    &row,
-                    cwd.as_deref(),
-                ) {
-                    Ok(r) => out.transferred.push(r),
-                    Err(e) => out.failed.push(TransferFailureDto {
-                        session_id: row.session_id.clone(),
-                        title: row.title.clone(),
-                        error: e,
-                    }),
-                }
+            let mut out = Vec::new();
+            for node in projection.nodes().map_err(proj_err)? {
+                let entities = projection
+                    .entities(Some(&node.id))
+                    .map_err(proj_err)?
+                    .iter()
+                    .map(entity_dto)
+                    .collect();
+                out.push(EntityIndexDto {
+                    node: node.id,
+                    entities,
+                });
             }
             Ok(out)
         })
@@ -1131,147 +671,27 @@ impl NodeApi for SyncNodeApi {
         .map_err(join_err)?
     }
 
-    async fn pair(&self, code: &str, node: Option<&str>) -> Result<String, String> {
-        // Pairing redeems a code on one specific node — `node` picks
-        // it, else the primary. Goes direct: the code is single-use
-        // and queueing it in the outbox makes no sense.
-        let (node_id, client) = self.scoped_client(node)?;
-        let body = serde_json::json!({ "code": code });
-        let res = tokio::task::spawn_blocking(move || client.send_json("POST", "/api/pair", &body))
-            .await
-            .map_err(join_err)?
-            .map_err(|e| match e {
-                // Surface the node's `{error}` payload, not the raw body.
-                peregrin_sync::client::NodeError::Http { body, .. } => {
-                    serde_json::from_str::<Value>(&body)
-                        .ok()
-                        .and_then(|v| v.get("error").and_then(Value::as_str).map(str::to_string))
-                        .unwrap_or_else(|| format!("pairing failed: {body}"))
-                }
-                e => e.to_string(),
-            })?;
-        let token = res
-            .get("token")
-            .and_then(Value::as_str)
-            .map(str::to_string)
-            .ok_or_else(|| "node returned no token".to_string())?;
-        self.adopt_credential(&node_id, &token).await;
-        Ok(token)
-    }
-
-    async fn list_agents(&self) -> Result<Vec<AgentDto>, String> {
-        Ok(self
-            .merged_list("/api/agents", "agents")
-            .await?
-            .into_iter()
-            .map(|row| serde_json::from_value(row).unwrap_or_default())
-            .collect())
-    }
-
-    async fn list_projects(&self) -> Result<Vec<ProjectDto>, String> {
-        Ok(self
-            .merged_list("/api/projects", "projects")
-            .await?
-            .into_iter()
-            .map(|row| serde_json::from_value(row).unwrap_or_default())
-            .collect())
-    }
-
-    async fn create_project(&self, name: &str, node: Option<&str>) -> Result<ProjectDto, String> {
-        let (node_id, client) = self.scoped_client(node)?;
-        let body = serde_json::json!({ "name": name });
-        let body =
-            tokio::task::spawn_blocking(move || client.send_json("POST", "/api/projects", &body))
-                .await
-                .map_err(join_err)?
-                .map_err(err_string)?;
-        let mut row = body.get("project").cloned().unwrap_or(Value::Null);
-        if let Value::Object(m) = &mut row {
-            m.insert("node".into(), Value::String(node_id));
-        }
-        serde_json::from_value(row).map_err(decode_err)
-    }
-
-    async fn delete_project(&self, id: &str, node: Option<&str>) -> Result<(), String> {
-        // `node` routes to the owner; absent it, idempotent-deleting on
-        // every node covers the ambiguity — ids are opaque per node.
-        let targets: Vec<(String, Arc<NodeClient>)> = match node {
-            Some(_) => vec![self.scoped_client(node)?],
-            None => self.client_list(),
-        };
-        let targets = if targets.is_empty() {
-            return Err("no nodes registered".into());
-        } else {
-            targets
-        };
-        let path = format!(
-            "/api/projects/{}",
-            peregrin_sync::client::encode_segment(id)
-        );
-        tokio::task::spawn_blocking(move || {
-            let mut first_err = None;
-            for (node_id, client) in targets {
-                if let Err(e) = client.send_json("DELETE", &path, &Value::Null) {
-                    first_err.get_or_insert(format!("{node_id}: {e}"));
+    async fn pending_ops(&self) -> Result<Vec<PendingOpDto>, String> {
+        // Pending entries are addressable per node; dead-letters are a
+        // single list. Entries queued for a since-removed node have no
+        // reader — the outbox has no scan-all for `pending`.
+        let outbox = self.engine.outbox();
+        let mut node_ids: Vec<String> = self.registry().nodes.keys().cloned().collect();
+        node_ids.sort_unstable();
+        tokio::task::spawn_blocking(move || -> Result<Vec<PendingOpDto>, String> {
+            let mut out = Vec::new();
+            for id in &node_ids {
+                for entry in &outbox.pending_for_node(id).map_err(err_string)? {
+                    out.push(pending_dto(entry));
                 }
             }
-            match first_err {
-                Some(e) => Err(e),
-                None => Ok(()),
+            for entry in &outbox.dead_letters().map_err(err_string)? {
+                out.push(pending_dto(entry));
             }
+            Ok(out)
         })
         .await
         .map_err(join_err)?
-    }
-
-    async fn get_config(&self) -> Result<BTreeMap<String, Value>, String> {
-        let (_, client) = self.scoped_client(None)?;
-        tokio::task::spawn_blocking(move || {
-            let body = client.get_json("/api/config").map_err(err_string)?;
-            let map = body
-                .get("config")
-                .and_then(Value::as_object)
-                .cloned()
-                .unwrap_or_default();
-            Ok(map.into_iter().collect())
-        })
-        .await
-        .map_err(join_err)?
-    }
-
-    async fn set_config(&self, key: &str, value: &Value) -> Result<(), String> {
-        let (_, client) = self.scoped_client(None)?;
-        let path = format!("/api/config/{}", peregrin_sync::client::encode_segment(key));
-        let body = serde_json::json!({ "value": value });
-        tokio::task::spawn_blocking(move || client.send_json("PATCH", &path, &body))
-            .await
-            .map_err(join_err)?
-            .map(|_| ())
-            .map_err(err_string)
-    }
-
-    async fn fs_dirs(&self, path: &str, node: Option<String>) -> Result<Vec<String>, String> {
-        // Read-only and node-local — goes straight to the named node
-        // (or the primary) rather than the projection or outbox.
-        let (_, client) = self.scoped_client(node.as_deref())?;
-        let api_path = format!(
-            "/api/fs?path={}",
-            peregrin_sync::client::encode_segment(path)
-        );
-        tokio::task::spawn_blocking(move || client.get_json(&api_path))
-            .await
-            .map_err(join_err)?
-            .map_err(err_string)
-            .map(|v| {
-                v.get("dirs")
-                    .and_then(Value::as_array)
-                    .map(|rows| {
-                        rows.iter()
-                            .filter_map(|r| r.as_str().map(str::to_string))
-                            .collect()
-                    })
-                    .unwrap_or_default()
-            })
     }
 
     async fn node_info(&self) -> Result<NodeInfoDto, String> {
@@ -1330,27 +750,82 @@ impl NodeApi for SyncNodeApi {
         .map_err(join_err)?
     }
 
-    async fn pending_writes(&self) -> Result<Vec<PendingWriteDto>, String> {
-        // Pending entries are addressable per node; dead-letters are a
-        // single list. Entries queued for a since-removed node have no
-        // reader — the outbox has no scan-all for `pending`.
-        let outbox = self.engine.outbox();
-        let mut node_ids: Vec<String> = self.registry().nodes.keys().cloned().collect();
-        node_ids.sort_unstable();
-        tokio::task::spawn_blocking(move || -> Result<Vec<PendingWriteDto>, String> {
-            let mut out = Vec::new();
-            for id in &node_ids {
-                for entry in &outbox.pending_for_node(id).map_err(err_string)? {
-                    out.push(pending_dto(entry));
+    async fn pair(&self, code: &str, node: Option<&str>) -> Result<String, String> {
+        // Pairing redeems a code on one specific node — `node` picks
+        // it, else the primary. Goes direct: the code is single-use
+        // and queueing it in the outbox makes no sense.
+        let (node_id, client) = self.scoped_client(node)?;
+        let body = serde_json::json!({ "code": code });
+        let res = tokio::task::spawn_blocking(move || client.send_json("POST", "/api/pair", &body))
+            .await
+            .map_err(join_err)?
+            .map_err(|e| match e {
+                // Surface the node's `{error}` payload, not the raw body.
+                peregrin_sync::client::NodeError::Http { body, .. } => {
+                    serde_json::from_str::<Value>(&body)
+                        .ok()
+                        .and_then(|v| v.get("error").and_then(Value::as_str).map(str::to_string))
+                        .unwrap_or_else(|| format!("pairing failed: {body}"))
                 }
-            }
-            for entry in &outbox.dead_letters().map_err(err_string)? {
-                out.push(pending_dto(entry));
-            }
-            Ok(out)
+                e => e.to_string(),
+            })?;
+        let token = res
+            .get("token")
+            .and_then(Value::as_str)
+            .ok_or_else(|| "node returned no token".to_string())?
+            .to_string();
+        self.adopt_credential(&node_id, &token).await;
+        Ok(token)
+    }
+
+    async fn get_config(&self) -> Result<BTreeMap<String, Value>, String> {
+        let (_, client) = self.scoped_client(None)?;
+        tokio::task::spawn_blocking(move || {
+            let body = client.get_json("/api/config").map_err(err_string)?;
+            let map = body
+                .get("config")
+                .and_then(Value::as_object)
+                .cloned()
+                .unwrap_or_default();
+            Ok(map.into_iter().collect())
         })
         .await
         .map_err(join_err)?
+    }
+
+    async fn set_config(&self, key: &str, value: &Value) -> Result<(), String> {
+        let (_, client) = self.scoped_client(None)?;
+        let path = format!("/api/config/{}", peregrin_sync::client::encode_segment(key));
+        let body = serde_json::json!({ "value": value });
+        tokio::task::spawn_blocking(move || client.send_json("PATCH", &path, &body))
+            .await
+            .map_err(join_err)?
+            .map(|_| ())
+            .map_err(err_string)
+    }
+
+    async fn fs_dirs(&self, path: &str, node: Option<String>) -> Result<Vec<String>, String> {
+        // Read-only and node-local — goes straight to the named node
+        // (or the primary) rather than the projection or outbox.
+        let (_, client) = self.scoped_client(node.as_deref())?;
+        let api_path = format!(
+            "/api/fs?path={}",
+            peregrin_sync::client::encode_segment(path)
+        );
+        tokio::task::spawn_blocking(move || client.get_json(&api_path))
+            .await
+            .map_err(join_err)?
+            .map_err(err_string)
+            .map(|v| {
+                v.get("dirs")
+                    .and_then(Value::as_array)
+                    .map(|rows| {
+                        rows.iter()
+                            .filter_map(|r| r.as_str().map(str::to_string))
+                            .collect()
+                    })
+                    .unwrap_or_default()
+            })
     }
 
     async fn push_vapid(&self) -> Result<String, String> {
@@ -1414,8 +889,6 @@ fn join_err(e: tokio::task::JoinError) -> String {
     e.to_string()
 }
 
-/// The `adopt_credential` store-write outcome → warn log — split out so
-/// the JoinError arm (a panic inside the blocking task) is testable.
 /// `engine.add_node` outcome → warn log — split out like
 /// `cred_store_warn` so the Shutdown arm is directly testable (an
 /// `add_node` failure needs a dead engine, awkward to stage inside a
@@ -1426,6 +899,8 @@ fn retarget_warn(r: Result<(), SyncError>, node_id: &str) {
     }
 }
 
+/// The `adopt_credential` store-write outcome → warn log — split out so
+/// the JoinError arm (a panic inside the blocking task) is testable.
 fn cred_store_warn(r: Result<Result<(), String>, tokio::task::JoinError>, node_id: &str) {
     let msg = match r {
         Ok(Ok(())) => None,
@@ -1487,10 +962,19 @@ mod cov_tests {
         retarget_warn(Err(SyncError::Shutdown), "n1");
     }
 
+    #[test]
+    fn gated_ops_cover_the_live_writes() {
+        assert!(is_gated_op("sepia.prompt"));
+        assert!(is_gated_op("sepia.permission"));
+        assert!(is_gated_op("entity.delete"));
+        assert!(!is_gated_op("sepia.meta"));
+        assert!(!is_gated_op("sepia.meta.patch"));
+    }
+
     fn api_for(
         nodes: &[(&str, &str)],
     ) -> (
-        SyncNodeApi,
+        SyncEntityApi,
         peregrin_sync::ProjectionStore,
         peregrin_outbox::Outbox,
     ) {
@@ -1520,6 +1004,6 @@ mod cov_tests {
         let creds = Arc::new(crate::credentials::FileCredentials::new(
             dir.keep().join("credentials.json"),
         ));
-        (SyncNodeApi::new(engine, nodes, creds), projection, outbox)
+        (SyncEntityApi::new(engine, nodes, creds), projection, outbox)
     }
 }

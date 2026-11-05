@@ -1,175 +1,77 @@
-//! The [`NodeApi`] port — the node daemon's `/api/*` surface — plus
-//! [`HttpNodeApi`], the ureq-backed client impl. `peregrin-hub`'s
-//! `SyncNodeApi` is the sync-engine impl; `peregrin-web`'s server fns
-//! call through whichever `Arc<dyn NodeApi>` the host provides.
+//! The [`EntityApi`] port — the node daemon's entity-plane surface —
+//! plus [`HttpEntityApi`], the ureq-backed client impl. `peregrin-hub`'s
+//! `SyncEntityApi` is the sync-engine impl; integrations and clients
+//! call through whichever `Arc<dyn EntityApi>` the host provides.
 
 use std::collections::BTreeMap;
 
 use serde_json::Value;
 
-// Re-exported so `NodeApi` implementors (the hub's `SyncNodeApi`,
-// test stubs) name the selector type without a web-core dependency.
-pub use crate::rewind::RewindSelector;
-
 use crate::dto::{
-    AgentDto, AttachResultDto, CheckpointDto, CreateResultDto, HistoryPageDto, ImportResultDto,
-    NodeInfoDto, NodeStatusDto, PendingWriteDto, ProjectDto, ProjectTransferDto,
-    PushSubscriptionDto, RewindResultDto, SessionSummaryDto, TransferResultDto,
+    CreateResultDto, EntityDto, EntityIndexDto, EntityOp, NodeInfoDto, NodeStatusDto, PendingOpDto,
+    PushSubscriptionDto,
 };
 
-/// Port to the node's `/api/*` surface — implemented by [`HttpNodeApi`]
-/// in production and by stubs in tests.
+/// Port to the node's entity plane — implemented by [`HttpEntityApi`]
+/// for direct connections and by the hub's `SyncEntityApi` (merged
+/// index + durable outbox) for multi-node deployments. Deliberately
+/// kind-agnostic: `Op.kind` and `EntityDto.index_doc` are owned by the
+/// integration, never by this crate (ADR-0091).
 #[async_trait::async_trait]
-pub trait NodeApi: Send + Sync + 'static {
-    /// `GET /api/sessions`.
-    async fn list_sessions(&self) -> Result<Vec<SessionSummaryDto>, String>;
-    /// `GET /api/sessions/{id}/history?before=&limit=&agent=`.
-    async fn history(
+pub trait EntityApi: Send + Sync + 'static {
+    /* ---- entities --------------------------------------------------*/
+    /// `GET /api/entities` — every entity the node can see; `kind`
+    /// filters by entity kind (`sepia-session`, `campaign`, …).
+    async fn list_entities(&self, kind: Option<&str>) -> Result<Vec<EntityDto>, String>;
+    /// `GET /api/entities/{id}`.
+    async fn entity(&self, id: &str) -> Result<EntityDto, String>;
+    /// `POST /api/entities` — `{kind, indexDoc}` creates an entity.
+    /// `node` pins the create on a multi-node hub; `None` = primary.
+    async fn create_entity(
         &self,
-        id: &str,
-        agent: Option<&str>,
-        before: Option<i64>,
-        limit: Option<usize>,
-    ) -> Result<HistoryPageDto, String>;
-    /// `GET /api/sessions/{id}`.
-    async fn get_session(&self, id: &str, agent: Option<&str>)
-    -> Result<SessionSummaryDto, String>;
-    /// `POST /api/sessions` — `{cwd, agent?, title?, model?}`. `node`
-    /// pins the create to one registered node on a multi-node hub;
-    /// `None` = the primary/first.
-    async fn create_session(
-        &self,
-        cwd: &str,
-        agent: Option<&str>,
-        title: Option<&str>,
-        model: Option<&str>,
+        kind: &str,
+        init: &Value,
         node: Option<&str>,
     ) -> Result<CreateResultDto, String>;
-    /// `POST /api/sessions/{id}/attach` — `{takeover}`. `takeover`
-    /// steals a lock held by another process.
-    async fn attach(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        takeover: bool,
-    ) -> Result<AttachResultDto, String>;
-    /// `POST /api/sessions/{id}/detach` — release the live attach
-    /// (no-op when not attached).
-    async fn detach(&self, id: &str, agent: Option<&str>) -> Result<(), String>;
-    /// `POST /api/sessions/{id}/prompt` — `{text, attachments?}`;
-    /// `attachments` are ACP content blocks (see
-    /// `peregrin_web_core::composer`).
-    async fn prompt(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        text: &str,
-        attachments: &[Value],
-    ) -> Result<(), String>;
-    /// `POST /api/sessions/{id}/cancel`.
-    async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), String>;
-    /// `POST /api/sessions/{id}/permission` — `{requestId, optionId}`;
-    /// `option_id` `None` dismisses the request.
-    async fn answer_permission(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        request_id: &str,
-        option_id: Option<&str>,
-    ) -> Result<(), String>;
-    /// `PATCH /api/sessions/{id}` — the meta overlay (`{title?}`,
-    /// `{pinned?}`, `{archived?}`, `{projectIds?}`, `{model?}`).
-    async fn patch_meta(&self, id: &str, agent: Option<&str>, patch: &Value) -> Result<(), String>;
-    /// `DELETE /api/sessions/{id}`.
-    async fn delete_session(&self, id: &str, agent: Option<&str>) -> Result<(), String>;
-    /// `GET /api/sessions/{id}/checkpoints` — `{checkpoints: [...]}`.
-    async fn checkpoints(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-    ) -> Result<Vec<CheckpointDto>, String>;
-    /// `POST /api/sessions/{id}/restore` — `{confirm: true, checkpoint}`.
-    async fn restore(&self, id: &str, agent: Option<&str>, checkpoint: &str) -> Result<(), String>;
-    /// `POST /api/sessions/{id}/rewind` — `{confirm: true}` plus the
-    /// selector (`{nodeId}` for a per-message cut, `{checkpoint}` for a
-    /// snapshot ref). Backends without a store rewinder answer
-    /// `conflict` — the summary's `canRewind` gates the affordance.
-    async fn rewind(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        selector: &RewindSelector,
-    ) -> Result<RewindResultDto, String>;
-    /// `POST /api/sessions/{id}/convert` — `{agent: "cline"|"devin"}` →
-    /// `{sessionId}` of the converted copy.
-    async fn convert(&self, id: &str, agent: Option<&str>, target: &str) -> Result<String, String>;
-    /// `POST /api/sessions/import` — the body
-    /// [`peregrin_web_core::composer::import_body`] shaped → the created
-    /// row.
-    async fn import(&self, body: &Value) -> Result<ImportResultDto, String>;
-    /// Cross-node transfer (`docs/transfer.md`): pull `/export` from
-    /// the session's owning node, `/import` on `target_node`, copy the
-    /// pinned/archived overlay, verify the copy lists. `cwd` remaps
-    /// the session's working directory on the target. Requires a
-    /// multi-node registry — single-node implementations `Err`.
-    async fn transfer_session(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        target_node: &str,
-        cwd: Option<&str>,
-    ) -> Result<TransferResultDto, String>;
-    /// `transfer_session` for every projected session under
-    /// `project_cwd` on `source_node` — per-session failures collect
-    /// in [`ProjectTransferDto::failed`] instead of aborting.
-    async fn transfer_project(
-        &self,
-        project_cwd: &str,
-        source_node: &str,
-        target_node: &str,
-        cwd: Option<&str>,
-    ) -> Result<ProjectTransferDto, String>;
-    /// `GET /api/agents`.
-    async fn list_agents(&self) -> Result<Vec<AgentDto>, String>;
-    /// `GET /api/projects`.
-    async fn list_projects(&self) -> Result<Vec<ProjectDto>, String>;
-    /// `POST /api/projects` — `{name}`. `node` scopes the create to one
-    /// registered node; `None` = the primary/first.
-    async fn create_project(&self, name: &str, node: Option<&str>) -> Result<ProjectDto, String>;
-    /// `DELETE /api/projects/{id}` — `node` routes to the owning node
-    /// when ids collide across a merged registry.
-    async fn delete_project(&self, id: &str, node: Option<&str>) -> Result<(), String>;
-    /// `GET /api/config` — the public config map (internal keys like
-    /// `vapid`/`pushSubscriptions` are filtered node-side).
+    /// `POST /api/entities/{id}/ops` — submit an op; queues in the
+    /// outbox when the owning node is down.
+    async fn submit_op(&self, id: &str, op: &EntityOp) -> Result<(), String>;
+    /// `DELETE /api/entities/{id}`.
+    async fn delete_entity(&self, id: &str) -> Result<(), String>;
+    /// `GET /api/entities/{id}/export` — the entity's snapshot bytes
+    /// (integration-defined IR).
+    async fn snapshot_export(&self, id: &str) -> Result<Value, String>;
+    /// `POST /api/entities/import` — resume a snapshot on a node
+    /// (`node` picks the target; `None` = primary).
+    async fn snapshot_import(&self, body: &Value, node: Option<&str>) -> Result<EntityDto, String>;
+
+    /* ---- index + outbox --------------------------------------------*/
+    /// `GET /api/index` — per-node entity indexes (the merged
+    /// projection on a hub, one row on a direct connection).
+    async fn entity_index(&self) -> Result<Vec<EntityIndexDto>, String>;
+    /// Queued and dead-lettered ops in the hub's durable outbox.
+    /// Direct connections have no outbox and return `[]`.
+    async fn pending_ops(&self) -> Result<Vec<PendingOpDto>, String>;
+
+    /* ---- node-level (substrate-generic) ----------------------------*/
+    /// `GET /api/node` — the node descriptor (primary on a hub).
+    async fn node_info(&self) -> Result<NodeInfoDto, String>;
+    /// `PATCH /api/node` — `{name}` renames a node; returns the
+    /// updated descriptor. `node` picks the target on a multi-node hub.
+    async fn rename_node(&self, name: &str, node: Option<&str>) -> Result<NodeInfoDto, String>;
+    /// Per-node health rows — the sync projection on a hub, a one-row
+    /// probe on a direct connection.
+    async fn node_status(&self) -> Result<Vec<NodeStatusDto>, String>;
+    /// `POST /api/pair` — redeem a one-time pairing code for a
+    /// long-lived node credential (`{code}` → `{token}`).
+    async fn pair(&self, code: &str, node: Option<&str>) -> Result<String, String>;
+    /// `GET /api/config` — the node's config document.
     async fn get_config(&self) -> Result<BTreeMap<String, Value>, String>;
     /// `PATCH /api/config/{key}` — `{value}` stored verbatim.
     async fn set_config(&self, key: &str, value: &Value) -> Result<(), String>;
     /// `GET /api/fs?path=` — direct subdirectories of an absolute
-    /// path, for the cwd picker's autocomplete. `node` routes on a
-    /// multi-node hub; `None` = the primary/first.
+    /// path. `node` routes on a multi-node hub; `None` = primary.
     async fn fs_dirs(&self, path: &str, node: Option<String>) -> Result<Vec<String>, String>;
-    /// `POST /api/pair` — redeem a one-time pairing code for a
-    /// long-lived node credential (`{code}` → `{token}`). `node`
-    /// picks the target on a multi-node hub; `None` = the
-    /// primary/first. 404 surfaces as `Err` (unknown/expired/used
-    /// code — the node deliberately doesn't say which); 501 when the
-    /// node has no pairing store configured.
-    async fn pair(&self, code: &str, node: Option<&str>) -> Result<String, String>;
-    /// `GET /api/node` — the node descriptor (the primary node's on a
-    /// multi-node hub).
-    async fn node_info(&self) -> Result<NodeInfoDto, String>;
-    /// `PATCH /api/node` — `{name}` renames a node (persists its
-    /// identity file); returns the updated descriptor. `node` picks
-    /// the target on a multi-node hub; `None` = the primary.
-    async fn rename_node(&self, name: &str, node: Option<&str>) -> Result<NodeInfoDto, String>;
-    /// Per-node health rows — the sync projection's `nodes` table on a
-    /// hub, a one-row `GET /api/node` probe on a direct connection.
-    async fn node_status(&self) -> Result<Vec<NodeStatusDto>, String>;
-    /// Queued (`"queued"`) and dead-lettered (`"failed"`) writes in the
-    /// hub's durable outbox — the multi-node surface for "the node is
-    /// down, your prompt will replay". Direct connections have no
-    /// outbox and return `[]`.
-    async fn pending_writes(&self) -> Result<Vec<PendingWriteDto>, String>;
     /// `GET /api/push/vapid` — `{publicKey}`.
     async fn push_vapid(&self) -> Result<String, String>;
     /// `POST /api/push/subscribe` — `{endpoint, keys}`.
@@ -178,19 +80,18 @@ pub trait NodeApi: Send + Sync + 'static {
     async fn push_unsubscribe(&self, endpoint: &str) -> Result<(), String>;
 }
 
-/* ---- ssr: HTTP client ------------------------------------------------*/
+/* ---- HTTP client ------------------------------------------------*/
 
-/// `NodeApi` backed by the node daemon's HTTP API (`ureq` — the same
-/// client `peregrin-node`'s e2e tests use). Calls are blocking I/O, so
-/// each trait method hops onto `spawn_blocking`.
+/// `EntityApi` backed by the node daemon's HTTP API (`ureq` — blocking
+/// I/O, so each trait method hops onto `spawn_blocking`).
 #[derive(Clone)]
-pub struct HttpNodeApi {
+pub struct HttpEntityApi {
     base: String,
     token: Option<String>,
     agent: ureq::Agent,
 }
 
-impl HttpNodeApi {
+impl HttpEntityApi {
     /// `base` is the node's origin, e.g. `http://127.0.0.1:18787`.
     pub fn new(base: impl Into<String>, token: Option<String>) -> Self {
         let config = ureq::Agent::config_builder()
@@ -210,13 +111,13 @@ impl HttpNodeApi {
         path: &str,
     ) -> ureq::RequestBuilder<ureq::typestate::WithoutBody> {
         let url = format!("{}{}", self.base, path);
+        // Bodiless verbs only — PATCH/POST carry JSON via `send_json`.
         let mut req = match method {
             "DELETE" => self.agent.delete(&url),
-            "HEAD" => self.agent.head(&url),
             _ => self.agent.get(&url),
         };
-        if let Some(token) = &self.token {
-            req = req.header("Authorization", format!("Bearer {token}"));
+        if let Some(t) = &self.token {
+            req = req.header("Authorization", &format!("Bearer {t}"));
         }
         req
     }
@@ -225,515 +126,293 @@ impl HttpNodeApi {
         &self,
         method: &str,
         path: &str,
-        body: &serde_json::Value,
+        body: &Value,
     ) -> Result<ureq::http::Response<ureq::Body>, String> {
-        let url = format!("{}{}", self.base, path);
+        // DELETE with a JSON body: ureq's typestate has no bodied
+        // delete verb — build the raw `http::Request` and `agent.run`.
+        if method == "DELETE" {
+            let url = format!("{}{}", self.base, path);
+            let bytes = serde_json::to_vec(body).map_err(err_msg)?;
+            let mut builder = ureq::http::Request::builder().method("DELETE").uri(&url);
+            if let Some(t) = &self.token {
+                builder = builder.header("Authorization", format!("Bearer {t}"));
+            }
+            let req = builder
+                .header("Content-Type", "application/json")
+                .body(bytes)
+                .map_err(err_msg)?;
+            return self.agent.run(req).map_err(err_msg);
+        }
         let mut req = match method {
-            "PATCH" => self.agent.patch(&url),
-            "PUT" => self.agent.put(&url),
-            _ => self.agent.post(&url),
+            "POST" => self.agent.post(format!("{}{}", self.base, path)),
+            "PATCH" => self.agent.patch(format!("{}{}", self.base, path)),
+            _ => self.agent.put(format!("{}{}", self.base, path)),
         };
-        if let Some(token) = &self.token {
-            req = req.header("Authorization", format!("Bearer {token}"));
+        if let Some(t) = &self.token {
+            req = req.header("Authorization", &format!("Bearer {t}"));
         }
         req.send_json(body).map_err(err_msg)
-    }
-
-    /// `DELETE` with a JSON body — ureq's `delete` builder is
-    /// body-less, so the request is assembled by hand.
-    fn delete_json(
-        &self,
-        path: &str,
-        body: &serde_json::Value,
-    ) -> Result<ureq::http::Response<ureq::Body>, String> {
-        let url = format!("{}{}", self.base, path);
-        let bytes = serde_json::to_vec(body).map_err(err_msg)?;
-        let mut builder = ureq::http::Request::builder().method("DELETE").uri(&url);
-        if let Some(token) = &self.token {
-            builder = builder.header("Authorization", format!("Bearer {token}"));
-        }
-        let req = builder
-            .header("Content-Type", "application/json")
-            .body(bytes)
-            .map_err(err_msg)?;
-        self.agent.run(req).map_err(err_msg)
     }
 
     fn get(&self, path: &str) -> Result<ureq::http::Response<ureq::Body>, String> {
         self.request("GET", path).call().map_err(err_msg)
     }
-
-    /// The single-node registry row for an unreachable upstream.
-    fn down_row(&self) -> NodeStatusDto {
-        NodeStatusDto {
-            id: "node".into(),
-            url: self.base.clone(),
-            label: self.base.clone(),
-            status: "down".into(),
-            last_seen_at: None,
-        }
-    }
 }
 
-/// `map_err` target for `Result<_, E: Display>` → `String` — named so
-/// error arms (join/serialize failures that tests can't trigger)
-/// don't carry a per-site closure region.
 fn err_msg(e: impl std::fmt::Display) -> String {
-    e.to_string()
+    format!("{e}")
 }
 
-/// `Err` carries the node's `{error}` payload when there is one.
 fn error_of(mut res: ureq::http::Response<ureq::Body>, what: &str) -> String {
     let status = res.status().as_u16();
-    let message = res
-        .body_mut()
-        .read_json::<serde_json::Value>()
-        .ok()
-        .and_then(|v| v.get("error").and_then(|e| e.as_str().map(str::to_string)));
-    match message {
-        Some(m) => m,
-        None => format!("{what} failed (HTTP {status})"),
+    let body = res.body_mut().read_to_string().unwrap_or_default();
+    if body.is_empty() {
+        format!("{what}: HTTP {status}")
+    } else {
+        format!("{what}: HTTP {status} — {body}")
     }
 }
 
-/// Read a JSON body, or surface the node's `{error}` payload.
 fn read_json<T: serde::de::DeserializeOwned>(
-    res: ureq::http::Response<ureq::Body>,
+    mut res: ureq::http::Response<ureq::Body>,
     what: &str,
 ) -> Result<T, String> {
-    if res.status().is_success() {
-        let mut res = res;
-        return res.body_mut().read_json::<T>().map_err(err_msg);
+    if !res.status().is_success() {
+        return Err(error_of(res, what));
     }
-    Err(error_of(res, what))
+    res.body_mut()
+        .read_json()
+        .map_err(|e| format!("{what}: decode {e}"))
 }
 
-/// `{confirm: true}` + the serialized selector — `RewindSelector`
-/// encodes as a one-field object (`{"nodeId": …}`/`{"checkpoint": …}`),
-/// the exact shape the node route wants.
-fn rewind_body(selector: &RewindSelector) -> Value {
-    let mut body = serde_json::json!({ "confirm": true });
-    if let (Some(body), Ok(Value::Object(sel))) =
-        (body.as_object_mut(), serde_json::to_value(selector))
-    {
-        body.extend(sel);
-    }
-    body
-}
-
-fn id_query(agent: Option<&str>) -> String {
-    agent
-        .map(|a| format!("?agent={}", url_encode(a)))
-        .unwrap_or_default()
-}
-
-/// Minimal percent-encoding for the `?agent` query param (store ids are
-/// path-safe, but agent ids are free-form config keys).
 fn url_encode(s: &str) -> String {
     use std::fmt::Write;
-    let mut out = String::with_capacity(s.len());
-    for b in s.bytes() {
-        if b.is_ascii_alphanumeric() || matches!(b, b'-' | b'_' | b'.' | b'~') {
-            out.push(char::from(b));
+    s.chars().fold(String::new(), |mut out, c| {
+        if c.is_ascii_alphanumeric() || "-_.~".contains(c) {
+            out.push(c);
         } else {
-            let _ = write!(out, "%{b:02X}");
+            let _ = write!(out, "%{:02X}", c as u32);
         }
-    }
-    out
+        out
+    })
 }
 
-fn history_path(
-    id: &str,
-    agent: Option<&str>,
-    before: Option<i64>,
-    limit: Option<usize>,
-) -> String {
-    let mut path = format!("/api/sessions/{id}/history");
-    let mut params = Vec::new();
-    if let Some(a) = agent {
-        params.push(format!("agent={}", url_encode(a)));
-    }
-    if let Some(b) = before {
-        params.push(format!("before={b}"));
-    }
-    if let Some(l) = limit {
-        params.push(format!("limit={l}"));
-    }
-    if !params.is_empty() {
-        path.push('?');
-        path.push_str(&params.join("&"));
-    }
-    path
+fn node_query(node: Option<&str>) -> String {
+    node.filter(|n| !n.is_empty())
+        .map_or_else(String::new, |n| format!("?node={}", url_encode(n)))
+}
+
+fn kind_query(kind: Option<&str>) -> String {
+    kind.filter(|k| !k.is_empty())
+        .map_or_else(String::new, |k| format!("?kind={}", url_encode(k)))
 }
 
 #[async_trait::async_trait]
-impl NodeApi for HttpNodeApi {
-    async fn list_sessions(&self) -> Result<Vec<SessionSummaryDto>, String> {
+impl EntityApi for HttpEntityApi {
+    async fn list_entities(&self, kind: Option<&str>) -> Result<Vec<EntityDto>, String> {
         let api = self.clone();
+        let kind = kind.map(str::to_string);
         tokio::task::spawn_blocking(move || {
             #[derive(serde::Deserialize)]
-            struct SessionsBody {
+            struct EntitiesBody {
                 #[serde(default)]
-                sessions: Vec<SessionSummaryDto>,
+                entities: Vec<EntityDto>,
             }
-            read_json::<SessionsBody>(api.get("/api/sessions")?, "list sessions")
-                .map(|b| b.sessions)
+            let body: EntitiesBody = read_json(
+                api.get(&format!("/api/entities{}", kind_query(kind.as_deref())))?,
+                "list entities",
+            )?;
+            Ok(body.entities)
         })
         .await
         .map_err(err_msg)?
     }
 
-    async fn history(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        before: Option<i64>,
-        limit: Option<usize>,
-    ) -> Result<HistoryPageDto, String> {
-        let path = history_path(id, agent, before, limit);
+    async fn entity(&self, id: &str) -> Result<EntityDto, String> {
         let api = self.clone();
+        let id = id.to_string();
         tokio::task::spawn_blocking(move || {
-            read_json::<HistoryPageDto>(api.get(&path)?, "get history")
+            read_json(api.get(&format!("/api/entities/{id}"))?, "get entity")
         })
         .await
         .map_err(err_msg)?
     }
 
-    async fn get_session(
+    async fn create_entity(
         &self,
-        id: &str,
-        agent: Option<&str>,
-    ) -> Result<SessionSummaryDto, String> {
-        let path = format!("/api/sessions/{id}{}", id_query(agent));
-        let api = self.clone();
-        tokio::task::spawn_blocking(move || {
-            read_json::<SessionSummaryDto>(api.get(&path)?, "get session")
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn prompt(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        text: &str,
-        attachments: &[Value],
-    ) -> Result<(), String> {
-        let path = format!("/api/sessions/{id}/prompt{}", id_query(agent));
-        let api = self.clone();
-        let body = serde_json::json!({ "text": text, "attachments": attachments });
-        tokio::task::spawn_blocking(move || {
-            let res = api.send_json("POST", &path, &body)?;
-            if res.status().is_success() {
-                Ok(())
-            } else {
-                Err(error_of(res, "prompt"))
-            }
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
-        let path = format!("/api/sessions/{id}/cancel{}", id_query(agent));
-        let api = self.clone();
-        tokio::task::spawn_blocking(move || {
-            let res = api.send_json("POST", &path, &serde_json::json!({}))?;
-            if res.status().is_success() {
-                Ok(())
-            } else {
-                Err(error_of(res, "cancel"))
-            }
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn create_session(
-        &self,
-        cwd: &str,
-        agent: Option<&str>,
-        title: Option<&str>,
-        model: Option<&str>,
-        _node: Option<&str>,
+        kind: &str,
+        init: &Value,
+        node: Option<&str>,
     ) -> Result<CreateResultDto, String> {
-        let mut body = serde_json::json!({ "cwd": cwd });
-        if let Some(a) = agent {
-            body["agent"] = serde_json::json!(a);
-        }
-        if let Some(t) = title {
-            body["title"] = serde_json::json!(t);
-        }
-        if let Some(m) = model {
-            body["model"] = serde_json::json!(m);
-        }
         let api = self.clone();
+        let body = serde_json::json!({ "kind": kind, "indexDoc": init });
+        let q = node_query(node);
         tokio::task::spawn_blocking(move || {
-            read_json::<CreateResultDto>(
-                api.send_json("POST", "/api/sessions", &body)?,
-                "create session",
+            read_json(
+                api.send_json("POST", &format!("/api/entities{q}"), &body)?,
+                "create entity",
             )
         })
         .await
         .map_err(err_msg)?
     }
 
-    async fn attach(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        takeover: bool,
-    ) -> Result<AttachResultDto, String> {
-        let path = format!("/api/sessions/{id}/attach{}", id_query(agent));
+    async fn submit_op(&self, id: &str, op: &EntityOp) -> Result<(), String> {
         let api = self.clone();
-        let body = serde_json::json!({ "takeover": takeover });
+        let id = id.to_string();
+        let body = serde_json::to_value(op).map_err(err_msg)?;
         tokio::task::spawn_blocking(move || {
-            read_json::<AttachResultDto>(api.send_json("POST", &path, &body)?, "attach")
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn detach(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
-        let path = format!("/api/sessions/{id}/detach{}", id_query(agent));
-        let api = self.clone();
-        tokio::task::spawn_blocking(move || {
-            let res = api.send_json("POST", &path, &serde_json::json!({}))?;
+            let res = api.send_json("POST", &format!("/api/entities/{id}/ops"), &body)?;
             if res.status().is_success() {
                 Ok(())
             } else {
-                Err(error_of(res, "detach"))
+                Err(error_of(res, "submit op"))
             }
         })
         .await
         .map_err(err_msg)?
     }
 
-    async fn answer_permission(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        request_id: &str,
-        option_id: Option<&str>,
-    ) -> Result<(), String> {
-        let path = format!("/api/sessions/{id}/permission{}", id_query(agent));
+    async fn delete_entity(&self, id: &str) -> Result<(), String> {
         let api = self.clone();
-        let body = serde_json::json!({ "requestId": request_id, "optionId": option_id });
+        let id = id.to_string();
         tokio::task::spawn_blocking(move || {
-            let res = api.send_json("POST", &path, &body)?;
+            let res = api
+                .request("DELETE", &format!("/api/entities/{id}"))
+                .call()
+                .map_err(err_msg)?;
             if res.status().is_success() {
                 Ok(())
             } else {
-                Err(error_of(res, "permission"))
+                Err(error_of(res, "delete entity"))
             }
         })
         .await
         .map_err(err_msg)?
     }
 
-    async fn patch_meta(&self, id: &str, agent: Option<&str>, patch: &Value) -> Result<(), String> {
-        let path = format!("/api/sessions/{id}{}", id_query(agent));
+    async fn snapshot_export(&self, id: &str) -> Result<Value, String> {
         let api = self.clone();
-        let body = patch.clone();
+        let id = id.to_string();
         tokio::task::spawn_blocking(move || {
-            let res = api.send_json("PATCH", &path, &body)?;
-            if res.status().is_success() {
-                Ok(())
-            } else {
-                Err(error_of(res, "patch meta"))
-            }
+            read_json(
+                api.get(&format!("/api/entities/{id}/export"))?,
+                "snapshot export",
+            )
         })
         .await
         .map_err(err_msg)?
     }
 
-    async fn delete_session(&self, id: &str, agent: Option<&str>) -> Result<(), String> {
-        let path = format!("/api/sessions/{}{}", url_encode(id), id_query(agent));
-        let api = self.clone();
-        tokio::task::spawn_blocking(move || {
-            let res = api.request("DELETE", &path).call().map_err(err_msg)?;
-            if res.status().is_success() {
-                Ok(())
-            } else {
-                Err(error_of(res, "delete session"))
-            }
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn checkpoints(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-    ) -> Result<Vec<CheckpointDto>, String> {
-        let path = format!("/api/sessions/{id}/checkpoints{}", id_query(agent));
-        let api = self.clone();
-        tokio::task::spawn_blocking(move || {
-            #[derive(serde::Deserialize)]
-            struct CheckpointsBody {
-                #[serde(default)]
-                checkpoints: Vec<CheckpointDto>,
-            }
-            read_json::<CheckpointsBody>(api.get(&path)?, "list checkpoints").map(|b| b.checkpoints)
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn restore(&self, id: &str, agent: Option<&str>, checkpoint: &str) -> Result<(), String> {
-        let path = format!("/api/sessions/{id}/restore{}", id_query(agent));
-        let api = self.clone();
-        let body = serde_json::json!({ "confirm": true, "checkpoint": checkpoint });
-        tokio::task::spawn_blocking(move || {
-            let res = api.send_json("POST", &path, &body)?;
-            if res.status().is_success() {
-                Ok(())
-            } else {
-                Err(error_of(res, "restore"))
-            }
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn rewind(
-        &self,
-        id: &str,
-        agent: Option<&str>,
-        selector: &RewindSelector,
-    ) -> Result<RewindResultDto, String> {
-        let path = format!("/api/sessions/{id}/rewind{}", id_query(agent));
-        let api = self.clone();
-        let body = rewind_body(selector);
-        tokio::task::spawn_blocking(move || {
-            let res = api.send_json("POST", &path, &body)?;
-            if res.status().is_success() {
-                res.into_body()
-                    .read_json::<RewindResultDto>()
-                    .map_err(err_msg)
-            } else {
-                Err(error_of(res, "rewind"))
-            }
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn convert(&self, id: &str, agent: Option<&str>, target: &str) -> Result<String, String> {
-        let path = format!("/api/sessions/{id}/convert{}", id_query(agent));
-        let api = self.clone();
-        let body = serde_json::json!({ "agent": target });
-        tokio::task::spawn_blocking(move || {
-            let res = api.send_json("POST", &path, &body)?;
-            if res.status().is_success() {
-                res.into_body()
-                    .read_json::<Value>()
-                    .ok()
-                    .and_then(|v| {
-                        v.get("sessionId")
-                            .and_then(Value::as_str)
-                            .map(str::to_string)
-                    })
-                    .ok_or_else(|| "convert: missing sessionId".to_string())
-            } else {
-                Err(error_of(res, "convert"))
-            }
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn import(&self, body: &Value) -> Result<ImportResultDto, String> {
+    async fn snapshot_import(&self, body: &Value, node: Option<&str>) -> Result<EntityDto, String> {
         let api = self.clone();
         let body = body.clone();
+        let q = node_query(node);
         tokio::task::spawn_blocking(move || {
-            read_json::<ImportResultDto>(
-                api.send_json("POST", "/api/sessions/import", &body)?,
-                "import session",
+            read_json(
+                api.send_json("POST", &format!("/api/entities/import{q}"), &body)?,
+                "snapshot import",
             )
         })
         .await
         .map_err(err_msg)?
     }
 
-    async fn transfer_session(
-        &self,
-        _id: &str,
-        _agent: Option<&str>,
-        _target_node: &str,
-        _cwd: Option<&str>,
-    ) -> Result<TransferResultDto, String> {
-        // A direct connection sees exactly one node — there's nowhere
-        // to send. Transfer is the sync-hub (`SyncNodeApi`) feature.
-        Err("session transfer needs a multi-node hub (PEREGRIN_NODES)".to_string())
-    }
-
-    async fn transfer_project(
-        &self,
-        _project_cwd: &str,
-        _source_node: &str,
-        _target_node: &str,
-        _cwd: Option<&str>,
-    ) -> Result<ProjectTransferDto, String> {
-        Err("project transfer needs a multi-node hub (PEREGRIN_NODES)".to_string())
-    }
-
-    async fn list_agents(&self) -> Result<Vec<AgentDto>, String> {
+    async fn entity_index(&self) -> Result<Vec<EntityIndexDto>, String> {
         let api = self.clone();
         tokio::task::spawn_blocking(move || {
             #[derive(serde::Deserialize)]
-            struct AgentsBody {
+            struct IndexBody {
                 #[serde(default)]
-                agents: Vec<AgentDto>,
+                nodes: Vec<EntityIndexDto>,
             }
-            read_json::<AgentsBody>(api.get("/api/agents")?, "list agents").map(|b| b.agents)
+            let body: IndexBody = read_json(api.get("/api/index")?, "entity index")?;
+            Ok(body.nodes)
         })
         .await
         .map_err(err_msg)?
     }
 
-    async fn list_projects(&self) -> Result<Vec<ProjectDto>, String> {
+    async fn pending_ops(&self) -> Result<Vec<PendingOpDto>, String> {
         let api = self.clone();
         tokio::task::spawn_blocking(move || {
             #[derive(serde::Deserialize)]
-            struct ProjectsBody {
+            struct OutboxBody {
                 #[serde(default)]
-                projects: Vec<ProjectDto>,
+                pending: Vec<PendingOpDto>,
             }
-            read_json::<ProjectsBody>(api.get("/api/projects")?, "list projects")
-                .map(|b| b.projects)
+            let body: OutboxBody = read_json(api.get("/api/outbox")?, "pending ops")?;
+            Ok(body.pending)
         })
         .await
         .map_err(err_msg)?
     }
 
-    async fn create_project(&self, name: &str, _node: Option<&str>) -> Result<ProjectDto, String> {
+    async fn node_info(&self) -> Result<NodeInfoDto, String> {
+        let api = self.clone();
+        tokio::task::spawn_blocking(move || read_json(api.get("/api/node")?, "node info"))
+            .await
+            .map_err(err_msg)?
+    }
+
+    async fn rename_node(&self, name: &str, node: Option<&str>) -> Result<NodeInfoDto, String> {
         let api = self.clone();
         let body = serde_json::json!({ "name": name });
+        let q = node_query(node);
         tokio::task::spawn_blocking(move || {
-            #[derive(serde::Deserialize)]
-            struct CreatedBody {
-                project: ProjectDto,
-            }
-            let res = api.send_json("POST", "/api/projects", &body)?;
-            read_json::<CreatedBody>(res, "create project").map(|b| b.project)
+            read_json(
+                api.send_json("PATCH", &format!("/api/node{q}"), &body)?,
+                "rename node",
+            )
         })
         .await
         .map_err(err_msg)?
     }
 
-    async fn delete_project(&self, id: &str, _node: Option<&str>) -> Result<(), String> {
+    async fn node_status(&self) -> Result<Vec<NodeStatusDto>, String> {
         let api = self.clone();
-        let path = format!("/api/projects/{}", url_encode(id));
         tokio::task::spawn_blocking(move || {
-            let res = api.request("DELETE", &path).call().map_err(err_msg)?;
-            if res.status().is_success() {
-                Ok(())
-            } else {
-                Err(error_of(res, "delete project"))
+            // Direct connection: synthesize the one-row probe — a
+            // reachable `/api/node` means the node is up.
+            match api.get("/api/node") {
+                Ok(mut res) if res.status().is_success() => {
+                    let _ = res.body_mut().read_to_string();
+                    Ok(vec![NodeStatusDto {
+                        id: "node".into(),
+                        url: api.base.clone(),
+                        label: "node".into(),
+                        status: "up".into(),
+                        last_seen_at: None,
+                    }])
+                }
+                Ok(res) => Err(error_of(res, "node status")),
+                Err(e) => Ok(vec![NodeStatusDto {
+                    id: "node".into(),
+                    url: api.base.clone(),
+                    label: "node".into(),
+                    status: "down".into(),
+                    last_seen_at: Some(e),
+                }]),
             }
+        })
+        .await
+        .map_err(err_msg)?
+    }
+
+    async fn pair(&self, code: &str, node: Option<&str>) -> Result<String, String> {
+        let api = self.clone();
+        let body = serde_json::json!({ "code": code });
+        let q = node_query(node);
+        tokio::task::spawn_blocking(move || {
+            #[derive(serde::Deserialize)]
+            struct PairBody {
+                token: String,
+            }
+            let body: PairBody = read_json(
+                api.send_json("POST", &format!("/api/pair{q}"), &body)?,
+                "pair",
+            )?;
+            Ok(body.token)
         })
         .await
         .map_err(err_msg)?
@@ -741,16 +420,9 @@ impl NodeApi for HttpNodeApi {
 
     async fn get_config(&self) -> Result<BTreeMap<String, Value>, String> {
         let api = self.clone();
-        tokio::task::spawn_blocking(move || {
-            #[derive(serde::Deserialize)]
-            struct ConfigBody {
-                #[serde(default)]
-                config: BTreeMap<String, Value>,
-            }
-            read_json::<ConfigBody>(api.get("/api/config")?, "get config").map(|b| b.config)
-        })
-        .await
-        .map_err(err_msg)?
+        tokio::task::spawn_blocking(move || read_json(api.get("/api/config")?, "get config"))
+            .await
+            .map_err(err_msg)?
     }
 
     async fn set_config(&self, key: &str, value: &Value) -> Result<(), String> {
@@ -769,98 +441,24 @@ impl NodeApi for HttpNodeApi {
         .map_err(err_msg)?
     }
 
-    async fn rename_node(&self, name: &str, _node: Option<&str>) -> Result<NodeInfoDto, String> {
-        // Direct connections have one node — `node` only matters to
-        // the hub's `SyncNodeApi` router.
+    async fn fs_dirs(&self, path: &str, node: Option<String>) -> Result<Vec<String>, String> {
+        use std::fmt::Write as _;
         let api = self.clone();
-        let body = serde_json::json!({ "name": name });
-        tokio::task::spawn_blocking(move || {
-            read_json::<NodeInfoDto>(api.send_json("PATCH", "/api/node", &body)?, "rename node")
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn fs_dirs(&self, path: &str, _node: Option<String>) -> Result<Vec<String>, String> {
-        // Direct connections have one node — `node` only matters to the
-        // hub's `SyncNodeApi` router.
-        let api_path = format!("/api/fs?path={}", url_encode(path));
-        let api = self.clone();
+        let mut p = format!("/api/fs?path={}", url_encode(path));
+        if let Some(n) = node.filter(|n| !n.is_empty()) {
+            let _ = write!(p, "&node={}", url_encode(&n));
+        }
         tokio::task::spawn_blocking(move || {
             #[derive(serde::Deserialize)]
-            struct FsBody {
+            struct DirsBody {
                 #[serde(default)]
                 dirs: Vec<String>,
             }
-            read_json::<FsBody>(api.get(&api_path)?, "list directories").map(|b| b.dirs)
+            let body: DirsBody = read_json(api.get(&p)?, "fs dirs")?;
+            Ok(body.dirs)
         })
         .await
         .map_err(err_msg)?
-    }
-
-    async fn pair(&self, code: &str, _node: Option<&str>) -> Result<String, String> {
-        // Direct connections have one node — `node` only matters to
-        // the hub's `SyncNodeApi` router.
-        let api = self.clone();
-        let body = serde_json::json!({ "code": code });
-        tokio::task::spawn_blocking(move || {
-            #[derive(serde::Deserialize)]
-            struct PairBody {
-                #[serde(default)]
-                token: String,
-            }
-            let parsed: PairBody = read_json(
-                api.send_json("POST", "/api/pair", &body)?,
-                "redeem pairing code",
-            )?;
-            if parsed.token.is_empty() {
-                Err("node returned no token".to_string())
-            } else {
-                Ok(parsed.token)
-            }
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn node_info(&self) -> Result<NodeInfoDto, String> {
-        let api = self.clone();
-        tokio::task::spawn_blocking(move || {
-            read_json::<NodeInfoDto>(api.get("/api/node")?, "get node")
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn node_status(&self) -> Result<Vec<NodeStatusDto>, String> {
-        let api = self.clone();
-        tokio::task::spawn_blocking(move || {
-            // A direct connection sees exactly one node — probe it so a
-            // down node still renders as a `down` row instead of an
-            // erroring page.
-            let row = match api.get("/api/node") {
-                Ok(res) => match read_json::<NodeInfoDto>(res, "get node") {
-                    Ok(info) => NodeStatusDto {
-                        id: info.id,
-                        url: api.base.clone(),
-                        label: info.name,
-                        status: "up".into(),
-                        last_seen_at: None,
-                    },
-                    Err(_) => api.down_row(),
-                },
-                Err(_) => api.down_row(),
-            };
-            Ok(vec![row])
-        })
-        .await
-        .map_err(err_msg)?
-    }
-
-    async fn pending_writes(&self) -> Result<Vec<PendingWriteDto>, String> {
-        // Single-node mode has no outbox — a write either lands or the
-        // caller sees the error immediately.
-        Ok(Vec::new())
     }
 
     async fn push_vapid(&self) -> Result<String, String> {
@@ -871,8 +469,8 @@ impl NodeApi for HttpNodeApi {
                 #[serde(rename = "publicKey")]
                 public_key: String,
             }
-            read_json::<VapidBody>(api.get("/api/push/vapid")?, "get vapid key")
-                .map(|b| b.public_key)
+            let body: VapidBody = read_json(api.get("/api/push/vapid")?, "push vapid")?;
+            Ok(body.public_key)
         })
         .await
         .map_err(err_msg)?
@@ -897,7 +495,7 @@ impl NodeApi for HttpNodeApi {
         let api = self.clone();
         let body = serde_json::json!({ "endpoint": endpoint });
         tokio::task::spawn_blocking(move || {
-            let res = api.delete_json("/api/push/subscribe", &body)?;
+            let res = api.send_json("DELETE", "/api/push/subscribe", &body)?;
             if res.status().is_success() {
                 Ok(())
             } else {
@@ -910,41 +508,28 @@ impl NodeApi for HttpNodeApi {
 }
 
 #[cfg(test)]
-mod coverage_tests {
-    //! Private-helper coverage the integration tests can't reach
-    //! (they're not `pub`): the `request` method arms, `error_of`'s
-    //! fallback, the query/body encoders.
+mod tests {
+    #![allow(clippy::unwrap_used)]
+
     use super::*;
 
     #[test]
     fn request_method_arms() {
-        let api = HttpNodeApi::new("http://127.0.0.1:1/", Some("t".into()));
-        // The builders construct without calling — each method arm.
+        let api = HttpEntityApi::new("http://127.0.0.1:1/", Some("t".into()));
         let _ = api.request("GET", "/x");
-        let _ = api.request("HEAD", "/x");
+        let _ = api.request("PATCH", "/x");
         let _ = api.request("DELETE", "/x");
         let _ = api.request("OTHER", "/x");
-        let api = HttpNodeApi::new("http://127.0.0.1:1", None);
+        let api = HttpEntityApi::new("http://127.0.0.1:1", None);
         let _ = api.request("GET", "/x");
     }
 
     #[test]
     fn encoders() {
         assert_eq!(url_encode("a b/c~d"), "a%20b%2Fc~d");
-        assert_eq!(id_query(None), "");
-        assert_eq!(id_query(Some("a b")), "?agent=a%20b");
-        assert_eq!(
-            history_path("s1", None, None, None),
-            "/api/sessions/s1/history"
-        );
-        assert_eq!(
-            history_path("s1", Some("a"), Some(3), Some(9)),
-            "/api/sessions/s1/history?agent=a&before=3&limit=9"
-        );
-        let body = rewind_body(&RewindSelector::NodeId(2));
-        assert_eq!(body["confirm"], serde_json::json!(true));
-        assert_eq!(body["nodeId"], serde_json::json!(2));
-        let body = rewind_body(&RewindSelector::Checkpoint("c".into()));
-        assert_eq!(body["checkpoint"], serde_json::json!("c"));
+        assert_eq!(node_query(None), "");
+        assert_eq!(node_query(Some("tower")), "?node=tower");
+        assert_eq!(kind_query(None), "");
+        assert_eq!(kind_query(Some("sepia-session")), "?kind=sepia-session");
     }
 }

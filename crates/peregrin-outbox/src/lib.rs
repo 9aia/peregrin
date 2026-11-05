@@ -1,14 +1,14 @@
 //! peregrin-outbox — durable queued writes for offline nodes.
 //!
 //! When a target node is unreachable the hub appends the intended write
-//! (prompt, cancel, permission response, meta patch…) here instead of
-//! dropping it. Entries drain in per-session FIFO order once the node is
+//! (any entity op…) here instead of
+//! dropping it. Entries drain in per-entity FIFO order once the node is
 //! reachable again; entries that exhaust their retry budget or TTL move
 //! to dead-letter rather than disappearing.
 //!
-//! Ordering guarantee: per `(node_id, session_id)` the queue is FIFO.
+//! Ordering guarantee: per `(node_id, entity_id)` the queue is FIFO.
 //! Metadata ops (rename, pin) are safe under last-writer-wins replay;
-//! turn-shaped ops (prompt/cancel/permission) dead-letter on failure
+//! turn-shaped ops (opaque verb kinds — the caller decides) dead-letter on failure
 //! rather than interleave with newer writes — the caller decides.
 
 use std::path::Path;
@@ -37,7 +37,7 @@ const SCHEMA: &str = "
 CREATE TABLE IF NOT EXISTS outbox (
     id TEXT PRIMARY KEY,
     node_id TEXT NOT NULL,
-    session_id TEXT NOT NULL,
+    entity_id TEXT NOT NULL,
     op TEXT NOT NULL,
     payload TEXT NOT NULL,
     idempotency_key TEXT NOT NULL UNIQUE,
@@ -50,7 +50,7 @@ CREATE TABLE IF NOT EXISTS outbox (
     seq INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS outbox_pending
-    ON outbox (node_id, session_id, seq) WHERE status = 'pending';
+    ON outbox (node_id, entity_id, seq) WHERE status = 'pending';
 ";
 
 #[derive(Debug, Error)]
@@ -109,7 +109,7 @@ impl Status {
 pub struct OutboxEntry {
     pub id: String,
     pub node_id: String,
-    pub session_id: String,
+    pub entity_id: String,
     /// Free-form op name (`prompt`, `cancel`, `meta.patch`, …).
     pub op: String,
     pub kind: OpKind,
@@ -122,7 +122,7 @@ pub struct OutboxEntry {
     /// RFC3339; `None` never expires.
     pub expires_at: Option<String>,
     pub last_error: Option<String>,
-    /// Monotonic sequence — the per-session FIFO order.
+    /// Monotonic sequence — the per-entity FIFO order.
     pub seq: i64,
 }
 
@@ -170,12 +170,12 @@ impl Outbox {
     #[tracing::instrument(
         name = "outbox_enqueue",
         skip_all,
-        fields(node.id = %node_id, session = %session_id, op = %op)
+        fields(node.id = %node_id, entity = %entity_id, op = %op)
     )]
     pub fn enqueue(
         &self,
         node_id: &str,
-        session_id: &str,
+        entity_id: &str,
         op: &str,
         kind: OpKind,
         payload: Value,
@@ -198,7 +198,7 @@ impl Outbox {
         let entry = OutboxEntry {
             id: uuid::Uuid::new_v4().to_string(),
             node_id: node_id.into(),
-            session_id: session_id.into(),
+            entity_id: entity_id.into(),
             op: op.into(),
             kind,
             payload,
@@ -211,15 +211,15 @@ impl Outbox {
                 .unwrap_or_default(),
             expires_at,
             last_error: None,
-            seq: next_seq_locked(&conn, node_id, session_id)?,
+            seq: next_seq_locked(&conn, node_id, entity_id)?,
         };
         conn.execute(
-            "INSERT INTO outbox (id,node_id,session_id,op,payload,idempotency_key,status,attempts,max_attempts,created_at,expires_at,seq)
+            "INSERT INTO outbox (id,node_id,entity_id,op,payload,idempotency_key,status,attempts,max_attempts,created_at,expires_at,seq)
              VALUES (?,?,?,?,?,?,?,?,?,?,?,?)",
             params![
                 entry.id,
                 entry.node_id,
-                entry.session_id,
+                entry.entity_id,
                 entry.op,
                 serde_json::to_string(&Envelope {
                     kind: entry.kind,
@@ -237,26 +237,22 @@ impl Outbox {
         Ok(entry)
     }
 
-    /// The next pending entry for a `(node, session)` — the head of its
+    /// The next pending entry for a `(node, entity)` — the head of its
     /// FIFO. Expired entries are dead-lettered as a side effect.
     ///
     /// # Errors
     /// On sqlite/serde failure.
-    pub fn peek(
-        &self,
-        node_id: &str,
-        session_id: &str,
-    ) -> Result<Option<OutboxEntry>, OutboxError> {
+    pub fn peek(&self, node_id: &str, entity_id: &str) -> Result<Option<OutboxEntry>, OutboxError> {
         let conn = self
             .conn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         Self::expire_locked(&conn)?;
         let mut stmt = conn.prepare(
-            "SELECT * FROM outbox WHERE node_id=? AND session_id=? AND status='pending'
+            "SELECT * FROM outbox WHERE node_id=? AND entity_id=? AND status='pending'
              ORDER BY seq LIMIT 1",
         )?;
-        let mut rows = stmt.query_map(params![node_id, session_id], row_to_entry)?;
+        let mut rows = stmt.query_map(params![node_id, entity_id], row_to_entry)?;
         match rows.next() {
             Some(row) => Ok(Some(row?)),
             None => Ok(None),
@@ -317,7 +313,7 @@ impl Outbox {
         Ok(status)
     }
 
-    /// Pending/dead entries for a node, FIFO per session.
+    /// Pending/dead entries for a node, FIFO per entity.
     ///
     /// # Errors
     /// On sqlite/serde failure.
@@ -328,7 +324,7 @@ impl Outbox {
             .unwrap_or_else(std::sync::PoisonError::into_inner);
         Self::expire_locked(&conn)?;
         let mut stmt = conn.prepare(
-            "SELECT * FROM outbox WHERE node_id=? AND status='pending' ORDER BY session_id, seq",
+            "SELECT * FROM outbox WHERE node_id=? AND status='pending' ORDER BY entity_id, seq",
         )?;
         let rows = stmt
             .query_map(params![node_id], row_to_entry)?
@@ -407,10 +403,10 @@ struct Envelope<'a> {
     payload: &'a Value,
 }
 
-fn next_seq_locked(conn: &Connection, node_id: &str, session_id: &str) -> Result<i64, OutboxError> {
+fn next_seq_locked(conn: &Connection, node_id: &str, entity_id: &str) -> Result<i64, OutboxError> {
     let seq: i64 = conn.query_row(
-        "SELECT COALESCE(MAX(seq),0)+1 FROM outbox WHERE node_id=? AND session_id=?",
-        params![node_id, session_id],
+        "SELECT COALESCE(MAX(seq),0)+1 FROM outbox WHERE node_id=? AND entity_id=?",
+        params![node_id, entity_id],
         |r| r.get(0),
     )?;
     Ok(seq)
@@ -424,7 +420,7 @@ fn row_to_entry(row: &rusqlite::Row<'_>) -> rusqlite::Result<OutboxEntry> {
     Ok(OutboxEntry {
         id: row.get("id")?,
         node_id: row.get("node_id")?,
-        session_id: row.get("session_id")?,
+        entity_id: row.get("entity_id")?,
         op: row.get("op")?,
         kind: envelope.kind,
         payload: envelope.payload,

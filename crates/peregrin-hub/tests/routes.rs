@@ -11,8 +11,8 @@ use std::sync::Arc;
 use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode};
 use peregrin_hub::{HubConfig, HubState, router};
-use peregrin_node_api::api::NodeApi;
-use peregrin_node_api::testing::FakeNodeApi;
+use peregrin_node_api::api::EntityApi;
+use peregrin_node_api::testing::FakeEntityApi;
 use tower::ServiceExt;
 
 fn state(node_url: &str) -> HubState {
@@ -21,7 +21,7 @@ fn state(node_url: &str) -> HubState {
     std::mem::forget(dir); // the store reads lazily — keep the dir alive
     let push = peregrin_push::PushStore::open(sepia_meta::MetaStore::open(&path));
     let mut s = HubState::new(
-        FakeNodeApi::seeded().shared() as Arc<dyn NodeApi>,
+        FakeEntityApi::seeded().shared() as Arc<dyn EntityApi>,
         node_url,
         None,
     );
@@ -216,7 +216,7 @@ async fn passthrough_unreachable_and_sse() {
     // Real upstream → SSE frames bridge through.
     let url = stub_upstream();
     let mut s = state(&url);
-    s.session_router = Some(Arc::new(|_id| {
+    s.entity_router = Some(Arc::new(|_id| {
         Some(("http://127.0.0.1:9".into(), Some("t".into())))
     }));
     let app = router(s.clone());
@@ -229,7 +229,7 @@ async fn passthrough_unreachable_and_sse() {
     // live upstream so it actually connects.
     let mut s2 = state(&url);
     let up = url.clone();
-    s2.session_router = Some(Arc::new(move |_| Some((up.clone(), None))));
+    s2.entity_router = Some(Arc::new(move |_| Some((up.clone(), None))));
     let app = router(s2);
     let res = app.oneshot(get("/api/sessions/s1/stream")).await.unwrap();
     assert_eq!(res.status(), StatusCode::OK);
@@ -320,7 +320,7 @@ fn feed_hook_sends_on_terminal_patches() {
         })
         .unwrap();
     projection
-        .upsert_summary(
+        .upsert_entity(
             "n1",
             &serde_json::json!({"id":"s1","title":"T1","updatedAt":"2024-01-01T00:00:00Z"}),
         )
@@ -380,7 +380,7 @@ async fn hub_state_from_env_arms() {
     let state = peregrin_hub::hub_state_from(vars, &config).unwrap();
     // The session router closure resolves through the projection —
     // invoke it once (unknown id → primary node URL).
-    let router = state.session_router.as_ref().unwrap();
+    let router = state.entity_router.as_ref().unwrap();
     let _ = router("s-ghost");
     // `HOME`-fallback arm (no PEREGRIN_HOME).
     let vars2 = |k: &str| -> Option<std::ffi::OsString> {

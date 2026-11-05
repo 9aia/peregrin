@@ -25,7 +25,7 @@ use peregrin_outbox::{OpKind, Outbox};
 use peregrin_session::LocalPlane;
 use peregrin_sync::engine::SubmitOutcome;
 use peregrin_sync::{
-    IndexedSession, NodeClient, NodeRef, NodeStatus, NodeTarget, NodeWrite, PatchStatus,
+    IndexedEntity, NodeClient, NodeRef, NodeStatus, NodeTarget, NodeWrite, PatchStatus,
     ProjectionStore, SyncEngine, SyncOptions,
 };
 use sepia_core::storage::SessionRepository;
@@ -270,26 +270,39 @@ async fn wait_until(mut cond: impl FnMut() -> bool, timeout: Duration, what: &st
     panic!("timed out waiting for {what}");
 }
 
-fn indexed(node_id: &str, session_id: &str) -> impl Fn(&ProjectionStore) -> Option<IndexedSession> {
+fn indexed(node_id: &str, entity_id: &str) -> impl Fn(&ProjectionStore) -> Option<IndexedEntity> {
     let node_id = node_id.to_string();
-    let session_id = session_id.to_string();
-    move |p: &ProjectionStore| p.session(&node_id, &session_id).unwrap()
+    let entity_id = entity_id.to_string();
+    move |p: &ProjectionStore| p.entity(&node_id, &entity_id).unwrap()
+}
+
+/// Wrap a session wire summary as an entity doc — mirrors
+/// `NodeClient`'s `entity_doc_of` (INTERIM until `/api/entities`).
+fn ent(summary: &Value) -> Value {
+    json!({
+        "id": summary["id"],
+        "kind": "sepia-session",
+        "indexDoc": summary,
+        "updatedAt": summary["updatedAt"],
+        "locked": summary["locked"],
+        "live": summary["busy"],
+    })
 }
 
 fn write(
     node_id: &str,
-    session_id: &str,
+    entity_id: &str,
     op: &str,
-    kind: OpKind,
+    policy: OpKind,
     payload: Value,
     key: &str,
 ) -> NodeWrite {
     NodeWrite {
         node_id: node_id.into(),
-        session_id: session_id.into(),
-        agent: Some("devin".into()),
+        entity_id: entity_id.into(),
+        entity_kind: Some("devin".into()),
         op: op.into(),
-        kind,
+        policy,
         payload,
         idempotency_key: key.into(),
         ttl_seconds: None,
@@ -316,37 +329,39 @@ fn projection_upserts_patches_and_reconciles() {
         "source": "devin", "updatedAt": "2024-01-01T00:00:01.000Z",
         "locked": false, "busy": true, "pinned": true,
     });
-    store.upsert_summary("n1", &summary).unwrap();
-    let got = store.session("n1", "s1").unwrap().unwrap();
-    assert_eq!(got.title, "T1");
-    assert!(got.busy);
-    assert_eq!(got.raw["pinned"], true);
+    store.upsert_entity("n1", &ent(&summary)).unwrap();
+    let got = store.entity("n1", "s1").unwrap().unwrap();
+    assert_eq!(got.raw["indexDoc"]["title"], "T1");
+    assert!(got.live);
+    assert_eq!(got.raw["indexDoc"]["pinned"], true);
 
     // Diff merge — un-patched fields survive; columns re-derive.
     store
         .apply_patch("n1", "s1", &json!({"title": "T2", "busy": false}))
         .unwrap();
-    let got = store.session("n1", "s1").unwrap().unwrap();
-    assert_eq!(got.title, "T2");
-    assert!(!got.busy);
-    assert_eq!(got.cwd, "/a");
-    assert_eq!(got.raw["pinned"], true);
+    let got = store.entity("n1", "s1").unwrap().unwrap();
+    assert_eq!(got.raw["indexDoc"]["title"], "T2");
+    assert!(!got.live);
+    assert_eq!(got.raw["indexDoc"]["cwd"], "/a");
+    assert_eq!(got.raw["indexDoc"]["pinned"], true);
 
     // Reconcile: a listing without s1 drops it; s2 keeps it.
     store
-        .upsert_summary(
+        .upsert_entity(
             "n1",
-            &json!({"id":"s2","title":"S2","updatedAt":"2024-01-02T00:00:00.000Z"}),
+            &ent(&json!({"id":"s2","title":"S2","updatedAt":"2024-01-02T00:00:00.000Z"})),
         )
         .unwrap();
     store
         .apply_listing(
             "n1",
-            &[json!({"id":"s2","title":"S2","updatedAt":"2024-01-02T00:00:00.000Z"})],
+            &[ent(
+                &json!({"id":"s2","title":"S2","updatedAt":"2024-01-02T00:00:00.000Z"}),
+            )],
         )
         .unwrap();
-    assert!(store.session("n1", "s1").unwrap().is_none());
-    assert!(store.session("n1", "s2").unwrap().is_some());
+    assert!(store.entity("n1", "s1").unwrap().is_none());
+    assert!(store.entity("n1", "s2").unwrap().is_some());
     assert_eq!(
         store.cursor("n1").unwrap().as_deref(),
         Some("2024-01-02T00:00:00.000Z")
@@ -370,21 +385,21 @@ fn purge_unregistered_drops_stale_node_rows() {
             })
             .unwrap();
         store
-            .upsert_summary(
+            .upsert_entity(
                 id,
-                &json!({"id":"s1","title":"T","updatedAt":"2024-01-01T00:00:00.000Z"}),
+                &ent(&json!({"id":"s1","title":"T","updatedAt":"2024-01-01T00:00:00.000Z"})),
             )
             .unwrap();
     }
     // The legacy `node` id is gone from config — its rows go with it.
     store.purge_unregistered(&["main".to_string()]).unwrap();
-    assert!(store.session("main", "s1").unwrap().is_some());
-    assert!(store.session("node", "s1").unwrap().is_none());
+    assert!(store.entity("main", "s1").unwrap().is_some());
+    assert!(store.entity("node", "s1").unwrap().is_none());
     assert!(store.node("main").unwrap().is_some());
     assert!(store.node("node").unwrap().is_none());
     // Empty keep-list is a no-op guard, not a wipe.
     store.purge_unregistered(&[]).unwrap();
-    assert!(store.session("main", "s1").unwrap().is_some());
+    assert!(store.entity("main", "s1").unwrap().is_some());
 }
 
 /* ---- full cycle -------------------------------------------------------*/
@@ -470,7 +485,7 @@ async fn node_down_enqueue_then_up_drains_in_order() {
     // Projection picked up the listing, and the meta-patch SSE diff
     // from the drained write propagated the overlay too.
     let got = indexed("n1", "s1")(&projection).unwrap();
-    assert_eq!(got.agent, "devin");
+    assert_eq!(got.raw["indexDoc"]["agent"], "devin");
     let proj = projection.clone();
     wait_until(
         || indexed("n1", "s1")(&proj).is_some_and(|s| s.raw["pinned"] == true),
@@ -544,7 +559,7 @@ async fn sse_diffs_land_in_projection() {
 
     let proj = projection.clone();
     wait_until(
-        || proj.sessions(Some("n1")).unwrap().len() == 2,
+        || proj.entities(Some("n1")).unwrap().len() == 2,
         Duration::from_secs(10),
         "initial listing in projection",
     )
@@ -555,7 +570,7 @@ async fn sse_diffs_land_in_projection() {
         .emit_session("s1", Some("devin"), json!({"busy": true}));
     let proj = projection.clone();
     wait_until(
-        || indexed("n1", "s1")(&proj).is_some_and(|s| s.busy),
+        || indexed("n1", "s1")(&proj).is_some_and(|s| s.live),
         Duration::from_secs(5),
         "busy=true diff",
     )
@@ -578,7 +593,7 @@ async fn sse_diffs_land_in_projection() {
     .unwrap();
     let proj = projection.clone();
     wait_until(
-        || indexed("n1", "s1")(&proj).is_some_and(|s| s.title == "renamed"),
+        || indexed("n1", "s1")(&proj).is_some_and(|s| s.raw["indexDoc"]["title"] == "renamed"),
         Duration::from_secs(5),
         "title diff",
     )
@@ -854,16 +869,16 @@ async fn client_calls_against_the_stub_app() {
     let client = NodeClient::new(&stub.url(), Some("tok".into())).unwrap();
     tokio::task::spawn_blocking(move || {
         client.health().unwrap();
-        let sessions = client.list_sessions(true).unwrap();
+        let sessions = client.list_entities(None, true).unwrap();
         assert_eq!(sessions.len(), 1);
-        let summary = client.get_summary("s1", Some("devin")).unwrap();
+        let summary = client.get_entity("s1", Some("devin")).unwrap();
         assert_eq!(summary["id"], "s1");
         let page = client
-            .get_history("s1", Some(10), Some(5), Some("devin"))
+            .get_json("/api/sessions/s1/history?limit=10&before=5&agent=devin")
             .unwrap();
         // The stub's seeded session carries whatever history its
         // fixture has — the call path is what matters.
-        assert!(page.total <= 1);
+        assert!(page.get("total").and_then(Value::as_u64).unwrap_or(0) <= 1);
         // Every `post_op` arm reaches the node — the stub answers each
         // route (the bodies' statuses don't matter to coverage).
         for op in ["prompt", "cancel", "permission", "meta.patch", "delete"] {
@@ -877,7 +892,7 @@ async fn client_calls_against_the_stub_app() {
         // Both SSE opens — the node feed and a session stream (its
         // status depends on agent liveness; either path is fine).
         let _stream = client.events().unwrap();
-        let _ = client.session_stream("s1", Some("devin"));
+        let _ = client.entity_stream("s1", Some("devin"));
     })
     .await
     .unwrap();
@@ -888,7 +903,7 @@ async fn client_malformed_bodies_and_http_errors() {
     // `sessions` field not an array.
     let port = canned_server("200 OK", "{}");
     let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
-    let err = tokio::task::spawn_blocking(move || client.list_sessions(false))
+    let err = tokio::task::spawn_blocking(move || client.list_entities(None, false))
         .await
         .unwrap()
         .unwrap_err();
@@ -913,27 +928,19 @@ async fn client_malformed_bodies_and_http_errors() {
         .unwrap();
     assert!(err.to_string().contains("404"));
 
-    // History pages missing each required field → Malformed arms.
-    for body in ["{}", "{\"messages\":[]}", "{\"messages\":[],\"total\":0}"] {
-        let port = canned_server("200 OK", body);
-        let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
-        let err = tokio::task::spawn_blocking(move || client.get_history("s1", None, None, None))
-            .await
-            .unwrap()
-            .unwrap_err();
-        assert!(err.to_string().contains("malformed"), "{body}: {err}");
-    }
-    // A well-formed page and a non-2xx both parse through expect_json.
-    let port = canned_server("200 OK", "{\"messages\":[1],\"total\":3,\"start\":2}");
+    // Entity docs missing `id` degrade to an empty id — tolerant
+    // decode; a non-2xx still surfaces the status.
+    let port = canned_server("200 OK", "{\"sessions\":[{\"id\":\"s9\"}]}");
     let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
-    let page = tokio::task::spawn_blocking(move || client.get_history("s1", None, None, None))
+    let docs = tokio::task::spawn_blocking(move || client.list_entities(None, false))
         .await
         .unwrap()
         .unwrap();
-    assert_eq!(page.start, 2);
+    assert_eq!(docs[0]["id"], "s9");
+    assert_eq!(docs[0]["kind"], "sepia-session");
     let port = canned_server("500 Internal Server Error", "boom");
     let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
-    let err = tokio::task::spawn_blocking(move || client.get_history("s1", None, None, None))
+    let err = tokio::task::spawn_blocking(move || client.get_json("/api/node"))
         .await
         .unwrap()
         .unwrap_err();
@@ -1094,9 +1101,9 @@ fn projection_remove_node_and_cursor_roundtrip() {
         })
         .unwrap();
     store
-        .upsert_summary(
+        .upsert_entity(
             "n1",
-            &json!({"id":"s1","title":"T","updatedAt":"2024-01-01T00:00:00.000Z"}),
+            &ent(&json!({"id":"s1","title":"T","updatedAt":"2024-01-01T00:00:00.000Z"})),
         )
         .unwrap();
     store.set_cursor("n1", "cur-1").unwrap();
@@ -1106,7 +1113,7 @@ fn projection_remove_node_and_cursor_roundtrip() {
 
     store.remove_node("n1").unwrap();
     assert!(store.node("n1").unwrap().is_none());
-    assert!(store.session("n1", "s1").unwrap().is_none());
+    assert!(store.entity("n1", "s1").unwrap().is_none());
     assert_eq!(store.cursor("n1").unwrap(), None);
 }
 
@@ -1127,13 +1134,13 @@ fn projection_surfaces_corrupt_rows() {
     {
         let conn = rusqlite::Connection::open(&path).unwrap();
         conn.execute(
-            "INSERT INTO session_index (node_id, session_id, raw_json)
+            "INSERT INTO session_index (node_id, entity_id, raw_json)
              VALUES ('n1', 'bad', 'not json')",
             [],
         )
         .unwrap();
     }
-    assert!(store.session("n1", "bad").is_err());
+    assert!(store.entity("n1", "bad").is_err());
     assert!(store.apply_patch("n1", "bad", &json!({"x": 1})).is_err());
 }
 
@@ -1145,7 +1152,7 @@ fn apply_listing_summary_without_updated_at() {
     store
         .apply_listing("n1", &[json!({"id":"s1","title":"T"})])
         .unwrap();
-    assert!(store.session("n1", "s1").unwrap().is_some());
+    assert!(store.entity("n1", "s1").unwrap().is_some());
     assert_eq!(store.cursor("n1").unwrap(), None);
 }
 
@@ -1157,13 +1164,13 @@ fn apply_patch_write_failure_surfaces() {
     let path = dir.path().join("proj.db");
     let store = ProjectionStore::open(&path).unwrap();
     store
-        .upsert_summary("n1", &json!({"id":"s1","title":"T"}))
+        .upsert_entity("n1", &json!({"id":"s1","title":"T"}))
         .unwrap();
     {
         let conn = rusqlite::Connection::open(&path).unwrap();
         conn.execute_batch(
             "DROP TABLE session_index;
-             CREATE TABLE session_index (node_id TEXT, session_id TEXT, raw_json TEXT);
+             CREATE TABLE session_index (node_id TEXT, entity_id TEXT, raw_json TEXT);
              INSERT INTO session_index VALUES ('n1','s1','{}');",
         )
         .unwrap();
@@ -1181,11 +1188,14 @@ fn apply_patch_non_object_skips_merge() {
     // is rewritten unchanged.
     let store = ProjectionStore::in_memory().unwrap();
     store
-        .upsert_summary("n1", &json!({"id":"s1","title":"T"}))
+        .upsert_entity("n1", &json!({"id":"s1","title":"T"}))
         .unwrap();
     assert_eq!(
         store.apply_patch("n1", "s1", &json!([1, 2])).unwrap(),
         PatchStatus::Applied
     );
-    assert_eq!(store.session("n1", "s1").unwrap().unwrap().title, "T");
+    assert_eq!(
+        store.entity("n1", "s1").unwrap().unwrap().raw["indexDoc"]["title"],
+        "T"
+    );
 }

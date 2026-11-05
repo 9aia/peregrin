@@ -1,12 +1,12 @@
 //! The sync engine — one supervised loop per node, `JoinSet`-managed,
 //! `CancellationToken`-cancellable.
 //!
-//! Per node the cycle is: `list_sessions` → upsert + reconcile the
+//! Per node the cycle is: `list_entities` → upsert + reconcile the
 //! projection → drain the outbox FIFO → tail `/api/events` and apply
-//! summary diffs → on stream end/error, mark the node down and
-//! reconnect with capped exponential backoff + jitter. A periodic
-//! full-list reconcile catches anything the feed missed (tombstones are
-//! only visible in listings).
+//! index diffs → on stream end/error, mark the node down and reconnect
+//! with capped exponential backoff + jitter. A periodic full-list
+//! reconcile catches anything the feed missed (tombstones are only
+//! visible in listings).
 
 use std::collections::{HashMap, HashSet};
 use std::hash::{BuildHasher, Hasher};
@@ -44,7 +44,7 @@ pub struct SyncOptions {
     pub backoff_min: Duration,
     /// Reconnect-delay cap.
     pub backoff_max: Duration,
-    /// Periodic full `list_sessions` reconcile while subscribed.
+    /// Periodic full `list_entities` reconcile while subscribed.
     pub resync_interval: Duration,
     /// Capacity of the per-node SSE event channel.
     pub feed_channel: usize,
@@ -245,7 +245,7 @@ impl SyncHandle {
     }
 
     /// A write to a node: posted immediately when the node is up;
-    /// appended to the durable outbox (per-session FIFO) when it's down
+    /// appended to the durable outbox (per-entity FIFO) when it's down
     /// or the direct post fails on transport. HTTP rejections surface as
     /// errors — they were delivered and refused, not lost.
     ///
@@ -256,7 +256,7 @@ impl SyncHandle {
     #[tracing::instrument(
         name = "sync_submit_op",
         skip_all,
-        fields(node.id = %write.node_id, session = %write.session_id, op = %write.op)
+        fields(node.id = %write.node_id, entity = %write.entity_id, op = %write.op)
     )]
     pub async fn submit_op(&self, write: NodeWrite) -> Result<SubmitOutcome, SyncError> {
         let target = {
@@ -283,12 +283,12 @@ impl SyncHandle {
                 target.token.clone(),
                 self.client_config(),
             )?;
-            let session_id = write.session_id.clone();
-            let agent = write.agent.clone();
+            let entity_id = write.entity_id.clone();
+            let kind = write.entity_kind.clone();
             let op = write.op.clone();
             let payload = write.payload.clone();
             let result = blocking(client.clone(), move |c| {
-                c.post_op(&session_id, agent.as_deref(), &op, &payload)
+                c.post_op(&entity_id, kind.as_deref(), &op, &payload)
             })
             .await;
             match result {
@@ -307,9 +307,9 @@ impl SyncHandle {
 
         let entry = self.shared.outbox.enqueue(
             &write.node_id,
-            &write.session_id,
+            &write.entity_id,
             &write.op,
-            write.kind,
+            write.policy,
             write.payload,
             &write.idempotency_key,
             write.ttl_seconds,
@@ -413,7 +413,7 @@ fn report_join_error(e: &tokio::task::JoinError) {
 enum CycleEnd {
     /// Engine shutdown.
     Cancelled,
-    /// `list_sessions` failed — the node is down; exponential backoff.
+    /// `list_entities` failed — the node is down; exponential backoff.
     PreConnect(NodeError),
     /// We were connected and the SSE stream ended — quick reconnect.
     Disconnected(NodeError),
@@ -527,7 +527,7 @@ async fn connect_once(
 
     // Listing — a success means the node is reachable *and* the
     // projection is freshly reconciled (tombstones included).
-    let summaries = match blocking(client.clone(), move |c| c.list_sessions(true)).await {
+    let docs = match blocking(client.clone(), move |c| c.list_entities(None, true)).await {
         Ok(s) => s,
         Err(e) => {
             stop.store(true, Ordering::Relaxed);
@@ -536,7 +536,7 @@ async fn connect_once(
             return CycleEnd::Disconnected(e);
         }
     };
-    if let Err(e) = shared.projection.apply_listing(&node.id, &summaries) {
+    if let Err(e) = shared.projection.apply_listing(&node.id, &docs) {
         tracing::warn!(node = %node.id, "projection apply_listing failed: {e}");
     }
     if let Err(e) = shared.projection.set_node_status(&node.id, NodeStatus::Up) {
@@ -579,9 +579,9 @@ async fn connect_once(
                 }
             },
             _ = resync.tick() => {
-                match blocking(client.clone(), |c| c.list_sessions(true)).await {
-                    Ok(summaries) => {
-                        if let Err(e) = shared.projection.apply_listing(&node.id, &summaries) {
+                match blocking(client.clone(), |c| c.list_entities(None, true)).await {
+                    Ok(docs) => {
+                        if let Err(e) = shared.projection.apply_listing(&node.id, &docs) {
                             tracing::warn!(node = %node.id, "resync failed: {e}");
                         }
                     }
@@ -650,8 +650,8 @@ fn sse_pump(
     }
 }
 
-/// Drain queued writes oldest-first. Per-session FIFO is preserved by
-/// skipping the rest of a session's entries once one fails back to
+/// Drain queued writes oldest-first. Per-entity FIFO is preserved by
+/// skipping the rest of an entity's entries once one fails back to
 /// `pending` (it stays head-of-queue for the next drain).
 #[tracing::instrument(name = "sync_outbox_drain", skip_all, fields(node.id = %node.id))]
 async fn drain_outbox(node: &NodeRef, client: &NodeClient, shared: &Arc<Shared>) {
@@ -668,27 +668,27 @@ async fn drain_outbox(node: &NodeRef, client: &NodeClient, shared: &Arc<Shared>)
     tracing::info!(node = %node.id, "draining {} queued write(s)", pending.len());
     let mut blocked: HashSet<String> = HashSet::new();
     for entry in pending {
-        if blocked.contains(&entry.session_id) {
+        if blocked.contains(&entry.entity_id) {
             continue;
         }
         if let Err(e) = shared.outbox.mark_in_flight(&entry.id) {
             tracing::warn!(node = %node.id, "mark_in_flight failed: {e}");
             continue;
         }
-        // `?agent` scope comes from the projection — the outbox only
-        // stores the session id.
-        let agent = shared
+        // `?kind` scope comes from the projection — the outbox only
+        // stores the entity id.
+        let kind = shared
             .projection
-            .session(&node.id, &entry.session_id)
+            .entity(&node.id, &entry.entity_id)
             .ok()
             .flatten()
-            .map(|s| s.agent)
-            .filter(|a| !a.is_empty());
-        let session_id = entry.session_id.clone();
+            .map(|e| e.kind)
+            .filter(|k| !k.is_empty());
+        let entity_id = entry.entity_id.clone();
         let op = entry.op.clone();
         let payload = entry.payload.clone();
         let result = blocking(client.clone(), move |c| {
-            c.post_op(&session_id, agent.as_deref(), &op, &payload)
+            c.post_op(&entity_id, kind.as_deref(), &op, &payload)
         })
         .await;
         match result {
@@ -701,7 +701,7 @@ async fn drain_outbox(node: &NodeRef, client: &NodeClient, shared: &Arc<Shared>)
                 tracing::warn!(node = %node.id, op = %entry.op, "replay failed: {e}");
                 match shared.outbox.mark_failed(&entry.id, &e.to_string()) {
                     Ok(OutboxStatus::Pending) => {
-                        blocked.insert(entry.session_id.clone());
+                        blocked.insert(entry.entity_id.clone());
                     }
                     Ok(_) => {}
                     Err(err) => tracing::warn!(node = %node.id, "mark_failed failed: {err}"),
@@ -723,39 +723,35 @@ async fn apply_event(
         hook(&node.id, &event);
     }
     match event {
+        // `session`/`meta` diffs apply to `sepia-session` entities on
+        // today's wire — other diff kinds are their own entity kind.
         FeedEvent::Diff {
             kind, id, patch, ..
-        } if kind == "session" => {
+        } if kind == "session" || kind == "meta" => {
             if patch.get("deleted") == Some(&Value::Bool(true)) {
-                shared.projection.delete_session(&node.id, &id)?;
-                return Ok(());
-            }
-            patch_or_refetch(node, client, shared, &id, &patch).await
-        }
-        FeedEvent::Diff {
-            kind, id, patch, ..
-        } if kind == "meta" => {
-            // `{deleted: true}` on meta means the overlay row was
-            // removed — the session itself survives; refetch.
-            if patch.get("deleted") == Some(&Value::Bool(true)) {
+                if kind == "session" {
+                    shared.projection.delete_entity(&node.id, &id)?;
+                    return Ok(());
+                }
+                // `meta` tombstone = overlay removed — entity survives.
                 refetch(node, client, shared, &id).await
             } else {
                 patch_or_refetch(node, client, shared, &id, &patch).await
             }
         }
         FeedEvent::Lagged => {
-            let summaries = blocking(client.clone(), |c| c.list_sessions(true)).await?;
-            shared.projection.apply_listing(&node.id, &summaries)?;
+            let docs = blocking(client.clone(), |c| c.list_entities(None, true)).await?;
+            shared.projection.apply_listing(&node.id, &docs)?;
             Ok(())
         }
-        // `project` diffs don't change session rows; heartbeats,
-        // session-stream frames, and unknown frames are inert here.
+        // `project` diffs don't change entity rows; heartbeats,
+        // entity-stream frames, and unknown frames are inert here.
         _ => Ok(()),
     }
 }
 
-/// Merge a diff, fetching the full summary when the row isn't indexed
-/// yet (a `meta` patch can precede the session's first list).
+/// Merge a diff, fetching the full entity doc when the row isn't
+/// indexed yet (a `meta` patch can precede the entity's first list).
 async fn patch_or_refetch(
     node: &NodeRef,
     client: &NodeClient,
@@ -775,14 +771,14 @@ async fn refetch(
     shared: &Arc<Shared>,
     id: &str,
 ) -> Result<(), SyncError> {
-    let session_id = id.to_string();
-    let result = blocking(client.clone(), move |c| c.get_summary(&session_id, None)).await;
+    let entity_id = id.to_string();
+    let result = blocking(client.clone(), move |c| c.get_entity(&entity_id, None)).await;
     match result {
-        Ok(summary) => {
-            shared.projection.upsert_summary(&node.id, &summary)?;
+        Ok(doc) => {
+            shared.projection.upsert_entity(&node.id, &doc)?;
         }
         Err(NodeError::Http { status: 404, .. }) => {
-            shared.projection.delete_session(&node.id, id)?;
+            shared.projection.delete_entity(&node.id, id)?;
         }
         Err(e) => return Err(e.into()),
     }

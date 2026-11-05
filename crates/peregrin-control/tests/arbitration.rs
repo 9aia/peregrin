@@ -13,7 +13,7 @@ fn actor(id: &str, node: &str) -> Actor {
 }
 
 #[test]
-fn free_session_allows_rw_attach() {
+fn free_entity_allows_rw_attach() {
     let reg = LockRegistry::default();
     let policy = Arbitration::default();
     assert_eq!(
@@ -33,7 +33,7 @@ fn same_holder_re_attaches_freely() {
 }
 
 #[test]
-fn held_session_attaches_read_only_without_takeover() {
+fn held_entity_attaches_read_only_without_takeover() {
     let mut reg = LockRegistry::default();
     reg.grant("s1", actor("web", "n1"));
     assert_eq!(
@@ -114,7 +114,7 @@ fn routing_local_live_offline_and_unknown() {
     assert_eq!(own.route("s3", &local), Route::Offline(NodeId("n3".into())));
     assert_eq!(own.route("s4", &local), Route::Unknown);
     assert_eq!(
-        own.sessions_on(&NodeId("n2".into())),
+        own.entities_on(&NodeId("n2".into())),
         vec!["s2".to_string()]
     );
 }

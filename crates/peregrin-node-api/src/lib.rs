@@ -1,11 +1,10 @@
-//! `peregrin-node-api` — the node daemon's `/api/*` surface as a Rust
-//! port, shared by `peregrin-hub` (its `SyncNodeApi` impl) and
-//! `peregrin-web` (the leptos server fns that call through it). Pure
-//! Rust — no leptos, no DOM — so a hub-only build never pulls the UI
-//! stack.
+//! `peregrin-node-api` — the node daemon's entity-plane surface as a
+//! Rust port, shared by `peregrin-hub` (its `SyncEntityApi` impl) and
+//! integrations/clients. Pure Rust — no leptos, no DOM, and
+//! deliberately **kind-agnostic**: entity kinds, op kinds, and
+//! `index_doc`/`payload` shapes belong to integrations
+//! (`sepia-peregrin`), never to this crate (ADR-0091).
 
 pub mod api;
 pub mod dto;
-pub mod rewind;
-pub mod targets;
 pub mod testing;
