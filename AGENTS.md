@@ -1,10 +1,13 @@
 # Peregrin
 
-Event-driven orchestration for agent workflows — campaigns, node
-daemons, hub, remote transport. Rust workspace, ports-and-adapters.
-Session *mechanism* lives in
-[sepia](https://github.com/9aia/sepia) (sibling checkout at `../sepia`,
-workspace path deps); peregrin owns policy + orchestration.
+Generic distributed orchestration — campaigns of event-driven
+workflows over generic *entities* (`{id,kind,indexDoc}` + namespaced
+ops + snapshots) across paired nodes. Rust workspace,
+ports-and-adapters. Sessions register as `kind="sepia-session"`
+entities via the [sepia](https://github.com/9aia/sepia) integration
+(sibling checkout at `../sepia`, workspace path deps); peregrin owns
+the entity plane — projection, outbox, locks, ops, snapshots — and
+never names a sepia type.
 
 > The web UI (`peregrin-web`/`peregrin-web-core` + the Leptos SSR host)
 > is experimental and lives on the `experimental/web` branch — `main`
@@ -16,12 +19,15 @@ workspace path deps); peregrin owns policy + orchestration.
 - Ports: `peregrin-{driver,loader,store,bus,remote,config,secret,service,template}`;
   impls `peregrin-{port}-{impl}` (`-shell`, `-yaml`, `-toml`, `-keyring`,
   `-dotenv`, `-systemd`, `-http`).
-- `peregrin-control` — arbitration (lock registry, takeover policy,
-  merge/route) over the sepia session plane.
-- `peregrin-node` (daemon: sepia plane + engine + api) · `peregrin-hub`
-  (node-API gateway: sync engine + HTTP/SSE bridges + push) ·
-  `peregrin-http` (REST+SSE) · `peregrin-node-api` (node port + wire
-  DTOs) · `peregrin-sync`/`peregrin-outbox`/`peregrin-push` ·
+- `peregrin-control` — entity arbitration (lock registry, takeover
+  policy, merge/route) — generic `EntityId`/`kind` mechanics.
+- `peregrin-node` (daemon: session plane + engine + api) · `peregrin-hub`
+  (entity gateway: merged index + ops outbox + HTTP/SSE bridges + push) ·
+  `peregrin-http` (REST+SSE — `/api/entities*` substrate surface,
+  `/api/sessions*` integration surface) · `peregrin-node-api` (`EntityApi`
+  trait + entity DTOs + `HttpEntityApi`/`FakeEntityApi`) ·
+  `peregrin-sync` (entity projection + sync engine) /
+  `peregrin-outbox` (entity-scoped op queue) / `peregrin-push` ·
   `peregrin-cli` (`peregrin` binary) · `peregrin-telemetry` ·
   `peregrin-testkit` · `xtask`.
 - `libraries/` — workflow stdlib artifacts. `project/` — nested repo
@@ -41,11 +47,13 @@ Git hooks in `.hooks/` (`core.hooksPath` = `.hooks`).
 
 ## Boundary with sepia
 
-Mechanism vs policy: sepia does things *to* sessions (attach, prompt,
-restore, drivers, ACP); peregrin decides who/when/where (locks,
-takeover, merge, route, queue) and orchestrates (campaigns, drivers,
-transport). `peregrin-node` consumes the session plane over the wire —
-never link session internals into orchestration code.
+Substrate vs integration: peregrin runs entities (project, route,
+queue, lock, snapshot, transfer) — never names a sepia type. The
+session plane is one entity kind (`sepia-session`) hosted by
+`peregrin-node`: `/api/entities*` is the substrate surface,
+`/api/sessions*` the integration's. Op kinds are namespaced
+(`sepia.prompt`, `sepia.attach`, `entity.delete`); snapshots are
+kind-shaped bytes moved opaquely. `project/adrs/0091` is the contract.
 
 ## Rules
 
