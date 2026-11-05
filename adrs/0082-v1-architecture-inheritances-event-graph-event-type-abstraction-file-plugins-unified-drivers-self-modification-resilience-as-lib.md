@@ -136,4 +136,3 @@ fix.
   blocks wildcard/shard emits under strict — I-012
 - `max_fires: 0` under strict — falls back to the default in both
   v1 and the port (aspirational there too); strict should reject it
-
