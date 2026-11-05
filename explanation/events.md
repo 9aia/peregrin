@@ -40,7 +40,7 @@ This is what makes wildcards work: `on: [pr.*]` catches
 `pr.approved`, `pr.rejected`, anything with one trailing segment;
 `on: [pr.**]` catches the whole `pr.` subtree. Captured segments are
 addressable in templates as `${event.match.N}` — which is how
-conventions like `push.gated.<clone_url>.<sha>` put payload-shaped
+conventions like `push.gated.<repo>.<clone_url>.<sha>` put payload-shaped
 data *into* the type itself (the ci-gate routing idiom). See
 [`on:` event patterns](../reference/on-grammar.md).
 

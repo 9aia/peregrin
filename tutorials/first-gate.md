@@ -48,6 +48,10 @@ peregrin create --template ci-gate \
 - **Secrets skeleton** — `~/.config/peregrin/env` (created `0o600`
   if absent) listing every secret NAME the deployment references.
 
+The `capabilities.secrets` block in the generated config is the grant
+the secret gate checks: the webhook and status drivers may resolve
+exactly those names, nothing else. Removing a name there revokes it.
+
 ```yaml
 # ~/.config/peregrin/ci-gate.yaml — what create emits
 name: ci-gate
@@ -60,6 +64,10 @@ config:
   name: ci-gate
   cmd: bash scripts/ci.sh
   public_url: https://gate.example.com
+capabilities:
+  secrets:
+    - GITHUB_TOKEN
+    - PEREGRIN_WH_OWNER_REPO
 nodes:
   - id: ci-gate.ingress
     driver: github-webhook

@@ -69,8 +69,10 @@ aren't arrays are a hard error.
 
 Applied by `Node::from_dict` / the loader expansion, in order:
 
-1. **Discovery** — `.handl/` then the base dir (recursive, dot-dirs
-   skipped; `.handl` wins name dedupes): `*.node.yml`, `*.snippet.yml`,
+1. **Discovery** — `.peregrin/` then `.handl/` then the base dir
+   (recursive, dot-dirs skipped; the named roots win name dedupes in
+   scan order — `.peregrin` is the rebrand name, `.handl` stays for
+   v1 compatibility): `*.node.yml`, `*.snippet.yml`,
    `*.event.json`, `*.config.yml`, `*.fn.yml` fold into `nodes`,
    `snippets`, `payload_schemas`, `config`, `functions`.
    `*.handler.py`, `*.secret.yml`, `.env` are discovered for other
