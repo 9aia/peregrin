@@ -30,7 +30,7 @@ use axum::routing::{any, get, post};
 use leptos::config::LeptosOptions;
 use leptos::prelude::provide_context;
 use leptos_axum::{LeptosRoutes, file_and_error_handler_with_context, generate_route_list};
-use peregrin_web::api::NodeApi;
+use peregrin_node_api::api::NodeApi;
 use peregrin_web::app::{App, shell};
 use tracing::Instrument;
 

@@ -11,7 +11,7 @@ pub const STORAGE_KEY: &str = "sepia-notify-prefs";
 
 /// Which notification kinds this browser's subscription wants. The
 /// shape mirrors `peregrin_push::PushPrefs` (`peregrin-web` can't depend on
-/// it — the DTO copy lives in `peregrin-web::dto`).
+/// it — the DTO copy lives in `peregrin-node-api::dto`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct NotifyPrefs {
@@ -43,6 +43,15 @@ impl NotifyPrefs {
     }
 }
 
+impl From<NotifyPrefs> for peregrin_node_api::dto::PushPrefsDto {
+    fn from(p: NotifyPrefs) -> Self {
+        Self {
+            done: p.done,
+            permission: p.permission,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -70,5 +79,15 @@ mod tests {
             permission: true,
         };
         assert_eq!(NotifyPrefs::from_stored(&p.stored()), p);
+    }
+
+    #[test]
+    fn push_prefs_maps_notify_prefs() {
+        let dto = peregrin_node_api::dto::PushPrefsDto::from(NotifyPrefs {
+            done: true,
+            permission: false,
+        });
+        assert!(dto.done);
+        assert!(!dto.permission);
     }
 }

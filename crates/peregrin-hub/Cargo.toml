@@ -9,8 +9,8 @@ repository.workspace = true
 [lints]
 workspace = true
 [dependencies]
+peregrin-node-api.workspace = true
 peregrin-web = { workspace = true, features = ["ssr"] }
-peregrin-web-core.workspace = true
 leptos = { workspace = true, features = ["ssr"] }
 leptos_router = { workspace = true, features = ["ssr"] }
 leptos_meta = { workspace = true, features = ["ssr"] }

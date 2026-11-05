@@ -5,8 +5,8 @@
 
 use peregrin_hub::credentials::{FileCredentials, NodeCredentials};
 use peregrin_hub::sync_api::{HubNode, SyncNodeApi, parse_nodes, resolve_node_tokens};
+use peregrin_node_api::api::NodeApi;
 use peregrin_sync::{NodeTarget, SyncEngine, SyncHandle};
-use peregrin_web::api::NodeApi;
 use serde_json::json;
 use std::sync::Arc;
 
@@ -775,7 +775,11 @@ async fn api_surface_sweep() {
     assert_eq!(cps.len(), 1);
     api.restore("s1", None, "c1").await.unwrap();
     let rw = api
-        .rewind("s1", None, &peregrin_web::api::RewindSelector::NodeId(2))
+        .rewind(
+            "s1",
+            None,
+            &peregrin_node_api::api::RewindSelector::NodeId(2),
+        )
         .await
         .unwrap();
     assert_eq!(rw.removed, 2);
@@ -808,7 +812,7 @@ async fn api_surface_sweep() {
     assert_eq!(serde_json::to_value(&renamed).unwrap()["name"], "renamed");
     let pk = api.push_vapid().await.unwrap();
     assert_eq!(pk, "pk-1");
-    api.push_subscribe(&peregrin_web::dto::PushSubscriptionDto::default())
+    api.push_subscribe(&peregrin_node_api::dto::PushSubscriptionDto::default())
         .await
         .unwrap();
     api.push_unsubscribe("ep").await.unwrap();
@@ -901,7 +905,11 @@ async fn arbitration_gates_contended_sessions() {
     let err = api.restore("s1", None, "c1").await.unwrap_err();
     assert!(err.contains("held by pid:4242"), "{err}");
     let err = api
-        .rewind("s1", None, &peregrin_web::api::RewindSelector::NodeId(1))
+        .rewind(
+            "s1",
+            None,
+            &peregrin_node_api::api::RewindSelector::NodeId(1),
+        )
         .await
         .unwrap_err();
     assert!(err.contains("held by pid:4242"), "{err}");

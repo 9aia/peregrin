@@ -124,23 +124,9 @@ pub fn model_patch(model: Option<&str>) -> Value {
     }
 }
 
-/// Convert/import stores the node accepts (`ImportTarget` in
-/// `routes/sessions.rs` — `{agent: "cline"|"devin"}`). `(id, label)`.
-pub const CONVERT_TARGETS: [(&str, &str); 2] = [("cline", "Cline"), ("devin", "Devin")];
-
-/// Whether `target` is a store the node's convert/import routes take.
-pub fn is_convert_target(target: &str) -> bool {
-    CONVERT_TARGETS.iter().any(|(id, _)| *id == target)
-}
-
-/// Convert targets minus the store the session already lives in —
-/// converting devin→devin is a no-op the UI shouldn't offer.
-pub fn convert_targets(current_agent: &str) -> Vec<(&'static str, &'static str)> {
-    CONVERT_TARGETS
-        .into_iter()
-        .filter(|(id, _)| *id != current_agent)
-        .collect()
-}
+// Convert/import targets — node-side contract, so they live in
+// `peregrin-node-api`; re-exported for the UI's existing paths.
+pub use peregrin_node_api::targets::{CONVERT_TARGETS, convert_targets, is_convert_target};
 
 /// `GET` export URL — served by the hub's `/api/*` passthrough, so a
 /// plain `<a download>` pulls the full session IR same-origin. `agent`

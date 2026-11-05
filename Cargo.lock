@@ -3823,12 +3823,12 @@ dependencies = [
  "leptos_router",
  "peregrin-control",
  "peregrin-http",
+ "peregrin-node-api",
  "peregrin-outbox",
  "peregrin-push",
  "peregrin-sync",
  "peregrin-telemetry",
  "peregrin-web",
- "peregrin-web-core",
  "sepia-core",
  "sepia-driver-devin",
  "sepia-meta",
@@ -3933,6 +3933,18 @@ dependencies = [
  "thiserror 2.0.21",
  "tokio",
  "tracing",
+ "ureq",
+]
+
+[[package]]
+name = "peregrin-node-api"
+version = "0.0.0"
+dependencies = [
+ "async-trait",
+ "sepia-core",
+ "serde",
+ "serde_json",
+ "tokio",
  "ureq",
 ]
 
@@ -4155,7 +4167,6 @@ name = "peregrin-web"
 version = "0.0.0"
 dependencies = [
  "any_spawner",
- "async-trait",
  "console_error_panic_hook",
  "floating-ui-leptos",
  "futures",
@@ -4169,6 +4180,7 @@ dependencies = [
  "leptos_toaster",
  "leptos_ui",
  "lucide-leptos",
+ "peregrin-node-api",
  "peregrin-web-core",
  "sepia-core",
  "sepia-proto",
@@ -4176,7 +4188,6 @@ dependencies = [
  "serde_json",
  "tokio",
  "tw_merge",
- "ureq",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -4186,6 +4197,7 @@ dependencies = [
 name = "peregrin-web-core"
 version = "0.0.0"
 dependencies = [
+ "peregrin-node-api",
  "proptest",
  "sepia-core",
  "sepia-proto",

@@ -9,6 +9,7 @@ repository.workspace = true
 [lints]
 workspace = true
 [dependencies]
+peregrin-node-api.workspace = true
 sepia-core.workspace = true
 sepia-proto.workspace = true
 serde.workspace = true

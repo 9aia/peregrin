@@ -30,6 +30,7 @@ members = [
     "crates/peregrin-loader-yaml",
     "crates/peregrin-mcp",
     "crates/peregrin-node",
+    "crates/peregrin-node-api",
     "crates/peregrin-outbox",
     "crates/peregrin-push",
     "crates/peregrin-queue",
@@ -90,6 +91,7 @@ peregrin-loader = { path = "crates/peregrin-loader" }
 peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml" }
 peregrin-mcp = { path = "crates/peregrin-mcp" }
 peregrin-node = { path = "crates/peregrin-node" }
+peregrin-node-api = { path = "crates/peregrin-node-api" }
 peregrin-outbox = { path = "crates/peregrin-outbox" }
 peregrin-push = { path = "crates/peregrin-push" }
 peregrin-queue = { path = "crates/peregrin-queue" }

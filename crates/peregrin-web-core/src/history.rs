@@ -1595,6 +1595,16 @@ pub struct RunSpan {
     pub node: String,
 }
 
+impl From<&peregrin_node_api::dto::RunSpanDto> for RunSpan {
+    fn from(s: &peregrin_node_api::dto::RunSpanDto) -> Self {
+        Self {
+            at: s.at,
+            agent: s.agent.clone(),
+            node: s.node.clone(),
+        }
+    }
+}
+
 /// The transcript as a flat render list — history rows by index, a
 /// rolled-up system-context card, and thin provenance markers.
 #[derive(Clone, Debug, PartialEq)]

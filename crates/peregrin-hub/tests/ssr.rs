@@ -10,8 +10,8 @@ use axum::body::Body;
 use axum::http::{HeaderMap, Request, StatusCode};
 use leptos::config::LeptosOptions;
 use peregrin_hub::{HubConfig, HubState, router};
-use peregrin_web::api::NodeApi;
-use peregrin_web::dto::{
+use peregrin_node_api::api::NodeApi;
+use peregrin_node_api::dto::{
     AgentCapabilitiesDto, AgentDto, AttachResultDto, CheckpointDto, CreateResultDto,
     HistoryPageDto, ImportResultDto, NodeInfoDto, NodeStatusDto, PendingWriteDto, ProjectDto,
     ProjectTransferDto, PromptCapabilitiesDto, PushSubscriptionDto, SessionCapabilitiesDto,
@@ -162,9 +162,9 @@ impl NodeApi for StubNodeApi {
         &self,
         _id: &str,
         _agent: Option<&str>,
-        _selector: &peregrin_web::api::RewindSelector,
-    ) -> Result<peregrin_web::dto::RewindResultDto, String> {
-        Ok(peregrin_web::dto::RewindResultDto::default())
+        _selector: &peregrin_node_api::api::RewindSelector,
+    ) -> Result<peregrin_node_api::dto::RewindResultDto, String> {
+        Ok(peregrin_node_api::dto::RewindResultDto::default())
     }
 
     async fn convert(

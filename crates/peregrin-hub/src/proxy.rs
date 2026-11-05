@@ -469,8 +469,8 @@ mod cov_tests {
                 .output_name("peregrin_web")
                 .site_root("target/site")
                 .build(),
-            peregrin_web::testing::FakeNodeApi::seeded().shared()
-                as std::sync::Arc<dyn peregrin_web::api::NodeApi>,
+            peregrin_node_api::testing::FakeNodeApi::seeded().shared()
+                as std::sync::Arc<dyn peregrin_node_api::api::NodeApi>,
             node_url,
             None,
         )

@@ -16,8 +16,8 @@ use peregrin_sync::{
 };
 
 use crate::credentials::NodeCredentials;
-use peregrin_web::api::NodeApi;
-use peregrin_web::dto::{
+use peregrin_node_api::api::NodeApi;
+use peregrin_node_api::dto::{
     AgentDto, AttachResultDto, CheckpointDto, CreateResultDto, HistoryMessageDto, HistoryPageDto,
     ImportResultDto, NodeInfoDto, NodeStatusDto, PendingWriteDto, ProjectDto, ProjectTransferDto,
     PushSubscriptionDto, RewindResultDto, SessionSummaryDto, TransferFailureDto, TransferResultDto,
@@ -613,7 +613,7 @@ impl SyncNodeApi {
         // 2. Import on the target — the store the session lives in
         // when it's a store-write target, else the devin store (the
         // only target today's seam writes).
-        let target_store = if peregrin_web_core::composer::is_convert_target(&row.agent) {
+        let target_store = if peregrin_node_api::targets::is_convert_target(&row.agent) {
             row.agent.as_str()
         } else {
             "devin"
@@ -995,7 +995,7 @@ impl NodeApi for SyncNodeApi {
         &self,
         id: &str,
         agent: Option<&str>,
-        selector: &peregrin_web::api::RewindSelector,
+        selector: &peregrin_node_api::api::RewindSelector,
     ) -> Result<RewindResultDto, String> {
         // The selector serializes as the one wire field the node
         // expects (`nodeId`/`checkpoint`) — merge it onto `confirm`.

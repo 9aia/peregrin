@@ -23,7 +23,8 @@ hydrate = [
   "dep:web-sys",
   "dep:console_error_panic_hook",
 ]
-# Server build: SSR rendering + server functions + the node HTTP client.
+# Server build: SSR rendering + server functions. The node HTTP client
+# lives in `peregrin-node-api` (no leptos) so the hub links it alone.
 ssr = [
   "leptos/ssr",
   "leptos-use/ssr",
@@ -31,9 +32,6 @@ ssr = [
   "leptos-fetch/ssr",
   "leptos_router/ssr",
   "leptos_meta/ssr",
-  "dep:async-trait",
-  "dep:tokio",
-  "dep:ureq",
 ]
 [dependencies]
 leptos.workspace = true
@@ -41,6 +39,7 @@ leptos_router.workspace = true
 leptos_meta.workspace = true
 sepia-core.workspace = true
 sepia-proto.workspace = true
+peregrin-node-api.workspace = true
 peregrin-web-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -90,10 +89,6 @@ web-sys = { workspace = true, optional = true, features = [
   "Window",
 ] }
 console_error_panic_hook = { workspace = true, optional = true }
-# ssr-only
-async-trait = { workspace = true, optional = true }
-tokio = { workspace = true, optional = true }
-ureq = { workspace = true, optional = true }
 leptos_ui = "0.3.22"
 tw_merge = "0.1"
 # Lucide icons — RustForWeb's leptos port (inline SVG components, so

@@ -14,8 +14,8 @@ use axum::response::IntoResponse;
 use axum::routing::{any, get};
 use peregrin_hub::credentials::{FileCredentials, NodeCredentials};
 use peregrin_hub::sync_api::{HubNode, SyncNodeApi};
+use peregrin_node_api::api::NodeApi;
 use peregrin_sync::{NodeTarget, SyncEngine};
-use peregrin_web::api::NodeApi;
 use serde_json::{Value, json};
 
 fn file_creds() -> (tempfile::TempDir, Arc<dyn NodeCredentials>) {

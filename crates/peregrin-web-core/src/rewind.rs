@@ -7,20 +7,10 @@
 //! on the summary row as `canRewind`, so this module only shapes the
 //! request/label — the store itself decides whether the cut lands.
 
-use serde::{Deserialize, Serialize};
-
-/// The `rewind` selector — serializes into the wire field names the
-/// node expects (`{"nodeId": …}` / `{"checkpoint": …}`), so it merges
-/// into the POST body verbatim next to `{"confirm": true}`.
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub enum RewindSelector {
-    /// Keep this transcript node and everything before it — the
-    /// per-message target the hover strip passes.
-    NodeId(i64),
-    /// Keep up to the last node recorded at/before this checkpoint ref.
-    Checkpoint(String),
-}
+// The selector lives in `peregrin-node-api` with the `NodeApi` port —
+// re-exported so `peregrin_web_core::rewind::RewindSelector` keeps
+// resolving for UI code.
+pub use peregrin_node_api::rewind::RewindSelector;
 
 /// Whether a history row can anchor a per-message rewind: user and
 /// assistant rows only (tool/system rows carry no action strip), and
@@ -53,32 +43,6 @@ mod tests {
     #![allow(clippy::unwrap_used)]
 
     use super::*;
-
-    #[test]
-    fn selector_serializes_to_wire_field_names() {
-        assert_eq!(
-            serde_json::to_value(RewindSelector::NodeId(7)).unwrap(),
-            serde_json::json!({ "nodeId": 7 })
-        );
-        assert_eq!(
-            serde_json::to_value(RewindSelector::Checkpoint("cp-1".into())).unwrap(),
-            serde_json::json!({ "checkpoint": "cp-1" })
-        );
-        // And merges into the request body next to `confirm`.
-        let mut body = serde_json::json!({ "confirm": true });
-        body.as_object_mut().unwrap().extend(
-            serde_json::to_value(RewindSelector::NodeId(3))
-                .unwrap()
-                .as_object()
-                .unwrap()
-                .clone(),
-        );
-        assert_eq!(body, serde_json::json!({ "confirm": true, "nodeId": 3 }));
-        // Tolerant decode — server fns deserialize the same shape.
-        let parsed: RewindSelector =
-            serde_json::from_value(serde_json::json!({ "nodeId": 9 })).unwrap();
-        assert_eq!(parsed, RewindSelector::NodeId(9));
-    }
 
     #[test]
     fn rewind_node_id_gates_on_role_and_present_id() {

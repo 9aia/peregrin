@@ -12,8 +12,8 @@ use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode};
 use leptos::config::LeptosOptions;
 use peregrin_hub::{HubConfig, HubState, router};
-use peregrin_web::api::NodeApi;
-use peregrin_web::testing::FakeNodeApi;
+use peregrin_node_api::api::NodeApi;
+use peregrin_node_api::testing::FakeNodeApi;
 use tower::ServiceExt;
 
 fn state(node_url: &str) -> HubState {

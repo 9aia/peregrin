@@ -43,6 +43,26 @@ pub struct SessionRow {
     pub node: Option<String>,
 }
 
+/// The list view's row — the wire DTO converts straight in.
+impl From<&peregrin_node_api::dto::SessionSummaryDto> for SessionRow {
+    fn from(s: &peregrin_node_api::dto::SessionSummaryDto) -> Self {
+        Self {
+            id: s.id.clone(),
+            title: s.title.clone(),
+            cwd: s.cwd.clone(),
+            agent: s.agent.clone(),
+            updated_at: s.updated_at.clone(),
+            locked: s.locked,
+            live: s.live,
+            busy: s.busy,
+            pinned: s.pinned,
+            archived: s.archived,
+            parent_session_id: s.parent_session_id.clone(),
+            node: s.node.clone(),
+        }
+    }
+}
+
 /// Sort order for the session list (filter-bar select values).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum SortMode {
