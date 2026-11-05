@@ -67,10 +67,10 @@ async fn canned(
             .into_response();
     }
     let body = match (method.as_str(), path.as_str()) {
-        (_, p) if p.ends_with("/export") => json!({
+        ("GET", p) if p.ends_with("/snapshot") => json!({
             "session":{"id":"ir-1","title":"exported","cwd":"/w"}
         }),
-        (_, "/api/sessions/import") => {
+        (_, "/api/entities/snapshot") => {
             json!({"id":"i1","kind":"sepia-session","agent":"devin","cwd":"/w"})
         }
         _ => json!({}),
@@ -141,7 +141,7 @@ async fn snapshot_export_pulls_the_entity_doc() {
     assert!(
         mock.calls()
             .iter()
-            .any(|c| c == "GET /api/sessions/s1/export"),
+            .any(|c| c == "GET /api/entities/s1/snapshot"),
         "calls: {:?}",
         mock.calls()
     );
@@ -158,7 +158,7 @@ async fn snapshot_import_posts_the_snapshot_body() {
     assert!(
         mock.bodies()
             .iter()
-            .any(|b| b.starts_with("POST /api/sessions/import") && b.contains("ir-1")),
+            .any(|b| b.starts_with("POST /api/entities/snapshot") && b.contains("ir-1")),
         "bodies: {:?}",
         mock.bodies()
     );
@@ -170,7 +170,7 @@ async fn snapshot_export_surfaces_node_errors() {
     mock.fail
         .lock()
         .unwrap()
-        .push("/api/sessions/s1/export".into());
+        .push("/api/entities/s1/snapshot".into());
     let (_mock, url) = serve(mock).await;
     let (api, projection) = api_for(vec![hub_node("n1", &url)]);
     seed_entity(&projection, "n1", "s1");

@@ -387,11 +387,10 @@ impl SyncEntityApi {
         Ok((node_id.clone(), self.client(&node_id)?))
     }
 
-    /// `/api/sessions/{id}[/{suffix}]` — INTERIM: entity-scoped direct
-    /// calls map to the session wire until `/api/entities` lands.
+    /// `/api/entities/{id}[/{suffix}]`.
     fn entity_path(id: &str, suffix: &str) -> String {
         let mut path = format!(
-            "/api/sessions/{}",
+            "/api/entities/{}",
             peregrin_sync::client::encode_segment(id)
         );
         if !suffix.is_empty() {
@@ -575,9 +574,9 @@ impl EntityApi for SyncEntityApi {
             return Err(format!("entity kind {kind:?} not registered"));
         }
         let (_node_id, client) = self.scoped_client(node)?;
-        let body = init.clone();
+        let body = serde_json::json!({"kind": kind, "indexDoc": init});
         let res =
-            tokio::task::spawn_blocking(move || client.send_json("POST", "/api/sessions", &body))
+            tokio::task::spawn_blocking(move || client.send_json("POST", "/api/entities", &body))
                 .await
                 .map_err(join_err)?
                 .map_err(Self::err_message)?;
@@ -616,7 +615,7 @@ impl EntityApi for SyncEntityApi {
 
     async fn snapshot_export(&self, id: &str) -> Result<Value, String> {
         let (_node_id, client) = self.resolve(id, None)?;
-        let path = Self::entity_path(id, "export");
+        let path = Self::entity_path(id, "snapshot");
         tokio::task::spawn_blocking(move || client.get_json(&path))
             .await
             .map_err(join_err)?
@@ -627,7 +626,7 @@ impl EntityApi for SyncEntityApi {
         let (node_id, client) = self.scoped_client(node)?;
         let body = body.clone();
         let res = tokio::task::spawn_blocking(move || {
-            client.send_json("POST", "/api/sessions/import", &body)
+            client.send_json("POST", "/api/entities/snapshot", &body)
         })
         .await
         .map_err(join_err)?

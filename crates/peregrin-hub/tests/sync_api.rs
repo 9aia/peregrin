@@ -140,7 +140,7 @@ async fn canned(
         }),
         ("GET", "/api/config") => json!({"config":{"theme":"dark","k":1}}),
         ("GET", "/api/fs") => json!({"dirs":["/a","/b"]}),
-        ("POST", "/api/sessions") => json!({"id":"new-1","capabilities":{}}),
+        ("POST", "/api/entities") => json!({"id":"new-1","capabilities":{}}),
         ("GET", "/api/push/vapid") => json!({"publicKey":"pk-1"}),
         ("POST", "/api/pair") => json!({"token":"sepia_minted"}),
         ("DELETE", _) => json!({}),
@@ -376,7 +376,7 @@ async fn create_entity_posts_to_the_scoped_node() {
     assert!(
         mock.bodies()
             .iter()
-            .any(|b| b.starts_with("POST /api/sessions") && b.contains("/work")),
+            .any(|b| b.starts_with("POST /api/entities") && b.contains("/work")),
         "bodies: {:?}",
         mock.bodies()
     );
@@ -434,7 +434,7 @@ async fn pair_persists_the_minted_token() {
 #[tokio::test]
 async fn api_error_arms() {
     let mock = Canned::default();
-    mock.blank.lock().unwrap().push("/api/sessions".into());
+    mock.blank.lock().unwrap().push("/api/entities".into());
     let (_m, url) = serve_canned(mock).await;
     let (api, _projection) = api_against(vec![hub_node("n1", &url)]);
     // `create` returns `{}` → no `id` → the malformed arm.

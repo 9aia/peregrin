@@ -488,7 +488,7 @@ async fn node_down_enqueue_then_up_drains_in_order() {
     assert_eq!(got.raw["indexDoc"]["agent"], "devin");
     let proj = projection.clone();
     wait_until(
-        || indexed("n1", "s1")(&proj).is_some_and(|s| s.raw["pinned"] == true),
+        || indexed("n1", "s1")(&proj).is_some_and(|s| s.raw["indexDoc"]["pinned"] == true),
         Duration::from_secs(5),
         "pinned propagated via SSE",
     )
@@ -885,7 +885,10 @@ async fn client_calls_against_the_stub_app() {
             let _ = client.post_op("s1", Some("devin"), op, &json!({}));
         }
         let err = client.post_op("s1", None, "bogus", &json!({})).unwrap_err();
-        assert!(err.to_string().contains("unsupported op"));
+        assert!(
+            err.to_string().contains("501") || err.to_string().contains("unknown op"),
+            "{err}"
+        );
         let _ = client.get_json("/api/node").unwrap();
         let _ = client.send_json("POST", "/api/config", &json!({"k": 1}));
         let _ = client.send_json("DELETE", "/api/config/k", &json!(null));
@@ -907,7 +910,7 @@ async fn client_malformed_bodies_and_http_errors() {
         .await
         .unwrap()
         .unwrap_err();
-    assert!(err.to_string().contains("missing sessions array"));
+    assert!(err.to_string().contains("missing entities array"));
 
     // Non-2xx on `health` → the `expect_json` Http arm.
     let port = canned_server("503 Service Unavailable", "{\"error\":\"down\"}");
@@ -930,7 +933,10 @@ async fn client_malformed_bodies_and_http_errors() {
 
     // Entity docs missing `id` degrade to an empty id — tolerant
     // decode; a non-2xx still surfaces the status.
-    let port = canned_server("200 OK", "{\"sessions\":[{\"id\":\"s9\"}]}");
+    let port = canned_server(
+        "200 OK",
+        "{\"entities\":[{\"id\":\"s9\",\"kind\":\"sepia-session\"}]}",
+    );
     let client = NodeClient::new(&format!("http://127.0.0.1:{port}"), None).unwrap();
     let docs = tokio::task::spawn_blocking(move || client.list_entities(None, false))
         .await
@@ -1134,7 +1140,7 @@ fn projection_surfaces_corrupt_rows() {
     {
         let conn = rusqlite::Connection::open(&path).unwrap();
         conn.execute(
-            "INSERT INTO session_index (node_id, entity_id, raw_json)
+            "INSERT INTO entities (node_id, entity_id, raw_json)
              VALUES ('n1', 'bad', 'not json')",
             [],
         )
@@ -1169,9 +1175,9 @@ fn apply_patch_write_failure_surfaces() {
     {
         let conn = rusqlite::Connection::open(&path).unwrap();
         conn.execute_batch(
-            "DROP TABLE session_index;
-             CREATE TABLE session_index (node_id TEXT, entity_id TEXT, raw_json TEXT);
-             INSERT INTO session_index VALUES ('n1','s1','{}');",
+            "DROP TABLE entities;
+             CREATE TABLE entities (node_id TEXT, entity_id TEXT, raw_json TEXT);
+             INSERT INTO entities VALUES ('n1','s1','{}');",
         )
         .unwrap();
     }
@@ -1194,8 +1200,5 @@ fn apply_patch_non_object_skips_merge() {
         store.apply_patch("n1", "s1", &json!([1, 2])).unwrap(),
         PatchStatus::Applied
     );
-    assert_eq!(
-        store.entity("n1", "s1").unwrap().unwrap().raw["indexDoc"]["title"],
-        "T"
-    );
+    assert_eq!(store.entity("n1", "s1").unwrap().unwrap().raw["title"], "T");
 }

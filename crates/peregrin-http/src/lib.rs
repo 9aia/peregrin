@@ -331,6 +331,17 @@ pub fn app(state: AppState) -> Router {
         .route("/api/config/{key}", any(routes::config::set))
         .route("/api/projects", any(routes::projects::collection))
         .route("/api/projects/{id}", any(routes::projects::item))
+        .route("/api/entities", any(routes::entities::collection))
+        .route(
+            "/api/entities/snapshot",
+            any(routes::entities::snapshot_collection),
+        )
+        .route("/api/entities/{id}", any(routes::entities::item))
+        .route("/api/entities/{id}/ops", any(routes::entities::ops))
+        .route(
+            "/api/entities/{id}/snapshot",
+            any(routes::entities::snapshot_item),
+        )
         .route("/api/sessions", any(routes::sessions::collection))
         .route(
             "/api/sessions/import",

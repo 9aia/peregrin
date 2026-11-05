@@ -941,7 +941,7 @@ mod tests {
         // A live canned node: subscribe → list → drain → tail. Cancelling
         // mid-run makes connect_once set `stop`; the pump observes it at
         // its loop top between heartbeat frames.
-        let port = canned_node("200 OK", "{\"sessions\":[]}");
+        let port = canned_node("200 OK", "{\"entities\":[]}");
         let shared = shared();
         let node = node(format!("http://127.0.0.1:{port}"));
         let client =
@@ -984,7 +984,7 @@ mod tests {
     async fn sse_pump_observes_stop_between_frames() {
         // Drive `sse_pump` directly: `stop` set while the pump is at its
         // loop top → the `stop.load` arm decrements and returns.
-        let port = canned_node("200 OK", "{\"sessions\":[]}");
+        let port = canned_node("200 OK", "{\"entities\":[]}");
         let shared = shared();
         let client = NodeClient::with_config(
             &format!("http://127.0.0.1:{port}"),

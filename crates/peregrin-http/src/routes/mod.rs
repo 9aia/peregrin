@@ -7,6 +7,7 @@
 pub mod agents;
 pub mod client;
 pub mod config;
+pub mod entities;
 pub mod events;
 pub mod misc;
 pub mod projects;

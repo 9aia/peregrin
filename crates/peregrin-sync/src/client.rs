@@ -7,8 +7,7 @@
 //! `data: {json}` SSE line reader.
 //!
 //! INTERIM: today's nodes still expose the session plane — this client
-//! wraps `GET /api/sessions*` rows as `kind="sepia-session"` entity
-//! docs and routes `sepia.<verb>` ops onto session endpoints. When the
+//! reads `/api/entities*` docs natively and routes `sepia.<verb>` ops onto session endpoints. When the
 //! node grows the integration-backed `/api/entities` surface (phase 4),
 //! this module shrinks to the generic contract.
 
@@ -157,10 +156,7 @@ impl NodeClient {
     }
 
     fn entity_url(&self, id: &str, suffix: &str) -> String {
-        // INTERIM: `/api/entities` doesn't exist node-side yet — the
-        // session plane is today's only entity kind, so its routes
-        // carry `sepia-session` docs.
-        let mut url = format!("{}/api/sessions/{}", self.base, encode_segment(id));
+        let mut url = format!("{}/api/entities/{}", self.base, encode_segment(id));
         if !suffix.is_empty() {
             url.push('/');
             url.push_str(suffix);
@@ -202,40 +198,39 @@ impl NodeClient {
         }
     }
 
-    /// `GET /api/sessions` — the node's entity index. INTERIM: wraps
-    /// each summary row as a `kind="sepia-session"` entity doc — the
-    /// substrate-side shape until nodes serve `/api/entities` natively.
-    /// `with_locks` adds the `withLocks=1` lock-probe fields.
+    /// `GET /api/entities` — the node's entity index: one
+    /// `{id,kind,indexDoc,updatedAt,locked,live}` doc per resident
+    /// entity. `with_locks` adds the `withLocks=1` lock-probe fields.
     ///
     /// # Errors
-    /// On transport failure, non-2xx, or a non-array `sessions` field.
+    /// On transport failure, non-2xx, or a non-array `entities` field.
     pub fn list_entities(
         &self,
         kind: Option<&str>,
         with_locks: bool,
     ) -> Result<Vec<Value>, NodeError> {
-        let mut req = self.auth(self.agent.get(self.url("/api/sessions")));
+        let mut req = self.auth(self.agent.get(self.url("/api/entities")));
         if with_locks {
             req = req.query("withLocks", "1");
         }
         let res = req.call().map_err(NodeError::Transport)?;
         let body = Self::expect_json(res)?;
-        match body.get("sessions").and_then(Value::as_array) {
+        match body.get("entities").and_then(Value::as_array) {
             Some(rows) => Ok(rows
                 .iter()
-                .map(entity_doc_of)
                 .filter(|doc| {
                     kind.is_none_or(|k| doc.get("kind").and_then(Value::as_str) == Some(k))
                 })
+                .cloned()
                 .collect()),
             None => Err(NodeError::Malformed(
-                "GET /api/sessions: missing sessions array".into(),
+                "GET /api/entities: missing entities array".into(),
             )),
         }
     }
 
-    /// `GET /api/sessions/{id}` — one entity doc (interim wrap; `?agent`
-    /// disambiguation passes through on the session wire).
+    /// `GET /api/entities/{id}` — one entity doc (`?agent` remains the
+    /// interim disambiguator on `sepia-session` entities).
     ///
     /// # Errors
     /// On transport failure, non-2xx, or a non-object body.
@@ -244,18 +239,15 @@ impl NodeClient {
         let res = Self::query_opt(req, "agent", kind)
             .call()
             .map_err(NodeError::Transport)?;
-        Self::expect_json(res).map(|d| entity_doc_of(&d))
+        Self::expect_json(res)
     }
 
-    /// Post an entity-scoped op — `op` is the outbox op name
-    /// (`<kind>.<verb>` namespaced). INTERIM dispatch: `sepia.<verb>`
-    /// ops route onto the session plane's endpoints; `entity.delete`
-    /// deletes the entity. Un-namespaced ops from older outbox rows
-    /// are treated as `sepia.*` — this table is the bridge until
-    /// phase 4's node-side dispatch.
+    /// `POST /api/entities/{id}/ops` — submit `{kind, payload}`; the
+    /// node dispatches namespaced ops (`sepia.*` → the session plane,
+    /// `entity.*` → substrate verbs).
     ///
     /// # Errors
-    /// [`NodeError::Unsupported`] for unknown ops; transport/Http else.
+    /// On transport failure or non-2xx (unknown ops 501 node-side).
     pub fn post_op(
         &self,
         entity_id: &str,
@@ -263,38 +255,13 @@ impl NodeClient {
         op: &str,
         payload: &Value,
     ) -> Result<Value, NodeError> {
-        let verb = op.strip_prefix("sepia.").unwrap_or(op);
-        let res = match verb {
-            "meta.patch" | "meta" => Self::query_opt(
-                self.auth(self.agent.patch(self.entity_url(entity_id, ""))),
-                "agent",
-                kind,
-            )
-            .send_json(payload),
-            "delete" => Self::query_opt(
-                self.auth(self.agent.delete(self.entity_url(entity_id, ""))),
-                "agent",
-                kind,
-            )
-            .call(),
-            "cancel" => Self::query_opt(
-                self.auth(self.agent.post(self.entity_url(entity_id, verb))),
-                "agent",
-                kind,
-            )
-            .send_empty(),
-            // `sepia.<verb>` → POST `/api/sessions/{id}/<verb>` for
-            // the verbs the session wire defines; unknown verbs are
-            // rejected instead of posting a bogus route.
-            v @ ("prompt" | "permission" | "attach" | "detach" | "restore" | "rewind"
-            | "convert" | "export" | "checkpoint") => Self::query_opt(
-                self.auth(self.agent.post(self.entity_url(entity_id, v))),
-                "agent",
-                kind,
-            )
-            .send_json(payload),
-            _ => return Err(NodeError::Unsupported(op.to_string())),
-        }
+        let body = serde_json::json!({"kind": op, "payload": payload});
+        let res = Self::query_opt(
+            self.auth(self.agent.post(self.entity_url(entity_id, "ops"))),
+            "agent",
+            kind,
+        )
+        .send_json(&body)
         .map_err(NodeError::Transport)?;
         Self::expect_json(res)
     }
@@ -349,6 +316,8 @@ impl NodeClient {
 
     /// `GET /api/sessions/{id}/stream` — an entity's live event stream
     /// (plus `lagged` markers). Same SSE reader as [`Self::events`].
+    /// INTERIM: the event plane stays session-shaped until entity
+    /// events exist node-side.
     ///
     /// # Errors
     /// On connect failure or a non-2xx status.
@@ -357,7 +326,11 @@ impl NodeClient {
         id: &str,
         kind: Option<&str>,
     ) -> Result<EventStream<BodyReader<'static>>, NodeError> {
-        let req = self.auth(self.agent.get(self.entity_url(id, "stream")));
+        let req = self.auth(self.agent.get(format!(
+            "{}/api/sessions/{}/stream",
+            self.base,
+            encode_segment(id)
+        )));
         let req = Self::query_opt(req, "agent", kind);
         self.open_stream(req)
     }
@@ -571,24 +544,6 @@ fn classify(event: &str, data: &str) -> FeedEvent {
             data: parsed,
         },
     }
-}
-
-/// INTERIM: wrap a session-plane summary row as an entity doc —
-/// `{id, kind:"sepia-session", indexDoc: <row>, updatedAt, locked,
-/// live}`. The `indexDoc` carries the whole wire summary so the
-/// integration keeps its fields; substrate columns are lifted to the
-/// top level for the projection.
-fn entity_doc_of(row: &Value) -> Value {
-    let get = |k: &str| row.get(k).and_then(Value::as_str).unwrap_or_default();
-    let flag = |k: &str| row.get(k).and_then(Value::as_bool).unwrap_or(false);
-    serde_json::json!({
-        "id": get("id"),
-        "kind": "sepia-session",
-        "indexDoc": row,
-        "updatedAt": get("updatedAt"),
-        "locked": flag("locked"),
-        "live": flag("busy"),
-    })
 }
 
 /// RFC 3986 unreserved characters pass through; everything else is

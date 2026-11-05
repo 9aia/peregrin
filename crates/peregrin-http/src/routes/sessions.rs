@@ -109,10 +109,19 @@ pub async fn collection(
 /// `GET /api/sessions` — store summaries + meta overlay + meta-only
 /// pending rows (created-but-unflushed sessions).
 async fn list(state: &AppState, with_locks: bool) -> Response {
-    let result = state.plane.list_sessions(with_locks).await;
-    let Ok(sessions) = result else {
-        return respond_map(result, StatusCode::OK, |_| json!({ "sessions": [] }));
-    };
+    match list_for_entities(state, with_locks).await {
+        Ok(all) => json_response(json!({ "sessions": all }), StatusCode::OK),
+        Err(_e) => json_response(json!({ "sessions": [] }), StatusCode::OK),
+    }
+}
+
+/// The wire rows behind `list` — `pub(crate)` so the entity surface
+/// can project them into entity docs without duplicating the merge.
+pub(crate) async fn list_for_entities(
+    state: &AppState,
+    with_locks: bool,
+) -> Result<Vec<Value>, ControlError> {
+    let sessions = state.plane.list_sessions(with_locks).await?;
     let known: std::collections::HashSet<String> = sessions.iter().map(|s| s.id.clone()).collect();
     // Sessions created via POST /api/sessions but not yet flushed
     // into the agent's store survive restarts only in the meta
@@ -139,19 +148,13 @@ async fn list(state: &AppState, with_locks: bool) -> Response {
             .await;
         pending.push(SummaryWire::pending(&id, &meta, can_rewind));
     }
-    respond_map(
-        Ok::<_, ControlError>(sessions),
-        StatusCode::OK,
-        |sessions| {
-            let mut all: Vec<SummaryWire> = Vec::with_capacity(sessions.len() + pending.len());
-            for session in sessions {
-                let meta = meta_of(state, &session.id);
-                all.push(SummaryWire::overlay(session, meta.as_ref()));
-            }
-            all.extend(pending);
-            json!({ "sessions": all })
-        },
-    )
+    let mut all: Vec<SummaryWire> = Vec::with_capacity(sessions.len() + pending.len());
+    for session in sessions {
+        let meta = meta_of(state, &session.id);
+        all.push(SummaryWire::overlay(session, meta.as_ref()));
+    }
+    all.extend(pending);
+    Ok(all.iter().map(|s| json!(s)).collect())
 }
 
 /// `POST /api/sessions` — create a session under an agent runtime.
@@ -285,34 +288,42 @@ pub async fn meta_alias(
 /// `GET /api/sessions/{id}` — the summary row for one session (meta
 /// overlay applied, same shape as the list rows).
 async fn get_one(state: &AppState, id: &str, agent: Option<&str>) -> Response {
-    let result = state.plane.get_summary(id, agent).await;
-    let Ok(session) = result else {
-        return respond_map(result, StatusCode::OK, |_| json!(null));
-    };
+    match summary_for_entities(state, id, agent).await {
+        Ok(wire) => json_response(wire, StatusCode::OK),
+        Err(e) => error_response(&e),
+    }
+}
+
+/// The wire row behind `get_one` — `pub(crate)` so the entity surface
+/// can project it; errors propagate for the entity 404/500 paths.
+pub(crate) async fn summary_for_entities(
+    state: &AppState,
+    id: &str,
+    agent: Option<&str>,
+) -> Result<Value, ControlError> {
+    let session = state.plane.get_summary(id, agent).await?;
     // Async on the plane port — resolve outside the sync closure.
     let can_rewind = state.plane.can_rewind(&session.backend_type).await;
-    respond_map(Ok::<_, ControlError>(session), StatusCode::OK, |session| {
-        let summary = sepia_session::SessionSummary {
-            id: session.id.clone(),
-            title: session.title.clone(),
-            cwd: session.working_directory.clone(),
-            agent: sepia_session::agent_for_backend(&session.backend_type).to_string(),
-            updated_at: iso_of_secs(session.last_activity_at),
-            locked: false,
-            lock_holder_pid: None,
-            source: sepia_session::agent_for_backend(&session.backend_type).to_string(),
-            busy: false,
-            pinned: None,
-            archived: None,
-            project_ids: None,
-            spans: None,
-            parent_session_id: session.parent_session_id.clone(),
-            agent_id: session.agent_id.clone(),
-            can_rewind,
-        };
-        let meta = meta_of(state, &session.id);
-        json!(SummaryWire::overlay(summary, meta.as_ref()))
-    })
+    let summary = sepia_session::SessionSummary {
+        id: session.id.clone(),
+        title: session.title.clone(),
+        cwd: session.working_directory.clone(),
+        agent: sepia_session::agent_for_backend(&session.backend_type).to_string(),
+        updated_at: iso_of_secs(session.last_activity_at),
+        locked: false,
+        lock_holder_pid: None,
+        source: sepia_session::agent_for_backend(&session.backend_type).to_string(),
+        busy: false,
+        pinned: None,
+        archived: None,
+        project_ids: None,
+        spans: None,
+        parent_session_id: session.parent_session_id.clone(),
+        agent_id: session.agent_id.clone(),
+        can_rewind,
+    };
+    let meta = meta_of(state, &session.id);
+    Ok(json!(SummaryWire::overlay(summary, meta.as_ref())))
 }
 
 /// `PATCH /api/sessions/{id}` — title/pin/archive/project/model overlay.
