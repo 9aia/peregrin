@@ -50,8 +50,6 @@ members = [
     "crates/peregrin-telemetry",
     "crates/peregrin-template",
     "crates/peregrin-testkit",
-    "crates/peregrin-web",
-    "crates/peregrin-web-core",
     "xtask",
 ]
 
@@ -111,8 +109,6 @@ peregrin-systemd = { path = "crates/peregrin-systemd" }
 peregrin-telemetry = { path = "crates/peregrin-telemetry" }
 peregrin-template = { path = "crates/peregrin-template" }
 peregrin-testkit = { path = "crates/peregrin-testkit" }
-peregrin-web = { path = "crates/peregrin-web" }
-peregrin-web-core = { path = "crates/peregrin-web-core" }
 
 # sepia — the session plane these crates embed. Git deps on `main`
 # (the branch carrying the `sepia serve` store-op surface —
@@ -163,16 +159,7 @@ camino = { version = "1", features = ["serde1"] }
 ureq = { version = "3", features = ["json"] }
 axum = "0.8"
 tower = "0.5"
-tower-http = { version = "0.6", features = ["fs", "limit"] }
-leptos = { version = "0.8.21", default-features = false }
-leptos_router = { version = "0.8.17", default-features = false }
-leptos_meta = { version = "0.8.7", default-features = false }
-leptos_axum = "0.8.10"
-wasm-bindgen = "0.2"
-wasm-bindgen-futures = "0.4"
-js-sys = "0.3"
-web-sys = "0.3"
-console_error_panic_hook = "0.1"
+tower-http = { version = "0.6", features = ["limit"] }
 time = { version = "0.3", features = ["formatting"] }
 tempfile = "3"
 uuid = { version = "1", features = ["v4", "serde"] }
@@ -190,8 +177,6 @@ keyring = { version = "3.6", default-features = false, features = [
   "windows-native",
 ] }
 insta = { version = "1", features = ["json", "redactions"] }
-# Browser e2e (peregrin-hub tests). Pinned exact: 0.37.6+ shipped <7 days ago.
-thirtyfour = "=0.37.5"
 
 [workspace.lints.rust]
 unsafe_code = "forbid"
@@ -221,7 +206,6 @@ too_many_lines = "allow"
 cast_precision_loss = "allow"
 cast_possible_truncation = "allow"
 cast_sign_loss = "allow"
-# `leptos_ui::variants!` derives Clone on Copy types inside its expansion.
 expl_impl_clone_on_copy = "allow"
 cast_lossless = "allow"
 struct_excessive_bools = "allow"
@@ -245,7 +229,7 @@ incremental = false
 debug = false
 
 [profile.release]
-# Thin LTO for local `cargo xtask install` + the wasm site build —
+# Thin LTO for local `cargo xtask install` —
 # shipped binaries go through `cargo build --profile dist` (release.yml).
 lto = "thin"
 strip = true
@@ -256,17 +240,3 @@ panic = "unwind" # keep unwind: tests + tokio supervise panics
 inherits = "release"
 lto = "fat"
 codegen-units = 1
-
-# cargo-leptos wiring — `cargo xtask dev` (or `cargo leptos watch`)
-# builds the wasm bundle into `site-root/pkg` and runs the hub with
-# `LEPTOS_*` env vars set.
-[[workspace.metadata.leptos]]
-name = "peregrin"
-bin-package = "peregrin-hub"
-lib-package = "peregrin-web"
-# wasm-bindgen output base name — must match the lib crate name.
-output-name = "peregrin_web"
-site-root = "target/site"
-site-addr = "127.0.0.1:13002"
-reload-port = 13001
-assets-dir = "crates/peregrin-hub/public"

@@ -1,15 +1,18 @@
-//! peregrin-hub — the SSR host. Serves the `peregrin-web` Leptos UI and
-//! bridges browser traffic to the node daemon:
+//! peregrin-hub — the node-API gateway. Bridges client traffic to the
+//! node daemons and runs the multi-node sync engine:
 //!
-//! - `/`, `/sessions/{id}` — server-rendered Leptos routes.
-//! - `/hub/*` — leptos server functions (auto-registered by
-//!   [`LeptosRoutes`]).
 //! - `/api/sessions/{id}/stream`, `/api/events` — SSE bridges to
 //!   `PEREGRIN_NODE_URL` (EventSource can't carry cross-origin auth
-//!   cleanly; proxying keeps the browser same-origin).
-//! - `/api/*` — generic passthrough for the rest of the node API.
-//! - everything else — static files from the site root (`manifest.json`,
-//!   `sw.js`, `icon.svg`, `pkg/` when cargo-leptos has run).
+//!   cleanly; proxying keeps the client same-origin).
+//! - `/api/push/*` — the hub-owned push subscription store (one
+//!   subscription fans out to every paired node).
+//! - `/api/*` — generic passthrough for the rest of the node API,
+//!   session-scoped calls routed to the owning node on multi-node
+//!   setups (`PEREGRIN_NODES`).
+//!
+//! [`sync_api::SyncNodeApi`] is the hub's [`NodeApi`]: session lists
+//! read the merged projection and writes queue in the durable outbox
+//! when a node is down.
 
 pub mod auth;
 pub mod credentials;
@@ -23,26 +26,21 @@ use std::sync::Arc;
 
 use axum::Router;
 use axum::body::Body;
-use axum::extract::{FromRef, Request};
+use axum::extract::Request;
 use axum::middleware::{self, Next};
 use axum::response::Response;
-use axum::routing::{any, get, post};
-use leptos::config::LeptosOptions;
-use leptos::prelude::provide_context;
-use leptos_axum::{LeptosRoutes, file_and_error_handler_with_context, generate_route_list};
+use axum::routing::{any, get};
 use peregrin_node_api::api::NodeApi;
-use peregrin_web::app::{App, shell};
 use tracing::Instrument;
 
-/// Everything the router needs — the leptos render options plus the
-/// node-API port (`NodeApi` is a trait so tests can stub it) and the
-/// upstream address for the HTTP/SSE bridges.
+/// Everything the router needs — the node-API port (`NodeApi` is a
+/// trait so tests can stub it) and the upstream address for the
+/// HTTP/SSE bridges.
 /// Session id → `(url, token)` of the owning node.
 pub type SessionRouter = Arc<dyn Fn(&str) -> Option<(String, Option<String>)> + Send + Sync>;
 
 #[derive(Clone)]
 pub struct HubState {
-    pub options: LeptosOptions,
     pub node: Arc<dyn NodeApi>,
     pub node_url: Arc<str>,
     pub node_token: Option<Arc<str>>,
@@ -52,7 +50,7 @@ pub struct HubState {
     pub session_router: Option<SessionRouter>,
     /// Hub-owned push subscription store — `None` → `/api/push/*` 501s.
     pub push: Option<Arc<peregrin_push::PushStore>>,
-    /// `PEREGRIN_HUB_TOKEN` — the browser→hub gate. `None` → every route
+    /// `PEREGRIN_HUB_TOKEN` — the client→hub gate. `None` → every route
     /// is open (loopback-only deployments).
     pub hub_token: Option<Arc<str>>,
     /// Long-lived streams: no global deadline and no body budget —
@@ -67,10 +65,9 @@ pub struct HubState {
 impl HubState {
     /// Build the state from parts. `node_url` is the node's origin
     /// (`http://127.0.0.1:18787`); `node_token` is forwarded as a bearer
-    /// token on hub → node calls, falling back to the browser's own
+    /// token on hub → node calls, falling back to the caller's own
     /// `Authorization` header when unset.
     pub fn new(
-        options: LeptosOptions,
         node: Arc<dyn NodeApi>,
         node_url: impl Into<Arc<str>>,
         node_token: Option<Arc<str>>,
@@ -90,7 +87,6 @@ impl HubState {
                 .build(),
         );
         Self {
-            options,
             node,
             node_url: node_url.into(),
             node_token,
@@ -128,13 +124,7 @@ impl HubState {
     }
 }
 
-impl FromRef<HubState> for LeptosOptions {
-    fn from_ref(state: &HubState) -> Self {
-        state.options.clone()
-    }
-}
-
-/// Runtime configuration, all `PEREGRIN_*`/`LEPTOS_*` env.
+/// Runtime configuration, all `PEREGRIN_*` env.
 #[derive(Clone, Debug)]
 pub struct HubConfig {
     /// `PEREGRIN_HUB_HOST` — default `127.0.0.1`.
@@ -145,14 +135,9 @@ pub struct HubConfig {
     pub node_url: String,
     /// `PEREGRIN_NODE_TOKEN` — bearer token forwarded hub → node.
     pub node_token: Option<String>,
-    /// `PEREGRIN_HUB_TOKEN` — browser→hub auth; required on non-loopback
-    /// binds, honored as bearer header, `?token=` query, or the
-    /// `peregrin_hub` cookie.
+    /// `PEREGRIN_HUB_TOKEN` — client→hub auth; required on non-loopback
+    /// binds, honored as bearer header or `?token=` query.
     pub hub_token: Option<String>,
-    /// `PEREGRIN_SITE_ROOT`/`LEPTOS_SITE_ROOT` — static assets dir.
-    pub site_root: String,
-    /// `LEPTOS_ENV`/`PEREGRIN_HUB_ENV` — `dev` or `prod`.
-    pub dev: bool,
 }
 
 impl Default for HubConfig {
@@ -163,43 +148,8 @@ impl Default for HubConfig {
             node_url: "http://127.0.0.1:18787".into(),
             node_token: None,
             hub_token: None,
-            site_root: default_site_root(),
-            dev: true,
         }
     }
-}
-
-/// Order: `$LEPTOS_SITE_ROOT`/`$PEREGRIN_SITE_ROOT` → the `cargo xtask
-/// site` staging dir (`$PEREGRIN_HOME/site`) → `target/site` (dev build)
-/// → the crate-local `public/` (assets only — no wasm bundle).
-fn default_site_root() -> String {
-    site_root_from(|k| std::env::var(k).ok(), |k| std::env::var_os(k))
-}
-
-/// [`default_site_root`] with the environment injected (test seam).
-#[doc(hidden)]
-pub fn site_root_from(
-    getv: impl Fn(&str) -> Option<String>,
-    getos: impl Fn(&str) -> Option<std::ffi::OsString>,
-) -> String {
-    if let Some(p) = getv("LEPTOS_SITE_ROOT").or_else(|| getv("PEREGRIN_SITE_ROOT")) {
-        return p;
-    }
-    let staged_site = getos("PEREGRIN_HOME")
-        .map(std::path::PathBuf::from)
-        .or_else(|| {
-            getos("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share/peregrin"))
-        })
-        .map(|h| h.join("site"));
-    for p in [staged_site, Some(std::path::PathBuf::from("target/site"))]
-        .into_iter()
-        .flatten()
-    {
-        if p.join("pkg").is_dir() {
-            return p.to_string_lossy().into_owned();
-        }
-    }
-    concat!(env!("CARGO_MANIFEST_DIR"), "/public").to_string()
 }
 
 /// Loopback binds may serve tokenless; anything else requires
@@ -236,14 +186,8 @@ impl HubConfig {
         }
         cfg.node_token = get("PEREGRIN_NODE_TOKEN").filter(|t| !t.is_empty());
         cfg.hub_token = get("PEREGRIN_HUB_TOKEN").filter(|t| !t.is_empty());
-        cfg.dev = !matches!(
-            get("LEPTOS_ENV")
-                .or_else(|| get("PEREGRIN_HUB_ENV"))
-                .as_deref(),
-            Some("prod" | "PROD" | "production")
-        );
-        // The node's bind guard, applied to the browser surface: a
-        // wildcard/LAN bind with no hub token would expose the UI.
+        // The node's bind guard, applied to the client surface: a
+        // wildcard/LAN bind with no hub token would expose the API.
         if !is_loopback_host(&cfg.host) && cfg.hub_token.is_none() {
             return Err(format!(
                 "peregrin-hub refuses to bind {} without PEREGRIN_HUB_TOKEN. Set PEREGRIN_HUB_TOKEN or bind a loopback address (PEREGRIN_HUB_HOST=127.0.0.1).",
@@ -264,28 +208,7 @@ impl HubConfig {
 /// [`hub_state`]; tests construct `HubState` directly with a stub
 /// `NodeApi`.
 pub fn router(state: HubState) -> Router {
-    let routes = generate_route_list(App);
-    let provide_node = {
-        let node = Arc::clone(&state.node);
-        move || provide_context::<Arc<dyn NodeApi>>(node.clone())
-    };
-    let shell_fn = {
-        let options = state.options.clone();
-        move || shell(options.clone())
-    };
     Router::new()
-        .route("/style.css", get(serve_css))
-        .route("/vendor/mermaid.min.js", get(serve_mermaid))
-        .route("/vendor/fonts/{*name}", get(serve_font))
-        // The browser's SW update check honors HTTP cache — without
-        // no-cache a stale sw.js could keep serving old cache rules.
-        .route("/sw.js", get(serve_sw))
-        // Credential exchange — the login form posts `{token, next?}`
-        // (urlencoded or JSON); valid → `peregrin_hub` cookie + 303 to
-        // `next`, invalid → 303 to `/login?error=1`. `GET /login` is
-        // the Leptos page itself; `GET /login?token=` is handled in
-        // the gate middleware. Pre-auth by definition.
-        .route("/login", post(auth::login))
         // SSE bridges — must be registered before the `/api/*` wildcard.
         .route("/api/events", get(proxy::sse_events))
         .route("/api/sessions/{id}/stream", get(proxy::sse_session_stream))
@@ -294,24 +217,17 @@ pub fn router(state: HubState) -> Router {
         .route("/api/push/vapid", any(push_routes::vapid))
         .route("/api/push/subscribe", any(push_routes::subscribe))
         .route("/api/{*rest}", any(proxy::passthrough))
-        .leptos_routes_with_context(&state, routes, provide_node.clone(), shell_fn)
-        .fallback(file_and_error_handler_with_context::<HubState, _>(
-            provide_node,
-            shell,
-        ))
-        // Hard ceiling for *every* request body — the leptos server-fn
-        // (`/hub/*`) reads happen inside leptos_axum with no per-route
-        // knob, so this is their only bound. Sized at the passthrough
-        // cap so legit node-bound bodies never hit it.
+        // Hard ceiling for *every* request body. Sized at the
+        // passthrough cap so legit node-bound bodies never hit it.
         .layer(tower_http::limit::RequestBodyLimitLayer::new(
             proxy::MAX_PROXY_BODY,
         ))
-        // Browser gate — a no-op until `hub_token` is set.
+        // Client gate — a no-op until `hub_token` is set.
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth::auth_gate,
         ))
-        // OTEL server span — outermost: browser→hub requests get an
+        // OTEL server span — outermost: client→hub requests get an
         // `http_request` span the proxy's `traceparent` injection links
         // hub→node calls into. Inert when export is off.
         .layer(middleware::from_fn(trace_layer))
@@ -412,12 +328,10 @@ pub fn hub_state_from(
         ..peregrin_sync::engine::SyncOptions::default()
     };
     let engine = peregrin_sync::SyncEngine::spawn(projection, outbox, targets, options);
-    let options = leptos_options(config);
     // `unwrap_or_else` above guarantees at least the single-node row.
     let upstream = nodes.first().cloned().unwrap_or_default();
     let api = Arc::new(sync_api::SyncNodeApi::new(engine, nodes, creds));
     let mut state = HubState::new(
-        options,
         Arc::clone(&api) as Arc<dyn NodeApi>,
         upstream.url.as_str(),
         upstream.token.clone().map(Into::into),
@@ -473,129 +387,4 @@ pub fn feed_hook(
             }
         },
     )
-}
-
-fn leptos_options(config: &HubConfig) -> LeptosOptions {
-    // `xtask site` renames the bundle `peregrin_web_<hash>.{js,bg.wasm}`;
-    // discover the stem so SSR emits hashed URLs — a stale cached
-    // bundle can never hydrate against a newer page.
-    let output_name = std::fs::read_dir(std::path::Path::new(&config.site_root).join("pkg"))
-        .ok()
-        .into_iter()
-        .flat_map(std::iter::Iterator::flatten)
-        .filter_map(|f| {
-            let n = f.file_name().to_string_lossy().into_owned();
-            n.strip_suffix(".js")
-                .filter(|stem| stem.starts_with("peregrin_web_"))
-                .map(str::to_owned)
-        })
-        .max()
-        .unwrap_or_else(|| "peregrin_web".to_string());
-    LeptosOptions::builder()
-        // wasm-bindgen names the bundle after the *lib* crate.
-        .output_name(output_name)
-        .site_root(config.site_root.clone())
-        .site_pkg_dir("pkg")
-        .env(if config.dev {
-            leptos::config::Env::DEV
-        } else {
-            leptos::config::Env::PROD
-        })
-        .build()
-}
-
-/// The embedded stylesheet — one source of truth in
-/// `peregrin-web/style/main.css`, no asset pipeline required.
-async fn serve_css() -> impl axum::response::IntoResponse {
-    (
-        [
-            (axum::http::header::CONTENT_TYPE, "text/css; charset=utf-8"),
-            (axum::http::header::CACHE_CONTROL, "no-cache"),
-        ],
-        peregrin_web::STYLE_CSS,
-    )
-}
-
-/// The vendored mermaid UMD bundle — pinned at mermaid@11.12.0
-/// (`npm i mermaid@11.12.0`, `dist/mermaid.min.js`,
-/// sha256 07e37dfa97b337ccc85365d57eddf99b9706f09db3b59b260d0333b23b343c4b).
-/// ~2.6 MiB of untranspiled third-party code — vendored, not bundled
-/// into the wasm, so markdown ```mermaid blocks lazy-load it on demand
-/// and the offline/PWA story holds. Embedded like `STYLE_CSS` so no
-/// site-root staging is required; content is pinned → immutable.
-const MERMAID_JS: &[u8] = include_bytes!("../vendor/mermaid.min.js");
-
-async fn serve_mermaid() -> impl axum::response::IntoResponse {
-    (
-        [
-            (
-                axum::http::header::CONTENT_TYPE,
-                "text/javascript; charset=utf-8",
-            ),
-            (
-                axum::http::header::CACHE_CONTROL,
-                "public, max-age=31536000, immutable",
-            ),
-        ],
-        MERMAID_JS,
-    )
-}
-
-/// The vendored Geist variable font — `@fontsource-variable/geist@5.3.0`
-/// (`npm i @fontsource-variable/geist@5.3.0`, `files/geist-*-wght-*.woff2`;
-/// Geist is MIT-licensed, © Vercel). Latin + Latin-Extended subsets,
-/// normal + italic, matching the `@font-face` blocks in
-/// `peregrin-web/style/input.css`. sha256:
-/// `19f9c9…d54e1` latin normal, `824f48…4313f` latin-ext normal,
-/// `9b1049…f5acaf` latin italic, `56dc9a…bc1e74` latin-ext italic.
-/// Embedded like `MERMAID_JS`; content is pinned → immutable.
-const GEIST_LATIN: &[u8] = include_bytes!("../vendor/fonts/geist-latin-wght-normal.woff2");
-const GEIST_LATIN_EXT: &[u8] = include_bytes!("../vendor/fonts/geist-latin-ext-wght-normal.woff2");
-const GEIST_LATIN_ITALIC: &[u8] = include_bytes!("../vendor/fonts/geist-latin-wght-italic.woff2");
-const GEIST_LATIN_EXT_ITALIC: &[u8] =
-    include_bytes!("../vendor/fonts/geist-latin-ext-wght-italic.woff2");
-
-async fn serve_font(
-    axum::extract::Path(name): axum::extract::Path<String>,
-) -> axum::response::Response {
-    let bytes = match name.as_str() {
-        "geist-latin-wght-normal.woff2" => GEIST_LATIN,
-        "geist-latin-ext-wght-normal.woff2" => GEIST_LATIN_EXT,
-        "geist-latin-wght-italic.woff2" => GEIST_LATIN_ITALIC,
-        "geist-latin-ext-wght-italic.woff2" => GEIST_LATIN_EXT_ITALIC,
-        _ => {
-            return axum::response::IntoResponse::into_response(axum::http::StatusCode::NOT_FOUND);
-        }
-    };
-    axum::response::IntoResponse::into_response((
-        [
-            (axum::http::header::CONTENT_TYPE, "font/woff2"),
-            (
-                axum::http::header::CACHE_CONTROL,
-                "public, max-age=31536000, immutable",
-            ),
-        ],
-        bytes,
-    ))
-}
-
-/// `sw.js` lives in `site_root` (staged by `cargo xtask site`) — serve
-/// it directly so the `no-cache` header applies to SW update checks.
-async fn serve_sw(
-    axum::extract::State(state): axum::extract::State<HubState>,
-) -> axum::response::Response {
-    let path = std::path::Path::new(state.options.site_root.as_ref()).join("sw.js");
-    match tokio::fs::read(&path).await {
-        Ok(bytes) => axum::response::IntoResponse::into_response((
-            [
-                (axum::http::header::CONTENT_TYPE, "text/javascript"),
-                (axum::http::header::CACHE_CONTROL, "no-cache"),
-            ],
-            bytes,
-        )),
-        Err(e) => axum::response::IntoResponse::into_response((
-            axum::http::StatusCode::NOT_FOUND,
-            format!("sw.js not found: {e}"),
-        )),
-    }
 }

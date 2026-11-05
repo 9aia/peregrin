@@ -14,7 +14,7 @@
 ## Gates
 
 ```bash
-cargo xtask check     # fmt + clippy -D warnings + web markup gate
+cargo xtask check     # fmt + clippy -D warnings
 cargo xtask test      # suite (nextest if present)
 cargo xtask coverage  # llvm-cov; --fail-under-lines 100 for new code
 ```
@@ -25,8 +25,6 @@ cargo xtask coverage  # llvm-cov; --fail-under-lines 100 for new code
 - `cfg(coverage)` gates paths that can't run in-process (blocking
   stdio loops, service lifecycle, spawned binaries) — see
   `peregrin-cli`'s service backends and `peregrin-mcp::serve`.
-- `peregrin-web`: `#[cfg]` gates behavior, never markup shape —
-  `xtask check` enforces.
 
 ## Docs
 

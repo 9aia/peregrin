@@ -465,10 +465,6 @@ mod cov_tests {
 
     fn test_state(node_url: &str) -> HubState {
         HubState::new(
-            leptos::config::LeptosOptions::builder()
-                .output_name("peregrin_web")
-                .site_root("target/site")
-                .build(),
             peregrin_node_api::testing::FakeNodeApi::seeded().shared()
                 as std::sync::Arc<dyn peregrin_node_api::api::NodeApi>,
             node_url,

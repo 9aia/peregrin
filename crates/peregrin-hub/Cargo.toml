@@ -1,6 +1,6 @@
 [package]
 name = "peregrin-hub"
-description = "SSR host binary — serves the peregrin-web Leptos UI and bridges the node API over HTTP"
+description = "Node-API gateway — multi-node sync engine, HTTP/SSE bridges, push, auth"
 version = "0.0.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -10,11 +10,6 @@ repository.workspace = true
 workspace = true
 [dependencies]
 peregrin-node-api.workspace = true
-peregrin-web = { workspace = true, features = ["ssr"] }
-leptos = { workspace = true, features = ["ssr"] }
-leptos_router = { workspace = true, features = ["ssr"] }
-leptos_meta = { workspace = true, features = ["ssr"] }
-leptos_axum.workspace = true
 axum.workspace = true
 tower.workspace = true
 tower-http.workspace = true
@@ -44,10 +39,3 @@ sepia-core.workspace = true
 peregrin-http = { workspace = true }
 ureq = { workspace = true }
 tempfile = { workspace = true }
-thirtyfour.workspace = true
-# cargo-leptos builds the bin with `--features ssr` — a no-op here
-# (peregrin-web already enables its `ssr` feature) that only needs to
-# exist for the flag to resolve.
-[features]
-default = []
-ssr = ["peregrin-web/ssr"]

@@ -23,8 +23,7 @@ when, where" or campaign execution, it belongs here.
 
 - New driver/transport/store = a new `peregrin-{port}-{impl}` crate,
   not a core change.
-- `cargo xtask check` and `cargo xtask test` must stay green; the web
-  UI also gates `cargo xtask smoke`.
+- `cargo xtask check` and `cargo xtask test` must stay green.
 - Coverage: `cargo xtask coverage` — cargo-llvm-cov HTML report in
   `target/llvm-cov/html`; pass `--fail-under-lines 100` to gate.
 - Commits: conventional prefixes (`feat:`/`fix:`/`refactor:`/`docs:`/`chore:`).

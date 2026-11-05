@@ -14,8 +14,9 @@ embedded as the session plane on every node.
   walks the graph until nothing is ready to fire.
 - **Nodes** — `peregrin serve` runs a machine daemon: session plane
   (via `sepia`) + campaign drivers + event bus.
-- **Hub** — `peregrin-hub` aggregates nodes into one view and serves
-  the app (`peregrin-web`, Leptos) — sessions today, campaigns next.
+- **Hub** — `peregrin-hub` aggregates nodes into one API surface —
+  merged session projection, queued writes, push. The experimental
+  web UI lives on the `experimental/web` branch.
 - **Ports everywhere** — runner, transport, store, secrets, config,
   service are ports; implementations are separate crates
   (`peregrin-{port}` + `peregrin-{port}-{impl}`).
@@ -39,8 +40,7 @@ session plane over the wire — it never reimplements it.
 | `crates/peregrin-{template,store,bus,remote(-http)}` | engine ports |
 | `crates/peregrin-{config(-toml),secret,keyring,dotenv,service,systemd}` | platform ports (sturn/bupha pattern) |
 | `crates/peregrin-control` | arbitration — lock registry, takeover policy, merge/route |
-| `crates/peregrin-{node,hub,http,sync,outbox,push}` | daemons + transport |
-| `crates/peregrin-{web,web-core}` | the Leptos app |
+| `crates/peregrin-{node,hub,http,sync,outbox,push,node-api}` | daemons + transport + node port |
 | `crates/peregrin-{cli,auth,acp-client,telemetry,testkit}` | binaries, credentials, sepia-wire client, OTEL, fixtures |
 
 `libraries/` holds the workflow stdlib (reusable `.node.yml`,
@@ -50,12 +50,9 @@ the engine's design history and spec.
 ## Develop
 
 ```bash
-cargo xtask check    # fmt + clippy -D warnings + web markup gate
+cargo xtask check    # fmt + clippy -D warnings
 cargo xtask test     # whole suite (nextest if present)
-cargo xtask install  # release-build peregrin + hub + site → ~/.local
-cargo xtask site     # wasm bundle + PWA assets → target/site
-cargo xtask smoke    # headless-Chrome console probe
-cargo xtask e2e      # full node+hub+browser suite
+cargo xtask install  # release-build peregrin + hub → ~/.local
 ```
 
 [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) ·
