@@ -161,8 +161,8 @@ secret-name-only configs); docs updated in the same phase.
 - **Envelope churn** — P0 is cheap; if it slips, every later
   phase re-touches consumers. Don't start P2 without it.
 - **`9aia/bupha:main` release failures** (303s, pre-existing —
-  likely T-044 crates.io token) will mask the shadow window's
-  signal on that repo until fixed.
+  likely a crates.io token issue tracked in bupha's own ledger)
+  will mask the shadow window's signal on that repo until fixed.
 - bupha-ssh drop-orphan test leaks — pre-existing flakes, keep
   out of coverage accounting.
 
