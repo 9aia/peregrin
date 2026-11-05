@@ -671,8 +671,8 @@ mod tests {
 
     #[test]
     fn bare_data_frames_are_opaque() {
-        // Entity-detail events (`SessionEvent` on the session wire) are
-        // `Other` — the substrate forwards, never interprets, them.
+        // Entity-detail events are `Other` — the substrate forwards,
+        // never interprets, them.
         let input = "data: {\"tag\":\"runStarted\"}\n\n".to_string();
         let got = frames(&input);
         assert_eq!(
@@ -730,7 +730,7 @@ mod tests {
 
     #[test]
     fn unrecognized_event_names_fall_back_to_other() {
-        // Not a diff kind and not a typed SessionEvent → `Other` with
+        // Not a diff kind and not a known event name → `Other` with
         // the parsed payload (`null` when data isn't JSON).
         let input = "event: weird\ndata: not json\n\n";
         assert_eq!(

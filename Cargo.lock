@@ -2968,7 +2968,6 @@ dependencies = [
  "rusqlite",
  "sepia-core",
  "sepia-meta",
- "sepia-proto",
  "sepia-session",
  "sepia-testkit",
  "serde",
