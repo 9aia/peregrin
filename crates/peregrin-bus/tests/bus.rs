@@ -1,4 +1,4 @@
-#![allow(clippy::assert_is_empty)]
+#![allow(unknown_lints, clippy::assert_is_empty)]
 #![allow(clippy::unwrap_used)]
 use peregrin_bus::{EventBus, LocalBus, capture_wildcards, matches};
 use peregrin_core::{Event, MaxFires, Node, TriggerMode};

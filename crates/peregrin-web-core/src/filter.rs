@@ -1,4 +1,4 @@
-#![allow(clippy::assert_is_empty)]
+#![allow(unknown_lints, clippy::assert_is_empty)]
 
 //! Session-list filtering, sorting, and cwd grouping — the pure half
 //! of the `/` page's filter bar. `SessionRow` is the lightweight view

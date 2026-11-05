@@ -1,4 +1,4 @@
-#![allow(clippy::assert_is_empty)]
+#![allow(unknown_lints, clippy::assert_is_empty)]
 
 //! Global hotkey resolution — the pure key→action mapping behind the
 //! document `keydown` listeners in `app` and `pages::session_list`.

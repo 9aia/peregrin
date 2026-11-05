@@ -1,4 +1,4 @@
-#![allow(clippy::assert_is_empty)]
+#![allow(unknown_lints, clippy::assert_is_empty)]
 #![allow(clippy::unwrap_used)]
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

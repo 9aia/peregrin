@@ -1,4 +1,4 @@
-#![allow(clippy::assert_is_empty)]
+#![allow(unknown_lints, clippy::assert_is_empty)]
 
 //! History view-model — the transcript *backlog* half, ported from the
 //! TS app's `toolDisplay.ts`/`systemContext.ts`/`historyRows.ts`/`format.ts`.

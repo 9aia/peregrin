@@ -1,4 +1,4 @@
-#![allow(clippy::assert_is_empty)]
+#![allow(unknown_lints, clippy::assert_is_empty)]
 
 //! `${name.method(args)}` call parsing — port of `parse.ts`.
 //!

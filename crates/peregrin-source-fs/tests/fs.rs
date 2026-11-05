@@ -1,6 +1,7 @@
 //! `peregrin-source-fs` — dir copy + tarball unpack e2e over tempdirs.
 #![allow(
     clippy::unwrap_used,
+    unknown_lints,
     clippy::assert_is_empty,
     clippy::default_constructed_unit_structs
 )]

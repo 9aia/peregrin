@@ -2,6 +2,7 @@
 //! `TcpListener` stub.
 #![allow(
     clippy::unwrap_used,
+    unknown_lints,
     clippy::assert_is_empty,
     clippy::default_constructed_unit_structs
 )]

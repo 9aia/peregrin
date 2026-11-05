@@ -1,4 +1,4 @@
-#![allow(clippy::assert_is_empty)]
+#![allow(unknown_lints, clippy::assert_is_empty)]
 
 //! Route helpers — port of `apps/server/src/routes/shared.ts`: the
 //! `ControlError` → HTTP status mapping, the `{error, code?}` body shape,

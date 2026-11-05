@@ -2,7 +2,7 @@
 //! ops verbs over `OpsEnv` sandboxes: a fake bundle store, a
 //! `TcpListener` GitHub API stub for the hook upsert/delete paths,
 //! fixture unit files/worktrees, and fixture JSONL history logs.
-#![allow(clippy::unwrap_used, clippy::assert_is_empty)]
+#![allow(clippy::unwrap_used, unknown_lints, clippy::assert_is_empty)]
 
 use std::fs;
 use std::io::{BufRead, BufReader, Read, Write};

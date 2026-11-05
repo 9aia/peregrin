@@ -1,4 +1,4 @@
-#![allow(clippy::assert_is_empty)]
+#![allow(unknown_lints, clippy::assert_is_empty)]
 
 //! peregrin — the CLI. Local store verbs over the
 //! Devin/Cline/Claude/Cursor stores, node ops against a running node's

@@ -2,6 +2,7 @@
     clippy::unwrap_used,
     clippy::expect_used,
     clippy::panic,
+    unknown_lints,
     clippy::assert_is_empty
 )]
 //! `JsonStore` tests — append/read-back, first-seen order, crash

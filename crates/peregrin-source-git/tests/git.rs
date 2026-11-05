@@ -3,6 +3,7 @@
 //! process git, so tests shell out), a canned `Git` for error arms.
 #![allow(
     clippy::unwrap_used,
+    unknown_lints,
     clippy::assert_is_empty,
     clippy::default_constructed_unit_structs
 )]

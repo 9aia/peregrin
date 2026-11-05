@@ -1,4 +1,4 @@
-#![allow(clippy::assert_is_empty)]
+#![allow(unknown_lints, clippy::assert_is_empty)]
 
 //! Cwd-input helpers for the new-session form — typed-path splitting
 //! and basename-prefix completion against `/api/fs` directory lists.
