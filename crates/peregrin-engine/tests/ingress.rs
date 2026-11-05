@@ -306,6 +306,9 @@ fn inject_after_receiver_drop_returns_the_event() {
     assert_eq!(err.0.payload["k"], 1);
     let rendered = err.to_string();
     assert!(rendered.contains("ingress"), "{rendered}");
+    // Debug derive coverage — the error path is the only place it
+    // gets formatted.
+    assert!(format!("{err:?}").contains("lost"));
     assert!(std::error::Error::source(&err).is_none());
 }
 
@@ -455,6 +458,32 @@ fn wait_timeout_returns_at_the_deadline() {
     assert!(started.elapsed() >= Duration::from_millis(50));
     assert!(out.is_empty());
     drop(injector);
+}
+
+#[test]
+fn wait_bounded_disconnect_returns_disconnected() {
+    // `recv_timeout`→Disconnected arm — senders dropped *and* a
+    // deadline set (the `wait_disconnected` test covers the
+    // blocking-recv path instead).
+    let (injector, chan) = ingress();
+    drop(injector);
+    let mut out = Vec::new();
+    assert_eq!(
+        chan.wait(Some(Duration::from_millis(50)), &mut out),
+        peregrin_engine::WaitOutcome::Disconnected
+    );
+}
+
+#[test]
+fn wait_outcome_debug_and_copy_semantics() {
+    // Covers the derive impls (Debug/Clone/Copy/PartialEq) so the
+    // coverage gate counts them.
+    let outcome = peregrin_engine::WaitOutcome::Timeout;
+    assert_eq!(format!("{outcome:?}"), "Timeout");
+    let copied = outcome;
+    assert_eq!(copied, peregrin_engine::WaitOutcome::Timeout);
+    assert_ne!(copied, peregrin_engine::WaitOutcome::Event);
+    assert_ne!(copied, peregrin_engine::WaitOutcome::Disconnected);
 }
 
 #[test]
