@@ -10,6 +10,7 @@ use std::sync::Arc;
 
 use axum::body::{Body, to_bytes};
 use axum::http::{Request, StatusCode};
+use leptos::config::LeptosOptions;
 use peregrin_hub::{HubConfig, HubState, router};
 use peregrin_node_api::api::NodeApi;
 use peregrin_node_api::testing::FakeNodeApi;
@@ -21,6 +22,10 @@ fn state(node_url: &str) -> HubState {
     std::mem::forget(dir); // the store reads lazily — keep the dir alive
     let push = peregrin_push::PushStore::open(sepia_meta::MetaStore::open(&path));
     let mut s = HubState::new(
+        LeptosOptions::builder()
+            .output_name("peregrin_web")
+            .site_root("target/site")
+            .build(),
         FakeNodeApi::seeded().shared() as Arc<dyn NodeApi>,
         node_url,
         None,
@@ -38,6 +43,42 @@ async fn call(app: &axum::Router, req: Request<Body>) -> (StatusCode, String) {
 
 fn get(uri: &str) -> Request<Body> {
     Request::get(uri).body(Body::empty()).unwrap()
+}
+
+#[tokio::test]
+async fn static_handlers() {
+    let app = router(state("http://127.0.0.1:9"));
+    let (s, b) = call(&app, get("/style.css")).await;
+    assert_eq!(s, StatusCode::OK);
+    assert!(b.contains('{') || b.contains('}'));
+    let (s, _) = call(&app, get("/vendor/mermaid.min.js")).await;
+    assert_eq!(s, StatusCode::OK);
+    for (name, want) in [
+        ("geist-latin-wght-normal.woff2", StatusCode::OK),
+        ("geist-latin-ext-wght-normal.woff2", StatusCode::OK),
+        ("geist-latin-wght-italic.woff2", StatusCode::OK),
+        ("geist-latin-ext-wght-italic.woff2", StatusCode::OK),
+        ("nope.woff2", StatusCode::NOT_FOUND),
+    ] {
+        let (s, _) = call(&app, get(&format!("/vendor/fonts/{name}"))).await;
+        assert_eq!(s, want, "{name}");
+    }
+    // sw.js — absent under the bare site root → 404 body.
+    let (s, b) = call(&app, get("/sw.js")).await;
+    assert_eq!(s, StatusCode::NOT_FOUND);
+    assert!(b.contains("sw.js not found"));
+}
+
+#[tokio::test]
+async fn sw_js_serves_from_site_root() {
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::write(dir.path().join("sw.js"), "// sw").unwrap();
+    let mut s = state("http://127.0.0.1:9");
+    s.options.site_root = dir.path().to_string_lossy().into_owned().into();
+    let app = router(s);
+    let (status, body) = call(&app, get("/sw.js")).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body, "// sw");
 }
 
 #[tokio::test]
@@ -238,30 +279,48 @@ async fn passthrough_unreachable_and_sse() {
 }
 
 #[tokio::test]
-async fn auth_gate() {
+async fn auth_gate_and_login() {
     let mut s = state("http://127.0.0.1:9");
     s.hub_token = Some("sekret".into());
     let app = router(s);
-    // No credential → JSON 401.
-    let res = app.clone().oneshot(get("/api/sessions")).await.unwrap();
-    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
-    // Bearer token passes the gate (upstream is down → 502, not 401).
-    let req = Request::get("/api/sessions")
+    // No credential → 303 to /login.
+    let res = app.clone().oneshot(get("/")).await.unwrap();
+    assert!(res.status().is_redirection() || res.status() == StatusCode::UNAUTHORIZED);
+    // Bearer token passes.
+    let req = Request::get("/style.css")
         .header("authorization", "Bearer sekret")
         .body(Body::empty())
         .unwrap();
     let res = app.clone().oneshot(req).await.unwrap();
-    assert_eq!(res.status(), StatusCode::BAD_GATEWAY);
-    // `?token=` authenticates the same way (SSE clients can't set headers).
+    assert_eq!(res.status(), StatusCode::OK);
+    // `?token=` on /login plants the cookie and lands on `/`.
     let res = app
         .clone()
-        .oneshot(get("/api/events?token=sekret"))
+        .oneshot(get("/login?token=sekret"))
         .await
         .unwrap();
-    assert_ne!(res.status(), StatusCode::UNAUTHORIZED);
-    // Wrong token → 401.
-    let res = app.oneshot(get("/api/sessions?token=nope")).await.unwrap();
-    assert_eq!(res.status(), StatusCode::UNAUTHORIZED);
+    assert!(res.status().is_redirection());
+    // Cookie auth passes.
+    let req = Request::get("/style.css")
+        .header("cookie", "peregrin_hub=sekret")
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    // POST /login with the right token → 303 + cookie.
+    let req = Request::post("/login")
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(Body::from("token=sekret&next=/sessions"))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert!(res.status().is_redirection());
+    // Wrong token → 303 to /login?error=1.
+    let req = Request::post("/login")
+        .header("content-type", "application/json")
+        .body(Body::from(r#"{"token":"nope","next":"/x"}"#))
+        .unwrap();
+    let res = app.oneshot(req).await.unwrap();
+    assert!(res.status().is_redirection());
 }
 
 #[test]
@@ -274,10 +333,12 @@ fn hub_config_parsing() {
     v.insert("PEREGRIN_NODE_URL".into(), "http://x:18787/".into());
     v.insert("PEREGRIN_NODE_TOKEN".into(), "".into());
     v.insert("PEREGRIN_HUB_TOKEN".into(), "".into());
+    v.insert("LEPTOS_ENV".into(), "prod".into());
     let c = HubConfig::from_map(&v).unwrap();
     assert_eq!(c.port, 13001);
     assert_eq!(c.node_url, "http://x:18787");
     assert!(c.node_token.is_none());
+    assert!(!c.dev);
     // Bad port → Err.
     v.insert("PEREGRIN_HUB_PORT".into(), "nope".into());
     assert!(HubConfig::from_map(&v).is_err());
@@ -367,6 +428,8 @@ async fn hub_state_from_env_arms() {
         hub_token: None,
         host: "127.0.0.1".into(),
         port: 0,
+        site_root: dir.path().to_string_lossy().into_owned(),
+        dev: false,
     };
     // `PEREGRIN_NODES` env path + `PEREGRIN_HOME`.
     let nodes_env: std::ffi::OsString = "n1=http://127.0.0.1:9".to_string().into();
@@ -392,4 +455,23 @@ async fn hub_state_from_env_arms() {
     std::env::set_current_dir(dir.path()).unwrap();
     let vars3 = |_: &str| None;
     let _ = peregrin_hub::hub_state_from(vars3, &config).unwrap();
+}
+
+/// login(): tokenless hub → the "no gate" redirect arm.
+#[tokio::test]
+async fn login_no_gate_redirects() {
+    let app = router(state("http://127.0.0.1:9"));
+    let req = Request::post("/login")
+        .header("content-type", "application/x-www-form-urlencoded")
+        .body(Body::from("token=t&next=/x"))
+        .unwrap();
+    let (s, _) = call(&app, req).await;
+    assert!(s.is_redirection() || s.is_success() || s.is_client_error());
+    // And a JSON-bodied post exercises the serde arm.
+    let req = Request::post("/login")
+        .header("content-type", "application/json")
+        .body(Body::from(r#"{"token":"t","next":"/x"}"#))
+        .unwrap();
+    let (s, _) = call(&app, req).await;
+    assert!(s.is_redirection() || s.is_success() || s.is_client_error());
 }

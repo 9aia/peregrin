@@ -3,13 +3,19 @@
 # integer — a duration string fails config parsing.
 slow-timeout = { period = "30s", terminate-after = 4 }
 failure-output = "final"
-# A serialized spawned-binaries suite costs real time — a first
-# failure must not cancel the rest and throw away the whole run's
-# signal.
+# A serialized browser suite costs ~10min — a first failure must not
+# cancel the rest and throw away the whole run's signal.
 fail-fast = false
 
-# Binaries that spawn real peregrin-node/driver processes — under
-# `xtask coverage` those children are instrumented (slow to boot)
+# The e2e binary cold-builds peregrin-node/peregrin-hub/sepia-driver-devin on
+# first spawn — give it real headroom (15 min) instead of the 120s
+# default kill.
+[[profile.default.overrides]]
+filter = 'binary_id(/e2e$/)'
+slow-timeout = { period = "5m", terminate-after = 3 }
+
+# Binaries that spawn real peregrin-node/peregrin-hub/driver processes —
+# under `xtask coverage` those children are instrumented (slow to boot)
 # and they hold fixed ports, so running too many at once starves them
 # into their request timeouts. Cap the group; other tests still run
 # full-width.

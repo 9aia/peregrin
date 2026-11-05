@@ -1,10 +1,13 @@
-//! peregrin-hub — the node-API gateway binary. Multi-node sync engine
-//! plus HTTP/SSE bridges to the node daemon (`PEREGRIN_NODE_URL`).
+//! peregrin-hub — the SSR host binary. Serves the `peregrin-web` Leptos UI
+//! and bridges browser traffic to the node daemon over HTTP
+//! (`PEREGRIN_NODE_URL`).
 //!
 //! Env: `PEREGRIN_HUB_HOST`/`PEREGRIN_HUB_PORT` (or `PEREGRIN_PORT`),
 //! `PEREGRIN_HUB_TOKEN` (required on non-loopback binds),
-//! `PEREGRIN_NODE_URL`, `PEREGRIN_NODE_TOKEN`, `PEREGRIN_NODES`
-//! (`id=url[@token];…` for multi-node).
+//! `PEREGRIN_NODE_URL`, `PEREGRIN_NODE_TOKEN`, `PEREGRIN_SITE_ROOT`
+//! (or `LEPTOS_SITE_ROOT`), `LEPTOS_ENV`/`PEREGRIN_HUB_ENV`.
+//! `cargo-leptos` sets the `LEPTOS_*` vars when run via
+//! `cargo leptos watch`.
 
 use peregrin_hub::{HubConfig, hub_state, router};
 
@@ -21,7 +24,12 @@ async fn main() -> std::io::Result<()> {
     let app = router(state);
 
     let listener = tokio::net::TcpListener::bind(addr).await?;
-    tracing::info!(%addr, node = %config.node_url, "peregrin-hub listening");
+    tracing::info!(
+        %addr,
+        node = %config.node_url,
+        site_root = %config.site_root,
+        "peregrin-hub listening"
+    );
     // Graceful SIGINT — mirrors the node's shutdown so an operator's
     // ^C (or a test child's stop signal) closes listeners cleanly
     // instead of dying on the signal.

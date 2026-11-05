@@ -1261,7 +1261,30 @@ fn resolve_node_tokens_seed_write_fails() {
     assert_eq!((resolved, seeded), (0, 0));
 }
 
-/* ---- lib.rs seams: hub_state_from, feed_hook --------*/
+/* ---- lib.rs seams: site_root_from, hub_state_from, feed_hook --------*/
+
+#[test]
+fn site_root_from_arms() {
+    use std::ffi::OsString;
+    let none = |_: &str| -> Option<OsString> { None };
+    // Env var wins.
+    assert_eq!(
+        peregrin_hub::site_root_from(
+            |k| (k == "PEREGRIN_SITE_ROOT").then(|| "/custom".to_string()),
+            |k| none(k),
+        ),
+        "/custom"
+    );
+    // `$PEREGRIN_HOME/site` with a pkg dir wins over the crate default.
+    let dir = tempfile::tempdir().unwrap();
+    std::fs::create_dir_all(dir.path().join("site/pkg")).unwrap();
+    let home = dir.path().to_string_lossy().into_owned();
+    let got = peregrin_hub::site_root_from(
+        |_| None,
+        |k| (k == "PEREGRIN_HOME").then(|| OsString::from(home.clone())),
+    );
+    assert!(got.ends_with("site"), "{got}");
+}
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn hub_state_from_boot_arms() {
@@ -1270,6 +1293,13 @@ async fn hub_state_from_boot_arms() {
         .try_init();
     let dir = tempfile::tempdir().unwrap();
     let home = dir.path().join("home");
+    // A site_root with a hashed wasm bundle name → `leptos_options`'s
+    // pkg-scan arm (both matching and non-matching entries).
+    let site = dir.path().join("site");
+    std::fs::create_dir_all(site.join("pkg")).unwrap();
+    std::fs::write(site.join("pkg/peregrin_web_a1b2.js"), "x").unwrap();
+    std::fs::write(site.join("pkg/other.js"), "x").unwrap();
+    std::fs::write(site.join("pkg/peregrin_web_a1b2.bg.wasm"), "x").unwrap();
     // A read-only projection.db → `purge_unregistered` fails → warn.
     let hub_home = home.join("hub");
     std::fs::create_dir_all(&hub_home).unwrap();
@@ -1281,7 +1311,10 @@ async fn hub_state_from_boot_arms() {
         std::fs::set_permissions(&db, std::fs::Permissions::from_mode(0o444)).unwrap();
     }
     let home_s = home.to_string_lossy().into_owned();
-    let cfg = peregrin_hub::HubConfig::default();
+    let cfg = peregrin_hub::HubConfig {
+        site_root: site.to_string_lossy().into_owned(),
+        ..Default::default()
+    };
     let _ = peregrin_hub::hub_state_from(
         |k| (k == "PEREGRIN_HOME").then(|| std::ffi::OsString::from(home_s.clone())),
         &cfg,

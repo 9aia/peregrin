@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # bupha gate for v2 — runs in a detached worktree of the pushed sha.
-# check = fmt + clippy -D warnings; test = spawned-bin
+# check = web markup gate + fmt + clippy -D warnings; test = spawned-bin
 # prebuild + `cargo nextest run --workspace` (plain cargo test when
 # nextest is absent).
 set -euo pipefail

@@ -1,14 +1,10 @@
 # Peregrin
 
 Event-driven orchestration for agent workflows — campaigns, node
-daemons, hub, remote transport. Rust workspace, ports-and-adapters.
-Session *mechanism* lives in
+daemons, hub, remote transport — plus the session-management app.
+Rust workspace, ports-and-adapters. Session *mechanism* lives in
 [sepia](https://github.com/9aia/sepia) (sibling checkout at `../sepia`,
 workspace path deps); peregrin owns policy + orchestration.
-
-> The web UI (`peregrin-web`/`peregrin-web-core` + the Leptos SSR host)
-> is experimental and lives on the `experimental/web` branch — `main`
-> carries the headless hub only.
 
 ## Layout
 
@@ -19,25 +15,32 @@ workspace path deps); peregrin owns policy + orchestration.
 - `peregrin-control` — arbitration (lock registry, takeover policy,
   merge/route) over the sepia session plane.
 - `peregrin-node` (daemon: sepia plane + engine + api) · `peregrin-hub`
-  (node-API gateway: sync engine + HTTP/SSE bridges + push) ·
-  `peregrin-http` (REST+SSE) · `peregrin-node-api` (node port + wire
-  DTOs) · `peregrin-sync`/`peregrin-outbox`/`peregrin-push` ·
-  `peregrin-cli` (`peregrin` binary) · `peregrin-telemetry` ·
-  `peregrin-testkit` · `xtask`.
+  (SSR host) · `peregrin-http` (REST+SSE) · `peregrin-sync`/
+  `peregrin-outbox`/`peregrin-push` · `peregrin-web`/`peregrin-web-core`
+  (Leptos app) · `peregrin-cli` (`peregrin` binary) ·
+  `peregrin-telemetry` · `peregrin-testkit` · `xtask`.
 - `libraries/` — workflow stdlib artifacts. `project/` — nested repo
   with the ADRs (the design history + port spec).
 
 ## Commands
 
 ```bash
-cargo xtask check          # fmt + clippy -D warnings
+cargo xtask check          # fmt + clippy -D warnings + web markup gate
 cargo xtask test           # suite (nextest if present)
-cargo xtask install        # release peregrin + hub → ~/.local
+cargo xtask install        # release peregrin + hub + site → ~/.local
+cargo xtask site           # wasm bundle + PWA assets → target/site
+cargo xtask dev            # cargo-leptos watch: rebuild wasm+hub on save,
+                           # auto-refresh — dev hub on :13002 (prod :13000)
+cargo xtask smoke          # headless-Chrome console probe (post-UI-change)
+cargo xtask e2e            # node+hub+browser suite (needs site first)
 cargo xtask coverage       # llvm-cov report (HTML → target/llvm-cov/html);
                            # extra args pass through, e.g. --fail-under-lines 100
 ```
 
-Git hooks in `.hooks/` (`core.hooksPath` = `.hooks`).
+UI stack: Tailwind v4 + typography — `bun install && bun run css`
+writes `crates/peregrin-web/style/main.css` (generated — edit
+`input.css`, never `main.css`). Git hooks in `.hooks/`
+(`core.hooksPath` = `.hooks`).
 
 ## Boundary with sepia
 
@@ -51,6 +54,8 @@ never link session internals into orchestration code.
 
 - Workspace lints strict (pedantic, `unwrap_used` warn, `unsafe_code`
   forbid); tests `#![allow]` liberally.
+- `peregrin-web`: `#[cfg]` gates behavior, never markup shape
+  (`view!`/`impl IntoView`) — enforced by `xtask check`.
 - Golden fixtures regenerate deliberately.
 - `.config/nextest.toml` is the test-runner config.
 

@@ -62,7 +62,7 @@ in sturn.
 
 ## House rules
 
-- `cargo xtask check` (fmt + clippy `-D warnings`) and
+- `cargo xtask check` (fmt + clippy `-D warnings` + markup gate) and
   `cargo xtask test` before pushing; `cargo xtask coverage` measures —
   new code ships at 100% line coverage.
 - Workspace lints are pedantic + `unwrap_used`/`expect_used` warn +
