@@ -16,11 +16,10 @@ jobs:
       - uses: actions/checkout@v4
         with:
           path: peregrin
-      # sepia is private — needs a read PAT stored as repo secret SEPIA_PAT.
+      # sepia is public.
       - uses: actions/checkout@v4
         with:
           repository: 9aia/sepia
-          token: ${{ secrets.SEPIA_PAT }}
           path: sepia
       # Activate the sibling path deps — without this, cargo still
       # resolves sepia over ssh:// (unauthenticated on a runner).
