@@ -16,6 +16,7 @@
 
 pub mod auth;
 pub mod credentials;
+pub mod entity_routes;
 pub mod proxy;
 pub mod push_routes;
 pub mod sync_api;
@@ -209,6 +210,22 @@ impl HubConfig {
 /// `NodeApi`.
 pub fn router(state: HubState) -> Router {
     Router::new()
+        // The merged entity surface — substrate reads hit the
+        // projection, ops ride the outbox. Must be registered before
+        // the `/api/*` passthrough so they win over single-node routing.
+        .route("/api/entities", any(entity_routes::collection))
+        .route(
+            "/api/entities/snapshot",
+            any(entity_routes::snapshot_collection),
+        )
+        .route("/api/entities/{id}", any(entity_routes::item))
+        .route("/api/entities/{id}/ops", any(entity_routes::ops))
+        .route(
+            "/api/entities/{id}/snapshot",
+            any(entity_routes::snapshot_item),
+        )
+        .route("/api/entity-index", get(entity_routes::entity_index))
+        .route("/api/pending-ops", get(entity_routes::pending_ops))
         // SSE bridges — must be registered before the `/api/*` wildcard.
         .route("/api/events", get(proxy::sse_events))
         .route("/api/sessions/{id}/stream", get(proxy::sse_session_stream))

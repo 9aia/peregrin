@@ -13,6 +13,7 @@ use axum::http::{Request, StatusCode};
 use peregrin_hub::{HubConfig, HubState, router};
 use peregrin_node_api::api::EntityApi;
 use peregrin_node_api::testing::FakeEntityApi;
+use serde_json::Value;
 use tower::ServiceExt;
 
 fn state(node_url: &str) -> HubState {
@@ -392,4 +393,138 @@ async fn hub_state_from_env_arms() {
     std::env::set_current_dir(dir.path()).unwrap();
     let vars3 = |_: &str| None;
     let _ = peregrin_hub::hub_state_from(vars3, &config).unwrap();
+}
+
+/* ---- the merged entity surface ---------------------------------------*/
+
+#[tokio::test]
+async fn entities_list_reads_the_merged_index() {
+    let app = peregrin_hub::router(state("http://127.0.0.1:1"));
+    let (status, body) = call(
+        &app,
+        Request::builder()
+            .method("GET")
+            .uri("/api/entities")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let v: Value = serde_json::from_str(&body).unwrap();
+    let entities = v["entities"].as_array().unwrap();
+    assert_eq!(entities.len(), 3);
+    assert_eq!(entities[0]["kind"], "sepia-session");
+    assert_eq!(entities[0]["indexDoc"]["title"], "fix parser");
+    // `?kind=` filters the merged index.
+    let (status, body) = call(
+        &app,
+        Request::builder()
+            .method("GET")
+            .uri("/api/entities?kind=campaign")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let v: Value = serde_json::from_str(&body).unwrap();
+    let entities = v["entities"].as_array().unwrap();
+    assert_eq!(entities.len(), 1);
+    assert_eq!(entities[0]["id"], "c1");
+}
+
+#[tokio::test]
+async fn entities_item_and_kind_filter() {
+    let app = peregrin_hub::router(state("http://127.0.0.1:1"));
+    let (status, body) = call(
+        &app,
+        Request::builder()
+            .method("GET")
+            .uri("/api/entities/s1")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let v: Value = serde_json::from_str(&body).unwrap();
+    assert_eq!(v["id"], "s1");
+    assert_eq!(v["indexDoc"]["cwd"], "/work/a");
+    let (status, _) = call(
+        &app,
+        Request::builder()
+            .method("GET")
+            .uri("/api/entities/ghost")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}
+
+#[tokio::test]
+async fn entity_ops_submit_and_delete() {
+    let app = peregrin_hub::router(state("http://127.0.0.1:1"));
+    let (status, body) = call(
+        &app,
+        Request::builder()
+            .method("POST")
+            .uri("/api/entities/s1/ops")
+            .header("content-type", "application/json")
+            .body(Body::from(
+                r#"{"kind":"sepia.prompt","payload":{"parts":"hi"}}"#,
+            ))
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::ACCEPTED, "{body}");
+    let (status, _) = call(
+        &app,
+        Request::builder()
+            .method("DELETE")
+            .uri("/api/entities/s1")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    // Missing `kind` → 400.
+    let (status, _) = call(
+        &app,
+        Request::builder()
+            .method("POST")
+            .uri("/api/entities/s1/ops")
+            .header("content-type", "application/json")
+            .body(Body::from(r#"{}"#))
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+}
+
+#[tokio::test]
+async fn entity_index_and_pending_ops() {
+    let app = peregrin_hub::router(state("http://127.0.0.1:1"));
+    let (status, body) = call(
+        &app,
+        Request::builder()
+            .method("GET")
+            .uri("/api/entity-index")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let v: Value = serde_json::from_str(&body).unwrap();
+    assert!(v["index"].is_array());
+    let (status, body) = call(
+        &app,
+        Request::builder()
+            .method("GET")
+            .uri("/api/pending-ops")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    let v: Value = serde_json::from_str(&body).unwrap();
+    assert!(v["ops"].is_array());
 }
