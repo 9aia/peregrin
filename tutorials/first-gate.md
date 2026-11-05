@@ -15,7 +15,9 @@ cancels the in-flight run.
 ## 1. Install the bundle
 
 ```bash
-peregrin install git:9aia/peregrin//libraries/ci-gate
+# `//` splits repo from subdir; `#` pins a ref (it defaults to the
+# repo's default branch — this bundle lives on `v2`).
+peregrin install git:9aia/peregrin//libraries/ci-gate#v2
 peregrin list          # name@version, resolved sha, source ref
 peregrin info ci-gate  # manifest, provenance, size
 ```
@@ -81,9 +83,11 @@ nodes:
 
 ## 3. Fill the secrets
 
-Edit `~/.config/peregrin/env` — names only ever resolve through
-environment → OS keyring (service `peregrin`) → this file, never out
-of config:
+Edit `~/.config/peregrin/env` — config and bundles carry a secret
+NAME, never its value. The campaign resolves the name from this file
+(the unit loads it via `EnvironmentFile`, so it *is* the environment
+the run sees), and a name that doesn't resolve fails the node rather
+than silently degrading:
 
 ```bash
 GITHUB_TOKEN=ghp_…                 # forge token (statuses + clones + hooks)
@@ -111,8 +115,10 @@ This reads every `github-webhook` node's `params.repos` and upserts
 a `push`-events hook at `<public_url><hook-path>` via the GitHub API
 — exact-URL match, so re-running is safe. `--url` overrides
 `config.public_url`; `--token-env` overrides which secret name holds
-the forge token. The webhook listener itself binds
-`127.0.0.1:29173` on `/hook` by default — point your tunnel or
+the forge token. The webhook listener binds
+`127.0.0.1:29173` on `/hook` by default (the `listen` param of the
+`github-webhook` node) — change it when another service already holds
+that port (a running bupha watcher does). Point your tunnel or
 reverse proxy at it.
 
 ## 6. Run the gate
@@ -152,15 +158,13 @@ peregrin destroy worktrees \
 ## Wiring status
 
 The ops verbs, the `ci-gate` bundle, and the `github-webhook`/
-`sturn-poll` ingress drivers are all landed. The last link —
-registering the ingress drivers against the node's per-run
-`Injector` and feeding `RunOptions.secrets` from the secret chain —
-is in flight: until it lands, `peregrin campaign run` on a webhook
-config reports `no driver registered for 'github-webhook'` and the
-unit's `Restart=on-failure` cycles it harmlessly. Everything through step 5 (install,
-materialize, secrets, hook registration) is real today; the
-observability verbs work on any `--history` log, including
-`campaign run --history` output.
+`sturn-poll` ingress drivers are landed **and wired**: `campaign run`
+registers the ingress drivers against the run-scoped `Injector`,
+populates `RunOptions.secrets`, and parks on the webhook channel.
+`peregrin campaign run --dry-run <config>` prints the node graph and
+the `<node>.listening` event without side effects; `validate` checks
+the wiring statically. The observability verbs work on any
+`--history` log, including `campaign run --history` output.
 
 ## Where next
 
