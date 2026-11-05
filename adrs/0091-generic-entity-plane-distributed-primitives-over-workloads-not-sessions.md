@@ -61,6 +61,13 @@ A `sepia-peregrin` adapter crate **lives in the sepia repo** (path/git dep direc
 
 Rule: **no peregrin crate may name a sepia/session type.** Violations are found by grep, not convention.
 
+### Alignment with the 9aia principles
+
+- **Ports are the architecture** — the entity surface is a port (`EntityApi` trait); sync, http, and integration impls sit behind it.
+- **The domain is a preset, not the product** — `"sepia-session"` is the first entity `kind`, not the vocabulary of the substrate.
+- **Machine-first wire** — `indexDoc`/`Op.payload` are opaque JSON to peregrin; shape belongs to the integration, never the UI.
+- **Composition over integration** — `sepia-peregrin` lives in the sepia repo and talks to peregrin over the public contract; nothing embeds.
+
 ## Consequences
 
 - The session-app plane stays in peregrin but becomes reusable: campaigns become entities too (multi-node campaign state rides the same sync/outbox/transfer machinery).
