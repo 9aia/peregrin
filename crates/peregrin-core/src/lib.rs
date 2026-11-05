@@ -7,7 +7,7 @@ mod matching;
 mod model;
 
 pub use env::{CHILD_ENV_ALLOWLIST, child_env, sanitize_env};
-pub use matching::{capture_wildcards, matches};
+pub use matching::{capture_wildcards, matches, subscribes_to};
 pub use model::{
     Campaign, Event, EventSchema, FunctionDefinition, MaxFires, ModelError, Node, PythonImport,
     TriggerMode, js_string, js_truthy,

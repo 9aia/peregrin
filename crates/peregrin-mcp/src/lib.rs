@@ -297,7 +297,11 @@ fn wiring_warnings(campaign: &Campaign) -> Vec<String> {
     let mut warnings = Vec::new();
     for node in &campaign.nodes {
         for pattern in &node.on {
-            if pattern != "*" && !emit_types.contains(pattern.as_str()) {
+            let satisfied = pattern == "*"
+                || emit_types
+                    .iter()
+                    .any(|emit| peregrin_core::subscribes_to(pattern, emit));
+            if !satisfied {
                 warnings.push(format!(
                     "node '{}' subscribes to '{pattern}' but no node emits it",
                     node.id

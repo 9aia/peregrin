@@ -59,6 +59,18 @@ pub fn matches(pattern: &str, kind: &str) -> bool {
     match_pattern(pattern, kind).is_some()
 }
 
+/// Could a subscription `pattern` be satisfied by a node declaring
+/// `emit` as an emitted type? `emit` is the *declared base* — the
+/// engine expands a templated emit (`params.emit`) with capture
+/// segments at runtime (`push.gated` → `push.gated.<repo>.<url>.<sha>`),
+/// so a pattern that extends `emit` with further segments counts too.
+/// The wiring validator (`campaign validate`, the MCP tool) uses this to
+/// avoid false "nothing emits it" warnings on routed/typed emits.
+#[must_use]
+pub fn subscribes_to(pattern: &str, emit: &str) -> bool {
+    matches(pattern, emit) || pattern.starts_with(&format!("{emit}."))
+}
+
 /// `captureWildcards` — `{"1": …, "2": …}` per wildcard plus `shard`
 /// for the first; `**` captures join back with `.`.
 #[must_use]

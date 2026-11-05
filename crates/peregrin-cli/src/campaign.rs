@@ -188,7 +188,11 @@ fn validate_report(campaign: &Campaign) -> Vec<String> {
     }
     for node in &campaign.nodes {
         for pattern in &node.on {
-            if pattern != "*" && !emit_types.contains(pattern.as_str()) {
+            let satisfied = pattern == "*"
+                || emit_types
+                    .iter()
+                    .any(|emit| peregrin_core::subscribes_to(pattern, emit));
+            if !satisfied {
                 out.push(format!(
                     "  WARNING: node '{}' subscribes to '{pattern}' but no node emits it",
                     node.id

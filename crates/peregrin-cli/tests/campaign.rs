@@ -139,6 +139,26 @@ fn validate_reports_wiring_and_warnings() {
 }
 
 #[test]
+fn validate_accepts_a_wildcard_extension_of_a_declared_emit() {
+    // `push.gated` is a templated emit's base — the engine appends the
+    // captures at runtime — so a wildcard subscriber is wired, not an
+    // orphan (the exact-match validator warned here).
+    let tmp = tempfile::tempdir().unwrap();
+    let yaml = tmp.path().join("wild.yaml");
+    std::fs::write(
+        &yaml,
+        "name: wild\nnodes:\n  - id: emitter\n    driver: shell\n    on: [start]\n    emits: [push.gated]\n  - id: sub\n    driver: shell\n    on: [push.gated.*.**.*]\n",
+    )
+    .unwrap();
+    let lines = peregrin_cli::campaign::validate(&yaml).unwrap();
+    assert!(
+        !lines.iter().any(|l| l.contains("WARNING")),
+        "lines: {lines:?}"
+    );
+    assert_eq!(lines.last().map(String::as_str), Some("OK"));
+}
+
+#[test]
 fn validate_a_libraries_campaign() {
     // Real stdlib yaml — includes/snippets expanded; every `on`
     // pattern is emitted, so no warnings.
