@@ -92,4 +92,3 @@ read it before changing engine semantics.
 - `sturn leave` on exit — drops the actor's claims.
 
 <!-- /sturn:agent-awareness -->
-
