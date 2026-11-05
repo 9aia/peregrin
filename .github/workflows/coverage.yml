@@ -25,6 +25,9 @@ jobs:
       # resolves sepia over ssh:// (unauthenticated on a runner).
       - run: cat .cargo/config.toml.example >> .cargo/config.toml
         working-directory: peregrin
+      # keyring's secret-service backend links libdbus-1.
+      - name: Install system deps (libdbus for keyring)
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config
       - uses: dtolnay/rust-toolchain@1.98.0
         with:
           components: llvm-tools
