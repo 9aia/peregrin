@@ -26,3 +26,10 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 cargo xtask check
 cargo xtask test
+
+# Optional line-coverage gate (llvm-cov — slow, so off by default).
+# Opt in per job with PEREGRIN_COVERAGE=1; scripts/coverage.sh scopes
+# the 100% check to the Rust files that differ from the diff base.
+if [ "${PEREGRIN_COVERAGE:-0}" = "1" ]; then
+  bash scripts/coverage.sh
+fi
