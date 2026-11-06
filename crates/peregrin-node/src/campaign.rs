@@ -46,15 +46,24 @@ pub enum CampaignError {
 
 /// `DefaultDriverRegistryLive` — the drivers a stock node resolves:
 /// the four ported `ac-driver-*` impls, the `github-status` egress
-/// sink, plus the `runner`/`noop` builtins. `cli`/`polling`/`python`/
-/// `stdin`/`streaming`/`webhook` and the litellm/apprise plugins are
-/// not ported yet.
+/// sink, the `delay`/`schedule` temporal drivers (ADR-0018), plus
+/// the `runner`/`noop` builtins. `cli`/`polling`/`python`/`stdin`/
+/// `streaming`/`webhook` and the litellm/apprise plugins are not
+/// ported yet.
 #[must_use]
 pub fn registry() -> Registry {
     let base = Registry::default()
         .with("agent", Arc::new(peregrin_driver_agent::AgentDriver::new()))
         .with("http", Arc::new(peregrin_driver_http::HttpDriver::new()))
         .with("human", Arc::new(peregrin_driver_human::HumanDriver::new()))
+        .with(
+            "delay",
+            Arc::new(peregrin_driver_schedule::DelayDriver::new()),
+        )
+        .with(
+            "schedule",
+            Arc::new(peregrin_driver_schedule::ScheduleDriver::new()),
+        )
         .with(
             "mock-agent",
             Arc::new(peregrin_driver_agent::MockAgentDriver::new()),

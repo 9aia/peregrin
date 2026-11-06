@@ -11,11 +11,29 @@
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 use std::rc::Rc;
+use std::time::Instant;
 
 use serde_json::{Map, Value};
 
 use peregrin_core::{Event, EventSchema, Node, PythonImport};
 use peregrin_store::StateStore;
+
+/// A deferred emission queued through
+/// [`ExecutionContext::schedule_at`] — the runner moves it onto its
+/// timer heap and publishes `event` once `at` (an [`Instant`]) is
+/// reached. This is the `delay`/`schedule` drivers' side channel
+/// (ADR-0018): the future event lives in the engine, so `invoke`
+/// returns immediately instead of blocking the run thread on a
+/// `sleep`. Deferred events hold the run open until they fire; a
+/// `workflow.cancel` abandons them, and retiring a node drops its
+/// pending emissions.
+#[derive(Debug)]
+pub struct ScheduledEmit {
+    /// The event to publish when the deadline lands.
+    pub event: Event,
+    /// Fire time — a monotonic clock instant inside the run.
+    pub at: Instant,
+}
 
 /// Driver failure — the Rust analogue of the TS `DriverError`
 /// (`{reason}`). The engine retries any failure up to `max_attempts`;
@@ -61,6 +79,10 @@ pub struct ExecutionContext {
     /// Node specs pushed via [`ExecutionContext::inject`] — the runner
     /// feeds them to `bus.inject`.
     pub injected: Rc<RefCell<Vec<Value>>>,
+    /// Deferred emissions pushed via [`ExecutionContext::schedule_at`]
+    /// — the runner moves them onto its timer heap after each node
+    /// fire.
+    pub scheduled: Rc<RefCell<Vec<ScheduledEmit>>>,
     /// Set by [`ExecutionContext::request_shutdown`].
     pub shutdown: Rc<Cell<bool>>,
     /// The node's state store — scoped when the node declares
@@ -104,6 +126,7 @@ impl Default for ExecutionContext {
             log: Rc::new(Vec::new()),
             emitted: Rc::new(RefCell::new(Vec::new())),
             injected: Rc::new(RefCell::new(Vec::new())),
+            scheduled: Rc::new(RefCell::new(Vec::new())),
             shutdown: Rc::new(Cell::new(false)),
             state: Rc::new(RefCell::new(Box::new(
                 peregrin_store::MemoryStore::default(),
@@ -133,6 +156,28 @@ impl ExecutionContext {
         self.injected
             .borrow_mut()
             .extend(node_specs.iter().cloned());
+    }
+
+    /// `ctx.schedule_at(event, at)` — defer `event` until `at` (an
+    /// [`Instant`]); the runner's timer heap publishes it then
+    /// (ADR-0018). Deferred events hold the run open until they fire
+    /// — unlike poll ticks, which only land while the run is
+    /// otherwise alive.
+    pub fn schedule_at(&self, event: Event, at: Instant) {
+        self.scheduled
+            .borrow_mut()
+            .push(ScheduledEmit { event, at });
+    }
+
+    /// `ctx.schedule_in(event, after)` — [`ExecutionContext::schedule_at`]
+    /// relative to now.
+    pub fn schedule_in(&self, event: Event, after: std::time::Duration) {
+        self.schedule_at(event, Instant::now() + after);
+    }
+
+    /// Drain queued deferred emissions (runner-internal).
+    pub fn take_scheduled(&self) -> Vec<ScheduledEmit> {
+        std::mem::take(&mut *self.scheduled.borrow_mut())
     }
 
     /// `ctx.requestShutdown()` — ask the runner to cancel the run.
@@ -200,6 +245,16 @@ pub trait Driver: Send + Sync {
     /// declares one alive at quiet instead of terminating. Worker/
     /// egress drivers leave the default.
     fn is_ingress(&self) -> bool {
+        false
+    }
+    /// Opt-in to being invoked under `options.dry_run` — the default
+    /// short-circuit emits `emits[0]` with `{dry_run: true}` without
+    /// ever calling [`Driver::invoke`]. Temporal drivers (`delay`,
+    /// `schedule` — ADR-0018) opt in so `--dry-run` reports the
+    /// computed schedule (the `until`/`next_fire` fields) rather than
+    /// a bare marker; an invoke under dry-run must stay
+    /// side-effect-free — no sleeping, no `ctx.schedule_at`.
+    fn invoke_in_dry_run(&self) -> bool {
         false
     }
     /// Run the node; emitted events feed the graph.

@@ -1400,3 +1400,100 @@ fn scope_resolution_unbound_and_unknown_stay_verbatim() {
     assert_eq!(p["raw"], json!("${bogus.ns}"));
     assert_eq!(p["foreign"], json!("${env.HOME}"));
 }
+
+// ---------------------------------------------------------------------------
+// Deferred emissions — `ctx.schedule_at`/`schedule_in` (ADR-0018)
+// ---------------------------------------------------------------------------
+
+/// Schedules `emits[0]` `params.ms` out through `ctx.schedule_in` and
+/// returns `{id}.armed` immediately — the `delay` driver's shape.
+struct DeferredDriver;
+
+impl Driver for DeferredDriver {
+    fn name(&self) -> &'static str {
+        "deferred"
+    }
+
+    fn invoke(
+        &self,
+        node: &Node,
+        _t: &[Event],
+        ctx: &ExecutionContext,
+    ) -> Result<Vec<Event>, DriverError> {
+        let emit = node
+            .emits
+            .first()
+            .cloned()
+            .unwrap_or_else(|| format!("{}.done", node.id));
+        let ms = node.params.get("ms").and_then(Value::as_u64).unwrap_or(0);
+        ctx.schedule_in(
+            Event::new(emit, json!({ "deferred": true }), &node.id),
+            std::time::Duration::from_millis(ms),
+        );
+        Ok(vec![Event::new(
+            format!("{}.armed", node.id),
+            json!({}),
+            &node.id,
+        )])
+    }
+}
+
+/// A deferred emission holds a finite run open — the runner parks on
+/// the timer heap until the deadline lands instead of exiting quiet.
+#[test]
+fn deferred_emission_holds_the_run_until_it_lands() {
+    let started = std::time::Instant::now();
+    let campaign = load(
+        "
+        name: defer
+        nodes:
+          - id: d
+            driver: deferred
+            on: [start]
+            emits: [d.done, d.armed]
+            params: {ms: 60}
+          - id: tail
+            driver: noop
+            on: [d.done]
+        ",
+    );
+    let log = Runner::new(registry().with("deferred", Arc::new(DeferredDriver)))
+        .run(&campaign, &RunOptions::default())
+        .unwrap();
+    let t = types(&log);
+    let armed = t.iter().position(|k| *k == "d.armed").unwrap();
+    let done = t.iter().position(|k| *k == "d.done").unwrap();
+    assert!(armed < done, "order: {t:?}");
+    assert!(
+        started.elapsed() >= std::time::Duration::from_millis(50),
+        "run ended before the deferred emission: {t:?}"
+    );
+    assert_eq!(t.last(), Some(&"workflow.done"));
+}
+
+/// A retired node's armed deferred emissions are dropped — the
+/// `retire_on` bound reads as "no further activity".
+#[test]
+fn retired_node_drops_its_deferred_emissions() {
+    let campaign = load(
+        "
+        name: defer-retire
+        nodes:
+          - id: d
+            driver: deferred
+            on: [start]
+            emits: [d.done, d.armed]
+            retire_on: [emit.done]
+            params: {ms: 60000}
+          - id: aborter
+            driver: emit
+            on: [d.armed]
+        ",
+    );
+    let log = Runner::new(registry().with("deferred", Arc::new(DeferredDriver)))
+        .run(&campaign, &RunOptions::default())
+        .unwrap();
+    let t = types(&log);
+    assert!(!t.contains(&"d.done"), "log: {t:?}");
+    assert_eq!(t.last(), Some(&"workflow.done"));
+}

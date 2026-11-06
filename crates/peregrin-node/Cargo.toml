@@ -20,6 +20,7 @@ peregrin-driver-human.workspace = true
 peregrin-driver-github-webhook.workspace = true
 peregrin-driver-sturn.workspace = true
 peregrin-driver-git.workspace = true
+peregrin-driver-schedule.workspace = true
 peregrin-sink-github-status.workspace = true
 peregrin-driver-shell.workspace = true
 peregrin-engine.workspace = true

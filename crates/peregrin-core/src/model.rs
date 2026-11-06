@@ -746,16 +746,41 @@ impl Node {
             && params
                 .get("mode")
                 .is_none_or(|m| m.as_str() != Some("interval"));
-        let default_fires = if is_self_trigger { 100 } else { 1 };
+        let mut on = string_list(raw.get("on"), &[]);
+        let mut emits = string_list(raw.get("emits"), &[]);
+        // `driver: schedule` recurs through a synthetic `{id}.fire`
+        // re-arm trigger — the `poll:` `<id>.tick` convention. Each
+        // landed fire re-invokes the driver, which arms the next
+        // cron occurrence (ADR-0018): `max_fires` then bounds
+        // emissions exactly (`1` = one-shot, `unlimited` — a
+        // `schedule` node's default — = recurring), and `until`/
+        // `retire_on` stop the loop through the usual machinery.
+        let is_schedule = driver == "schedule";
+        if is_schedule {
+            for internal in [format!("{id}.fire"), format!("{id}.scheduled")] {
+                if !emits.contains(&internal) {
+                    emits.push(internal);
+                }
+            }
+            let fire = format!("{id}.fire");
+            if !on.contains(&fire) {
+                on.push(fire);
+            }
+        }
+        let default_max_fires = if is_schedule {
+            MaxFires::Unlimited
+        } else {
+            MaxFires::Fires(if is_self_trigger { 100 } else { 1 })
+        };
         Self {
             id,
             driver,
             handler: coerce_to_string(raw.get("handler")),
-            on: string_list(raw.get("on"), &[]),
-            emits: string_list(raw.get("emits"), &[]),
+            on,
+            emits,
             mode: trigger_mode(raw.get("mode")),
             params: Value::Object(params),
-            max_fires: parse_max_fires(raw.get("max_fires"), MaxFires::Fires(default_fires)),
+            max_fires: parse_max_fires(raw.get("max_fires"), default_max_fires),
             until: string_list(raw.get("until"), &[]),
             retire_on: string_list(raw.get("retire_on"), &[]),
             retry: map_or_empty(raw.get("retry")),

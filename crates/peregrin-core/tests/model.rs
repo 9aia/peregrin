@@ -200,3 +200,50 @@ fn campaign_to_dict_round_trips_canonical_shape() {
     let reparsed = Campaign::from_dict(&dict).unwrap();
     assert_eq!(reparsed.nodes[0].id, "n");
 }
+
+// ---------------------------------------------------------------------------
+// driver: schedule normalization (ADR-0018)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn schedule_node_gets_fire_retrigger_and_unlimited_fires() {
+    let node = Node::from_dict(&json!({
+        "id": "daily",
+        "driver": "schedule",
+        "on": ["start"],
+        "emits": ["report.due"],
+        "params": {"cron": "0 9 * * *"},
+    }));
+    // The synthetic re-arm trigger joins `on`, and both internal
+    // kinds join `emits` (the strict-mode contract — `{id}.scheduled`
+    // is a returned event).
+    assert_eq!(node.on, vec!["start", "daily.fire"]);
+    assert_eq!(
+        node.emits,
+        vec!["report.due", "daily.fire", "daily.scheduled"]
+    );
+    assert_eq!(node.max_fires, MaxFires::Unlimited);
+}
+
+#[test]
+fn schedule_node_keeps_explicit_max_fires_and_declared_internals() {
+    let node = Node::from_dict(&json!({
+        "id": "daily",
+        "driver": "schedule",
+        "on": ["start", "daily.fire"],
+        "emits": ["report.due", "daily.fire", "daily.scheduled"],
+        "max_fires": 3,
+    }));
+    assert_eq!(node.on, vec!["start", "daily.fire"]);
+    assert_eq!(node.max_fires, MaxFires::Fires(3));
+}
+
+#[test]
+fn schedule_node_without_emits_still_self_retriggers() {
+    let node = Node::from_dict(&json!({
+        "id": "daily",
+        "driver": "schedule",
+        "on": ["start"],
+    }));
+    assert!(node.on.contains(&"daily.fire".to_string()));
+}

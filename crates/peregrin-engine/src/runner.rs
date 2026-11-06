@@ -27,7 +27,7 @@ use serde_json::{Map, Value};
 
 use peregrin_bus::{EventBus, LocalBus, NoopObserver, Observer, capture_wildcards};
 use peregrin_core::{Campaign, Event, EventSchema, FunctionDefinition, MaxFires, Node, js_string};
-use peregrin_driver::{Driver, DriverError, ExecutionContext};
+use peregrin_driver::{Driver, DriverError, ExecutionContext, ScheduledEmit};
 use peregrin_store::{DeadLetterQueue, MemoryStore, NoopDlq, StateStore};
 use peregrin_template::{
     Context, Effects, EventScope, NodeScope, Options, ParamsScope, Scope, StateScope,
@@ -61,11 +61,18 @@ struct CircuitState {
     opened_at: i64,
 }
 
-/// A scheduled `<id>.tick` re-fire (poll nodes, `interval > 0`).
+/// A scheduled future event — a `<id>.tick` re-fire (poll nodes,
+/// `interval > 0`) or a deferred emission a driver queued through
+/// `ctx.schedule_at` (`delay`/`schedule`, ADR-0018). `holds_run`
+/// marks the difference: a deferred emission keeps a quiet run alive
+/// until it fires (the delay *is* the work), while a poll tick only
+/// lands if the run is otherwise still alive (the TS `Effect.sleep`
+/// race — an emptied loop exits, tick or no tick).
 struct ScheduledTick {
     deadline: Instant,
     seq: u64,
     event: Event,
+    holds_run: bool,
 }
 
 impl PartialEq for ScheduledTick {
@@ -96,6 +103,7 @@ struct Shared {
     secrets: Rc<BTreeMap<String, String>>,
     emitted: Rc<RefCell<Vec<Event>>>,
     injected: Rc<RefCell<Vec<Value>>>,
+    scheduled: Rc<RefCell<Vec<ScheduledEmit>>>,
     shutdown: Rc<Cell<bool>>,
 }
 
@@ -105,6 +113,7 @@ impl Shared {
             secrets: Rc::new(secrets),
             emitted: Rc::new(RefCell::new(Vec::new())),
             injected: Rc::new(RefCell::new(Vec::new())),
+            scheduled: Rc::new(RefCell::new(Vec::new())),
             shutdown: Rc::new(Cell::new(false)),
         }
     }
@@ -115,6 +124,10 @@ impl Shared {
 
     fn take_injected(&self) -> Vec<Value> {
         std::mem::take(&mut *self.injected.borrow_mut())
+    }
+
+    fn take_scheduled(&self) -> Vec<ScheduledEmit> {
+        std::mem::take(&mut *self.scheduled.borrow_mut())
     }
 }
 
@@ -349,7 +362,35 @@ impl Runner {
             self.drain_ingress(&mut pending);
             if (pending.is_empty() && ready.is_empty()) || cancelled {
                 if !serve || cancelled {
-                    break;
+                    // Deferred emissions (`ctx.schedule_at` — `delay`,
+                    // `schedule`) hold a finite run: park until the
+                    // next timer deadline instead of exiting. Poll
+                    // ticks don't hold — `holds_run` is only set on
+                    // driver-scheduled entries. A cancelled run drops
+                    // armed timers like the TS's sleep race.
+                    if cancelled || !self.timers.iter().any(|tick| tick.holds_run) {
+                        break;
+                    }
+                    let timeout = self.timers.peek().map_or(Duration::ZERO, |tick| {
+                        tick.deadline.saturating_duration_since(Instant::now())
+                    });
+                    match self.ingress.as_ref().map_or_else(
+                        || {
+                            // No ingress channel — the heap itself is
+                            // the wake source; sleep to the deadline.
+                            std::thread::sleep(timeout);
+                            WaitOutcome::Timeout
+                        },
+                        |ingress| ingress.wait(Some(timeout), &mut pending),
+                    ) {
+                        WaitOutcome::Event | WaitOutcome::Timeout => continue,
+                        // Producers are gone but armed timers still
+                        // hold the run — sleep out the deadline.
+                        WaitOutcome::Disconnected => {
+                            std::thread::sleep(timeout);
+                            continue;
+                        }
+                    }
                 }
                 let timeout = self
                     .timers
@@ -374,6 +415,19 @@ impl Runner {
                     let injected = shared.take_injected();
                     if !injected.is_empty() {
                         self.bus.inject(&injected);
+                    }
+                    // `ctx.schedule_at` deferred emissions — arm them
+                    // on the timer heap; `drain_timers` moves them to
+                    // `pending` when due, and they hold the run open
+                    // until then.
+                    for scheduled in shared.take_scheduled() {
+                        self.timer_seq += 1;
+                        self.timers.push(ScheduledTick {
+                            deadline: scheduled.at,
+                            seq: self.timer_seq,
+                            event: scheduled.event,
+                            holds_run: true,
+                        });
                     }
                     let has_failure = emitted.iter().any(|e| {
                         matches!(
@@ -424,6 +478,14 @@ impl Runner {
                 let result = self.bus.publish(&event);
                 pending.extend(result.side_events);
                 ready.extend(result.ready);
+                // A retired node abandons its armed deferred
+                // emissions — `retire_on` reads as "no further
+                // activity", so a `delay`/`schedule` timer still in
+                // flight is dropped rather than delivered.
+                if !result.retired.is_empty() {
+                    self.timers
+                        .retain(|tick| !result.retired.contains(&tick.event.source));
+                }
             }
         }
 
@@ -513,6 +575,7 @@ impl Runner {
             log: spec.log.clone(),
             emitted: spec.shared.emitted.clone(),
             injected: spec.shared.injected.clone(),
+            scheduled: spec.shared.scheduled.clone(),
             shutdown: spec.shared.shutdown.clone(),
             state: spec.state.clone(),
             dry_run: spec.dry_run,
@@ -798,6 +861,7 @@ impl Runner {
                         + Duration::try_from_secs_f64(interval).unwrap_or_default(),
                     seq: self.timer_seq,
                     event: Event::new(tick, serde_json::json!({ "poll": true }), &node.id),
+                    holds_run: false,
                 });
             }
         }
@@ -932,6 +996,9 @@ impl Runner {
     }
 
     /// `runDriver` — dry-run short-circuit, else `driver.invoke`.
+    /// Drivers opted into [`Driver::invoke_in_dry_run`] (the temporal
+    /// drivers, ADR-0018) are invoked under dry-run so they can report
+    /// their computed schedule; they honor `ctx.dry_run` themselves.
     fn run_driver(
         node: &Node,
         driver: &Arc<dyn Driver>,
@@ -939,7 +1006,7 @@ impl Runner {
         ctx: &ExecutionContext,
         dry_run: bool,
     ) -> Result<Vec<Event>, DriverError> {
-        if dry_run {
+        if dry_run && !driver.invoke_in_dry_run() {
             let kind = node
                 .emits
                 .first()
