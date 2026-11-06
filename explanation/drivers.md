@@ -53,6 +53,8 @@ A stock node resolves (`peregrin_node::campaign::registry`):
 | `human` | action | `params.prompt` to stderr, line from stdin; `params.expect`/`emit_ok`/`emit_reject`. |
 | `git` | action | Materializes a detached worktree at `params.sha` from `params.url`, runs an `inner` driver inside it, cleans up. `token_env`/`ssh_env` bind credential *names*. |
 | `github-status` | sink | `POST /repos/{repo}/statuses/{sha}` — the commit-status verdict; `state` auto-maps off the trigger's `.done`/`.failed` suffix. |
+| `delay` | temporal | Arms `emits[0]` for `now + params.duration` (`5m`, `1h30m`, `500ms`) on the engine's timer heap — the wait doesn't block the run (ADR-0018). Returns `{id}.delayed`; the landed emit carries `{duration, until}`. |
+| `schedule` | temporal | Emits `emits[0]` at each `params.cron` occurrence in `params.timezone` (IANA, default UTC; 5- or 6-field cron). Recurs through a synthetic `{id}.fire` re-arm; `max_fires` bounds emissions (`1` = one-shot, `unlimited` = default). |
 | `noop` | builtin | Emits `node.done`; tests and scaffolding. |
 | `runner` | builtin | Injects node specs from the trigger's `payload.nodes` — the self-modifying primitive. |
 
@@ -71,12 +73,15 @@ record), `state` (scoped when `state.key` is set), `capabilities`,
 `fires`, `idempotency_key`, `traceparent`, `dry_run`, and the strict
 `missing_secrets` audit ledger.
 
-Three side channels shape the graph:
+Four side channels shape the graph:
 
 - `ctx.emit(event)` — queue extra events; they publish after the
   node's own returned events.
 - `ctx.inject(specs)` — add nodes mid-run (the `runner` driver reads
   them from the trigger payload).
+- `ctx.schedule_at(event, at)` / `schedule_in(event, dur)` — defer an
+  emission onto the runner's timer heap; the event publishes when the
+  deadline lands and holds the run open until then (ADR-0018).
 - `ctx.request_shutdown()` — cancel the run after the current batch.
 
 Drivers also template-resolve their own params a second time inside
