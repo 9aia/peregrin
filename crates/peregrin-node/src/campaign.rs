@@ -83,11 +83,21 @@ pub fn registry() -> Registry {
     let inner = base.clone();
     // `git` resolves inner drivers against the base set — an inner
     // `driver: git` is deliberately not supported.
-    base.with(
+    let with_git = base.with(
         "git",
         Arc::new(peregrin_driver_git::GitDriver::new(move |name: &str| {
             inner.resolve(name).ok()
         })),
+    );
+    // `council` voters resolve against the base set + `git` (an inner
+    // worktree vote is legitimate); `driver: council` members are not
+    // resolvable — nested councils are deliberately not supported.
+    let council_lookup = with_git.clone();
+    with_git.with(
+        "council",
+        Arc::new(peregrin_driver_council::CouncilDriver::new(
+            move |name: &str| council_lookup.resolve(name).ok(),
+        )),
     )
 }
 

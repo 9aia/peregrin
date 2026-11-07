@@ -45,7 +45,6 @@
 //! bearer <v>` on clone/fetch — argv-scoped, never persisted into
 //! the cached clone's config.
 
-use std::collections::HashMap;
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -54,6 +53,10 @@ use serde_json::{Map, Value};
 
 use peregrin_core::{Event, EventSchema, Node, js_truthy};
 use peregrin_driver::{Driver, DriverError, ExecutionContext};
+// `DriverLookup` moved to the port crate when `council` became the
+// second consumer — re-exported so `peregrin_driver_git::DriverLookup`
+// keeps resolving.
+pub use peregrin_driver::DriverLookup;
 use peregrin_git::{Git, SystemGit, Worktrees, expand_path};
 use peregrin_template::{
     Context, Effects, EventScope, NodeScope, Options, ParamsScope, Scope, SystemEffects,
@@ -63,33 +66,6 @@ use peregrin_template::{
 /// Default `params.base` — worktrees and the clone cache live under
 /// it; `~` expands per the `peregrin-git` convention.
 const DEFAULT_BASE: &str = "~/.local/share/peregrin/worktrees";
-
-/// How the git driver resolves an inner driver name — the runner's
-/// `Registry` at the composition level
-/// (`GitDriver::new(|name| registry.resolve(name).ok())`), a
-/// [`HashMap`] or closure in tests.
-pub trait DriverLookup: Send + Sync {
-    /// The driver registered under `name`, if any.
-    fn driver(&self, name: &str) -> Option<Arc<dyn Driver>>;
-}
-
-impl<F> DriverLookup for F
-where
-    F: Fn(&str) -> Option<Arc<dyn Driver>> + Send + Sync,
-{
-    fn driver(&self, name: &str) -> Option<Arc<dyn Driver>> {
-        self(name)
-    }
-}
-
-impl<S> DriverLookup for HashMap<String, Arc<dyn Driver>, S>
-where
-    S: std::hash::BuildHasher + Send + Sync,
-{
-    fn driver(&self, name: &str) -> Option<Arc<dyn Driver>> {
-        self.get(name).cloned()
-    }
-}
 
 /// A stable, filesystem-safe cache key for a clone source —
 /// `<slug>-<fnv8>`, where the slug keeps the source readable in

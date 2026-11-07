@@ -2626,6 +2626,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-driver-council"
+version = "0.0.0"
+dependencies = [
+ "peregrin-core",
+ "peregrin-driver",
+ "peregrin-template",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "peregrin-driver-git"
 version = "0.0.0"
 dependencies = [
@@ -2884,6 +2895,7 @@ dependencies = [
  "peregrin-dotenv",
  "peregrin-driver",
  "peregrin-driver-agent",
+ "peregrin-driver-council",
  "peregrin-driver-git",
  "peregrin-driver-github-webhook",
  "peregrin-driver-http",

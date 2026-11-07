@@ -9,9 +9,10 @@
 //! `ureq`) fit; async impls need their own runtime.
 
 use std::cell::{Cell, RefCell};
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::Arc;
 use std::time::Instant;
 
 use serde_json::{Map, Value};
@@ -366,6 +367,35 @@ pub struct SecretSource {
     /// undeclared name). `false` → always consulted (the env file,
     /// historically the always-available leg).
     pub declared_only: bool,
+}
+
+/// How a driver resolves another driver by name to run it as a
+/// sub-effect inside its own `invoke` — `git`'s `params.inner`,
+/// `council`'s voters. Bound at the composition level (the runner's
+/// `Registry` — `GitDriver::new(|name| registry.resolve(name).ok())`);
+/// a [`HashMap`] or closure serves tests. Exact-name match only —
+/// `Registry`-style `:`-prefix resolution is the closure's job.
+pub trait DriverLookup: Send + Sync {
+    /// The driver registered under `name`, if any.
+    fn driver(&self, name: &str) -> Option<Arc<dyn Driver>>;
+}
+
+impl<F> DriverLookup for F
+where
+    F: Fn(&str) -> Option<Arc<dyn Driver>> + Send + Sync,
+{
+    fn driver(&self, name: &str) -> Option<Arc<dyn Driver>> {
+        self(name)
+    }
+}
+
+impl<S> DriverLookup for HashMap<String, Arc<dyn Driver>, S>
+where
+    S: std::hash::BuildHasher + Send + Sync,
+{
+    fn driver(&self, name: &str) -> Option<Arc<dyn Driver>> {
+        self.get(name).cloned()
+    }
 }
 
 /// The driver port — invoked by the engine when a node fires

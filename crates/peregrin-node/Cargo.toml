@@ -18,6 +18,7 @@ peregrin-dotenv.workspace = true
 peregrin-keyring.workspace = true
 peregrin-secret.workspace = true
 peregrin-driver-agent.workspace = true
+peregrin-driver-council.workspace = true
 peregrin-driver-http.workspace = true
 peregrin-driver-human.workspace = true
 peregrin-driver-github-webhook.workspace = true
