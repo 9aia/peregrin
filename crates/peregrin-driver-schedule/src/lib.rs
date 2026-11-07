@@ -31,6 +31,17 @@
 //! the usual trigger machinery: each trigger arms one delay, so
 //! `max_fires: N` caps the armed delays.
 //!
+//! `params.passthrough: true` turns the deferred emission into a
+//! `forward:`-style relay: `emits[0]` carries the trigger's payload
+//! *verbatim* instead of the delay meta — one deferred emission per
+//! trigger, the same per-trigger re-emission `forward:` performs at
+//! invoke time (a `mode: all` fan-in relays every collected
+//! trigger). The meta isn't lost — it stays on the immediate
+//! `{id}.delayed` readiness event. This is the retry-backoff shape:
+//! the deferred event IS the re-emitted request, so no `forward:`
+//! wiring is needed (a `forward:` would re-emit at invoke time and
+//! defeat the wait).
+//!
 //! ## `driver: schedule`
 //!
 //! ```yaml
@@ -287,7 +298,10 @@ impl Driver for DelayDriver {
     }
 
     fn input(&self) -> Option<EventSchema> {
-        Some(schema(&[("duration", "string")]))
+        Some(schema(&[
+            ("duration", "string"),
+            ("passthrough", "boolean?"),
+        ]))
     }
 
     fn invoke_in_dry_run(&self) -> bool {
@@ -309,6 +323,10 @@ impl Driver for DelayDriver {
         };
         let duration = duration_param(raw)
             .map_err(|e| DriverError::new(format!("delay node '{}': {e}", node.id)))?;
+        let passthrough = params
+            .get("passthrough")
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
         let until = Utc::now() + chrono::Duration::from_std(duration).unwrap_or_default();
         let until = rfc3339(&until);
         let emit = emit_kind(node);
@@ -320,9 +338,25 @@ impl Driver for DelayDriver {
         if ctx.dry_run {
             let mut payload = meta.clone();
             payload["dry_run"] = Value::Bool(true);
+            if passthrough {
+                payload["passthrough"] = Value::Bool(true);
+            }
             return Ok(vec![Event::new(emit, payload, &node.id)]);
         }
-        ctx.schedule_in(Event::new(emit, meta, &node.id), duration);
+        if passthrough && !triggers.is_empty() {
+            // `forward:`-style relay: one deferred `emits[0]` per
+            // trigger, each carrying that trigger's payload verbatim
+            // — the delay meta stays on the `{id}.delayed` readiness
+            // event below.
+            for trigger in triggers {
+                ctx.schedule_in(
+                    Event::new(emit.clone(), trigger.payload.clone(), &node.id),
+                    duration,
+                );
+            }
+        } else {
+            ctx.schedule_in(Event::new(emit, meta, &node.id), duration);
+        }
         Ok(vec![Event::new(
             format!("{}.delayed", node.id),
             serde_json::json!({

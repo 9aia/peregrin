@@ -1,7 +1,10 @@
 # retry/delay.node.yml — optional backoff between a failure and the
 # re-emitted request. Wire the forwarder's `forward:` at a wait event
 # (`<base>.retry-wait`) instead of `<base>.request` and put this node in
-# between: it sleeps, then forwards the failure payload as the request.
+# between: it waits, then re-emits the failure payload as the request.
+# The deferred emission IS the request — `emits:` names
+# `<base>.request`, no `forward:` (a forward re-emits at invoke time
+# and would defeat the wait).
 #
 #   - include: ../retry/retry.node.yml
 #     id: mytask.retry
@@ -13,33 +16,39 @@
 #   - include: ../retry/delay.node.yml
 #     id: mytask.retry-delay
 #     on: [mytask.retry-wait]
-#     forward: [mytask.request]
+#     emits: [mytask.request]          # the deferred event IS the request
 #     until: [mytask.done, mytask.dead]
+#     retire_on: [mytask.done, mytask.dead]  # optional: abandons an
+#                                          # armed retry on success
 #     max_fires: unlimited
 #
-# The delay is a synchronous `sleep` inside the run — the sequential
-# runner pauses the pending queue for the duration, which is exactly
-# the back-pressure a retry backoff wants. `config.retry.delay`
-# (seconds) drives the default cmd; override `params.cmd` for
-# exponential schedules or external delay services.
+# The wait is a `driver: delay` deferral (ADR-0018): `invoke` arms the
+# deadline and returns immediately, so the run keeps processing during
+# the backoff — the timer heap holds the run open until `emits[0]`
+# fires. `params.passthrough: true` makes the deferred event carry the
+# trigger's payload verbatim (the `forward:` idiom, at the deadline),
+# so an `attempt` field rides back into the request untouched. The
+# `{id}.delayed` readiness event marks the arm moment.
 #
-# Note: the `poll:` tick mechanism is *not* used — a poll tick only
-# re-fires the node that emitted it and cannot defer a forwarded event
-# while preserving its payload. Sleep-in-shell is the honest delay.
+# `until:` alone only blocks future triggers; declare `retire_on:` to
+# drop an armed retry when `<base>.done`/`<base>.dead` lands first —
+# deferred emissions from a retired node are dropped.
+#
+# `config.retry.delay` (seconds) drives `params.duration`; the driver
+# reads `<n><unit>` strings (`500ms`, `30s`, `5m`; segments compose) and
+# bare numbers as seconds — override `params.duration` for exponential
+# schedules.
 annotations:
   title: Retry backoff delay
-  description: Sleeps for the configured backoff, then forwards the failure payload as a fresh request.
+  description: Waits the configured backoff without blocking, then re-emits the failure payload as a fresh request.
   author: peregrin
   tags: [retry, resilience, backoff, preset]
   since: "0.1.0"
 
 id: retry.delay
-driver: shell
+driver: delay
 max_fires: unlimited
 emits: [retry.delayed]
 params:
-  cmd: "sleep ${config.retry.delay:-0}"
-  timeout: 600
-  emit:
-    "0": retry.delayed
-    default: retry.delayed
+  duration: "${config.retry.delay:-0}s"
+  passthrough: true

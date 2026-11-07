@@ -293,20 +293,31 @@ fn retry_backoff_delay_routes_through_wait() {
             until: [task.done, task.dead]
             emits: [retry.scheduled, task.retry-wait]
             max_fires: 2
+          # The deferred emission IS the re-emitted request — emits
+          # names task.request, no forward (a forward re-emits at
+          # invoke time and would defeat the wait).
           - include: "{lib}/retry/delay.node.yml"
             id: retry.delay
             on: [task.retry-wait]
-            forward: [task.request]
             until: [task.done, task.dead]
-            emits: [retry.delayed, task.request]
+            emits: [task.request, retry.delay.delayed]
             max_fires: unlimited
         "#,
         &calls,
     );
     let t = kinds(&log);
     assert_eq!(count(&log, "task.retry-wait"), 1, "trace: {t:?}");
-    assert_eq!(count(&log, "retry.delayed"), 1, "trace: {t:?}");
+    // `{id}.delayed` is the arm-readiness marker the delay driver
+    // emits immediately; the deferred task.request lands after it.
+    assert_eq!(count(&log, "retry.delay.delayed"), 1, "trace: {t:?}");
     assert_eq!(count(&log, "task.request"), 2);
+    // Passthrough: the failure payload rides the deferred request
+    // verbatim — attempt re-enters untouched.
+    let requests: Vec<&Event> = log.iter().filter(|e| e.kind == "task.request").collect();
+    assert_eq!(requests[1].payload["attempt"], 1, "trace: {t:?}");
+    let delayed = t.iter().position(|k| *k == "retry.delay.delayed").unwrap();
+    let retried = t.iter().rposition(|k| *k == "task.request").unwrap();
+    assert!(delayed < retried, "trace: {t:?}");
     assert!(t.contains(&"task.done"), "trace: {t:?}");
     assert!(!t.contains(&"task.dead"), "trace: {t:?}");
 }

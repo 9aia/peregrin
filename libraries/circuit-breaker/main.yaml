@@ -11,11 +11,11 @@
 #   <base>.failed      failure — counted toward the trip
 #   <base>.done        success — feeds the recovery probe
 #   circuit.open       emitted when <base>.failed reaches the threshold
-#   circuit.half-open  emitted after the cooldown sleep
+#   circuit.half-open  emitted after the cooldown wait
 #   circuit.closed     emitted when a <base>.done exists post-half-open
 #
 # Lifecycle: failures accumulate → circuit.open → dispatch stops
-# forwarding requests + cooldown sleeps → circuit.half-open → probe
+# forwarding requests + cooldown waits → circuit.half-open → probe
 # re-issues one dispatch → on success circuit.closed.
 #
 # One cycle per run: `fan_in` counts log events cumulatively and
@@ -64,7 +64,7 @@ nodes:
     on: [circuit.open]
     emits: [circuit.armed]
 
-  # --- cooldown: sleep reset_after, emit circuit.half-open ---------
+  # --- cooldown: wait reset_after, emit circuit.half-open ----------
   - include: ./cooldown.node.yml
     id: circuit-breaker.cooldown
     on: [circuit.open]

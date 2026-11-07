@@ -41,7 +41,8 @@ fn ctx() -> ExecutionContext {
     }
 }
 
-/// `driver: emit` — emits `params.kind` verbatim; test scaffolding.
+/// `driver: emit` — emits `params.kind` verbatim with `params.payload`
+/// (default `{}`); test scaffolding.
 struct EmitDriver;
 
 impl Driver for EmitDriver {
@@ -60,7 +61,10 @@ impl Driver for EmitDriver {
                 .get("kind")
                 .and_then(Value::as_str)
                 .unwrap_or("emit.done"),
-            json!({}),
+            node.params
+                .get("payload")
+                .cloned()
+                .unwrap_or_else(|| json!({})),
             &node.id,
         )])
     }
@@ -227,6 +231,103 @@ fn delay_dry_run_reports_until_without_scheduling() {
 }
 
 // ---------------------------------------------------------------------------
+// delay — passthrough
+// ---------------------------------------------------------------------------
+
+#[test]
+fn delay_passthrough_defers_trigger_payload_verbatim() {
+    let n = node(
+        "backoff",
+        "delay",
+        &["task.request"],
+        json!({"duration": "50ms", "passthrough": true}),
+    );
+    let ctx = ctx();
+    let trigger = Event::new(
+        "task.retry-wait",
+        json!({"attempt": 1, "error": "boom"}),
+        "retry.loop",
+    );
+    let out = DelayDriver::new().invoke(&n, &[trigger], &ctx).unwrap();
+    // The readiness event still carries the delay meta — it isn't
+    // lost, just not the deferred payload.
+    assert_eq!(out.len(), 1);
+    assert_eq!(out[0].kind, "backoff.delayed");
+    assert_eq!(out[0].payload["duration_ms"], 50);
+
+    let scheduled = ctx.take_scheduled();
+    assert_eq!(scheduled.len(), 1);
+    assert_eq!(scheduled[0].event.kind, "task.request");
+    assert_eq!(scheduled[0].event.source, "backoff");
+    assert_eq!(
+        scheduled[0].event.payload,
+        json!({"attempt": 1, "error": "boom"}),
+        "deferred payload must be the trigger's verbatim"
+    );
+    assert!(scheduled[0].at > Instant::now());
+}
+
+#[test]
+fn delay_passthrough_relays_every_trigger_like_forward() {
+    // `mode: all` fan-in: `forward:` re-emits per trigger, so
+    // passthrough defers one emit per trigger, payloads in order.
+    let n = node(
+        "backoff",
+        "delay",
+        &["task.request"],
+        json!({"duration": "10ms", "passthrough": true}),
+    );
+    let ctx = ctx();
+    let triggers = vec![
+        Event::new("a", json!({"n": 1}), "src"),
+        Event::new("b", json!({"n": 2}), "src"),
+    ];
+    DelayDriver::new().invoke(&n, &triggers, &ctx).unwrap();
+    let scheduled = ctx.take_scheduled();
+    assert_eq!(scheduled.len(), 2);
+    assert_eq!(scheduled[0].event.payload, json!({"n": 1}));
+    assert_eq!(scheduled[1].event.payload, json!({"n": 2}));
+    assert!(scheduled.iter().all(|s| s.event.kind == "task.request"));
+}
+
+#[test]
+fn delay_passthrough_without_triggers_falls_back_to_meta() {
+    // A bare driver invoke has no payload to relay — the meta
+    // payload keeps the arm observable.
+    let n = node(
+        "backoff",
+        "delay",
+        &["task.request"],
+        json!({"duration": "10ms", "passthrough": true}),
+    );
+    let ctx = ctx();
+    DelayDriver::new().invoke(&n, &[], &ctx).unwrap();
+    let scheduled = ctx.take_scheduled();
+    assert_eq!(scheduled.len(), 1);
+    assert_eq!(scheduled[0].event.payload["duration_ms"], 10);
+}
+
+#[test]
+fn delay_passthrough_dry_run_marks_the_relay() {
+    let n = node(
+        "backoff",
+        "delay",
+        &["task.request"],
+        json!({"duration": "5m", "passthrough": true}),
+    );
+    let ctx = ExecutionContext {
+        dry_run: true,
+        ..ExecutionContext::default()
+    };
+    let trigger = Event::new("task.retry-wait", json!({"attempt": 1}), "src");
+    let out = DelayDriver::new().invoke(&n, &[trigger], &ctx).unwrap();
+    assert_eq!(out[0].kind, "task.request");
+    assert_eq!(out[0].payload["dry_run"], true);
+    assert_eq!(out[0].payload["passthrough"], true);
+    assert!(ctx.take_scheduled().is_empty());
+}
+
+// ---------------------------------------------------------------------------
 // schedule — driver level
 // ---------------------------------------------------------------------------
 
@@ -363,6 +464,49 @@ fn delay_emits_after_duration_without_ingress() {
     assert_eq!(emit.payload["duration"], "50ms");
     assert_eq!(emit.payload["duration_ms"], 50);
     assert!(emit.payload["until"].as_str().unwrap().contains('T'));
+}
+
+#[test]
+fn delay_passthrough_reemits_the_trigger_payload_after_the_wait() {
+    // The retry-backoff wiring end to end: the deferred emits[0] IS
+    // the re-emitted request — the trigger's payload rides through
+    // verbatim, and the run keeps moving during the wait.
+    let started = Instant::now();
+    let log = run("
+        nodes:
+          - id: producer
+            driver: emit
+            on: [start]
+            params:
+              kind: task.retry-wait
+              payload: {attempt: 1, error: boom}
+          - id: backoff
+            driver: delay
+            on: [task.retry-wait]
+            emits: [task.request]
+            params: {duration: 50ms, passthrough: true}
+          - id: tail
+            driver: noop
+            on: [task.request]
+        ");
+    let kinds = kinds(&log);
+    let request = log.iter().find(|e| e.kind == "task.request").unwrap();
+    assert_eq!(
+        request.payload,
+        json!({"attempt": 1, "error": "boom"}),
+        "log: {kinds:?}"
+    );
+    assert_eq!(request.source, "backoff");
+    // Deferred, not immediate: readiness lands first, the request
+    // arrives at the deadline.
+    let delayed = kinds.iter().position(|k| *k == "backoff.delayed").unwrap();
+    let request_at = kinds.iter().position(|k| *k == "task.request").unwrap();
+    assert!(delayed < request_at, "order: {kinds:?}");
+    assert!(
+        started.elapsed() >= Duration::from_millis(40),
+        "request arrived before the delay elapsed: {kinds:?}"
+    );
+    assert_eq!(kinds.last(), Some(&"workflow.done"));
 }
 
 #[test]

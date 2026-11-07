@@ -25,7 +25,8 @@
 # `fan_in:` replaces the default wiring. For per-key control include
 # the `.node.yml` presets directly instead. For backoff, point
 # `retry.loop`'s `forward:` at `<base>.retry-wait` and add
-# `delay.node.yml` between wait and request.
+# `delay.node.yml` between wait and request — its `emits:` names
+# `<base>.request` (the deferred event IS the re-emitted request).
 #
 # Budget invariant: `retry.loop.max_fires` = `config.retry.max_attempts`
 # − 1. `max_fires` can't read config, so keep the two in sync by hand —
@@ -48,7 +49,7 @@ annotations:
 config:
   retry:
     max_attempts: 3
-    # Seconds the optional delay.node.yml sleeps between failure and
+    # Seconds the optional delay.node.yml waits between failure and
     # re-emission; unused in this direct-forward wiring.
     delay: 0
 

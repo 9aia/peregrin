@@ -10,7 +10,7 @@
 #       reset_after: 120
 #
 # `threshold` feeds `fan_in.count_from: circuit.threshold` in
-# `trip.node.yml`; `reset_after` feeds `params.cmd` in
+# `trip.node.yml`; `reset_after` feeds `params.duration` in
 # `cooldown.node.yml`.
 
 fields:

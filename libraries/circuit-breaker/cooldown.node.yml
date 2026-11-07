@@ -1,32 +1,36 @@
-# circuit-breaker/cooldown.node.yml — sleeps `reset_after` seconds on
-# `circuit.open`, then emits `circuit.half-open`. The sleep is
-# synchronous: the sequential runner pauses the pending queue for the
-# cooldown window, so queued requests can't reach gated work until the
-# flag has armed. `disarm.node.yml` clears the flag on `half-open`.
+# circuit-breaker/cooldown.node.yml — waits `reset_after` seconds on
+# `circuit.open`, then emits `circuit.half-open`. The wait is a
+# `driver: delay` deferral (ADR-0018): `invoke` arms the deadline and
+# returns immediately, so the run keeps processing during the cooldown
+# while the timer heap holds the run open until `emits[0]` fires.
+# `disarm.node.yml` clears the flag on `half-open`.
 #
 #   - include: ../circuit-breaker/cooldown.node.yml
 #     id: mytask.circuit-cooldown
 #     on: [mytask.circuit.open]
-#     params:
-#       cmd: "sleep ${config.circuit.reset_after:-60}"
+#     emits: [mytask.circuit.half-open]
 #
-# Note: `poll:` ticks can't express this — a tick only re-fires its own
-# node and can't gate other subscribers. A blocking sleep is the honest
-# cooldown; external timers fit as a custom ingress driver instead.
+# Gating never depended on the old blocking `sleep`: requests are held
+# out by `dispatch.node.yml`'s `until: [circuit.open]` (the dispatcher
+# stops forwarding the moment the circuit trips) and by
+# `gate.node.yml`'s `.circuit.open` flag file, which `arm.node.yml`
+# writes on `circuit.open` — independent of the cooldown timer. A
+# queued request landing mid-cooldown still dies on the dispatcher or
+# skips on the flag.
+#
+# `config.circuit.reset_after` (seconds) feeds `params.duration` — the
+# driver reads `<n><unit>` strings (`500ms`, `30s`, `5m`; segments
+# compose) and bare numbers as seconds.
 annotations:
   title: Circuit cooldown
-  description: Sleeps reset_after seconds after circuit.open, then emits circuit.half-open.
+  description: Waits reset_after seconds after circuit.open without blocking, then emits circuit.half-open.
   author: peregrin
   tags: [circuit-breaker, resilience, preset]
   since: "0.1.0"
 
 id: circuit-breaker.cooldown
-driver: shell
+driver: delay
 max_fires: unlimited
 emits: [circuit.half-open]
 params:
-  cmd: "sleep ${config.circuit.reset_after:-60}"
-  timeout: 600
-  emit:
-    "0": circuit.half-open
-    default: circuit.half-open
+  duration: "${config.circuit.reset_after:-60}s"
