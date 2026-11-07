@@ -13,7 +13,8 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use peregrin_cli::node_ops::{NodeArgs, TargetArgs};
 use peregrin_cli::{
-    CliError, PEREGRIN_VERSION, api, campaign, distribution, import, node_ops, ops, pair, service,
+    CliError, PEREGRIN_VERSION, api, campaign, distribution, import, node_ops, ops, pair,
+    provision, service,
 };
 
 fn default_peregrin_home() -> PathBuf {
@@ -853,6 +854,13 @@ enum Commands {
     /// Teardown verbs (hooks, units, worktrees)
     #[command(subcommand)]
     Destroy(DestroyCommands),
+    /// tamias content-type provider — tamias shells
+    /// `peregrin provision {install,deploy,uninstall}`. Hidden.
+    #[command(hide = true)]
+    Provision {
+        #[command(subcommand)]
+        cmd: ProvisionCommands,
+    },
     /// Recent runs — per-push records read back from the durable
     /// JSONL history (newest first)
     Runs {
@@ -1322,6 +1330,7 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
         Commands::Destroy(DestroyCommands::Worktrees { base, config }) => {
             ops::destroy_worktrees(&ops_env(), config.as_deref(), base.as_deref()).map(|_| ())
         }
+        Commands::Provision { cmd } => run_provision(cmd),
         Commands::Runs {
             history,
             repo,
@@ -1356,6 +1365,54 @@ fn exit_code(result: Result<(), CliError>) -> ExitCode {
             ExitCode::FAILURE
         }
     }
+}
+
+#[derive(Subcommand)]
+enum ProvisionCommands {
+    /// Materialize a node config from an installed bundle dir.
+    Install {
+        /// The store entry dir (holds `main.yaml`).
+        #[arg(long)]
+        dir: PathBuf,
+        /// Instance name.
+        #[arg(long)]
+        name: String,
+        /// Config path (default `~/.config/peregrin/<name>.yaml`).
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
+    /// Write the per-user systemd unit.
+    Deploy {
+        #[arg(long)]
+        dir: PathBuf,
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
+    /// Remove the node config + the unit.
+    Uninstall {
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
+}
+
+fn run_provision(cmd: &ProvisionCommands) -> Result<(), CliError> {
+    let line = match cmd {
+        ProvisionCommands::Install { dir, name, config } => {
+            provision::install(dir, name, config.as_deref())?
+        }
+        ProvisionCommands::Deploy { dir, name, config } => {
+            provision::deploy(dir, name, config.as_deref())?
+        }
+        ProvisionCommands::Uninstall { name, config } => {
+            provision::uninstall(name, config.as_deref())?
+        }
+    };
+    println!("{line}");
+    Ok(())
 }
 
 fn main() -> ExitCode {

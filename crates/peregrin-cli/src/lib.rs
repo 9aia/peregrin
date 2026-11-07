@@ -9,6 +9,7 @@ pub mod import;
 pub mod node_ops;
 pub mod ops;
 pub mod pair;
+pub mod provision;
 pub mod service;
 
 /// The version stamp — same value `/api/node` reports
