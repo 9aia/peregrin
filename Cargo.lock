@@ -4247,6 +4247,7 @@ dependencies = [
 [[package]]
 name = "tamias-cache-local"
 version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
 dependencies = [
  "tamias-core",
 ]
@@ -4254,6 +4255,7 @@ dependencies = [
 [[package]]
 name = "tamias-core"
 version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
 dependencies = [
  "flate2",
  "hex",
@@ -4270,6 +4272,7 @@ dependencies = [
 [[package]]
 name = "tamias-source"
 version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
 dependencies = [
  "tamias-core",
 ]
@@ -4277,6 +4280,7 @@ dependencies = [
 [[package]]
 name = "tamias-source-fs"
 version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
 dependencies = [
  "tamias-core",
  "tamias-source",
@@ -4285,6 +4289,7 @@ dependencies = [
 [[package]]
 name = "tamias-source-git"
 version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
 dependencies = [
  "tamias-core",
  "tamias-source",
@@ -4293,6 +4298,7 @@ dependencies = [
 [[package]]
 name = "tamias-source-http"
 version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
 dependencies = [
  "tamias-core",
  "tamias-source",
@@ -4302,6 +4308,7 @@ dependencies = [
 [[package]]
 name = "tamias-store-local"
 version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
 dependencies = [
  "serde_json",
  "tamias-core",

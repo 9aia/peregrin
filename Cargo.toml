@@ -68,13 +68,13 @@ peregrin-config-toml = { path = "crates/peregrin-config-toml" }
 peregrin-config-yaml = { path = "crates/peregrin-config-yaml" }
 peregrin-control = { path = "crates/peregrin-control" }
 peregrin-core = { path = "crates/peregrin-core" }
-tamias-core = { path = "../tamias/crates/tamias-core" }
-tamias-source = { path = "../tamias/crates/tamias-source" }
-tamias-source-fs = { path = "../tamias/crates/tamias-source-fs" }
-tamias-source-git = { path = "../tamias/crates/tamias-source-git" }
-tamias-source-http = { path = "../tamias/crates/tamias-source-http" }
-tamias-store-local = { path = "../tamias/crates/tamias-store-local" }
-tamias-cache-local = { path = "../tamias/crates/tamias-cache-local" }
+tamias-core = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
+tamias-source = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
+tamias-source-fs = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
+tamias-source-git = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
+tamias-source-http = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
+tamias-store-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
+tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
 peregrin-dotenv = { path = "crates/peregrin-dotenv" }
 peregrin-driver = { path = "crates/peregrin-driver" }
 peregrin-driver-agent = { path = "crates/peregrin-driver-agent" }
