@@ -1,7 +1,7 @@
 +++
 id = "ADR-0018"
 title = "ADR-0018: Temporal scheduling drivers"
-status = "open"
+status = "done"
 priority = "medium"
 +++
 
@@ -16,7 +16,12 @@ priority = "medium"
 
 ## Status
 
-Proposed
+Implemented — `crates/peregrin-driver-schedule` (`delay` + `schedule`),
+main `eb18a5cc`. `schedule` recurs via a synthetic `{id}.fire`
+re-arm (the `poll:` `<id>.tick` convention) rather than an ingress
+thread; deferred emissions ride the runner's timer heap through
+`ctx.schedule_at`/`schedule_in`. `handl-driver-schedule` →
+`peregrin-driver-schedule`.
 
 ## Context
 
