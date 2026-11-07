@@ -1,0 +1,13 @@
+name: nested-sub
+
+nodes:
+  - id: inner
+    driver: subworkflow
+    on: [start]
+    emits: [inner.ready]
+    params:
+      path: echo.yaml
+      inputs:
+        greeting: from-nested
+      outputs:
+        echo.ready: inner.ready

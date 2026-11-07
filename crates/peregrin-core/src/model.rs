@@ -1001,6 +1001,13 @@ pub struct Campaign {
     /// Free-form metadata (ADR-0009).
     #[serde(default)]
     pub annotations: Map<String, Value>,
+    /// Directory the campaign was loaded from — the anchor `include:`
+    /// and `subworkflow` `params.path` resolve against (ADR-0022).
+    /// Provenance metadata the loader stamps after [`Campaign::from_dict`];
+    /// not part of the serialized model and `None` for campaigns built
+    /// programmatically.
+    #[serde(skip)]
+    pub source_dir: Option<std::path::PathBuf>,
 }
 
 impl Campaign {
@@ -1046,6 +1053,7 @@ impl Campaign {
             strict: raw.get("strict").is_some_and(js_truthy),
             state: map_or_empty(raw.get("state")),
             annotations: map_or_empty(raw.get("annotations")),
+            source_dir: None,
         })
     }
 

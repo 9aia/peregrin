@@ -22,6 +22,7 @@ members = [
     "crates/peregrin-driver-schedule",
     "crates/peregrin-driver-shell",
     "crates/peregrin-driver-sturn",
+    "crates/peregrin-driver-subworkflow",
     "crates/peregrin-engine",
     "crates/peregrin-git",
     "crates/peregrin-http",
@@ -82,6 +83,7 @@ peregrin-driver-human = { path = "crates/peregrin-driver-human" }
 peregrin-driver-schedule = { path = "crates/peregrin-driver-schedule" }
 peregrin-driver-shell = { path = "crates/peregrin-driver-shell" }
 peregrin-driver-sturn = { path = "crates/peregrin-driver-sturn" }
+peregrin-driver-subworkflow = { path = "crates/peregrin-driver-subworkflow" }
 peregrin-engine = { path = "crates/peregrin-engine" }
 peregrin-git = { path = "crates/peregrin-git" }
 peregrin-http = { path = "crates/peregrin-http" }

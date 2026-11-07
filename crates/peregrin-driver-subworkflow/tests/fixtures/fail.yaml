@@ -1,0 +1,8 @@
+name: fail-sub
+
+nodes:
+  - id: boom
+    driver: fail
+    on: [start]
+    params:
+      reason: "kaboom"

@@ -10,12 +10,13 @@
 
 use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Instant;
 
 use serde_json::{Map, Value};
 
-use peregrin_core::{Event, EventSchema, Node, PythonImport};
+use peregrin_core::{Campaign, Event, EventSchema, Node, PythonImport};
 use peregrin_store::StateStore;
 
 /// A deferred emission queued through
@@ -53,6 +54,28 @@ impl DriverError {
         }
     }
 }
+
+/// Options a driver hands the engine for a nested run through
+/// [`ExecutionContext::run_sub`] (ADR-0022). The campaign itself is
+/// passed fully materialized — the driver already merged its `inputs`
+/// into `campaign.config`, so the engine only applies run options.
+#[derive(Clone, Debug, Default)]
+pub struct SubRunOptions {
+    /// The secrets record the sub-run sees — the `subworkflow` driver
+    /// passes the parent run's record so the nested run inherits the
+    /// same secrets (`ctx.secrets` clone), like a lexical scope.
+    pub secrets: BTreeMap<String, String>,
+    /// Propagated `ctx.dry_run` — the sub-run's drivers are skipped
+    /// the same way the parent's are.
+    pub dry_run: bool,
+}
+
+/// The engine-provided nested-run channel behind
+/// [`ExecutionContext::run_sub`] — runs `campaign` on a fresh,
+/// isolated engine instance (own bus, event log, state, timers) and
+/// returns the sub-run's event log. `Rc`-bound like the rest of the
+/// ctx — the engine is single-threaded.
+pub type SubRunner = dyn Fn(&Campaign, &SubRunOptions) -> Result<Vec<Event>, DriverError>;
 
 /// The execution context handed to a driver on invoke — port of the
 /// TS `ExecutionContext`. Side channels (`emit`, `inject`,
@@ -112,6 +135,16 @@ pub struct ExecutionContext {
     pub workflow_capabilities: Rc<Map<String, Value>>,
     /// Workflow `import:` python modules (TS `ctx.pythonImports`).
     pub python_imports: Rc<Vec<PythonImport>>,
+    /// Directory the campaign was loaded from (`Campaign::source_dir`)
+    /// — the anchor run-time relative paths resolve against
+    /// (`subworkflow` `params.path`, ADR-0022), mirroring `include:`.
+    /// `None` for campaigns built programmatically; drivers fall back
+    /// to the process cwd.
+    pub campaign_dir: Option<PathBuf>,
+    /// The nested-run channel — set by the engine; `None` on detached
+    /// contexts ([`ExecutionContext::default`], driver-backed template
+    /// functions run without an enclosing run).
+    pub sub_runner: Option<Rc<SubRunner>>,
 }
 
 impl Default for ExecutionContext {
@@ -141,6 +174,8 @@ impl Default for ExecutionContext {
             resources: Rc::new(Map::new()),
             workflow_capabilities: Rc::new(Map::new()),
             python_imports: Rc::new(Vec::new()),
+            campaign_dir: None,
+            sub_runner: None,
         }
     }
 }
@@ -198,6 +233,27 @@ impl ExecutionContext {
     /// Drain queued `inject` specs (runner-internal).
     pub fn take_injected(&self) -> Vec<Value> {
         std::mem::take(&mut *self.injected.borrow_mut())
+    }
+
+    /// `ctx.run_sub(campaign, options)` — run `campaign` nested inside
+    /// this run and return the sub-run's event log (ADR-0022, the
+    /// `subworkflow` driver's side channel). The sub-run is a fully
+    /// isolated engine instance — own bus/log/state/timers — so
+    /// nothing it emits reaches the parent namespace; the driver maps
+    /// results back explicitly. The invoke blocks for the sub-run's
+    /// duration (the runner is a sequential walker — acceptable for
+    /// v1). Detached contexts have no channel and fail here.
+    pub fn run_sub(
+        &self,
+        campaign: &Campaign,
+        options: &SubRunOptions,
+    ) -> Result<Vec<Event>, DriverError> {
+        match &self.sub_runner {
+            Some(run) => run(campaign, options),
+            None => Err(DriverError::new(
+                "no sub-run channel — the context is detached from a run",
+            )),
+        }
     }
 
     /// `ctx.secrets[key]` — proxy semantics: absent key returns `""`

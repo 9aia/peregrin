@@ -1,0 +1,23 @@
+name: echo-sub
+capabilities:
+  secrets: true
+config:
+  greeting: default-greeting
+
+nodes:
+  - id: say
+    driver: emit
+    on: [start]
+    emits: [echo.ready]
+    params:
+      kind: echo.ready
+      message: "${config.greeting}"
+      token: "${secret.API_KEY}"
+
+  - id: chatter
+    driver: emit
+    on: [start]
+    emits: [echo.chatter]
+    params:
+      kind: echo.chatter
+      note: "sub-only chatter"

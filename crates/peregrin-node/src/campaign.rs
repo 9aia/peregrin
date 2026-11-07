@@ -46,8 +46,9 @@ pub enum CampaignError {
 
 /// `DefaultDriverRegistryLive` — the drivers a stock node resolves:
 /// the four ported `ac-driver-*` impls, the `github-status` egress
-/// sink, the `delay`/`schedule` temporal drivers (ADR-0018), plus
-/// the `runner`/`noop` builtins. `cli`/`polling`/`python`/`stdin`/
+/// sink, the `delay`/`schedule` temporal drivers (ADR-0018), the
+/// `subworkflow` composition driver (ADR-0022), plus the
+/// `runner`/`noop` builtins. `cli`/`polling`/`python`/`stdin`/
 /// `streaming`/`webhook` and the litellm/apprise plugins are not
 /// ported yet.
 #[must_use]
@@ -69,6 +70,10 @@ pub fn registry() -> Registry {
             Arc::new(peregrin_driver_agent::MockAgentDriver::new()),
         )
         .with("shell", Arc::new(peregrin_driver_shell::ShellDriver::new()))
+        .with(
+            "subworkflow",
+            Arc::new(peregrin_driver_subworkflow::SubworkflowDriver::new()),
+        )
         .with(
             "github-status",
             Arc::new(peregrin_sink_github_status::GithubStatusSink::new()),

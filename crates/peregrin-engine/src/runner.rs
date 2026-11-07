@@ -27,7 +27,9 @@ use serde_json::{Map, Value};
 
 use peregrin_bus::{EventBus, LocalBus, NoopObserver, Observer, capture_wildcards};
 use peregrin_core::{Campaign, Event, EventSchema, FunctionDefinition, MaxFires, Node, js_string};
-use peregrin_driver::{Driver, DriverError, ExecutionContext, ScheduledEmit};
+use peregrin_driver::{
+    Driver, DriverError, ExecutionContext, ScheduledEmit, SubRunOptions, SubRunner,
+};
 use peregrin_store::{DeadLetterQueue, MemoryStore, NoopDlq, StateStore};
 use peregrin_template::{
     Context, Effects, EventScope, NodeScope, Options, ParamsScope, Scope, StateScope,
@@ -105,6 +107,9 @@ struct Shared {
     injected: Rc<RefCell<Vec<Value>>>,
     scheduled: Rc<RefCell<Vec<ScheduledEmit>>>,
     shutdown: Rc<Cell<bool>>,
+    /// The nested-run channel behind `ctx.run_sub` (ADR-0022) —
+    /// stamped in `run` once the sub-registry is built.
+    sub_runner: Option<Rc<SubRunner>>,
 }
 
 impl Shared {
@@ -115,6 +120,7 @@ impl Shared {
             injected: Rc::new(RefCell::new(Vec::new())),
             scheduled: Rc::new(RefCell::new(Vec::new())),
             shutdown: Rc::new(Cell::new(false)),
+            sub_runner: None,
         }
     }
 
@@ -325,7 +331,33 @@ impl Runner {
         let mut ready: Vec<(Node, Vec<Event>)> = Vec::new();
         let mut failed = false;
         let mut cancelled = false;
-        let shared = Shared::new(options.secrets.clone());
+        let mut shared = Shared::new(options.secrets.clone());
+
+        // The `subworkflow` driver's nested-run channel (ADR-0022):
+        // each `ctx.run_sub` spins a *fresh* runner — own bus, event
+        // log, state, timers — over the same registry minus ingress
+        // drivers (an ingress node in a finite sub-run could only
+        // publish into the parent's channel: a leak). Ambient effects
+        // carry over so test/custom effects stay consistent; observer,
+        // DLQ, state store, and the ingress channel deliberately do
+        // not — the sub-run is an isolated namespace. The invoke
+        // blocks the sequential walker for the sub-run's duration.
+        let sub_registry = self.registry.without_ingress();
+        let sub_effects = self.effects.clone();
+        shared.sub_runner = Some(Rc::new(
+            move |sub_campaign: &Campaign, opts: &SubRunOptions| {
+                let mut runner =
+                    Runner::new(sub_registry.clone()).with_effects(sub_effects.clone());
+                runner.run(
+                    sub_campaign,
+                    &RunOptions {
+                        dry_run: opts.dry_run,
+                        secrets: opts.secrets.clone(),
+                        replay_events: Vec::new(),
+                    },
+                )
+            },
+        ));
 
         self.observer.on_workflow_start(campaign);
         let start = if options.replay_events.is_empty() {
@@ -589,6 +621,8 @@ impl Runner {
             resources: Rc::new(spec.node.resources.clone()),
             workflow_capabilities: Rc::new(spec.campaign.capabilities.clone()),
             python_imports: Rc::new(spec.campaign.python_imports.clone()),
+            campaign_dir: spec.campaign.source_dir.clone(),
+            sub_runner: spec.shared.sub_runner.clone(),
         }
     }
 

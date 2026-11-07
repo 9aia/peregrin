@@ -1,0 +1,9 @@
+name: quiet-sub
+
+nodes:
+  - id: ping
+    driver: emit
+    on: [start]
+    emits: [quiet.ping]
+    params:
+      kind: quiet.ping

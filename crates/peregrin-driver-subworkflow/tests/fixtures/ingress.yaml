@@ -1,0 +1,6 @@
+name: ingress-sub
+
+nodes:
+  - id: hook
+    driver: probe
+    on: [start]

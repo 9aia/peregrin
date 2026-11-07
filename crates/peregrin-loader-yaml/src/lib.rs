@@ -208,7 +208,10 @@ impl YamlLoader {
 
 impl Loader for YamlLoader {
     /// TS `loadWorkflow` — read the file, expand relative to its
-    /// directory, normalize into a [`peregrin_core::Campaign`].
+    /// directory, normalize into a [`peregrin_core::Campaign`]. The
+    /// campaign's `source_dir` is stamped with the file's directory so
+    /// run-time relative paths (`subworkflow` `params.path`, ADR-0022)
+    /// anchor the same way `include:` does.
     fn load(&self, source: &Path) -> Result<peregrin_core::Campaign, LoadError> {
         let text = read_text_file(source)?;
         let absolute = std::path::absolute(source).map_err(|e| {
@@ -216,14 +219,19 @@ impl Loader for YamlLoader {
         })?;
         let base_dir = absolute.parent().unwrap_or_else(|| Path::new("."));
         let raw = self.load_raw(&text, base_dir)?;
-        peregrin_core::Campaign::from_dict(&Value::Object(raw))
-            .map_err(|e| LoadError::new(e.to_string()))
+        let mut campaign = peregrin_core::Campaign::from_dict(&Value::Object(raw))
+            .map_err(|e| LoadError::new(e.to_string()))?;
+        campaign.source_dir = Some(base_dir.to_path_buf());
+        Ok(campaign)
     }
 
-    /// TS `loadWorkflowFromText`.
+    /// TS `loadWorkflowFromText`. `source_dir` stamps `base_dir` —
+    /// the same anchor includes resolve against.
     fn load_str(&self, text: &str, base_dir: &Path) -> Result<peregrin_core::Campaign, LoadError> {
         let raw = self.load_raw(text, base_dir)?;
-        peregrin_core::Campaign::from_dict(&Value::Object(raw))
-            .map_err(|e| LoadError::new(e.to_string()))
+        let mut campaign = peregrin_core::Campaign::from_dict(&Value::Object(raw))
+            .map_err(|e| LoadError::new(e.to_string()))?;
+        campaign.source_dir = Some(base_dir.to_path_buf());
+        Ok(campaign)
     }
 }

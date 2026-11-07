@@ -35,4 +35,21 @@ impl Registry {
             .cloned()
             .ok_or_else(|| DriverError::new(format!("no driver registered for '{name}'")))
     }
+
+    /// The registry a nested run sees (ADR-0022) — the same drivers
+    /// minus the ingress impls. A sub-run is finite and runs on its own
+    /// isolated bus, so an ingress node inside it could only publish
+    /// into the *parent* run's channel — a namespace leak; excluding
+    /// them makes such a node fail to resolve instead.
+    #[must_use]
+    pub fn without_ingress(&self) -> Self {
+        Self {
+            drivers: self
+                .drivers
+                .iter()
+                .filter(|(_, driver)| !driver.is_ingress())
+                .map(|(name, driver)| (name.clone(), Arc::clone(driver)))
+                .collect(),
+        }
+    }
 }

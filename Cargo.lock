@@ -2720,6 +2720,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-driver-subworkflow"
+version = "0.0.0"
+dependencies = [
+ "peregrin-core",
+ "peregrin-driver",
+ "peregrin-engine",
+ "peregrin-loader",
+ "peregrin-loader-yaml",
+ "peregrin-template",
+ "serde_json",
+]
+
+[[package]]
 name = "peregrin-engine"
 version = "0.0.0"
 dependencies = [
@@ -2875,6 +2888,7 @@ dependencies = [
  "peregrin-driver-schedule",
  "peregrin-driver-shell",
  "peregrin-driver-sturn",
+ "peregrin-driver-subworkflow",
  "peregrin-engine",
  "peregrin-http",
  "peregrin-loader",
