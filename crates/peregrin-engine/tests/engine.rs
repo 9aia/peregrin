@@ -9,7 +9,7 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use peregrin_bus::{LocalBus, capture_wildcards, matches};
 use peregrin_core::{Campaign, Event, Node};
 use peregrin_driver::{Driver, DriverError, ExecutionContext, NoopDriver};
-use peregrin_engine::{Registry, RunOptions, Runner};
+use peregrin_engine::{Registry, RunOptions, Runner, SecretSource};
 use peregrin_loader::Loader;
 use peregrin_loader_yaml::YamlLoader;
 use peregrin_store::MemoryDlq;
@@ -1496,4 +1496,166 @@ fn retired_node_drops_its_deferred_emissions() {
     let t = types(&log);
     assert!(!t.contains(&"d.done"), "log: {t:?}");
     assert_eq!(t.last(), Some(&"workflow.done"));
+}
+
+// ---------------------------------------------------------------------------
+// Secret resolution chain — record → ambient env → declared stores
+// (issue I-018). The `${secret.*}` binding in runner `scope_for` runs
+// `ctx.resolve_secret`; the fakes below stand in for the keyring/env-file
+// `Secrets` impls so the gate and ordering are exercised without
+// `secret-tool` or env mutation (edition-2024 `set_var` is unsafe).
+// ---------------------------------------------------------------------------
+
+struct FakeSecrets(std::collections::BTreeMap<String, String>);
+
+impl peregrin_secret::Secrets for FakeSecrets {
+    fn get(&self, name: &str) -> Option<String> {
+        self.0.get(name).cloned()
+    }
+
+    fn set(&self, _name: &str, _value: &str) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+fn secret_source(pairs: &[(&str, &str)], declared_only: bool) -> SecretSource {
+    SecretSource {
+        store: std::rc::Rc::new(FakeSecrets(
+            pairs
+                .iter()
+                .map(|(k, v)| ((*k).to_string(), (*v).to_string()))
+                .collect(),
+        )),
+        declared_only,
+    }
+}
+
+#[test]
+fn secret_chain_ambient_env_resolves_after_record_miss() {
+    // `export`ed names resolve — the I-018 gap: the run secrets
+    // record misses and the ambient env is the next leg.
+    let campaign = load(
+        "
+        name: secret-env
+        capabilities:
+          secrets: true
+        nodes:
+          - id: e
+            driver: scope-echo
+            on: [start]
+            emits: [e.done]
+            params:
+              v: \"${secret.PATH}\"
+        ",
+    );
+    let log = run(&campaign);
+    let evt = log.iter().find(|e| e.kind == "e.done").unwrap();
+    assert_eq!(
+        evt.payload["params"]["v"],
+        json!(std::env::var("PATH").unwrap())
+    );
+}
+
+#[test]
+fn secret_chain_precedence_and_declared_store_gate() {
+    let campaign = load(
+        "
+        name: secret-chain
+        capabilities:
+          secrets: [KR_TOKEN]
+        nodes:
+          - id: e
+            driver: scope-echo
+            on: [start]
+            emits: [e.done]
+            params:
+              rec: \"${secret.PATH}\"
+              ring: \"${secret.KR_TOKEN}\"
+              gated: \"${secret.KR_OTHER:-missed}\"
+              file: \"${secret.FILE_LEG}\"
+        ",
+    );
+    let options = RunOptions {
+        // Record beats the ambient env on the same name.
+        secrets: std::collections::BTreeMap::from([(
+            "PATH".to_string(),
+            "record-value".to_string(),
+        )]),
+        secret_stores: vec![
+            // The keyring leg — declared-only.
+            secret_source(
+                &[("KR_TOKEN", "ring-value"), ("KR_OTHER", "gated-value")],
+                true,
+            ),
+            // The env-file leg — always available.
+            secret_source(&[("FILE_LEG", "file-value")], false),
+        ],
+        ..RunOptions::default()
+    };
+    let log = Runner::new(registry()).run(&campaign, &options).unwrap();
+    let params = &log.iter().find(|e| e.kind == "e.done").unwrap().payload["params"];
+    assert_eq!(params["rec"], json!("record-value"));
+    // Declared in `capabilities.secrets` → the declared-only store hits.
+    assert_eq!(params["ring"], json!("ring-value"));
+    // KR_OTHER is in the same store but undeclared — gated out, the
+    // `:-` default applies like any other miss.
+    assert_eq!(params["gated"], json!("missed"));
+    // A non-declared store resolves whatever it holds — the grant
+    // list only bounds the declared-only (keyring) leg.
+    assert_eq!(params["file"], json!("file-value"));
+}
+
+#[test]
+fn secret_chain_strict_hit_is_not_a_missing_secret() {
+    // Strict: a declared name resolved through ambient env does not
+    // count as a missing secret — the node completes.
+    let campaign = load(
+        "
+        name: secret-strict-hit
+        strict: true
+        capabilities:
+          secrets: [PATH]
+        nodes:
+          - id: e
+            driver: scope-echo
+            on: [start]
+            emits: [e.done]
+            params:
+              v: \"${secret.PATH}\"
+        ",
+    );
+    let log = run(&campaign);
+    let evt = log.iter().find(|e| e.kind == "e.done").unwrap();
+    assert_eq!(
+        evt.payload["params"]["v"],
+        json!(std::env::var("PATH").unwrap())
+    );
+    assert_eq!(log.last().unwrap().kind, "workflow.done");
+}
+
+#[test]
+fn secret_chain_strict_full_miss_still_audits() {
+    // Strict: a name no leg has still lands in the missing-secrets
+    // ledger — the env/store legs don't hide genuine misses.
+    let campaign = load(
+        "
+        name: secret-strict-miss
+        strict: true
+        capabilities:
+          secrets: true
+        nodes:
+          - id: e
+            driver: scope-echo
+            on: [start]
+            emits: [e.done]
+            params:
+              v: \"${secret.PEREGRIN_TEST_DEFINITELY_UNSET_018}\"
+        ",
+    );
+    let log = run(&campaign);
+    let failed = log.iter().find(|e| e.kind == "node.failed").unwrap();
+    assert_eq!(
+        failed.payload["error"],
+        json!("missing secrets: PEREGRIN_TEST_DEFINITELY_UNSET_018")
+    );
 }

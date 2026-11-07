@@ -57,7 +57,7 @@ use axum::routing::post;
 use serde_json::{Map, Value};
 use sha2::{Digest, Sha256};
 
-use peregrin_core::{Event, EventSchema, Node};
+use peregrin_core::{Event, EventSchema, Node, capability_matches};
 use peregrin_driver::{Driver, DriverError, ExecutionContext};
 use peregrin_engine::Injector;
 use peregrin_template::{
@@ -232,6 +232,7 @@ impl GithubWebhookDriver {
             effects: &*self.effects,
         };
         let state_view = |key: &str| ctx.state.borrow().get(key);
+        let secret_view = |name: &str| ctx.resolve_secret(name);
         let resolved = resolve_value_opts(
             &node.params,
             &tctx,
@@ -250,7 +251,7 @@ impl GithubWebhookDriver {
                         id: &node.id,
                         fires: ctx.fires,
                     }),
-                    secrets: Some(&ctx.secrets),
+                    secrets: Some(&secret_view),
                 },
             },
         )
@@ -353,76 +354,6 @@ fn resolve_secrets(
         secrets.insert(spec.name.clone(), secret);
     }
     Ok(secrets)
-}
-
-/// `capability_matches` — the `capabilities.<name>` grant check from
-/// `peregrin-template`'s capability gate (kept crate-local: the gate
-/// itself is `pub(crate)` there). `true` allows all; arrays glob
-/// alternatives; `{allow, deny}` applies deny first.
-fn capability_matches(value: &str, caps: &Value) -> bool {
-    match caps {
-        Value::Bool(b) => *b,
-        Value::Array(patterns) => patterns
-            .iter()
-            .any(|pattern| glob_match(pattern.as_str().unwrap_or_default(), value)),
-        Value::Object(map) => {
-            let list = |key: &str| {
-                map.get(key)
-                    .and_then(Value::as_array)
-                    .map_or_else(Vec::new, |items| {
-                        items
-                            .iter()
-                            .map(|v| v.as_str().unwrap_or_default().to_string())
-                            .collect()
-                    })
-            };
-            if list("deny").iter().any(|p| glob_match(p, value)) {
-                return false;
-            }
-            let allow = list("allow");
-            !allow.is_empty() && allow.iter().any(|p| glob_match(p, value))
-        }
-        _ => false,
-    }
-}
-
-/// `globMatch` — `*` any run (no line-terminator crossing), `?` one
-/// char, everything else literal. Iterative star-backtracking port of
-/// the TS matcher.
-fn glob_match(pattern: &str, value: &str) -> bool {
-    let pattern: Vec<char> = pattern.chars().collect();
-    let value: Vec<char> = value.chars().collect();
-    let (mut p, mut v) = (0, 0);
-    let mut star: Option<(usize, usize)> = None;
-    while v < value.len() {
-        if p < pattern.len() && pattern[p] == '*' {
-            star = Some((p, v));
-            p += 1;
-        } else if p < pattern.len()
-            && (pattern[p] == value[v] || (pattern[p] == '?' && !is_line_terminator(value[v])))
-        {
-            p += 1;
-            v += 1;
-        } else if let Some((star_p, star_v)) = star {
-            if is_line_terminator(value[star_v]) {
-                return false;
-            }
-            star = Some((star_p, star_v + 1));
-            p = star_p + 1;
-            v = star_v + 1;
-        } else {
-            return false;
-        }
-    }
-    while p < pattern.len() && pattern[p] == '*' {
-        p += 1;
-    }
-    p == pattern.len()
-}
-
-/// JS regex `.` does not match these.
-fn is_line_terminator(ch: char) -> bool {
-    matches!(ch, '\n' | '\r' | '\u{2028}' | '\u{2029}')
 }
 
 /// `params.api_base` → the web base for the `clone_url` fallback:

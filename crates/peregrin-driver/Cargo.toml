@@ -11,5 +11,6 @@ workspace = true
 [dependencies]
 thiserror.workspace = true
 peregrin-core.workspace = true
+peregrin-secret.workspace = true
 peregrin-store.workspace = true
 serde_json.workspace = true

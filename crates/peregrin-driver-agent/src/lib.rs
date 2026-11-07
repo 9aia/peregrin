@@ -93,6 +93,7 @@ impl AgentDriver {
             effects: &*self.effects,
         };
         let state_view = |key: &str| ctx.state.borrow().get(key);
+        let secret_view = |name: &str| ctx.resolve_secret(name);
         let resolved = resolve_value_opts(
             &node.params,
             &tctx,
@@ -111,7 +112,7 @@ impl AgentDriver {
                         id: &node.id,
                         fires: ctx.fires,
                     }),
-                    secrets: Some(&ctx.secrets),
+                    secrets: Some(&secret_view),
                 },
             },
         )
@@ -192,13 +193,16 @@ fn litellm_complete(request: &LiteRequest<'_>) -> Result<String, DriverError> {
 }
 
 /// Sanitized base env + `params.env` + `params.secrets` entries — each
-/// a `key in ctx.secrets` presence check (no miss audit, unlike
+/// resolved through `ctx.resolve_secret` (record → ambient env →
+/// fallback stores; presence only, no miss audit, unlike
 /// `ctx.secrets[key]`). Non-string env values coerce via `String(v)`.
 ///
 /// The base is [`peregrin_core::child_env`], not the whole process
 /// env: agent binaries must only see the secrets a campaign declares
 /// (`params.secrets`) plus its explicit `params.env` — never ambient
-/// daemon secrets that happened to be materialized in the parent env.
+/// daemon secrets that happened to be materialized in the parent env
+/// *unless* the campaign named them, which is exactly how
+/// `arca run`-exported values reach the child.
 fn build_env(params: &Map<String, Value>, ctx: &ExecutionContext) -> BTreeMap<String, String> {
     let mut env: BTreeMap<String, String> = peregrin_core::child_env().into_iter().collect();
     if let Some(resolved) = params.get("env").and_then(Value::as_object) {
@@ -208,8 +212,8 @@ fn build_env(params: &Map<String, Value>, ctx: &ExecutionContext) -> BTreeMap<St
     }
     if let Some(requested) = params.get("secrets").and_then(Value::as_array) {
         for key in requested.iter().filter_map(Value::as_str) {
-            if let Some(value) = ctx.secrets.get(key) {
-                env.insert(key.to_string(), value.clone());
+            if let Some(value) = ctx.resolve_secret(key) {
+                env.insert(key.to_string(), value);
             }
         }
     }

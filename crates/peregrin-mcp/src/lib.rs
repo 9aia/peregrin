@@ -232,6 +232,10 @@ fn campaign_run(ctx: &Ctx, a: &Value) -> Value {
         let options = RunOptions {
             dry_run: a.get("dry_run").and_then(Value::as_bool).unwrap_or(false),
             secrets: secrets_arg(a)?,
+            // The composition's fallback legs — ambient env resolves
+            // inside `ctx.resolve_secret`; these add keyring
+            // (declared names only) and the env file behind it.
+            secret_stores: peregrin_node::campaign::default_secret_stores(),
             ..RunOptions::default()
         };
         let log = match a.get("log").and_then(|v| v.as_str()) {

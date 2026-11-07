@@ -476,10 +476,12 @@ fn substitute_default(
     }
 }
 
-/// `${secret.NAME}` — the `ctx.get_secret` contract over the secrets
-/// record: presence-gated, strict-mode grant matching, lookup miss
-/// substitutes `""` and records the name in the missing-secrets
-/// ledger (a non-empty default suppresses the miss entirely).
+/// `${secret.NAME}` — the `ctx.get_secret` contract over the bound
+/// secret lookup: presence-gated, strict-mode grant matching, lookup
+/// miss substitutes `""` and records the name in the missing-secrets
+/// ledger (a non-empty default suppresses the miss entirely). The
+/// `Scope.secrets` binding decides what "resolved" means — a bare
+/// record or the full record → ambient-env → store chain.
 fn resolve_secret(
     name: &str,
     default: Option<&str>,
@@ -506,7 +508,7 @@ fn resolve_secret(
         }
         return Ok(Some(String::new()));
     };
-    Ok(Some(value.clone()))
+    Ok(Some(value))
 }
 
 /// `event.*` — envelope fields, `payload.<path>` into the payload, and

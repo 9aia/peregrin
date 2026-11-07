@@ -11,6 +11,7 @@ use std::path::PathBuf;
 
 use peregrin_engine::RunOptions;
 use peregrin_node::campaign;
+use serde_json::json;
 
 /// The repo's `libraries/` dir — campaigns there are real loader
 /// inputs (includes/snippets/.node.yml files).
@@ -261,4 +262,81 @@ nodes:
     let failure = log.iter().find(|e| e.kind == "node.failed").unwrap();
     assert_eq!(failure.payload["error"], "quota exhausted");
     assert!(kinds.contains(&"node.done"), "{kinds:?}");
+}
+
+// --- secret resolution chain (I-018) ----------------------------------------
+
+/// `campaign::run` wires the default fallback stores: OS keyring
+/// declared-only, then the env file — in that order, so the
+/// documented `record → env → keyring → file` chain holds.
+#[test]
+fn default_secret_stores_wires_keyring_then_env_file() {
+    let stores = campaign::default_secret_stores();
+    assert_eq!(stores.len(), 2);
+    assert!(stores[0].declared_only);
+    assert!(!stores[1].declared_only);
+}
+
+/// The I-018 gap, end to end: a name absent from the env file and
+/// the record resolves through the ambient environment leg inside
+/// `campaign::run` — `export FOO=…` reaches `${secret.FOO}`.
+#[test]
+fn run_resolves_secrets_from_ambient_env() {
+    let tmp = tempfile::tempdir().unwrap();
+    let yaml = tmp.path().join("secret-env.yaml");
+    std::fs::write(
+        &yaml,
+        r#"name: secret-env
+capabilities:
+  secrets: true
+nodes:
+  - id: write
+    driver: shell
+    on: [start]
+    emits: [write.done, write.failed]
+    params:
+      cmd: "echo ${secret.PATH}"
+      emit:
+        "0": write.done
+        default: write.failed
+"#,
+    )
+    .unwrap();
+    let log = campaign::run(&yaml, &RunOptions::default()).unwrap();
+    let done = log.iter().find(|e| e.kind == "write.done").unwrap();
+    // The resolved cmd rides the emitted payload — PATH arrived via
+    // the ambient-env leg, not the record or a store.
+    assert_eq!(
+        done.payload["cmd"],
+        json!(format!("echo {}", std::env::var("PATH").unwrap()))
+    );
+}
+
+/// A miss through every leg still resolves to `""` non-strict — the
+/// shell node runs (and the run completes) rather than erroring.
+#[test]
+fn run_tolerates_a_fully_missing_secret_non_strict() {
+    let tmp = tempfile::tempdir().unwrap();
+    let yaml = tmp.path().join("secret-miss.yaml");
+    std::fs::write(
+        &yaml,
+        r#"name: secret-miss
+capabilities:
+  secrets: true
+nodes:
+  - id: write
+    driver: shell
+    on: [start]
+    emits: [write.done, write.failed]
+    params:
+      cmd: "true"
+      emit:
+        "0": write.done
+        default: write.failed
+      probe: "${secret.PEREGRIN_TEST_DEFINITELY_UNSET_018}"
+"#,
+    )
+    .unwrap();
+    let log = campaign::run(&yaml, &RunOptions::default()).unwrap();
+    assert_eq!(log.last().unwrap().kind, "workflow.done");
 }

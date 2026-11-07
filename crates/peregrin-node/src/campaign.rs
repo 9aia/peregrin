@@ -19,7 +19,7 @@ use std::sync::Arc;
 
 use peregrin_bus::{LocalBus, NoopObserver};
 use peregrin_core::{Campaign, Event};
-use peregrin_driver::{DriverError, NoopDriver, RunnerDriver};
+use peregrin_driver::{DriverError, NoopDriver, RunnerDriver, SecretSource};
 use peregrin_engine::{Injector, Registry, RunOptions, Runner, ingress};
 use peregrin_loader::{LoadError, Loader};
 use peregrin_loader_yaml::YamlLoader;
@@ -190,10 +190,10 @@ pub fn env_file() -> PathBuf {
 }
 
 /// `KEY=VAL` file → secrets record. Absent/malformed lines are
-/// skipped — the file is the always-available fallback, not the
-/// whole chain (explicit `RunOptions.secrets` entries still win).
-/// [`run`] uses this against [`env_file`]; callers that build their
-/// own `RunOptions` (the CLI) fold it in the same way.
+/// skipped. Callers that want the file folded *into* the record
+/// (explicit `RunOptions.secrets` shape) use this; the stock chain
+/// keeps the file as a fallback store instead ([`default_secret_stores`])
+/// so the documented `record → env → keyring → file` precedence holds.
 #[must_use]
 pub fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
     std::fs::read_to_string(path)
@@ -203,6 +203,35 @@ pub fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
         .filter(|(k, v)| !k.is_empty() && !v.is_empty() && !k.starts_with('#'))
         .map(|(k, v)| (k.to_string(), v.to_string()))
         .collect()
+}
+
+/// The default fallback secret stores for `RunOptions.secret_stores`
+/// — the tail of the documented `record → env → keyring → file`
+/// chain (`ExecutionContext::resolve_secret` runs the record and the
+/// ambient environment first; these legs only see names that missed
+/// both):
+///
+/// 1. **OS keyring** (`secret-tool`, service `peregrin`) —
+///    `declared_only`: a lookup spawns a process and reaches into OS
+///    credentials, so only names the merged `capabilities.secrets`
+///    grant declares are ever looked up.
+/// 2. **The env file** (`~/.config/peregrin/env`, `PEREGRIN_ENV`
+///    override) — the always-available last leg.
+///
+/// Values are only ever returned into the run's ctx — names, never
+/// values, cross into events or logs.
+#[must_use]
+pub fn default_secret_stores() -> Vec<SecretSource> {
+    vec![
+        SecretSource {
+            store: std::rc::Rc::new(peregrin_keyring::KeyringSecrets::default()),
+            declared_only: true,
+        },
+        SecretSource {
+            store: std::rc::Rc::new(peregrin_dotenv::DotenvSecrets { path: env_file() }),
+            declared_only: false,
+        },
+    ]
 }
 
 /// TS `handl run <workflow>` — load the campaign file and execute it
@@ -219,10 +248,13 @@ pub fn run(source: &Path, options: &RunOptions) -> Result<Vec<Event>, CampaignEr
     let mut options = RunOptions {
         dry_run: options.dry_run,
         secrets: options.secrets.clone(),
+        secret_stores: options.secret_stores.clone(),
         replay_events: options.replay_events.clone(),
     };
-    for (k, v) in secrets_from_env_file(&env_file()) {
-        options.secrets.entry(k).or_insert(v);
+    // The keyring + env-file legs fill in when the caller didn't
+    // wire its own fallback chain — explicit stores win wholesale.
+    if options.secret_stores.is_empty() {
+        options.secret_stores = default_secret_stores();
     }
     let (mut runner, _injector) = runner_with_ingress();
     runner.run(&campaign, &options).map_err(CampaignError::Run)

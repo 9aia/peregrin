@@ -38,13 +38,12 @@ pub fn run(
         replay_events,
         ..RunOptions::default()
     };
-    // The env file is the always-available secrets leg — explicit
-    // callers pre-fill `secrets` to override.
-    for (k, v) in
-        peregrin_node::campaign::secrets_from_env_file(&peregrin_node::campaign::env_file())
-    {
-        options.secrets.entry(k).or_insert(v);
-    }
+    // Secret resolution: `RunOptions.secrets` is the explicit record;
+    // ambient env resolves next inside `ctx.resolve_secret`, then the
+    // fallback stores — OS keyring (declared `capabilities.secrets`
+    // names only) and the env file as the last leg
+    // (record → env → keyring → file).
+    options.secret_stores = peregrin_node::campaign::default_secret_stores();
     let campaign = peregrin_node::campaign::load(workflow).map_err(|e| CliError(e.to_string()))?;
     // Ingress variants: `github-webhook`/`sturn-poll` nodes get a
     // run-scoped `Injector`, and a campaign declaring one serves

@@ -19,5 +19,6 @@ serde_json.workspace = true
 [dev-dependencies]
 peregrin-loader.workspace = true
 peregrin-loader-yaml.workspace = true
+peregrin-secret.workspace = true
 serde_json.workspace = true
 tempfile.workspace = true

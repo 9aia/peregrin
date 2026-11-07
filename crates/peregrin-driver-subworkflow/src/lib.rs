@@ -202,7 +202,7 @@ impl SubworkflowDriver {
                         id: &node.id,
                         fires: ctx.fires,
                     }),
-                    secrets: Some(&ctx.secrets),
+                    secrets: Some(&|name: &str| ctx.resolve_secret(name)),
                 },
             },
         )
@@ -336,9 +336,11 @@ impl Driver for SubworkflowDriver {
         let log = ctx.run_sub(
             &campaign,
             &SubRunOptions {
-                // The sub-run inherits the parent run's secrets record —
-                // a lexical-scope read, not a fresh lookup.
+                // The sub-run inherits the parent run's secrets record
+                // and fallback stores — a lexical-scope read, not a
+                // fresh lookup.
                 secrets: (*ctx.secrets).clone(),
+                secret_stores: (*ctx.secret_stores).clone(),
                 dry_run: ctx.dry_run,
             },
         )?;

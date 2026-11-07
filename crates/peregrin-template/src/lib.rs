@@ -34,4 +34,4 @@ pub use engine::{
 };
 pub use error::TemplateError;
 pub use function::{TemplateFunction, builtins};
-pub use scope::{EventScope, NodeScope, ParamScope, ParamsScope, Scope, StateScope};
+pub use scope::{EventScope, NodeScope, ParamScope, ParamsScope, Scope, SecretScope, StateScope};

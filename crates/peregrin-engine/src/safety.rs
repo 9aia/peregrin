@@ -67,42 +67,11 @@ fn deep_copy(value: &Value) -> Value {
 }
 
 /// `globMatch` — `^…$`-anchored glob where `*` → `.*` and `?` → `.`
-/// (no line-terminator crossing), every other metachar literal. Same
-/// iterative matcher as `peregrin-template`'s capability gate.
+/// (no line-terminator crossing), every other metachar literal.
+/// Delegates to [`peregrin_core::glob_match`] — the one matcher every
+/// capability consumer shares.
 fn glob_match(pattern: &str, value: &str) -> bool {
-    let pattern: Vec<char> = pattern.chars().collect();
-    let value: Vec<char> = value.chars().collect();
-    let (mut p, mut v) = (0, 0);
-    let mut star: Option<(usize, usize)> = None;
-    while v < value.len() {
-        if p < pattern.len() && pattern[p] == '*' {
-            star = Some((p, v));
-            p += 1;
-        } else if p < pattern.len()
-            && (pattern[p] == value[v] || (pattern[p] == '?' && !is_line_terminator(value[v])))
-        {
-            p += 1;
-            v += 1;
-        } else if let Some((star_p, star_v)) = star {
-            if is_line_terminator(value[star_v]) {
-                return false;
-            }
-            star = Some((star_p, star_v + 1));
-            p = star_p + 1;
-            v = star_v + 1;
-        } else {
-            return false;
-        }
-    }
-    while p < pattern.len() && pattern[p] == '*' {
-        p += 1;
-    }
-    p == pattern.len()
-}
-
-/// JS regex `.` does not match these.
-fn is_line_terminator(ch: char) -> bool {
-    matches!(ch, '\n' | '\r' | '\u{2028}' | '\u{2029}')
+    peregrin_core::glob_match(pattern, value)
 }
 
 // ---------------------------------------------------------------------------

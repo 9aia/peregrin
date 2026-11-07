@@ -7,26 +7,16 @@ use serde_json::{Number, Value};
 /// `toStringSafe` from `engine.ts`: null → `""`, arrays join on `,`
 /// (recursively, null elements → `""`), plain objects → `[object Object]`.
 pub(crate) fn to_string_safe(value: &Value) -> String {
-    js_display(value, "")
+    js_display(value)
 }
 
-/// `String(v)` as used by the capability matcher for glob patterns:
-/// same as [`to_string_safe`] except null → `"null"`.
-pub(crate) fn js_string(value: &Value) -> String {
-    js_display(value, "null")
-}
-
-fn js_display(value: &Value, null: &str) -> String {
+fn js_display(value: &Value) -> String {
     match value {
-        Value::Null => null.to_string(),
+        Value::Null => String::new(),
         Value::Bool(b) => b.to_string(),
         Value::Number(n) => number_to_string(n),
         Value::String(s) => s.clone(),
-        Value::Array(items) => items
-            .iter()
-            .map(|item| js_display(item, ""))
-            .collect::<Vec<_>>()
-            .join(","),
+        Value::Array(items) => items.iter().map(js_display).collect::<Vec<_>>().join(","),
         Value::Object(_) => "[object Object]".to_string(),
     }
 }
@@ -88,7 +78,6 @@ mod tests {
     #[test]
     fn stringification() {
         assert_eq!(to_string_safe(&Value::Null), "");
-        assert_eq!(js_string(&Value::Null), "null");
         assert_eq!(to_string_safe(&json!(true)), "true");
         assert_eq!(to_string_safe(&json!(5)), "5");
         assert_eq!(to_string_safe(&json!(5.5)), "5.5");

@@ -29,8 +29,12 @@ pub struct Scope<'a> {
     pub state: Option<&'a dyn StateScope>,
     /// `${node.*}` — the firing node.
     pub node: Option<NodeScope<'a>>,
-    /// `${secret.*}` — the run's secrets record (capability-gated).
-    pub secrets: Option<&'a BTreeMap<String, String>>,
+    /// `${secret.*}` — the run's secret lookup (capability-gated). The
+    /// caller binds the whole resolution chain — a bare
+    /// [`BTreeMap`] binds the secrets record alone, a closure binds
+    /// `ExecutionContext::resolve_secret` (record → ambient env →
+    /// fallback stores).
+    pub secrets: Option<&'a dyn SecretScope>,
 }
 
 /// The bound trigger for `${event.*}` — `triggers[0]` plus the node's
@@ -107,6 +111,34 @@ where
 {
     fn get(&self, key: &str) -> Option<Value> {
         self(key)
+    }
+}
+
+/// Read-side provider for `${secret.*}` — the run's secret resolution
+/// chain, adapted by the caller so the resolver needs no driver
+/// dependency. `secret.<name>` calls [`SecretScope::get`]; `None` is
+/// "unresolved", which the strict audit turns into a missing-secret
+/// ledger entry.
+pub trait SecretScope {
+    /// `resolve(name)` — `None` when no leg of the chain has the name.
+    fn get(&self, name: &str) -> Option<String>;
+}
+
+impl<F> SecretScope for F
+where
+    F: Fn(&str) -> Option<String>,
+{
+    fn get(&self, name: &str) -> Option<String> {
+        self(name)
+    }
+}
+
+/// A bare secrets record binds record-only lookups — callers wiring
+/// the full chain (ambient env, fallback stores) bind a closure
+/// instead.
+impl SecretScope for BTreeMap<String, String> {
+    fn get(&self, name: &str) -> Option<String> {
+        self.get(name).cloned()
     }
 }
 

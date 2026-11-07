@@ -162,6 +162,7 @@ impl<G: Git + Clone> GitDriver<G> {
             effects: &*self.effects,
         };
         let state_view = |key: &str| ctx.state.borrow().get(key);
+        let secret_view = |name: &str| ctx.resolve_secret(name);
         let resolved = resolve_value_opts(
             &node.params,
             &tctx,
@@ -180,7 +181,7 @@ impl<G: Git + Clone> GitDriver<G> {
                         id: &node.id,
                         fires: ctx.fires,
                     }),
-                    secrets: Some(&ctx.secrets),
+                    secrets: Some(&secret_view),
                 },
             },
         )
@@ -338,10 +339,12 @@ fn env_names(raw: Option<&Value>) -> Vec<&str> {
 }
 
 /// Resolve credential names to `-c` config args. Each name resolves
-/// against the run's secrets record, then the ambient environment —
-/// the value's *origin* stays at the composition level; the driver
-/// only binds the declared name. A miss is audited through
-/// `ctx.get_secret` (strict-mode `missing_secrets`), then skipped.
+/// through `ctx.resolve_secret` — the run's secrets record, the
+/// ambient environment, then the fallback stores — with the
+/// injected `effects.env` as a last test channel. The value's
+/// *origin* stays at the composition level; the driver only binds
+/// the declared name. A miss is audited through `ctx.get_secret`
+/// (strict-mode `missing_secrets`), then skipped.
 fn cred_args(
     params: &Map<String, Value>,
     ctx: &ExecutionContext,
@@ -349,9 +352,7 @@ fn cred_args(
 ) -> Vec<String> {
     let resolve = |name: &str| -> Option<String> {
         let value = ctx
-            .secrets
-            .get(name)
-            .cloned()
+            .resolve_secret(name)
             .or_else(|| effects.env(name))
             .filter(|value| !value.is_empty());
         if value.is_none() {

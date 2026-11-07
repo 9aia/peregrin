@@ -120,6 +120,7 @@ impl GithubStatusSink {
             effects: &*self.effects,
         };
         let state_view = |key: &str| ctx.state.borrow().get(key);
+        let secret_view = |name: &str| ctx.resolve_secret(name);
         let resolved = resolve_value_opts(
             &node.params,
             &tctx,
@@ -138,7 +139,7 @@ impl GithubStatusSink {
                         id: &node.id,
                         fires: ctx.fires,
                     }),
-                    secrets: Some(&ctx.secrets),
+                    secrets: Some(&secret_view),
                 },
             },
         )

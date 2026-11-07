@@ -28,11 +28,11 @@ use serde_json::{Map, Value};
 use peregrin_bus::{EventBus, LocalBus, NoopObserver, Observer, capture_wildcards};
 use peregrin_core::{Campaign, Event, EventSchema, FunctionDefinition, MaxFires, Node, js_string};
 use peregrin_driver::{
-    Driver, DriverError, ExecutionContext, ScheduledEmit, SubRunOptions, SubRunner,
+    Driver, DriverError, ExecutionContext, ScheduledEmit, SecretSource, SubRunOptions, SubRunner,
 };
 use peregrin_store::{DeadLetterQueue, MemoryStore, NoopDlq, StateStore};
 use peregrin_template::{
-    Context, Effects, EventScope, NodeScope, Options, ParamsScope, Scope, StateScope,
+    Context, Effects, EventScope, NodeScope, Options, ParamsScope, Scope, SecretScope, StateScope,
     SystemEffects, TemplateError, TemplateFunction, resolve_params, resolve_template_opts,
 };
 
@@ -49,7 +49,14 @@ pub struct RunOptions {
     /// `{dry_run: true}` on its first `emits` type.
     pub dry_run: bool,
     /// The run's secrets — read via `ctx.get_secret`/`ctx.secret`.
+    /// Explicit entries are the first leg of the resolution chain;
+    /// ambient env and `secret_stores` fill the rest.
     pub secrets: BTreeMap<String, String>,
+    /// Fallback secret stores (`ExecutionContext::resolve_secret`'s
+    /// third leg) — the composition root fills this
+    /// (`peregrin_node::campaign::default_secret_stores`: OS keyring
+    /// declared-only, then the env file). Empty keeps record+env.
+    pub secret_stores: Vec<SecretSource>,
     /// `replayEvents` — a prior log to seed the run with (the
     /// `seed`+`checkReady` path instead of publishing `start`).
     pub replay_events: Vec<Event>,
@@ -103,6 +110,7 @@ impl Ord for ScheduledTick {
 #[derive(Clone)]
 struct Shared {
     secrets: Rc<BTreeMap<String, String>>,
+    secret_stores: Rc<Vec<SecretSource>>,
     emitted: Rc<RefCell<Vec<Event>>>,
     injected: Rc<RefCell<Vec<Value>>>,
     scheduled: Rc<RefCell<Vec<ScheduledEmit>>>,
@@ -113,9 +121,10 @@ struct Shared {
 }
 
 impl Shared {
-    fn new(secrets: BTreeMap<String, String>) -> Self {
+    fn new(secrets: BTreeMap<String, String>, secret_stores: Vec<SecretSource>) -> Self {
         Self {
             secrets: Rc::new(secrets),
+            secret_stores: Rc::new(secret_stores),
             emitted: Rc::new(RefCell::new(Vec::new())),
             injected: Rc::new(RefCell::new(Vec::new())),
             scheduled: Rc::new(RefCell::new(Vec::new())),
@@ -331,7 +340,7 @@ impl Runner {
         let mut ready: Vec<(Node, Vec<Event>)> = Vec::new();
         let mut failed = false;
         let mut cancelled = false;
-        let mut shared = Shared::new(options.secrets.clone());
+        let mut shared = Shared::new(options.secrets.clone(), options.secret_stores.clone());
 
         // The `subworkflow` driver's nested-run channel (ADR-0022):
         // each `ctx.run_sub` spins a *fresh* runner — own bus, event
@@ -353,6 +362,7 @@ impl Runner {
                     &RunOptions {
                         dry_run: opts.dry_run,
                         secrets: opts.secrets.clone(),
+                        secret_stores: opts.secret_stores.clone(),
                         replay_events: Vec::new(),
                     },
                 )
@@ -604,6 +614,7 @@ impl Runner {
             config: Rc::new(spec.campaign.config.clone()),
             params: spec.params.clone(),
             secrets: spec.shared.secrets.clone(),
+            secret_stores: spec.shared.secret_stores.clone(),
             log: spec.log.clone(),
             emitted: spec.shared.emitted.clone(),
             injected: spec.shared.injected.clone(),
@@ -700,6 +711,7 @@ impl Runner {
         *slot.borrow_mut() = Some(pre_ctx.clone());
         let tctx = self.template_ctx(&pre_ctx);
         let state_view = |key: &str| self.state.borrow().get(key);
+        let secret_view = |name: &str| pre_ctx.resolve_secret(name);
         let resolved = resolve_params(
             &node.params,
             &tctx,
@@ -712,6 +724,7 @@ impl Runner {
                     triggers,
                     ParamsScope::declared(),
                     &state_view,
+                    &secret_view,
                 ),
             },
         );
@@ -780,6 +793,7 @@ impl Runner {
                             triggers,
                             ParamsScope::Resolved(&resolved_params),
                             &state_view,
+                            &secret_view,
                         ),
                     },
                 )
@@ -806,6 +820,7 @@ impl Runner {
                         *slot.borrow_mut() = Some(skip_ctx.clone());
                         let tctx = self.template_ctx(&skip_ctx);
                         let scoped_view = |key: &str| node_state.borrow().get(key);
+                        let skip_secret_view = |name: &str| skip_ctx.resolve_secret(name);
                         let rendered = resolve_template_opts(
                             skip_if,
                             &tctx,
@@ -818,6 +833,7 @@ impl Runner {
                                     triggers,
                                     ParamsScope::Resolved(&resolved_params),
                                     &scoped_view,
+                                    &skip_secret_view,
                                 ),
                             },
                         )
@@ -1176,6 +1192,7 @@ fn scope_for<'a>(
     triggers: &'a [Event],
     params: ParamsScope<'a>,
     state: &'a dyn StateScope,
+    secrets: &'a dyn SecretScope,
 ) -> Scope<'a> {
     Scope {
         event: triggers.first().map(|event| EventScope {
@@ -1189,7 +1206,7 @@ fn scope_for<'a>(
             id: &node.id,
             fires: exec.fires,
         }),
-        secrets: Some(&exec.secrets),
+        secrets: Some(secrets),
     }
 }
 

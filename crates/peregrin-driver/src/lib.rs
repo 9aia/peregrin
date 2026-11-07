@@ -59,12 +59,16 @@ impl DriverError {
 /// [`ExecutionContext::run_sub`] (ADR-0022). The campaign itself is
 /// passed fully materialized — the driver already merged its `inputs`
 /// into `campaign.config`, so the engine only applies run options.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Default)]
 pub struct SubRunOptions {
     /// The secrets record the sub-run sees — the `subworkflow` driver
     /// passes the parent run's record so the nested run inherits the
     /// same secrets (`ctx.secrets` clone), like a lexical scope.
     pub secrets: BTreeMap<String, String>,
+    /// Fallback secret stores the sub-run resolves through
+    /// ([`ExecutionContext::secret_stores`]) — passed verbatim so the
+    /// sub-run's ambient-env/keyring/file legs match the parent's.
+    pub secret_stores: Vec<SecretSource>,
     /// Propagated `ctx.dry_run` — the sub-run's drivers are skipped
     /// the same way the parent's are.
     pub dry_run: bool,
@@ -90,10 +94,20 @@ pub struct ExecutionContext {
     /// for driver-side re-resolves (scope-resolution spec); empty until
     /// the runner fills it post-resolution.
     pub params: Rc<Map<String, Value>>,
-    /// The run's secrets — read via [`ExecutionContext::secret`] /
-    /// [`ExecutionContext::get_secret`] so misses are audited
+    /// The run's secrets record — the explicit leg of the resolution
+    /// chain (caller-provided `RunOptions.secrets`, which override
+    /// ambient sources). Read via [`ExecutionContext::secret`] /
+    /// [`ExecutionContext::get_secret`] /
+    /// [`ExecutionContext::resolve_secret`] so misses are audited
     /// (TS `secrets` proxy).
     pub secrets: Rc<BTreeMap<String, String>>,
+    /// Fallback secret stores consulted — in order — after the
+    /// record and the ambient environment miss (the documented
+    /// `record → env → keyring → file` chain's tail). The
+    /// composition root wires these (OS keyring, env file); an
+    /// empty list keeps record+env only. Resolved values stay in
+    /// the ctx — nothing serializes them into run state.
+    pub secret_stores: Rc<Vec<SecretSource>>,
     /// Snapshot of the event log at node start (TS `ctx.log`).
     pub log: Rc<Vec<Event>>,
     /// Events pushed via [`ExecutionContext::emit`] — the runner drains
@@ -156,6 +170,7 @@ impl Default for ExecutionContext {
             config: Rc::new(Map::new()),
             params: Rc::new(Map::new()),
             secrets: Rc::new(BTreeMap::new()),
+            secret_stores: Rc::new(Vec::new()),
             log: Rc::new(Vec::new()),
             emitted: Rc::new(RefCell::new(Vec::new())),
             injected: Rc::new(RefCell::new(Vec::new())),
@@ -269,16 +284,88 @@ impl ExecutionContext {
     }
 
     /// `ctx.getSecret(key, default)` — a non-empty default suppresses
-    /// the strict-mode miss (TS `default_ === ""` check).
+    /// the strict-mode miss (TS `default_ === ""` check). A miss is
+    /// only recorded after every leg of [`ExecutionContext::resolve_secret`]
+    /// misses — an ambient-env or store hit is *not* a missing secret.
     pub fn get_secret_or(&self, key: &str, default: &str) -> String {
-        if let Some(value) = self.secrets.get(key) {
-            return value.clone();
+        if let Some(value) = self.resolve_secret(key) {
+            return value;
         }
         if self.strict && default.is_empty() {
             self.missing_secrets.borrow_mut().push(key.to_string());
         }
         default.to_string()
     }
+
+    /// The secret-resolution chain, in precedence order — `None`
+    /// when no leg has `key`:
+    ///
+    /// 1. The run secrets record (`RunOptions.secrets`) — explicit
+    ///    caller-provided values override every ambient source.
+    /// 2. The ambient process environment (`export NAME=…` — the
+    ///    `arca run` channel; empty values count as unset).
+    /// 3. [`ExecutionContext::secret_stores`], in order — the
+    ///    composition root's keyring and env-file legs. A
+    ///    `declared_only` source (the OS keyring) is skipped unless
+    ///    the merged `capabilities.secrets` grant matches `key`:
+    ///    declaration is the opt-in that keeps a miss from spawning
+    ///    `secret-tool` for arbitrary names and from reaching
+    ///    credentials a campaign never asked for.
+    ///
+    /// `capabilities.secrets` gates *resolution surfaces* (the
+    /// `${secret.*}` gate and the strict `check_capability` grant
+    /// match run before this lookup in template resolution, exactly
+    /// as before); the env leg is another source behind the same
+    /// gates, not a bypass — `get_secret` itself was never
+    /// capability-gated, and ambient env follows the same rule.
+    /// Values are never logged; the secrets record stays the only
+    /// thing serialized into run state.
+    pub fn resolve_secret(&self, key: &str) -> Option<String> {
+        if let Some(value) = self.secrets.get(key) {
+            return Some(value.clone());
+        }
+        if let Ok(value) = std::env::var(key)
+            && !value.is_empty()
+        {
+            return Some(value);
+        }
+        for source in self.secret_stores.iter() {
+            if source.declared_only && !self.secret_declared(key) {
+                continue;
+            }
+            if let Some(value) = source.store.get(key) {
+                return Some(value);
+            }
+        }
+        None
+    }
+
+    /// Whether the merged `capabilities.secrets` grant declares
+    /// `key` — `true` allows every name, a list is glob alternatives,
+    /// `{allow, deny}` is a glob policy ([`peregrin_core::capability_matches`],
+    /// the same matching the strict template gate applies). Absent
+    /// or `false` declares nothing.
+    fn secret_declared(&self, key: &str) -> bool {
+        self.capabilities
+            .get("secrets")
+            .is_some_and(|grant| peregrin_core::capability_matches(key, grant))
+    }
+}
+
+/// One fallback store leg of [`ExecutionContext::resolve_secret`] —
+/// a `peregrin_secret::Secrets` backend plus whether lookups into it
+/// require the name to be capability-declared.
+#[derive(Clone)]
+pub struct SecretSource {
+    /// The backend consulted on a record+env miss.
+    pub store: Rc<dyn peregrin_secret::Secrets>,
+    /// `true` → consulted only when the merged
+    /// `capabilities.secrets` grant matches the name — the
+    /// OS-keyring leg's opt-in (a per-lookup `secret-tool` spawn and
+    /// a reach into OS credentials should never happen for an
+    /// undeclared name). `false` → always consulted (the env file,
+    /// historically the always-available leg).
+    pub declared_only: bool,
 }
 
 /// The driver port — invoked by the engine when a node fires

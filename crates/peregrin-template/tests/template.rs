@@ -1416,3 +1416,31 @@ fn resolve_value_recurses_scope_resolution() {
         json!({"a": "ci.passed", "b": ["us-east", 1], "c": {"d": "passed"}})
     );
 }
+
+/// `${secret.*}` binds a *lookup*, not just a record — a closure
+/// binding resolves names the record doesn't carry, which is how the
+/// runner wires the ambient-env + store legs of the chain.
+#[test]
+fn scope_secret_closure_binding_resolves_beyond_the_record() {
+    let fx = StubEffects::new();
+    let record = scope_secrets();
+    let lookup = |name: &str| {
+        record
+            .get(name)
+            .cloned()
+            .or_else(|| (name == "FROM_ENV").then(|| "env-value".to_string()))
+    };
+    let opts = opts_with_scope(Scope {
+        secrets: Some(&lookup),
+        ..Default::default()
+    });
+    let ctx = ctx_with(&[("secrets", json!(true))], &fx, false);
+    assert_eq!(
+        resolve_template_opts("${secret.TOKEN}", &ctx, &opts).unwrap(),
+        "s3cr3t"
+    );
+    assert_eq!(
+        resolve_template_opts("${secret.FROM_ENV}", &ctx, &opts).unwrap(),
+        "env-value"
+    );
+}
