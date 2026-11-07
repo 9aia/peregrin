@@ -7,7 +7,7 @@
 //! the cancellation surface the single-threaded runner actually
 //! honours (the run ends at the next loop iteration).
 //!
-//! The daemon's event loop (a later phase) drives it like:
+//! The daemon's event loop drives it like:
 //!
 //! ```ignore
 //! let mut supervisor = RunSupervisor::new(policy);
@@ -20,10 +20,24 @@
 //! // when the active run returns:
 //! if let Some(next) = supervisor.finish() { /* start it the same way */ }
 //! ```
+//!
+//! [`supervise`] is the production driving loop — persistent
+//! ingress listeners → `submit` → per-trigger spawned runs →
+//! sequential drain, exactly as sketched above.
 
-use peregrin_core::Event;
-use peregrin_engine::{Ingress, Injector, ingress};
+use std::collections::BTreeMap;
+use std::path::PathBuf;
+use std::sync::Arc;
+use std::thread::{self, JoinHandle};
+use std::time::Duration;
+
+use peregrin_core::{Campaign, Event};
+use peregrin_driver::{DriverError, SecretSource};
+use peregrin_engine::{Ingress, Injector, RunOptions, Runner, WaitOutcome, ingress};
 use peregrin_queue::{Decision, Job, Queue, Supersede};
+use peregrin_store::MemoryDlq;
+
+use crate::campaign::{self, CampaignError};
 
 /// A job ready to start — a freshly-created ingress channel pair with
 /// the trigger event already queued on it, so the run sees its
@@ -146,5 +160,296 @@ impl RunSupervisor {
             injector,
             ingress,
         })
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The supervised campaign — the production driving loop.
+// ---------------------------------------------------------------------------
+
+/// Per-spawned-run materials [`supervise`] needs. `RunOptions` is
+/// `!Send` (its `secret_stores` hold `Rc` stores) and spawned runs
+/// execute on their own threads, so the caller supplies the `Send`
+/// parts plus a factory each run thread invokes for its own chain.
+pub struct SupervisedOptions {
+    /// `RunOptions.secrets` for every spawned run.
+    pub secrets: BTreeMap<String, String>,
+    /// `RunOptions.secret_stores` factory — invoked inside each run
+    /// thread ([`campaign::default_secret_stores`] for the stock
+    /// `record → env → keyring → file` chain).
+    pub secret_stores: Arc<dyn Fn() -> Vec<SecretSource> + Send + Sync>,
+    /// The durable history every spawned run appends its events to —
+    /// the `campaign run --history` JSONL `peregrin runs`/`log`/
+    /// `explain` read back. `None` keeps run logs ephemeral.
+    pub history: Option<PathBuf>,
+    /// Called with each finished run's event log, in finish order —
+    /// the CLI prints it. Runs on the supervisor thread.
+    pub on_run: Option<OnRunDone>,
+}
+
+/// The per-finished-run callback [`SupervisedOptions::on_run`]
+/// takes — the run's event log, in finish order.
+pub type OnRunDone = Box<dyn FnMut(&[Event]) + Send>;
+
+impl Default for SupervisedOptions {
+    fn default() -> Self {
+        Self {
+            secrets: BTreeMap::new(),
+            secret_stores: Arc::new(campaign::default_secret_stores),
+            history: None,
+            on_run: None,
+        }
+    }
+}
+
+/// A supervised campaign in flight — [`supervise`]'s return.
+pub struct SupervisedRun {
+    /// The trigger channel's producer half — the ingress listeners
+    /// already hold clones; push trigger events here for out-of-band
+    /// feeds (tests, a daemon surface). Drop every clone to signal
+    /// the end of triggers: the supervisor drains its queue and
+    /// exits.
+    pub injector: Injector,
+    /// The supervisor loop — join for every spawned run's event log
+    /// concatenated in finish order, or the first run failure.
+    pub join: JoinHandle<Result<Vec<Event>, CampaignError>>,
+}
+
+/// The `Send`-able half of [`SupervisedOptions`] shared across the
+/// listener and worker threads.
+struct RunMaterials {
+    secrets: BTreeMap<String, String>,
+    secret_stores: Arc<dyn Fn() -> Vec<SecretSource> + Send + Sync>,
+    history: Option<PathBuf>,
+}
+
+impl RunMaterials {
+    fn run_options(&self) -> RunOptions {
+        RunOptions {
+            secrets: self.secrets.clone(),
+            secret_stores: (self.secret_stores)(),
+            ..RunOptions::default()
+        }
+    }
+}
+
+/// A spawned run's join handle — the finished log or the run's
+/// failure (a store-open [`CampaignError::Store`] or an engine
+/// [`CampaignError::Run`]).
+type RunHandle = JoinHandle<Result<Vec<Event>, CampaignError>>;
+
+/// Drive a `supersede:` campaign — the composition
+/// docs/reference/queue-supersede.md specifies: the campaign's
+/// ingress-driver nodes (`github-webhook`, `sturn-poll`) fire once
+/// inside a persistent *listener* `Runner` bound to a
+/// supervisor-facing channel, every trigger the channel delivers
+/// goes through [`RunSupervisor::submit`], and each [`PendingRun`]
+/// spawns a `Runner` over the campaign's non-ingress (worker) nodes
+/// with the trigger pre-injected on its channel. Runs are sequential
+/// — the gate case: the queue never hands out a second job while one
+/// is active.
+///
+/// Cancellation is cooperative: `cancel_running` lands a
+/// `workflow.cancel` on the *active* run's own ingress channel, so
+/// the run ends at the next loop iteration — an in-flight driver
+/// call (a `shell` inner command, a `git` materialization) finishes
+/// first; there is no forced kill.
+///
+/// The loop ends when every [`Injector`] clone is gone (listeners
+/// exited, callers dropped their handle): it drains the queue —
+/// pending jobs still run — then cancels the listener run and
+/// returns.
+#[must_use]
+pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedRun {
+    let SupervisedOptions {
+        secrets,
+        secret_stores,
+        history,
+        on_run,
+    } = options;
+    let materials = Arc::new(RunMaterials {
+        secrets,
+        secret_stores,
+        history,
+    });
+
+    // The queue-facing channel: ingress drivers push triggers here —
+    // never into a run's own channel.
+    let (trigger_injector, trigger_ingress) = ingress();
+    let external = trigger_injector.clone();
+
+    // Ingress nodes fire inside the listener run; everything else is
+    // the per-trigger worker graph.
+    let listener_registry = campaign::registry_with_ingress(&trigger_injector);
+    let (listener_campaign, worker_campaign) =
+        campaign::split_ingress(campaign, &listener_registry);
+
+    // The persistent listener run — `with_ingress` gives it the
+    // park/cancel channel its serve semantics need (its drivers push
+    // to the queue channel; nothing else arrives). Spawned only when
+    // the campaign actually declares ingress nodes — a `supersede:`
+    // campaign fed purely through the returned injector needs no
+    // listener.
+    let listener = (!listener_campaign.nodes.is_empty()).then(|| {
+        let (cancel_injector, cancel_ingress) = ingress();
+        let materials = Arc::clone(&materials);
+        let thread = thread::spawn(move || {
+            let mut runner = Runner::new(listener_registry)
+                .with_dlq(Box::<MemoryDlq>::default())
+                .with_ingress(cancel_ingress);
+            runner.run(&listener_campaign, &materials.run_options())
+        });
+        (thread, cancel_injector)
+    });
+    let (listener_thread, listener_injector) = listener.unzip();
+
+    let worker_campaign = Arc::new(worker_campaign);
+    let policy = Supersede::from(campaign.supersede.clone().unwrap_or_default());
+    let join = thread::spawn(move || {
+        supervise_loop(
+            policy,
+            trigger_ingress,
+            worker_campaign,
+            listener_thread,
+            listener_injector,
+            materials,
+            on_run,
+        )
+    });
+    SupervisedRun {
+        injector: external,
+        join,
+    }
+}
+
+/// Spawn a worker run for `pending` — the `Runner` is `!Send` (Rc
+/// internals), so it's constructed inside the thread. The trigger
+/// event is already queued on `pending.ingress` — the run publishes
+/// it on its first iteration.
+fn spawn_worker(
+    pending: PendingRun,
+    campaign: &Arc<Campaign>,
+    materials: &Arc<RunMaterials>,
+) -> RunHandle {
+    let campaign = Arc::clone(campaign);
+    let materials = Arc::clone(materials);
+    thread::spawn(move || {
+        let mut runner = campaign::worker_runner(pending.ingress, materials.history.as_deref())?;
+        runner
+            .run(&campaign, &materials.run_options())
+            .map_err(CampaignError::Run)
+    })
+}
+
+/// The supervisor event loop — runs on [`supervise`]'s thread.
+/// Parks on the trigger channel while it's live, harvesting finished
+/// runs between events; when every producer is gone it joins the
+/// in-flight run, drains the queue to empty, then cancels the
+/// listener run. Run failures don't kill the loop — the first error
+/// is recorded and returned after shutdown.
+// `needless_pass_by_value`: every argument must be *owned* — the
+// loop runs on a freshly-spawned thread — even though the body only
+// borrows them.
+#[allow(clippy::needless_pass_by_value)]
+fn supervise_loop(
+    policy: Supersede,
+    trigger_ingress: Ingress,
+    worker_campaign: Arc<Campaign>,
+    listener: Option<JoinHandle<Result<Vec<Event>, DriverError>>>,
+    listener_injector: Option<Injector>,
+    materials: Arc<RunMaterials>,
+    mut on_run: Option<OnRunDone>,
+) -> Result<Vec<Event>, CampaignError> {
+    /// How long the loop parks on the trigger channel while a run is
+    /// active — a finished run can't wake the channel, so the loop
+    /// ticks to harvest it. Irrelevant while idle: `wait(None)`
+    /// parks until the next event or disconnect.
+    const TICK: Duration = Duration::from_millis(100);
+
+    let mut supervisor = RunSupervisor::new(policy);
+    let mut worker: Option<RunHandle> = None;
+    let mut triggers_done = false;
+    let mut logs = Vec::new();
+    let mut first_error: Option<CampaignError> = None;
+    let mut buf = Vec::new();
+
+    loop {
+        if !triggers_done {
+            let timeout = if worker.is_some() { Some(TICK) } else { None };
+            if trigger_ingress.wait(timeout, &mut buf) == WaitOutcome::Disconnected {
+                triggers_done = true;
+            }
+            for event in buf.drain(..) {
+                let outcome = supervisor.submit(event);
+                if let Some(pending) = outcome.start {
+                    worker = Some(spawn_worker(pending, &worker_campaign, &materials));
+                }
+            }
+        }
+        // Harvest the finished run — `finish` hands the queue slot to
+        // the next pending job, which spawns the same way. After the
+        // channel dies a worker can't be re-woken any other way, so
+        // block on `join` (sequential drain).
+        if let Some(handle) = worker.take() {
+            if triggers_done || handle.is_finished() {
+                let result = handle.join().unwrap_or_else(|_| {
+                    Err(CampaignError::Run(DriverError::new(
+                        "spawned run thread panicked",
+                    )))
+                });
+                match result {
+                    Ok(log) => {
+                        if let Some(on_run) = on_run.as_deref_mut() {
+                            on_run(&log);
+                        }
+                        logs.extend(log);
+                    }
+                    Err(e) => {
+                        tracing::error!("supervised run failed: {e}");
+                        if first_error.is_none() {
+                            first_error = Some(e);
+                        }
+                    }
+                }
+                worker = supervisor
+                    .finish()
+                    .map(|pending| spawn_worker(pending, &worker_campaign, &materials));
+            } else {
+                worker = Some(handle);
+            }
+        }
+        if triggers_done && worker.is_none() {
+            break;
+        }
+    }
+
+    // Shut the listener run down — its serve loop honours an injected
+    // `workflow.cancel` like any other event.
+    if let Some(injector) = listener_injector {
+        let _ = injector.inject(Event::cancel("supervisor shutdown"));
+    }
+    if let Some(handle) = listener {
+        match handle.join() {
+            Ok(Ok(_)) => {}
+            Ok(Err(e)) => {
+                tracing::error!("ingress listener run failed: {e}");
+                if first_error.is_none() {
+                    first_error = Some(CampaignError::Run(e));
+                }
+            }
+            Err(_) => {
+                tracing::error!("ingress listener thread panicked");
+                if first_error.is_none() {
+                    first_error = Some(CampaignError::Run(DriverError::new(
+                        "ingress listener thread panicked",
+                    )));
+                }
+            }
+        }
+    }
+
+    match first_error {
+        Some(error) => Err(error),
+        None => Ok(logs),
     }
 }

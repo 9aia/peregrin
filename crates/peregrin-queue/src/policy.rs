@@ -19,8 +19,10 @@ pub enum Mode {
 }
 
 /// The `supersede:` campaign config — which runs happen when trigger
-/// events outpace the executor. Wired into the campaign schema in a
-/// later phase; this is the spec'd struct.
+/// events outpace the executor. The schema mirror the campaign model
+/// carries is [`peregrin_core::Supersede`] — `peregrin-core` can't
+/// depend on this crate (the dep runs the other way), so the node
+/// converts it via [`Supersede::from`] at run setup.
 ///
 /// ```yaml
 /// supersede:
@@ -56,6 +58,26 @@ impl Supersede {
     #[must_use]
     pub fn key_of(&self, event: &Event) -> String {
         resolve_key(&self.key, event)
+    }
+}
+
+impl From<peregrin_core::SupersedeMode> for Mode {
+    fn from(mode: peregrin_core::SupersedeMode) -> Self {
+        match mode {
+            peregrin_core::SupersedeMode::LatestWins => Self::LatestWins,
+            peregrin_core::SupersedeMode::Fifo => Self::Fifo,
+        }
+    }
+}
+
+/// The parsed campaign spec → the queue policy the scheduler runs.
+impl From<peregrin_core::Supersede> for Supersede {
+    fn from(spec: peregrin_core::Supersede) -> Self {
+        Self {
+            key: spec.key,
+            mode: spec.mode.into(),
+            cancel_running: spec.cancel_running,
+        }
     }
 }
 

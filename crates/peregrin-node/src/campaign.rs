@@ -20,7 +20,7 @@ use std::sync::Arc;
 use peregrin_bus::{LocalBus, NoopObserver};
 use peregrin_core::{Campaign, Event};
 use peregrin_driver::{DriverError, NoopDriver, RunnerDriver, SecretSource};
-use peregrin_engine::{Injector, Registry, RunOptions, Runner, ingress};
+use peregrin_engine::{Ingress, Injector, Registry, RunOptions, Runner, ingress};
 use peregrin_loader::{LoadError, Loader};
 use peregrin_loader_yaml::YamlLoader;
 use peregrin_store::MemoryDlq;
@@ -110,16 +110,15 @@ pub fn runner() -> Runner {
     Runner::new(registry()).with_dlq(Box::<MemoryDlq>::default())
 }
 
-/// A runner like [`runner`] but with a live ingress pair: the
-/// run-scoped ingress drivers (`github-webhook`, `sturn-poll`) are
-/// registered bound to the returned `Injector`, and injected
-/// events drain into the loop each step. Keep the `Injector` to
-/// feed the run from outside (supervisor queue, daemon triggers,
-/// `Event::cancel` from supersede).
+/// [`registry`] plus the run-scoped ingress drivers
+/// (`github-webhook`, `sturn-poll`) bound to `injector` — every event
+/// they deliver flows through that channel. Single-run mode binds
+/// them to the run's own channel; supervisor mode binds them to the
+/// queue-facing channel the persistent listener run feeds
+/// ([`crate::supervisor::supervise`]).
 #[must_use]
-pub fn runner_with_ingress() -> (Runner, Injector) {
-    let (injector, ingress) = ingress();
-    let registry = registry()
+pub fn registry_with_ingress(injector: &Injector) -> Registry {
+    registry()
         .with(
             "github-webhook",
             Arc::new(peregrin_driver_github_webhook::GithubWebhookDriver::new(
@@ -129,8 +128,89 @@ pub fn runner_with_ingress() -> (Runner, Injector) {
         .with(
             "sturn-poll",
             Arc::new(peregrin_driver_sturn::SturnDriver::new(injector.clone())),
-        );
-    let runner = Runner::new(registry)
+        )
+}
+
+/// Does the campaign declare an ingress-driver node
+/// (`Driver::is_ingress` — `github-webhook`, `sturn-poll`) under the
+/// stock registry — i.e. is it a service campaign rather than a
+/// finite one. Detection needs the ingress impls registered, so this
+/// binds a throwaway channel; the drivers never fire, so nothing
+/// listens or polls.
+#[must_use]
+pub fn has_ingress_nodes(campaign: &Campaign) -> bool {
+    let (injector, _ingress) = ingress();
+    let registry = registry_with_ingress(&injector);
+    campaign.nodes.iter().any(|node| {
+        registry
+            .resolve(&node.driver)
+            .is_ok_and(|driver| driver.is_ingress())
+    })
+}
+
+/// Split `campaign` for supervisor mode (docs/reference/
+/// queue-supersede.md) into `(listener, worker)` halves: the
+/// listener keeps the ingress-driver nodes (`Driver::is_ingress`
+/// under `registry` — call it with [`registry_with_ingress`]'s
+/// output so those drivers resolve) and runs once as the persistent,
+/// parked run whose drivers push triggers into the queue's channel;
+/// the worker half is everything else, spawned once per trigger.
+/// An unresolvable driver lands in the worker half — its failure
+/// surfaces inside that trigger's run, like a finite run's would.
+#[must_use]
+pub fn split_ingress(campaign: &Campaign, registry: &Registry) -> (Campaign, Campaign) {
+    let mut listener = campaign.clone();
+    let mut worker = campaign.clone();
+    listener.nodes.clear();
+    worker.nodes.clear();
+    for node in &campaign.nodes {
+        let is_ingress = registry
+            .resolve(&node.driver)
+            .is_ok_and(|driver| driver.is_ingress());
+        if is_ingress {
+            listener.nodes.push(node.clone());
+        } else {
+            worker.nodes.push(node.clone());
+        }
+    }
+    (listener, worker)
+}
+
+/// The runner a supervised spawned run gets (docs/reference/
+/// queue-supersede.md): the stock registry (the ingress impls are
+/// never registered — the listener half lives in the persistent run,
+/// and a `driver: github-webhook` node inside a spawned run would
+/// re-bind the port and push to the wrong channel), this run's own
+/// ingress channel (the trigger arrives on it pre-start; a supersede
+/// `workflow.cancel` lands mid-run), and — when `log_path` is set —
+/// the durable JSONL log opened in append mode: every spawned run
+/// continues the shared history file but must not read earlier runs
+/// back (a run's `seen` types are per-run).
+///
+/// # Errors
+/// [`CampaignError::Store`] when the log can't be opened.
+pub fn worker_runner(ingress: Ingress, log_path: Option<&Path>) -> Result<Runner, CampaignError> {
+    let mut runner = runner().with_ingress(ingress);
+    if let Some(path) = log_path {
+        let store = peregrin_store_json::JsonStore::open_append(path)?;
+        runner = runner.with_bus(Box::new(LocalBus::new(
+            Box::new(store),
+            Arc::new(NoopObserver),
+        )));
+    }
+    Ok(runner)
+}
+
+/// A runner like [`runner`] but with a live ingress pair: the
+/// run-scoped ingress drivers (`github-webhook`, `sturn-poll`) are
+/// registered bound to the returned `Injector`, and injected
+/// events drain into the loop each step. Keep the `Injector` to
+/// feed the run from outside (supervisor queue, daemon triggers,
+/// `Event::cancel` from supersede).
+#[must_use]
+pub fn runner_with_ingress() -> (Runner, Injector) {
+    let (injector, ingress) = ingress();
+    let runner = Runner::new(registry_with_ingress(&injector))
         .with_dlq(Box::<MemoryDlq>::default())
         .with_ingress(ingress);
     (runner, injector)
@@ -249,6 +329,10 @@ pub fn default_secret_stores() -> Vec<SecretSource> {
 /// is the terminal event (`workflow.done`, `workflow.failed`, or
 /// `workflow.cancelled`). The runner is synchronous — callers on an
 /// async surface should `spawn_blocking`.
+///
+/// Single-run semantics: a campaign declaring `supersede:` *and* an
+/// ingress-driver node belongs on [`crate::supervisor::supervise`]
+/// instead (the `peregrin campaign run` verb makes that switch).
 ///
 /// # Errors
 /// [`CampaignError::Load`] for loader failures,

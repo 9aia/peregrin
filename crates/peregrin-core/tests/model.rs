@@ -5,7 +5,7 @@
 //! compilation, campaign-level normalization).
 #![allow(clippy::unwrap_used)]
 
-use peregrin_core::{Campaign, EventSchema, MaxFires, Node, TriggerMode};
+use peregrin_core::{Campaign, EventSchema, MaxFires, Node, SupersedeMode, TriggerMode};
 use serde_json::json;
 
 #[test]
@@ -156,6 +156,81 @@ fn campaign_rejects_non_array_nodes_and_events() {
     assert_eq!(err.field, "nodes");
     let err = Campaign::from_dict(&json!({"events": 5})).unwrap_err();
     assert_eq!(err.field, "events");
+}
+
+// ---------------------------------------------------------------------------
+// supersede: parsing (docs/reference/queue-supersede.md)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn campaign_parses_supersede_block() {
+    let campaign = Campaign::from_dict(&json!({
+        "supersede": {
+            "key": "{repo}:{ref}",
+            "mode": "fifo",
+            "cancel_running": true,
+        },
+    }))
+    .unwrap();
+    let supersede = campaign.supersede.unwrap();
+    assert_eq!(supersede.key, "{repo}:{ref}");
+    assert_eq!(supersede.mode, SupersedeMode::Fifo);
+    assert!(supersede.cancel_running);
+}
+
+#[test]
+fn campaign_supersede_defaults_partial_block() {
+    let campaign = Campaign::from_dict(&json!({
+        "supersede": {"cancel_running": true},
+    }))
+    .unwrap();
+    let supersede = campaign.supersede.unwrap();
+    assert_eq!(supersede.key, "");
+    assert_eq!(supersede.mode, SupersedeMode::LatestWins);
+    // `supersede:` absent or null → no policy.
+    assert!(Campaign::from_dict(&json!({})).unwrap().supersede.is_none());
+    assert!(
+        Campaign::from_dict(&json!({"supersede": null}))
+            .unwrap()
+            .supersede
+            .is_none()
+    );
+}
+
+#[test]
+fn campaign_rejects_bad_supersede() {
+    // Unknown `mode` — a closed enum, not a coerced string.
+    let err = Campaign::from_dict(&json!({
+        "supersede": {"mode": "newest-only"},
+    }))
+    .unwrap_err();
+    assert_eq!(err.field, "supersede");
+    // Unknown keys are denied (typo'd `cancel` would silently
+    // misdeclare the policy otherwise).
+    let err = Campaign::from_dict(&json!({
+        "supersede": {"cancel": true},
+    }))
+    .unwrap_err();
+    assert_eq!(err.field, "supersede");
+    // A non-dict block fails the same channel.
+    let err = Campaign::from_dict(&json!({"supersede": "latest-wins"})).unwrap_err();
+    assert_eq!(err.field, "supersede");
+}
+
+#[test]
+fn campaign_supersede_round_trips_to_dict() {
+    let campaign = Campaign::from_dict(&json!({
+        "supersede": {"key": "{repo}", "mode": "fifo"},
+    }))
+    .unwrap();
+    let dict = campaign.to_dict();
+    assert_eq!(dict["supersede"]["key"], "{repo}");
+    assert_eq!(dict["supersede"]["mode"], "fifo");
+    assert_eq!(dict["supersede"]["cancel_running"], false);
+    let reparsed = Campaign::from_dict(&dict).unwrap();
+    assert_eq!(reparsed.supersede, campaign.supersede);
+    // No policy → no serialized key.
+    assert!(Campaign::default().to_dict().get("supersede").is_none());
 }
 
 #[test]

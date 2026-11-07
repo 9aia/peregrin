@@ -282,3 +282,25 @@ fn pending_iterates_in_drain_order() {
     let seqs: Vec<u64> = q.pending().map(|job| job.seq).collect();
     assert_eq!(seqs, [1, 2, 3]);
 }
+
+// ---------------------------------------------------------------------------
+// Campaign-spec conversion (peregrin_core::Supersede is the schema
+// mirror — `supersede:` parses there, converts here)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn core_spec_converts_to_the_policy() {
+    let spec = peregrin_core::Supersede {
+        key: "{repo}:{ref}".to_string(),
+        mode: peregrin_core::SupersedeMode::Fifo,
+        cancel_running: true,
+    };
+    let policy = Supersede::from(spec);
+    assert_eq!(policy.key, "{repo}:{ref}");
+    assert_eq!(policy.mode, Mode::Fifo);
+    assert!(policy.cancel_running);
+    assert_eq!(
+        Supersede::from(peregrin_core::Supersede::default()),
+        Supersede::default()
+    );
+}

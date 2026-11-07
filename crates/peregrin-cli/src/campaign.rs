@@ -45,6 +45,20 @@ pub fn run(
     // (record → env → keyring → file).
     options.secret_stores = peregrin_node::campaign::default_secret_stores();
     let campaign = peregrin_node::campaign::load(workflow).map_err(|e| CliError(e.to_string()))?;
+    // Supervisor mode (docs/reference/queue-supersede.md): a declared
+    // `supersede:` policy *plus* an ingress-driver node turns
+    // `campaign run` into the sequential-run loop the systemd unit
+    // wants — the listener nodes persist, every trigger spawns a run
+    // over the worker nodes. `dry_run` and `--replay` keep single-run
+    // semantics: dry-run can't bind listeners (serve is disabled) and
+    // a replay seeds ONE run's log — meaningless across spawned runs.
+    if campaign.supersede.is_some()
+        && peregrin_node::campaign::has_ingress_nodes(&campaign)
+        && !dry_run
+        && options.replay_events.is_empty()
+    {
+        return run_supervised(&campaign, history);
+    }
     // Ingress variants: `github-webhook`/`sturn-poll` nodes get a
     // run-scoped `Injector`, and a campaign declaring one serves
     // (parks on the channel) instead of exiting at quiet — the
@@ -61,6 +75,35 @@ pub fn run(
         println!("{} {} {}", event.ts, event.source, event.kind);
     }
     Ok(log)
+}
+
+/// Supervisor mode for `run` — `peregrin_node::supervisor::supervise`
+/// drives the campaign: persistent ingress listeners feed the queue,
+/// each trigger spawns a run over the worker nodes, and each finished
+/// run's log prints (and appends to `history`, which every spawned
+/// run shares — `peregrin runs`/`log`/`explain` read it back). Blocks
+/// until the trigger channel closes — the ingress listeners exiting —
+/// and the queue drains; returns the logs concatenated for callers.
+fn run_supervised(campaign: &Campaign, history: Option<&Path>) -> Result<Vec<Event>, CliError> {
+    let options = peregrin_node::supervisor::SupervisedOptions {
+        history: history.map(Path::to_path_buf),
+        on_run: Some(Box::new(|log: &[Event]| {
+            for event in log {
+                println!("{} {} {}", event.ts, event.source, event.kind);
+            }
+        })),
+        ..peregrin_node::supervisor::SupervisedOptions::default()
+    };
+    let run = peregrin_node::supervisor::supervise(campaign, options);
+    // Only the listeners feed the queue — drop our producer so a dead
+    // listener disconnects the channel and the supervisor drains and
+    // exits (a parked gate that can never see a trigger must not look
+    // alive; systemd restarts the unit).
+    drop(run.injector);
+    run.join
+        .join()
+        .map_err(|_| CliError("campaign supervisor thread panicked".to_string()))?
+        .map_err(|e| CliError(e.to_string()))
 }
 
 /// `handl validate` — expand the yaml and print the summary plus
@@ -119,6 +162,16 @@ fn validate_report(campaign: &Campaign) -> Vec<String> {
     }
     if !campaign.stop_on.is_empty() {
         out.push(format!("  stop_on: {}", campaign.stop_on.join(", ")));
+    }
+    if let Some(supersede) = &campaign.supersede {
+        let mode = match supersede.mode {
+            peregrin_core::SupersedeMode::LatestWins => "latest-wins",
+            peregrin_core::SupersedeMode::Fifo => "fifo",
+        };
+        out.push(format!(
+            "  supersede: key=\"{}\" mode={mode} cancel_running={}",
+            supersede.key, supersede.cancel_running
+        ));
     }
     for node in &campaign.nodes {
         let max_fires = if node.max_fires == MaxFires::Fires(1) {

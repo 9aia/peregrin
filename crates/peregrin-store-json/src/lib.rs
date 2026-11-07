@@ -128,6 +128,32 @@ impl JsonStore {
         Ok(store)
     }
 
+    /// Like [`JsonStore::open`] but the in-memory index starts empty —
+    /// an existing file is kept and appends continue it, while this
+    /// store only sees its own appends (all/seen_types/latest).
+    /// Supervised runs share one history path: every spawned run
+    /// appends to the same log without inheriting earlier runs' `seen`
+    /// types or log contents. Permissions are still tightened when the
+    /// file exists.
+    ///
+    /// # Errors
+    /// [`JsonStoreError::Io`] when the file exists but its permissions
+    /// can't be tightened.
+    pub fn open_append(path: impl Into<PathBuf>) -> Result<Self, JsonStoreError> {
+        let store = Self {
+            path: path.into(),
+            file: None,
+            events: Vec::new(),
+            by_type: HashMap::new(),
+            seen: Vec::new(),
+            write_error: None,
+        };
+        if store.path.is_file() {
+            tighten_permissions(&store.path)?;
+        }
+        Ok(store)
+    }
+
     /// The log's path.
     #[must_use]
     pub fn path(&self) -> &Path {

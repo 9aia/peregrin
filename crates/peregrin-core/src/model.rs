@@ -933,13 +933,37 @@ fn trigger_mode(value: Option<&Value>) -> TriggerMode {
 // ---------------------------------------------------------------------------
 
 /// `Workflow.fromDict` failure — mirrors the `TypeError` the TS throws
-/// when `nodes`/`events` is present but not an array.
-#[derive(Debug, thiserror::Error)]
-#[error("'{field}' must be an array")]
+/// when `nodes`/`events` is present but not an array; `supersede:`
+/// schema violations carry the serde detail.
+#[derive(Debug)]
 pub struct ModelError {
     /// The offending top-level field.
     pub field: &'static str,
+    /// Validation detail beyond `"'{field}' must be an array"` —
+    /// populated by `supersede:` schema errors.
+    pub detail: Option<String>,
 }
+
+impl ModelError {
+    /// `'{field}' must be an array` — the TS `TypeError` shape.
+    fn not_array(field: &'static str) -> Self {
+        Self {
+            field,
+            detail: None,
+        }
+    }
+}
+
+impl std::fmt::Display for ModelError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self.detail {
+            Some(detail) => write!(f, "'{}' is invalid: {detail}", self.field),
+            None => write!(f, "'{}' must be an array", self.field),
+        }
+    }
+}
+
+impl std::error::Error for ModelError {}
 
 /// `functions:` normalization — array keeps its dict entries, mapping
 /// becomes `{name, ...body}` records (TS `Workflow.fromDict`).
@@ -956,6 +980,53 @@ fn function_records(value: Option<&Value>) -> Vec<Value> {
             .collect(),
         _ => Vec::new(),
     }
+}
+
+/// `supersede.mode` — how pending jobs dedupe by supersede key.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SupersedeMode {
+    /// A new event replaces a pending job with the same key — only
+    /// the newest trigger for a target runs.
+    #[default]
+    LatestWins,
+    /// Every event appends; same-key events each get a run.
+    Fifo,
+}
+
+/// The `supersede:` campaign config — which runs happen when trigger
+/// events outpace the executor (docs/reference/queue-supersede.md).
+///
+/// ```yaml
+/// supersede:
+///   key: "{repo}:{ref}"     # template over the trigger event payload
+///   mode: latest-wins       # | fifo
+///   cancel_running: true    # cancel the active run vs queue behind it
+/// ```
+///
+/// This is the schema mirror — the scheduler (`Queue` + the `{path}`
+/// key-template resolver) lives in `peregrin-queue`, which depends on
+/// `peregrin-core` and can't be depended on in return. The node
+/// converts the spec at run setup (`peregrin_queue::Supersede::from`)
+/// and `peregrin_node::supervisor::supervise` drives it.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct Supersede {
+    /// Key template over the trigger event's `payload` —
+    /// `{dotted.path}` placeholders with JS-style stringification;
+    /// misses stay verbatim. An empty template resolves to a constant
+    /// key — every trigger targets the same logical run.
+    #[serde(default)]
+    pub key: String,
+    /// Pending-job dedupe mode.
+    #[serde(default)]
+    pub mode: SupersedeMode,
+    /// `true`: a new trigger marks the *active* run superseded — the
+    /// queue raises a one-shot cancel signal the supervisor delivers
+    /// as a `workflow.cancel` on the run's own ingress channel.
+    /// `false`: new triggers always queue behind the active run.
+    #[serde(default)]
+    pub cancel_running: bool,
 }
 
 /// A campaign — a named graph of nodes plus its triggers (port of the
@@ -1001,6 +1072,15 @@ pub struct Campaign {
     /// Free-form metadata (ADR-0009).
     #[serde(default)]
     pub annotations: Map<String, Value>,
+    /// The `supersede:` queue policy (docs/reference/
+    /// queue-supersede.md) — which runs happen when trigger events
+    /// outpace the executor. `None` keeps single-run semantics: one
+    /// long-running run contains ingress and workers. Declared *plus*
+    /// an ingress-driver node engages supervisor mode — persistent
+    /// listeners feed a `RunSupervisor` and each trigger spawns a
+    /// fresh run over the worker nodes.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub supersede: Option<Supersede>,
     /// Directory the campaign was loaded from — the anchor `include:`
     /// and `subworkflow` `params.path` resolve against (ADR-0022).
     /// Provenance metadata the loader stamps after [`Campaign::from_dict`];
@@ -1023,12 +1103,25 @@ impl Campaign {
         let events = match raw.get("events") {
             None | Some(Value::Null) => Vec::new(),
             Some(Value::Array(items)) => items.iter().map(EventSchema::from_dict).collect(),
-            Some(_) => return Err(ModelError { field: "events" }),
+            Some(_) => return Err(ModelError::not_array("events")),
         };
         let nodes = match raw.get("nodes") {
             None | Some(Value::Null) => Vec::new(),
             Some(Value::Array(items)) => items.iter().map(Node::from_dict).collect(),
-            Some(_) => return Err(ModelError { field: "nodes" }),
+            Some(_) => return Err(ModelError::not_array("nodes")),
+        };
+        // `supersede:` validates strictly — it's the schema mirror of
+        // `peregrin_queue::Supersede` (`deny_unknown_fields`, a closed
+        // `mode` enum): a typo'd key or mode is a load error, not a
+        // silently-misparsed policy.
+        let supersede = match raw.get("supersede") {
+            None | Some(Value::Null) => None,
+            Some(value) => Some(serde_json::from_value::<Supersede>(value.clone()).map_err(
+                |e| ModelError {
+                    field: "supersede",
+                    detail: Some(e.to_string()),
+                },
+            )?),
         };
         // `raw.include ?? raw.includes ?? []` — JS `??` also falls
         // through on `null`.
@@ -1053,6 +1146,7 @@ impl Campaign {
             strict: raw.get("strict").is_some_and(js_truthy),
             state: map_or_empty(raw.get("state")),
             annotations: map_or_empty(raw.get("annotations")),
+            supersede,
             source_dir: None,
         })
     }
@@ -1124,6 +1218,12 @@ impl Campaign {
                 Value::Object(self.annotations.clone()),
             );
         }
+        if let Some(supersede) = &self.supersede {
+            d.insert(
+                "supersede".to_string(),
+                serde_json::to_value(supersede).unwrap_or(Value::Null),
+            );
+        }
         Value::Object(d)
     }
 
@@ -1144,6 +1244,9 @@ impl Campaign {
             self.config
                 .entry(key.clone())
                 .or_insert_with(|| value.clone());
+        }
+        if self.supersede.is_none() {
+            self.supersede.clone_from(&other.supersede);
         }
     }
 }
