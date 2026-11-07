@@ -1,7 +1,7 @@
 +++
 id = "ADR-0004"
 title = "ADR-0004: Council driver for agent voting"
-status = "open"
+status = "done"
 priority = "medium"
 +++
 
@@ -16,7 +16,14 @@ priority = "medium"
 
 ## Status
 
-Proposed
+Implemented — `crates/peregrin-driver-council`, main `e7a1bf50`.
+Voters run as sub-effects via a constructor-injected `DriverLookup`
+(moved to `peregrin-driver`; `git`'s inner-driver mechanism
+generalized). Member specs: `agent:<runner>`, `human`, `driver:<name>`,
+object form `{driver, params, label}`. Member errors are no-votes →
+`emit_no_quorum`; `agent:claude`-style runner names pass verbatim and
+error under the current `agent` driver. `handl-driver-council` →
+`peregrin-driver-council`.
 
 ## Context
 

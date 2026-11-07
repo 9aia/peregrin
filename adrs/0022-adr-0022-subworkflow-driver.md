@@ -1,7 +1,7 @@
 +++
 id = "ADR-0022"
 title = "ADR-0022: Subworkflow driver"
-status = "open"
+status = "done"
 priority = "medium"
 +++
 
@@ -16,7 +16,12 @@ priority = "medium"
 
 ## Status
 
-Proposed
+Implemented — `crates/peregrin-driver-subworkflow`, main `25f493d9`.
+Nested runs spin a fresh `Runner` per invoke via `ctx.run_sub` (full
+namespace isolation; ingress drivers excluded). `inputs` merge *over*
+the sub-campaign's declared `config`; `outputs` scans the sub-run's
+event log (engine terminals mappable). `handl-driver-subworkflow` →
+`peregrin-driver-subworkflow`.
 
 ## Context
 
