@@ -37,6 +37,12 @@ is total, so even a partial spec registers — and the new nodes begin
 matching events on the next publish. `runner` itself emits
 `{injected: N}`.
 
+Specs may arrive as a JSON array, as a JSON *string* on
+`payload.nodes`, or as `payload.stdout` containing a bare `[...]` or
+`{nodes: [...]}` — so a `driver: shell` planner like the `cat
+plan.json` above feeds `runner` directly (`libraries/map/` builds
+its fan-out on exactly this).
+
 ## Scoping injected nodes (`retire_on`)
 
 Injected nodes accumulate in the graph forever — unless they clean
