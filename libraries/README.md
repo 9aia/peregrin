@@ -16,6 +16,7 @@ workflows. Each file is a domain-namespaced artifact that the loader can
 | `git/`      | `git.*`      | Git worktrees, commits, and branches.              |
 | `github/`   | `github.*`   | GitHub PRs, reviews, and merges.                   |
 | `lang/`     | `lang.*`     | handl language reusable field patterns.            |
+| `map/`      | `map.*`      | Fan-out (planner + `runner` inject) and `fan_in` reduce — map/reduce as fragment (ADR-0021). |
 | `meta/`     | `meta.*`     | Meta-operations and workspace introspection.       |
 | `peregrin/` | `peregrin.*` | Peregrin-project-specific orchestrations.          |
 | `retry/`    | `retry.*`    | Failure re-emission with an attempt budget and `.dead` terminal. |
