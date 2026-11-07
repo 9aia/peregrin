@@ -140,8 +140,12 @@ no node → miss.
    `capability 'secrets' not granted for 'NAME'` — the same error
    surface as `${env(...)}`/`${file(...)}`/`${shell(...)}` grants.
    Non-strict skips argument matching, like every other capability.
-3. **Lookup** — hit substitutes the value. **Miss substitutes `""`**
-   and, under strict, records `NAME` in the missing-secrets ledger —
+3. **Lookup** — resolves through `ctx.resolve_secret`: the run's
+   secrets record, then ambient process env, then the fallback
+   stores (`secret_stores`; OS keyring — consulted only for
+   grant-matched names — then `~/.config/peregrin/env`). A hit
+   substitutes the value. **Miss substitutes `""`** and, under
+   strict, records `NAME` in the missing-secrets ledger —
    the audit then fails with `missing secrets: NAME`.
 
 Ruling on the miss: substitute `""`, not pass-through. It mirrors

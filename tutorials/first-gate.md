@@ -94,6 +94,10 @@ GITHUB_TOKEN=ghp_…                 # forge token (statuses + clones + hooks)
 PEREGRIN_WH_OWNER_REPO=…           # the webhook secret for owner/repo
 ```
 
+Ambient env also resolves — `export GITHUB_TOKEN=…` before
+`peregrin campaign run` works for a quick shell session without
+touching the file (and beats it: env precedes the file leg).
+
 ## 4. Check the box
 
 ```bash
@@ -160,7 +164,8 @@ peregrin destroy worktrees \
 The ops verbs, the `ci-gate` bundle, and the `github-webhook`/
 `sturn-poll` ingress drivers are landed **and wired**: `campaign run`
 registers the ingress drivers against the run-scoped `Injector`,
-populates `RunOptions.secrets`, and parks on the webhook channel.
+wires the secret-resolution stores (keyring + env file behind the
+record and ambient env), and parks on the webhook channel.
 `peregrin campaign run --dry-run <config>` prints the node graph and
 the `<node>.listening` event without side effects; `validate` checks
 the wiring statically. The observability verbs work on any
