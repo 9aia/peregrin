@@ -1,7 +1,7 @@
 +++
 id = "ADR-0003"
 title = "ADR-0003: Secrets provider abstraction"
-status = "open"
+status = "done"
 priority = "medium"
 +++
 
@@ -16,7 +16,15 @@ priority = "medium"
 
 ## Status
 
-Proposed
+Superseded-in-fact — the port it asked for exists:
+`peregrin-secret::Secrets` + `SecretSource` fallback stores
+(`ctx.resolve_secret` chain: record → ambient env → keyring
+(declared-only) → env file; I-018, main `6dedd06a`). The provider
+it gestured at is [arca](https://github.com/9aia/arca): `arca run
+-- peregrin campaign run` materializes secrets as env vars into the
+ambient leg today; a `peregrin-secret-arca` impl consulting
+`arca serve` (ndjson, arca ADR-0003) remains an optional future
+store impl, not a gap in this abstraction.
 
 ## Context
 
