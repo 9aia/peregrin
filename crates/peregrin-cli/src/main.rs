@@ -13,8 +13,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use peregrin_cli::node_ops::{NodeArgs, TargetArgs};
 use peregrin_cli::{
-    CliError, PEREGRIN_VERSION, api, campaign, distribution, import, node_ops, ops, pair,
-    provision, service,
+    CliError, PEREGRIN_VERSION, api, campaign, import, node_ops, ops, pair, provision, service,
 };
 
 fn default_peregrin_home() -> PathBuf {
@@ -550,22 +549,6 @@ enum ServiceCommands {
     },
 }
 
-// --- distribution (ADR-0079) ---------------------------------------------------
-
-/// Fetch-cache management — `~/.cache/peregrin/fetch/<key>` entries.
-#[derive(Subcommand)]
-enum CacheCommands {
-    /// Evict cache entries — by age (--days, default 30) or --all
-    Clean {
-        /// Evict the entire fetch cache
-        #[arg(long)]
-        all: bool,
-        /// Evict entries older than this many days (default: 30)
-        #[arg(long)]
-        days: Option<u64>,
-    },
-}
-
 /// `peregrin import <source>` — foreign config → peregrin node-config
 /// workflow conversion (ADR-0081).
 #[derive(Subcommand)]
@@ -576,19 +559,6 @@ enum ImportCommands {
         /// Path to the bupha config (TOML or YAML — extension picks the parser)
         path: PathBuf,
         /// Write the emitted workflow to this file (default: stdout)
-        #[arg(long)]
-        out: Option<PathBuf>,
-    },
-}
-
-/// Bundle authoring verbs.
-#[derive(Subcommand)]
-enum BundleCommands {
-    /// Pack a bundle dir (manifest + payload) into an installable .tgz
-    Pack {
-        /// Bundle directory (must carry tamias.yaml/.yml/.toml)
-        dir: PathBuf,
-        /// Output file (default: <name>[-<version>].tgz)
         #[arg(long)]
         out: Option<PathBuf>,
     },
@@ -768,54 +738,6 @@ enum Commands {
         #[command(subcommand)]
         cmd: ServiceCommands,
     },
-    // Distribution verbs (ADR-0079) — local store/cache ops, no node.
-    /// Install a bundle — ./path, git:<url>[//subdir][#rev], or an
-    /// http(s) .tgz/.tar.gz URL
-    Install {
-        /// The bundle ref
-        reference: String,
-    },
-    /// Drop an installed bundle's store entry (the fetch cache is
-    /// untouched)
-    Remove {
-        /// Bundle name (or name@version when several are installed)
-        name: String,
-    },
-    /// List installed bundles — name@version, resolved sha, source ref
-    List,
-    /// Show a bundle's manifest, provenance and size
-    Info {
-        /// Bundle name (or name@version)
-        name: String,
-    },
-    /// Re-resolve a bundle's recorded source ref — the upgrade path
-    /// for moving refs
-    Update {
-        /// Bundle name (omit with --all)
-        name: Option<String>,
-        /// Update every installed bundle
-        #[arg(long, required_unless_present = "name", conflicts_with = "name")]
-        all: bool,
-    },
-    /// Retarget a bundle's recorded source ref (refetches when the
-    /// resolved digest differs)
-    Pin {
-        /// Bundle name (or name@version)
-        name: String,
-        /// The new source ref
-        reference: String,
-    },
-    /// Digest-check a bundle's store contents against its recorded sha
-    Verify {
-        /// Bundle name (or name@version)
-        name: String,
-    },
-    /// Fetch-cache management
-    #[command(subcommand)]
-    Cache(CacheCommands),
-    /// Bundle authoring
-    #[command(subcommand)]
-    Bundle(BundleCommands),
     /// Foreign config → peregrin node-config workflow conversion
     /// (ADR-0081 bupha importer)
     #[command(subcommand)]
@@ -1220,12 +1142,6 @@ fn serve() -> Result<(), CliError> {
         .map_err(|e| CliError(e.to_string()))
 }
 
-/// The default store/cache roots — extracted so a test can swap the
-/// home dirs via env before dispatching.
-fn dist_env() -> distribution::DistEnv {
-    distribution::DistEnv::default()
-}
-
 /// The ops roots (bundle store, config dir, unit dir, PEREGRIN_HOME).
 fn ops_env() -> ops::OpsEnv {
     ops::OpsEnv::default()
@@ -1259,25 +1175,6 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
         Commands::Push(cmd) => run_push(cmd),
         Commands::Pair { home, url } => pair::pair(home, url),
         Commands::Service { unit, cmd } => run_service(cmd, unit.as_deref()),
-        Commands::Install { reference } => {
-            distribution::install(&dist_env(), reference).map(|_| ())
-        }
-        Commands::Remove { name } => distribution::remove(&dist_env(), name).map(|_| ()),
-        Commands::List => distribution::list(&dist_env()).map(|_| ()),
-        Commands::Info { name } => distribution::info(&dist_env(), name).map(|_| ()),
-        Commands::Update { name, all } => {
-            distribution::update(&dist_env(), name.as_deref(), *all).map(|_| ())
-        }
-        Commands::Pin { name, reference } => {
-            distribution::pin(&dist_env(), name, reference).map(|_| ())
-        }
-        Commands::Verify { name } => distribution::verify(&dist_env(), name).map(|_| ()),
-        Commands::Cache(CacheCommands::Clean { all, days }) => {
-            distribution::cache_clean(&dist_env(), *all, *days).map(|_| ())
-        }
-        Commands::Bundle(BundleCommands::Pack { dir, out }) => {
-            distribution::bundle_pack(dir, out.as_deref()).map(|_| ())
-        }
         Commands::Import(ImportCommands::Bupha { path, out }) => {
             import::import_bupha(path, out.as_deref()).map(|_| ())
         }
@@ -1536,23 +1433,6 @@ mod tests {
                 "peregrin", "sessions", "resume", "s1", "--to", "devin", "--source", dead,
                 "--node", dead,
             ],
-            // Distribution verbs — every arm errs fast on a bad
-            // ref/name before touching the real store, except `list`
-            // which is read-only.
-            vec!["peregrin", "install", "/definitely/not/a/path"],
-            vec!["peregrin", "install", "not-a-ref"],
-            vec!["peregrin", "remove", "ghost"],
-            vec!["peregrin", "list"],
-            vec!["peregrin", "info", "ghost"],
-            vec!["peregrin", "update", "ghost"],
-            vec!["peregrin", "pin", "ghost", "./x"],
-            vec!["peregrin", "verify", "ghost"],
-            // `cache clean` alone is a no-op on a cache this feature
-            // just created (30-day eviction); --all/--days variants
-            // are covered in tests/distribution.rs instead — running
-            // them here would wipe a real ~/.cache/peregrin.
-            vec!["peregrin", "cache", "clean"],
-            vec!["peregrin", "bundle", "pack", "/definitely/not/a/dir"],
             vec!["peregrin", "import", "bupha", "/definitely/not/a/file"],
             // Ops verbs — every arm errs fast on a missing
             // bundle/config before touching the network or the

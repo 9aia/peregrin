@@ -14,7 +14,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 
-use peregrin_cli::{distribution, import::import_bupha};
+use peregrin_cli::import::import_bupha;
 use tempfile::TempDir;
 
 /// The workspace `libraries/` dir — tests run with cwd = the crate
@@ -295,7 +295,6 @@ kind = "script"
 
 #[test]
 fn ci_gate_bundle_packs_validates_and_installs() {
-    let tmp = TempDir::new().unwrap();
     for bundle in ["ci-gate", "release"] {
         let dir = libraries().join(bundle);
         // Manifest loads + validates.
@@ -319,15 +318,5 @@ fn ci_gate_bundle_packs_validates_and_installs() {
                 .unwrap();
         assert_eq!(schema["type"], "object");
         assert!(schema["properties"].is_object());
-        // Pack → install → verify round trip.
-        let env = distribution::DistEnv::under(tmp.path());
-        let tgz = distribution::bundle_pack(&dir, Some(&tmp.path().join(format!("{bundle}.tgz"))))
-            .unwrap();
-        assert!(tgz.is_file());
-        let entry = distribution::install(&env, &tgz.display().to_string()).unwrap();
-        assert_eq!(entry.record.name, bundle);
-        assert_eq!(entry.label(), format!("{bundle}@0.1.0"));
-        assert!(distribution::verify(&env, &entry.label()).is_ok());
-        assert!(entry.dir.join("main.yaml").is_file());
     }
 }
