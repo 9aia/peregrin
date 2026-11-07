@@ -585,7 +585,7 @@ enum ImportCommands {
 enum BundleCommands {
     /// Pack a bundle dir (manifest + payload) into an installable .tgz
     Pack {
-        /// Bundle directory (must carry peregrin-bundle.yaml/.yml/.toml)
+        /// Bundle directory (must carry tamias.yaml/.yml/.toml)
         dir: PathBuf,
         /// Output file (default: <name>[-<version>].tgz)
         #[arg(long)]

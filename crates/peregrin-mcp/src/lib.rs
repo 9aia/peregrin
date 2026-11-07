@@ -5,7 +5,7 @@
 //!
 //! Every tool is a thin wrapper over the library composition the
 //! `peregrin` CLI drives — `peregrin_node::campaign` for load/run,
-//! `peregrin-bundle` + `peregrin-source` for the ADR-0079 store verbs
+//! `tamias-core` + `tamias-source` — the tamias distribution engine (ADR-0079 moved out)
 //! (the same fns `peregrin-cli::distribution` calls, recomposed here
 //! so nothing `println!`s onto the JSON-RPC stream), and
 //! `peregrin-store-json` for run-log observability.
@@ -17,18 +17,20 @@ use std::collections::{BTreeMap, BTreeSet, HashSet};
 use std::io::{BufRead, Write as IoWrite};
 use std::path::{Path, PathBuf};
 
-use peregrin_bundle::{
-    FetchCache, Manifest, Store, StoreEntry, StoreRecord, dir_digest, overlay, payload_root,
-};
 use peregrin_core::{Campaign, Event};
 use peregrin_engine::RunOptions;
-use peregrin_source::{Resolved, Source, SourceRef, parse_ref};
-use peregrin_source_fs::FsSource;
-use peregrin_source_git::GitSource;
-use peregrin_source_http::HttpSource;
 use peregrin_store::EventStore;
 use peregrin_store_json::JsonStore;
 use serde_json::{Value, json};
+use tamias_cache_local::FetchCache;
+use tamias_core::{
+    Manifest, SourceRef, StoreEntry, StoreRecord, dir_digest, overlay, parse_ref, payload_root,
+};
+use tamias_source::{Resolved, Source};
+use tamias_source_fs::FsSource;
+use tamias_source_git::GitSource;
+use tamias_source_http::HttpSource;
+use tamias_store_local::Store;
 
 /// One tool in the agent vocabulary.
 pub struct Tool {
@@ -172,7 +174,7 @@ fn call(ctx: &Ctx, name: &str, a: &Value) -> Value {
 /// default `main.yaml`/`main.yml`). `path` wins when both are given.
 fn resolve_workflow(ctx: &Ctx, a: &Value) -> Result<PathBuf, String> {
     if let Ok(path) = arg(a, "path") {
-        return Ok(peregrin_source::expand_path(Path::new(path)));
+        return Ok(tamias_core::expand_path(Path::new(path)));
     }
     let bundle = arg(a, "bundle")?;
     let entry = Store::new(&ctx.store_root).find(bundle).map_err(fail)?;
@@ -241,7 +243,7 @@ fn campaign_run(ctx: &Ctx, a: &Value) -> Value {
         let log = match a.get("log").and_then(|v| v.as_str()) {
             Some(log_path) => {
                 let mut runner = peregrin_node::campaign::runner_with_log(
-                    &peregrin_source::expand_path(Path::new(log_path)),
+                    &tamias_core::expand_path(Path::new(log_path)),
                 )
                 .map_err(fail)?;
                 runner.run(&campaign, &options).map_err(fail)?
@@ -351,7 +353,7 @@ fn resolve(reference: &SourceRef) -> Result<Resolved, String> {
     .map_err(fail)
 }
 
-fn fetch(resolved: &Resolved, dest: &Path) -> Result<peregrin_source::Fetched, String> {
+fn fetch(resolved: &Resolved, dest: &Path) -> Result<tamias_source::Fetched, String> {
     match resolved {
         Resolved::Fs { .. } => FsSource::new().fetch(resolved, dest),
         Resolved::Git { .. } => GitSource::new().fetch(resolved, dest),
@@ -416,9 +418,11 @@ fn install_ref_inner(
             &payload,
             StoreRecord {
                 name: manifest.name.clone(),
+                scope: manifest.scope.clone(),
                 version: manifest.version.clone(),
+                kind: manifest.kind.clone(),
                 source_ref: reference.to_string(),
-                resolved_sha: resolved_id,
+                resolved: resolved_id,
                 digest: String::new(),
                 installed_at: 0,
             },
@@ -456,7 +460,7 @@ fn compose(
     }
     let digest = dir_digest(&scratch).map_err(fail)?;
     let dir = cache
-        .commit(&scratch, &format!("sha256-{digest}"))
+        .commit(&scratch, &digest.replacen("sha256:", "sha256-", 1))
         .map_err(fail)?;
     payload_root(&dir).map_err(fail)
 }
@@ -467,7 +471,7 @@ fn entry_json(entry: &StoreEntry) -> Value {
         "name": entry.record.name,
         "version": entry.record.version,
         "source_ref": entry.record.source_ref,
-        "resolved_sha": entry.record.resolved_sha,
+        "resolved": entry.record.resolved,
         "digest": entry.record.digest,
         "dir": entry.dir.display().to_string(),
     })
@@ -485,7 +489,7 @@ fn bundle_remove(ctx: &Ctx, a: &Value) -> Value {
         Ok(record) => tool_json(&json!({
             "removed": format!("{}@{}", record.name, record.version.clone().unwrap_or_default()),
             "name": record.name,
-            "resolved_sha": record.resolved_sha,
+            "resolved": record.resolved,
         })),
         Err(e) => tool_err(e),
     }
@@ -593,7 +597,7 @@ fn verdict_of(terminal: Option<&Event>) -> &'static str {
 fn runs(ctx: &Ctx, a: &Value) -> Value {
     let r = (|| -> Result<Value, String> {
         let dir = match a.get("dir").and_then(|v| v.as_str()) {
-            Some(d) => peregrin_source::expand_path(Path::new(d)),
+            Some(d) => tamias_core::expand_path(Path::new(d)),
             None => ctx.runs_dir.clone(),
         };
         let limit = a.get("limit").and_then(Value::as_u64).unwrap_or(20) as usize;
@@ -608,7 +612,7 @@ fn runs(ctx: &Ctx, a: &Value) -> Value {
 /// missing file as an empty store, so the existence check is what
 /// makes a typo'd path an error.
 fn open_log(a: &Value) -> Result<JsonStore, String> {
-    let path = peregrin_source::expand_path(Path::new(arg(a, "path")?));
+    let path = tamias_core::expand_path(Path::new(arg(a, "path")?));
     if !path.is_file() {
         return Err(format!("no such log: {}", path.display()));
     }
@@ -837,7 +841,7 @@ mod tests {
         let dir = root.join(name);
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(
-            dir.join("peregrin-bundle.yaml"),
+            dir.join("tamias.yaml"),
             format!("name: {name}\nversion: \"0.1.0\"\ndescription: test bundle\n"),
         )
         .unwrap();
@@ -1088,7 +1092,7 @@ mod tests {
         let top = tmp.path().join("top");
         std::fs::create_dir_all(&top).unwrap();
         std::fs::write(
-            top.join("peregrin-bundle.yaml"),
+            top.join("tamias.yaml"),
             format!("name: top\ninclude:\n  - {}\n", base.display()),
         )
         .unwrap();
@@ -1105,11 +1109,7 @@ mod tests {
         // Include naming an installed store entry.
         let mid = tmp.path().join("mid");
         std::fs::create_dir_all(&mid).unwrap();
-        std::fs::write(
-            mid.join("peregrin-bundle.yaml"),
-            "name: mid\ninclude: [base]\n",
-        )
-        .unwrap();
+        std::fs::write(mid.join("tamias.yaml"), "name: mid\ninclude: [base]\n").unwrap();
         let v = call(
             &ctx,
             "bundle_install",
@@ -1121,7 +1121,7 @@ mod tests {
         let loopy = tmp.path().join("loopy");
         std::fs::create_dir_all(&loopy).unwrap();
         std::fs::write(
-            loopy.join("peregrin-bundle.yaml"),
+            loopy.join("tamias.yaml"),
             format!("name: loopy\ninclude:\n  - {}\n", loopy.display()),
         )
         .unwrap();
@@ -1137,7 +1137,7 @@ mod tests {
         let missing = tmp.path().join("missing");
         std::fs::create_dir_all(&missing).unwrap();
         std::fs::write(
-            missing.join("peregrin-bundle.yaml"),
+            missing.join("tamias.yaml"),
             "name: missing\ninclude: [ghost]\n",
         )
         .unwrap();

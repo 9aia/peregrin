@@ -2,7 +2,7 @@
 //! surface (ADR-0079's "provision/teardown verbs — bupha parity"):
 //!
 //! `create --template <bundle>` resolves an installed bundle
-//! (`peregrin_bundle::Store`), materializes a node config (`include:`
+//! (`tamias_store_local::Store`), materializes a node config (`include:`
 //! the bundle's `main.yaml` + operator `config:` params + an inline
 //! `github-webhook` ingress node per `--repo`), and writes a per-user
 //! systemd unit via `peregrin-systemd` — *without* enabling it
@@ -31,13 +31,13 @@ use std::time::Duration;
 
 use serde_json::{Map, Value, json};
 
-use peregrin_bundle::Store;
 use peregrin_config::ConfigSource;
 use peregrin_core::Campaign;
 use peregrin_dotenv::DotenvSecrets;
 use peregrin_git::{Listing, Worktrees};
 use peregrin_keyring::KeyringSecrets;
 use peregrin_secret::Secrets;
+use tamias_store_local::Store;
 
 use crate::CliError;
 

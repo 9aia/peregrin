@@ -3,7 +3,6 @@ resolver = "2"
 members = [
     "crates/peregrin-session",
     "crates/peregrin-auth",
-    "crates/peregrin-bundle",
     "crates/peregrin-bus",
     "crates/peregrin-cli",
     "crates/peregrin-config",
@@ -42,10 +41,6 @@ members = [
     "crates/peregrin-secret",
     "crates/peregrin-service",
     "crates/peregrin-sink-github-status",
-    "crates/peregrin-source",
-    "crates/peregrin-source-fs",
-    "crates/peregrin-source-git",
-    "crates/peregrin-source-http",
     "crates/peregrin-store",
     "crates/peregrin-store-json",
     "crates/peregrin-sync",
@@ -65,7 +60,6 @@ repository = "https://github.com/9aia/peregrin"
 # Internal crates.
 peregrin-session = { path = "crates/peregrin-session" }
 peregrin-auth = { path = "crates/peregrin-auth" }
-peregrin-bundle = { path = "crates/peregrin-bundle" }
 peregrin-bus = { path = "crates/peregrin-bus" }
 peregrin-cli = { path = "crates/peregrin-cli" }
 peregrin-config = { path = "crates/peregrin-config" }
@@ -74,6 +68,13 @@ peregrin-config-toml = { path = "crates/peregrin-config-toml" }
 peregrin-config-yaml = { path = "crates/peregrin-config-yaml" }
 peregrin-control = { path = "crates/peregrin-control" }
 peregrin-core = { path = "crates/peregrin-core" }
+tamias-core = { path = "../tamias/crates/tamias-core" }
+tamias-source = { path = "../tamias/crates/tamias-source" }
+tamias-source-fs = { path = "../tamias/crates/tamias-source-fs" }
+tamias-source-git = { path = "../tamias/crates/tamias-source-git" }
+tamias-source-http = { path = "../tamias/crates/tamias-source-http" }
+tamias-store-local = { path = "../tamias/crates/tamias-store-local" }
+tamias-cache-local = { path = "../tamias/crates/tamias-cache-local" }
 peregrin-dotenv = { path = "crates/peregrin-dotenv" }
 peregrin-driver = { path = "crates/peregrin-driver" }
 peregrin-driver-agent = { path = "crates/peregrin-driver-agent" }
@@ -104,10 +105,6 @@ peregrin-remote-http = { path = "crates/peregrin-remote-http" }
 peregrin-secret = { path = "crates/peregrin-secret" }
 peregrin-service = { path = "crates/peregrin-service" }
 peregrin-sink-github-status = { path = "crates/peregrin-sink-github-status" }
-peregrin-source = { path = "crates/peregrin-source" }
-peregrin-source-fs = { path = "crates/peregrin-source-fs" }
-peregrin-source-git = { path = "crates/peregrin-source-git" }
-peregrin-source-http = { path = "crates/peregrin-source-http" }
 peregrin-store = { path = "crates/peregrin-store" }
 peregrin-store-json = { path = "crates/peregrin-store-json" }
 peregrin-sync = { path = "crates/peregrin-sync" }

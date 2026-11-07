@@ -299,7 +299,7 @@ fn ci_gate_bundle_packs_validates_and_installs() {
     for bundle in ["ci-gate", "release"] {
         let dir = libraries().join(bundle);
         // Manifest loads + validates.
-        let manifest = peregrin_bundle::Manifest::load(&dir).unwrap();
+        let manifest = tamias_core::Manifest::load(&dir).unwrap();
         assert_eq!(manifest.name, bundle);
         assert_eq!(manifest.version.as_deref(), Some("0.1.0"));
         // The campaign payload parses through the real loader.

@@ -2469,23 +2469,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "peregrin-bundle"
-version = "0.0.0"
-dependencies = [
- "flate2",
- "hex",
- "peregrin-loader-yaml",
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "sha2",
- "tar",
- "tempfile",
- "thiserror 2.0.21",
- "toml",
-]
-
-[[package]]
 name = "peregrin-bus"
 version = "0.0.0"
 dependencies = [
@@ -2500,7 +2483,6 @@ version = "0.0.0"
 dependencies = [
  "clap",
  "nix",
- "peregrin-bundle",
  "peregrin-config",
  "peregrin-config-toml",
  "peregrin-core",
@@ -2511,10 +2493,6 @@ dependencies = [
  "peregrin-keyring",
  "peregrin-node",
  "peregrin-secret",
- "peregrin-source",
- "peregrin-source-fs",
- "peregrin-source-git",
- "peregrin-source-http",
  "peregrin-systemd",
  "peregrin-telemetry",
  "sepia-acp",
@@ -2528,6 +2506,13 @@ dependencies = [
  "serde_json",
  "serde_norway",
  "serde_yaml_ng",
+ "tamias-cache-local",
+ "tamias-core",
+ "tamias-source",
+ "tamias-source-fs",
+ "tamias-source-git",
+ "tamias-source-http",
+ "tamias-store-local",
  "tempfile",
  "time",
  "tokio",
@@ -2869,17 +2854,19 @@ dependencies = [
 name = "peregrin-mcp"
 version = "0.0.0"
 dependencies = [
- "peregrin-bundle",
  "peregrin-core",
  "peregrin-engine",
  "peregrin-node",
- "peregrin-source",
- "peregrin-source-fs",
- "peregrin-source-git",
- "peregrin-source-http",
  "peregrin-store",
  "peregrin-store-json",
  "serde_json",
+ "tamias-cache-local",
+ "tamias-core",
+ "tamias-source",
+ "tamias-source-fs",
+ "tamias-source-git",
+ "tamias-source-http",
+ "tamias-store-local",
  "tempfile",
 ]
 
@@ -3039,44 +3026,6 @@ dependencies = [
  "peregrin-driver",
  "peregrin-template",
  "serde_json",
- "ureq",
-]
-
-[[package]]
-name = "peregrin-source"
-version = "0.0.0"
-dependencies = [
- "tempfile",
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "peregrin-source-fs"
-version = "0.0.0"
-dependencies = [
- "peregrin-bundle",
- "peregrin-source",
- "tar",
- "tempfile",
-]
-
-[[package]]
-name = "peregrin-source-git"
-version = "0.0.0"
-dependencies = [
- "peregrin-bundle",
- "peregrin-git",
- "peregrin-source",
- "tempfile",
-]
-
-[[package]]
-name = "peregrin-source-http"
-version = "0.0.0"
-dependencies = [
- "peregrin-bundle",
- "peregrin-source",
- "tempfile",
  "ureq",
 ]
 
@@ -3733,6 +3682,10 @@ name = "semver"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a7852d02fc848982e0c167ef163aaff9cd91dc640ba85e263cb1ce46fae51cd"
+dependencies = [
+ "serde",
+ "serde_core",
+]
 
 [[package]]
 name = "sepia-acp"
@@ -4289,6 +4242,69 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.9",
+]
+
+[[package]]
+name = "tamias-cache-local"
+version = "0.1.0"
+dependencies = [
+ "tamias-core",
+]
+
+[[package]]
+name = "tamias-core"
+version = "0.1.0"
+dependencies = [
+ "flate2",
+ "hex",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+ "sha2",
+ "tar",
+ "thiserror 2.0.21",
+ "toml",
+]
+
+[[package]]
+name = "tamias-source"
+version = "0.1.0"
+dependencies = [
+ "tamias-core",
+]
+
+[[package]]
+name = "tamias-source-fs"
+version = "0.1.0"
+dependencies = [
+ "tamias-core",
+ "tamias-source",
+]
+
+[[package]]
+name = "tamias-source-git"
+version = "0.1.0"
+dependencies = [
+ "tamias-core",
+ "tamias-source",
+]
+
+[[package]]
+name = "tamias-source-http"
+version = "0.1.0"
+dependencies = [
+ "tamias-core",
+ "tamias-source",
+ "ureq",
+]
+
+[[package]]
+name = "tamias-store-local"
+version = "0.1.0"
+dependencies = [
+ "serde_json",
+ "tamias-core",
 ]
 
 [[package]]

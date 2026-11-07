@@ -10,8 +10,8 @@ use std::net::TcpListener;
 use std::path::{Path, PathBuf};
 use std::thread;
 
-use peregrin_bundle::Store;
 use peregrin_cli::ops::{self, OpsEnv};
+use tamias_store_local::Store;
 use tempfile::TempDir;
 
 // --- fixtures -------------------------------------------------------------------
@@ -22,7 +22,7 @@ fn install_bundle(env: &OpsEnv, name: &str, version: Option<&str>) -> PathBuf {
     fs::create_dir_all(&dir).unwrap();
     let version_line = version.map_or(String::new(), |v| format!("version: {v}\n"));
     fs::write(
-        dir.join("peregrin-bundle.yaml"),
+        dir.join("tamias.yaml"),
         format!("name: {name}\n{version_line}"),
     )
     .unwrap();
@@ -30,11 +30,13 @@ fn install_bundle(env: &OpsEnv, name: &str, version: Option<&str>) -> PathBuf {
     Store::new(&env.store_root)
         .install(
             &dir,
-            peregrin_bundle::StoreRecord {
+            tamias_core::StoreRecord {
                 name: name.into(),
+                scope: None,
                 version: version.map(str::to_string),
+                kind: None,
                 source_ref: format!("./{name}"),
-                resolved_sha: "feedbeef".into(),
+                resolved: "feedbeef".into(),
                 digest: String::new(),
                 installed_at: 0,
             },
@@ -229,15 +231,17 @@ fn create_errors_and_flags() {
     // Bundle without main.yaml.
     let dir = env.store_root.join("bare-src");
     fs::create_dir_all(&dir).unwrap();
-    fs::write(dir.join("peregrin-bundle.yaml"), "name: bare\n").unwrap();
+    fs::write(dir.join("tamias.yaml"), "name: bare\n").unwrap();
     Store::new(&env.store_root)
         .install(
             &dir,
-            peregrin_bundle::StoreRecord {
+            tamias_core::StoreRecord {
                 name: "bare".into(),
+                scope: None,
                 version: None,
+                kind: None,
                 source_ref: "./bare".into(),
-                resolved_sha: "s".into(),
+                resolved: "s".into(),
                 digest: String::new(),
                 installed_at: 0,
             },

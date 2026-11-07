@@ -12,14 +12,16 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 
-use peregrin_bundle::{
-    FetchCache, Manifest, Store, StoreEntry, StoreRecord, dir_digest, overlay, pack_tgz,
+use tamias_cache_local::FetchCache;
+use tamias_core::{
+    Manifest, SourceRef, StoreEntry, StoreRecord, dir_digest, overlay, pack_tgz, parse_ref,
     payload_root,
 };
-use peregrin_source::{Resolved, Source, SourceRef, parse_ref};
-use peregrin_source_fs::FsSource;
-use peregrin_source_git::GitSource;
-use peregrin_source_http::HttpSource;
+use tamias_source::{Resolved, Source};
+use tamias_source_fs::FsSource;
+use tamias_source_git::GitSource;
+use tamias_source_http::HttpSource;
+use tamias_store_local::Store;
 
 use crate::CliError;
 
@@ -80,7 +82,7 @@ fn resolve(reference: &SourceRef) -> Result<Resolved, CliError> {
     .map_err(cli)
 }
 
-fn fetch(resolved: &Resolved, dest: &Path) -> Result<peregrin_source::Fetched, CliError> {
+fn fetch(resolved: &Resolved, dest: &Path) -> Result<tamias_source::Fetched, CliError> {
     match resolved {
         Resolved::Fs { .. } => FsSource::new().fetch(resolved, dest),
         Resolved::Git { .. } => GitSource::new().fetch(resolved, dest),
@@ -113,11 +115,7 @@ fn fetch_or_cached(env: &DistEnv, resolved: &Resolved) -> Result<(PathBuf, Strin
 /// `install <ref>` — fetch → compose → store, returning the entry.
 pub fn install(env: &DistEnv, reference: &str) -> Result<StoreEntry, CliError> {
     let entry = install_ref(env, reference, &mut HashSet::new())?;
-    println!(
-        "installed {} ({})",
-        entry.label(),
-        entry.record.resolved_sha
-    );
+    println!("installed {} ({})", entry.label(), entry.record.resolved);
     Ok(entry)
 }
 
@@ -157,9 +155,11 @@ fn install_ref_inner(
             &payload,
             StoreRecord {
                 name: manifest.name.clone(),
+                scope: manifest.scope.clone(),
                 version: manifest.version.clone(),
+                kind: manifest.kind.clone(),
                 source_ref: reference.to_string(),
-                resolved_sha: resolved_id,
+                resolved: resolved_id,
                 digest: String::new(),
                 installed_at: 0,
             },
@@ -198,7 +198,7 @@ fn compose(
     }
     let digest = dir_digest(&scratch).map_err(cli)?;
     let dir = cache
-        .commit(&scratch, &format!("sha256-{digest}"))
+        .commit(&scratch, &digest.replacen("sha256:", "sha256-", 1))
         .map_err(cli)?;
     payload_root(&dir).map_err(cli)
 }
@@ -206,7 +206,7 @@ fn compose(
 /// `remove <name>` — drop the store entry; the cache is untouched.
 pub fn remove(env: &DistEnv, name: &str) -> Result<StoreRecord, CliError> {
     let record = Store::new(&env.store_root).remove(name).map_err(cli)?;
-    println!("removed {}@{}", record.name, record.resolved_sha);
+    println!("removed {}@{}", record.name, record.resolved);
     Ok(record)
 }
 
@@ -219,7 +219,7 @@ pub fn list(env: &DistEnv) -> Result<Vec<String>, CliError> {
             format!(
                 "{:<24} {:<14} {}",
                 e.label(),
-                short_sha(&e.record.resolved_sha),
+                short_sha(&e.record.resolved),
                 e.record.source_ref
             )
         })
@@ -241,7 +241,7 @@ pub fn info(env: &DistEnv, name: &str) -> Result<Vec<String>, CliError> {
         format!("name:     {}", entry.record.name),
         format!("label:    {}", entry.label()),
         format!("source:   {}", entry.record.source_ref),
-        format!("resolved: {}", entry.record.resolved_sha),
+        format!("resolved: {}", entry.record.resolved),
         format!("digest:   {}", entry.record.digest),
         format!("installed: {}", entry.record.installed_at),
         format!("size:     {} bytes", entry.size().map_err(cli)?),
@@ -278,7 +278,7 @@ pub fn update(env: &DistEnv, name: Option<&str>, all: bool) -> Result<Vec<String
     let mut lines = Vec::new();
     for entry in targets {
         let old = entry.label();
-        let old_sha = entry.record.resolved_sha.clone();
+        let old_sha = entry.record.resolved.clone();
         let old_digest = entry.record.digest.clone();
         let installed = install_ref(env, &entry.record.source_ref, &mut HashSet::new())?;
         let line = if installed.record.digest == old_digest {
@@ -288,7 +288,7 @@ pub fn update(env: &DistEnv, name: Option<&str>, all: bool) -> Result<Vec<String
                 "{} → {} ({})",
                 old,
                 installed.label(),
-                short_sha(&installed.record.resolved_sha)
+                short_sha(&installed.record.resolved)
             )
         };
         if installed.dir != entry.dir && entry.dir.exists() {
@@ -317,7 +317,7 @@ pub fn pin(env: &DistEnv, name: &str, reference: &str) -> Result<String, CliErro
             "{}: pinned {reference} — {} ({})",
             entry.record.name,
             installed.label(),
-            short_sha(&installed.record.resolved_sha)
+            short_sha(&installed.record.resolved)
         )
     };
     println!("{line}");
@@ -325,7 +325,7 @@ pub fn pin(env: &DistEnv, name: &str, reference: &str) -> Result<String, CliErro
 }
 
 /// `verify <name>` — recompute the payload digest against the record.
-pub fn verify(env: &DistEnv, name: &str) -> Result<peregrin_bundle::VerifyReport, CliError> {
+pub fn verify(env: &DistEnv, name: &str) -> Result<tamias_store_local::VerifyReport, CliError> {
     let report = Store::new(&env.store_root).verify(name).map_err(cli)?;
     if report.ok {
         println!("{}: ok ({})", report.name, short_sha(&report.recorded));

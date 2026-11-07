@@ -16,8 +16,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::thread;
 
-use peregrin_bundle::{FetchCache, Store};
 use peregrin_cli::distribution::{self, DistEnv};
+use tamias_cache_local::FetchCache;
+use tamias_store_local::Store;
 use tempfile::TempDir;
 
 // --- fixtures -------------------------------------------------------------------
@@ -28,7 +29,7 @@ fn bundle_dir(root: &Path, name: &str, version: Option<&str>, extra: &[(&str, &s
     fs::create_dir_all(&dir).unwrap();
     let version_line = version.map_or(String::new(), |v| format!("version: {v}\n"));
     fs::write(
-        dir.join("peregrin-bundle.yaml"),
+        dir.join("tamias.yaml"),
         format!("name: {name}\n{version_line}"),
     )
     .unwrap();
@@ -62,11 +63,7 @@ fn git_repo(root: &Path) -> (PathBuf, String) {
     git(&repo, &["config", "user.email", "t@e.c"]);
     git(&repo, &["config", "user.name", "t"]);
     git(&repo, &["config", "commit.gpgsign", "false"]);
-    fs::write(
-        repo.join("bundles/gate/peregrin-bundle.toml"),
-        "name = \"gate\"\n",
-    )
-    .unwrap();
+    fs::write(repo.join("bundles/gate/tamias.toml"), "name = \"gate\"\n").unwrap();
     git(&repo, &["add", "."]);
     git(&repo, &["commit", "-m", "one"]);
     git(&repo, &["tag", "v1.0"]);
@@ -169,18 +166,18 @@ fn install_error_arms() {
         distribution::install(&env, bare.to_str().unwrap())
             .unwrap_err()
             .to_string()
-            .contains("no bundle manifest")
+            .contains("no tamias manifest")
     );
     // Manifest parse/validation failure.
     let bad = tmp.path().join("bad");
     fs::create_dir_all(&bad).unwrap();
-    fs::write(bad.join("peregrin-bundle.toml"), "name = \"a/b\"\n").unwrap();
+    fs::write(bad.join("tamias.toml"), "name = \"a/b\"\n").unwrap();
     assert!(distribution::install(&env, bad.to_str().unwrap()).is_err());
     // Include cycle.
     let cyc = tmp.path().join("cyc");
     fs::create_dir_all(&cyc).unwrap();
     fs::write(
-        cyc.join("peregrin-bundle.toml"),
+        cyc.join("tamias.toml"),
         format!("name = \"cyc\"\ninclude = [\"{}\"]\n", cyc.display()),
     )
     .unwrap();
@@ -213,7 +210,7 @@ fn include_composes_from_store_names_and_refs() {
     let over = tmp.path().join("over");
     fs::create_dir_all(&over).unwrap();
     fs::write(
-        over.join("peregrin-bundle.yaml"),
+        over.join("tamias.yaml"),
         format!(
             "name: over\nversion: 1.0\ninclude: [base-lib, \"{}\"]\n",
             base.display()
@@ -238,7 +235,7 @@ fn include_composes_from_store_names_and_refs() {
     let broken = tmp.path().join("broken");
     fs::create_dir_all(&broken).unwrap();
     fs::write(
-        broken.join("peregrin-bundle.yaml"),
+        broken.join("tamias.yaml"),
         "name: broken\ninclude: [ghost]\n",
     )
     .unwrap();
@@ -263,10 +260,10 @@ fn git_install_update_and_pin_over_file_urls() {
     let entry = distribution::install(&env, &format!("git:{url}//bundles/gate#v1.0")).unwrap();
     assert_eq!(
         entry.label(),
-        format!("gate@{}", &entry.record.resolved_sha[..12])
+        format!("gate@{}", &entry.record.resolved[..12])
     );
     assert!(!entry.dir.join("main.yaml").exists());
-    let tagged_sha = entry.record.resolved_sha.clone();
+    let tagged_sha = entry.record.resolved.clone();
     // Different shas → different labels → bare 'gate' would be
     // ambiguous; drop the tag install before the branch one.
     distribution::remove(&env, &entry.label()).unwrap();
@@ -274,7 +271,7 @@ fn git_install_update_and_pin_over_file_urls() {
     // A moving branch ref: install at head…
     let branch_ref = format!("git:{url}//bundles/gate#main");
     let entry = distribution::install(&env, &branch_ref).unwrap();
-    assert_eq!(entry.record.resolved_sha, head);
+    assert_eq!(entry.record.resolved, head);
     assert!(entry.dir.join("main.yaml").exists());
     // …update re-resolves; nothing moved → already current.
     let lines = distribution::update(&env, Some("gate"), false).unwrap();
@@ -288,7 +285,7 @@ fn git_install_update_and_pin_over_file_urls() {
     let lines = distribution::update(&env, Some("gate"), false).unwrap();
     assert!(lines[0].contains(&new_head[..12]), "{lines:?}");
     let entry = Store::new(&env.store_root).find("gate").unwrap();
-    assert_eq!(entry.record.resolved_sha, new_head);
+    assert_eq!(entry.record.resolved, new_head);
 
     // --all covers every entry.
     let lines = distribution::update(&env, None, true).unwrap();
@@ -301,7 +298,7 @@ fn git_install_update_and_pin_over_file_urls() {
     let line = distribution::pin(&env, "gate", &format!("git:{url}//bundles/gate#v1.0")).unwrap();
     assert!(line.contains("pinned"), "{line}");
     let entry = Store::new(&env.store_root).find("gate").unwrap();
-    assert_eq!(entry.record.resolved_sha, tagged_sha);
+    assert_eq!(entry.record.resolved, tagged_sha);
     assert_ne!(entry.label(), label_before);
     assert!(!entry.dir.join("main.yaml").exists());
     assert_eq!(Store::new(&env.store_root).entries().unwrap().len(), 1);
@@ -329,24 +326,24 @@ fn http_tarball_install_and_pinned_cache_hit() {
     let tgz = tmp.path().join("tball.tgz");
     distribution::bundle_pack(&bundle, Some(&tgz)).unwrap();
     let bytes = fs::read(&tgz).unwrap();
-    let digest = peregrin_bundle::sha256_hex(&bytes);
+    let digest = tamias_core::sha256_hex(&bytes);
 
     let url = serve_once("200 OK", bytes.clone());
     let entry = distribution::install(&env, &format!("{url}#sha256:{digest}")).unwrap();
     assert_eq!(entry.label(), "tball@9");
-    assert_eq!(entry.record.resolved_sha, format!("sha256:{digest}"));
+    assert_eq!(entry.record.resolved, format!("sha256:{digest}"));
 
     // Second install of the pinned URL: the content key is known
     // pre-fetch → cache hit, no second request (the listener is gone —
     // a fetch would fail the test).
     let url = format!("{url}#sha256:{digest}");
     let entry = distribution::install(&env, &url).unwrap();
-    assert_eq!(entry.record.resolved_sha, format!("sha256:{digest}"));
+    assert_eq!(entry.record.resolved, format!("sha256:{digest}"));
 
     // Unpinned tarball — digested on the way in.
     let url = serve_once("200 OK", bytes);
     let entry = distribution::install(&env, &url).unwrap();
-    assert!(entry.record.resolved_sha.starts_with("sha256:"));
+    assert!(entry.record.resolved.starts_with("sha256:"));
 }
 
 // --- cache + pack verbs ------------------------------------------------------------

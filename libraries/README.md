@@ -27,7 +27,7 @@ purpose and may be copied into other projects.
 
 ## Installable bundles (ADR-0079/0080)
 
-Directories carrying a `peregrin-bundle.yaml` manifest are installable
+Directories carrying a `tamias.yaml` manifest are installable
 artifacts (`peregrin install <ref>`), not loader fragments:
 
 | Directory  | Bundle    | Purpose                                                              |
@@ -136,7 +136,7 @@ The engine ignores annotations, so they have no runtime cost.
 *fragments* (ADR-0082 #6): subscriber-pattern workflows you `include:`
 at top level — the merge dedupes `nodes:` by `id`, so re-declaring a
 node replaces its wiring. Each directory is also a bundle
-(`peregrin-bundle.yaml`) and ships `.node.yml` presets for per-node
+(`tamias.yaml`) and ships `.node.yml` presets for per-node
 composition plus a `.field.yml` params surface where applicable. Full
 contracts live in the `main.yaml` header comments; e2e coverage in
 `crates/peregrin-node/tests/libraries.rs`.
