@@ -1,0 +1,33 @@
+# map/runner.node.yml — the injector: reads the planner's dispatch
+# event and registers its `payload.nodes` (parsed from `stdout` when
+# the producer is a shell node) into the live graph via `ctx.inject`.
+# Its emit — `emits[0]`, here `<base>.spawned` — is the *fresh* event
+# injected workers subscribe: the bus readies nodes on the event that
+# lands after registration, so the spawn signal must postdate the
+# injection.
+#
+# Part of `libraries/map` (see `main.yaml` for the wired `map.*`
+# fragment and the full event contract). ADR-0021.
+#
+#   - include: ../map/runner.node.yml
+#     id: mymap.runner
+#     on: [mymap.dispatch]       # the planner's emit-mapped type
+#     emits: [mymap.spawned]     # injected workers' `on:` trigger
+#
+# The emitted payload is `{injected: N}` — the count of specs the bus
+# accepted. `0` (empty item list) is a quiet success; subscribers can
+# treat `<base>.mapped` never arriving as the empty-map outcome (the
+# join simply sees no `<base>.*.done` events).
+#
+# Deep-merge concatenates arrays local-first, so this preset declares
+# no `on:`/`emits:` — the parent owns the event names.
+annotations:
+  title: Map worker injector
+  description: Injects the planner's node-spec array into the live graph and emits the spawn signal injected workers subscribe.
+  author: peregrin
+  tags: [map, fan-out, inject, preset]
+  since: "0.1.0"
+
+id: map.runner
+driver: runner
+max_fires: 1

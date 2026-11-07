@@ -680,3 +680,132 @@ fn dlq_captures_engine_node_failed() {
     assert_eq!(captured.payload["error"], "boom");
     assert!(t.contains(&"workflow.failed"), "trace: {t:?}");
 }
+
+// ---------------------------------------------------------------------------
+// map
+// ---------------------------------------------------------------------------
+
+#[test]
+fn map_fragment_fans_out_and_joins_on_stock_drivers() {
+    // The wired fragment on the `map.*` default contract: a shell
+    // producer emits `map.request`, the jq planner builds three worker
+    // specs from `config.map.items` × `config.map.worker`, `driver:
+    // runner` injects them, and the fan_in join emits the collected
+    // `map.*.done` envelopes. Real shell workers — no test fakes.
+    let tmp = tempfile::tempdir().unwrap();
+    let calls = Arc::new(AtomicU64::new(0));
+    let log = run_yaml(
+        tmp.path(),
+        r#"
+        name: map-e2e
+        include: ["{lib}/map/main.yaml"]
+        config:
+          map:
+            items: [auth, db, web]
+            worker: >-
+              {"id":"shard.{item}","driver":"shell","on":["map.spawned"],
+               "emits":["map.{item}.done"],
+               "params":{"cmd":"echo {item}",
+                         "emit":{"0":"map.{item}.done"}}}
+        nodes:
+          - id: kick
+            driver: shell
+            on: [start]
+            emits: [map.request]
+            params:
+              cmd: "true"
+              emit:
+                "0": map.request
+                default: map.request
+        "#,
+        &calls,
+    );
+    let t = kinds(&log);
+    // The planner's dispatch carries `{nodes: [...]}` on stdout —
+    // `driver: runner` parses it and injects all three workers before
+    // its own emit lands.
+    assert!(t.contains(&"map.dispatch"), "trace: {t:?}");
+    let spawned = log.iter().find(|e| e.kind == "map.spawned").unwrap();
+    assert_eq!(spawned.payload["injected"], 3, "trace: {t:?}");
+    // One real shell worker per item — `{item}` baked the per-item id,
+    // emit type, and cmd; each echoed its item into its done event.
+    for item in ["auth", "db", "web"] {
+        let kind = format!("map.{item}.done");
+        let done = log
+            .iter()
+            .find(|e| e.kind == kind)
+            .unwrap_or_else(|| panic!("missing {kind} — trace: {t:?}"));
+        assert_eq!(done.payload["stdout"], format!("{item}\n"));
+        assert_eq!(done.payload["cmd"], format!("echo {item}"));
+        assert_eq!(done.source, format!("shard.{item}"));
+    }
+    // The reduce — fan_in emits every collected done envelope.
+    let mapped = log.iter().find(|e| e.kind == "map.mapped").unwrap();
+    assert_eq!(mapped.payload["count"], 3, "trace: {t:?}");
+    let triggers = mapped.payload["triggers"].as_array().unwrap();
+    assert_eq!(triggers.len(), 3);
+    assert_eq!(triggers[0]["type"], "map.auth.done");
+    assert!(!t.contains(&"node.failed"), "trace: {t:?}");
+    assert_eq!(t.last(), Some(&"workflow.done"), "trace: {t:?}");
+}
+
+#[test]
+fn map_presets_rewire_a_custom_base() {
+    // The `.node.yml` presets included directly (no main.yaml), wired
+    // on a `plugins.*` contract — the re-declared ids/events replace
+    // the defaults wholesale.
+    let tmp = tempfile::tempdir().unwrap();
+    let calls = Arc::new(AtomicU64::new(0));
+    let log = run_yaml(
+        tmp.path(),
+        r#"
+        name: map-custom
+        config:
+          plugins: [alpha, beta]
+        nodes:
+          - include: "{lib}/map/dispatch.node.yml"
+            id: plugins.plan
+            on: [plugins.request]
+            emits: [plugins.dispatch]
+            params:
+              items: "${config.plugins}"
+              worker: '{"id":"w.{item}","driver":"shell","on":["plugins.spawned"],"emits":["plugins.{item}.done"],"params":{"cmd":"echo {item}","emit":{"0":"plugins.{item}.done"}}}'
+              emit:
+                "0": plugins.dispatch
+          - include: "{lib}/map/runner.node.yml"
+            id: plugins.runner
+            on: [plugins.dispatch]
+            emits: [plugins.spawned]
+          - include: "{lib}/map/join.node.yml"
+            id: plugins.join
+            on: ["plugins.*.done"]
+            fan_in:
+              count_from: plugins
+              emit: plugins.mapped
+            emits: [plugins.mapped]
+          - id: kick
+            driver: shell
+            on: [start]
+            emits: [plugins.request]
+            params:
+              cmd: "true"
+              emit:
+                "0": plugins.request
+                default: plugins.request
+        "#,
+        &calls,
+    );
+    let t = kinds(&log);
+    // `count_from: plugins` read the config-root list for the width.
+    for item in ["alpha", "beta"] {
+        assert!(
+            t.contains(&format!("plugins.{item}.done").as_str()),
+            "trace: {t:?}"
+        );
+    }
+    let mapped = log.iter().find(|e| e.kind == "plugins.mapped").unwrap();
+    assert_eq!(mapped.payload["count"], 2, "trace: {t:?}");
+    assert!(!t.contains(&"map.mapped"), "trace: {t:?}");
+    assert!(!t.contains(&"node.failed"), "trace: {t:?}");
+    assert_eq!(t.last(), Some(&"workflow.done"), "trace: {t:?}");
+}

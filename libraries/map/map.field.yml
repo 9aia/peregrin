@@ -1,0 +1,31 @@
+# map.field.yml — the `config.map` params surface as a reusable
+# handl field pattern (same convention as `libraries/retry/`).
+#
+# Include in any document that wants a typed map config block:
+#
+#   fields:
+#     include: ./map.field.yml
+#
+#   config:
+#     map:
+#       items: [auth, db, web]
+#       worker: '{"id":"my.{item}","driver":"shell",...}'
+#
+# `items` feeds `fan_in.count_from: map.items` in `join.node.yml` and
+# `${config.map.items}` in `dispatch.node.yml`'s `params.items`;
+# `worker` feeds `${config.map.worker}` → `params.worker`.
+
+fields:
+  map:
+    type: object
+    fields:
+      # The fan-out list — also the join width (its array length).
+      items: { type: array }
+      # Worker node spec as a JSON literal string, `{item}`/`{i}`
+      # placeholders substituted per item.
+      worker: { type: string }
+      # Event-contract names when wiring a non-default base.
+      request: { type: string }
+      spawned: { type: string }
+      done: { type: string }
+      mapped: { type: string }

@@ -1,0 +1,78 @@
+# map/dispatch.node.yml — the fan-out planner: turns an item list and
+# a worker-spec template into the node-spec array `driver: runner`
+# injects into the live graph. The output rides the standard shell
+# `{stdout, rc, cmd}` payload — the runner driver parses the `nodes`
+# array out of `stdout`.
+#
+# Part of `libraries/map` (see `main.yaml` for the wired `map.*`
+# fragment and the full event contract). ADR-0021 — map/reduce as
+# library, not engine.
+#
+# Include inside a `nodes:` entry and own the event contract locally:
+#
+#   - include: ../map/dispatch.node.yml
+#     id: mymap.plan
+#     on: [mymap.request]
+#     emits: [mymap.dispatch]
+#     params:
+#       items: "${config.plugins}"          # or a JSON literal
+#       worker: '{"id":"my.{item}", ...}'   # JSON node-spec template
+#       emit:
+#         "0": mymap.dispatch               # event `driver: runner` hears
+#
+# `params.items` — the fan-out list *as a string the shell child can
+# read*. A scalar list referenced via `${config.*}`/`${event.*}`
+# renders comma-joined (`"a,b,c"` — JS `String(array)` semantics, so
+# items may not contain `,`); a JSON literal string covers any item
+# shape, objects included. `params.worker` is the worker node spec as
+# a JSON literal string — both cross the YAML→shell boundary through
+# `env`, where only strings survive (`${params.worker}` on a YAML
+# object would render `[object Object]`). Inside the template,
+# `{item}` (the item, `tostring`) and `{i}` (its 0-based index)
+# substitute in every string field — `id`, `on`, `emits`,
+# `params.cmd`, `params.emit."0"` all get per-item values.
+#
+# Requires `jq` on PATH — the spec construction is a `jq -n` program;
+# a malformed `worker` fails the run loudly (`node.failed`) rather
+# than silently injecting nothing.
+annotations:
+  title: Map dispatch planner
+  description: Builds one injected worker node spec per item from a JSON template — the fan-out half of map/reduce as library.
+  author: peregrin
+  tags: [map, fan-out, dispatch, preset]
+  since: "0.1.0"
+
+id: map.plan
+driver: shell
+max_fires: 1
+emits: [map.dispatch]
+params:
+  # Fan-out list — `${config.map.items}` (scalar lists render
+  # comma-joined) or a JSON literal string for object items.
+  items: "${config.map.items:-}"
+  # Worker node spec as a JSON literal string — `{item}`/`{i}`
+  # placeholders substitute per item.
+  worker: "${config.map.worker:-}"
+  timeout: 10
+  env:
+    MAP_ITEMS: "${params.items}"
+    MAP_WORKER: "${params.worker}"
+  # `jq -n` builds {nodes: [...]} on stdout — one spec per item with
+  # `{item}`/`{i}` substituted inside every string field. Items arrive
+  # as JSON (any shape) or a comma-joined scalar list; an empty list
+  # injects nothing.
+  cmd: >-
+    jq -n '
+      def subst($i; $x):
+        walk(if type == "string"
+             then gsub("[{]item[}]"; ($x | tostring))
+                  | gsub("[{]i[}]"; ($i | tostring))
+             else . end);
+      (env.MAP_ITEMS as $raw
+       | try ($raw | fromjson | if type == "array" then . else error end)
+         catch ($raw | if . == "" then [] else split(",") end)) as $items
+      | (env.MAP_WORKER | fromjson) as $worker
+      | {nodes: [$items | to_entries[] as $e | ($worker | subst($e.key; $e.value))]}
+    '
+  emit:
+    "0": map.dispatch

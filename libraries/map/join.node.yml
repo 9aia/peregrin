@@ -1,0 +1,39 @@
+# map/join.node.yml — the reduce: emits `<base>.mapped` once the
+# per-item done events reach the width of the fan-out list. `fan_in`
+# counts matching events already in the run log — the join is enforced
+# by the event graph, no engine map state involved.
+#
+# Part of `libraries/map` (see `main.yaml` for the wired `map.*`
+# fragment and the full event contract). ADR-0021.
+#
+#   - include: ../map/join.node.yml
+#     id: mymap.join
+#     on: [mymap.*.done]                # per-item worker results
+#     fan_in:
+#       count_from: map.items           # config path → array length;
+#                                       # or `count: 3`
+#       emit: mymap.mapped
+#     emits: [mymap.mapped]
+#
+# `count_from` resolves a dotted `config:` path to a number (or array
+# length), so the join width tracks the same list the planner read —
+# keep the two pointed at one source of truth (`config.map.items` in
+# the wired fragment). The emitted payload is `{count, triggers}` —
+# every worker's done envelope (`{type, source, payload}`), i.e. the
+# reduced collection.
+#
+# The wildcard is one segment — `<base>.*.done` counts
+# `<base>.<item>.done` events, so item names must be single
+# dot-segments (no `.`). A fan_in node never invokes its driver
+# (the engine emits the join payload itself); `noop` is a
+# placeholder.
+annotations:
+  title: Map join (reduce)
+  description: Emits the mapped result once per-item done events reach the width of the fan-out list — the reduce half of map/reduce as library.
+  author: peregrin
+  tags: [map, fan-in, reduce, preset]
+  since: "0.1.0"
+
+id: map.join
+driver: noop
+max_fires: 1

@@ -467,6 +467,47 @@ impl Driver for NoopDriver {
 /// into the bus mid-run, then emits `{injected: N}`.
 pub struct RunnerDriver;
 
+/// The node-spec array a trigger carries. Resolved fields, in order:
+/// `payload.nodes` or `payload.workflow.nodes` as a JSON array — then
+/// the same fields *as JSON strings*, then `payload.stdout` (a shell
+/// planner's only channel — its event payload is `{stdout, rc, cmd}`,
+/// so `jq -n '{nodes: [...]}'` output arrives as text). A parsed
+/// string may be a bare array or an object wrapping `nodes` /
+/// `workflow.nodes`. Anything else yields an empty list — injection
+/// is additive, never destructive.
+fn candidate_node_specs(payload: &Value) -> Vec<Value> {
+    let nodes_at = |value: &Value| {
+        value
+            .get("nodes")
+            .and_then(Value::as_array)
+            .or_else(|| {
+                value
+                    .get("workflow")
+                    .and_then(|w| w.get("nodes"))
+                    .and_then(Value::as_array)
+            })
+            .cloned()
+    };
+    if let Some(items) = nodes_at(payload) {
+        return items.iter().filter(|v| v.is_object()).cloned().collect();
+    }
+    for text in [
+        payload.get("nodes").and_then(Value::as_str),
+        payload.get("stdout").and_then(Value::as_str),
+    ]
+    .into_iter()
+    .flatten()
+    {
+        if let Ok(parsed) = serde_json::from_str::<Value>(text) {
+            let items = parsed.as_array().cloned().or_else(|| nodes_at(&parsed));
+            if let Some(items) = items {
+                return items.iter().filter(|v| v.is_object()).cloned().collect();
+            }
+        }
+    }
+    Vec::new()
+}
+
 impl Driver for RunnerDriver {
     fn name(&self) -> &'static str {
         "runner"
@@ -493,20 +534,7 @@ impl Driver for RunnerDriver {
                 &node.id,
             )]);
         }
-        let candidate = trigger
-            .payload
-            .get("nodes")
-            .and_then(Value::as_array)
-            .or_else(|| {
-                trigger
-                    .payload
-                    .get("workflow")
-                    .and_then(|w| w.get("nodes"))
-                    .and_then(Value::as_array)
-            });
-        let new_nodes: Vec<Value> = candidate.map_or_else(Vec::new, |items| {
-            items.iter().filter(|v| v.is_object()).cloned().collect()
-        });
+        let new_nodes = candidate_node_specs(&trigger.payload);
         if !new_nodes.is_empty() {
             ctx.inject(&new_nodes);
         }

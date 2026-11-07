@@ -1,0 +1,8 @@
+name: map
+version: "0.1.0"
+description: >-
+  Subscriber-pattern map/reduce fragment — a jq planner expands an
+  item list into per-item worker node specs, `driver: runner` injects
+  them into the live graph, and a `fan_in` join emits the collected
+  results. Map/reduce as library, per ADR-0021. Requires jq on PATH.
+include: []

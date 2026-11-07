@@ -1,0 +1,100 @@
+# libraries/map/main.yaml — the map/reduce fragment, wired on the
+# default `map.*` event contract. A campaign gains fan-out/fan-in by
+# including this file at top level:
+#
+#   include: [/path/to/libraries/map/main.yaml]
+#
+# and speaking the contract from its worker specs:
+#
+#   map.request    work trigger — starts the fan-out; the item list
+#                  comes from `config.map.items` (or the dispatch
+#                  node's `params.items`)
+#   map.dispatch   internal plumbing — the planner's `{nodes: [...]}`
+#                  payload for `driver: runner` (fixed name; rename on
+#                  both plan and runner to run two maps per campaign)
+#   map.spawned    emitted once workers are injected — injected worker
+#                  specs subscribe this as their `on:` trigger; payload
+#                  is `{injected: N}`
+#   map.*.done     per-item worker result — `<item>` fills the
+#                  wildcard (one segment — no `.` in item names)
+#   map.mapped     the reduce — `fan_in` payload `{count, triggers}`
+#                  holds every worker's done envelope
+#
+# Consumers set two config keys:
+#
+#   config:
+#     map:
+#       items: [auth, db, web]        # the fan-out list; also the
+#                                     # join's count_from width
+#       worker: '{"id":"my.{item}",   # worker node spec as a JSON
+#                 "driver":"shell",   # literal string — `{item}`/`{i}`
+#                 "on":["map.spawned"],# substitute inside every string
+#                 "emits":["map.{item}.done"],
+#                 "params":{"cmd":"work {item}",
+#                           "emit":{"0":"map.{item}.done"}}}'
+#
+# The worker contract: each injected spec subscribes `<base>.spawned`,
+# does its per-item work (`{item}`/`{i}` already baked in by the
+# planner), and emits `<base>.<item>.done`.
+#
+# Why a planner + injection: no stock node can emit a *dynamic count*
+# of events, so the fan-out is graph-level — `dispatch.node.yml` runs
+# `jq -n` to turn items × worker template into node specs,
+# `runner.node.yml` injects them, and the spawn event fires them.
+# `join.node.yml` is the fan_in reduce. Requires `jq` on PATH.
+#
+# Customise by re-declaring the node ids — deep-merge dedupes `nodes:`
+# by `id` and keeps the local definition, so a campaign entry named
+# `map.plan`/`map.runner`/`map.join` with its own `on:`/`emits:`/
+# `params:`/`fan_in:` replaces the default wiring. For per-key control
+# include the `.node.yml` presets directly instead.
+#
+# Load via `include:` rather than running this file directly: loading
+# it as the top document auto-discovers the sibling `*.node.yml`
+# presets into `nodes:`.
+name: map
+
+annotations:
+  title: Map/reduce fragment
+  description: Fans an item list out to injected per-item worker nodes (planner + ctx.inject) and joins their done events into one mapped result. Map/reduce as library, per ADR-0021.
+  author: peregrin
+  tags: [map, reduce, fan-out, fan-in, fragment]
+  since: "0.1.0"
+  kind: fragment
+
+config:
+  map:
+    # The fan-out list — feeds both the planner's item expansion and
+    # the join's `count_from` width. Scalar items only in the default
+    # wiring (`${config.map.items}` renders comma-joined); object
+    # items need a JSON literal on the plan node's `params.items` and
+    # a matching `fan_in.count`/`count_from`.
+    items: []
+    # Worker node spec as a JSON literal string — `{item}`/`{i}`
+    # placeholders substitute per item inside every string field.
+    worker: ""
+
+nodes:
+  # --- plan: items × worker template → {nodes: [...]} --------------
+  - include: ./dispatch.node.yml
+    id: map.plan
+    on: [map.request]
+    emits: [map.dispatch]
+    params:
+      emit:
+        "0": map.dispatch
+
+  # --- inject: register the specs, then emit the spawn signal ------
+  - include: ./runner.node.yml
+    id: map.runner
+    on: [map.dispatch]
+    emits: [map.spawned]
+
+  # --- join: every <item>.done → the mapped collection -------------
+  - include: ./join.node.yml
+    id: map.join
+    on: [map.*.done]
+    fan_in:
+      count_from: map.items
+      emit: map.mapped
+    emits: [map.mapped]

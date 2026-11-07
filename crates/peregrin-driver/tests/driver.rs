@@ -89,6 +89,53 @@ fn runner_driver_injects_nodes() {
 }
 
 #[test]
+fn runner_driver_reads_specs_from_shell_stdout() {
+    let node = peregrin_core::Node {
+        id: "r".into(),
+        driver: "runner".into(),
+        ..Default::default()
+    };
+    let ctx = ExecutionContext::default();
+
+    // A shell planner's payload — `nodes` can only arrive as JSON
+    // text on `stdout` (the `{stdout, rc, cmd}` envelope).
+    let trigger = Event::new(
+        "plan",
+        json!({
+            "stdout": "{\"nodes\": [{\"id\": \"w1\"}, {\"id\": \"w2\"}]}",
+            "rc": 0,
+        }),
+        "plan",
+    );
+    let events = RunnerDriver.invoke(&node, &[trigger], &ctx).unwrap();
+    assert_eq!(events[0].payload["injected"], 2);
+    assert_eq!(ctx.take_injected().len(), 2);
+
+    // A bare JSON array on `stdout`, and a JSON-string `nodes` field.
+    for payload in [
+        json!({ "stdout": "[{\"id\": \"w3\"}]" }),
+        json!({ "nodes": "[{\"id\": \"w4\"}]" }),
+        json!({ "stdout": "{\"workflow\": {\"nodes\": [{\"id\": \"w5\"}]}}" }),
+    ] {
+        let events = RunnerDriver
+            .invoke(
+                &node,
+                std::slice::from_ref(&Event::new("plan", payload.clone(), "plan")),
+                &ctx,
+            )
+            .unwrap();
+        assert_eq!(events[0].payload["injected"], 1, "payload: {payload}");
+        assert_eq!(ctx.take_injected().len(), 1);
+    }
+
+    // Non-JSON stdout injects nothing — quietly, no error.
+    let trigger = Event::new("plan", json!({ "stdout": "hello world", "rc": 0 }), "plan");
+    let events = RunnerDriver.invoke(&node, &[trigger], &ctx).unwrap();
+    assert_eq!(events[0].payload["injected"], 0);
+    assert!(ctx.take_injected().is_empty());
+}
+
+#[test]
 fn exec_ctx_channels_and_secrets() {
     let ctx = ExecutionContext::default();
     ctx.emit(Event::new("a.b", json!({}), "n"));
