@@ -60,6 +60,20 @@ pub struct RunOptions {
     /// `replayEvents` — a prior log to seed the run with (the
     /// `seed`+`checkReady` path instead of publishing `start`).
     pub replay_events: Vec<Event>,
+    /// `replayTimers` — pending timers to re-arm on replay (P-001).
+    pub replay_timers: Vec<PendingTimer>,
+}
+
+/// A timer deadline preserved across runs or snapshot exports (P-001).
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct PendingTimer {
+    /// The event that will be published when the deadline lands.
+    pub event: Event,
+    /// Absolute wall-clock epoch in milliseconds when the event should fire.
+    pub at_epoch_ms: u64,
+    /// Whether this timer holds the run open.
+    pub holds_run: bool,
 }
 
 /// Per-node circuit-breaker state (TS `circuitStates` map values).
@@ -294,6 +308,56 @@ impl Runner {
         self.bus.log()
     }
 
+    /// Preserved pending timers holding the run open (P-001 snapshot seam).
+    #[must_use]
+    pub fn pending_timers(&self) -> Vec<PendingTimer> {
+        let now_instant = Instant::now();
+        let now_epoch_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+        let mut timers = Vec::new();
+        for tick in &self.timers {
+            if !tick.holds_run {
+                continue;
+            }
+            let at_epoch_ms = if tick.deadline > now_instant {
+                let remaining = (tick.deadline - now_instant).as_millis() as u64;
+                now_epoch_ms.saturating_add(remaining)
+            } else {
+                now_epoch_ms
+            };
+            timers.push(PendingTimer {
+                event: tick.event.clone(),
+                at_epoch_ms,
+                holds_run: tick.holds_run,
+            });
+        }
+        timers
+    }
+
+    /// Re-arm preserved timers into this runner's deadline heap (P-001).
+    pub fn arm_timers(&mut self, timers: &[PendingTimer]) {
+        let now_epoch_ms = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+        for timer in timers {
+            let remaining = if timer.at_epoch_ms > now_epoch_ms {
+                Duration::from_millis(timer.at_epoch_ms - now_epoch_ms)
+            } else {
+                Duration::ZERO
+            };
+            self.timers.push(ScheduledTick {
+                deadline: Instant::now() + remaining,
+                seq: self.timer_seq,
+                event: timer.event.clone(),
+                holds_run: timer.holds_run,
+            });
+            self.timer_seq += 1;
+        }
+    }
+
     /// `runner.run(workflow, options)` — the event loop: publish
     /// `start` (or seed replay events), then alternate firing the
     /// `ready` batch and publishing the `pending` queue until both
@@ -364,6 +428,7 @@ impl Runner {
                         secrets: opts.secrets.clone(),
                         secret_stores: opts.secret_stores.clone(),
                         replay_events: Vec::new(),
+                        replay_timers: Vec::new(),
                     },
                 )
             },
@@ -376,6 +441,9 @@ impl Runner {
             self.bus.seed(&options.replay_events);
             self.bus.check_ready()
         };
+        if !options.replay_timers.is_empty() {
+            self.arm_timers(&options.replay_timers);
+        }
         ready.extend(start.ready);
         pending.extend(start.side_events);
 

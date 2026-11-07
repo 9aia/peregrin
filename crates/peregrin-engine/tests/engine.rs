@@ -1659,3 +1659,58 @@ fn secret_chain_strict_full_miss_still_audits() {
         json!("missing secrets: PEREGRIN_TEST_DEFINITELY_UNSET_018")
     );
 }
+
+#[test]
+fn pending_timers_and_replay_timers_seam() {
+    use peregrin_engine::PendingTimer;
+    use std::time::SystemTime;
+
+    let now_epoch_ms = SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap()
+        .as_millis() as u64;
+
+    let target_event = Event::new("timer.fired", json!({"tag": 42}), "test-node");
+    let timer = PendingTimer {
+        event: target_event.clone(),
+        at_epoch_ms: now_epoch_ms + 20,
+        holds_run: true,
+    };
+
+    let mut runner = Runner::new(Registry::default());
+    runner.arm_timers(std::slice::from_ref(&timer));
+    let pending = runner.pending_timers();
+    assert_eq!(pending.len(), 1);
+    assert_eq!(pending[0].event.kind, "timer.fired");
+    assert!(pending[0].holds_run);
+    assert!(pending[0].at_epoch_ms >= now_epoch_ms);
+
+    // Replay run restores the timer and fires it when ready
+    let campaign = load(
+        "
+        name: timer-replay
+        nodes:
+          - id: listener
+            driver: noop
+            on: [timer.fired]
+            emits: [listener.done]
+        ",
+    );
+    let mut replay_runner = Runner::new(Registry::default().with("noop", Arc::new(NoopDriver)));
+    let log = replay_runner
+        .run(
+            &campaign,
+            &RunOptions {
+                replay_timers: vec![timer],
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+    assert!(log.iter().any(|e| e.kind == "timer.fired"));
+    assert!(
+        log.iter()
+            .any(|e| e.kind == "node.done" && e.source == "listener")
+    );
+    assert_eq!(log.last().unwrap().kind, "workflow.done");
+}

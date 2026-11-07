@@ -228,7 +228,12 @@ pub async fn snapshot_collection(
     let Some(body) = body else {
         return bad_request("Expected a JSON object body");
     };
-    let plane = match body.get("kind").and_then(Value::as_str) {
+    let kind_opt = body.get("kind").and_then(Value::as_str).or_else(|| {
+        body.get("entity")
+            .and_then(|e| e.get("kind"))
+            .and_then(Value::as_str)
+    });
+    let plane = match kind_opt {
         Some(kind) => match state.kinds.plane(kind) {
             Some(plane) => plane,
             None => return kind_not_registered(kind),

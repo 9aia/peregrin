@@ -17,7 +17,7 @@ mod safety;
 pub use ingress::{Ingress, InjectError, Injector, WaitOutcome, ingress};
 pub use peregrin_driver::SecretSource;
 pub use registry::Registry;
-pub use runner::{RunOptions, Runner};
+pub use runner::{PendingTimer, RunOptions, Runner};
 pub use safety::{
     CapabilityChecker, ResourceGate, SchemaValidator, build_validator, validate_object,
     validate_record,

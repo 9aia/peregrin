@@ -14,6 +14,7 @@ peregrin-core.workspace = true
 peregrin-driver.workspace = true
 peregrin-store.workspace = true
 peregrin-template.workspace = true
+serde.workspace = true
 serde_json.workspace = true
 
 [dev-dependencies]

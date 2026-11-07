@@ -139,8 +139,7 @@ impl KindRegistry {
                 .planes
                 .iter()
                 .find(|p| {
-                    p.op_namespace() == namespace
-                        || p.extra_op_namespaces().contains(&namespace)
+                    p.op_namespace() == namespace || p.extra_op_namespaces().contains(&namespace)
                 })
                 .cloned(),
             None => self.default_plane(),

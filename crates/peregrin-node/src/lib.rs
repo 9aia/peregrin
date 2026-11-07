@@ -8,7 +8,10 @@
 //! arbitration, the hub.
 
 pub mod campaign;
+pub mod campaign_entity;
 pub mod supervisor;
+
+pub use campaign_entity::{CAMPAIGN_KIND, CampaignEntityPlane};
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -121,7 +124,9 @@ fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
             }) as BoxFuture<'static, Result<String, sepia_session::ControlError>>
         }) as peregrin_http::ImportSession
     };
+    let campaign_plane = Arc::new(CampaignEntityPlane::new());
     AppState::from_env(env, Arc::clone(plane))
+        .with_kind(campaign_plane)
         .with_convert(convert)
         .with_import_session(import)
 }

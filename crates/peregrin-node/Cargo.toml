@@ -51,9 +51,12 @@ peregrin-telemetry.workspace = true
 futures.workspace = true
 nix = { version = "0.29", default-features = false, features = ["signal", "process"] }
 axum = "0.8"
+chrono.workspace = true
+uuid.workspace = true
 [dev-dependencies]
 tempfile.workspace = true
 sepia-driver-devin.workspace = true
 sepia-testkit.workspace = true
 tokio = { workspace = true, features = ["rt"] }
+tower = { version = "0.5", features = ["util"] }
 ureq.workspace = true

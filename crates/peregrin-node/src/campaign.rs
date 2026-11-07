@@ -344,6 +344,7 @@ pub fn run(source: &Path, options: &RunOptions) -> Result<Vec<Event>, CampaignEr
         secrets: options.secrets.clone(),
         secret_stores: options.secret_stores.clone(),
         replay_events: options.replay_events.clone(),
+        replay_timers: options.replay_timers.clone(),
     };
     // The keyring + env-file legs fill in when the caller didn't
     // wire its own fallback chain — explicit stores win wholesale.
