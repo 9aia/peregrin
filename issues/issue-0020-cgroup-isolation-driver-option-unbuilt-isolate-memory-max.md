@@ -12,10 +12,10 @@ Status: **open** · Created: 2026-11-07
 
 ## Description
 
-What is wrong and steps to reproduce.
+P2 leftover. `peregrin-cli/src/import.rs:459-460` warns "cgroup isolation is a driver option not yet wired into driver-git"; zero cgroup/memory_max impl in workspace. Needs a driver-port option + impl on the spawn path (driver-git/shell). The OOM-containment story for agent runs.
 
 ## Checklist
 
-- [ ] Action item
+- [ ] See Description
 
 ## Resolution

@@ -1,7 +1,7 @@
 +++
 id = "ADR-0080"
 title = "peregrin as orchestration substrate — trigger/driver/sink planes, absorb CI gate"
-status = "open"
+status = "done"
 created = "2026-11-04"
 priority = "medium"
 +++

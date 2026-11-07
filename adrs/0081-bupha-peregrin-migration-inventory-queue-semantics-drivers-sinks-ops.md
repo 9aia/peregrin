@@ -1,7 +1,7 @@
 +++
 id = "ADR-0081"
 title = "bupha→peregrin migration inventory — queue semantics, drivers, sinks, ops"
-status = "open"
+status = "done"
 created = "2026-11-04"
 priority = "medium"
 +++

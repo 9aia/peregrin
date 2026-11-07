@@ -12,10 +12,10 @@ Status: **open** · Created: 2026-11-07
 
 ## Description
 
-What is wrong and steps to reproduce.
+P3 leftover. `peregrin-sink-github-status` landed (driver under unified registry); verdicts→event/WAL-plane egress does not exist — no driver writes `refs/sturn/*` (only ingress reads them). Decide: ship sink-events/sink-sturn or drop per I-011 precedent.
 
 ## Checklist
 
-- [ ] Action item
+- [ ] See Description
 
 ## Resolution

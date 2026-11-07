@@ -262,3 +262,20 @@ Phase corrections:
   driver-python phase or delete), `max_fires: 0` strict rejection
   (impl silently falls back to 1), `.handl/`→`.peregrin/`
   discovery-root decision (I-XXX).
+
+## Status addendum — audited 2026-11-07 (main @ e7a1bf50)
+
+| Phase | Status | Notes |
+| --- | --- | --- |
+| P0 contracts+audit | **landed** | envelope/on-grammar/scope-resolution/campaign-schema refs shipped; ADR-0082 Exists/Build/Fix audit appended. params.schema.json artifacts exist but nothing validates them (I-022). |
+| P1 engine mechanics | **landed w/ follow-up** | queue+supersede+RunSupervisor built/tested; `supersede:` unparsed + supervisor undriven → I-019 (high). |
+| P2 drivers | **landed except cgroup** | git/webhook/sturn/shell/http/human/agent + schedule/subworkflow/council landed since. cgroup isolation → I-020. |
+| P3 sinks | **partial** | github-status shipped; sink-events/sturn → I-021 (ship-or-drop). |
+| P4 distribution | **landed** | source-{fs,git,http}, store/cache, all verbs, deep-merge overlay. `.driver.yml` rescope ruled DROP (I-011). |
+| P5 ci-gate+importer | **landed** | ci-gate/release bundles, resilience fragments, importer (live 188-repo import recorded clean). |
+| P6 ops verbs | **landed** | create/deploy/destroy/runs/log/explain/doctor. OTel Observer bridge → I-023. `create` not in MCP toolset (minor). |
+| P7 agent surface | **landed** | .agents/skills/peregrin + peregrin-mcp (campaign_run/validate/bundle_*/runs/events/explain). |
+| P8 shadow→cutover | **open — human-gated** | I-015; I-017 (supersede teardown race) relevant to the window. |
+| P9 docs sweep | **landed** | full diataxis set on docs branch. |
+
+Ledger: ADRs 0079–0082 flipped `open → done` with this audit.

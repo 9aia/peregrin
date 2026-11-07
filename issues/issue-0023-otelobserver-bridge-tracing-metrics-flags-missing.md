@@ -12,10 +12,10 @@ Status: **open** · Created: 2026-11-07
 
 ## Description
 
-What is wrong and steps to reproduce.
+P6 addendum (ADR-0040). `peregrin-telemetry` has no `Observer` impl bridging engine events → OTEL; `--tracing`/`--metrics` provider flags absent from the CLI.
 
 ## Checklist
 
-- [ ] Action item
+- [ ] See Description
 
 ## Resolution
