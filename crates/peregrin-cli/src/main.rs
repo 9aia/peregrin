@@ -622,17 +622,6 @@ enum Commands {
         #[arg(long)]
         config: Option<PathBuf>,
     },
-    /// Check what the node config actually needs on this box —
-    /// config loads, dirs exist, secret NAMES resolve, tools present
-    Doctor {
-        /// Node config to check (default: ./peregrin.* then
-        /// ~/.config/peregrin/peregrin.*)
-        #[arg(long)]
-        config: Option<PathBuf>,
-        /// Machine-readable JSON output — {ok, failures, checks}
-        #[arg(long)]
-        json: bool,
-    },
     /// Print the peregrin version stamp
     Version,
 }
@@ -963,13 +952,6 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
             history,
             config,
         } => ops::explain(&ops_env(), history.as_deref(), config.as_deref(), target).map(|_| ()),
-        Commands::Doctor { config, json } => {
-            let report = ops::doctor(&ops_env(), config.as_deref(), *json)?;
-            if report.failures > 0 {
-                return Err(CliError(format!("{} problem(s)", report.failures)));
-            }
-            Ok(())
-        }
         Commands::Version => {
             println!("{PEREGRIN_VERSION}");
             Ok(())
@@ -1162,8 +1144,6 @@ mod tests {
             vec!["peregrin", "runs", "--repo", "a/b", "-n", "1"],
             vec!["peregrin", "log", "-n", "5"],
             vec!["peregrin", "explain", "feedbeef"],
-            vec!["peregrin", "doctor"],
-            vec!["peregrin", "doctor", "--json"],
             vec![
                 "peregrin",
                 "import",
