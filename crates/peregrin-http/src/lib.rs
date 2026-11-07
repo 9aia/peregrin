@@ -4,12 +4,14 @@
 //! daemon composes [`AppState`] and serves [`app`].
 
 pub mod auth;
+pub mod entity_plane;
 pub mod env;
 pub mod feed;
 pub mod node;
 pub mod pair;
 pub mod ratelimit;
 pub mod routes;
+pub mod session_entity;
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -27,6 +29,7 @@ use peregrin_session::SessionPlane;
 use sepia_meta::MetaStore;
 use tracing::Instrument;
 
+pub use entity_plane::{EntityPlane, KindRegistry};
 pub use env::{Env, EnvError};
 pub use feed::{EventFeed, HeldWatches, InstrumentedMeta, LiveListeners};
 pub use node::{
@@ -35,6 +38,7 @@ pub use node::{
 pub use pair::{Pairing, PairingStore};
 pub use ratelimit::{Quota, RateLimiter};
 pub use routes::sessions::{ConvertSession, ImportSession, ImportTarget};
+pub use session_entity::{SESSION_KIND, SessionEntityPlane};
 
 /// Shared state threaded through every handler — the `createApp`
 /// options object, minus the seams this crate doesn't port (transfer,
@@ -42,6 +46,10 @@ pub use routes::sessions::{ConvertSession, ImportSession, ImportTarget};
 #[derive(Clone)]
 pub struct AppState {
     pub plane: Arc<dyn SessionPlane>,
+    /// `kind` → [`EntityPlane`] registry behind `/api/entities*`.
+    /// `sepia-session` rides along automatically with `plane`;
+    /// integrations register more at composition ([`Self::with_kind`]).
+    pub kinds: KindRegistry,
     /// The instrumented meta overlay — `None` → meta routes answer 501.
     pub meta: Option<InstrumentedMeta>,
     /// Process-wide node event feed behind `GET /api/events`.
@@ -83,6 +91,7 @@ impl AppState {
     pub fn new(plane: Arc<dyn SessionPlane>) -> Self {
         Self {
             plane,
+            kinds: default_kinds(),
             meta: None,
             feed: EventFeed::new(),
             node: Arc::new(Mutex::new(NodeIdentity {
@@ -118,6 +127,7 @@ impl AppState {
         let meta = MetaStore::open(&env.meta_path);
         Self {
             plane,
+            kinds: default_kinds(),
             meta: Some(InstrumentedMeta::new(meta, feed.clone())),
             feed,
             node: Arc::new(Mutex::new(load_node_identity(
@@ -141,6 +151,15 @@ impl AppState {
                 &env.meta_path,
             )))),
         }
+    }
+
+    /// Register an extra entity kind plane behind `/api/entities*` —
+    /// `sepia-session` is already resident via `plane`; this is the
+    /// composition hook for every other kind (`campaign`, …).
+    #[must_use]
+    pub fn with_kind(mut self, plane: Arc<dyn EntityPlane>) -> Self {
+        self.kinds.register(plane);
+        self
     }
 
     #[must_use]
@@ -225,6 +244,16 @@ impl AppState {
         self.convert = Some(f);
         self
     }
+}
+
+/// The kind registry every session-plane host starts with —
+/// `sepia-session` is the built-in entity kind wherever a
+/// `SessionPlane` is mounted (ADR-0091); [`AppState::with_kind`] and
+/// `state.kinds.register` add integration kinds at composition.
+fn default_kinds() -> KindRegistry {
+    let mut kinds = KindRegistry::new();
+    kinds.register(Arc::new(SessionEntityPlane));
+    kinds
 }
 
 fn hostname_or_unknown() -> String {

@@ -1,51 +1,80 @@
 //! The entity surface — `/api/entities*` is the substrate-facing view
-//! of everything a node hosts. Today the only resident kind is
-//! `sepia-session`, so this module wraps the session plane into entity
-//! docs (`{id,kind,indexDoc,updatedAt,locked,live}`) and dispatches
-//! namespaced ops (`sepia.<verb>`) onto the session verb handlers —
-//! the session-domain knowledge the sync client used to carry.
-//! INTERIM: when the `sepia-peregrin` integration registers other
-//! kinds this becomes a registry lookup; the op dispatch splits
-//! per-kind instead of mapping onto `/api/sessions` verbs.
+//! of everything a node hosts. Every handler here is kind-agnostic:
+//! it parses just enough of the request to pick a plane out of
+//! [`AppState::kinds`] (`body.kind`, the `<ns>.<verb>` op namespace,
+//! or owner-resolution across planes for id-scoped calls) and hands
+//! over verbatim — payload translation, status codes, and feed
+//! emission stay inside each kind's [`EntityPlane`] impl.
+//!
+//! `sepia-session` is the built-in plane (`SessionEntityPlane`,
+//! auto-registered with the session plane); integrations register
+//! more at daemon composition. `entity.*` is the substrate's own op
+//! namespace: `entity.delete` resolves the owning plane and deletes
+//! through it.
 
 use axum::body::Body;
 use axum::extract::{Path, Request, State};
 use axum::http::{Method, StatusCode};
 use axum::response::Response;
 use serde_json::{Value, json};
+use std::sync::Arc;
 
 use crate::AppState;
+use crate::entity_plane::EntityPlane;
 
 use super::{
-    agent_param, error_response, json_response, not_found, query_param, read_json_body, sessions,
+    MAX_JSON_BODY, SMALL_JSON_BODY, json_response, not_found, ok, query_param, read_json_body,
 };
-
-/// The only entity kind today's nodes host — the session plane
-/// projected onto the entity contract.
-const SESSION_KIND: &str = "sepia-session";
 
 fn bad_request(message: &str) -> Response {
     json_response(json!({ "error": message }), StatusCode::BAD_REQUEST)
 }
 
-/// A wire summary row → the entity doc the substrate indexes. The
-/// `indexDoc` is opaque to peregrin — kind-specific fields for list
-/// views; `locked`/`live`/`updatedAt` lift to substrate columns.
-fn entity_doc(summary: &Value) -> Value {
-    let get = |k: &str| summary.get(k).cloned().unwrap_or(Value::Null);
-    json!({
-        "id": get("id"),
-        "kind": SESSION_KIND,
-        "indexDoc": summary,
-        "updatedAt": get("updatedAt"),
-        "locked": get("locked"),
-        "live": summary.get("live").cloned().unwrap_or_else(|| get("busy")),
-    })
+/// Unknown kind on create/import — kept at 501 with the long-standing
+/// `not registered` wording the hub's `api_err` maps back to 501.
+fn kind_not_registered(kind: &str) -> Response {
+    json_response(
+        json!({ "error": format!("entity kind {kind:?} not registered") }),
+        StatusCode::NOT_IMPLEMENTED,
+    )
 }
 
-/// `GET /api/entities[?withLocks=1]` — entity docs for every resident
-/// entity. `POST /api/entities` — create (`{kind, indexDoc}` → the
-/// kind's create params; only `sepia-session` exists today).
+fn unknown_op(kind: &str) -> Response {
+    json_response(
+        json!({ "error": format!("unknown op {kind:?}") }),
+        StatusCode::NOT_IMPLEMENTED,
+    )
+}
+
+/// First plane whose `get` claims `id` — any non-404 answer counts
+/// (a 500 means "mine, but broken": more informative than probing on).
+async fn owning_plane(
+    state: &AppState,
+    id: &str,
+    query: Option<&str>,
+) -> Option<Arc<dyn EntityPlane>> {
+    for plane in state.kinds.planes() {
+        if plane.get(state, id, query).await.status() != StatusCode::NOT_FOUND {
+            return Some(Arc::clone(plane));
+        }
+    }
+    None
+}
+
+/// `entity.delete` — the substrate verb: find the owning plane and
+/// delete through it. Nobody owning the id reads as already-gone —
+/// delete stays idempotent (replayed outbox deletes must not
+/// dead-letter on a node that already applied them).
+async fn delete_entity(state: &AppState, id: &str, query: Option<&str>) -> Response {
+    match owning_plane(state, id, query).await {
+        Some(plane) => plane.delete(state, id, query).await,
+        None => ok(),
+    }
+}
+
+/// `GET /api/entities[?kind=][&withLocks=1]` — every registered
+/// plane's entity docs (or just one kind's when `?kind=` filters);
+/// `POST /api/entities` — `{kind?, indexDoc}` → the kind's create.
 pub async fn collection(
     State(state): State<AppState>,
     method: Method,
@@ -53,12 +82,15 @@ pub async fn collection(
 ) -> Response {
     match method {
         Method::GET => {
-            let with_locks = query_param(req.uri().query(), "withLocks").as_deref() == Some("1");
-            let res = sessions::list_for_entities(&state, with_locks).await;
-            let Ok(rows) = res else {
-                return json_response(json!({ "entities": [] }), StatusCode::OK);
-            };
-            let entities: Vec<Value> = rows.iter().map(entity_doc).collect();
+            let query = req.uri().query();
+            let kind = query_param(query, "kind");
+            let mut entities = Vec::new();
+            for plane in state.kinds.planes() {
+                if kind.as_deref().is_some_and(|k| k != plane.kind()) {
+                    continue;
+                }
+                entities.extend(plane.list(&state, query).await);
+            }
             json_response(json!({ "entities": entities }), StatusCode::OK)
         }
         Method::POST => create(state, req).await,
@@ -66,39 +98,34 @@ pub async fn collection(
     }
 }
 
-/// `POST /api/entities` — `{kind, indexDoc}`. INTERIM: `indexDoc` is
-/// passed through as the session create body (`cwd`, `agent`, …).
+/// `POST /api/entities` — `{kind?, indexDoc}`; a missing `kind`
+/// targets the default (first-registered) plane, an unregistered one
+/// 501s.
 async fn create(state: AppState, req: Request<Body>) -> Response {
-    let body = match read_json_body(req, crate::routes::SMALL_JSON_BODY).await {
+    let body = match read_json_body(req, SMALL_JSON_BODY).await {
         Ok(b) => b,
         Err(res) => return *res,
     };
     let Some(body) = body else {
         return bad_request("Expected a JSON object body");
     };
-    let kind = body
-        .get("kind")
-        .and_then(Value::as_str)
-        .unwrap_or(SESSION_KIND);
-    if kind != SESSION_KIND {
-        return json_response(
-            json!({ "error": format!("entity kind {kind:?} not registered") }),
-            StatusCode::NOT_IMPLEMENTED,
-        );
-    }
-    let init = body
-        .get("indexDoc")
-        .cloned()
-        .unwrap_or_else(|| body.clone());
-    let req = Request::builder()
-        .method(Method::POST)
-        .uri("/api/sessions")
-        .body(Body::from(serde_json::to_vec(&init).unwrap_or_default()))
-        .unwrap_or_else(|_| Request::new(Body::empty()));
-    sessions::collection(State(state), Method::POST, req).await
+    let plane = match body.get("kind").and_then(Value::as_str) {
+        Some(kind) => match state.kinds.plane(kind) {
+            Some(plane) => plane,
+            None => return kind_not_registered(kind),
+        },
+        None => match state.kinds.default_plane() {
+            Some(plane) => plane,
+            None => return kind_not_registered(""),
+        },
+    };
+    let init = body.get("indexDoc").cloned().unwrap_or(body);
+    plane.create(&state, init).await
 }
 
-/// `GET /api/entities/{id}` — one entity doc.
+/// `GET /api/entities/{id}` — the owning plane's entity doc (first
+/// non-404 wins; all-404 answers the last one). `DELETE` is
+/// `entity.delete`.
 pub async fn item(
     State(state): State<AppState>,
     method: Method,
@@ -107,20 +134,26 @@ pub async fn item(
 ) -> Response {
     match method {
         Method::GET => {
-            let agent = agent_param(&req);
-            let res = sessions::summary_for_entities(&state, &id, agent.as_deref()).await;
-            match res {
-                Ok(summary) => json_response(entity_doc(&summary), StatusCode::OK),
-                Err(e) => error_response(&e),
+            let query = req.uri().query();
+            let mut last = None;
+            for plane in state.kinds.planes() {
+                let res = plane.get(&state, &id, query).await;
+                if res.status() != StatusCode::NOT_FOUND {
+                    return res;
+                }
+                last = Some(res);
             }
+            last.unwrap_or_else(not_found)
         }
+        Method::DELETE => delete_entity(&state, &id, req.uri().query()).await,
         _ => not_found(),
     }
 }
 
-/// `POST /api/entities/{id}/ops` — submit `{kind, payload}`. `sepia.<verb>`
-/// dispatches onto the session verb handlers (their own JSON translation
-/// and feed emission stay intact); `entity.delete` → the item DELETE.
+/// `POST /api/entities/{id}/ops` — submit `{kind, payload}`.
+/// `entity.delete` (and the bare `delete` alias) is substrate-generic;
+/// `<ns>.<verb>` dispatches to the plane owning `ns`; bare verbs fall
+/// back to the default plane — legacy un-namespaced outbox rows.
 pub async fn ops(
     State(state): State<AppState>,
     method: Method,
@@ -130,8 +163,8 @@ pub async fn ops(
     if method != Method::POST {
         return not_found();
     }
-    let agent = agent_param(&req);
-    let body = match read_json_body(req, crate::routes::SMALL_JSON_BODY).await {
+    let query = req.uri().query().map(str::to_string);
+    let body = match read_json_body(req, SMALL_JSON_BODY).await {
         Ok(b) => b,
         Err(res) => return *res,
     };
@@ -141,138 +174,69 @@ pub async fn ops(
     let kind = body.get("kind").and_then(Value::as_str).unwrap_or_default();
     let payload = body.get("payload").cloned().unwrap_or_else(|| json!({}));
 
-    // Rebuild the inner verb request — the session handlers own their
-    // own JSON translation, lock handling, and feed emission.
-    let verb_req = |id: &str, verb_path: &str| {
-        use std::fmt::Write as _;
-        let mut uri = format!("/api/sessions/{id}{verb_path}");
-        if let Some(a) = &agent {
-            let _ = write!(uri, "?agent={a}");
-        }
-        Request::builder()
-            .method(Method::POST)
-            .uri(uri)
-            .body(Body::from(serde_json::to_vec(&payload).unwrap_or_default()))
-            .unwrap_or_else(|_| Request::new(Body::empty()))
-    };
-
-    // `sepia.` strips; un-namespaced ops (legacy outbox rows) read as
-    // session-plane verbs; `entity.*` is the substrate namespace.
-    let verb = kind.strip_prefix("sepia.").unwrap_or(kind);
-    match verb {
-        "meta" | "meta.patch" => {
-            sessions::item(
-                State(state),
-                Method::PATCH,
-                Path(id.clone()),
-                verb_req(&id, ""),
-            )
-            .await
-        }
-        "attach" => {
-            sessions::attach(
-                State(state),
-                Method::POST,
-                Path(id.clone()),
-                verb_req(&id, "/attach"),
-            )
-            .await
-        }
-        "detach" => {
-            sessions::detach(
-                State(state),
-                Method::POST,
-                Path(id.clone()),
-                verb_req(&id, "/detach"),
-            )
-            .await
-        }
-        "prompt" => {
-            sessions::prompt(
-                State(state),
-                Method::POST,
-                Path(id.clone()),
-                verb_req(&id, "/prompt"),
-            )
-            .await
-        }
-        "cancel" => {
-            sessions::cancel(
-                State(state),
-                Method::POST,
-                Path(id.clone()),
-                verb_req(&id, "/cancel"),
-            )
-            .await
-        }
-        "permission" => {
-            sessions::permission(
-                State(state),
-                Method::POST,
-                Path(id.clone()),
-                verb_req(&id, "/permission"),
-            )
-            .await
-        }
-        "restore" => {
-            sessions::restore(
-                State(state),
-                Method::POST,
-                Path(id.clone()),
-                verb_req(&id, "/restore"),
-            )
-            .await
-        }
-        "rewind" => {
-            sessions::rewind(
-                State(state),
-                Method::POST,
-                Path(id.clone()),
-                verb_req(&id, "/rewind"),
-            )
-            .await
-        }
-        "convert" => {
-            sessions::convert(
-                State(state),
-                Method::POST,
-                Path(id.clone()),
-                verb_req(&id, "/convert"),
-            )
-            .await
-        }
-        "entity.delete" | "delete" => {
-            sessions::item(
-                State(state),
-                Method::DELETE,
-                Path(id.clone()),
-                verb_req(&id, ""),
-            )
-            .await
-        }
-        _ => json_response(
-            json!({ "error": format!("unknown op {kind:?}") }),
-            StatusCode::NOT_IMPLEMENTED,
-        ),
+    if kind == "entity.delete" || kind == "delete" {
+        return delete_entity(&state, &id, query.as_deref()).await;
+    }
+    // `entity.*` past `delete` is the substrate's own (reserved)
+    // namespace — nothing else lives there yet.
+    if kind.starts_with("entity.") {
+        return unknown_op(kind);
+    }
+    match state.kinds.plane_for_op(kind) {
+        Some(plane) => plane.op(&state, &id, kind, payload, query.as_deref()).await,
+        None => unknown_op(kind),
     }
 }
 
 /// `GET /api/entities/{id}/snapshot` — kind-shaped snapshot bytes the
-/// substrate moves opaquely (`sepia-session` → the session export).
+/// substrate moves opaquely; the owning plane produces them.
 pub async fn snapshot_item(
     State(state): State<AppState>,
     method: Method,
     Path(id): Path<String>,
     req: Request<Body>,
 ) -> Response {
-    sessions::export(State(state), method, Path(id), req).await
+    if method != Method::GET {
+        return not_found();
+    }
+    let query = req.uri().query();
+    let mut last = None;
+    for plane in state.kinds.planes() {
+        let res = plane.export(&state, &id, query).await;
+        if res.status() != StatusCode::NOT_FOUND {
+            return res;
+        }
+        last = Some(res);
+    }
+    last.unwrap_or_else(not_found)
 }
 
-/// `POST /api/entities/snapshot` — import a snapshot on this node.
+/// `POST /api/entities/snapshot` — import a snapshot on this node;
+/// `body.kind` picks the plane (absent → the default plane).
 pub async fn snapshot_collection(
     State(state): State<AppState>,
     method: Method,
     req: Request<Body>,
 ) -> Response {
-    sessions::import_session(State(state), method, req).await
+    if method != Method::POST {
+        return not_found();
+    }
+    let body = match read_json_body(req, MAX_JSON_BODY).await {
+        Ok(b) => b,
+        Err(res) => return *res,
+    };
+    let Some(body) = body else {
+        return bad_request("Expected a JSON object body");
+    };
+    let plane = match body.get("kind").and_then(Value::as_str) {
+        Some(kind) => match state.kinds.plane(kind) {
+            Some(plane) => plane,
+            None => return kind_not_registered(kind),
+        },
+        None => match state.kinds.default_plane() {
+            Some(plane) => plane,
+            None => return kind_not_registered(""),
+        },
+    };
+    plane.import(&state, body).await
 }
