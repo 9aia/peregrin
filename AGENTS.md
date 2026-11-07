@@ -95,3 +95,18 @@ read it before changing engine semantics.
 - `sturn leave` on exit — drops the actor's claims.
 
 <!-- /sturn:agent-awareness -->
+
+## Distribution & host lifecycle live in tamias
+
+Bundle **distribution**, **provisioning**, **deploy**, and **service**
+lifecycle are **tamias**'s job — the host/shell metaservice (sibling repo
+`9aia/tamias`, consumed here via a rev-pinned git dep). peregrin ships the
+**provider** tamias shells:
+
+```
+peregrin provision {install,deploy,uninstall} --dir <dir> --name <name> [--config <f>]
+```
+
+`peregrin install/remove/…`, `create`, `deploy`, `destroy`, and `service`
+verbs are **gone** from the peregrin CLI — run them via `tamias`. Host
+diagnostics (`doctor`) also live in tamias now.

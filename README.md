@@ -57,3 +57,10 @@ cargo xtask install  # release-build peregrin + hub → ~/.local
 
 [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) ·
 [LICENSE](LICENSE) (MIT) · [project](project/index.md)
+
+## Distribution (tamias)
+
+Content distribution, provisioning, and service lifecycle live in
+[**tamias**](https://github.com/9aia/tamias) (the host metaservice).
+peregrin depends on it and ships a `peregrin provision` provider; use
+`tamias install/deploy/uninstall/…` to move content.
