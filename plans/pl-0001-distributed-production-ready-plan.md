@@ -1,11 +1,20 @@
 +++
 id = "PL-001"
 title = "Distributed / production-ready plan"
-status = "open"
+status = "done"
 priority = "medium"
 +++
 
 # Distributed / production-ready plan
+
+> **Superseded** (2026-11-06) — this is pre-entity-plane thinking:
+> the distributed story actually shipped as the generic entity plane
+> (ADR-0091, PL-004): node/hub pairing, entity projection + sync,
+> entity-scoped op outbox, lock/takeover arbitration, snapshot
+> transfer. The broker-bus/distributed-store items below remain the
+> "workers across machines" future — revisit as a fresh plan if/when
+> intra-campaign distribution is wanted (P-001 keeps the entity = the
+> run's control plane, not its worker pool).
 
 A production-ready distributed version would need these steps:
 
