@@ -28,7 +28,9 @@ Retry failed nodes automatically with configurable backoff.
 
 Attempts run inline — the sequential runner sleeps the delay between
 them. Success resets the attempt counter and clears the breaker
-half-lap.
+half-lap. (For a graph-level wait that *doesn't* block — cooldowns,
+deadlines — use `driver: delay`; see
+[Drivers](drivers.md).)
 
 ## Dead-letter queue
 

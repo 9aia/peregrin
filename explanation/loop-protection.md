@@ -94,6 +94,8 @@ are likewise unported (`RunOptions` carries only `dry_run`,
 | --- | --- | --- |
 | Retry N times | `max_fires: N` + `on: [node.exhausted]` | `max_fires` |
 | Poll until condition | `poll:` + `until: [condition.event]` | `until` |
+| Cooldown / timed pause | `driver: delay` + `params.duration` | one-shot by default |
+| Recurring schedule | `driver: schedule` + `params.cron` | `max_fires`, `until` |
 | Refinement loop | `max_fires: N, until: [good.enough]` | both |
 | Clean up injected node | `retire_on: [done.event]` | `retire_on` |
 | End the run on a verdict | `stop_on: [verdict.failed]` | `stop_on` |

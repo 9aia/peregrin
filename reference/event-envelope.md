@@ -53,6 +53,9 @@ validation.
 | `capability.violation` | Merged capability policy denied the fire | `{node, violations}` |
 | `circuit.open` | Breaker tripped (type is `circuit_breaker.on_trip`-configurable) | `{node, failures}` |
 | `<node-id>.tick` | Poll-node self-trigger (auto-declared in `on`/`emits`) | `{poll: true}` |
+| `<node-id>.fire` | `schedule` self-retrigger — arms the next cron occurrence (auto-declared in `on`/`emits`) | `{schedule: true}` |
+| `<node-id>.scheduled` | `schedule` armed a deferred emission (auto-declared in `emits`) | `{cron, timezone, next_fire}` |
+| `<node-id>.delayed` | `delay` armed a deferred emission (**not** auto-declared — strict campaigns list it in `emits`) | `{duration, duration_ms, until}` |
 
 ## Emission contract — three layers
 
@@ -66,7 +69,7 @@ produces must literally appear in `emits`** — the check is exact
 match, not glob. Exempt engine types: `node.failed`, `circuit.open`,
 `node.skipped` (and `event.invalid`, which is produced at publish
 time, not fire time). Poll nodes get `<id>.tick` auto-appended to
-`emits` at load.
+`emits` at load; `schedule` nodes get `<id>.fire` + `<id>.scheduled`.
 
 > Open question — **I-012**: exact-match `emits` makes wildcard/shard
 > emit types undeclarable under strict (a node emitting

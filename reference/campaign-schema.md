@@ -37,7 +37,7 @@ aren't arrays are a hard error.
 | `emits` | `[type]` | `[]` | Declared output types — strict-checked **exact**. |
 | `mode` | `any` \| `all` | `any` | Trigger semantics. |
 | `params` | map | `{}` | Driver params — template-resolved at fire time. |
-| `max_fires` | int \| `"unlimited"` | `1` | Fire cap. `0`/negative/non-integer falls back to the default (v1 quirk, kept — strict rejection is an ADR-0082 *fix* item). |
+| `max_fires` | int \| `"unlimited"` | `1` | Fire cap. `0`/negative/non-integer falls back to the default (v1 quirk, kept — strict rejection is an ADR-0082 *fix* item). `driver: schedule` defaults to `unlimited`. |
 | `until` | `[type]` | `[]` | Exact-match stop-listening list. |
 | `retire_on` | `[type]` | `[]` | Exact-match retire list — removes the node from the live graph. |
 | `retry` | map | `{}` | `max_attempts` (default 1), `delay` secs (default 1), `backoff`: `fixed` \| `linear` \| `exponential`. Exhausted → `node.failed` + DLQ enqueue. |
@@ -92,8 +92,14 @@ Applied by `Node::from_dict` / the loader expansion, in order:
 6. **Poll normalization** — a truthy `poll:` appends `<id>.tick` to
    `on` and `emits`, merges `poll.until` into `until`, and backfills
    `params.interval` from `poll.interval`.
-7. **Self-trigger default** — `driver: cli`/`polling` with
-   `params.mode != "interval"` defaults `max_fires: 100` (others: 1).
+7. **Schedule normalization** — `driver: schedule` appends
+   `<id>.fire` to `on` and `<id>.fire` + `<id>.scheduled` to `emits`
+   (the `poll:` `<id>.tick` convention, ADR-0018) and defaults
+   `max_fires: unlimited`. Each landed `<id>.fire` re-invokes the
+   driver to arm the next cron occurrence.
+8. **Self-trigger default** — `driver: cli`/`polling` with
+   `params.mode != "interval"` defaults `max_fires: 100` (others: 1;
+   `schedule`: `unlimited`).
 
 Coercion quirks kept from v1: scalar strings in list positions
 iterate into characters (`on: start` → `["s","t","a","r","t"]`) —

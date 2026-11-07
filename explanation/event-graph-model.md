@@ -75,9 +75,10 @@ walker:
 v1 interleaved `ready` batches through `Effect.forEach` with
 unbounded concurrency, but all cross-node state was only touched at
 yield points — the sequential batch walk is semantically equivalent
-and deterministic. Poll nodes don't sleep the loop: `<id>.tick`
-re-fires sit on a deadline heap that drains at the top of each
-iteration.
+and deterministic. Timed work doesn't sleep the loop: poll `<id>.tick`
+re-fires and driver-deferred emissions (`ctx.schedule_at`, ADR-0018)
+sit on a deadline heap that drains at the top of each iteration —
+deferred events also hold a finite run open until they land.
 
 The ingress channel is how external producers (webhook listeners,
 WAL pollers, the supersede queue's cancel signal) feed a live run
