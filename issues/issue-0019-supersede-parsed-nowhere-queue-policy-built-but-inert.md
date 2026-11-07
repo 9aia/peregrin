@@ -1,7 +1,7 @@
 +++
 id = "I-019"
 title = "supersede: parsed nowhere — queue policy built but inert"
-status = "open"
+status = "done"
 created = "2026-11-07"
 priority = "high"
 +++
@@ -36,3 +36,5 @@ end-to-end.
 - [ ] ci-gate `supersede:` block exercised in an integration test
 
 ## Resolution
+
+supersede: parsed in Campaign::from_dict (core Supersede/SupersedeMode, strict); campaign run gains supervisor mode when supersede:+ingress nodes — persistent listener run feeds RunSupervisor, worker runs spawned per trigger with pre-injected event, cancel_running cancels active via injector, runs share --history JSONL. Main ce999f71.
