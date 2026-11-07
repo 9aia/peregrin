@@ -41,6 +41,14 @@ pub trait EntityPlane: Send + Sync {
         self.kind()
     }
 
+    /// Additional `<ns>` prefixes this plane also owns — e.g.
+    /// `sepia-session` serves `meta.*` (the node-local meta overlay)
+    /// alongside `sepia.*`. The substrate namespace `entity.*` is
+    /// reserved and never reaches a plane.
+    fn extra_op_namespaces(&self) -> &'static [&'static str] {
+        &[]
+    }
+
     /// `GET /api/entities` contribution — this kind's entity docs
     /// (`{id,kind,indexDoc,updatedAt,locked,live}` rows). Errors
     /// degrade to an empty contribution, matching the list route's
@@ -130,7 +138,10 @@ impl KindRegistry {
             Some((namespace, _)) => self
                 .planes
                 .iter()
-                .find(|p| p.op_namespace() == namespace)
+                .find(|p| {
+                    p.op_namespace() == namespace
+                        || p.extra_op_namespaces().contains(&namespace)
+                })
                 .cloned(),
             None => self.default_plane(),
         }

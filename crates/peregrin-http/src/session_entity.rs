@@ -76,6 +76,12 @@ impl EntityPlane for SessionEntityPlane {
         "sepia"
     }
 
+    /// `meta.*` is the node-local overlay (`PEREGRIN_META` — pins,
+    /// archives, run spans); the op table handles `meta`/`meta.patch`.
+    fn extra_op_namespaces(&self) -> &'static [&'static str] {
+        &["meta"]
+    }
+
     async fn list(&self, state: &AppState, query: Option<&str>) -> Vec<Value> {
         let with_locks = query_param(query, "withLocks").as_deref() == Some("1");
         match sessions::list_for_entities(state, with_locks).await {
