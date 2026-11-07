@@ -1,7 +1,7 @@
 +++
 id = "ADR-0021"
 title = "ADR-0021: Map and reduce drivers"
-status = "open"
+status = "done"
 priority = "medium"
 +++
 
@@ -16,7 +16,14 @@ priority = "medium"
 
 ## Status
 
-Proposed
+Descoped — **fragment suffices** (`libraries/map/`, main `9bb078b0`).
+Fan-out composes through planner → `payload.nodes` → `runner` inject;
+reduce is `on: [<base>.*.done]` + `fan_in` count join. The only code
+change was restoring the documented runner-driver stdout contract
+(dead in the Rust port), a bug fix not a driver. Ergonomic friction
+remains — worker specs are JSON strings, object items are awkward,
+strict-mode `emits:` can't enumerate wildcard outputs; a `map`
+driver is justified only if those harden into requirements.
 
 ## Context
 
