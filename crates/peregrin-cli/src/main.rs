@@ -13,7 +13,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use peregrin_cli::node_ops::{NodeArgs, TargetArgs};
 use peregrin_cli::{
-    CliError, PEREGRIN_VERSION, api, campaign, import, node_ops, ops, pair, provision, service,
+    CliError, PEREGRIN_VERSION, api, campaign, import, node_ops, ops, pair, provision,
 };
 
 fn default_peregrin_home() -> PathBuf {
@@ -463,92 +463,6 @@ enum PushCommands {
 
 // --- store / service ----------------------------------------------------------
 
-#[derive(Subcommand)]
-enum ServiceCommands {
-    /// Install the peregrin node (or hub, --hub) as an OS service
-    /// (systemd/launchd)
-    Install {
-        /// Manage the hub unit (peregrin-hub) instead of the node unit
-        #[arg(long)]
-        hub: bool,
-        /// Install/manage the system-level unit instead of the per-user one
-        #[arg(long)]
-        system: bool,
-        /// Start the user unit at boot without login (loginctl
-        /// enable-linger)
-        #[arg(long)]
-        linger: bool,
-        /// Override the ExecStart command (default: this binary + ' serve')
-        #[arg(long)]
-        exec: Option<String>,
-        /// Environment file path (default: ~/.config/peregrin/env)
-        #[arg(long)]
-        env_file: Option<PathBuf>,
-    },
-    /// Stop, disable and remove the peregrin service
-    Uninstall {
-        /// Manage the hub unit (peregrin-hub) instead of the node unit
-        #[arg(long)]
-        hub: bool,
-        /// Install/manage the system-level unit instead of the per-user one
-        #[arg(long)]
-        system: bool,
-        /// Also delete the env file (kept by default)
-        #[arg(long)]
-        purge: bool,
-    },
-    /// Start the service now and at boot/login (keeps the unit file —
-    /// the counterpart of `disable`, not a reinstall)
-    Enable {
-        /// Manage the hub unit (peregrin-hub) instead of the node unit
-        #[arg(long)]
-        hub: bool,
-        /// Install/manage the system-level unit instead of the per-user one
-        #[arg(long)]
-        system: bool,
-    },
-    /// Stop the service now and keep it stopped across boots/logins —
-    /// the unit file stays so `enable` brings it back
-    Disable {
-        /// Manage the hub unit (peregrin-hub) instead of the node unit
-        #[arg(long)]
-        hub: bool,
-        /// Install/manage the system-level unit instead of the per-user one
-        #[arg(long)]
-        system: bool,
-    },
-    /// Show whether the peregrin service is installed, enabled and running
-    Status {
-        /// Manage the hub unit (peregrin-hub) instead of the node unit
-        #[arg(long)]
-        hub: bool,
-        /// Install/manage the system-level unit instead of the per-user one
-        #[arg(long)]
-        system: bool,
-    },
-    /// Restart the peregrin service
-    Restart {
-        /// Manage the hub unit (peregrin-hub) instead of the node unit
-        #[arg(long)]
-        hub: bool,
-        /// Install/manage the system-level unit instead of the per-user one
-        #[arg(long)]
-        system: bool,
-    },
-    /// Print (or follow, -f) the peregrin service log
-    Logs {
-        /// Manage the hub unit (peregrin-hub) instead of the node unit
-        #[arg(long)]
-        hub: bool,
-        /// Install/manage the system-level unit instead of the per-user one
-        #[arg(long)]
-        system: bool,
-        /// Follow the log stream (journalctl -f / tail -f)
-        #[arg(short = 'f', long = "f")]
-        follow: bool,
-    },
-}
-
 /// `peregrin import <source>` — foreign config → peregrin node-config
 /// workflow conversion (ADR-0081).
 #[derive(Subcommand)]
@@ -561,71 +475,6 @@ enum ImportCommands {
         /// Write the emitted workflow to this file (default: stdout)
         #[arg(long)]
         out: Option<PathBuf>,
-    },
-}
-
-// --- ops (ADR-0079 provision/teardown + observability) ---------------------------
-
-/// Deployment verbs — the parts of `create` that hit the outside
-/// world (hook registration against the forge API).
-#[derive(Subcommand)]
-enum DeployCommands {
-    /// Register/update each watched repo's push webhook via the
-    /// forge REST API (token + per-repo hook secrets resolve by NAME
-    /// through env → keyring → ~/.config/peregrin/env)
-    Webhook {
-        /// Node config to read (default: ./peregrin.* then
-        /// ~/.config/peregrin/peregrin.*)
-        #[arg(long)]
-        config: Option<PathBuf>,
-        /// Public URL the hooks point at (default:
-        /// config.public_url); the hook lands at <url><hook-path>
-        #[arg(long)]
-        url: Option<String>,
-        /// Secret NAME holding the forge token (default:
-        /// config.token_env, else GITHUB_TOKEN)
-        #[arg(long)]
-        token_env: Option<String>,
-    },
-}
-
-/// Teardown counterparts of `deploy`/`create`.
-#[derive(Subcommand)]
-enum DestroyCommands {
-    /// Delete the hooks `deploy webhook` registered — exact URL match
-    Webhook {
-        /// Only this watched repo (or --all)
-        #[arg(long, required_unless_present = "all", conflicts_with = "all")]
-        repo: Option<String>,
-        /// Every repo the node config's github-webhook nodes watch
-        #[arg(long, required_unless_present = "repo", conflicts_with = "repo")]
-        all: bool,
-        /// Node config to read (default: ./peregrin.* then
-        /// ~/.config/peregrin/peregrin.*)
-        #[arg(long)]
-        config: Option<PathBuf>,
-        /// Public URL the hooks point at (default: config.public_url)
-        #[arg(long)]
-        url: Option<String>,
-        /// Secret NAME holding the forge token
-        #[arg(long)]
-        token_env: Option<String>,
-    },
-    /// Disable + remove a campaign unit (<name>.service)
-    Service {
-        /// Unit name — the `name` (or --unit) `create` used
-        name: String,
-    },
-    /// Clean leftover run worktrees (tracked ones are destroyed,
-    /// orphans reported)
-    Worktrees {
-        /// Worktree base dir (default: config.worktree_base, else
-        /// ~/.local/share/peregrin/worktrees)
-        #[arg(long)]
-        base: Option<PathBuf>,
-        /// Node config to read the base from
-        #[arg(long)]
-        config: Option<PathBuf>,
     },
 }
 
@@ -728,54 +577,10 @@ enum Commands {
     /// Serve the peregrin node — the `/api/*` surface (PEREGRIN_* env
     /// configures it)
     Serve,
-    /// Manage the peregrin node as an OS service (systemd user unit /
-    /// launchd plist)
-    Service {
-        /// Manage this unit instead of `peregrin`/`peregrin-hub` —
-        /// e.g. a unit `create --template` wrote (wins over --hub)
-        #[arg(long, global = true)]
-        unit: Option<String>,
-        #[command(subcommand)]
-        cmd: ServiceCommands,
-    },
     /// Foreign config → peregrin node-config workflow conversion
     /// (ADR-0081 bupha importer)
     #[command(subcommand)]
     Import(ImportCommands),
-    // Ops verbs (ADR-0079 provision/teardown) — local store + unit +
-    // forge API ops, no node.
-    /// Materialize a node config + systemd unit from an installed
-    /// bundle — the parameterized install (writes files only; the
-    /// operator enables the service separately)
-    Create {
-        /// Installed bundle name (or name@version)
-        #[arg(long)]
-        template: String,
-        /// Instance name (default: the bundle name) — drives the
-        /// config file <name>.yaml and unit <name>.service
-        #[arg(long)]
-        name: Option<String>,
-        /// Merge KEY=VALUE into the campaign's `config:` — repeatable
-        #[arg(long = "set")]
-        sets: Vec<String>,
-        /// Watch owner/name[:SECRET_ENV] via a github-webhook ingress
-        /// node — repeatable
-        #[arg(long = "repo")]
-        repos: Vec<String>,
-        /// Write the node config here (default:
-        /// ~/.config/peregrin/<name>.yaml)
-        #[arg(long)]
-        config: Option<PathBuf>,
-        /// Unit name (default: <name>)
-        #[arg(long)]
-        unit: Option<String>,
-    },
-    /// Deployment verbs (register the configured webhooks)
-    #[command(subcommand)]
-    Deploy(DeployCommands),
-    /// Teardown verbs (hooks, units, worktrees)
-    #[command(subcommand)]
-    Destroy(DestroyCommands),
     /// tamias content-type provider — tamias shells
     /// `peregrin provision {install,deploy,uninstall}`. Hidden.
     #[command(hide = true)]
@@ -1083,37 +888,6 @@ fn run_push(cmd: &PushCommands) -> Result<(), CliError> {
     }
 }
 
-fn run_service(cmd: &ServiceCommands, unit: Option<&str>) -> Result<(), CliError> {
-    match cmd {
-        ServiceCommands::Install {
-            hub,
-            system,
-            linger,
-            exec,
-            env_file,
-        } => service::service_install(
-            *hub,
-            *system,
-            *linger,
-            exec.as_deref(),
-            env_file.as_deref(),
-            unit,
-        ),
-        ServiceCommands::Uninstall { hub, system, purge } => {
-            service::service_uninstall(*hub, *system, *purge, unit)
-        }
-        ServiceCommands::Enable { hub, system } => service::service_enable(*hub, *system, unit),
-        ServiceCommands::Disable { hub, system } => service::service_disable(*hub, *system, unit),
-        ServiceCommands::Status { hub, system } => service::service_status(*hub, *system, unit),
-        ServiceCommands::Restart { hub, system } => service::service_restart(*hub, *system, unit),
-        ServiceCommands::Logs {
-            hub,
-            system,
-            follow,
-        } => service::service_logs(*hub, *system, *follow, unit),
-    }
-}
-
 /// Coverage probe — `serve` binds a port and blocks in `axum::serve`
 /// until SIGTERM; an in-process call would hang the test binary. The
 /// real body is compiled out under `cfg(coverage)`; spawned-binary
@@ -1174,58 +948,8 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
         Commands::Config(cmd) => run_config(cmd),
         Commands::Push(cmd) => run_push(cmd),
         Commands::Pair { home, url } => pair::pair(home, url),
-        Commands::Service { unit, cmd } => run_service(cmd, unit.as_deref()),
         Commands::Import(ImportCommands::Bupha { path, out }) => {
             import::import_bupha(path, out.as_deref()).map(|_| ())
-        }
-        Commands::Create {
-            template,
-            name,
-            sets,
-            repos,
-            config,
-            unit,
-        } => ops::create(
-            &ops_env(),
-            template,
-            name.as_deref(),
-            sets,
-            repos,
-            config.as_deref(),
-            unit.as_deref(),
-        )
-        .map(|_| ()),
-        Commands::Deploy(DeployCommands::Webhook {
-            config,
-            url,
-            token_env,
-        }) => ops::deploy_webhook(
-            &ops_env(),
-            config.as_deref(),
-            url.as_deref(),
-            token_env.as_deref(),
-        )
-        .map(|_| ()),
-        Commands::Destroy(DestroyCommands::Webhook {
-            repo,
-            all,
-            config,
-            url,
-            token_env,
-        }) => ops::destroy_webhook(
-            &ops_env(),
-            config.as_deref(),
-            url.as_deref(),
-            token_env.as_deref(),
-            repo.as_deref(),
-            *all,
-        )
-        .map(|_| ()),
-        Commands::Destroy(DestroyCommands::Service { name }) => {
-            ops::destroy_service(&ops_env(), name).map(|_| ())
-        }
-        Commands::Destroy(DestroyCommands::Worktrees { base, config }) => {
-            ops::destroy_worktrees(&ops_env(), config.as_deref(), base.as_deref()).map(|_| ())
         }
         Commands::Provision { cmd } => run_provision(cmd),
         Commands::Runs {
@@ -1434,37 +1158,6 @@ mod tests {
                 "--node", dead,
             ],
             vec!["peregrin", "import", "bupha", "/definitely/not/a/file"],
-            // Ops verbs — every arm errs fast on a missing
-            // bundle/config before touching the network or the
-            // filesystem; the read verbs are safe on any home.
-            vec!["peregrin", "create", "--template", "ghost"],
-            vec![
-                "peregrin",
-                "deploy",
-                "webhook",
-                "--config",
-                "/nonexistent.yaml",
-            ],
-            vec![
-                "peregrin",
-                "destroy",
-                "webhook",
-                "--repo",
-                "a/b",
-                "--config",
-                "/nonexistent.yaml",
-            ],
-            // `destroy service` must target a name NO other test
-            // installs — it really removes ~/.config/systemd/user/
-            // <name>.service on this host.
-            vec!["peregrin", "destroy", "service", "peregrin-ops-covtest"],
-            vec![
-                "peregrin",
-                "destroy",
-                "worktrees",
-                "--base",
-                "/definitely/not/a/base",
-            ],
             vec!["peregrin", "runs"],
             vec!["peregrin", "runs", "--repo", "a/b", "-n", "1"],
             vec!["peregrin", "log", "-n", "5"],
@@ -1489,21 +1182,7 @@ mod tests {
         // writes a real unit and runs `systemctl --user enable --now`,
         // and `serve` binds :18787 and blocks forever.
         #[cfg(coverage)]
-        for argv in [
-            vec!["peregrin", "service", "install"],
-            vec!["peregrin", "service", "uninstall"],
-            vec!["peregrin", "service", "enable"],
-            vec!["peregrin", "service", "disable"],
-            vec!["peregrin", "service", "status"],
-            vec!["peregrin", "service", "restart"],
-            vec!["peregrin", "service", "logs"],
-            vec![
-                "peregrin", "service", "install", "--hub", "--system", "--linger",
-            ],
-            vec!["peregrin", "service", "--unit", "covtest", "status"],
-            vec!["peregrin", "service", "enable", "--unit", "covtest"],
-            vec!["peregrin", "serve"],
-        ] {
+        for argv in [vec!["peregrin", "serve"]] {
             let cli = cli(&argv);
             let _ = dispatch(&cli, &rt);
         }
@@ -1537,7 +1216,6 @@ mod tests {
         let _ = Cli::try_parse_from(["peregrin", "--help"]);
         let _ = Cli::try_parse_from(["peregrin", "sessions", "--help"]);
         let _ = Cli::try_parse_from(["peregrin", "campaign", "--help"]);
-        let _ = Cli::try_parse_from(["peregrin", "service", "--help"]);
         let _ = Cli::try_parse_from(["peregrin", "bogus"]);
     }
 }
