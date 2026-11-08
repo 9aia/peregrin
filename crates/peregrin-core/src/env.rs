@@ -4,7 +4,7 @@
 //! builtins (`${shell()}`) must not inherit the whole process
 //! environment: the daemon/CLI env routinely carries secrets —
 //! `PEREGRIN_TOKEN`, API keys, values materialized by secret brokers
-//! (arca `run`, direnv, systemd `EnvironmentFile`). An allowlist keeps
+//! (cuora `run`, direnv, systemd `EnvironmentFile`). An allowlist keeps
 //! only what a child needs to function; workflows add their own vars
 //! through `params.env` / `params.secrets`.
 

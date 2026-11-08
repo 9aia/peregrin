@@ -202,7 +202,7 @@ fn litellm_complete(request: &LiteRequest<'_>) -> Result<String, DriverError> {
 /// (`params.secrets`) plus its explicit `params.env` — never ambient
 /// daemon secrets that happened to be materialized in the parent env
 /// *unless* the campaign named them, which is exactly how
-/// `arca run`-exported values reach the child.
+/// `cuora run`-exported values reach the child.
 fn build_env(params: &Map<String, Value>, ctx: &ExecutionContext) -> BTreeMap<String, String> {
     let mut env: BTreeMap<String, String> = peregrin_core::child_env().into_iter().collect();
     if let Some(resolved) = params.get("env").and_then(Value::as_object) {

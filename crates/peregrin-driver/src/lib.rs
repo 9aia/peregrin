@@ -304,7 +304,7 @@ impl ExecutionContext {
     /// 1. The run secrets record (`RunOptions.secrets`) — explicit
     ///    caller-provided values override every ambient source.
     /// 2. The ambient process environment (`export NAME=…` — the
-    ///    `arca run` channel; empty values count as unset).
+    ///    `cuora run` channel; empty values count as unset).
     /// 3. [`ExecutionContext::secret_stores`], in order — the
     ///    composition root's keyring and env-file legs. A
     ///    `declared_only` source (the OS keyring) is skipped unless
