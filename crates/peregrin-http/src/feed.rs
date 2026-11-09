@@ -832,6 +832,9 @@ mod cov_more_tests {
         async fn delete_session(&self, _: &str, _: Option<&str>) -> Result<(), ControlError> {
             unimplemented!()
         }
+        async fn delete_session_store(&self, _: &str, _: &str) -> Result<(), ControlError> {
+            unimplemented!()
+        }
         async fn import_session(
             &self,
             _: &str,

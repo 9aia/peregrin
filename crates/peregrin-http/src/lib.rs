@@ -8,6 +8,12 @@
 //! composed surface with a substrate state derived from `AppState`
 //! (the test/back-compat path); `peregrin-node`'s `serve` passes an
 //! env-mapped [`hypha_http::HyphaState`] instead.
+//!
+//! The `kind="sepia-session"` entity plane is sepia's own
+//! [`sepia_peregrin::SepiaEntityPlane`], registered by [`compose`]
+//! over [`SessionPlaneBackend`] — the node [`SessionPlane`] plus this
+//! crate's meta/feed/watch side-channels, so entity ops keep the
+//! `/api/sessions*` semantics without re-entering the routes.
 
 pub mod auth;
 pub mod env;
@@ -15,7 +21,7 @@ pub mod feed;
 pub mod node;
 pub mod push;
 pub mod routes;
-pub mod session_entity;
+pub mod session_backend;
 
 use std::collections::HashSet;
 use std::path::PathBuf;
@@ -47,7 +53,7 @@ pub use node::{
 };
 pub use pair::{Pairing, PairingStore};
 pub use routes::sessions::{ConvertSession, ImportSession, ImportTarget};
-pub use session_entity::{SESSION_KIND, SessionEntityPlane};
+pub use session_backend::SessionPlaneBackend;
 
 /// Shared state threaded through every handler — the `createApp`
 /// options object, minus the seams this crate doesn't port (transfer,
@@ -346,11 +352,16 @@ fn agent_lister(plane: &Arc<dyn SessionPlane>) -> hypha_http::AgentLister {
 ///   mints are visible to the session routes' auth gate.
 /// - `push` — one `PushStore`; `/api/push/*` subscriptions are what
 ///   the live listeners notify.
-/// - `entity_host` — `Arc<AppState>` so [`SessionEntityPlane`] (and
-///   any plane wrapping session handlers) downcasts its host back.
+/// - `entity_host` — `Arc<AppState>` for any foreign plane that still
+///   downcasts its host (the sepia-session plane no longer needs it —
+///   [`sepia_peregrin::SepiaEntityPlane`] takes its backend at
+///   construction).
 /// - `kinds` — rebuilt with `sepia-session` FIRST (the default plane
 ///   for bare ops/kind-less creates), then the caller's pre-registered
-///   planes, then [`AppState::kinds`] extras.
+///   planes, then [`AppState::kinds`] extras. The session kind is
+///   sepia's own [`sepia_peregrin::SepiaEntityPlane`] over
+///   [`SessionPlaneBackend`] — the node `SessionPlane` plus the
+///   `/api/sessions*` side-channels (meta overlay, feed, watches).
 /// - `auth_cookie`/`health_probe` — the Peregrin contract
 ///   (`sepia_token`, the session-plane liveness probe).
 fn align_substrate(state: &AppState, hypha: &mut hypha_http::HyphaState) {
@@ -370,7 +381,9 @@ fn align_substrate(state: &AppState, hypha: &mut hypha_http::HyphaState) {
     hypha.health_probe = Some(health_probe(Arc::clone(&state.plane)));
 
     let mut kinds = KindRegistry::new();
-    kinds.register(Arc::new(SessionEntityPlane));
+    kinds.register(Arc::new(sepia_peregrin::SepiaEntityPlane::new(Arc::new(
+        SessionPlaneBackend::new(state),
+    ))));
     for plane in hypha.kinds.planes() {
         kinds.register(Arc::clone(plane));
     }

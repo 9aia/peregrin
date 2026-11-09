@@ -679,6 +679,11 @@ pub trait SessionPlane: Send + Sync {
     ) -> Result<(), ControlError>;
     /// Delete a session from its store.
     async fn delete_session(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError>;
+    /// Store-level delete bypassing the agent runtime — the fallback
+    /// for agents with no `session/delete` ACP capability. `sepia
+    /// serve`'s `sessions.delete` already performs this fallback
+    /// internally, so the service impl re-issues the same call.
+    async fn delete_session_store(&self, agent: &str, id: &str) -> Result<(), ControlError>;
     /// `sessions.import` — write session IR into `agent`'s store;
     /// `overrides` re-key/patch the copy. Returns the new session id.
     async fn import_session(
@@ -800,6 +805,15 @@ impl SessionPlane for LocalPlane {
     }
     async fn delete_session(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError> {
         self.0.delete_session(id, agent).await
+    }
+    async fn delete_session_store(&self, agent: &str, id: &str) -> Result<(), ControlError> {
+        let Some(local) = &self.1 else {
+            return Err(control(
+                ControlErrorCode::Internal,
+                "store delete needs a write-capable driver store — this plane was built without a Local",
+            ));
+        };
+        local.delete_session_store(agent, id).await
     }
     async fn import_session(
         &self,
@@ -934,6 +948,12 @@ impl SessionPlane for ServicePlane {
     }
     async fn delete_session(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError> {
         self.0.delete_session_t(id, agent).await
+    }
+    async fn delete_session_store(&self, agent: &str, id: &str) -> Result<(), ControlError> {
+        // `sessions.delete` already falls back to the store-level
+        // delete on `unknown_agent` — re-issuing it with the agent
+        // pinned *is* the store-delete path over the wire.
+        self.0.delete_session_t(id, Some(agent)).await
     }
     async fn import_session(
         &self,

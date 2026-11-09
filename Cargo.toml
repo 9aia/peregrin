@@ -108,6 +108,7 @@ sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "ma
 sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
 sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
 sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
+sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
 
 # hypha — the extracted substrate (PL-005): leaf crates landed in P4a
 # (secrets, telemetry, service/systemd, dotenv); the entity-plane

@@ -130,7 +130,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -141,7 +141,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -807,7 +807,7 @@ dependencies = [
  "openssl-sys",
  "schannel",
  "socket2",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -823,7 +823,7 @@ dependencies = [
  "openssl-sys",
  "pkg-config",
  "vcpkg",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1185,7 +1185,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -2326,7 +2326,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2926,6 +2926,7 @@ dependencies = [
  "sepia-convert",
  "sepia-core",
  "sepia-meta",
+ "sepia-peregrin",
  "sepia-proto",
  "sepia-session",
  "sepia-testkit",
@@ -3562,7 +3563,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -3720,7 +3721,7 @@ dependencies = [
 [[package]]
 name = "sepia-acp"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "async-trait",
  "futures",
@@ -3735,7 +3736,7 @@ dependencies = [
 [[package]]
 name = "sepia-convert"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "async-trait",
  "sepia-core",
@@ -3748,7 +3749,7 @@ dependencies = [
 [[package]]
 name = "sepia-core"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "async-trait",
  "serde",
@@ -3759,7 +3760,7 @@ dependencies = [
 [[package]]
 name = "sepia-driver"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "async-trait",
  "sepia-core",
@@ -3772,7 +3773,7 @@ dependencies = [
 [[package]]
 name = "sepia-driver-cline"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "async-trait",
  "rusqlite",
@@ -3788,7 +3789,7 @@ dependencies = [
 [[package]]
 name = "sepia-driver-devin"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "async-trait",
  "rusqlite",
@@ -3804,7 +3805,7 @@ dependencies = [
 [[package]]
 name = "sepia-host"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "async-trait",
  "sepia-core",
@@ -3819,7 +3820,7 @@ dependencies = [
 [[package]]
 name = "sepia-meta"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "serde",
  "serde_json",
@@ -3827,9 +3828,31 @@ dependencies = [
 ]
 
 [[package]]
+name = "sepia-peregrin"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+dependencies = [
+ "async-trait",
+ "axum",
+ "form_urlencoded",
+ "hypha-http",
+ "sepia-acp",
+ "sepia-convert",
+ "sepia-core",
+ "sepia-meta",
+ "sepia-session",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "time",
+ "ureq",
+ "uuid",
+]
+
+[[package]]
 name = "sepia-proto"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "sepia-core",
  "serde",
@@ -3839,7 +3862,7 @@ dependencies = [
 [[package]]
 name = "sepia-session"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "async-trait",
  "futures",
@@ -3862,7 +3885,7 @@ dependencies = [
 [[package]]
 name = "sepia-testkit"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#880f014efc1b03ffd914ae2316e4ba69d6663b9c"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
 dependencies = [
  "async-trait",
  "rusqlite",
@@ -4111,7 +4134,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -4362,10 +4385,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4735,7 +4758,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]

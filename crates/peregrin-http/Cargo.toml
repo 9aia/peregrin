@@ -16,6 +16,7 @@ sepia-convert.workspace = true
 sepia-core.workspace = true
 sepia-meta.workspace = true
 sepia-proto.workspace = true
+sepia-peregrin.workspace = true
 hypha-push.workspace = true
 hypha-http.workspace = true
 hypha-telemetry.workspace = true

@@ -863,6 +863,9 @@ impl SessionPlane for OkPlane {
     async fn delete_session(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Ok(())
     }
+    async fn delete_session_store(&self, _a: &str, _id: &str) -> Result<(), ControlError> {
+        Ok(())
+    }
     async fn import_session(
         &self,
         _a: &str,
@@ -981,6 +984,9 @@ impl SessionPlane for FailPlane {
         Err(boom())
     }
     async fn delete_session(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
+        Err(boom())
+    }
+    async fn delete_session_store(&self, _a: &str, _id: &str) -> Result<(), ControlError> {
         Err(boom())
     }
     async fn import_session(
@@ -1929,6 +1935,9 @@ impl SessionPlane for StreamPlane {
         Ok(())
     }
     async fn delete_session(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
+        Ok(())
+    }
+    async fn delete_session_store(&self, _a: &str, _id: &str) -> Result<(), ControlError> {
         Ok(())
     }
     async fn import_session(
