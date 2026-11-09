@@ -38,6 +38,6 @@ Two token hops exist and are independent:
 
 ## Credentials
 
-API keys and node tokens live behind `peregrin-secret` —
+API keys and node tokens live behind `hypha-secret` —
 `PEREGRIN_CREDENTIAL_STORE=keyring` (OS keychain, the default) or
 `dotenv` (a `.env` file under `PEREGRIN_HOME`, useful in containers).

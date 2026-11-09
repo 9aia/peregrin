@@ -27,7 +27,7 @@ and its drivers) — those are documented in
 | `PEREGRIN_SWEEP_MS` | `30000` | Idle sweep cadence |
 | `PEREGRIN_PAIR_LIMIT_PER_MIN` | `5` | `/api/pair` attempts per minute per client |
 | `PEREGRIN_PAIR_LIMIT_PER_DAY` | `20` | `/api/pair` attempts per day per client |
-| `PEREGRIN_OTEL_ENDPOINT` | — | OTEL collector endpoint (tracing) |
+| `HYPHA_OTEL_ENDPOINT` | — | OTEL collector endpoint (tracing) |
 
 ## Hub (`peregrin-hub`)
 

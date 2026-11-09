@@ -37,8 +37,8 @@ run` needs the printed event log, nothing more. A hosted node wants
 spans and metrics. A debug session wants per-event logging. The port
 lets each deployment pick without touching `peregrin-engine`.
 
-On the daemon side, `peregrin-telemetry` layers `tracing` (fmt +
-`RUST_LOG`) with OTLP span export when `PEREGRIN_OTEL_ENDPOINT` (or
+On the daemon side, `hypha-telemetry` layers `tracing` (fmt +
+`RUST_LOG`) with OTLP span export when `HYPHA_OTEL_ENDPOINT` (or
 `OTEL_EXPORTER_OTLP_*`) is set — node and hub observability, one
 crate. The engine-level `Observer` is the campaign-run half of the
 same seam; v1's `OtelObserver` for runs is not ported yet.
@@ -48,5 +48,5 @@ same seam; v1's `OtelObserver` for runs is not ported yet.
 - [Adapter ports](adapter-ports.md) — the other swappable seams
 - [Event envelope](../reference/event-envelope.md) — what `on_event`
   sees
-- [Environment](../reference/environment.md) — the `PEREGRIN_OTEL_*`
+- [Environment](../reference/environment.md) — the `HYPHA_OTEL_*`
   knobs

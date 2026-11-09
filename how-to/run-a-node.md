@@ -71,7 +71,7 @@ export PEREGRIN_SESSION_PLANE=local    # or: inprocess
 
 ## systemd
 
-`peregrin-service` + `peregrin-systemd` are the service port and
+`hypha-service` + `hypha-systemd` are the service port and
 adapter — a unit file keeps the node alive and restarts it. `peregrin
 service install` writes + enables the unit (`--hub` manages the hub,
 `--system` a system unit); `peregrin service disable` stops it and keeps

@@ -138,8 +138,8 @@ called: today the gate is point-of-use, so the full record reaches
 > `${secret.NAME}` and `*_env` params) consults, in order: the run's
 > secrets record → ambient process env → fallback stores
 > (`RunOptions.secret_stores`; the stock node wires OS keyring via
-> `peregrin-keyring`, then `~/.config/peregrin/env` via
-> `peregrin-dotenv`). The keyring leg is *declared-only* — it is
+> `hypha-keyring`, then `~/.config/peregrin/env` via
+> `hypha-dotenv`). The keyring leg is *declared-only* — it is
 > consulted solely for names matching the merged
 > `capabilities.secrets` grant, so undeclared names never spawn
 > `secret-tool` or reach OS credentials. A hit on any leg suppresses
