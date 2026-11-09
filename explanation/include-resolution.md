@@ -110,7 +110,7 @@ not the working directory. `include` cycles error by path.
 
 ## Distribution level — bundle `include:`
 
-A bundle manifest (`peregrin-bundle.yaml`) may declare its own
+A bundle manifest (`tamias.yaml`) may declare its own
 `include: […]` — installed store names (`name` or `name@version`)
 or source refs installed on demand — whose payloads merge under the
 local one with the *same* rules (local wins, earlier entries outrank

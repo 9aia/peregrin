@@ -1,6 +1,6 @@
 # Distribution — bundle refs, store, cache, verbs
 
-ADR-0079. A *bundle* is a manifest (`peregrin-bundle.yaml` / `.yml` /
+ADR-0079. A *bundle* is a manifest (`tamias.yaml` / `.yml` /
 `.toml`) plus a payload of workflows, `.node.yml`, `.driver.yml` and
 `.field.yml` files. `peregrin install <ref>` fetches one from the
 filesystem, a git remote, or an HTTP tarball, unpacks it into a local

@@ -27,7 +27,7 @@ remove = delete the include line.
 
 When a plugin must cross machines — a CI gate, a release pipeline,
 a shared fragment library — it becomes a *bundle*: a
-`peregrin-bundle.yaml` manifest plus a payload of workflows,
+`tamias.yaml` manifest plus a payload of workflows,
 `.node.yml`, `.driver.yml`, `.field.yml` files.
 
 ```bash
