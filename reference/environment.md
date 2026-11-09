@@ -41,7 +41,7 @@ and its drivers) — those are documented in
 | `PEREGRIN_HUB_HOST` | `127.0.0.1` | Hub bind address |
 | `PEREGRIN_HUB_PORT` | `3000` | Hub bind port (`PEREGRIN_PORT` fallback) |
 | `PEREGRIN_HUB_TOKEN` | — | Bearer auth for the hub itself |
-| `PEREGRIN_NODES` | — | Comma-separated node URLs to aggregate |
+| `PEREGRIN_NODES` | — | Node list to aggregate: `id=url[@token];id2=url2[@token2]` (semicolon-separated, `@token` optional) |
 | `PEREGRIN_NODE_URL` | — | Single-node shortcut |
 | `PEREGRIN_NODE_TOKEN` | — | Token the hub presents to nodes |
 | `PEREGRIN_SITE_ROOT` | bundled | Web-bundle root override |
