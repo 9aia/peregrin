@@ -151,17 +151,41 @@ impl KindPolicy for SepiaSessionPolicy {
 }
 
 /// `kind="campaign"` — the orchestration entity's sync-side policy.
-/// Campaigns ride the generic contract end-to-end: no feed diff
-/// events (the node's `/api/events` feed is session-shaped today),
-/// no lock-gated ops, no push notices, and the projection's generic
-/// column rules apply. Registered so creates/ops resolve through the
-/// same mechanism as every other kind — behavior identical to the
-/// unregistered fallback it replaces.
+/// Campaigns ride the generic contract (no feed diff events — the
+/// node's `/api/events` feed is session-shaped today; no push
+/// notices; generic column rules), plus `campaign.*` op arbitration:
+///
+/// - Every `campaign.*` op is a mutation, so all of them contend for
+///   the entity lock (`campaign.start`/`resume` launch a runner,
+///   `pause`/`cancel`/`signal` mutate a live one).
+/// - `campaign.pause`/`campaign.cancel` are idempotent state
+///   transitions — a replayed pause re-parks or re-injects a cancel
+///   the runner consumes harmlessly, a replayed cancel lands on
+///   `not_running` — so they classify [`OpKind::Metadata`] (retry).
+///   `campaign.start`/`resume`/`signal` are one-shot: a duplicate
+///   start/resume conflicts on `running`, a duplicate signal injects
+///   the user event twice — [`OpKind::Turn`] dead-letters them on
+///   replay failure rather than retrying into a conflict.
 pub struct CampaignKindPolicy;
 
 impl KindPolicy for CampaignKindPolicy {
     fn entity_kinds(&self) -> &'static [&'static str] {
         &["campaign"]
+    }
+
+    fn owns_op(&self, op: &str) -> bool {
+        op.starts_with("campaign.")
+    }
+
+    fn op_gated(&self, op: &str) -> bool {
+        op.starts_with("campaign.")
+    }
+
+    fn op_kind(&self, op: &str) -> OpKind {
+        match op {
+            "campaign.pause" | "campaign.cancel" => OpKind::Metadata,
+            _ => OpKind::Turn,
+        }
     }
 }
 
@@ -172,4 +196,57 @@ pub fn default_kind_policies() -> KindPolicies {
     policies.register(Arc::new(SepiaSessionPolicy));
     policies.register(Arc::new(CampaignKindPolicy));
     policies
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
+    use super::*;
+
+    #[test]
+    fn campaign_policy_claims_and_gates_campaign_ops() {
+        let policy = CampaignKindPolicy;
+        for op in [
+            "campaign.start",
+            "campaign.pause",
+            "campaign.resume",
+            "campaign.cancel",
+            "campaign.signal",
+            "campaign.unknown",
+        ] {
+            assert!(policy.owns_op(op), "{op} should be claimed");
+            assert!(policy.op_gated(op), "{op} should contend for the lock");
+        }
+        // Foreign namespaces stay unclaimed — sepia ops are the other
+        // policy's, substrate ops are ungated by kind policies.
+        for op in ["sepia.prompt", "entity.delete", "campaign", "other.op"] {
+            assert!(!policy.owns_op(op), "{op} should not be claimed");
+        }
+    }
+
+    #[test]
+    fn campaign_op_kind_classification() {
+        let policy = CampaignKindPolicy;
+        // Idempotent transitions retry; one-shot mutations dead-letter.
+        assert_eq!(policy.op_kind("campaign.pause"), OpKind::Metadata);
+        assert_eq!(policy.op_kind("campaign.cancel"), OpKind::Metadata);
+        for op in [
+            "campaign.start",
+            "campaign.resume",
+            "campaign.signal",
+            "campaign.unknown",
+        ] {
+            assert_eq!(policy.op_kind(op), OpKind::Turn, "{op}");
+        }
+    }
+
+    #[test]
+    fn registry_routes_campaign_ops_to_campaign_policy() {
+        let policies = default_kind_policies();
+        let policy = policies.for_op("campaign.start").unwrap();
+        assert_eq!(policy.entity_kinds(), &["campaign"][..]);
+        assert!(policies.for_op("sepia.prompt").is_some());
+        assert!(policies.for_op("entity.delete").is_none());
+    }
 }
