@@ -20,7 +20,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
 use serde_json::{Map, Value};
@@ -227,6 +227,11 @@ pub struct Runner {
     /// into `pending` once per loop iteration (`None` = the run only
     /// sees internally-produced events, the historical behaviour).
     ingress: Option<Ingress>,
+    /// Optional live mirror of the armed-timer set — refreshed after
+    /// every heap mutation so an off-thread observer (the campaign
+    /// entity plane's mid-run snapshot export) can read pending
+    /// timers while `run` still owns the heap. `None` = no mirror.
+    timer_mirror: Option<Arc<Mutex<Vec<PendingTimer>>>>,
 
     idempotency_counter: u64,
     retry_counts: HashMap<String, u64>,
@@ -249,6 +254,7 @@ impl Runner {
             state: Rc::new(RefCell::new(Box::new(MemoryStore::default()))),
             effects: Rc::new(SystemEffects),
             ingress: None,
+            timer_mirror: None,
             idempotency_counter: 0,
             retry_counts: HashMap::new(),
             circuit_states: HashMap::new(),
@@ -302,15 +308,26 @@ impl Runner {
         self
     }
 
+    /// Mirror the armed-timer set into `slot` — the snapshot is the
+    /// same [`PendingTimer`] list [`Self::pending_timers`] returns at
+    /// finish, refreshed after every arm/fire/retire so a concurrent
+    /// reader sees mid-run state. The mirror is a cache: the heap
+    /// stays authoritative and `run`'s own accounting is unaffected.
+    #[must_use]
+    pub fn with_timer_mirror(mut self, slot: Arc<Mutex<Vec<PendingTimer>>>) -> Self {
+        self.timer_mirror = Some(slot);
+        self
+    }
+
     /// Read the bus's event store (e.g. to inspect the log after a run).
     #[must_use]
     pub fn log(&self) -> Vec<Event> {
         self.bus.log()
     }
 
-    /// Preserved pending timers holding the run open (P-001 snapshot seam).
-    #[must_use]
-    pub fn pending_timers(&self) -> Vec<PendingTimer> {
+    /// The armed-timer snapshot — the [`PendingTimer`] list both
+    /// [`Self::pending_timers`] and the live mirror share.
+    fn timer_snapshot(&self) -> Vec<PendingTimer> {
         let now_instant = Instant::now();
         let now_epoch_ms = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -336,6 +353,23 @@ impl Runner {
         timers
     }
 
+    /// Preserved pending timers holding the run open (P-001 snapshot seam).
+    #[must_use]
+    pub fn pending_timers(&self) -> Vec<PendingTimer> {
+        self.timer_snapshot()
+    }
+
+    /// Push the current [`Self::timer_snapshot`] into the live mirror,
+    /// if one is attached. Called after every heap mutation; a poisoned
+    /// or absent mirror is inert — the heap stays authoritative.
+    fn sync_timer_mirror(&self) {
+        if let Some(mirror) = &self.timer_mirror {
+            if let Ok(mut slot) = mirror.lock() {
+                *slot = self.timer_snapshot();
+            }
+        }
+    }
+
     /// Re-arm preserved timers into this runner's deadline heap (P-001).
     pub fn arm_timers(&mut self, timers: &[PendingTimer]) {
         let now_epoch_ms = std::time::SystemTime::now()
@@ -356,6 +390,7 @@ impl Runner {
             });
             self.timer_seq += 1;
         }
+        self.sync_timer_mirror();
     }
 
     /// `runner.run(workflow, options)` — the event loop: publish
@@ -539,6 +574,7 @@ impl Runner {
                             holds_run: true,
                         });
                     }
+                    self.sync_timer_mirror();
                     let has_failure = emitted.iter().any(|e| {
                         matches!(
                             e.kind.as_str(),
@@ -595,6 +631,7 @@ impl Runner {
                 if !result.retired.is_empty() {
                     self.timers
                         .retain(|tick| !result.retired.contains(&tick.event.source));
+                    self.sync_timer_mirror();
                 }
             }
         }
@@ -637,6 +674,7 @@ impl Runner {
                 pending.push(tick.event);
             }
         }
+        self.sync_timer_mirror();
     }
 
     fn reset_state(&mut self) {
@@ -645,6 +683,7 @@ impl Runner {
         self.circuit_states.clear();
         self.timers.clear();
         self.timer_seq = 0;
+        self.sync_timer_mirror();
     }
 
     /// `resourceWeight` — `resources.weight`, min 1.
@@ -981,6 +1020,7 @@ impl Runner {
                     event: Event::new(tick, serde_json::json!({ "poll": true }), &node.id),
                     holds_run: false,
                 });
+                self.sync_timer_mirror();
             }
         }
 

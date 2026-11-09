@@ -612,6 +612,57 @@ async fn campaign_entity_cancel_queued_and_paused() {
 }
 
 #[tokio::test]
+async fn campaign_entity_mid_run_snapshot_carries_pending_timers() {
+    let (app, _) = mk_app();
+    let id = create_entity(&app).await;
+
+    // A long delay arms a holds-run timer for `delay.done`.
+    let yaml = r#"
+name: timer-export
+nodes:
+  - id: delay-step
+    driver: delay
+    on: [start]
+    emits: [delay.done]
+    params:
+      duration: 30s
+"#;
+    let (status, _) = op(
+        &app,
+        &id,
+        "campaign.start",
+        json!({ "campaign": { "yaml": yaml } }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    tokio::time::sleep(Duration::from_millis(150)).await;
+
+    // Mid-run: the index doc counts the armed timer and the snapshot
+    // export carries it — the runner's live mirror, not the
+    // finish-time `pending_timers()`.
+    let doc = get_doc(&app, &id).await;
+    assert_eq!(doc["indexDoc"]["state"], "running");
+    assert_eq!(doc["indexDoc"]["pendingTimers"], 1);
+
+    let req = Request::builder()
+        .method(Method::GET)
+        .uri(format!("/api/entities/{id}/snapshot"))
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    let snap = json_body(res).await;
+    assert_eq!(snap["state"], "running");
+    let timers = snap["pendingTimers"].as_array().unwrap();
+    assert_eq!(timers.len(), 1);
+    assert_eq!(timers[0]["holdsRun"], true);
+    assert!(timers[0]["atEpochMs"].as_u64().unwrap() > 0);
+
+    // Clean up — cancel the parked run.
+    let _ = op(&app, &id, "campaign.cancel", json!({})).await;
+}
+
+#[tokio::test]
 async fn campaign_entity_delete_flow() {
     let (app, _) = mk_app();
 

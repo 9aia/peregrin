@@ -19,9 +19,11 @@
 //! — at-least-once, and driver side effects are not rolled back.
 //!
 //! Snapshot export of a *running* entity streams the live event log
-//! (the run's bus observer feeds it), but armed timers are only
-//! readable when the run thread finishes — a mid-run snapshot resumes
-//! without them. Terminal `workflow.*` markers are stripped from
+//! (the run's bus observer feeds it) and reads armed timers through
+//! the runner's live mirror (`Runner::with_timer_mirror`) — the same
+//! `PendingTimer` snapshot `pending_timers()` returns at finish, so a
+//! mid-run snapshot carries them too. Terminal `workflow.*` markers
+//! are stripped from
 //! replayed logs so a resumed run's history stays honest, and an
 //! imported non-terminal log lands as `paused` (a resumable
 //! checkpoint), never `running` — no runner thread exists here.
@@ -102,6 +104,12 @@ pub struct CampaignEntity {
     /// authoritative log. `None` before start and after finish.
     #[serde(skip)]
     pub live_log: Option<Arc<Mutex<Vec<Event>>>>,
+    /// Mid-run armed-timer mirror — the runner refreshes it after
+    /// every heap mutation (`Runner::with_timer_mirror`), so
+    /// `export`/`list` see pending timers before the run finishes.
+    /// `None` before start and after finish.
+    #[serde(skip)]
+    pub live_timers: Option<Arc<Mutex<Vec<PendingTimer>>>>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -170,6 +178,21 @@ fn live_counts(entity: &CampaignEntity) -> (usize, usize, usize, Option<String>)
     (events, fires, failed, last)
 }
 
+/// Armed timers visible right now: a running entity reads the
+/// runner's live mirror (refreshed on every heap mutation); any other
+/// state reads the `pending_timers` snapshot written back at finish
+/// or carried in by `import`.
+fn visible_timers(entity: &CampaignEntity) -> Vec<PendingTimer> {
+    if entity.state == "running" {
+        if let Some(slot) = &entity.live_timers {
+            if let Ok(timers) = slot.lock() {
+                return timers.clone();
+            }
+        }
+    }
+    entity.pending_timers.clone()
+}
+
 fn entity_doc(entity: &CampaignEntity) -> Value {
     let running = entity.state == "running";
     let (events, fires, failed, last_event) = if running {
@@ -198,7 +221,7 @@ fn entity_doc(entity: &CampaignEntity) -> Value {
                 "failed": failed,
                 "resumes": entity.resume_count,
             },
-            "pendingTimers": entity.pending_timers.len(),
+            "pendingTimers": visible_timers(entity).len(),
             "lastEvent": last_event,
         },
         "live": running,
@@ -340,6 +363,7 @@ impl EntityPlane for CampaignEntityPlane {
             injector: None,
             pause_requested: false,
             live_log: None,
+            live_timers: None,
             created_at: now.clone(),
             updated_at: now,
         };
@@ -406,9 +430,9 @@ impl EntityPlane for CampaignEntityPlane {
         };
 
         // A running entity's authoritative log lives on the runner
-        // thread; the live stream is the freshest honest copy. Its
-        // armed timers are only readable at finish, so a mid-run
-        // snapshot resumes without them (documented gap).
+        // thread; the live stream is the freshest honest copy, and
+        // the timer mirror carries armed timers mid-run — the same
+        // snapshot `pending_timers()` returns at finish.
         let log = if entity.state == "running" {
             entity.live_log.as_ref().map_or_else(
                 || entity.log.clone(),
@@ -430,7 +454,7 @@ impl EntityPlane for CampaignEntityPlane {
             "campaign": entity.campaign,
             "campaignRef": entity.campaign_ref,
             "log": log,
-            "pendingTimers": entity.pending_timers,
+            "pendingTimers": visible_timers(entity),
             "counters": {
                 "events": entity.events_count,
                 "fires": entity.fires_count,
@@ -519,6 +543,7 @@ impl EntityPlane for CampaignEntityPlane {
             injector: None,
             pause_requested: false,
             live_log: None,
+            live_timers: None,
             created_at: now.clone(),
             updated_at: now,
         };
@@ -657,7 +682,7 @@ impl CampaignEntityPlane {
         let (injector, ingress) = peregrin_engine::ingress();
         let now = chrono::Utc::now().to_rfc3339();
 
-        let (replay_events, replay_timers, live_log) = {
+        let (replay_events, replay_timers, live_log, live_timers) = {
             let Ok(mut map) = self.entities.write() else {
                 return lock_err();
             };
@@ -705,9 +730,11 @@ impl CampaignEntityPlane {
             entity.campaign = Some(campaign.clone());
             let live_log = Arc::new(Mutex::new(Vec::new()));
             entity.live_log = Some(Arc::clone(&live_log));
+            let live_timers = Arc::new(Mutex::new(Vec::new()));
+            entity.live_timers = Some(Arc::clone(&live_timers));
             entity.injector = Some(injector);
             entity.updated_at = now;
-            (replay_events, replay_timers, live_log)
+            (replay_events, replay_timers, live_log, live_timers)
         };
 
         let entity_id = id.to_string();
@@ -723,7 +750,8 @@ impl CampaignEntityPlane {
             let bus = LocalBus::new(Box::new(MemoryStore::default()), observer);
             let mut runner = Runner::new(crate::campaign::registry())
                 .with_ingress(ingress)
-                .with_bus(Box::new(bus));
+                .with_bus(Box::new(bus))
+                .with_timer_mirror(live_timers);
             let options = RunOptions {
                 dry_run,
                 secrets: BTreeMap::new(),
@@ -766,6 +794,7 @@ impl CampaignEntityPlane {
                     ent.pending_timers = pending_timers;
                     ent.injector = None;
                     ent.live_log = None;
+                    ent.live_timers = None;
                     ent.updated_at = finish_time;
                 }
             }
