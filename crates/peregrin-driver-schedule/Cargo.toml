@@ -1,10 +1,11 @@
 [package]
 name = "peregrin-driver-schedule"
 description = "Temporal scheduling drivers — `delay` (fixed wait) and `schedule` (cron fire) over the engine's deferred-emission channel (ADR-0018)"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true

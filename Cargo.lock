@@ -1675,8 +1675,8 @@ dependencies = [
 
 [[package]]
 name = "hypha-control"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "serde",
  "serde_json",
@@ -1684,16 +1684,16 @@ dependencies = [
 
 [[package]]
 name = "hypha-dotenv"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "hypha-secret",
 ]
 
 [[package]]
 name = "hypha-http"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "async-trait",
  "axum",
@@ -1716,8 +1716,8 @@ dependencies = [
 
 [[package]]
 name = "hypha-hub"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "async-trait",
  "axum",
@@ -1742,16 +1742,16 @@ dependencies = [
 
 [[package]]
 name = "hypha-keyring"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "hypha-secret",
 ]
 
 [[package]]
 name = "hypha-node-api"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "async-trait",
  "serde",
@@ -1762,8 +1762,8 @@ dependencies = [
 
 [[package]]
 name = "hypha-outbox"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "rusqlite",
  "serde",
@@ -1776,8 +1776,8 @@ dependencies = [
 
 [[package]]
 name = "hypha-push"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "base64 0.22.1",
  "futures",
@@ -1791,18 +1791,18 @@ dependencies = [
 
 [[package]]
 name = "hypha-secret"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 
 [[package]]
 name = "hypha-service"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 
 [[package]]
 name = "hypha-sync"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "hypha-outbox",
  "rusqlite",
@@ -1818,16 +1818,16 @@ dependencies = [
 
 [[package]]
 name = "hypha-systemd"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "hypha-service",
 ]
 
 [[package]]
 name = "hypha-telemetry"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#c4d492ad5f9dab23e3edd2c2ef202cd57b71b07e"
 dependencies = [
  "http 1.5.0",
  "opentelemetry",
@@ -2628,14 +2628,14 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "peregrin-auth"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "hypha-secret",
 ]
 
 [[package]]
 name = "peregrin-bus"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-store",
@@ -2644,7 +2644,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-cli"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "clap",
  "hypha-dotenv",
@@ -2687,7 +2687,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-config"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "serde_json",
@@ -2695,7 +2695,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-config-file"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-config",
  "peregrin-config-toml",
@@ -2706,7 +2706,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-config-toml"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-config",
  "peregrin-core",
@@ -2717,7 +2717,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-config-yaml"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-config",
  "peregrin-core",
@@ -2728,7 +2728,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-core"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2738,7 +2738,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "hypha-secret",
  "peregrin-core",
@@ -2749,7 +2749,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-agent"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2761,7 +2761,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-council"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2772,7 +2772,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-git"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2785,7 +2785,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-github-webhook"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "axum",
  "hex",
@@ -2803,7 +2803,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-http"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2814,7 +2814,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-human"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2825,7 +2825,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-schedule"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "chrono",
  "chrono-tz",
@@ -2841,7 +2841,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-shell"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2852,7 +2852,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-sturn"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2867,7 +2867,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-subworkflow"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2880,7 +2880,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-engine"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "hypha-secret",
  "peregrin-bus",
@@ -2897,7 +2897,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-git"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "serde",
@@ -2908,7 +2908,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-http"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -2945,7 +2945,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-hub"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "axum",
  "hypha-http",
@@ -2960,7 +2960,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-loader"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "thiserror 2.0.21",
@@ -2968,7 +2968,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-loader-yaml"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-loader",
@@ -2979,7 +2979,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-mcp"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-engine",
@@ -2999,7 +2999,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-node"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -3056,7 +3056,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-queue"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "serde",
@@ -3065,7 +3065,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-remote"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "async-trait",
  "peregrin-core",
@@ -3073,7 +3073,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-remote-http"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-remote",
@@ -3081,7 +3081,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-session"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "async-trait",
  "sepia-acp",
@@ -3099,7 +3099,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-sink-github-status"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -3110,7 +3110,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-store"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "serde_json",
@@ -3118,7 +3118,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-store-json"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "peregrin-store",
@@ -3130,7 +3130,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-template"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "peregrin-core",
  "serde_json",
@@ -3141,7 +3141,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-testkit"
-version = "0.0.0"
+version = "0.1.0"
 
 [[package]]
 name = "phf"
@@ -3721,8 +3721,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-acp"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "async-trait",
  "futures",
@@ -3736,8 +3736,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-convert"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "async-trait",
  "sepia-core",
@@ -3749,8 +3749,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-core"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "async-trait",
  "serde",
@@ -3760,8 +3760,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-driver"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "async-trait",
  "sepia-core",
@@ -3773,8 +3773,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-driver-cline"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "async-trait",
  "rusqlite",
@@ -3789,8 +3789,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-driver-devin"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "async-trait",
  "rusqlite",
@@ -3805,8 +3805,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-host"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "async-trait",
  "sepia-core",
@@ -3820,8 +3820,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-meta"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "serde",
  "serde_json",
@@ -3830,8 +3830,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-peregrin"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "async-trait",
  "axum",
@@ -3852,8 +3852,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-proto"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "sepia-core",
  "serde",
@@ -3862,8 +3862,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-session"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "async-trait",
  "futures",
@@ -3885,8 +3885,8 @@ dependencies = [
 
 [[package]]
 name = "sepia-testkit"
-version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#68501ec7cb032b8e77bf48fa02a7a11fc3210239"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/sepia.git?branch=main#79d1746f3cca0900c8fd4f435b70d935457c07b5"
 dependencies = [
  "async-trait",
  "rusqlite",
@@ -5316,7 +5316,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.0.0"
+version = "0.1.0"
 dependencies = [
  "anyhow",
 ]

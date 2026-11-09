@@ -1,10 +1,11 @@
 [package]
 name = "peregrin-node"
 description = "The headless node daemon — composes driver discovery, the control plane, the meta overlay, and the API"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true

@@ -1,10 +1,11 @@
 [package]
 name = "peregrin-hub"
 description = "Node-API gateway — multi-node sync engine, HTTP/SSE bridges, push, auth (hypha-hub backend + peregrin kind policies)"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true

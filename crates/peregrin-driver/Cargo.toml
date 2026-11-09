@@ -1,10 +1,11 @@
 [package]
 name = "peregrin-driver"
 description = "Campaign-driver port — node drivers run actions for the engine"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true

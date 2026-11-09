@@ -1,10 +1,11 @@
 [package]
 name = "peregrin-queue"
 description = "Campaign-level run scheduler — supersede key, latest-wins/fifo dedupe, active-run cancel"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true

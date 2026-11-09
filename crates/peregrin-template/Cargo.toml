@@ -1,10 +1,11 @@
 [package]
 name = "peregrin-template"
 description = "Template expansion for campaign params"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true

@@ -1,10 +1,11 @@
 [package]
 name = "peregrin-store-json"
 description = "Durable JSONL impl of the event-store port (v1 ac-store-json)"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true

@@ -1,10 +1,11 @@
 [package]
 name = "peregrin-config-toml"
 description = "TOML impl of the config port"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true

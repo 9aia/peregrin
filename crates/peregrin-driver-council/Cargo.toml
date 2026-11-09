@@ -1,10 +1,11 @@
 [package]
 name = "peregrin-driver-council"
 description = "Council impl of the campaign driver port — one node as a voting round (ADR-0004)"
-version = "0.0.0"
+version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
 repository.workspace = true
+license.workspace = true
 
 [lints]
 workspace = true

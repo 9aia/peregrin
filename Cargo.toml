@@ -41,74 +41,77 @@ members = [
 ]
 
 [workspace.package]
+version = "0.1.0"
 edition = "2024"
 rust-version = "1.85"
+license = "MIT"
 repository = "https://github.com/9aia/peregrin"
+description = "Generic distributed orchestration — campaigns of event-driven workflows over generic entities across paired nodes"
 
 [workspace.dependencies]
 # Internal crates.
-peregrin-session = { path = "crates/peregrin-session" }
-peregrin-auth = { path = "crates/peregrin-auth" }
-peregrin-bus = { path = "crates/peregrin-bus" }
-peregrin-cli = { path = "crates/peregrin-cli" }
-peregrin-config = { path = "crates/peregrin-config" }
-peregrin-config-file = { path = "crates/peregrin-config-file" }
-peregrin-config-toml = { path = "crates/peregrin-config-toml" }
-peregrin-config-yaml = { path = "crates/peregrin-config-yaml" }
-peregrin-core = { path = "crates/peregrin-core" }
-tamias-core = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
-tamias-source = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
-tamias-source-fs = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
-tamias-source-git = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
-tamias-source-http = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
-tamias-store-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
-tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
-peregrin-driver = { path = "crates/peregrin-driver" }
-peregrin-driver-agent = { path = "crates/peregrin-driver-agent" }
-peregrin-driver-council = { path = "crates/peregrin-driver-council" }
-peregrin-driver-git = { path = "crates/peregrin-driver-git" }
-peregrin-driver-github-webhook = { path = "crates/peregrin-driver-github-webhook" }
-peregrin-driver-http = { path = "crates/peregrin-driver-http" }
-peregrin-driver-human = { path = "crates/peregrin-driver-human" }
-peregrin-driver-schedule = { path = "crates/peregrin-driver-schedule" }
-peregrin-driver-shell = { path = "crates/peregrin-driver-shell" }
-peregrin-driver-sturn = { path = "crates/peregrin-driver-sturn" }
-peregrin-driver-subworkflow = { path = "crates/peregrin-driver-subworkflow" }
-peregrin-engine = { path = "crates/peregrin-engine" }
-peregrin-git = { path = "crates/peregrin-git" }
-peregrin-http = { path = "crates/peregrin-http" }
-peregrin-hub = { path = "crates/peregrin-hub" }
-peregrin-loader = { path = "crates/peregrin-loader" }
-peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml" }
-peregrin-mcp = { path = "crates/peregrin-mcp" }
-peregrin-node = { path = "crates/peregrin-node" }
-peregrin-queue = { path = "crates/peregrin-queue" }
-peregrin-remote = { path = "crates/peregrin-remote" }
-peregrin-remote-http = { path = "crates/peregrin-remote-http" }
-peregrin-sink-github-status = { path = "crates/peregrin-sink-github-status" }
-peregrin-store = { path = "crates/peregrin-store" }
-peregrin-store-json = { path = "crates/peregrin-store-json" }
-peregrin-template = { path = "crates/peregrin-template" }
-peregrin-testkit = { path = "crates/peregrin-testkit" }
+peregrin-session = { path = "crates/peregrin-session", version = "0.1.0" }
+peregrin-auth = { path = "crates/peregrin-auth", version = "0.1.0" }
+peregrin-bus = { path = "crates/peregrin-bus", version = "0.1.0" }
+peregrin-cli = { path = "crates/peregrin-cli", version = "0.1.0" }
+peregrin-config = { path = "crates/peregrin-config", version = "0.1.0" }
+peregrin-config-file = { path = "crates/peregrin-config-file", version = "0.1.0" }
+peregrin-config-toml = { path = "crates/peregrin-config-toml", version = "0.1.0" }
+peregrin-config-yaml = { path = "crates/peregrin-config-yaml", version = "0.1.0" }
+peregrin-core = { path = "crates/peregrin-core", version = "0.1.0" }
+tamias-core = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-source = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-source-fs = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-source-git = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-source-http = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-store-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+peregrin-driver = { path = "crates/peregrin-driver", version = "0.1.0" }
+peregrin-driver-agent = { path = "crates/peregrin-driver-agent", version = "0.1.0" }
+peregrin-driver-council = { path = "crates/peregrin-driver-council", version = "0.1.0" }
+peregrin-driver-git = { path = "crates/peregrin-driver-git", version = "0.1.0" }
+peregrin-driver-github-webhook = { path = "crates/peregrin-driver-github-webhook", version = "0.1.0" }
+peregrin-driver-http = { path = "crates/peregrin-driver-http", version = "0.1.0" }
+peregrin-driver-human = { path = "crates/peregrin-driver-human", version = "0.1.0" }
+peregrin-driver-schedule = { path = "crates/peregrin-driver-schedule", version = "0.1.0" }
+peregrin-driver-shell = { path = "crates/peregrin-driver-shell", version = "0.1.0" }
+peregrin-driver-sturn = { path = "crates/peregrin-driver-sturn", version = "0.1.0" }
+peregrin-driver-subworkflow = { path = "crates/peregrin-driver-subworkflow", version = "0.1.0" }
+peregrin-engine = { path = "crates/peregrin-engine", version = "0.1.0" }
+peregrin-git = { path = "crates/peregrin-git", version = "0.1.0" }
+peregrin-http = { path = "crates/peregrin-http", version = "0.1.0" }
+peregrin-hub = { path = "crates/peregrin-hub", version = "0.1.0" }
+peregrin-loader = { path = "crates/peregrin-loader", version = "0.1.0" }
+peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml", version = "0.1.0" }
+peregrin-mcp = { path = "crates/peregrin-mcp", version = "0.1.0" }
+peregrin-node = { path = "crates/peregrin-node", version = "0.1.0" }
+peregrin-queue = { path = "crates/peregrin-queue", version = "0.1.0" }
+peregrin-remote = { path = "crates/peregrin-remote", version = "0.1.0" }
+peregrin-remote-http = { path = "crates/peregrin-remote-http", version = "0.1.0" }
+peregrin-sink-github-status = { path = "crates/peregrin-sink-github-status", version = "0.1.0" }
+peregrin-store = { path = "crates/peregrin-store", version = "0.1.0" }
+peregrin-store-json = { path = "crates/peregrin-store-json", version = "0.1.0" }
+peregrin-template = { path = "crates/peregrin-template", version = "0.1.0" }
+peregrin-testkit = { path = "crates/peregrin-testkit", version = "0.1.0" }
 
 # sepia — the session plane these crates embed. Git deps on `main`
 # (the branch carrying the `sepia serve` store-op surface —
 # `sessions.export`/`import`/`convert`); sibling-checkout path deps
 # ride `[patch]` (see `.cargo/config.toml.example`).
-sepia-core = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-proto = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-acp = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-session = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-driver = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-host = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-meta = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-convert = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-testkit = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
-sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
+sepia-core = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-proto = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-acp = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-session = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-driver = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-host = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-meta = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-convert = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-testkit = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
 
 # hypha — the extracted substrate (PL-005): leaf crates landed in P4a
 # (secrets, telemetry, service/systemd, dotenv); the entity-plane
@@ -118,19 +121,19 @@ sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" 
 # capabilities, hub credential env) pending merge to `main`; flip back
 # to `main` once it lands. All hypha deps MUST share one branch/rev —
 # mixed revisions duplicate crates and split types.
-hypha-telemetry = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-secret = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-keyring = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-dotenv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-service = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-systemd = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-node-api = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-outbox = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-control = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-sync = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-push = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-telemetry = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-secret = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-keyring = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-dotenv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-service = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-systemd = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-node-api = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-outbox = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-control = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-sync = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-push = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }

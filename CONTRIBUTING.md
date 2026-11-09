@@ -38,3 +38,23 @@ when, where" or campaign execution, it belongs here.
 
 Follow Diátaxis: `docs/tutorials/` (learn) · `docs/how-to/` (tasks) ·
 `docs/reference/` (lookup) · `docs/explanation/` (why).
+
+## Releasing
+
+- crates.io publish is dep-ordered via `scripts/release.sh` (bupha
+  watch trigger — register the watch ops-side). Every internal dep
+  carries a `version` req alongside its git source, so publishing
+  resolves against the registry — but only after the org order
+  **hypha → sepia → tamias → peregrin** has 0.1.0/0.1.x on crates.io.
+  Until then the publish loop fails on the first crate; the binary
+  release path below works standalone.
+- crates.io names: `peregrin`/`peregrin-cli` are free — the CLI
+  publishes as `peregrin-cli` (ships `peregrin`, `peregrin-hub`,
+  `peregrin-mcp`, `tamias-driver-peregrin` bins).
+  `peregrin-testkit` is `publish = false`.
+- Release binaries: push a `v*`/`peregrin-v*` tag —
+  `.github/workflows/release.yml` builds
+  `peregrin-<target>.tar.gz` (linux x86_64, macOS aarch64/x86_64)
+  carrying all four bins. `install-peregrin` probes
+  `peregrin-x86_64-unknown-linux-gnu.tar.gz` automatically once the
+  first release exists.
