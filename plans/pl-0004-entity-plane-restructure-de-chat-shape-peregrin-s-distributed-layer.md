@@ -1,7 +1,7 @@
 +++
 id = "PL-004"
 title = "Entity-plane restructure — de-chat-shape peregrin's distributed layer"
-status = "in-progress"
+status = "done"
 created = "2026-11-05"
 owner = "devin"
 priority = "high"
