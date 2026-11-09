@@ -453,6 +453,33 @@ async fn from_env_state_builds() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn hypha_state_reports_ephemeral_capability() {
+    // `PEREGRIN_EPHEMERAL` advertises the disposable lifecycle on
+    // `GET /api/node` capabilities — the hub reaps a dead ephemeral
+    // node's projected state.
+    for (flag, want) in [("1", true), ("0", false)] {
+        let dir = tempfile::tempdir().unwrap();
+        let vars = HashMap::from([
+            ("PEREGRIN_HOME".into(), dir.path().display().to_string()),
+            ("PEREGRIN_EPHEMERAL".into(), flag.into()),
+        ]);
+        let env = Env::from_map(&vars).unwrap();
+        let store = Arc::new(MemStore {
+            sessions: Mutex::new(HashMap::new()),
+        });
+        let plane = ControlPlane::new(store, ControlPlaneOptions::default());
+        let state = AppState::from_env(&env, Arc::new(LocalPlane(plane, None)));
+        let hypha = peregrin_http::hypha_state(&env, &state);
+        let caps = hypha.node_capabilities.unwrap_or_default();
+        assert_eq!(
+            caps.iter().any(|c| c == "ephemeral"),
+            want,
+            "PEREGRIN_EPHEMERAL={flag}"
+        );
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn feed_and_push_wired() {
     // Push store wired — /api/push/* answer 200s not 501s.
     let dir = tempfile::tempdir().unwrap();

@@ -449,9 +449,16 @@ fn hypha_for(state: &AppState) -> hypha_http::HyphaState {
 /// instances opened on the same paths are superseded, not duplicated.
 #[must_use]
 pub fn hypha_state(env: &Env, state: &AppState) -> hypha_http::HyphaState {
+    let mut capabilities = node_capabilities(state);
+    // `PEREGRIN_EPHEMERAL`/`--ephemeral` advertises the disposable
+    // lifecycle — a hub reading `GET /api/node` learns the node is a
+    // CI runner and reaps its projected state once it stays down.
+    if env.ephemeral {
+        capabilities.push("ephemeral".into());
+    }
     hypha_http::HyphaState::from_env(&env.to_hypha())
         .with_agent_lister(agent_lister(&state.plane))
-        .with_node_capabilities(node_capabilities(state))
+        .with_node_capabilities(capabilities)
 }
 
 /// Build the composed axum router with a substrate state derived from
