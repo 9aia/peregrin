@@ -117,19 +117,19 @@ sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "m
 # capabilities, hub credential env) pending merge to `main`; flip back
 # to `main` once it lands. All hypha deps MUST share one branch/rev —
 # mixed revisions duplicate crates and split types.
-hypha-telemetry = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-secret = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-keyring = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-dotenv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-service = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-systemd = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-node-api = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-outbox = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-control = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-sync = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-push = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
-hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-telemetry = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-secret = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-keyring = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-dotenv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-service = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-systemd = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-node-api = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-outbox = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-control = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-sync = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-push = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }
