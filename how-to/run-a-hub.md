@@ -19,7 +19,7 @@ the merged session view.
 
 - **Merges** — `GET /api/sessions` across every configured node into one
   list, tagging each row with its owning node.
-- **Routes** — session ops go to the owning node; `peregrin-control`'s
+- **Routes** — session ops go to the owning node; `hypha-control`'s
   `pick_owner` resolves ownership when a session is visible from
   multiple nodes.
 - **Arbitrates** — the lock registry decides attach outcomes: free →

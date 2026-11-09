@@ -26,7 +26,8 @@ subprocess wire rather than by linking internals.
 ## Mechanism vs policy
 
 The split is deliberate: sepia does things *to* sessions; peregrin
-decides *who/when/where*. Concretely — `peregrin-control` holds the
+decides *who/when/where*. Concretely — `hypha-control` (the extracted substrate, a git
+dep of peregrin) holds the
 lock registry, takeover arbitration, and `pick_owner` routing; the hub
 consults it before forwarding; nodes report lock state up. Anything
 that mutates a session (prompt, attach, rewind) flows down to sepia
