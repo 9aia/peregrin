@@ -41,7 +41,7 @@ pub struct EntityOp {
     pub payload: Value,
 }
 
-/// `GET /api/index` — one node's entity index (per-node row on the hub).
+/// `GET /api/entity-index` — one node's entity index (per-node row on the hub).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct EntityIndexDto {

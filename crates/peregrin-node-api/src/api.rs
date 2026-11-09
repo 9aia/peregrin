@@ -38,19 +38,20 @@ pub trait EntityApi: Send + Sync + 'static {
     async fn submit_op(&self, id: &str, op: &EntityOp) -> Result<(), String>;
     /// `DELETE /api/entities/{id}`.
     async fn delete_entity(&self, id: &str) -> Result<(), String>;
-    /// `GET /api/entities/{id}/export` — the entity's snapshot bytes
+    /// `GET /api/entities/{id}/snapshot` — the entity's snapshot bytes
     /// (integration-defined IR).
     async fn snapshot_export(&self, id: &str) -> Result<Value, String>;
-    /// `POST /api/entities/import` — resume a snapshot on a node
+    /// `POST /api/entities/snapshot` — resume a snapshot on a node
     /// (`node` picks the target; `None` = primary).
     async fn snapshot_import(&self, body: &Value, node: Option<&str>) -> Result<EntityDto, String>;
 
     /* ---- index + outbox --------------------------------------------*/
-    /// `GET /api/index` — per-node entity indexes (the merged
+    /// `GET /api/entity-index` — per-node entity indexes (the merged
     /// projection on a hub, one row on a direct connection).
     async fn entity_index(&self) -> Result<Vec<EntityIndexDto>, String>;
-    /// Queued and dead-lettered ops in the hub's durable outbox.
-    /// Direct connections have no outbox and return `[]`.
+    /// `GET /api/pending-ops` — queued and dead-lettered ops in the
+    /// hub's durable outbox. Direct connections have no outbox and
+    /// return `[]`.
     async fn pending_ops(&self) -> Result<Vec<PendingOpDto>, String>;
 
     /* ---- node-level (substrate-generic) ----------------------------*/
@@ -296,7 +297,7 @@ impl EntityApi for HttpEntityApi {
         let id = id.to_string();
         tokio::task::spawn_blocking(move || {
             read_json(
-                api.get(&format!("/api/entities/{id}/export"))?,
+                api.get(&format!("/api/entities/{id}/snapshot"))?,
                 "snapshot export",
             )
         })
@@ -310,7 +311,7 @@ impl EntityApi for HttpEntityApi {
         let q = node_query(node);
         tokio::task::spawn_blocking(move || {
             read_json(
-                api.send_json("POST", &format!("/api/entities/import{q}"), &body)?,
+                api.send_json("POST", &format!("/api/entities/snapshot{q}"), &body)?,
                 "snapshot import",
             )
         })
@@ -324,10 +325,10 @@ impl EntityApi for HttpEntityApi {
             #[derive(serde::Deserialize)]
             struct IndexBody {
                 #[serde(default)]
-                nodes: Vec<EntityIndexDto>,
+                index: Vec<EntityIndexDto>,
             }
-            let body: IndexBody = read_json(api.get("/api/index")?, "entity index")?;
-            Ok(body.nodes)
+            let body: IndexBody = read_json(api.get("/api/entity-index")?, "entity index")?;
+            Ok(body.index)
         })
         .await
         .map_err(err_msg)?
@@ -339,10 +340,10 @@ impl EntityApi for HttpEntityApi {
             #[derive(serde::Deserialize)]
             struct OutboxBody {
                 #[serde(default)]
-                pending: Vec<PendingOpDto>,
+                ops: Vec<PendingOpDto>,
             }
-            let body: OutboxBody = read_json(api.get("/api/outbox")?, "pending ops")?;
-            Ok(body.pending)
+            let body: OutboxBody = read_json(api.get("/api/pending-ops")?, "pending ops")?;
+            Ok(body.ops)
         })
         .await
         .map_err(err_msg)?
@@ -531,5 +532,82 @@ mod tests {
         assert_eq!(node_query(Some("tower")), "?node=tower");
         assert_eq!(kind_query(None), "");
         assert_eq!(kind_query(Some("sepia-session")), "?kind=sepia-session");
+    }
+
+    /// The client's entity routes must match what the servers actually
+    /// mount (`/api/entity-index`, `/api/pending-ops`,
+    /// `/api/entities/{id}/snapshot`, `/api/entities/snapshot`) — this
+    /// canned node records every request line so a drifted path fails
+    /// here instead of 404ing in production.
+    #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+    async fn http_client_hits_the_served_entity_routes() {
+        use std::io::{BufRead, BufReader, Write};
+        use std::sync::{Arc, Mutex};
+
+        let calls = Arc::new(Mutex::new(Vec::<String>::new()));
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        {
+            let calls = Arc::clone(&calls);
+            std::thread::spawn(move || {
+                while let Ok((mut conn, _)) = listener.accept() {
+                    let calls = Arc::clone(&calls);
+                    std::thread::spawn(move || {
+                        let mut reader = BufReader::new(conn.try_clone().unwrap());
+                        let mut request_line = String::new();
+                        let _ = reader.read_line(&mut request_line);
+                        calls.lock().unwrap().push(request_line.trim().to_string());
+                        // Drain headers so ureq sees a clean close.
+                        let mut line = String::new();
+                        loop {
+                            line.clear();
+                            match reader.read_line(&mut line) {
+                                Ok(0) | Err(_) => break,
+                                Ok(_) if line.trim().is_empty() => break,
+                                Ok(_) => {}
+                            }
+                        }
+                        let body = if request_line.contains("entity-index") {
+                            r#"{"index":[]}"#
+                        } else if request_line.contains("pending-ops") {
+                            r#"{"ops":[]}"#
+                        } else if request_line.starts_with("POST") {
+                            r#"{"id":"i1","kind":"sepia-session"}"#
+                        } else if request_line.contains("/api/entities/")
+                            && !request_line.contains("snapshot")
+                        {
+                            r#"{"id":"s1","kind":"sepia-session"}"#
+                        } else {
+                            "{}"
+                        };
+                        let res = format!(
+                            "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+                            body.len()
+                        );
+                        let _ = conn.write_all(res.as_bytes());
+                    });
+                }
+            });
+        }
+
+        let api = HttpEntityApi::new(format!("http://127.0.0.1:{port}"), None);
+        api.entity_index().await.unwrap();
+        api.pending_ops().await.unwrap();
+        api.snapshot_export("s1").await.unwrap();
+        api.snapshot_import(&serde_json::json!({}), None).await.unwrap();
+        api.entity("s1").await.unwrap();
+
+        let calls = calls.lock().unwrap();
+        let paths: Vec<&str> = calls.iter().map(|c| c.split(' ').nth(1).unwrap()).collect();
+        assert_eq!(
+            paths,
+            [
+                "/api/entity-index",
+                "/api/pending-ops",
+                "/api/entities/s1/snapshot",
+                "/api/entities/snapshot",
+                "/api/entities/s1",
+            ]
+        );
     }
 }
