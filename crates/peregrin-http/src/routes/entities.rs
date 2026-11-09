@@ -1,16 +1,21 @@
 //! The entity surface — `/api/entities*` is the substrate-facing view
 //! of everything a node hosts. Every handler here is kind-agnostic:
-//! it parses just enough of the request to pick a plane out of
-//! [`AppState::kinds`] (`body.kind`, the `<ns>.<verb>` op namespace,
-//! or owner-resolution across planes for id-scoped calls) and hands
-//! over verbatim — payload translation, status codes, and feed
-//! emission stay inside each kind's [`EntityPlane`] impl.
+//! it parses just enough of the request to pick a plane out of the
+//! [`EntityContext::kinds`] registry (`body.kind`, the `<ns>.<verb>`
+//! op namespace, or owner-resolution across planes for id-scoped
+//! calls) and hands over verbatim — payload translation, status
+//! codes, and feed emission stay inside each kind's [`EntityPlane`]
+//! impl.
 //!
 //! `sepia-session` is the built-in plane (`SessionEntityPlane`,
 //! auto-registered with the session plane); integrations register
 //! more at daemon composition. `entity.*` is the substrate's own op
 //! namespace: `entity.delete` resolves the owning plane and deletes
 //! through it.
+//!
+//! Handlers still extract [`AppState`] (they share the router with the
+//! session surface); the entity-plane contract itself only ever sees
+//! the [`EntityContext`] built from it.
 
 use axum::body::Body;
 use axum::extract::{Path, Request, State};
@@ -19,8 +24,8 @@ use axum::response::Response;
 use serde_json::{Value, json};
 use std::sync::Arc;
 
+use crate::entity_plane::{EntityContext, EntityPlane};
 use crate::AppState;
-use crate::entity_plane::EntityPlane;
 
 use super::{
     MAX_JSON_BODY, SMALL_JSON_BODY, json_response, not_found, ok, query_param, read_json_body,
@@ -49,12 +54,12 @@ fn unknown_op(kind: &str) -> Response {
 /// First plane whose `get` claims `id` — any non-404 answer counts
 /// (a 500 means "mine, but broken": more informative than probing on).
 async fn owning_plane(
-    state: &AppState,
+    ctx: &EntityContext,
     id: &str,
     query: Option<&str>,
 ) -> Option<Arc<dyn EntityPlane>> {
-    for plane in state.kinds.planes() {
-        if plane.get(state, id, query).await.status() != StatusCode::NOT_FOUND {
+    for plane in ctx.kinds.planes() {
+        if plane.get(ctx, id, query).await.status() != StatusCode::NOT_FOUND {
             return Some(Arc::clone(plane));
         }
     }
@@ -65,9 +70,9 @@ async fn owning_plane(
 /// delete through it. Nobody owning the id reads as already-gone —
 /// delete stays idempotent (replayed outbox deletes must not
 /// dead-letter on a node that already applied them).
-async fn delete_entity(state: &AppState, id: &str, query: Option<&str>) -> Response {
-    match owning_plane(state, id, query).await {
-        Some(plane) => plane.delete(state, id, query).await,
+async fn delete_entity(ctx: &EntityContext, id: &str, query: Option<&str>) -> Response {
+    match owning_plane(ctx, id, query).await {
+        Some(plane) => plane.delete(ctx, id, query).await,
         None => ok(),
     }
 }
@@ -82,14 +87,15 @@ pub async fn collection(
 ) -> Response {
     match method {
         Method::GET => {
+            let ctx = state.entity_context();
             let query = req.uri().query();
             let kind = query_param(query, "kind");
             let mut entities = Vec::new();
-            for plane in state.kinds.planes() {
+            for plane in ctx.kinds.planes() {
                 if kind.as_deref().is_some_and(|k| k != plane.kind()) {
                     continue;
                 }
-                entities.extend(plane.list(&state, query).await);
+                entities.extend(plane.list(&ctx, query).await);
             }
             json_response(json!({ "entities": entities }), StatusCode::OK)
         }
@@ -109,18 +115,19 @@ async fn create(state: AppState, req: Request<Body>) -> Response {
     let Some(body) = body else {
         return bad_request("Expected a JSON object body");
     };
+    let ctx = state.entity_context();
     let plane = match body.get("kind").and_then(Value::as_str) {
-        Some(kind) => match state.kinds.plane(kind) {
+        Some(kind) => match ctx.kinds.plane(kind) {
             Some(plane) => plane,
             None => return kind_not_registered(kind),
         },
-        None => match state.kinds.default_plane() {
+        None => match ctx.kinds.default_plane() {
             Some(plane) => plane,
             None => return kind_not_registered(""),
         },
     };
     let init = body.get("indexDoc").cloned().unwrap_or(body);
-    plane.create(&state, init).await
+    plane.create(&ctx, init).await
 }
 
 /// `GET /api/entities/{id}` — the owning plane's entity doc (first
@@ -132,12 +139,13 @@ pub async fn item(
     Path(id): Path<String>,
     req: Request<Body>,
 ) -> Response {
+    let ctx = state.entity_context();
     match method {
         Method::GET => {
             let query = req.uri().query();
             let mut last = None;
-            for plane in state.kinds.planes() {
-                let res = plane.get(&state, &id, query).await;
+            for plane in ctx.kinds.planes() {
+                let res = plane.get(&ctx, &id, query).await;
                 if res.status() != StatusCode::NOT_FOUND {
                     return res;
                 }
@@ -145,7 +153,7 @@ pub async fn item(
             }
             last.unwrap_or_else(not_found)
         }
-        Method::DELETE => delete_entity(&state, &id, req.uri().query()).await,
+        Method::DELETE => delete_entity(&ctx, &id, req.uri().query()).await,
         _ => not_found(),
     }
 }
@@ -163,6 +171,7 @@ pub async fn ops(
     if method != Method::POST {
         return not_found();
     }
+    let ctx = state.entity_context();
     let query = req.uri().query().map(str::to_string);
     let body = match read_json_body(req, SMALL_JSON_BODY).await {
         Ok(b) => b,
@@ -175,15 +184,15 @@ pub async fn ops(
     let payload = body.get("payload").cloned().unwrap_or_else(|| json!({}));
 
     if kind == "entity.delete" || kind == "delete" {
-        return delete_entity(&state, &id, query.as_deref()).await;
+        return delete_entity(&ctx, &id, query.as_deref()).await;
     }
     // `entity.*` past `delete` is the substrate's own (reserved)
     // namespace — nothing else lives there yet.
     if kind.starts_with("entity.") {
         return unknown_op(kind);
     }
-    match state.kinds.plane_for_op(kind) {
-        Some(plane) => plane.op(&state, &id, kind, payload, query.as_deref()).await,
+    match ctx.kinds.plane_for_op(kind) {
+        Some(plane) => plane.op(&ctx, &id, kind, payload, query.as_deref()).await,
         None => unknown_op(kind),
     }
 }
@@ -199,10 +208,11 @@ pub async fn snapshot_item(
     if method != Method::GET {
         return not_found();
     }
+    let ctx = state.entity_context();
     let query = req.uri().query();
     let mut last = None;
-    for plane in state.kinds.planes() {
-        let res = plane.export(&state, &id, query).await;
+    for plane in ctx.kinds.planes() {
+        let res = plane.export(&ctx, &id, query).await;
         if res.status() != StatusCode::NOT_FOUND {
             return res;
         }
@@ -228,20 +238,21 @@ pub async fn snapshot_collection(
     let Some(body) = body else {
         return bad_request("Expected a JSON object body");
     };
+    let ctx = state.entity_context();
     let kind_opt = body.get("kind").and_then(Value::as_str).or_else(|| {
         body.get("entity")
             .and_then(|e| e.get("kind"))
             .and_then(Value::as_str)
     });
     let plane = match kind_opt {
-        Some(kind) => match state.kinds.plane(kind) {
+        Some(kind) => match ctx.kinds.plane(kind) {
             Some(plane) => plane,
             None => return kind_not_registered(kind),
         },
-        None => match state.kinds.default_plane() {
+        None => match ctx.kinds.default_plane() {
             Some(plane) => plane,
             None => return kind_not_registered(""),
         },
     };
-    plane.import(&state, body).await
+    plane.import(&ctx, body).await
 }

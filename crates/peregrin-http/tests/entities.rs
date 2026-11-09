@@ -13,7 +13,7 @@ use axum::Router;
 use axum::body::{Body, to_bytes};
 use axum::http::{Method, Request, StatusCode};
 use axum::response::{IntoResponse, Response};
-use peregrin_http::{AppState, EntityPlane, app};
+use peregrin_http::{AppState, EntityContext, EntityPlane, app};
 use peregrin_session::LocalPlane;
 use sepia_core::storage::SessionRepository;
 use sepia_core::{Session, StorageError};
@@ -143,18 +143,18 @@ impl EntityPlane for WidgetPlane {
         "widget"
     }
 
-    async fn list(&self, _state: &AppState, _query: Option<&str>) -> Vec<Value> {
+    async fn list(&self, _state: &EntityContext, _query: Option<&str>) -> Vec<Value> {
         self.docs.lock().unwrap().values().cloned().collect()
     }
 
-    async fn get(&self, _state: &AppState, id: &str, _query: Option<&str>) -> Response {
+    async fn get(&self, _state: &EntityContext, id: &str, _query: Option<&str>) -> Response {
         match self.docs.lock().unwrap().get(id) {
             Some(doc) => respond(doc.clone(), StatusCode::OK),
             None => not_found(),
         }
     }
 
-    async fn create(&self, _state: &AppState, init: Value) -> Response {
+    async fn create(&self, _state: &EntityContext, init: Value) -> Response {
         let doc = self.insert(init);
         respond(
             json!({ "id": doc["id"], "entity": doc }),
@@ -162,14 +162,14 @@ impl EntityPlane for WidgetPlane {
         )
     }
 
-    async fn delete(&self, _state: &AppState, id: &str, _query: Option<&str>) -> Response {
+    async fn delete(&self, _state: &EntityContext, id: &str, _query: Option<&str>) -> Response {
         self.docs.lock().unwrap().remove(id);
         respond(json!({ "ok": true }), StatusCode::OK)
     }
 
     async fn op(
         &self,
-        _state: &AppState,
+        _state: &EntityContext,
         id: &str,
         op: &str,
         payload: Value,
@@ -191,14 +191,14 @@ impl EntityPlane for WidgetPlane {
         }
     }
 
-    async fn export(&self, _state: &AppState, id: &str, _query: Option<&str>) -> Response {
+    async fn export(&self, _state: &EntityContext, id: &str, _query: Option<&str>) -> Response {
         match self.docs.lock().unwrap().get(id) {
             Some(doc) => respond(json!({ "snapshot": doc }), StatusCode::OK),
             None => not_found(),
         }
     }
 
-    async fn import(&self, _state: &AppState, body: Value) -> Response {
+    async fn import(&self, _state: &EntityContext, body: Value) -> Response {
         let init = body.get("indexDoc").cloned().unwrap_or_else(|| json!({}));
         let doc = self.insert(init);
         respond(doc, StatusCode::CREATED)

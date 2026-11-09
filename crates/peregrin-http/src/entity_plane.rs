@@ -12,12 +12,47 @@
 //! integrations register their own planes at daemon composition via
 //! [`crate::AppState::with_kind`] / `state.kinds.register(...)`.
 
+use std::any::Any;
 use std::sync::Arc;
 
 use axum::response::Response;
 use serde_json::Value;
 
-use crate::AppState;
+/// The substrate-owned context every [`EntityPlane`] method receives —
+/// the kind registry plus the host's opaque state payload. This is the
+/// seam the entity surface is extractable along: it names no session,
+/// orchestration, or store type. The peregrin node stuffs its
+/// `AppState` in as `host`; planes that wrap the session handlers
+/// downcast it back (`ctx.host::<AppState>()`), while kind-agnostic
+/// planes only need [`Self::kinds`].
+#[derive(Clone)]
+pub struct EntityContext {
+    /// `kind` → [`EntityPlane`] registry — sibling-plane lookups and
+    /// the default-plane fallback live here.
+    pub kinds: KindRegistry,
+    /// The host's own state, opaque to the substrate. `Arc<AppState>`
+    /// on the peregrin node; a `hypha-http` host would stuff its own.
+    host: Arc<dyn Any + Send + Sync>,
+}
+
+impl EntityContext {
+    /// A context over `kinds` with `host` as the opaque payload.
+    pub fn new(kinds: KindRegistry, host: Arc<dyn Any + Send + Sync>) -> Self {
+        Self { kinds, host }
+    }
+
+    /// A context with no host payload — for planes/tests that never
+    /// downcast (the session plane requires one).
+    pub fn for_kinds(kinds: KindRegistry) -> Self {
+        Self::new(kinds, Arc::new(()))
+    }
+
+    /// Downcast the host payload — `None` when the host isn't the
+    /// expected type (e.g. a plane mounted on a foreign host).
+    pub fn host<T: Any>(&self) -> Option<&T> {
+        self.host.downcast_ref::<T>()
+    }
+}
 
 /// One registered entity kind's serving plane. Responses are the
 /// kind's own wire surface under `/api/entities*` — the substrate
@@ -53,22 +88,22 @@ pub trait EntityPlane: Send + Sync {
     /// (`{id,kind,indexDoc,updatedAt,locked,live}` rows). Errors
     /// degrade to an empty contribution, matching the list route's
     /// long-standing silent-200.
-    async fn list(&self, state: &AppState, query: Option<&str>) -> Vec<Value>;
+    async fn list(&self, ctx: &EntityContext, query: Option<&str>) -> Vec<Value>;
 
     /// `GET /api/entities/{id}` — the entity doc, or the kind's own
     /// error response. A 404 tells the substrate the id isn't this
     /// plane's — the next registered plane gets a shot.
-    async fn get(&self, state: &AppState, id: &str, query: Option<&str>) -> Response;
+    async fn get(&self, ctx: &EntityContext, id: &str, query: Option<&str>) -> Response;
 
     /// `POST /api/entities` — `init` is the body's `indexDoc` (the
     /// whole body when `indexDoc` is absent); the response is the
     /// kind's own create payload.
-    async fn create(&self, state: &AppState, init: Value) -> Response;
+    async fn create(&self, ctx: &EntityContext, init: Value) -> Response;
 
     /// `DELETE /api/entities/{id}` / the `entity.delete` op — only
     /// invoked after [`Self::get`] has claimed the id for this plane,
     /// so impls may assume ownership.
-    async fn delete(&self, state: &AppState, id: &str, query: Option<&str>) -> Response;
+    async fn delete(&self, ctx: &EntityContext, id: &str, query: Option<&str>) -> Response;
 
     /// `POST /api/entities/{id}/ops` — `op` is the op kind verbatim
     /// (`<ns>.<verb>`, or a bare verb routed to the default plane);
@@ -76,7 +111,7 @@ pub trait EntityPlane: Send + Sync {
     /// own verb table.
     async fn op(
         &self,
-        state: &AppState,
+        ctx: &EntityContext,
         id: &str,
         op: &str,
         payload: Value,
@@ -85,11 +120,11 @@ pub trait EntityPlane: Send + Sync {
 
     /// `GET /api/entities/{id}/snapshot` — kind-shaped snapshot bytes
     /// the substrate moves opaquely. 404 = not this plane's id.
-    async fn export(&self, state: &AppState, id: &str, query: Option<&str>) -> Response;
+    async fn export(&self, ctx: &EntityContext, id: &str, query: Option<&str>) -> Response;
 
     /// `POST /api/entities/snapshot` — `body` is the import body
     /// verbatim (kind-defined shape).
-    async fn import(&self, state: &AppState, body: Value) -> Response;
+    async fn import(&self, ctx: &EntityContext, body: Value) -> Response;
 }
 
 /// `kind` → [`EntityPlane`] registry carried on [`AppState::kinds`].
@@ -171,25 +206,25 @@ mod tests {
         fn op_namespace(&self) -> &'static str {
             self.1
         }
-        async fn list(&self, _: &AppState, _: Option<&str>) -> Vec<Value> {
+        async fn list(&self, _: &EntityContext, _: Option<&str>) -> Vec<Value> {
             Vec::new()
         }
-        async fn get(&self, _: &AppState, _: &str, _: Option<&str>) -> Response {
+        async fn get(&self, _: &EntityContext, _: &str, _: Option<&str>) -> Response {
             unimplemented!()
         }
-        async fn create(&self, _: &AppState, _: Value) -> Response {
+        async fn create(&self, _: &EntityContext, _: Value) -> Response {
             unimplemented!()
         }
-        async fn delete(&self, _: &AppState, _: &str, _: Option<&str>) -> Response {
+        async fn delete(&self, _: &EntityContext, _: &str, _: Option<&str>) -> Response {
             unimplemented!()
         }
-        async fn op(&self, _: &AppState, _: &str, _: &str, _: Value, _: Option<&str>) -> Response {
+        async fn op(&self, _: &EntityContext, _: &str, _: &str, _: Value, _: Option<&str>) -> Response {
             unimplemented!()
         }
-        async fn export(&self, _: &AppState, _: &str, _: Option<&str>) -> Response {
+        async fn export(&self, _: &EntityContext, _: &str, _: Option<&str>) -> Response {
             unimplemented!()
         }
-        async fn import(&self, _: &AppState, _: Value) -> Response {
+        async fn import(&self, _: &EntityContext, _: Value) -> Response {
             unimplemented!()
         }
     }

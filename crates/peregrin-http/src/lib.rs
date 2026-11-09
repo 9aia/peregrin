@@ -29,7 +29,7 @@ use peregrin_session::SessionPlane;
 use sepia_meta::MetaStore;
 use tracing::Instrument;
 
-pub use entity_plane::{EntityPlane, KindRegistry};
+pub use entity_plane::{EntityContext, EntityPlane, KindRegistry};
 pub use env::{Env, EnvError};
 pub use feed::{EventFeed, HeldWatches, InstrumentedMeta, LiveListeners};
 pub use node::{
@@ -151,6 +151,14 @@ impl AppState {
                 &env.meta_path,
             )))),
         }
+    }
+
+    /// The [`EntityContext`] the `/api/entities*` surface hands to
+    /// every [`EntityPlane`] — the kind registry plus this `AppState`
+    /// as the opaque host payload (the session plane downcasts it
+    /// back to reach the session handlers).
+    pub fn entity_context(&self) -> EntityContext {
+        EntityContext::new(self.kinds.clone(), Arc::new(self.clone()))
     }
 
     /// Register an extra entity kind plane behind `/api/entities*` —

@@ -15,8 +15,7 @@ use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
 use peregrin_core::{Campaign, Event};
 use peregrin_engine::{Injector, PendingTimer, RunOptions, Runner};
-use peregrin_http::AppState;
-use peregrin_http::entity_plane::EntityPlane;
+use peregrin_http::entity_plane::{EntityContext, EntityPlane};
 use peregrin_loader::Loader;
 use peregrin_loader_yaml::YamlLoader;
 use serde::{Deserialize, Serialize};
@@ -132,14 +131,14 @@ impl EntityPlane for CampaignEntityPlane {
         CAMPAIGN_KIND
     }
 
-    async fn list(&self, _state: &AppState, _query: Option<&str>) -> Vec<Value> {
+    async fn list(&self, _state: &EntityContext, _query: Option<&str>) -> Vec<Value> {
         let Ok(map) = self.entities.read() else {
             return Vec::new();
         };
         map.values().map(entity_doc).collect()
     }
 
-    async fn get(&self, _state: &AppState, id: &str, _query: Option<&str>) -> Response {
+    async fn get(&self, _state: &EntityContext, id: &str, _query: Option<&str>) -> Response {
         let Ok(map) = self.entities.read() else {
             return json_resp(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -157,7 +156,7 @@ impl EntityPlane for CampaignEntityPlane {
         )
     }
 
-    async fn create(&self, _state: &AppState, init: Value) -> Response {
+    async fn create(&self, _state: &EntityContext, init: Value) -> Response {
         let id = init.get("id").and_then(Value::as_str).map_or_else(
             || format!("run-{}", uuid::Uuid::new_v4().simple()),
             str::to_string,
@@ -199,7 +198,7 @@ impl EntityPlane for CampaignEntityPlane {
         json_resp(StatusCode::CREATED, doc)
     }
 
-    async fn delete(&self, _state: &AppState, id: &str, query: Option<&str>) -> Response {
+    async fn delete(&self, _state: &EntityContext, id: &str, query: Option<&str>) -> Response {
         let force = query.is_some_and(|q| q.contains("force=true") || q.contains("force=1"));
         let Ok(mut map) = self.entities.write() else {
             return json_resp(
@@ -230,7 +229,7 @@ impl EntityPlane for CampaignEntityPlane {
 
     async fn op(
         &self,
-        _state: &AppState,
+        _state: &EntityContext,
         id: &str,
         op: &str,
         payload: Value,
@@ -248,7 +247,7 @@ impl EntityPlane for CampaignEntityPlane {
         }
     }
 
-    async fn export(&self, _state: &AppState, id: &str, _query: Option<&str>) -> Response {
+    async fn export(&self, _state: &EntityContext, id: &str, _query: Option<&str>) -> Response {
         let Ok(map) = self.entities.read() else {
             return json_resp(
                 StatusCode::INTERNAL_SERVER_ERROR,
@@ -283,7 +282,7 @@ impl EntityPlane for CampaignEntityPlane {
         json_resp(StatusCode::OK, snapshot)
     }
 
-    async fn import(&self, _state: &AppState, body: Value) -> Response {
+    async fn import(&self, _state: &EntityContext, body: Value) -> Response {
         if body.get("format").and_then(Value::as_str) != Some("campaign-snapshot/v1") {
             return json_resp(
                 StatusCode::BAD_REQUEST,
