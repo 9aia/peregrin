@@ -27,6 +27,11 @@ and its drivers) — those are documented in
 | `PEREGRIN_SWEEP_MS` | `30000` | Idle sweep cadence |
 | `PEREGRIN_PAIR_LIMIT_PER_MIN` | `5` | `/api/pair` attempts per minute per client |
 | `PEREGRIN_PAIR_LIMIT_PER_DAY` | `20` | `/api/pair` attempts per day per client |
+| `PEREGRIN_EPHEMERAL` | off | Ephemeral/CI node mode — SIGTERM-aware shutdown + snapshot flush on exit (`peregrin serve --ephemeral`) |
+| `PEREGRIN_SNAPSHOT_DIR` | `$PEREGRIN_HOME/snapshots` | Shutdown flush output: `<kind>/<id>.snapshot.json` + `index.json` |
+| `PEREGRIN_SNAPSHOT_TARGET` | — | Peer node/hub base URL that receives flushed snapshots via `POST /api/entities/snapshot` |
+| `PEREGRIN_SNAPSHOT_TOKEN` | `PEREGRIN_TOKEN` | Bearer for `PEREGRIN_SNAPSHOT_TARGET` |
+| `PEREGRIN_SNAPSHOT_NODE` | — | `?node=` selector for the handoff POST (hub targets) |
 | `HYPHA_OTEL_ENDPOINT` | — | OTEL collector endpoint (tracing) |
 
 ## Hub (`peregrin-hub`)

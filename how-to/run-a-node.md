@@ -77,3 +77,10 @@ service install` writes + enables the unit (`--hub` manages the hub,
 `--system` a system unit); `peregrin service disable` stops it and keeps
 it stopped across logins (unit file kept) until `peregrin service
 enable`. `status`, `restart` and `logs` round out the verbs.
+
+## Ephemeral nodes (CI runners)
+
+`peregrin serve --ephemeral` (or `PEREGRIN_EPHEMERAL=1`) runs the node
+as an elastic worker: SIGTERM-aware shutdown plus a snapshot flush of
+live/locked entities on exit. See
+[Run a CI runner node](run-a-ci-node.md).
