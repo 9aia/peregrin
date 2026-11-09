@@ -15,8 +15,9 @@ embedded as the session plane on every node.
 - **Nodes** — `peregrin serve` runs a machine daemon: session plane
   (via `sepia`) + campaign drivers + event bus.
 - **Hub** — `peregrin-hub` aggregates nodes into one API surface —
-  merged session projection, queued writes, push. The experimental
-  web UI lives on the `experimental/web` branch.
+  merged entity projection, queued writes, push (a thin
+  `hypha-hub` gateway carrying Peregrin's kind policies). The
+  experimental web UI lives on the `experimental/web` branch.
 - **Ports everywhere** — runner, transport, store, secrets, config,
   service are ports; implementations are separate crates
   (`peregrin-{port}` + `peregrin-{port}-{impl}`).
@@ -39,9 +40,8 @@ session plane over the wire — it never reimplements it.
 | `crates/peregrin-loader` + `-yaml` | campaign loading |
 | `crates/peregrin-{template,store,bus,remote(-http)}` | engine ports |
 | `crates/peregrin-{config(-toml)}` | platform config ports (sturn/bupha pattern) |
-| `hypha-{secret,keyring,dotenv,service,systemd,telemetry}` | extracted substrate leaf crates — git deps on [9aia/hypha](https://github.com/9aia/hypha) |
-| `crates/peregrin-control` | arbitration — lock registry, takeover policy, merge/route |
-| `crates/peregrin-{node,hub,http,sync,outbox,push,node-api}` | daemons + transport + node port |
+| `hypha-{node-api,outbox,control,sync,push,http,hub,secret,keyring,dotenv,service,systemd,telemetry}` | extracted substrate crates — entity plane, sync engine, gateway, HTTP surface — git deps on [9aia/hypha](https://github.com/9aia/hypha) |
+| `crates/peregrin-{node,hub,http}` | daemons + session-plane transport — `peregrin-http` composes `hypha-http`'s generic routes with `/api/sessions*` under one listener |
 | `crates/peregrin-{cli,auth,acp-client,testkit}` | binaries, credentials, sepia-wire client, fixtures |
 
 `libraries/` holds the workflow stdlib (reusable `.node.yml`,

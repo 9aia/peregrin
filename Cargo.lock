@@ -1674,35 +1674,152 @@ dependencies = [
 ]
 
 [[package]]
+name = "hypha-control"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "hypha-dotenv"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
 dependencies = [
  "hypha-secret",
+]
+
+[[package]]
+name = "hypha-http"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
+dependencies = [
+ "async-trait",
+ "axum",
+ "base64 0.22.1",
+ "form_urlencoded",
+ "futures",
+ "http-body-util",
+ "hypha-push",
+ "hypha-telemetry",
+ "nix",
+ "serde",
+ "serde_json",
+ "sha2",
+ "thiserror 2.0.21",
+ "time",
+ "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "hypha-hub"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
+dependencies = [
+ "async-trait",
+ "axum",
+ "form_urlencoded",
+ "futures",
+ "hypha-control",
+ "hypha-http",
+ "hypha-node-api",
+ "hypha-outbox",
+ "hypha-push",
+ "hypha-sync",
+ "hypha-telemetry",
+ "keyring",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tower-http",
+ "tracing",
+ "ureq",
+ "uuid",
 ]
 
 [[package]]
 name = "hypha-keyring"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
 dependencies = [
  "hypha-secret",
 ]
 
 [[package]]
+name = "hypha-node-api"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
+dependencies = [
+ "async-trait",
+ "serde",
+ "serde_json",
+ "tokio",
+ "ureq",
+]
+
+[[package]]
+name = "hypha-outbox"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
+dependencies = [
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "time",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "hypha-push"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
+dependencies = [
+ "base64 0.22.1",
+ "futures",
+ "p256",
+ "rand 0.8.8",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "web-push",
+]
+
+[[package]]
 name = "hypha-secret"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
 
 [[package]]
 name = "hypha-service"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
+
+[[package]]
+name = "hypha-sync"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
+dependencies = [
+ "hypha-outbox",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+ "time",
+ "tokio",
+ "tokio-util",
+ "tracing",
+ "ureq",
+]
 
 [[package]]
 name = "hypha-systemd"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
 dependencies = [
  "hypha-service",
 ]
@@ -1710,7 +1827,7 @@ dependencies = [
 [[package]]
 name = "hypha-telemetry"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=p4b-compat#98694d1453503de72b06d8fb4a46cdf144facb21"
 dependencies = [
  "http 1.5.0",
  "opentelemetry",
@@ -2610,14 +2727,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "peregrin-control"
-version = "0.0.0"
-dependencies = [
- "serde",
- "serde_json",
-]
-
-[[package]]
 name = "peregrin-core"
 version = "0.0.0"
 dependencies = [
@@ -2808,9 +2917,10 @@ dependencies = [
  "form_urlencoded",
  "futures",
  "http-body-util",
+ "hypha-http",
+ "hypha-push",
  "hypha-telemetry",
  "nix",
- "peregrin-push",
  "peregrin-session",
  "sepia-acp",
  "sepia-convert",
@@ -2836,31 +2946,15 @@ dependencies = [
 name = "peregrin-hub"
 version = "0.0.0"
 dependencies = [
- "async-trait",
  "axum",
- "form_urlencoded",
- "futures",
+ "hypha-http",
+ "hypha-hub",
+ "hypha-sync",
  "hypha-telemetry",
- "keyring",
- "peregrin-control",
- "peregrin-http",
- "peregrin-node-api",
- "peregrin-outbox",
- "peregrin-push",
- "peregrin-sync",
- "sepia-core",
- "sepia-driver-devin",
- "sepia-testkit",
- "serde",
  "serde_json",
  "tempfile",
  "tokio",
- "tower",
- "tower-http",
  "tracing",
- "tracing-subscriber",
- "ureq",
- "uuid",
 ]
 
 [[package]]
@@ -2911,6 +3005,7 @@ dependencies = [
  "chrono",
  "futures",
  "hypha-dotenv",
+ "hypha-http",
  "hypha-keyring",
  "hypha-secret",
  "hypha-telemetry",
@@ -2955,48 +3050,6 @@ dependencies = [
  "tracing",
  "ureq",
  "uuid",
-]
-
-[[package]]
-name = "peregrin-node-api"
-version = "0.0.0"
-dependencies = [
- "async-trait",
- "serde",
- "serde_json",
- "tokio",
- "ureq",
-]
-
-[[package]]
-name = "peregrin-outbox"
-version = "0.0.0"
-dependencies = [
- "rusqlite",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "time",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "peregrin-push"
-version = "0.0.0"
-dependencies = [
- "base64 0.22.1",
- "futures",
- "p256",
- "rand 0.8.8",
- "sepia-meta",
- "sepia-proto",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "web-push",
 ]
 
 [[package]]
@@ -3071,32 +3124,6 @@ dependencies = [
  "tempfile",
  "thiserror 2.0.21",
  "tracing",
-]
-
-[[package]]
-name = "peregrin-sync"
-version = "0.0.0"
-dependencies = [
- "async-trait",
- "axum",
- "futures",
- "peregrin-http",
- "peregrin-outbox",
- "peregrin-session",
- "rusqlite",
- "sepia-core",
- "sepia-meta",
- "sepia-session",
- "sepia-testkit",
- "serde",
- "serde_json",
- "tempfile",
- "thiserror 2.0.21",
- "time",
- "tokio",
- "tokio-util",
- "tracing",
- "ureq",
 ]
 
 [[package]]

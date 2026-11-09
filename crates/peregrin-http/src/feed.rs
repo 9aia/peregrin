@@ -17,9 +17,6 @@ use sepia_session::SessionSummary;
 use serde_json::{Value, json};
 use tokio::sync::broadcast;
 
-/// Bound per subscriber — a client this far behind is resyncing anyway.
-const MAX_QUEUED: usize = 500;
-
 /// A held session stops being watched this long after the last read-only
 /// attach observed it — a closed tab can't leave the probe running forever.
 const HELD_WATCH_TTL: Duration = Duration::from_secs(30 * 60);
@@ -35,19 +32,20 @@ pub fn session_payload(id: &str, agent: Option<&str>, patch: Value) -> Value {
     Value::Object(payload)
 }
 
-/// One node-feed event: `kind` is `session` | `meta` | `project`.
-#[derive(Clone, Debug)]
-pub struct NodeEvent {
-    pub kind: &'static str,
-    pub payload: Value,
-}
+/// One node-feed event — the substrate's [`hypha_http::FeedEvent`]
+/// shape (`kind` is `session` | `meta` | `project` | `heartbeat` | …,
+/// `payload` the `data:` JSON verbatim). Aliased so the session-side
+/// API reads unchanged.
+pub type NodeEvent = hypha_http::FeedEvent;
 
 /// Process-wide emitter the routes write and SSE connections drain —
-/// `tokio::sync::broadcast` already implements the TS feed's semantics
-/// (bounded per-subscriber queue, oldest dropped under lag).
+/// a newtype over [`hypha_http::EventFeed`] so every emission lands on
+/// the SAME broadcast the substrate's `/api/events` serves (PL-005
+/// P4b: the feed moved to hypha; this wrapper keeps the session-side
+/// `emit_session`/`session_payload` vocabulary).
 #[derive(Clone)]
 pub struct EventFeed {
-    tx: broadcast::Sender<NodeEvent>,
+    inner: hypha_http::EventFeed,
 }
 
 impl Default for EventFeed {
@@ -58,13 +56,24 @@ impl Default for EventFeed {
 
 impl EventFeed {
     pub fn new() -> Self {
-        let (tx, _) = broadcast::channel(MAX_QUEUED);
-        Self { tx }
+        Self {
+            inner: hypha_http::EventFeed::new(),
+        }
+    }
+
+    /// Wrap an existing substrate feed — composition shares one
+    /// broadcast between the session emitters and `/api/events`.
+    pub fn from_substrate(inner: hypha_http::EventFeed) -> Self {
+        Self { inner }
+    }
+
+    /// The substrate feed this wraps — `Clone` shares the channel.
+    pub fn substrate(&self) -> hypha_http::EventFeed {
+        self.inner.clone()
     }
 
     pub fn emit(&self, kind: &'static str, payload: Value) {
-        // No active receivers is not an error.
-        let _ = self.tx.send(NodeEvent { kind, payload });
+        self.inner.emit(kind, payload);
     }
 
     /// Emit the `{"id","agent","patch"}` session-row invalidation.
@@ -73,13 +82,14 @@ impl EventFeed {
     }
 
     pub fn subscribe(&self) -> broadcast::Receiver<NodeEvent> {
-        self.tx.subscribe()
+        self.inner.subscribe()
     }
 
     /// Live SSE subscribers — background probes (the held-session watch)
-    /// gate on someone listening.
+    /// gate on someone listening. Counts the substrate feed's
+    /// subscribers — `/api/events` clients drain that channel.
     pub fn subscriber_count(&self) -> usize {
-        self.tx.receiver_count()
+        self.inner.subscriber_count()
     }
 }
 
@@ -414,7 +424,7 @@ impl LiveListeners {
         &self,
         plane: &Arc<dyn SessionPlane>,
         feed: &EventFeed,
-        push: Option<Arc<peregrin_push::PushStore>>,
+        push: Option<Arc<hypha_push::PushStore>>,
         id: &str,
         agent_id: Option<String>,
     ) {
@@ -444,7 +454,7 @@ impl LiveListeners {
                                 .get_summary(&id_owned, None)
                                 .await
                                 .map_or_else(|_| id_owned.clone(), |s| s.title);
-                            peregrin_push::notify_for_events(
+                            crate::push::notify_for_events(
                                 push,
                                 &id_owned,
                                 agent_id.as_deref(),
@@ -889,8 +899,8 @@ mod cov_more_tests {
         let plane: Arc<dyn SessionPlane> = Arc::new(plane);
         let feed = EventFeed::new();
         let mut feed_rx = feed.subscribe();
-        let push = peregrin_push::PushStore::open(sepia_meta::MetaStore::open(
-            &tempfile::tempdir().unwrap().path().join("p.json"),
+        let push = hypha_push::PushStore::open(crate::push::MetaPushBackend(
+            sepia_meta::MetaStore::open(&tempfile::tempdir().unwrap().path().join("p.json")),
         ));
         listeners.register(
             &plane,

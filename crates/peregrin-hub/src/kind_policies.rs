@@ -2,7 +2,7 @@
 //! integration the gateway fronts. These are *data + small functions
 //! over `serde_json::Value`*: they name kind tags and wire field
 //! names, never session/campaign types, so the generic machinery in
-//! `peregrin-sync` (engine, client, projection, `SyncEntityApi`)
+//! `hypha-sync` (engine, client, projection, `SyncEntityApi`)
 //! stays kind-agnostic.
 //!
 //! Registration is explicit: [`default_kind_policies`] builds the
@@ -13,10 +13,8 @@
 
 use std::sync::Arc;
 
-use peregrin_sync::kind::{
-    DiffTombstone, IndexColumns, KindPolicies, KindPolicy, Notice, NoticeKind,
-};
-use peregrin_sync::{IndexedEntity, OpKind};
+use hypha_sync::kind::{DiffTombstone, IndexColumns, KindPolicies, KindPolicy, Notice, NoticeKind};
+use hypha_sync::{IndexedEntity, OpKind};
 use serde_json::Value;
 
 /// `kind="sepia-session"` — the session integration's sync-side

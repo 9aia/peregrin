@@ -20,8 +20,8 @@ use axum::response::Response;
 use serde_json::{Value, json};
 
 use crate::AppState;
-use crate::entity_plane::{EntityContext, EntityPlane};
 use crate::routes::{error_response, json_response, query_param, sessions};
+use hypha_http::{EntityContext, EntityPlane};
 
 /// The entity kind tag sessions project as — registered
 /// automatically wherever a `SessionPlane` is mounted.

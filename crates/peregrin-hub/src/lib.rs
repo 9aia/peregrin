@@ -1,132 +1,34 @@
-//! peregrin-hub — the node-API gateway. Bridges client traffic to the
-//! node daemons and runs the multi-node sync engine:
+//! peregrin-hub — the `peregrin-hub` gateway's Peregrin half (PL-005
+//! P4b). The gateway machinery — sync engine, merged projection,
+//! outbox, entity API, node credentials, push store, HTTP/SSE
+//! bridges — lives in `hypha-hub`; this crate keeps what is
+//! Peregrin's:
 //!
-//! - `/api/sessions/{id}/stream`, `/api/events` — SSE bridges to
-//!   `PEREGRIN_NODE_URL` (EventSource can't carry cross-origin auth
-//!   cleanly; proxying keeps the client same-origin).
-//! - `/api/push/*` — the hub-owned push subscription store (one
-//!   subscription fans out to every paired node).
-//! - `/api/*` — generic passthrough for the rest of the node API,
-//!   session-scoped calls routed to the owning node on multi-node
-//!   setups (`PEREGRIN_NODES`).
-//!
-//! [`sync_api::SyncEntityApi`] is the hub's [`NodeApi`]: session lists
-//! read the merged projection and writes queue in the durable outbox
-//! when a node is down.
+//! - [`kind_policies`] — the `sepia-session`/`campaign`
+//!   [`hypha_sync::KindPolicy`] registry the sync engine, feed hook,
+//!   and entity API consume.
+//! - the `PEREGRIN_*` env contract — [`hub_config`] maps
+//!   `PEREGRIN_HUB_*`/`PEREGRIN_NODE_*`/`PEREGRIN_NODES`/
+//!   `PEREGRIN_HOME` onto [`hypha_hub::HubConfig`] and the env lookup
+//!   [`hub_state`] hands to `hypha_hub::hub_state_from_with`, so no
+//!   `HYPHA_*` variable is ever required.
+//! - [`router`]/[`hub_state`] — thin re-shapes over `hypha_hub`'s.
 
-pub mod auth;
-pub mod credentials;
-pub mod entity_routes;
 pub mod kind_policies;
-pub mod proxy;
-pub mod push_routes;
-pub mod sync_api;
+
+pub use kind_policies::default_kind_policies;
 
 use std::collections::HashMap;
+use std::ffi::OsString;
 use std::net::SocketAddr;
-use std::sync::Arc;
+use std::path::PathBuf;
 
-use axum::Router;
-use axum::body::Body;
-use axum::extract::Request;
-use axum::middleware::{self, Next};
-use axum::response::Response;
-use axum::routing::{any, get};
-use peregrin_node_api::api::EntityApi;
-use tracing::Instrument;
+use hypha_hub::{HubConfig as HyphaHubConfig, HubState};
 
-/// Everything the router needs — the node-API port (`EntityApi` is a
-/// trait so tests can stub it) and the upstream address for the
-/// HTTP/SSE bridges.
-/// Entity id → `(url, token)` of the owning node.
-pub type EntityRouter = Arc<dyn Fn(&str) -> Option<(String, Option<String>)> + Send + Sync>;
-
-#[derive(Clone)]
-pub struct HubState {
-    pub node: Arc<dyn EntityApi>,
-    pub node_url: Arc<str>,
-    pub node_token: Option<Arc<str>>,
-    /// Multi-node routing — resolves an entity id to its owning
-    /// node's `(url, token)` for entity-scoped proxy calls.
-    /// `None` → everything uses `node_url` (single-node mode).
-    pub entity_router: Option<EntityRouter>,
-    /// Hub-owned push subscription store — `None` → `/api/push/*` 501s.
-    pub push: Option<Arc<peregrin_push::PushStore>>,
-    /// `PEREGRIN_HUB_TOKEN` — the client→hub gate. `None` → every route
-    /// is open (loopback-only deployments).
-    pub hub_token: Option<Arc<str>>,
-    /// Long-lived streams: no global deadline and no body budget —
-    /// ureq's `recv_body` is a total deadline that fails every read
-    /// instantly once spent; a half-dead client is instead detected
-    /// when the next frame's `blocking_send` fails.
-    sse_agent: ureq::Agent,
-    /// Bounded request/response passthroughs.
-    http_agent: ureq::Agent,
-}
-
-impl HubState {
-    /// Build the state from parts. `node_url` is the node's origin
-    /// (`http://127.0.0.1:18787`); `node_token` is forwarded as a bearer
-    /// token on hub → node calls, falling back to the caller's own
-    /// `Authorization` header when unset.
-    pub fn new(
-        node: Arc<dyn EntityApi>,
-        node_url: impl Into<Arc<str>>,
-        node_token: Option<Arc<str>>,
-    ) -> Self {
-        let sse_agent = ureq::Agent::new_with_config(
-            ureq::Agent::config_builder()
-                .http_status_as_error(false)
-                .timeout_global(None)
-                .timeout_connect(Some(std::time::Duration::from_secs(10)))
-                .timeout_recv_body(None)
-                .build(),
-        );
-        let http_agent = ureq::Agent::new_with_config(
-            ureq::Agent::config_builder()
-                .http_status_as_error(false)
-                .timeout_global(Some(std::time::Duration::from_secs(60)))
-                .build(),
-        );
-        Self {
-            node,
-            node_url: node_url.into(),
-            node_token,
-            entity_router: None,
-            push: None,
-            hub_token: None,
-            sse_agent,
-            http_agent,
-        }
-    }
-
-    /// Route an entity-scoped request: the owning node's url+token when
-    /// a [`entity_router`](Self::entity_router) resolves, else the
-    /// default upstream.
-    pub(crate) fn entity_upstream(&self, id: &str) -> (String, Option<String>) {
-        self.entity_router
-            .as_ref()
-            .and_then(|r| r(id))
-            .unwrap_or_else(|| {
-                (
-                    self.node_url.to_string(),
-                    self.node_token.as_ref().map(ToString::to_string),
-                )
-            })
-    }
-
-    /// Agent configured for open-ended SSE reads.
-    pub(crate) fn sse_agent(&self) -> ureq::Agent {
-        self.sse_agent.clone()
-    }
-
-    /// Agent configured for bounded JSON calls.
-    pub(crate) fn json_agent(&self) -> ureq::Agent {
-        self.http_agent.clone()
-    }
-}
-
-/// Runtime configuration, all `PEREGRIN_*` env.
+/// The hub's runtime configuration — the `PEREGRIN_*` env contract,
+/// field-for-field identical to [`hypha_hub::HubConfig`]'s `HYPHA_*`
+/// names. Kept as a distinct type so parse errors and docs name the
+/// variables operators actually set.
 #[derive(Clone, Debug)]
 pub struct HubConfig {
     /// `PEREGRIN_HUB_HOST` — default `127.0.0.1`.
@@ -154,15 +56,18 @@ impl Default for HubConfig {
     }
 }
 
-/// Loopback binds may serve tokenless; anything else requires
-/// `PEREGRIN_HUB_TOKEN` (mirrors `peregrin_http::env::is_loopback_host`).
+/// `PEREGRIN_HUB_TOKEN` required on non-loopback binds — mirrors
+/// `hypha_http::env::is_loopback_host` and the old hub's guard.
 fn is_loopback_host(host: &str) -> bool {
-    host == "localhost" || host == "::1" || host == "[::1]" || host.starts_with("127.")
+    hypha_http::env::is_loopback_host(host)
 }
 
 impl HubConfig {
-    /// Parse from env. `Err` on a malformed port/address or a
-    /// non-loopback bind without `PEREGRIN_HUB_TOKEN` — fail fast.
+    /// Parse from the process env.
+    ///
+    /// # Errors
+    /// `String` on a malformed port/address or a non-loopback bind
+    /// without `PEREGRIN_HUB_TOKEN` — fail fast.
     pub fn from_env() -> Result<Self, String> {
         Self::from_lookup(|k| std::env::var(k).ok())
     }
@@ -172,7 +77,9 @@ impl HubConfig {
         Self::from_lookup(|key| vars.get(key).cloned())
     }
 
-    /// Shared parser behind [`from_env`](Self::from_env).
+    /// Shared parser behind [`from_env`](Self::from_env) — reads the
+    /// `PEREGRIN_*` names directly (`PEREGRIN_HUB_PORT` falls back to
+    /// `PEREGRIN_PORT`, like the node).
     pub fn from_lookup(get: impl Fn(&str) -> Option<String>) -> Result<Self, String> {
         let mut cfg = Self::default();
         if let Some(v) = get("PEREGRIN_HUB_HOST") {
@@ -188,8 +95,8 @@ impl HubConfig {
         }
         cfg.node_token = get("PEREGRIN_NODE_TOKEN").filter(|t| !t.is_empty());
         cfg.hub_token = get("PEREGRIN_HUB_TOKEN").filter(|t| !t.is_empty());
-        // The node's bind guard, applied to the client surface: a
-        // wildcard/LAN bind with no hub token would expose the API.
+        // The client-surface bind guard: a wildcard/LAN bind with no
+        // hub token would expose the API.
         if !is_loopback_host(&cfg.host) && cfg.hub_token.is_none() {
             return Err(format!(
                 "peregrin-hub refuses to bind {} without PEREGRIN_HUB_TOKEN. Set PEREGRIN_HUB_TOKEN or bind a loopback address (PEREGRIN_HUB_HOST=127.0.0.1).",
@@ -199,6 +106,18 @@ impl HubConfig {
         Ok(cfg)
     }
 
+    /// The `hypha_hub::HubConfig` view — field-for-field.
+    #[must_use]
+    pub fn to_hypha(&self) -> HyphaHubConfig {
+        HyphaHubConfig {
+            host: self.host.clone(),
+            port: self.port,
+            node_url: self.node_url.clone(),
+            node_token: self.node_token.clone(),
+            hub_token: self.hub_token.clone(),
+        }
+    }
+
     pub fn socket_addr(&self) -> Result<SocketAddr, String> {
         format!("{}:{}", self.host, self.port)
             .parse()
@@ -206,202 +125,47 @@ impl HubConfig {
     }
 }
 
-/// Build the axum router. `HubConfig` → `HubState` happens in
-/// [`hub_state`]; tests construct `HubState` directly with a stub
-/// `NodeApi`.
-pub fn router(state: HubState) -> Router {
-    Router::new()
-        // The merged entity surface — substrate reads hit the
-        // projection, ops ride the outbox. Must be registered before
-        // the `/api/*` passthrough so they win over single-node routing.
-        .route("/api/entities", any(entity_routes::collection))
-        .route(
-            "/api/entities/snapshot",
-            any(entity_routes::snapshot_collection),
-        )
-        .route("/api/entities/{id}", any(entity_routes::item))
-        .route("/api/entities/{id}/ops", any(entity_routes::ops))
-        .route(
-            "/api/entities/{id}/snapshot",
-            any(entity_routes::snapshot_item),
-        )
-        .route("/api/entity-index", get(entity_routes::entity_index))
-        .route("/api/pending-ops", get(entity_routes::pending_ops))
-        // SSE bridges — must be registered before the `/api/*` wildcard.
-        .route("/api/events", get(proxy::sse_events))
-        .route("/api/sessions/{id}/stream", get(proxy::sse_session_stream))
-        // Hub-owned push — intercepted before the passthrough so every
-        // node notifies through one subscription store.
-        .route("/api/push/vapid", any(push_routes::vapid))
-        .route("/api/push/subscribe", any(push_routes::subscribe))
-        .route("/api/{*rest}", any(proxy::passthrough))
-        // Hard ceiling for *every* request body. Sized at the
-        // passthrough cap so legit node-bound bodies never hit it.
-        .layer(tower_http::limit::RequestBodyLimitLayer::new(
-            proxy::MAX_PROXY_BODY,
-        ))
-        // Client gate — a no-op until `hub_token` is set.
-        .layer(middleware::from_fn_with_state(
-            state.clone(),
-            auth::auth_gate,
-        ))
-        // OTEL server span — outermost: client→hub requests get an
-        // `http_request` span the proxy's `traceparent` injection links
-        // hub→node calls into. Inert when export is off.
-        .layer(middleware::from_fn(trace_layer))
-        .with_state(state)
-}
-
-/// OTEL server span — extracts any inbound `traceparent` (federated
-/// callers), records the response status onto the span.
-async fn trace_layer(req: Request<Body>, next: Next) -> Response {
-    let span = hypha_telemetry::server_span(req.method(), req.uri().path(), req.headers());
-    let for_status = span.clone();
-    async move {
-        let res = next.run(req).await;
-        hypha_telemetry::record_response(&for_status, res.status().as_u16());
-        res
-    }
-    .instrument(span)
-    .await
-}
-
-/// HubState for a running hub: the sync engine + [`SyncEntityApi`].
-/// `PEREGRIN_NODES` (`id=url[@token];…`) wins; `PEREGRIN_NODE_URL`/`PEREGRIN_NODE_TOKEN`
-/// is the single-node shorthand. Nodes listed without a token resolve
-/// one from the [`credentials`] store (OS keyring → file fallback —
-/// that store is also where the pair flow persists minted tokens), and
-/// an env-provided token seeds an empty store slot so the plaintext
-/// can leave the env. The projection + outbox live under
-/// `$PEREGRIN_HOME/hub/` so they survive restarts.
+/// Boot the gateway state — `hypha_hub::hub_state_from_with` under
+/// the hood with [`default_kind_policies`] and the `PEREGRIN_*` env
+/// mapping above. Projection + outbox + push live under
+/// `$PEREGRIN_HOME/hub/` exactly as before.
 ///
 /// # Errors
-/// `String` on a missing/empty node list or a projection/outbox open failure.
+/// `String` on a missing/empty node list or a projection/outbox open
+/// failure — see `hypha_hub`.
 pub fn hub_state(config: &HubConfig) -> Result<HubState, String> {
     hub_state_from(|k| std::env::var_os(k), config)
 }
 
-/// [`hub_state`] with the environment injected — the test seam that
-/// drives every env arm (`PEREGRIN_HOME`/`HOME`/`PEREGRIN_NODES`)
-/// without touching the process env.
+/// [`hub_state`] with the process env injected — the test seam.
 #[doc(hidden)]
 pub fn hub_state_from(
-    get: impl Fn(&str) -> Option<std::ffi::OsString>,
+    get: impl Fn(&str) -> Option<OsString>,
     config: &HubConfig,
 ) -> Result<HubState, String> {
-    let home = get("PEREGRIN_HOME")
-        .map(std::path::PathBuf::from)
-        .or_else(|| get("HOME").map(|h| std::path::PathBuf::from(h).join(".local/share/peregrin")))
-        .unwrap_or_else(|| std::path::PathBuf::from(".peregrin"))
-        .join("hub");
-    std::fs::create_dir_all(&home).map_err(|e| format!("create {}: {e}", home.display()))?;
-    let creds = credentials::open(&home);
-    let mut nodes = get("PEREGRIN_NODES")
-        .and_then(|v| v.into_string().ok())
-        .filter(|v| !v.trim().is_empty())
-        .map(|raw| sync_api::parse_nodes(&raw))
-        .filter(|v| !v.is_empty())
-        .unwrap_or_else(|| {
-            vec![sync_api::HubNode {
-                id: "node".to_string(),
-                url: config.node_url.clone(),
-                token: config.node_token.clone(),
-            }]
-        });
-    // Env tokens are explicit config — they win, and seed an empty
-    // store slot so the plaintext can leave the env. Tokenless nodes
-    // resolve a stored credential.
-    let (stored, seeded) = sync_api::resolve_node_tokens(&mut nodes, creds.as_ref());
-    // Hoisted — `tracing` fields evaluate only when a subscriber is
-    // attached, which coverage runs don't guarantee.
-    let backend = creds.backend();
-    tracing::info!(backend, stored, seeded, "node credential store");
-    let projection = peregrin_sync::ProjectionStore::open(&home.join("projection.db"))
-        .map_err(|e| format!("projection open: {e}"))?;
-    // Rows from node ids no longer configured (renamed, removed, or the
-    // legacy `node` shorthand) have no sync loop — purge them once at
-    // boot so dead entities stop surfacing in the index.
-    let keep: Vec<String> = nodes.iter().map(|n| n.id.clone()).collect();
-    if let Err(e) = projection.purge_unregistered(&keep) {
-        tracing::warn!("purge_unregistered failed: {e}");
-    }
-    let outbox =
-        peregrin_outbox::Outbox::open(&home.join("outbox.db")).map_err(|e| e.to_string())?;
-    let targets = nodes.iter().map(|n| {
-        let node = peregrin_sync::NodeRef {
-            id: n.id.clone(),
-            url: n.url.clone(),
-            label: n.id.clone(),
-        };
-        match &n.token {
-            Some(t) => peregrin_sync::engine::NodeTarget::with_token(node, t.clone()),
-            None => peregrin_sync::engine::NodeTarget::new(node),
+    // The injected getter answers the PEREGRIN_* names; translate to
+    // the HYPHA_* names hypha_hub reads, resolving HYPHA_HOME through
+    // the same fallback chain the node uses.
+    let lookup = |k: &str| -> Option<OsString> {
+        match k {
+            "HYPHA_HOME" => get("PEREGRIN_HOME")
+                .or_else(|| {
+                    get("HOME").map(|h| {
+                        PathBuf::from(h)
+                            .join(".local/share/peregrin")
+                            .into_os_string()
+                    })
+                })
+                .or_else(|| Some(OsString::from(".peregrin"))),
+            "HYPHA_NODES" => get("PEREGRIN_NODES"),
+            "HYPHA_CREDENTIAL_STORE" => get("PEREGRIN_CREDENTIAL_STORE"),
+            _ => None,
         }
-    });
-    let push = Arc::new(peregrin_push::PushStore::open(
-        peregrin_push::JsonDocStore::open(&home.join("push.json")),
-    ));
-    // One registry, three consumers: the sync engine (diffs, op
-    // params), the feed hook (push rules), and the entity API (gating,
-    // creates, actors).
-    let policies = kind_policies::default_kind_policies();
-    let options = peregrin_sync::engine::SyncOptions {
-        on_event: Some(feed_hook(
-            projection.clone(),
-            Arc::clone(&push),
-            policies.clone(),
-        )),
-        policies: policies.clone(),
-        ..peregrin_sync::engine::SyncOptions::default()
     };
-    let engine = peregrin_sync::SyncEngine::spawn(projection, outbox, targets, options);
-    // `unwrap_or_else` above guarantees at least the single-node row.
-    let upstream = nodes.first().cloned().unwrap_or_default();
-    let api = Arc::new(sync_api::SyncEntityApi::new(engine, nodes, creds).with_policies(policies));
-    let mut state = HubState::new(
-        Arc::clone(&api) as Arc<dyn EntityApi>,
-        upstream.url.as_str(),
-        upstream.token.clone().map(Into::into),
-    );
-    state.push = Some(push);
-    state.hub_token = config.hub_token.clone().map(Into::into);
-    let router_api = Arc::clone(&api);
-    state.entity_router = Some(Arc::new(move |id| router_api.node_url_for(id, None)));
-    Ok(state)
+    hypha_hub::hub_state_from_with(lookup, &config.to_hypha(), default_kind_policies())
 }
 
-/// The hub's push-notification feed hook — a diff event a kind
-/// policy claims produces that kind's [`peregrin_sync::Notice`]s,
-/// delivered as Web Push. Which events notify and what they say is
-/// the policy's call ([`kind_policies::SepiaSessionPolicy`] owns the
-/// session rules); this body is the generic dispatch. Extracted so
-/// tests can drive it directly (the live hook only fires on real
-/// node feeds).
-#[doc(hidden)]
-pub fn feed_hook(
-    projection: peregrin_sync::ProjectionStore,
-    push: Arc<peregrin_push::PushStore>,
-    policies: peregrin_sync::KindPolicies,
-) -> peregrin_sync::engine::FeedHook {
-    Arc::new(
-        move |node_id: &str, event: &peregrin_sync::client::FeedEvent| {
-            let peregrin_sync::client::FeedEvent::Diff {
-                kind, id, patch, ..
-            } = event
-            else {
-                return;
-            };
-            let Some(policy) = policies.for_diff_event(kind) else {
-                return;
-            };
-            let row = projection.entity(node_id, id).ok().flatten();
-            for notice in policy.notices(kind, id, row.as_ref(), patch) {
-                let kind = match notice.kind {
-                    peregrin_sync::NoticeKind::Done => peregrin_push::Kind::Done,
-                    peregrin_sync::NoticeKind::Permission => peregrin_push::Kind::Permission,
-                };
-                push.send(kind, &notice.title, &notice.body, &notice.url);
-            }
-        },
-    )
+/// Build the axum router — `hypha_hub::router` verbatim.
+pub fn router(state: HubState) -> axum::Router {
+    hypha_hub::router(state)
 }

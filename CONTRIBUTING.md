@@ -10,9 +10,11 @@ pure domain; ports are `peregrin-{driver,store,bus,remote,config,
 loader,template}`; impls are `peregrin-{port}-{impl}`
 crates; `peregrin-node`/`peregrin-hub` are the daemons;
 `peregrin-cli` (`peregrin`) is the composition root. The substrate
-leaf crates — `hypha-{secret,keyring,dotenv,service,systemd,
-telemetry}` — live in [9aia/hypha](https://github.com/9aia/hypha) and
-arrive here as git deps.
+crates — `hypha-{node-api,outbox,control,sync,push,http,hub}` plus
+the earlier `hypha-{secret,keyring,dotenv,service,systemd,
+telemetry}` leaves — live in [9aia/hypha](https://github.com/9aia/hypha)
+and arrive here as git deps; `peregrin-http` composes the generic
+`hypha-http` routes with the session surface under one listener.
 `libraries/` is the workflow stdlib; `project/` the ADRs.
 
 ## Boundary

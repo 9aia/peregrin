@@ -9,7 +9,6 @@ members = [
     "crates/peregrin-config-file",
     "crates/peregrin-config-toml",
     "crates/peregrin-config-yaml",
-    "crates/peregrin-control",
     "crates/peregrin-core",
     "crates/peregrin-driver",
     "crates/peregrin-driver-agent",
@@ -30,16 +29,12 @@ members = [
     "crates/peregrin-loader-yaml",
     "crates/peregrin-mcp",
     "crates/peregrin-node",
-    "crates/peregrin-node-api",
-    "crates/peregrin-outbox",
-    "crates/peregrin-push",
     "crates/peregrin-queue",
     "crates/peregrin-remote",
     "crates/peregrin-remote-http",
     "crates/peregrin-sink-github-status",
     "crates/peregrin-store",
     "crates/peregrin-store-json",
-    "crates/peregrin-sync",
     "crates/peregrin-template",
     "crates/peregrin-testkit",
     "xtask",
@@ -60,7 +55,6 @@ peregrin-config = { path = "crates/peregrin-config" }
 peregrin-config-file = { path = "crates/peregrin-config-file" }
 peregrin-config-toml = { path = "crates/peregrin-config-toml" }
 peregrin-config-yaml = { path = "crates/peregrin-config-yaml" }
-peregrin-control = { path = "crates/peregrin-control" }
 peregrin-core = { path = "crates/peregrin-core" }
 tamias-core = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
 tamias-source = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
@@ -88,16 +82,12 @@ peregrin-loader = { path = "crates/peregrin-loader" }
 peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml" }
 peregrin-mcp = { path = "crates/peregrin-mcp" }
 peregrin-node = { path = "crates/peregrin-node" }
-peregrin-node-api = { path = "crates/peregrin-node-api" }
-peregrin-outbox = { path = "crates/peregrin-outbox" }
-peregrin-push = { path = "crates/peregrin-push" }
 peregrin-queue = { path = "crates/peregrin-queue" }
 peregrin-remote = { path = "crates/peregrin-remote" }
 peregrin-remote-http = { path = "crates/peregrin-remote-http" }
 peregrin-sink-github-status = { path = "crates/peregrin-sink-github-status" }
 peregrin-store = { path = "crates/peregrin-store" }
 peregrin-store-json = { path = "crates/peregrin-store-json" }
-peregrin-sync = { path = "crates/peregrin-sync" }
 peregrin-template = { path = "crates/peregrin-template" }
 peregrin-testkit = { path = "crates/peregrin-testkit" }
 
@@ -119,14 +109,27 @@ sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", branch = "ma
 sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
 sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
 
-# hypha — the extracted substrate leaf crates (PL-005 P4a): secrets,
-# telemetry, service/systemd, dotenv. Git deps on `main`.
-hypha-telemetry = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-secret = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-keyring = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-dotenv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-service = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-systemd = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+# hypha — the extracted substrate (PL-005): leaf crates landed in P4a
+# (secrets, telemetry, service/systemd, dotenv); the entity-plane
+# crates landed in P4b (node-api, outbox, control, sync, push, http,
+# hub). Git deps on `p4b-compat` — the integration-seam additions
+# (entity host payload, auth-cookie name, agent lister, node
+# capabilities, hub credential env) pending merge to `main`; flip back
+# to `main` once it lands. All hypha deps MUST share one branch/rev —
+# mixed revisions duplicate crates and split types.
+hypha-telemetry = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-secret = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-keyring = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-dotenv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-service = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-systemd = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-node-api = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-outbox = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-control = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-sync = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-push = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
+hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "p4b-compat" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }

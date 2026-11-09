@@ -5,9 +5,12 @@ workflows over generic *entities* (`{id,kind,indexDoc}` + namespaced
 ops + snapshots) across paired nodes. Rust workspace,
 ports-and-adapters. Sessions register as `kind="sepia-session"`
 entities via the [sepia](https://github.com/9aia/sepia) integration
-(sibling checkout at `../sepia`, workspace path deps); peregrin owns
-the entity plane — projection, outbox, locks, ops, snapshots — and
-never names a sepia type.
+(sibling checkout at `../sepia`, workspace path deps). The generic
+substrate — entity plane, projection, outbox, locks, ops, snapshots,
+the HTTP surface — lives in [9aia/hypha](https://github.com/9aia/hypha)
+and is consumed here as git deps; peregrin keeps the integration
+side (session/campaign planes, `PEREGRIN_*` env contract) and never
+names a sepia type in the substrate.
 
 > The web UI (`peregrin-web`/`peregrin-web-core` + the Leptos SSR host)
 > is experimental and lives on the `experimental/web` branch — `main`
@@ -18,18 +21,21 @@ never names a sepia type.
 - `peregrin-core` pure domain (events, campaigns, nodes) — no I/O.
 - Ports: `peregrin-{driver,loader,store,bus,remote,config,template}`;
   impls `peregrin-{port}-{impl}` (`-shell`, `-yaml`, `-toml`, `-http`).
-  The substrate leaf crates — `hypha-{secret,keyring,dotenv,service,
-  systemd,telemetry}` — are extracted to
-  [9aia/hypha](https://github.com/9aia/hypha) and consumed as git deps.
-- `peregrin-control` — entity arbitration (lock registry, takeover
-  policy, merge/route) — generic `EntityId`/`kind` mechanics.
-- `peregrin-node` (daemon: session plane + engine + api) · `peregrin-hub`
-  (entity gateway: merged index + ops outbox + HTTP/SSE bridges + push) ·
-  `peregrin-http` (REST+SSE — `/api/entities*` substrate surface,
-  `/api/sessions*` integration surface) · `peregrin-node-api` (`EntityApi`
-  trait + entity DTOs + `HttpEntityApi`/`FakeEntityApi`) ·
-  `peregrin-sync` (entity projection + sync engine) /
-  `peregrin-outbox` (entity-scoped op queue) / `peregrin-push` ·
+  The substrate crates — `hypha-{node-api,outbox,control,sync,push,
+  http,hub}` plus the earlier `hypha-{secret,keyring,dotenv,service,
+  systemd,telemetry}` leaves — are extracted to
+  [9aia/hypha](https://github.com/9aia/hypha) and consumed as git
+  deps. `peregrin-http` composes them: `compose`/`hypha_state` merge
+  `hypha_http`'s generic routes (`/api/entities*`, `/api/events`,
+  `/api/node`, `/api/pair`, `/api/auth/*`, `/api/push/*`, `/api/fs`,
+  `/api/user`, `/api/health`) with the session routes
+  (`/api/sessions*`, agents, projects, config, client keypair) under
+  one listener, unifying feed/pairing/push/kind-registry behind the
+  scenes.
+- `peregrin-node` (daemon: session plane + campaign engine +
+  composition root) · `peregrin-hub` (thin `hypha-hub` gateway —
+  `SepiaSessionPolicy`/`CampaignKindPolicy` + the `PEREGRIN_*` env
+  mapping) · `peregrin-http` (session routes + composition, above) ·
   `peregrin-cli` (`peregrin` binary) · `hypha-telemetry` (git dep) ·
   `peregrin-testkit` · `xtask`.
 - `libraries/` — workflow stdlib artifacts. `project/` — nested repo
@@ -49,11 +55,16 @@ Git hooks in `.hooks/` (`core.hooksPath` = `.hooks`).
 
 ## Boundary with sepia
 
-Substrate vs integration: peregrin runs entities (project, route,
-queue, lock, snapshot, transfer) — never names a sepia type. The
-session plane is one entity kind (`sepia-session`) hosted by
-`peregrin-node`: `/api/entities*` is the substrate surface,
-`/api/sessions*` the integration's. Op kinds are namespaced
+Substrate vs integration: the substrate (entities, projection,
+outbox, locks, sync, the generic HTTP surface) is hypha's; peregrin
+runs the integration — sessions register as `kind="sepia-session"`
+entities and campaigns as `kind="campaign"`, both hosted by
+`peregrin-node`. `/api/entities*` + the generic routes are the
+substrate surface (`hypha-http`), `/api/sessions*` the integration's;
+`peregrin-http` composes them into one router. Op kinds are
+namespaced (`sepia.prompt`, `campaign.*`, `entity.delete`); snapshots
+are kind-shaped bytes moved opaquely. `project/adrs/0091` is the
+contract. Op kinds are namespaced
 (`sepia.prompt`, `sepia.attach`, `entity.delete`); snapshots are
 kind-shaped bytes moved opaquely. `project/adrs/0091` is the contract.
 

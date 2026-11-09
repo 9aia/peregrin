@@ -1,15 +1,19 @@
-//! peregrin-http — the axum driving adapter for the peregrin node API. Port of
-//! `apps/server/src/app.ts`: mounts `/api/*` over a `ControlPlane`, the
-//! `MetaStore` overlay, and the node event feed. The `peregrin-node`
-//! daemon composes [`AppState`] and serves [`app`].
+//! peregrin-http — the axum driving adapter for the peregrin node API.
+//! The generic substrate surface (`/api/entities*`, `/api/events`,
+//! `/api/node`, `/api/pair`, `/api/auth/*`, `/api/push/*`, `/api/fs`,
+//! `/api/user`, `/api/health`) is `hypha-http`'s; this crate keeps the
+//! session plane — `/api/sessions*`, agents, projects, config, client
+//! keypair — plus the [`AppState`] both compose over. [`compose`]
+//! merges the two routers under one listener and [`app`] builds the
+//! composed surface with a substrate state derived from `AppState`
+//! (the test/back-compat path); `peregrin-node`'s `serve` passes an
+//! env-mapped [`hypha_http::HyphaState`] instead.
 
 pub mod auth;
-pub mod entity_plane;
 pub mod env;
 pub mod feed;
 pub mod node;
-pub mod pair;
-pub mod ratelimit;
+pub mod push;
 pub mod routes;
 pub mod session_entity;
 
@@ -29,14 +33,19 @@ use peregrin_session::SessionPlane;
 use sepia_meta::MetaStore;
 use tracing::Instrument;
 
-pub use entity_plane::{EntityContext, EntityPlane, KindRegistry};
+// The entity-plane port + pairing backend moved to `hypha-http`
+// (PL-005 P4b) — re-exported so `peregrin_http::{EntityPlane,
+// Pairing, …}` and `peregrin_http::pair::*` keep resolving.
 pub use env::{Env, EnvError};
 pub use feed::{EventFeed, HeldWatches, InstrumentedMeta, LiveListeners};
+pub use hypha_http::entity_plane;
+pub use hypha_http::entity_plane::{EntityContext, EntityPlane, KindRegistry};
+pub use hypha_http::pair;
+pub use hypha_http::{Quota, RateLimiter};
 pub use node::{
     NodeIdentity, PEREGRIN_VERSION, PROTOCOL_VERSION, load_node_identity, save_node_identity,
 };
 pub use pair::{Pairing, PairingStore};
-pub use ratelimit::{Quota, RateLimiter};
 pub use routes::sessions::{ConvertSession, ImportSession, ImportTarget};
 pub use session_entity::{SESSION_KIND, SessionEntityPlane};
 
@@ -46,9 +55,10 @@ pub use session_entity::{SESSION_KIND, SessionEntityPlane};
 #[derive(Clone)]
 pub struct AppState {
     pub plane: Arc<dyn SessionPlane>,
-    /// `kind` → [`EntityPlane`] registry behind `/api/entities*`.
-    /// `sepia-session` rides along automatically with `plane`;
-    /// integrations register more at composition ([`Self::with_kind`]).
+    /// `kind` → [`EntityPlane`] staging registry — the *extra* planes
+    /// [`compose`] merges into the substrate's [`hypha_http::KindRegistry`]
+    /// behind `/api/entities*` (`sepia-session` is added by the
+    /// composer itself, always first so it stays the default plane).
     pub kinds: KindRegistry,
     /// The instrumented meta overlay — `None` → meta routes answer 501.
     pub meta: Option<InstrumentedMeta>,
@@ -60,7 +70,10 @@ pub struct AppState {
     /// Where the identity persists (`PEREGRIN_NODE`); `None` keeps a
     /// `PATCH /api/node` rename in-memory only.
     pub node_path: Option<PathBuf>,
-    /// Pairing backend for `POST /api/pair` + issued-credential auth.
+    /// Pairing backend for `POST /api/pair` + issued-credential auth —
+    /// the `hypha_http::Pairing` instance, shared with the substrate
+    /// state at composition so credentials minted by `/api/pair` are
+    /// visible to the session routes' auth gate.
     pub pairing: Option<Pairing>,
     /// Per-client-IP throttle on `POST /api/pair` — the one route that
     /// mints a bearer credential with no prior auth, so it's the brute-
@@ -82,8 +95,10 @@ pub struct AppState {
     pub import_session: Option<ImportSession>,
     /// Store-write seam for `POST /api/sessions/:id/convert`.
     pub convert: Option<ConvertSession>,
-    /// Web Push service over the meta store — `None` → 501s.
-    pub push: Option<Arc<peregrin_push::PushStore>>,
+    /// Web Push service — subscriptions persist in the meta overlay
+    /// (`crate::push`'s `PushBackend for MetaStore`); shared with the
+    /// substrate's `/api/push/*` at composition. `None` → 501s.
+    pub push: Option<Arc<hypha_push::PushStore>>,
 }
 
 impl AppState {
@@ -91,7 +106,7 @@ impl AppState {
     pub fn new(plane: Arc<dyn SessionPlane>) -> Self {
         Self {
             plane,
-            kinds: default_kinds(),
+            kinds: KindRegistry::new(),
             meta: None,
             feed: EventFeed::new(),
             node: Arc::new(Mutex::new(NodeIdentity {
@@ -127,7 +142,7 @@ impl AppState {
         let meta = MetaStore::open(&env.meta_path);
         Self {
             plane,
-            kinds: default_kinds(),
+            kinds: KindRegistry::new(),
             meta: Some(InstrumentedMeta::new(meta, feed.clone())),
             feed,
             node: Arc::new(Mutex::new(load_node_identity(
@@ -135,10 +150,12 @@ impl AppState {
                 &env.node_name,
             ))),
             node_path: Some(env.node_path.clone()),
-            pairing: Some(Pairing::open(
-                env.pair_code_path.clone(),
-                env.tokens_path.clone(),
-            )),
+            // `sepia_`-prefixed issued tokens — the wire contract
+            // `/api/pair` callers and the auth gate both expect.
+            pairing: Some(
+                Pairing::open(env.pair_code_path.clone(), env.tokens_path.clone())
+                    .with_token_prefix("sepia_"),
+            ),
             pair_limit: RateLimiter::pair(env.pair_limit_per_min, env.pair_limit_per_day),
             token: env.token.clone(),
             origins: env.origins.clone(),
@@ -147,23 +164,15 @@ impl AppState {
             live: LiveListeners::default(),
             import_session: None,
             convert: None,
-            push: Some(Arc::new(peregrin_push::PushStore::open(MetaStore::open(
-                &env.meta_path,
-            )))),
+            push: Some(Arc::new(hypha_push::PushStore::open(
+                crate::push::MetaPushBackend(MetaStore::open(&env.meta_path)),
+            ))),
         }
     }
 
-    /// The [`EntityContext`] the `/api/entities*` surface hands to
-    /// every [`EntityPlane`] — the kind registry plus this `AppState`
-    /// as the opaque host payload (the session plane downcasts it
-    /// back to reach the session handlers).
-    pub fn entity_context(&self) -> EntityContext {
-        EntityContext::new(self.kinds.clone(), Arc::new(self.clone()))
-    }
-
-    /// Register an extra entity kind plane behind `/api/entities*` —
-    /// `sepia-session` is already resident via `plane`; this is the
-    /// composition hook for every other kind (`campaign`, …).
+    /// Register an extra entity kind plane — staged on
+    /// [`Self::kinds`] and merged into the substrate registry by
+    /// [`compose`] (which always puts `sepia-session` first).
     #[must_use]
     pub fn with_kind(mut self, plane: Arc<dyn EntityPlane>) -> Self {
         self.kinds.register(plane);
@@ -242,7 +251,7 @@ impl AppState {
 
     /// Override the push service (tests wire a stub store).
     #[must_use]
-    pub fn with_push(mut self, push: Option<Arc<peregrin_push::PushStore>>) -> Self {
+    pub fn with_push(mut self, push: Option<Arc<hypha_push::PushStore>>) -> Self {
         self.push = push;
         self
     }
@@ -254,14 +263,182 @@ impl AppState {
     }
 }
 
-/// The kind registry every session-plane host starts with —
-/// `sepia-session` is the built-in entity kind wherever a
-/// `SessionPlane` is mounted (ADR-0091); [`AppState::with_kind`] and
-/// `state.kinds.register` add integration kinds at composition.
-fn default_kinds() -> KindRegistry {
+/// The `capabilities` list `GET /api/node` reports — the session
+/// plane's wire contract (`sessions`/`projects`/`push`/`events`/
+/// `export`, plus `pairing`/`import` when those backends are wired).
+/// The substrate honors it via `HyphaState::node_capabilities`.
+#[must_use]
+pub fn node_capabilities(state: &AppState) -> Vec<String> {
+    let mut capabilities = vec![
+        "sessions".to_string(),
+        "projects".to_string(),
+        "push".to_string(),
+        "events".to_string(),
+        "export".to_string(),
+    ];
+    if state.pairing.is_some() {
+        capabilities.push("pairing".into());
+    }
+    // The store-write seam (`POST /api/sessions/import`) is only wired
+    // when a convertible store exists — the hub's transfer pre-flight
+    // reads this flag instead of eating a 501.
+    if state.convert.is_some() {
+        capabilities.push("import".into());
+    }
+    capabilities
+}
+
+/// `GET /api/health` probe — the session-plane liveness check the
+/// old route ran inline: a bounded `list_sessions` decides `{ok,db}`
+/// and the 503. Installed on the substrate state as
+/// `HyphaState::health_probe` at composition.
+fn health_probe(plane: Arc<dyn SessionPlane>) -> hypha_http::HealthProbe {
+    Arc::new(move || {
+        let plane = Arc::clone(&plane);
+        Box::pin(async move {
+            /// `GET /api/health` — deliberately ahead of the auth gate.
+            /// The TS health check is a 1.5s-bounded session list.
+            const HEALTH_TIMEOUT: Duration = Duration::from_millis(1_500);
+            let healthy =
+                match tokio::time::timeout(HEALTH_TIMEOUT, plane.list_sessions(false)).await {
+                    Ok(Ok(_)) => true,
+                    Ok(Err(_)) | Err(_) => false,
+                };
+            if healthy {
+                routes::json_response(
+                    serde_json::json!({ "ok": true, "db": true }),
+                    StatusCode::OK,
+                )
+            } else {
+                routes::json_response(
+                    serde_json::json!({ "ok": false, "db": false }),
+                    StatusCode::SERVICE_UNAVAILABLE,
+                )
+            }
+        }) as futures::future::BoxFuture<'static, Response>
+    })
+}
+
+/// The live agent-id roster `GET /api/node` reports — `plane.list_agents`
+/// mapped to ids, installed as the substrate's `agent_lister`.
+fn agent_lister(plane: &Arc<dyn SessionPlane>) -> hypha_http::AgentLister {
+    let plane = Arc::clone(plane);
+    Arc::new(move || {
+        let plane = Arc::clone(&plane);
+        Box::pin(async move {
+            plane
+                .list_agents()
+                .await
+                .into_iter()
+                .map(|a| a.id)
+                .collect()
+        }) as futures::future::BoxFuture<'static, Vec<String>>
+    })
+}
+
+/// Align the substrate state with the session state at composition —
+/// the singletons both sides must share so the wire behaves as one
+/// node did before the split:
+///
+/// - `feed` — one broadcast; session/meta/project emissions reach
+///   `/api/events` (and `subscriber_count` gates the held watch).
+/// - `pairing` — one `Pairing` instance; credentials `/api/pair`
+///   mints are visible to the session routes' auth gate.
+/// - `push` — one `PushStore`; `/api/push/*` subscriptions are what
+///   the live listeners notify.
+/// - `entity_host` — `Arc<AppState>` so [`SessionEntityPlane`] (and
+///   any plane wrapping session handlers) downcasts its host back.
+/// - `kinds` — rebuilt with `sepia-session` FIRST (the default plane
+///   for bare ops/kind-less creates), then the caller's pre-registered
+///   planes, then [`AppState::kinds`] extras.
+/// - `auth_cookie`/`health_probe` — the Peregrin contract
+///   (`sepia_token`, the session-plane liveness probe).
+fn align_substrate(state: &AppState, hypha: &mut hypha_http::HyphaState) {
+    hypha.feed = state.feed.substrate();
+    if let Some(pairing) = &state.pairing {
+        // Peregrin's credential prefix is `sepia_` — force it here so
+        // every `Pairing` source (`from_env`, `with_pairing`, test
+        // fixtures) mints the wire contract, whatever prefix the
+        // `hypha_http::Pairing` default carried.
+        hypha.pairing = Some(pairing.clone().with_token_prefix("sepia_"));
+    }
+    if let Some(push) = &state.push {
+        hypha.push = Some(Arc::clone(push));
+    }
+    hypha.entity_host = Some(Arc::new(state.clone()));
+    hypha.auth_cookie = Arc::from("sepia_token");
+    hypha.health_probe = Some(health_probe(Arc::clone(&state.plane)));
+
     let mut kinds = KindRegistry::new();
     kinds.register(Arc::new(SessionEntityPlane));
-    kinds
+    for plane in hypha.kinds.planes() {
+        kinds.register(Arc::clone(plane));
+    }
+    for plane in state.kinds.planes() {
+        kinds.register(Arc::clone(plane));
+    }
+    hypha.kinds = kinds;
+}
+
+/// Compose the full node surface — the substrate routes
+/// (`hypha_http::app_routes`, fallback-free) merged with the session
+/// routes under ONE listener and ONE 404 fallback (the session
+/// router's). `hypha` is the caller-built substrate state (env-mapped
+/// in `serve`); [`align_substrate`] then wires the shared singletons.
+///
+/// The returned router is `Router<()>` — serve it with
+/// `into_make_service_with_connect_info::<SocketAddr>()`.
+pub fn compose(state: AppState, mut hypha: hypha_http::HyphaState) -> Router {
+    align_substrate(&state, &mut hypha);
+    let substrate = hypha_http::app_routes(&hypha).with_state(hypha);
+    session_app(state).merge(substrate)
+}
+
+/// A substrate state derived from `AppState`'s own knobs — token,
+/// origins, keep-alive, pair limiter, node identity, push, pairing,
+/// live agents, capabilities. The test/back-compat path behind
+/// [`app`]; `serve` builds its `HyphaState` from `PEREGRIN_*` env
+/// instead (same fields, explicit sources).
+fn hypha_for(state: &AppState) -> hypha_http::HyphaState {
+    let identity = state.node_identity();
+    let mut hypha = hypha_http::HyphaState::new()
+        .with_token(state.token.clone())
+        .with_origins(state.origins.clone())
+        .with_keep_alive(state.keep_alive)
+        .with_agent_lister(agent_lister(&state.plane))
+        .with_node_capabilities(node_capabilities(state))
+        .with_push(state.push.clone());
+    hypha.pair_limit = state.pair_limit.clone();
+    hypha.node = Arc::new(Mutex::new(hypha_http::NodeIdentity {
+        id: identity.id,
+        name: identity.name,
+        version: identity.version,
+    }));
+    hypha.node_path.clone_from(&state.node_path);
+    hypha
+}
+
+/// The env-mapped substrate state — `PEREGRIN_*` values translated
+/// into `HyphaState` via [`Env::to_hypha`], plus the session-plane
+/// seams (live agents, node capabilities). [`compose`] still unifies
+/// the shared singletons (feed, pairing, push, kinds, cookie) via
+/// [`align_substrate`], so the `HyphaState::from_env` pairing/push
+/// instances opened on the same paths are superseded, not duplicated.
+#[must_use]
+pub fn hypha_state(env: &Env, state: &AppState) -> hypha_http::HyphaState {
+    hypha_http::HyphaState::from_env(&env.to_hypha())
+        .with_agent_lister(agent_lister(&state.plane))
+        .with_node_capabilities(node_capabilities(state))
+}
+
+/// Build the composed axum router with a substrate state derived from
+/// `AppState` — every route the node serves, for tests and embedders
+/// that don't need the env-mapped variant. `serve` callers wanting
+/// the explicit `PEREGRIN_*` mapping use [`compose`] with a
+/// `HyphaState::from_env` instead.
+pub fn app(state: AppState) -> Router {
+    let hypha = hypha_for(&state);
+    compose(state, hypha)
 }
 
 fn hostname_or_unknown() -> String {
@@ -341,10 +518,15 @@ async fn log_layer(req: Request<Body>, next: Next) -> Response {
     res
 }
 
-/// Build the axum router — every route is `any()` + an internal method
-/// guard so wrong-method requests fall through to the TS 404 (rather
-/// than axum's bare 405).
-pub fn app(state: AppState) -> Router {
+/// The session-plane router — `/api/sessions*`, agents, projects,
+/// config, client keypair — with the auth gate, request log, CORS and
+/// trace layers. Every route is `any()` + an internal method guard so
+/// wrong-method requests fall through to the 404 (rather than axum's
+/// bare 405). The generic substrate routes (`/api/entities*`,
+/// `/api/events`, `/api/node`, `/api/pair`, `/api/auth/*`,
+/// `/api/push/*`, `/api/fs`, `/api/user`, `/api/health`) are
+/// `hypha-http`'s — [`compose`] merges the two under one listener.
+fn session_app(state: AppState) -> Router {
     // The held-session watch ticker — re-probes lock state for sessions
     // last seen read-only while the feed has listeners.
     state
@@ -352,33 +534,12 @@ pub fn app(state: AppState) -> Router {
         .spawn_ticker(Arc::clone(&state.plane), state.feed.clone());
 
     Router::new()
-        // Pre-auth routes — the auth gate itself passes these through
-        // (health for probes; pair/login are the credential bootstrap).
-        .route("/api/health", any(routes::misc::health))
-        .route("/api/pair", any(auth::pair))
-        .route("/api/auth/login", any(auth::handle))
-        .route("/api/auth/logout", any(auth::handle))
-        .route("/api/user", any(routes::misc::user))
-        .route("/api/node", any(routes::misc::node))
-        .route("/api/fs", any(routes::misc::fs))
         .route("/api/agents", any(routes::agents::agents))
-        .route("/api/events", any(routes::events::events))
         .route("/api/client/keypair", any(routes::client::keypair))
         .route("/api/config", any(routes::config::get))
         .route("/api/config/{key}", any(routes::config::set))
         .route("/api/projects", any(routes::projects::collection))
         .route("/api/projects/{id}", any(routes::projects::item))
-        .route("/api/entities", any(routes::entities::collection))
-        .route(
-            "/api/entities/snapshot",
-            any(routes::entities::snapshot_collection),
-        )
-        .route("/api/entities/{id}", any(routes::entities::item))
-        .route("/api/entities/{id}/ops", any(routes::entities::ops))
-        .route(
-            "/api/entities/{id}/snapshot",
-            any(routes::entities::snapshot_item),
-        )
         .route("/api/sessions", any(routes::sessions::collection))
         .route(
             "/api/sessions/import",
@@ -411,8 +572,6 @@ pub fn app(state: AppState) -> Router {
         .route("/api/sessions/{id}/restore", any(routes::sessions::restore))
         .route("/api/sessions/{id}/rewind", any(routes::sessions::rewind))
         .route("/api/sessions/{id}/convert", any(routes::sessions::convert))
-        .route("/api/push/vapid", any(routes::push::vapid))
-        .route("/api/push/subscribe", any(routes::push::subscribe))
         .fallback(async || routes::not_found())
         // Every body read goes through `read_json_body` with an
         // explicit per-route cap (SMALL/PROMPT/MAX_JSON_BODY); axum's
@@ -439,10 +598,13 @@ pub fn app(state: AppState) -> Router {
 pub async fn serve(env: &Env, state: AppState) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind((env.host.as_str(), env.port)).await?;
     tracing::info!("peregrin-server listening on {}:{}", env.host, env.port);
-    // `ConnectInfo` feeds the /api/pair limiter its client-IP key.
+    // One listener, one router: session routes + the hypha substrate
+    // over the env-mapped state. `ConnectInfo` feeds the /api/pair
+    // limiter its client-IP key.
+    let hypha = hypha_state(env, &state);
     let serving = axum_serve(
         listener,
-        app(state).into_make_service_with_connect_info::<std::net::SocketAddr>(),
+        compose(state, hypha).into_make_service_with_connect_info::<std::net::SocketAddr>(),
     );
     #[cfg(not(coverage))]
     {

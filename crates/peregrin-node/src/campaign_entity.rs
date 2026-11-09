@@ -13,9 +13,9 @@ use std::sync::{Arc, RwLock};
 
 use axum::http::StatusCode;
 use axum::response::{IntoResponse, Response};
+use hypha_http::{EntityContext, EntityPlane};
 use peregrin_core::{Campaign, Event};
 use peregrin_engine::{Injector, PendingTimer, RunOptions, Runner};
-use peregrin_http::entity_plane::{EntityContext, EntityPlane};
 use peregrin_loader::Loader;
 use peregrin_loader_yaml::YamlLoader;
 use serde::{Deserialize, Serialize};

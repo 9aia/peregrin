@@ -7,7 +7,7 @@ use std::time::Duration;
 use axum::Router;
 use axum::body::{Body, to_bytes};
 use axum::http::{Method, Request, StatusCode};
-use peregrin_http::entity_plane::EntityPlane;
+use hypha_http::EntityPlane;
 use peregrin_http::{AppState, app};
 use peregrin_node::CampaignEntityPlane;
 use peregrin_session::LocalPlane;

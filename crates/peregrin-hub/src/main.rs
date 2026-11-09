@@ -1,10 +1,14 @@
 //! peregrin-hub — the node-API gateway binary. Multi-node sync engine
-//! plus HTTP/SSE bridges to the node daemon (`PEREGRIN_NODE_URL`).
+//! plus HTTP/SSE bridges to the node daemon (`PEREGRIN_NODE_URL`). The
+//! gateway machinery is `hypha-hub`; this binary keeps the
+//! `PEREGRIN_*` env contract and the sepia-session/campaign kind
+//! policies.
 //!
 //! Env: `PEREGRIN_HUB_HOST`/`PEREGRIN_HUB_PORT` (or `PEREGRIN_PORT`),
 //! `PEREGRIN_HUB_TOKEN` (required on non-loopback binds),
 //! `PEREGRIN_NODE_URL`, `PEREGRIN_NODE_TOKEN`, `PEREGRIN_NODES`
-//! (`id=url[@token];…` for multi-node).
+//! (`id=url[@token];…` for multi-node), `PEREGRIN_HOME` (hub state
+//! under `<home>/hub/`), `PEREGRIN_CREDENTIAL_STORE`.
 
 use peregrin_hub::{HubConfig, hub_state, router};
 

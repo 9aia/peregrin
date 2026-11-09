@@ -230,4 +230,46 @@ impl Env {
             home,
         })
     }
+
+    /// The `PEREGRIN_*` → `HYPHA_*` mapping — builds the substrate
+    /// [`hypha_http::Env`] explicitly so `peregrin serve` never asks
+    /// the operator for `HYPHA_*` variables. Every field lands where
+    /// the old in-process wiring read it:
+    ///
+    /// | `PEREGRIN_*`            | hypha env field    |
+    /// |-------------------------|--------------------|
+    /// | `PEREGRIN_HOST`         | `host`             |
+    /// | `PEREGRIN_PORT`         | `port`             |
+    /// | `PEREGRIN_TOKEN`        | `token`            |
+    /// | `PEREGRIN_HOME`         | `home`             |
+    /// | `PEREGRIN_NODE`         | `node_path`        |
+    /// | `PEREGRIN_NAME`         | `node_name`        |
+    /// | `PEREGRIN_ORIGINS`      | `origins`          |
+    /// | `PEREGRIN_SSE_KEEPALIVE_MS` | `sse_keep_alive` |
+    /// | `PEREGRIN_PAIR_LIMIT_*` | `pair_limit_*`     |
+    /// | `<home>/pair-code`      | `pair_code_path`   |
+    /// | `<home>/tokens.json`    | `tokens_path`      |
+    /// | `<home>/push.json`      | `push_path`        |
+    ///
+    /// Note the push/pairing *files* are shared with `AppState`'s own
+    /// backends at composition — `compose` installs the session
+    /// state's instances so there is exactly one of each.
+    #[must_use]
+    pub fn to_hypha(&self) -> hypha_http::Env {
+        hypha_http::Env {
+            port: self.port,
+            host: self.host.clone(),
+            token: self.token.clone(),
+            home: self.home.clone(),
+            node_path: self.node_path.clone(),
+            node_name: self.node_name.clone(),
+            origins: self.origins.clone(),
+            sse_keep_alive: self.sse_keep_alive,
+            pair_limit_per_min: self.pair_limit_per_min,
+            pair_limit_per_day: self.pair_limit_per_day,
+            pair_code_path: self.pair_code_path.clone(),
+            tokens_path: self.tokens_path.clone(),
+            push_path: self.home.join("push.json"),
+        }
+    }
 }

@@ -1,18 +1,17 @@
-//! Bearer auth — port of `app.ts`'s `isAuthorized`/`unauthorizedResponse`
-//! plus `routes/auth.ts` (login/logout cookie exchange) and
-//! `routes/pair.ts` (`POST /api/pair` code redemption).
-
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+//! Bearer auth — port of `app.ts`'s `isAuthorized`/`unauthorizedResponse`.
+//! The credential bootstrap routes (`POST /api/pair`, the
+//! `/api/auth/login`/`logout` cookie exchange) are `hypha-http`'s —
+//! this gate only *reads* the same `sepia_token` cookie, bearer
+//! header, and `?access_token` query credential they mint.
 
 use axum::body::Body;
-use axum::extract::{ConnectInfo, Request, State};
+use axum::extract::{Request, State};
 use axum::http::{HeaderValue, Method, StatusCode, header};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
 use sha2::{Digest, Sha256};
 
 use crate::AppState;
-use crate::routes::{SMALL_JSON_BODY, json_response, read_json_body};
 
 /// Cookie name — value is the credential itself (env token or paired).
 pub const AUTH_COOKIE: &str = "sepia_token";
@@ -158,143 +157,6 @@ pub async fn auth_gate(State(state): State<AppState>, req: Request<Body>, next: 
         return unauthorized();
     }
     next.run(req).await
-}
-
-/// The limiter key — the peer socket IP (`ConnectInfo`), never
-/// `X-Forwarded-For`: nothing here runs behind a trusted proxy, so a
-/// spoofable header must not reset an attacker's budget. In-process
-/// callers (oneshot tests, embedded routers) share the 0.0.0.0 bucket.
-fn client_ip(req: &Request) -> IpAddr {
-    req.extensions()
-        .get::<ConnectInfo<SocketAddr>>()
-        .map_or(IpAddr::V4(Ipv4Addr::UNSPECIFIED), |c| c.0.ip())
-}
-
-fn too_many_requests(retry_after: std::time::Duration) -> Response {
-    let mut res = json_response(
-        serde_json::json!({ "error": "Too many pairing attempts" }),
-        StatusCode::TOO_MANY_REQUESTS,
-    );
-    // Whole seconds, ceil — never a zero/negative Retry-After.
-    let secs = retry_after.as_secs().saturating_add(1);
-    if let Ok(v) = HeaderValue::from_str(&secs.to_string()) {
-        res.headers_mut().insert(header::RETRY_AFTER, v);
-    }
-    res
-}
-
-/// `POST /api/pair` — pairing (docs/protocol.md): deliberately
-/// unauthenticated — the code, not a bearer token, authorizes it.
-/// Per-IP throttled: every POST counts, malformed bodies included.
-pub async fn pair(State(state): State<AppState>, req: Request<Body>) -> Response {
-    if req.method() != Method::POST {
-        return crate::routes::not_found();
-    }
-    let Some(pairing) = &state.pairing else {
-        return json_response(
-            serde_json::json!({ "error": "Pairing is not configured on this server" }),
-            StatusCode::NOT_IMPLEMENTED,
-        );
-    };
-    if let Err(retry_after) = state.pair_limit.check(client_ip(&req)) {
-        return too_many_requests(retry_after);
-    }
-    let body = match read_json_body(req, SMALL_JSON_BODY).await {
-        Ok(b) => b,
-        Err(res) => return *res,
-    };
-    let code = body
-        .as_ref()
-        .and_then(|b| b.as_object())
-        .and_then(|o| o.get("code"))
-        .and_then(|c| c.as_str())
-        .filter(|c| !c.trim().is_empty());
-    let Some(code) = code else {
-        return json_response(
-            serde_json::json!({ "error": "code is required" }),
-            StatusCode::BAD_REQUEST,
-        );
-    };
-    // One 404 for unknown/expired/used — don't leak which case it was.
-    match pairing.redeem(code) {
-        Some(token) => json_response(serde_json::json!({ "token": token }), StatusCode::OK),
-        None => json_response(
-            serde_json::json!({ "error": "Invalid or expired pairing code" }),
-            StatusCode::NOT_FOUND,
-        ),
-    }
-}
-
-/// Whether the request arrived over TLS — Bun knows the socket scheme;
-/// here the absolute-form URI scheme or `X-Forwarded-Proto` stands in.
-fn request_is_https(req: &Request) -> bool {
-    req.uri().scheme_str() == Some("https")
-        || req
-            .headers()
-            .get("x-forwarded-proto")
-            .and_then(|v| v.to_str().ok())
-            == Some("https")
-}
-
-/// `POST /api/auth/login` — exchange a presented token for an httpOnly
-/// cookie; `POST /api/auth/logout` — expire it.
-pub async fn handle(State(state): State<AppState>, req: Request<Body>) -> Response {
-    let path = req.uri().path().to_string();
-    let https = request_is_https(&req);
-    if req.method() == Method::POST && path == "/api/auth/login" {
-        let body = match read_json_body(req, SMALL_JSON_BODY).await {
-            Ok(body) => body,
-            Err(res) => return *res,
-        };
-        let token = body
-            .as_ref()
-            .and_then(|b| b.as_object())
-            .and_then(|o| o.get("token").and_then(|t| t.as_str()).map(str::to_string));
-        let Some(provided) = token.filter(|t| !t.trim().is_empty()) else {
-            return json_response(
-                serde_json::json!({ "error": "token is required" }),
-                StatusCode::BAD_REQUEST,
-            );
-        };
-        // No auth configured → the cookie grants nothing anyway; accept so
-        // the client's flow doesn't branch on deployment mode.
-        let ok = state.token.is_none() || accepts_credential(&state, &provided);
-        if !ok {
-            return json_response(
-                serde_json::json!({ "error": "Invalid token" }),
-                StatusCode::UNAUTHORIZED,
-            );
-        }
-        let secure = if https { "; Secure" } else { "" };
-        let res = json_response(serde_json::json!({ "ok": true }), StatusCode::OK);
-        return with_set_cookie(res, &provided, secure);
-    }
-    if req.method() == Method::POST && path == "/api/auth/logout" {
-        let res = json_response(serde_json::json!({ "ok": true }), StatusCode::OK);
-        return with_expired_cookie(res);
-    }
-    crate::routes::not_found()
-}
-
-fn with_set_cookie(res: Response, token: &str, secure: &str) -> Response {
-    let mut res = res;
-    let value = format!(
-        "{AUTH_COOKIE}={}; HttpOnly; SameSite=Strict; Path=/; Max-Age=31536000{secure}",
-        form_urlencoded::byte_serialize(token.as_bytes()).collect::<String>()
-    );
-    if let Ok(v) = HeaderValue::from_str(&value) {
-        res.headers_mut().insert(header::SET_COOKIE, v);
-    }
-    res
-}
-
-fn with_expired_cookie(res: Response) -> Response {
-    let mut res = res;
-    res.headers_mut().insert(
-        header::SET_COOKIE,
-        HeaderValue::from_static("sepia_token=; HttpOnly; SameSite=Strict; Path=/; Max-Age=0"),
-    );
-    res
 }
 
 #[cfg(test)]

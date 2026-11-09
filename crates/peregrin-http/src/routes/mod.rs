@@ -7,9 +7,6 @@
 pub mod agents;
 pub mod client;
 pub mod config;
-pub mod entities;
-pub mod events;
-pub mod misc;
 pub mod projects;
 pub mod sessions;
 
@@ -341,8 +338,6 @@ impl SummaryWire {
         }
     }
 }
-
-pub mod push;
 
 #[cfg(test)]
 mod cov_tests {

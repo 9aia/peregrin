@@ -134,7 +134,13 @@ fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
 async fn run(env: &Env, state: AppState, plane: Arc<dyn SessionPlane>) -> std::io::Result<()> {
     let listener = tokio::net::TcpListener::bind((env.host.as_str(), env.port)).await?;
     tracing::info!("peregrin-node listening on {}:{}", env.host, env.port);
-    let app = peregrin_http::app(state);
+    // One listener, one router: the session surface plus the hypha
+    // substrate (`/api/entities*`, `/api/events`, `/api/node`,
+    // `/api/pair`, `/api/auth/*`, `/api/push/*`, `/api/fs`,
+    // `/api/user`, `/api/health`) over the `PEREGRIN_*`→`HYPHA_*`
+    // env mapping — operators never set a `HYPHA_*` var.
+    let hypha = peregrin_http::hypha_state(env, &state);
+    let app = peregrin_http::compose(state, hypha);
     // `ConnectInfo` feeds the /api/pair limiter its client-IP key.
     axum::serve(
         listener,

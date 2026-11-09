@@ -1,6 +1,6 @@
 [package]
 name = "peregrin-hub"
-description = "Node-API gateway — multi-node sync engine, HTTP/SSE bridges, push, auth"
+description = "Node-API gateway — multi-node sync engine, HTTP/SSE bridges, push, auth (hypha-hub backend + peregrin kind policies)"
 version = "0.0.0"
 edition.workspace = true
 rust-version.workspace = true
@@ -8,33 +8,22 @@ repository.workspace = true
 
 [lints]
 workspace = true
+
+# The gateway machinery (sync engine, projection, outbox, entity API,
+# credentials, push, HTTP/SSE bridges) lives in `hypha-hub` (PL-005
+# P4b). This crate keeps the Peregrin-specific half: the
+# `PEREGRIN_*` env contract mapped onto `hypha_hub::HubConfig`, the
+# sepia-session/campaign `KindPolicy` registry, and the
+# `peregrin-hub` binary.
 [dependencies]
-peregrin-node-api.workspace = true
+hypha-hub.workspace = true
+hypha-http.workspace = true
+hypha-sync.workspace = true
+hypha-telemetry.workspace = true
 axum.workspace = true
-tower.workspace = true
-tower-http.workspace = true
-serde.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-ureq.workspace = true
-futures.workspace = true
-form_urlencoded = "1"
-async-trait.workspace = true
-peregrin-control.workspace = true
-peregrin-sync.workspace = true
-peregrin-outbox.workspace = true
-peregrin-push.workspace = true
-hypha-telemetry.workspace = true
-keyring.workspace = true
-uuid = { workspace = true, features = ["v4"] }
+
 [dev-dependencies]
-tokio = { workspace = true, features = ["rt"] }
-tower = { workspace = true, features = ["util"] }
-sepia-testkit.workspace = true
-tracing-subscriber = { version = "0.3", features = ["fmt"] }
-sepia-driver-devin.workspace = true
-sepia-core.workspace = true
-peregrin-http = { workspace = true }
-ureq = { workspace = true }
-tempfile = { workspace = true }
+tempfile.workspace = true

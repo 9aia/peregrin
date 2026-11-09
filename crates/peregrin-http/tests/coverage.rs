@@ -461,7 +461,9 @@ async fn feed_and_push_wired() {
         sessions: Mutex::new(HashMap::new()),
     });
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
-    let push = peregrin_push::PushStore::open(MetaStore::open(&dir.path().join("p.json")));
+    let push = hypha_push::PushStore::open(peregrin_http::push::MetaPushBackend(MetaStore::open(
+        &dir.path().join("p.json"),
+    )));
     let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta)
         .with_push(Some(Arc::new(push)))
@@ -1708,8 +1710,10 @@ fn seeded_with_push() -> (Router, tempfile::TempDir) {
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
     let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta)
-        .with_push(Some(std::sync::Arc::new(peregrin_push::PushStore::open(
-            sepia_meta::MetaStore::open(&dir.path().join("push.json")),
+        .with_push(Some(std::sync::Arc::new(hypha_push::PushStore::open(
+            peregrin_http::push::MetaPushBackend(sepia_meta::MetaStore::open(
+                &dir.path().join("push.json"),
+            )),
         ))));
     (app(state), dir)
 }
@@ -2090,7 +2094,9 @@ async fn meta_less_and_body_error_arms() {
         ControlPlaneOptions::default(),
     );
     let state = AppState::new(Arc::new(LocalPlane(plane, None))).with_push(Some(Arc::new(
-        peregrin_push::PushStore::open(MetaStore::open(&dir.path().join("p.json"))),
+        hypha_push::PushStore::open(peregrin_http::push::MetaPushBackend(MetaStore::open(
+            &dir.path().join("p.json"),
+        ))),
     )));
     let app = peregrin_http::app(state);
     call_str(
