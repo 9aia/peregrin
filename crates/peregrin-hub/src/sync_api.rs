@@ -4,11 +4,13 @@
 //! node live, and ops go through `SyncEngine::submit_op` so they queue
 //! in the durable outbox when the node is down.
 //!
-//! INTERIM: today's nodes still speak the session plane — op kinds
-//! (`sepia.*`), creates (`kind="sepia-session"`), and snapshots map
-//! onto `/api/sessions*` routes inside [`peregrin_sync::client`]. When
-//! the integration-backed `/api/entities` surface lands (PL-004 phase
-//! 4), the shim dissolves and nothing here names a session.
+//! Kind-specific behavior — op gating (`sepia.*` vs `*.meta*`),
+//! create validation (`"session"` alias), outbox op classification,
+//! external lock holders (`indexDoc.lockHolderPid`), and push rules —
+//! resolves through the [`KindPolicies`] registry
+//! ([`crate::kind_policies`]); this file names no kind itself. When
+//! the integration-backed `/api/entities` surface lands (PL-004
+//! phase 4), the registrations move with their integrations.
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -16,6 +18,7 @@ use std::sync::{Arc, RwLock};
 
 use peregrin_control::{Actor, Arbitration, Decision, LockRegistry, NodeId};
 use peregrin_sync::client::NodeClient;
+use peregrin_sync::kind::KindPolicies;
 use peregrin_sync::{
     IndexedEntity, NodeRef, NodeTarget, NodeWrite, OpKind, OutboxEntry, OutboxStatus, SyncError,
     SyncHandle,
@@ -178,15 +181,6 @@ struct Registry {
 /// hold" from "another actor's".
 const HUB_ACTOR: &str = "hub";
 
-/// Op namespaces that act on the live entity the lock protects — the
-/// registry gates them before they queue or post. `*.meta*` rides the
-/// index overlay and never contends.
-fn is_gated_op(op: &str) -> bool {
-    // `sepia.<verb>` writes contend; `entity.delete` kills the live
-    // entity outright — both gate. `sepia.meta*` is overlay-only.
-    op == "entity.delete" || op.starts_with("sepia.") && !op.starts_with("sepia.meta")
-}
-
 /// Lock-registry key — `(node, entity)`: entity ids are unique per
 /// node but collide across nodes, so the node scopes every grant.
 fn lock_key(node_id: &str, entity: &str) -> String {
@@ -196,22 +190,6 @@ fn lock_key(node_id: &str, entity: &str) -> String {
 fn hub_actor(node_id: &str) -> Actor {
     Actor {
         id: HUB_ACTOR.to_string(),
-        node: NodeId(node_id.to_string()),
-    }
-}
-
-/// The holder recorded for a `locked` report the hub never granted —
-/// pid-keyed from the index doc's `lockHolderPid` probe when it names
-/// one. INTERIM: reads `indexDoc.lockHolderPid`, a session-plane
-/// field — the entity wire's lock reporting contract arrives with the
-/// integration surface.
-fn external_actor(row: &IndexedEntity, node_id: &str) -> Actor {
-    let doc = row.raw.get("indexDoc").unwrap_or(&row.raw);
-    Actor {
-        id: doc
-            .get("lockHolderPid")
-            .and_then(Value::as_f64)
-            .map_or_else(|| "external".to_string(), |pid| format!("pid:{pid}")),
         node: NodeId(node_id.to_string()),
     }
 }
@@ -233,6 +211,10 @@ pub struct SyncEntityApi {
     /// First configured node — the canonical target for registry
     /// writes (config/push) that have no entity to route by.
     primary: Option<String>,
+    /// The entity-kind policy registry — op gating, create
+    /// validation, outbox classification, and external-actor
+    /// extraction all resolve through it.
+    policies: KindPolicies,
 }
 
 impl SyncEntityApi {
@@ -255,7 +237,16 @@ impl SyncEntityApi {
             locks: RwLock::new(LockRegistry::default()),
             arbitration: Arbitration::default(),
             creds,
+            policies: crate::kind_policies::default_kind_policies(),
         }
+    }
+
+    /// Override the kind-policy registry — tests and hosts fronting
+    /// different integrations.
+    #[must_use]
+    pub fn with_policies(mut self, policies: KindPolicies) -> Self {
+        self.policies = policies;
+        self
     }
 
     /// Override the arbitration policy — tests and future hub config.
@@ -287,14 +278,32 @@ impl SyncEntityApi {
     /// a reported `locked` registers an external holder the hub never
     /// granted (or refreshes a known one), an unlocked report drops
     /// any recorded hold. The book only ever trails the node's probe.
-    fn reconcile_locks(locks: &mut LockRegistry, key: &str, node_id: &str, row: &IndexedEntity) {
+    fn reconcile_locks(
+        locks: &mut LockRegistry,
+        key: &str,
+        node_id: &str,
+        row: &IndexedEntity,
+        policies: &KindPolicies,
+    ) {
         if row.locked {
-            match locks.holder(key) {
-                Some(held) => {
-                    let holder = held.holder.id.clone();
-                    locks.refresh(key, &holder);
-                }
-                None => locks.grant(key, external_actor(row, node_id)),
+            if let Some(held) = locks.holder(key) {
+                let holder = held.holder.id.clone();
+                locks.refresh(key, &holder);
+            } else {
+                // The kind's policy names the foreign holder when the
+                // index doc reports one; unreported reads as
+                // `"external"`.
+                let actor = policies
+                    .for_entity_kind(&row.kind)
+                    .and_then(|p| p.external_actor_id(row))
+                    .unwrap_or_else(|| "external".to_string());
+                locks.grant(
+                    key,
+                    Actor {
+                        id: actor,
+                        node: NodeId(node_id.to_string()),
+                    },
+                );
             }
         } else if let Some(holder) = locks.holder(key).map(|h| h.holder.id.clone()) {
             locks.release(key, &holder);
@@ -314,7 +323,7 @@ impl SyncEntityApi {
     ) -> (String, Decision) {
         let key = lock_key(node_id, entity);
         let mut locks = self.locks_mut();
-        Self::reconcile_locks(&mut locks, &key, node_id, row);
+        Self::reconcile_locks(&mut locks, &key, node_id, row, &self.policies);
         let decision = self
             .arbitration
             .attach(&locks, &key, &hub_actor(node_id), takeover);
@@ -416,7 +425,9 @@ impl SyncEntityApi {
             let (node_id, _node, row) = owner_row(&self.projection(), id, kind, &registry.nodes)?;
             (node_id, row)
         };
-        if is_gated_op(op) {
+        // `entity.delete` is substrate-gated; every other gated op is
+        // the owning kind policy's call.
+        if op == "entity.delete" || self.policies.for_op(op).is_some_and(|p| p.op_gated(op)) {
             self.ensure_writable(&node_id, id, &row)?;
         }
         self.engine
@@ -567,12 +578,14 @@ impl EntityApi for SyncEntityApi {
         init: &Value,
         node: Option<&str>,
     ) -> Result<CreateResultDto, String> {
-        // INTERIM: `sepia-session` creates map onto the session wire —
-        // `init` (the indexDoc) carries the create params the node
-        // understands. Other kinds have no registered integration yet.
-        if kind != "sepia-session" && kind != "session" {
+        // The kind's registered policy decides whether a create is
+        // served — aliases (`"session"`) resolve to the canonical
+        // kind, and the policy's `validate_create` hook vets the init
+        // doc before anything posts.
+        let Some((policy, _canonical)) = self.policies.for_create(kind) else {
             return Err(format!("entity kind {kind:?} not registered"));
-        }
+        };
+        policy.validate_create(init)?;
         let (_node_id, client) = self.scoped_client(node)?;
         let body = serde_json::json!({"kind": kind, "indexDoc": init});
         let res =
@@ -591,13 +604,14 @@ impl EntityApi for SyncEntityApi {
     }
 
     async fn submit_op(&self, id: &str, op: &EntityOp) -> Result<(), String> {
-        // Turn-shaped ops dead-letter on replay failure; meta-shaped
-        // ones retry (last-writer-wins is safe for overlay state).
-        let policy = if op.kind == "sepia.meta" || op.kind == "sepia.meta.patch" {
-            OpKind::Metadata
-        } else {
-            OpKind::Turn
-        };
+        // Turn-shaped ops dead-letter on replay failure; the owning
+        // kind policy classifies (meta-shaped ones retry —
+        // last-writer-wins is safe for overlay state). Unregistered
+        // ops are turns.
+        let policy = self
+            .policies
+            .for_op(&op.kind)
+            .map_or(OpKind::Turn, |p| p.op_kind(&op.kind));
         self.submit(id, None, &op.kind, policy, op.payload.clone())
             .await
     }
@@ -637,11 +651,15 @@ impl EntityApi for SyncEntityApi {
             .ok_or_else(|| "import returned no entity id".to_string())?;
         Ok(EntityDto {
             id: id.to_string(),
-            kind: res
-                .get("kind")
-                .and_then(Value::as_str)
-                .unwrap_or("sepia-session")
-                .to_string(),
+            kind: res.get("kind").and_then(Value::as_str).map_or_else(
+                || {
+                    self.policies
+                        .default_entity_kind()
+                        .unwrap_or("entity")
+                        .to_string()
+                },
+                str::to_string,
+            ),
             node: Some(node_id),
             index_doc: res,
             ..EntityDto::default()
@@ -862,6 +880,10 @@ impl EntityApi for SyncEntityApi {
         .map(|_| ())
         .map_err(err_string)
     }
+
+    fn default_entity_kind(&self) -> Option<&'static str> {
+        self.policies.default_entity_kind()
+    }
 }
 
 /// `e.to_string()` as a fn item — one body shared by every `map_err`
@@ -962,12 +984,37 @@ mod cov_tests {
     }
 
     #[test]
-    fn gated_ops_cover_the_live_writes() {
-        assert!(is_gated_op("sepia.prompt"));
-        assert!(is_gated_op("sepia.permission"));
-        assert!(is_gated_op("entity.delete"));
-        assert!(!is_gated_op("sepia.meta"));
-        assert!(!is_gated_op("sepia.meta.patch"));
+    fn gated_ops_resolve_through_the_kind_policies() {
+        let policies = crate::kind_policies::default_kind_policies();
+        let gated =
+            |op: &str| op == "entity.delete" || policies.for_op(op).is_some_and(|p| p.op_gated(op));
+        assert!(gated("sepia.prompt"));
+        assert!(gated("sepia.permission"));
+        assert!(gated("entity.delete"));
+        assert!(!gated("sepia.meta"));
+        assert!(!gated("sepia.meta.patch"));
+        // Unregistered kinds/ops are never gated.
+        assert!(!gated("campaign.signal"));
+        assert!(!gated("bogus.op"));
+    }
+
+    #[test]
+    fn creates_resolve_through_kind_policies() {
+        let policies = crate::kind_policies::default_kind_policies();
+        assert_eq!(
+            policies.for_create("sepia-session").map(|(_, k)| k),
+            Some("sepia-session")
+        );
+        // The `"session"` alias canonicalizes to `sepia-session`.
+        assert_eq!(
+            policies.for_create("session").map(|(_, k)| k),
+            Some("sepia-session")
+        );
+        assert_eq!(
+            policies.for_create("campaign").map(|(_, k)| k),
+            Some("campaign")
+        );
+        assert!(policies.for_create("k8s-pod").is_none());
     }
 
     fn api_for(

@@ -67,10 +67,17 @@ pub async fn collection(
                 Ok(b) => b,
                 Err(res) => return *res,
             };
-            let kind = body
-                .get("kind")
-                .and_then(Value::as_str)
-                .unwrap_or("sepia-session");
+            // Explicit `kind` wins; else the api's registered default
+            // (first kind policy); a kind-less create on a backend
+            // with no default is a client error.
+            let kind = match body.get("kind").and_then(Value::as_str) {
+                Some(k) => k.to_string(),
+                None => match state.node.default_entity_kind() {
+                    Some(k) => k.to_string(),
+                    None => return bad_request("entity kind is required"),
+                },
+            };
+            let kind = kind.as_str();
             let init = body
                 .get("indexDoc")
                 .cloned()

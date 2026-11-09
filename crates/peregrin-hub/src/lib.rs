@@ -17,6 +17,7 @@
 pub mod auth;
 pub mod credentials;
 pub mod entity_routes;
+pub mod kind_policies;
 pub mod proxy;
 pub mod push_routes;
 pub mod sync_api;
@@ -337,17 +338,26 @@ pub fn hub_state_from(
             None => peregrin_sync::engine::NodeTarget::new(node),
         }
     });
-    let push = Arc::new(peregrin_push::PushStore::open(sepia_meta::MetaStore::open(
-        &home.join("push.json"),
-    )));
+    let push = Arc::new(peregrin_push::PushStore::open(
+        peregrin_push::JsonDocStore::open(&home.join("push.json")),
+    ));
+    // One registry, three consumers: the sync engine (diffs, op
+    // params), the feed hook (push rules), and the entity API (gating,
+    // creates, actors).
+    let policies = kind_policies::default_kind_policies();
     let options = peregrin_sync::engine::SyncOptions {
-        on_event: Some(feed_hook(projection.clone(), Arc::clone(&push))),
+        on_event: Some(feed_hook(
+            projection.clone(),
+            Arc::clone(&push),
+            policies.clone(),
+        )),
+        policies: policies.clone(),
         ..peregrin_sync::engine::SyncOptions::default()
     };
     let engine = peregrin_sync::SyncEngine::spawn(projection, outbox, targets, options);
     // `unwrap_or_else` above guarantees at least the single-node row.
     let upstream = nodes.first().cloned().unwrap_or_default();
-    let api = Arc::new(sync_api::SyncEntityApi::new(engine, nodes, creds));
+    let api = Arc::new(sync_api::SyncEntityApi::new(engine, nodes, creds).with_policies(policies));
     let mut state = HubState::new(
         Arc::clone(&api) as Arc<dyn EntityApi>,
         upstream.url.as_str(),
@@ -360,14 +370,18 @@ pub fn hub_state_from(
     Ok(state)
 }
 
-/// The hub's push-notification feed hook — entity diffs carrying
-/// `runFinished`/`permissionRequested` patch flags become Web Push
-/// sends. Extracted so tests can drive the body directly (the live
-/// hook only fires on real node feeds).
+/// The hub's push-notification feed hook — a diff event a kind
+/// policy claims produces that kind's [`peregrin_sync::Notice`]s,
+/// delivered as Web Push. Which events notify and what they say is
+/// the policy's call ([`kind_policies::SepiaSessionPolicy`] owns the
+/// session rules); this body is the generic dispatch. Extracted so
+/// tests can drive it directly (the live hook only fires on real
+/// node feeds).
 #[doc(hidden)]
 pub fn feed_hook(
     projection: peregrin_sync::ProjectionStore,
     push: Arc<peregrin_push::PushStore>,
+    policies: peregrin_sync::KindPolicies,
 ) -> peregrin_sync::engine::FeedHook {
     Arc::new(
         move |node_id: &str, event: &peregrin_sync::client::FeedEvent| {
@@ -377,38 +391,16 @@ pub fn feed_hook(
             else {
                 return;
             };
-            if kind != "session" {
+            let Some(policy) = policies.for_diff_event(kind) else {
                 return;
-            }
-            // INTERIM: push rules read `indexDoc.title` — a
-            // `sepia-session` field. Entity-level notify rules are
-            // the integration's job (PL-004 phase 4).
-            let title = projection.entity(node_id, id).ok().flatten().map_or_else(
-                || id.clone(),
-                |r| {
-                    let doc = r.raw.get("indexDoc").unwrap_or(&r.raw);
-                    doc.get("title")
-                        .and_then(serde_json::Value::as_str)
-                        .unwrap_or(id)
-                        .to_string()
-                },
-            );
-            let url = format!("/?session={id}");
-            if patch.get("runFinished") == Some(&serde_json::Value::Bool(true)) {
-                push.send(
-                    peregrin_push::Kind::Done,
-                    "Session finished",
-                    &format!("{title} finished its run."),
-                    &url,
-                );
-            }
-            if patch.get("permissionRequested") == Some(&serde_json::Value::Bool(true)) {
-                push.send(
-                    peregrin_push::Kind::Permission,
-                    "Approval needed",
-                    &format!("{title} is waiting for you."),
-                    &url,
-                );
+            };
+            let row = projection.entity(node_id, id).ok().flatten();
+            for notice in policy.notices(kind, id, row.as_ref(), patch) {
+                let kind = match notice.kind {
+                    peregrin_sync::NoticeKind::Done => peregrin_push::Kind::Done,
+                    peregrin_sync::NoticeKind::Permission => peregrin_push::Kind::Permission,
+                };
+                push.send(kind, &notice.title, &notice.body, &notice.url);
             }
         },
     )

@@ -25,7 +25,6 @@ peregrin-control.workspace = true
 peregrin-sync.workspace = true
 peregrin-outbox.workspace = true
 peregrin-push.workspace = true
-sepia-meta.workspace = true
 peregrin-telemetry.workspace = true
 keyring.workspace = true
 uuid = { workspace = true, features = ["v4"] }

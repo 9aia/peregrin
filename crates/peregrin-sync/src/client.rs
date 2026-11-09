@@ -12,10 +12,13 @@
 //! this module shrinks to the generic contract.
 
 use std::io::{BufRead, BufReader};
+use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use serde_json::Value;
 use ureq::http::Response;
+
+use crate::kind::KindPolicies;
 use ureq::{Agent, Body, BodyReader, RequestBuilder};
 
 /// Per-request budgets. `sse_idle_timeout` doubles as the cancellation
@@ -90,6 +93,10 @@ pub struct NodeClient {
     base: String,
     token: Option<String>,
     config: ClientConfig,
+    /// Per-kind policy registry — entity-scoped calls (`?agent=`
+    /// params, stream paths, op arbitration) resolve through it.
+    /// Empty = fully generic behavior.
+    policies: KindPolicies,
 }
 
 /// Error bodies are only for diagnostics — never let them be huge.
@@ -130,23 +137,35 @@ impl NodeClient {
             base: base.to_string(),
             token,
             config,
+            policies: KindPolicies::new(),
         })
+    }
+
+    /// Attach the per-kind policy registry entity-scoped calls
+    /// resolve through.
+    #[must_use]
+    pub fn with_policies(mut self, policies: KindPolicies) -> Self {
+        self.policies = policies;
+        self
+    }
+
+    /// The entity-kind policy for `kind`, if `kind` is registered.
+    fn policy_for(&self, kind: Option<&str>) -> Option<Arc<dyn crate::kind::KindPolicy>> {
+        kind.and_then(|k| self.policies.for_entity_kind(k))
+    }
+
+    /// Kind-policy query params for an entity-scoped call. `scope` is
+    /// the caller's kind hint forwarded verbatim — policies own the
+    /// mapping (`sepia-session` → `?agent=…` interim).
+    fn scope_params(&self, kind: Option<&str>) -> Vec<(String, String)> {
+        self.policy_for(kind)
+            .map(|p| p.call_params(kind))
+            .unwrap_or_default()
     }
 
     fn auth<Any>(&self, req: RequestBuilder<Any>) -> RequestBuilder<Any> {
         match &self.token {
             Some(token) => req.header("authorization", format!("Bearer {token}")),
-            None => req,
-        }
-    }
-
-    fn query_opt<Any>(
-        req: RequestBuilder<Any>,
-        key: &str,
-        value: Option<&str>,
-    ) -> RequestBuilder<Any> {
-        match value {
-            Some(v) => req.query(key, v),
             None => req,
         }
     }
@@ -229,16 +248,18 @@ impl NodeClient {
         }
     }
 
-    /// `GET /api/entities/{id}` — one entity doc (`?agent` remains the
-    /// interim disambiguator on `sepia-session` entities).
+    /// `GET /api/entities/{id}` — one entity doc. Kind-registered
+    /// entities get their policy's scope params (`?agent=…` remains
+    /// the interim disambiguator on `sepia-session`).
     ///
     /// # Errors
     /// On transport failure, non-2xx, or a non-object body.
     pub fn get_entity(&self, id: &str, kind: Option<&str>) -> Result<Value, NodeError> {
-        let req = self.auth(self.agent.get(self.entity_url(id, "")));
-        let res = Self::query_opt(req, "agent", kind)
-            .call()
-            .map_err(NodeError::Transport)?;
+        let mut req = self.auth(self.agent.get(self.entity_url(id, "")));
+        for (k, v) in self.scope_params(kind) {
+            req = req.query(&k, &v);
+        }
+        let res = req.call().map_err(NodeError::Transport)?;
         Self::expect_json(res)
     }
 
@@ -256,13 +277,11 @@ impl NodeClient {
         payload: &Value,
     ) -> Result<Value, NodeError> {
         let body = serde_json::json!({"kind": op, "payload": payload});
-        let res = Self::query_opt(
-            self.auth(self.agent.post(self.entity_url(entity_id, "ops"))),
-            "agent",
-            kind,
-        )
-        .send_json(&body)
-        .map_err(NodeError::Transport)?;
+        let mut req = self.auth(self.agent.post(self.entity_url(entity_id, "ops")));
+        for (k, v) in self.scope_params(kind) {
+            req = req.query(&k, &v);
+        }
+        let res = req.send_json(&body).map_err(NodeError::Transport)?;
         Self::expect_json(res)
     }
 
@@ -314,24 +333,32 @@ impl NodeClient {
         self.open_stream(req)
     }
 
-    /// `GET /api/sessions/{id}/stream` — an entity's live event stream
-    /// (plus `lagged` markers). Same SSE reader as [`Self::events`].
-    /// INTERIM: the event plane stays session-shaped until entity
-    /// events exist node-side.
+    /// An entity's live event stream (plus `lagged` markers). The path
+    /// and scope params come from the kind's registered
+    /// [`crate::KindPolicy`] — `/api/sessions/{id}/stream?agent=…`
+    /// today; `/api/entities/{id}/events` once entity events exist
+    /// node-side. Same SSE reader as [`Self::events`].
     ///
     /// # Errors
-    /// On connect failure or a non-2xx status.
+    /// On connect failure, a non-2xx status, or a kind with no
+    /// registered stream policy.
     pub fn entity_stream(
         &self,
         id: &str,
         kind: Option<&str>,
     ) -> Result<EventStream<BodyReader<'static>>, NodeError> {
-        let req = self.auth(self.agent.get(format!(
-            "{}/api/sessions/{}/stream",
-            self.base,
-            encode_segment(id)
-        )));
-        let req = Self::query_opt(req, "agent", kind);
+        let kind = kind
+            .ok_or_else(|| NodeError::Unsupported("entity stream needs an entity kind".into()))?;
+        let policy = self.policies.for_entity_kind(kind).ok_or_else(|| {
+            NodeError::Unsupported(format!("no entity stream policy for kind {kind:?}"))
+        })?;
+        let path = policy
+            .stream_path(id)
+            .ok_or_else(|| NodeError::Unsupported(format!("kind {kind:?} has no entity stream")))?;
+        let mut req = self.auth(self.agent.get(self.url(&path)));
+        for (k, v) in policy.call_params(Some(kind)) {
+            req = req.query(&k, &v);
+        }
         self.open_stream(req)
     }
 
@@ -375,11 +402,14 @@ impl NodeClient {
 /// One parsed SSE frame off a node stream.
 #[derive(Clone, Debug, PartialEq)]
 pub enum FeedEvent {
-    /// `event: session|meta|project` — `{id, agent?, patch}` summary diff.
+    /// `event: <name>` — `{id, agent?, patch}` index diff. Any named
+    /// event carrying an `id` classifies as a diff; the kind policy
+    /// registry decides which names actually project.
     Diff {
-        /// Feed kind (`session`, `meta`, `project`).
+        /// Feed event name (`session`, `meta`, `project`, or a
+        /// registered kind's diff event).
         kind: String,
-        /// Session (or project) id the patch applies to.
+        /// Entity id the patch applies to.
         id: String,
         /// Agent hint on `session`/`meta` payloads.
         agent: Option<String>,
@@ -513,35 +543,35 @@ impl<R: std::io::Read> EventStream<R> {
     }
 }
 
-/// Frame → [`FeedEvent`]. `session`/`meta`/`project` frames carry the
-/// `{id, agent?, patch}` diff shape; unnamed/`message` frames are kept
-/// opaque — the substrate doesn't know entity-detail event types.
+/// Frame → [`FeedEvent`]. Any named event whose payload carries an
+/// `id` reads as an index diff — which names project is the
+/// [`crate::KindPolicies`] registry's call, not the transport's.
+/// `heartbeat`/`lagged` keep their reserved meanings; unnamed frames
+/// are kept opaque — the substrate doesn't know entity-detail event
+/// types.
 fn classify(event: &str, data: &str) -> FeedEvent {
     let parsed: Value = serde_json::from_str(data).unwrap_or(Value::Null);
     match event {
         "heartbeat" => FeedEvent::Heartbeat,
         "lagged" => FeedEvent::Lagged,
-        kind @ ("session" | "meta" | "project") => {
-            let id = parsed.get("id").and_then(Value::as_str);
-            match id {
-                Some(id) => FeedEvent::Diff {
-                    kind: kind.to_string(),
-                    id: id.to_string(),
-                    agent: parsed
-                        .get("agent")
-                        .and_then(Value::as_str)
-                        .map(str::to_string),
-                    patch: parsed.get("patch").cloned().unwrap_or(Value::Null),
-                },
-                None => FeedEvent::Other {
-                    event: kind.to_string(),
-                    data: parsed,
-                },
-            }
-        }
-        _ => FeedEvent::Other {
-            event: event.to_string(),
+        "" => FeedEvent::Other {
+            event: String::new(),
             data: parsed,
+        },
+        kind => match parsed.get("id").and_then(Value::as_str) {
+            Some(id) => FeedEvent::Diff {
+                kind: kind.to_string(),
+                id: id.to_string(),
+                agent: parsed
+                    .get("agent")
+                    .and_then(Value::as_str)
+                    .map(str::to_string),
+                patch: parsed.get("patch").cloned().unwrap_or(Value::Null),
+            },
+            None => FeedEvent::Other {
+                event: kind.to_string(),
+                data: parsed,
+            },
         },
     }
 }

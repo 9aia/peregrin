@@ -9,7 +9,6 @@ repository.workspace = true
 [lints]
 workspace = true
 [dependencies]
-sepia-core.workspace = true
 peregrin-outbox.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -22,6 +21,7 @@ rusqlite.workspace = true
 time.workspace = true
 ureq.workspace = true
 [dev-dependencies]
+sepia-core.workspace = true
 peregrin-http.workspace = true
 peregrin-session.workspace = true
 sepia-session.workspace = true

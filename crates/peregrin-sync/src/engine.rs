@@ -21,6 +21,7 @@ use tokio::task::JoinSet;
 use tokio_util::sync::CancellationToken;
 
 use crate::client::{ClientConfig, FeedEvent, NodeClient, NodeError};
+use crate::kind::{DiffTombstone, KindPolicies};
 use crate::{NodeRef, NodeStatus, NodeWrite, PatchStatus, ProjectionStore, SyncError};
 
 /// Sink for every feed frame the engine applies — the hub's push
@@ -50,6 +51,10 @@ pub struct SyncOptions {
     pub feed_channel: usize,
     /// Optional per-event hook (node id + frame). Inert `None`.
     pub on_event: Option<FeedHook>,
+    /// Per-kind policy registry — diff-event projection, tombstone
+    /// semantics, op arbitration, and entity-scoped call params
+    /// resolve through it. Empty = fully generic behavior.
+    pub policies: KindPolicies,
 }
 
 impl Default for SyncOptions {
@@ -63,7 +68,17 @@ impl Default for SyncOptions {
             resync_interval: Duration::from_secs(300),
             feed_channel: 256,
             on_event: None,
+            policies: KindPolicies::new(),
         }
+    }
+}
+
+impl SyncOptions {
+    /// The node client for this engine — config plus the shared
+    /// kind-policy registry.
+    fn client(&self, url: &str, token: Option<String>) -> Result<NodeClient, NodeError> {
+        NodeClient::with_config(url, token, self.client_config())
+            .map(|c| c.with_policies(self.policies.clone()))
     }
 }
 
@@ -148,6 +163,9 @@ impl SyncEngine {
         nodes: impl IntoIterator<Item = NodeTarget>,
         options: SyncOptions,
     ) -> SyncHandle {
+        // One registry drives both the wire calls and the projection's
+        // column extraction — attach it here so callers can't drift.
+        let projection = projection.with_kind_policies(options.policies.clone());
         let cancel = CancellationToken::new();
         let (cmd_tx, cmd_rx) = mpsc::channel::<Cmd>(64);
         let shared = Arc::new(Shared {
@@ -278,11 +296,10 @@ impl SyncHandle {
             .is_some_and(|row| row.status == NodeStatus::Up);
 
         if up {
-            let client = NodeClient::with_config(
-                &target.node.url,
-                target.token.clone(),
-                self.client_config(),
-            )?;
+            let client = self
+                .shared
+                .options
+                .client(&target.node.url, target.token.clone())?;
             let entity_id = write.entity_id.clone();
             let kind = write.entity_kind.clone();
             let op = write.op.clone();
@@ -323,10 +340,6 @@ impl SyncHandle {
     pub async fn shutdown(self) {
         self.cancel.cancel();
         let _ = self.supervisor.await;
-    }
-
-    fn client_config(&self) -> ClientConfig {
-        self.shared.options.client_config()
     }
 }
 
@@ -426,11 +439,10 @@ enum CycleEnd {
 )]
 async fn node_loop(target: NodeTarget, shared: Arc<Shared>, cancel: CancellationToken) {
     let node_id = target.node.id.clone();
-    let client = match NodeClient::with_config(
-        &target.node.url,
-        target.token.clone(),
-        shared.options.client_config(),
-    ) {
+    let client = match shared
+        .options
+        .client(&target.node.url, target.token.clone())
+    {
         Ok(client) => client,
         Err(e) => {
             tracing::error!(node = %node_id, "bad node config: {e}");
@@ -723,18 +735,25 @@ async fn apply_event(
         hook(&node.id, &event);
     }
     match event {
-        // `session`/`meta` diffs apply to `sepia-session` entities on
-        // today's wire — other diff kinds are their own entity kind.
+        // Any diff a registered kind policy claims projects; unknown
+        // event names stay inert (entity-detail frames never reach
+        // here as `Diff` unless they carry an `id`).
         FeedEvent::Diff {
             kind, id, patch, ..
-        } if kind == "session" || kind == "meta" => {
+        } => {
+            let Some((_, tombstone)) = shared.options.policies.diff_policy(&kind) else {
+                return Ok(());
+            };
             if patch.get("deleted") == Some(&Value::Bool(true)) {
-                if kind == "session" {
-                    shared.projection.delete_entity(&node.id, &id)?;
-                    return Ok(());
+                match tombstone {
+                    DiffTombstone::DeleteEntity => {
+                        shared.projection.delete_entity(&node.id, &id)?;
+                        Ok(())
+                    }
+                    // Overlay-style tombstone — the row survives;
+                    // refetch reconciles it.
+                    DiffTombstone::Refetch => refetch(node, client, shared, &id).await,
                 }
-                // `meta` tombstone = overlay removed — entity survives.
-                refetch(node, client, shared, &id).await
             } else {
                 patch_or_refetch(node, client, shared, &id, &patch).await
             }
@@ -744,8 +763,8 @@ async fn apply_event(
             shared.projection.apply_listing(&node.id, &docs)?;
             Ok(())
         }
-        // `project` diffs don't change entity rows; heartbeats,
-        // entity-stream frames, and unknown frames are inert here.
+        // Heartbeats, entity-stream frames, and unknown frames are
+        // inert here.
         _ => Ok(()),
     }
 }
@@ -826,6 +845,7 @@ mod tests {
             resync_interval: Duration::from_secs(3600),
             feed_channel: 8,
             on_event: None,
+            policies: KindPolicies::new(),
         }
     }
 

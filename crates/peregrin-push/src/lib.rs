@@ -5,9 +5,13 @@
 //! `SessionEvent` frames — run finished/errored and permission requests.
 //! Expired subscriptions (404/410) prune themselves on send.
 
-use sepia_meta::MetaStore;
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex};
+
 use sepia_proto::SessionEvent;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use thiserror::Error;
 
 /// Notification categories a subscription opts into/out of.
@@ -57,21 +61,122 @@ pub enum PushError {
     Send(String),
 }
 
-fn read_subs(meta: &MetaStore) -> Vec<PushSubscription> {
-    meta.config()
+/// The config-document port [`PushStore`] persists through — VAPID
+/// keys and subscriptions are opaque JSON under two keys. Any
+/// key/value JSON document store qualifies; `sepia_meta::MetaStore`
+/// (the node's overlay) and [`JsonDocStore`] (the hub's standalone
+/// `push.json`) both implement it.
+pub trait PushBackend: Send + Sync {
+    /// The whole config document.
+    fn config(&self) -> BTreeMap<String, Value>;
+    /// Upsert one config key.
+    fn set_config(&self, key: &str, value: Value);
+}
+
+impl PushBackend for sepia_meta::MetaStore {
+    fn config(&self) -> BTreeMap<String, Value> {
+        sepia_meta::MetaStore::config(self)
+    }
+    fn set_config(&self, key: &str, value: Value) {
+        sepia_meta::MetaStore::set_config(self, key, value);
+    }
+}
+
+/// A standalone `{"config": {...}}` JSON document store — the hub's
+/// push persistence without a session overlay. Reads the sepia-meta
+/// `MetaFile` shape (`{sessions, projects, config}`) and preserves
+/// unknown top-level keys on write, so an existing `push.json`
+/// migrates untouched. Writes are tmp+rename atomic, same posture as
+/// `MetaStore`.
+#[derive(Clone)]
+pub struct JsonDocStore {
+    inner: Arc<Mutex<JsonDocInner>>,
+}
+
+struct JsonDocInner {
+    path: PathBuf,
+    /// The whole document — `config` is one key of it.
+    doc: serde_json::Map<String, Value>,
+}
+
+impl JsonDocStore {
+    /// Open (and create on first write) the document at `path`. A
+    /// corrupt or missing file degrades to empty.
+    pub fn open(path: &Path) -> Self {
+        let doc = std::fs::read_to_string(path)
+            .ok()
+            .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+            .and_then(|v| v.as_object().cloned())
+            .unwrap_or_default();
+        Self {
+            inner: Arc::new(Mutex::new(JsonDocInner {
+                path: path.to_path_buf(),
+                doc,
+            })),
+        }
+    }
+
+    fn flush(inner: &JsonDocInner) {
+        if let Some(dir) = inner.path.parent() {
+            let _ = std::fs::create_dir_all(dir);
+        }
+        let tmp = inner
+            .path
+            .with_extension(format!("tmp-{}", std::process::id()));
+        let json = serde_json::to_vec(&Value::Object(inner.doc.clone())).unwrap_or_default();
+        if std::fs::write(&tmp, &json).is_ok() {
+            let _ = std::fs::rename(&tmp, &inner.path);
+        }
+    }
+}
+
+impl PushBackend for JsonDocStore {
+    fn config(&self) -> BTreeMap<String, Value> {
+        let inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        inner
+            .doc
+            .get("config")
+            .and_then(Value::as_object)
+            .map(|c| c.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
+            .unwrap_or_default()
+    }
+
+    fn set_config(&self, key: &str, value: Value) {
+        let mut inner = self
+            .inner
+            .lock()
+            .unwrap_or_else(std::sync::PoisonError::into_inner);
+        if !inner.doc.contains_key("config") {
+            inner
+                .doc
+                .insert("config".to_string(), Value::Object(serde_json::Map::new()));
+        }
+        if let Some(config) = inner.doc.get_mut("config").and_then(Value::as_object_mut) {
+            config.insert(key.to_string(), value);
+        }
+        Self::flush(&inner);
+    }
+}
+
+fn read_subs(backend: &dyn PushBackend) -> Vec<PushSubscription> {
+    backend
+        .config()
         .get("pushSubscriptions")
         .and_then(|v| serde_json::from_value(v.clone()).ok())
         .unwrap_or_default()
 }
 
-fn write_subs(meta: &MetaStore, subs: &[PushSubscription]) {
-    meta.set_config("pushSubscriptions", serde_json::json!(subs));
+fn write_subs(backend: &dyn PushBackend, subs: &[PushSubscription]) {
+    backend.set_config("pushSubscriptions", serde_json::json!(subs));
 }
 
 /// The push service bound to a meta store — VAPID keys persist so
 /// restarts keep existing subscriptions valid.
 pub struct PushStore {
-    meta: MetaStore,
+    backend: Arc<dyn PushBackend>,
     keys: VapidKeys,
 }
 
@@ -80,17 +185,18 @@ impl PushStore {
     ///
     /// # Panics
     /// On VAPID key generation failure (only a broken RNG).
-    pub fn open(meta: MetaStore) -> Self {
-        let keys = meta
+    pub fn open<B: PushBackend + 'static>(backend: B) -> Self {
+        let backend: Arc<dyn PushBackend> = Arc::new(backend);
+        let keys = backend
             .config()
             .get("vapid")
             .and_then(|v| serde_json::from_value::<VapidKeys>(v.clone()).ok())
             .unwrap_or_else(|| {
                 let generated = generate_vapid();
-                meta.set_config("vapid", serde_json::json!(generated));
+                backend.set_config("vapid", serde_json::json!(generated));
                 generated
             });
-        Self { meta, keys }
+        Self { backend, keys }
     }
 
     /// The public key clients subscribe with.
@@ -99,21 +205,21 @@ impl PushStore {
     }
 
     pub fn list(&self) -> Vec<PushSubscription> {
-        read_subs(&self.meta)
+        read_subs(self.backend.as_ref())
     }
 
     /// Register or refresh a subscription (keyed on endpoint).
     pub fn upsert(&self, sub: PushSubscription) {
-        let mut subs = read_subs(&self.meta);
+        let mut subs = read_subs(self.backend.as_ref());
         subs.retain(|s| s.endpoint != sub.endpoint);
         subs.push(sub);
-        write_subs(&self.meta, &subs);
+        write_subs(self.backend.as_ref(), &subs);
     }
 
     pub fn remove(&self, endpoint: &str) {
-        let mut subs = read_subs(&self.meta);
+        let mut subs = read_subs(self.backend.as_ref());
         subs.retain(|s| s.endpoint != endpoint);
-        write_subs(&self.meta, &subs);
+        write_subs(self.backend.as_ref(), &subs);
     }
 
     /// Send to every subscribed endpoint that opted into `kind`. Returns
@@ -123,7 +229,7 @@ impl PushStore {
     /// Never fails on endpoint errors — only on build-time failures
     /// (bad VAPID keys surface at open, not here).
     pub fn send(&self, kind: Kind, title: &str, body: &str, url: &str) -> usize {
-        let targets: Vec<PushSubscription> = read_subs(&self.meta)
+        let targets: Vec<PushSubscription> = read_subs(self.backend.as_ref())
             .into_iter()
             .filter(|s| match kind {
                 Kind::Done => s.prefs.done,

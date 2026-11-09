@@ -2810,7 +2810,6 @@ dependencies = [
  "peregrin-telemetry",
  "sepia-core",
  "sepia-driver-devin",
- "sepia-meta",
  "sepia-testkit",
  "serde",
  "serde_json",

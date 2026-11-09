@@ -13,6 +13,7 @@
 
 pub mod client;
 pub mod engine;
+pub mod kind;
 
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -23,6 +24,7 @@ use serde_json::Value;
 
 pub use client::{ClientConfig, EventStream, FeedEvent, NodeClient, NodeError};
 pub use engine::{NodeTarget, SubmitOutcome, SyncEngine, SyncHandle, SyncOptions};
+pub use kind::{DiffTombstone, IndexColumns, KindPolicies, KindPolicy, Notice, NoticeKind};
 pub use peregrin_outbox::{OpKind, Outbox, OutboxEntry, Status as OutboxStatus};
 
 /// Failures of the sync layer — store, outbox, and node calls share one
@@ -166,9 +168,10 @@ fn now_rfc3339() -> String {
 
 /// Pull the column values out of one wire entity doc — unknown/missing
 /// fields degrade to defaults rather than failing the row. Docs that
-/// carry `indexDoc` (the interim session wrap) derive their fields from
-/// inside it — `busy` reads as `live`, mirroring the wire lift.
-fn columns_of(raw: &Value) -> IndexedEntity {
+/// carry `indexDoc` (the `{id,kind,indexDoc}` entity wrap) derive
+/// their fields from inside it; kind-specific aliases (`busy` →
+/// `live`) are the kind policy's [`KindPolicy::columns`] override.
+pub(crate) fn columns_of(raw: &Value) -> IndexedEntity {
     let doc = match raw.get("indexDoc") {
         Some(d) if d.is_object() => d,
         _ => raw,
@@ -190,13 +193,18 @@ fn columns_of(raw: &Value) -> IndexedEntity {
             .to_string(),
         updated_at: get("updatedAt").to_string(),
         locked: flag("locked"),
-        live: flag("live") || flag("busy"),
+        live: flag("live"),
         raw: raw.clone(),
     }
 }
 
-fn write_row(conn: &Connection, node_id: &str, doc: &Value) -> Result<(), SyncError> {
-    let mut row = columns_of(doc);
+fn write_row(
+    conn: &Connection,
+    node_id: &str,
+    doc: &Value,
+    policies: &crate::kind::KindPolicies,
+) -> Result<(), SyncError> {
+    let mut row = policies.columns_of(doc);
     row.node_id = node_id.to_string();
     conn.execute(
         "INSERT INTO entities
@@ -256,6 +264,9 @@ fn restrict_file_perms(_path: &Path) {}
 #[derive(Clone)]
 pub struct ProjectionStore {
     conn: Arc<Mutex<Connection>>,
+    /// Kind-policy registry — column extraction consults it so a
+    /// kind's wire doc can override the generic column rules.
+    policies: crate::kind::KindPolicies,
 }
 
 impl ProjectionStore {
@@ -275,7 +286,16 @@ impl ProjectionStore {
         conn.execute_batch(SCHEMA)?;
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),
+            policies: crate::kind::KindPolicies::new(),
         })
+    }
+
+    /// Attach a kind-policy registry — column extraction consults it
+    /// on every write.
+    #[must_use]
+    pub fn with_kind_policies(mut self, policies: crate::kind::KindPolicies) -> Self {
+        self.policies = policies;
+        self
     }
 
     /// In-memory projection for tests.
@@ -287,6 +307,7 @@ impl ProjectionStore {
         conn.execute_batch(SCHEMA)?;
         Ok(Self {
             conn: Arc::new(Mutex::new(conn)),
+            policies: crate::kind::KindPolicies::new(),
         })
     }
 
@@ -392,7 +413,7 @@ impl ProjectionStore {
             .conn
             .lock()
             .unwrap_or_else(std::sync::PoisonError::into_inner);
-        write_row(&conn, node_id, doc)
+        write_row(&conn, node_id, doc, &self.policies)
     }
 
     /// Replace a node's whole index: upsert every listed entity doc,
@@ -410,7 +431,7 @@ impl ProjectionStore {
         let mut keep = Vec::with_capacity(docs.len());
         let mut max_updated = String::new();
         for doc in docs {
-            write_row(&tx, node_id, doc)?;
+            write_row(&tx, node_id, doc, &self.policies)?;
             if let Some(id) = doc.get("id").and_then(Value::as_str) {
                 keep.push(id.to_string());
             }
@@ -483,7 +504,7 @@ impl ProjectionStore {
                 obj.insert(k.clone(), v.clone());
             }
         }
-        write_row(&conn, node_id, &raw)?;
+        write_row(&conn, node_id, &raw, &self.policies)?;
         Ok(PatchStatus::Applied)
     }
 

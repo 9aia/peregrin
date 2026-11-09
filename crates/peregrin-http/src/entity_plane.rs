@@ -218,7 +218,14 @@ mod tests {
         async fn delete(&self, _: &EntityContext, _: &str, _: Option<&str>) -> Response {
             unimplemented!()
         }
-        async fn op(&self, _: &EntityContext, _: &str, _: &str, _: Value, _: Option<&str>) -> Response {
+        async fn op(
+            &self,
+            _: &EntityContext,
+            _: &str,
+            _: &str,
+            _: Value,
+            _: Option<&str>,
+        ) -> Response {
             unimplemented!()
         }
         async fn export(&self, _: &EntityContext, _: &str, _: Option<&str>) -> Response {

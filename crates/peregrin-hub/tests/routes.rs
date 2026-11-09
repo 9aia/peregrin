@@ -20,7 +20,7 @@ fn state(node_url: &str) -> HubState {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("push.json");
     std::mem::forget(dir); // the store reads lazily — keep the dir alive
-    let push = peregrin_push::PushStore::open(sepia_meta::MetaStore::open(&path));
+    let push = peregrin_push::PushStore::open(peregrin_push::JsonDocStore::open(&path));
     let mut s = HubState::new(
         FakeEntityApi::seeded().shared() as Arc<dyn EntityApi>,
         node_url,
@@ -326,10 +326,14 @@ fn feed_hook_sends_on_terminal_patches() {
             &serde_json::json!({"id":"s1","title":"T1","updatedAt":"2024-01-01T00:00:00Z"}),
         )
         .unwrap();
-    let push = std::sync::Arc::new(peregrin_push::PushStore::open(sepia_meta::MetaStore::open(
-        &dir.path().join("push.json"),
-    )));
-    let hook = peregrin_hub::feed_hook(projection, push);
+    let push = std::sync::Arc::new(peregrin_push::PushStore::open(
+        peregrin_push::JsonDocStore::open(&dir.path().join("push.json")),
+    ));
+    let hook = peregrin_hub::feed_hook(
+        projection,
+        push,
+        peregrin_hub::kind_policies::default_kind_policies(),
+    );
     use peregrin_sync::client::FeedEvent;
     // Non-diff frames and non-session kinds are ignored.
     hook("n1", &FeedEvent::Heartbeat);

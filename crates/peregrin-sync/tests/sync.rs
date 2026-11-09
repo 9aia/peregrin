@@ -24,9 +24,10 @@ use peregrin_http::{AppState, EventFeed, app};
 use peregrin_outbox::{OpKind, Outbox};
 use peregrin_session::LocalPlane;
 use peregrin_sync::engine::SubmitOutcome;
+use peregrin_sync::kind::{DiffTombstone, KindPolicy};
 use peregrin_sync::{
-    IndexedEntity, NodeClient, NodeRef, NodeStatus, NodeTarget, NodeWrite, PatchStatus,
-    ProjectionStore, SyncEngine, SyncOptions,
+    IndexedEntity, KindPolicies, NodeClient, NodeRef, NodeStatus, NodeTarget, NodeWrite,
+    PatchStatus, ProjectionStore, SyncEngine, SyncOptions,
 };
 use sepia_core::storage::SessionRepository;
 use sepia_core::{Session, StorageError};
@@ -243,9 +244,70 @@ async fn start_stub_with(sessions: Vec<Session>, token: Option<String>) -> StubN
     }
 }
 
+/// The `sepia-session` kind policy, replicated for tests — the real
+/// registration lives at the hub/node composition roots. Mirrors the
+/// wire contract the tests exercise: `session`/`meta` diffs, the
+/// `?agent=` scope param, the session stream path, and `sepia.*` op
+/// gating.
+struct TestSepiaPolicy;
+
+impl KindPolicy for TestSepiaPolicy {
+    fn entity_kinds(&self) -> &'static [&'static str] {
+        &["sepia-session"]
+    }
+    fn diff_events(&self) -> &'static [&'static str] {
+        &["session", "meta"]
+    }
+    fn tombstone(&self, event: &str) -> DiffTombstone {
+        match event {
+            // `meta` tombstone = overlay removed — the entity survives.
+            "meta" => DiffTombstone::Refetch,
+            _ => DiffTombstone::DeleteEntity,
+        }
+    }
+    fn owns_op(&self, op: &str) -> bool {
+        op.starts_with("sepia.")
+    }
+    fn op_gated(&self, op: &str) -> bool {
+        op.starts_with("sepia.") && !op.starts_with("sepia.meta")
+    }
+    fn op_kind(&self, op: &str) -> OpKind {
+        if op.starts_with("sepia.meta") {
+            OpKind::Metadata
+        } else {
+            OpKind::Turn
+        }
+    }
+    fn call_params(&self, scope: Option<&str>) -> Vec<(String, String)> {
+        // The interim disambiguator — the caller's kind hint as `agent`.
+        scope
+            .map(|k| vec![("agent".to_string(), k.to_string())])
+            .unwrap_or_default()
+    }
+    fn stream_path(&self, id: &str) -> Option<String> {
+        Some(format!("/api/sessions/{id}/stream"))
+    }
+    fn columns(&self, raw: &Value) -> Option<peregrin_sync::IndexColumns> {
+        // `busy` reads as `live`, mirroring the session wire.
+        let doc = raw.get("indexDoc").filter(|d| d.is_object()).unwrap_or(raw);
+        let flag = |k: &str| doc.get(k).and_then(Value::as_bool).unwrap_or(false);
+        Some(peregrin_sync::IndexColumns {
+            live: Some(flag("live") || flag("busy")),
+            ..peregrin_sync::IndexColumns::default()
+        })
+    }
+}
+
+fn test_policies() -> KindPolicies {
+    let mut policies = KindPolicies::new();
+    policies.register(std::sync::Arc::new(TestSepiaPolicy));
+    policies
+}
+
 fn fast_options() -> SyncOptions {
     SyncOptions {
         on_event: None,
+        policies: test_policies(),
         connect_timeout: Duration::from_millis(300),
         request_timeout: Duration::from_secs(2),
         // Long enough that no mid-test stall reconnect drops emitted
@@ -313,7 +375,9 @@ fn write(
 
 #[test]
 fn projection_upserts_patches_and_reconciles() {
-    let store = ProjectionStore::in_memory().unwrap();
+    let store = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     store
         .upsert_node(&NodeRef {
             id: "n1".into(),
@@ -375,7 +439,9 @@ fn projection_upserts_patches_and_reconciles() {
 
 #[test]
 fn purge_unregistered_drops_stale_node_rows() {
-    let store = ProjectionStore::in_memory().unwrap();
+    let store = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     for id in ["main", "node"] {
         store
             .upsert_node(&NodeRef {
@@ -409,7 +475,9 @@ async fn node_down_enqueue_then_up_drains_in_order() {
     let mut stub = start_stub(vec![session("s1", "S1")]).await;
     stub.down();
 
-    let projection = ProjectionStore::in_memory().unwrap();
+    let projection = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     let outbox = Outbox::in_memory().unwrap();
     let handle = SyncEngine::spawn(
         projection.clone(),
@@ -502,7 +570,9 @@ async fn turn_op_rejected_by_node_dead_letters() {
     let mut stub = start_stub(vec![session("s1", "S1")]).await;
     stub.down();
 
-    let projection = ProjectionStore::in_memory().unwrap();
+    let projection = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     let outbox = Outbox::in_memory().unwrap();
     let handle = SyncEngine::spawn(
         projection,
@@ -548,7 +618,9 @@ async fn turn_op_rejected_by_node_dead_letters() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn sse_diffs_land_in_projection() {
     let stub = start_stub(vec![session("s1", "S1"), session("s2", "S2")]).await;
-    let projection = ProjectionStore::in_memory().unwrap();
+    let projection = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     let outbox = Outbox::in_memory().unwrap();
     let handle = SyncEngine::spawn(
         projection.clone(),
@@ -623,7 +695,9 @@ async fn sse_diffs_land_in_projection() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn reconnect_after_node_restart_resyncs() {
     let mut stub = start_stub(vec![session("s1", "S1")]).await;
-    let projection = ProjectionStore::in_memory().unwrap();
+    let projection = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     let handle = SyncEngine::spawn(
         projection.clone(),
         Outbox::in_memory().unwrap(),
@@ -679,7 +753,9 @@ async fn re_add_retargets_a_node_with_new_credentials() {
     // the token restarts its loop under the new credential (this is
     // the path the hub's pair flow takes after minting a token).
     let mut stub = start_stub_with(vec![session("s1", "S1")], Some("tok".into())).await;
-    let projection = ProjectionStore::in_memory().unwrap();
+    let projection = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     let handle = SyncEngine::spawn(
         projection.clone(),
         Outbox::in_memory().unwrap(),
@@ -718,7 +794,9 @@ async fn re_add_retargets_a_node_with_new_credentials() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn submit_op_posts_directly_when_node_is_up() {
     let mut stub = start_stub(vec![session("s1", "S1")]).await;
-    let projection = ProjectionStore::in_memory().unwrap();
+    let projection = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     let outbox = Outbox::in_memory().unwrap();
     let handle = SyncEngine::spawn(
         projection.clone(),
@@ -778,7 +856,9 @@ async fn shutdown_stops_all_loops_and_pumps() {
     let mut dead = start_stub(vec![]).await;
     dead.down();
 
-    let projection = ProjectionStore::in_memory().unwrap();
+    let projection = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     let handle = SyncEngine::spawn(
         projection.clone(),
         Outbox::in_memory().unwrap(),
@@ -895,7 +975,7 @@ async fn client_calls_against_the_stub_app() {
         // Both SSE opens — the node feed and a session stream (its
         // status depends on agent liveness; either path is fine).
         let _stream = client.events().unwrap();
-        let _ = client.entity_stream("s1", Some("devin"));
+        let _ = client.entity_stream("s1", Some("sepia-session"));
     })
     .await
     .unwrap();
@@ -999,7 +1079,9 @@ async fn client_sse_stream_ends_cleanly_at_eof() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn remove_node_stops_its_loop_and_drops_state() {
     let mut stub = start_stub(vec![session("s1", "S1")]).await;
-    let projection = ProjectionStore::in_memory().unwrap();
+    let projection = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     let handle = SyncEngine::spawn(
         projection.clone(),
         Outbox::in_memory().unwrap(),
@@ -1048,7 +1130,9 @@ async fn supervisor_warns_when_node_upsert_fails() {
     // warn arm (the loop still spawns and connects normally).
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("proj.db");
-    let projection = ProjectionStore::open(&path).unwrap();
+    let projection = ProjectionStore::open(&path)
+        .unwrap()
+        .with_kind_policies(test_policies());
     {
         let conn = rusqlite::Connection::open(&path).unwrap();
         conn.execute_batch("DROP TABLE nodes").unwrap();
@@ -1070,7 +1154,9 @@ async fn supervisor_warns_when_node_upsert_fails() {
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn resync_tick_and_lagged_frame_relist() {
     let mut stub = start_stub(vec![session("s1", "S1")]).await;
-    let projection = ProjectionStore::in_memory().unwrap();
+    let projection = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     let handle = SyncEngine::spawn(
         projection.clone(),
         Outbox::in_memory().unwrap(),
@@ -1098,7 +1184,9 @@ async fn resync_tick_and_lagged_frame_relist() {
 
 #[test]
 fn projection_remove_node_and_cursor_roundtrip() {
-    let store = ProjectionStore::in_memory().unwrap();
+    let store = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     store
         .upsert_node(&NodeRef {
             id: "n1".into(),
@@ -1127,7 +1215,9 @@ fn projection_remove_node_and_cursor_roundtrip() {
 fn projection_surfaces_corrupt_rows() {
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("proj.db");
-    let store = ProjectionStore::open(&path).unwrap();
+    let store = ProjectionStore::open(&path)
+        .unwrap()
+        .with_kind_policies(test_policies());
     store
         .upsert_node(&NodeRef {
             id: "n1".into(),
@@ -1154,7 +1244,9 @@ fn projection_surfaces_corrupt_rows() {
 fn apply_listing_summary_without_updated_at() {
     // Missing `updatedAt` → the `if let Some(u)` else arm; the cursor
     // stays unset.
-    let store = ProjectionStore::in_memory().unwrap();
+    let store = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     store
         .apply_listing("n1", &[json!({"id":"s1","title":"T"})])
         .unwrap();
@@ -1168,7 +1260,9 @@ fn apply_patch_write_failure_surfaces() {
     // store so the re-INSERT fails after the patch merges.
     let dir = tempfile::tempdir().unwrap();
     let path = dir.path().join("proj.db");
-    let store = ProjectionStore::open(&path).unwrap();
+    let store = ProjectionStore::open(&path)
+        .unwrap()
+        .with_kind_policies(test_policies());
     store
         .upsert_entity("n1", &json!({"id":"s1","title":"T"}))
         .unwrap();
@@ -1192,7 +1286,9 @@ fn apply_patch_write_failure_surfaces() {
 fn apply_patch_non_object_skips_merge() {
     // A non-object patch → the `if let (Some, Some)` else arm: the row
     // is rewritten unchanged.
-    let store = ProjectionStore::in_memory().unwrap();
+    let store = ProjectionStore::in_memory()
+        .unwrap()
+        .with_kind_policies(test_policies());
     store
         .upsert_entity("n1", &json!({"id":"s1","title":"T"}))
         .unwrap();
