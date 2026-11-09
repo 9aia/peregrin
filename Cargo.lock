@@ -1676,7 +1676,7 @@ dependencies = [
 [[package]]
 name = "hypha-control"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "serde",
  "serde_json",
@@ -1685,7 +1685,7 @@ dependencies = [
 [[package]]
 name = "hypha-dotenv"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "hypha-secret",
 ]
@@ -1693,7 +1693,7 @@ dependencies = [
 [[package]]
 name = "hypha-http"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "async-trait",
  "axum",
@@ -1717,7 +1717,7 @@ dependencies = [
 [[package]]
 name = "hypha-hub"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "async-trait",
  "axum",
@@ -1743,7 +1743,7 @@ dependencies = [
 [[package]]
 name = "hypha-keyring"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "hypha-secret",
 ]
@@ -1751,7 +1751,7 @@ dependencies = [
 [[package]]
 name = "hypha-node-api"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "async-trait",
  "serde",
@@ -1763,7 +1763,7 @@ dependencies = [
 [[package]]
 name = "hypha-outbox"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "rusqlite",
  "serde",
@@ -1777,7 +1777,7 @@ dependencies = [
 [[package]]
 name = "hypha-push"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "base64 0.22.1",
  "futures",
@@ -1792,17 +1792,17 @@ dependencies = [
 [[package]]
 name = "hypha-secret"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 
 [[package]]
 name = "hypha-service"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 
 [[package]]
 name = "hypha-sync"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "hypha-outbox",
  "rusqlite",
@@ -1819,7 +1819,7 @@ dependencies = [
 [[package]]
 name = "hypha-systemd"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "hypha-service",
 ]
@@ -1827,7 +1827,7 @@ dependencies = [
 [[package]]
 name = "hypha-telemetry"
 version = "0.0.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#0e6eddc641113172cee835df22861f04c1f66a47"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a270bb3db92d71ebe32149f90ce6f16a9073d167"
 dependencies = [
  "http 1.5.0",
  "opentelemetry",
