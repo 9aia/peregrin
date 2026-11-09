@@ -427,6 +427,190 @@ nodes:
     assert_eq!(res.status(), StatusCode::OK);
 }
 
+async fn op(app: &axum::Router, id: &str, kind: &str, payload: Value) -> (StatusCode, Value) {
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri(format!("/api/entities/{id}/ops"))
+        .header("content-type", "application/json")
+        .body(Body::from(
+            json!({ "kind": kind, "payload": payload }).to_string(),
+        ))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    let status = res.status();
+    (status, json_body(res).await)
+}
+
+async fn get_doc(app: &axum::Router, id: &str) -> Value {
+    let req = Request::builder()
+        .method(Method::GET)
+        .uri(format!("/api/entities/{id}"))
+        .body(Body::empty())
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::OK);
+    json_body(res).await
+}
+
+async fn create_entity(app: &axum::Router) -> String {
+    let req = Request::builder()
+        .method(Method::POST)
+        .uri("/api/entities")
+        .header("content-type", "application/json")
+        .body(Body::from(json!({ "kind": "campaign" }).to_string()))
+        .unwrap();
+    let res = app.clone().oneshot(req).await.unwrap();
+    assert_eq!(res.status(), StatusCode::CREATED);
+    json_body(res).await["id"].as_str().unwrap().to_string()
+}
+
+const NOOP_YAML: &str = r#"
+name: quick-run
+nodes:
+  - id: step1
+    driver: noop
+    on: [start]
+    emits: [step1.done]
+"#;
+
+#[tokio::test]
+async fn campaign_entity_pause_queued_then_resume() {
+    let (app, _) = mk_app();
+    let id = create_entity(&app).await;
+
+    // Pause a queued entity — parks without a runner.
+    let (status, body) = op(&app, &id, "campaign.pause", json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "paused");
+
+    let doc = get_doc(&app, &id).await;
+    assert_eq!(doc["indexDoc"]["state"], "paused");
+    assert_eq!(doc["live"], false);
+    assert_eq!(doc["locked"], true);
+
+    // Resume with the campaign in the payload — runs to done.
+    let (status, body) = op(
+        &app,
+        &id,
+        "campaign.resume",
+        json!({ "campaign": { "yaml": NOOP_YAML } }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "started");
+
+    tokio::time::sleep(Duration::from_millis(150)).await;
+    let doc = get_doc(&app, &id).await;
+    assert_eq!(doc["indexDoc"]["state"], "done");
+    assert_eq!(doc["indexDoc"]["campaignName"], "quick-run");
+}
+
+#[tokio::test]
+async fn campaign_entity_pause_running_checkpoints_and_resumes() {
+    let (app, _) = mk_app();
+    let id = create_entity(&app).await;
+
+    // A long delay keeps the run parked on its timer.
+    let yaml = r#"
+name: pause-run
+nodes:
+  - id: delay-step
+    driver: delay
+    on: [start]
+    emits: [delay.done]
+    params:
+      duration: 30s
+"#;
+    let (status, _) = op(
+        &app,
+        &id,
+        "campaign.start",
+        json!({ "campaign": { "yaml": yaml } }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    // A second start while running conflicts — one runner per entity.
+    let (status, body) = op(
+        &app,
+        &id,
+        "campaign.start",
+        json!({ "campaign": { "yaml": NOOP_YAML } }),
+    )
+    .await;
+    assert_eq!(status, StatusCode::CONFLICT);
+    assert!(body["error"].as_str().unwrap().contains("running"));
+
+    // Pause — the injected cancel checkpoints the run as `paused`.
+    let (status, body) = op(&app, &id, "campaign.pause", json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "pausing");
+
+    // Wait for the finish handler to land the paused state.
+    for _ in 0..50 {
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        let doc = get_doc(&app, &id).await;
+        if doc["indexDoc"]["state"] == "paused" {
+            break;
+        }
+    }
+    let doc = get_doc(&app, &id).await;
+    assert_eq!(doc["indexDoc"]["state"], "paused");
+    assert_eq!(doc["live"], false);
+    assert_eq!(doc["locked"], true);
+
+    // Resume replays the checkpoint — the stored campaign is reused.
+    let (status, body) = op(&app, &id, "campaign.resume", json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "started");
+    tokio::time::sleep(Duration::from_millis(100)).await;
+
+    let doc = get_doc(&app, &id).await;
+    assert_eq!(doc["indexDoc"]["state"], "running");
+    assert_eq!(doc["live"], true);
+    assert_eq!(doc["indexDoc"]["counts"]["resumes"], 1);
+
+    // Cancel the resumed leg.
+    let (status, _) = op(&app, &id, "campaign.cancel", json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    for _ in 0..50 {
+        tokio::time::sleep(Duration::from_millis(50)).await;
+        let doc = get_doc(&app, &id).await;
+        if doc["indexDoc"]["state"] == "cancelled" {
+            break;
+        }
+    }
+    let doc = get_doc(&app, &id).await;
+    assert_eq!(doc["indexDoc"]["state"], "cancelled");
+
+    // Terminal runs refuse resume.
+    let (status, _) = op(&app, &id, "campaign.resume", json!({})).await;
+    assert_eq!(status, StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn campaign_entity_cancel_queued_and_paused() {
+    let (app, _) = mk_app();
+    let id = create_entity(&app).await;
+
+    // Cancel a queued entity — lands cancelled without a runner.
+    let (status, body) = op(&app, &id, "campaign.cancel", json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "cancelled");
+    let doc = get_doc(&app, &id).await;
+    assert_eq!(doc["indexDoc"]["state"], "cancelled");
+
+    // Pause then cancel — same terminal state, log preserved.
+    let id2 = create_entity(&app).await;
+    let _ = op(&app, &id2, "campaign.pause", json!({})).await;
+    let (status, body) = op(&app, &id2, "campaign.cancel", json!({})).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(body["status"], "cancelled");
+    let doc = get_doc(&app, &id2).await;
+    assert_eq!(doc["indexDoc"]["state"], "cancelled");
+}
+
 #[tokio::test]
 async fn campaign_entity_delete_flow() {
     let (app, _) = mk_app();
