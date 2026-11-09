@@ -1,0 +1,106 @@
+name: install-peregrin
+description: >-
+  Install the `peregrin` binary on a GitHub runner — a published release
+  asset when one exists for the requested ref, otherwise
+  `cargo install --git` (whole-workspace build, several minutes).
+
+inputs:
+  ref:
+    description: >-
+      Git ref to install — branch, tag, or commit SHA. Release assets are
+      only probed when this is a tag that has a GitHub release.
+    required: false
+    default: main
+  cache-key:
+    description: Shared key for Swatinem/rust-cache (source builds only).
+    required: false
+    default: peregrin
+
+runs:
+  using: composite
+  steps:
+    # peregrin's Cargo.toml pins sibling crates as
+    # `ssh://git@github.com/9aia/*.git` git deps. Runners have no SSH
+    # keys; the repos are public, so rewrite ssh→https for git's
+    # insteadOf and let cargo fetch over https. Harmless when the
+    # release-asset path is taken.
+    - name: Rewrite ssh git deps to https
+      shell: bash
+      run: git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
+
+    # T-003: peregrin has no published releases yet, so this arm is
+    # dormant until the first `v*` tag + release lands. Expected asset
+    # name (mirroring sepia's release.yml staging):
+    #   peregrin-x86_64-unknown-linux-gnu.tar.gz
+    # containing a `peregrin` binary. When the asset name changes,
+    # update ASSET below — everything else is generic.
+    - name: Probe for a release binary
+      id: release
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REF: ${{ inputs.ref }}
+      run: |
+        set -euo pipefail
+        asset="peregrin-x86_64-unknown-linux-gnu.tar.gz"
+        dest="$RUNNER_TEMP/peregrin-release"
+        if gh release view "$REF" -R 9aia/peregrin \
+             --json assets -q '.assets[].name' 2>/dev/null \
+             | grep -qx "$asset"; then
+          mkdir -p "$dest" "$RUNNER_TEMP/peregrin-bin"
+          gh release download "$REF" -R 9aia/peregrin \
+            -p "$asset" -D "$dest" --clobber
+          tar -xzf "$dest/$asset" -C "$dest"
+          # The tarball may nest the binary under a top-level dir.
+          bin="$(find "$dest" -type f -name peregrin | head -n 1)"
+          if [ -z "$bin" ]; then
+            echo "::error::release asset $asset contains no 'peregrin' binary"
+            exit 1
+          fi
+          install -m 0755 "$bin" "$RUNNER_TEMP/peregrin-bin/peregrin"
+          echo "$RUNNER_TEMP/peregrin-bin" >> "$GITHUB_PATH"
+          echo "installed=release" >> "$GITHUB_OUTPUT"
+          peregrin --version || true
+        else
+          echo "installed=source" >> "$GITHUB_OUTPUT"
+          echo "No release asset '$asset' for ref '$REF' — falling back to cargo install --git."
+        fi
+
+    - name: Rust toolchain
+      if: steps.release.outputs.installed == 'source'
+      uses: dtolnay/rust-toolchain@1.98.0
+
+    - name: Rust cache
+      if: steps.release.outputs.installed == 'source'
+      uses: Swatinem/rust-cache@v2
+      with:
+        shared-key: ${{ inputs.cache-key }}
+        cache-on-failure: true
+
+    - name: cargo install peregrin
+      if: steps.release.outputs.installed == 'source'
+      shell: bash
+      env:
+        REF: ${{ inputs.ref }}
+        # Belt-and-suspenders with the git insteadOf above: cargo's
+        # libgit2 path also honors git config, but fetching via the git
+        # CLI is what the sibling repos' own CI relies on.
+        CARGO_NET_GIT_FETCH_WITH_CLI: "true"
+      run: |
+        set -euo pipefail
+        # --rev pins a commit, --tag a tag, --branch a branch. A 40-hex
+        # ref is a SHA; a leading 'v'+digit is treated as a tag; anything
+        # else is a branch name.
+        if [[ "$REF" =~ ^[0-9a-f]{40}$ ]]; then
+          rev_flag=(--rev "$REF")
+        elif [[ "$REF" =~ ^v[0-9] ]]; then
+          rev_flag=(--tag "$REF")
+        else
+          rev_flag=(--branch "$REF")
+        fi
+        # --bin peregrin: the workspace ships several bins; we only need
+        # the CLI. --locked honors the committed Cargo.lock so the git
+        # deps resolve to the locked revs, not whatever main moved to.
+        cargo install --git https://github.com/9aia/peregrin.git \
+          --locked --bin peregrin "${rev_flag[@]}"
+        peregrin --version

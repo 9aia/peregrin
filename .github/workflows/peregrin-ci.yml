@@ -1,0 +1,282 @@
+name: peregrin-ci
+
+# Reusable workflow — run peregrin workloads on a GitHub Actions runner.
+#
+# Consumers call it from their own repo:
+#
+#   jobs:
+#     node:
+#       uses: 9aia/peregrin/.github/workflows/peregrin-ci.yml@main
+#       with:
+#         mode: ephemeral-node
+#         command: peregrin sessions list
+#       secrets:
+#         PEREGRIN_TOKEN: ${{ secrets.PEREGRIN_TOKEN }}
+#
+# Two modes:
+#   campaign-run    — `peregrin campaign run <campaign>` in-job (local
+#                     campaign plane, no node, no secrets needed).
+#   ephemeral-node  — boot `peregrin serve --ephemeral` on loopback,
+#                     wait for /api/health, run `command` (any shell —
+#                     e.g. `peregrin sessions …` against the local node),
+#                     then SIGTERM so the snapshot flush runs.
+#
+# Secrets (all optional unless noted):
+#   PEREGRIN_TOKEN             bearer for the ephemeral node AND the
+#                              credential `command` uses to talk to it
+#                              (PEREGRIN_NODE_URL is set for you).
+#                              Required in practice for ephemeral-node
+#                              whenever anything authenticated is done;
+#                              harmless to pass always.
+#   PEREGRIN_SNAPSHOT_TOKEN    bearer the snapshot-handoff target expects
+#                              (defaults to PEREGRIN_TOKEN node-side).
+#   HYPHA_OTEL_ENDPOINT        OTLP base URL — telemetry opt-in.
+#   HYPHA_OTEL_SERVICE_NAME    service.name override.
+# Never echoed; mapped to env only.
+
+on:
+  workflow_call:
+    inputs:
+      mode:
+        description: "campaign-run | ephemeral-node"
+        required: false
+        type: string
+        default: ephemeral-node
+      campaign:
+        description: "Path to the campaign YAML (campaign-run mode; relative to repo root)"
+        required: false
+        type: string
+        default: ""
+      campaign-args:
+        description: "Extra args appended to `peregrin campaign run` (e.g. --dry-run)"
+        required: false
+        type: string
+        default: ""
+      command:
+        description: >-
+          Shell command run while the ephemeral node is up
+          (ephemeral-node mode). PEREGRIN_NODE_URL/PEREGRIN_TOKEN are in
+          env, pointing at the local node.
+        required: false
+        type: string
+        default: ""
+      peregrin-ref:
+        description: "peregrin git ref to install (branch/tag/SHA)"
+        required: false
+        type: string
+        default: main
+      port:
+        description: "Node listen port (ephemeral-node mode)"
+        required: false
+        type: string
+        default: "18787"
+      session-plane:
+        description: >-
+          PEREGRIN_SESSION_PLANE. 'local' (default) links the session
+          plane in-process — no `sepia` binary needed to boot, but real
+          agent sessions still need sepia drivers on PATH. Leave empty
+          to spawn `sepia serve` (requires the sepia binary /
+          PEREGRIN_SEPIA).
+        required: false
+        type: string
+        default: local
+      node-id:
+        description: >-
+          Optional stable node id — pre-seeds $PEREGRIN_HOME/node.json
+          so hub-side PEREGRIN_NODES entries (`id=url@token`) can name
+          this runner. Empty = auto-minted `node_<hex>`.
+        required: false
+        type: string
+        default: ""
+      node-name:
+        description: "PEREGRIN_NAME display name"
+        required: false
+        type: string
+        default: ""
+      snapshot-dir:
+        description: >-
+          PEREGRIN_SNAPSHOT_DIR — where flushed snapshots land
+          (default $RUNNER_TEMP/peregrin-snapshots, uploaded as an
+          artifact).
+        required: false
+        type: string
+        default: ""
+      snapshot-target:
+        description: >-
+          PEREGRIN_SNAPSHOT_TARGET — peer node or hub URL that receives
+          live/locked snapshots on shutdown (outbound POST, works from
+          NAT'd runners).
+        required: false
+        type: string
+        default: ""
+      snapshot-node:
+        description: "PEREGRIN_SNAPSHOT_NODE — hub-side import target when target is a hub"
+        required: false
+        type: string
+        default: ""
+      health-timeout-seconds:
+        description: "Seconds to wait for /api/health after boot"
+        required: false
+        type: string
+        default: "60"
+    secrets:
+      PEREGRIN_TOKEN:
+        required: false
+      PEREGRIN_SNAPSHOT_TOKEN:
+        required: false
+      HYPHA_OTEL_ENDPOINT:
+        required: false
+      HYPHA_OTEL_SERVICE_NAME:
+        required: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      # Checks out the CALLER's repo — the campaign file and `command`
+      # run in the consumer's workspace.
+      - uses: actions/checkout@v4
+
+      - name: Install peregrin
+        uses: 9aia/peregrin/.github/actions/install-peregrin@main
+        with:
+          ref: ${{ inputs.peregrin-ref }}
+
+      - name: Validate mode
+        shell: bash
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          case "$MODE" in
+            campaign-run|ephemeral-node) ;;
+            *) echo "::error::unknown mode '$MODE' (campaign-run|ephemeral-node)"; exit 1 ;;
+          esac
+
+      # ---------------- campaign-run ----------------
+      - name: Validate campaign
+        if: inputs.mode == 'campaign-run'
+        shell: bash
+        env:
+          CAMPAIGN: ${{ inputs.campaign }}
+        run: |
+          set -euo pipefail
+          if [ -z "$CAMPAIGN" ]; then
+            echo "::error::mode=campaign-run requires the 'campaign' input"
+            exit 1
+          fi
+          peregrin campaign validate "$CAMPAIGN"
+
+      - name: Run campaign
+        if: inputs.mode == 'campaign-run'
+        shell: bash
+        env:
+          CAMPAIGN: ${{ inputs.campaign }}
+        run: peregrin campaign run "$CAMPAIGN" ${{ inputs.campaign-args }}
+
+      # ---------------- ephemeral-node ----------------
+      - name: Prepare node home
+        if: inputs.mode == 'ephemeral-node'
+        shell: bash
+        env:
+          NODE_ID: ${{ inputs.node-id }}
+          NODE_NAME: ${{ inputs.node-name }}
+        run: |
+          set -euo pipefail
+          home="$RUNNER_TEMP/peregrin"
+          mkdir -p "$home"
+          # A pre-seeded identity file makes the minted id deterministic —
+          # load_node_identity reads {id,name} back instead of regenerating.
+          if [ -n "$NODE_ID" ]; then
+            jq -n --arg id "$NODE_ID" --arg name "${NODE_NAME:-$NODE_ID}" \
+              '{id: $id, name: $name}' > "$home/node.json"
+          fi
+
+      - name: Boot ephemeral node
+        if: inputs.mode == 'ephemeral-node'
+        shell: bash
+        env:
+          PEREGRIN_HOST: 127.0.0.1
+          PEREGRIN_PORT: ${{ inputs.port }}
+          PEREGRIN_TOKEN: ${{ secrets.PEREGRIN_TOKEN }}
+          PEREGRIN_EPHEMERAL: "1"
+          PEREGRIN_HOME: ${{ runner.temp }}/peregrin
+          PEREGRIN_NAME: ${{ inputs.node-name }}
+          PEREGRIN_SESSION_PLANE: ${{ inputs.session-plane }}
+          PEREGRIN_SNAPSHOT_DIR: ${{ inputs.snapshot-dir != '' && inputs.snapshot-dir || format('{0}/peregrin-snapshots', runner.temp) }}
+          PEREGRIN_SNAPSHOT_TARGET: ${{ inputs.snapshot-target }}
+          PEREGRIN_SNAPSHOT_NODE: ${{ inputs.snapshot-node }}
+          PEREGRIN_SNAPSHOT_TOKEN: ${{ secrets.PEREGRIN_SNAPSHOT_TOKEN }}
+          HYPHA_OTEL_ENDPOINT: ${{ secrets.HYPHA_OTEL_ENDPOINT }}
+          HYPHA_OTEL_SERVICE_NAME: ${{ secrets.HYPHA_OTEL_SERVICE_NAME }}
+          HEALTH_TIMEOUT: ${{ inputs.health-timeout-seconds }}
+        run: |
+          set -euo pipefail
+          # PEREGRIN_SNAPSHOT_TOKEN falls back to PEREGRIN_TOKEN
+          # node-side when unset — only export when provided.
+          if [ -z "${PEREGRIN_SNAPSHOT_TOKEN:-}" ]; then
+            unset PEREGRIN_SNAPSHOT_TOKEN
+          fi
+          if [ -z "${PEREGRIN_SESSION_PLANE:-}" ]; then
+            unset PEREGRIN_SESSION_PLANE
+          fi
+          mkdir -p "$PEREGRIN_SNAPSHOT_DIR"
+          peregrin serve > "$RUNNER_TEMP/peregrin-serve.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/peregrin.pid"
+          url="http://127.0.0.1:${PEREGRIN_PORT}/api/health"
+          for _ in $(seq 1 "$HEALTH_TIMEOUT"); do
+            if curl -sf "$url" >/dev/null 2>&1; then
+              echo "node healthy at $url"
+              exit 0
+            fi
+            if ! kill -0 "$(cat "$RUNNER_TEMP/peregrin.pid")" 2>/dev/null; then
+              echo "::error::peregrin serve exited during boot"
+              tail -n 50 "$RUNNER_TEMP/peregrin-serve.log" || true
+              exit 1
+            fi
+            sleep 1
+          done
+          echo "::error::/api/health not up after ${HEALTH_TIMEOUT}s"
+          tail -n 50 "$RUNNER_TEMP/peregrin-serve.log" || true
+          exit 1
+
+      - name: Run workload
+        if: inputs.mode == 'ephemeral-node' && inputs.command != ''
+        shell: bash
+        env:
+          PEREGRIN_NODE_URL: http://127.0.0.1:${{ inputs.port }}
+          PEREGRIN_TOKEN: ${{ secrets.PEREGRIN_TOKEN }}
+          HYPHA_OTEL_ENDPOINT: ${{ secrets.HYPHA_OTEL_ENDPOINT }}
+          HYPHA_OTEL_SERVICE_NAME: ${{ secrets.HYPHA_OTEL_SERVICE_NAME }}
+        run: ${{ inputs.command }}
+
+      # always(): a failing workload must still flush snapshots.
+      - name: Stop node (SIGTERM → snapshot flush)
+        if: always() && inputs.mode == 'ephemeral-node'
+        shell: bash
+        run: |
+          pid_file="$RUNNER_TEMP/peregrin.pid"
+          if [ -f "$pid_file" ]; then
+            pid="$(cat "$pid_file")"
+            if kill -0 "$pid" 2>/dev/null; then
+              kill -TERM "$pid"
+              for _ in $(seq 1 30); do
+                kill -0 "$pid" 2>/dev/null || break
+                sleep 1
+              done
+              if kill -0 "$pid" 2>/dev/null; then
+                echo "::warning::node did not exit within 30s of SIGTERM — SIGKILL"
+                kill -KILL "$pid" || true
+              fi
+            fi
+          fi
+          echo "--- peregrin serve log (tail) ---"
+          tail -n 100 "$RUNNER_TEMP/peregrin-serve.log" 2>/dev/null || true
+
+      - name: Upload snapshots
+        if: always() && inputs.mode == 'ephemeral-node'
+        uses: actions/upload-artifact@v4
+        with:
+          name: peregrin-snapshots-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ inputs.snapshot-dir != '' && inputs.snapshot-dir || format('{0}/peregrin-snapshots', runner.temp) }}
+          if-no-files-found: ignore
+          retention-days: 7
