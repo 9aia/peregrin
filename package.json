@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vitepress dev",
     "build": "vitepress build",
-    "preview": "vitepress preview"
+    "preview": "vitepress preview",
+    "docs:deploy": "bun run build && bunx gh-pages -d .vitepress/dist"
   },
   "devDependencies": {
     "gh-pages": "^6.3.0",
