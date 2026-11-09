@@ -11,7 +11,6 @@ members = [
     "crates/peregrin-config-yaml",
     "crates/peregrin-control",
     "crates/peregrin-core",
-    "crates/peregrin-dotenv",
     "crates/peregrin-driver",
     "crates/peregrin-driver-agent",
     "crates/peregrin-driver-council",
@@ -27,7 +26,6 @@ members = [
     "crates/peregrin-git",
     "crates/peregrin-http",
     "crates/peregrin-hub",
-    "crates/peregrin-keyring",
     "crates/peregrin-loader",
     "crates/peregrin-loader-yaml",
     "crates/peregrin-mcp",
@@ -38,14 +36,10 @@ members = [
     "crates/peregrin-queue",
     "crates/peregrin-remote",
     "crates/peregrin-remote-http",
-    "crates/peregrin-secret",
-    "crates/peregrin-service",
     "crates/peregrin-sink-github-status",
     "crates/peregrin-store",
     "crates/peregrin-store-json",
     "crates/peregrin-sync",
-    "crates/peregrin-systemd",
-    "crates/peregrin-telemetry",
     "crates/peregrin-template",
     "crates/peregrin-testkit",
     "xtask",
@@ -75,7 +69,6 @@ tamias-source-git = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2
 tamias-source-http = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
 tamias-store-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
 tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc" }
-peregrin-dotenv = { path = "crates/peregrin-dotenv" }
 peregrin-driver = { path = "crates/peregrin-driver" }
 peregrin-driver-agent = { path = "crates/peregrin-driver-agent" }
 peregrin-driver-council = { path = "crates/peregrin-driver-council" }
@@ -91,7 +84,6 @@ peregrin-engine = { path = "crates/peregrin-engine" }
 peregrin-git = { path = "crates/peregrin-git" }
 peregrin-http = { path = "crates/peregrin-http" }
 peregrin-hub = { path = "crates/peregrin-hub" }
-peregrin-keyring = { path = "crates/peregrin-keyring" }
 peregrin-loader = { path = "crates/peregrin-loader" }
 peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml" }
 peregrin-mcp = { path = "crates/peregrin-mcp" }
@@ -102,14 +94,10 @@ peregrin-push = { path = "crates/peregrin-push" }
 peregrin-queue = { path = "crates/peregrin-queue" }
 peregrin-remote = { path = "crates/peregrin-remote" }
 peregrin-remote-http = { path = "crates/peregrin-remote-http" }
-peregrin-secret = { path = "crates/peregrin-secret" }
-peregrin-service = { path = "crates/peregrin-service" }
 peregrin-sink-github-status = { path = "crates/peregrin-sink-github-status" }
 peregrin-store = { path = "crates/peregrin-store" }
 peregrin-store-json = { path = "crates/peregrin-store-json" }
 peregrin-sync = { path = "crates/peregrin-sync" }
-peregrin-systemd = { path = "crates/peregrin-systemd" }
-peregrin-telemetry = { path = "crates/peregrin-telemetry" }
 peregrin-template = { path = "crates/peregrin-template" }
 peregrin-testkit = { path = "crates/peregrin-testkit" }
 
@@ -130,6 +118,15 @@ sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "ma
 sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
 sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
 sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main" }
+
+# hypha — the extracted substrate leaf crates (PL-005 P4a): secrets,
+# telemetry, service/systemd, dotenv. Git deps on `main`.
+hypha-telemetry = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-secret = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-keyring = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-dotenv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-service = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-systemd = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }

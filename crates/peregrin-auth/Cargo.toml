@@ -9,4 +9,4 @@ repository.workspace = true
 [lints]
 workspace = true
 [dependencies]
-peregrin-secret.workspace = true
+hypha-secret.workspace = true

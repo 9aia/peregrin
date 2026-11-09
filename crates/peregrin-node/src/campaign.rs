@@ -314,11 +314,11 @@ pub fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
 pub fn default_secret_stores() -> Vec<SecretSource> {
     vec![
         SecretSource {
-            store: std::rc::Rc::new(peregrin_keyring::KeyringSecrets::default()),
+            store: std::rc::Rc::new(hypha_keyring::KeyringSecrets::default()),
             declared_only: true,
         },
         SecretSource {
-            store: std::rc::Rc::new(peregrin_dotenv::DotenvSecrets { path: env_file() }),
+            store: std::rc::Rc::new(hypha_dotenv::DotenvSecrets { path: env_file() }),
             declared_only: false,
         },
     ]

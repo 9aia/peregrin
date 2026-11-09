@@ -1674,6 +1674,54 @@ dependencies = [
 ]
 
 [[package]]
+name = "hypha-dotenv"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+dependencies = [
+ "hypha-secret",
+]
+
+[[package]]
+name = "hypha-keyring"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+dependencies = [
+ "hypha-secret",
+]
+
+[[package]]
+name = "hypha-secret"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+
+[[package]]
+name = "hypha-service"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+
+[[package]]
+name = "hypha-systemd"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+dependencies = [
+ "hypha-service",
+]
+
+[[package]]
+name = "hypha-telemetry"
+version = "0.0.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#121a747762dd34592c425eee8f7e692e9bf4e7a2"
+dependencies = [
+ "http 1.5.0",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "iana-time-zone"
 version = "0.1.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2465,7 +2513,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 name = "peregrin-auth"
 version = "0.0.0"
 dependencies = [
- "peregrin-secret",
+ "hypha-secret",
 ]
 
 [[package]]
@@ -2482,19 +2530,19 @@ name = "peregrin-cli"
 version = "0.0.0"
 dependencies = [
  "clap",
+ "hypha-dotenv",
+ "hypha-keyring",
+ "hypha-secret",
+ "hypha-systemd",
+ "hypha-telemetry",
  "nix",
  "peregrin-config",
  "peregrin-config-toml",
  "peregrin-core",
- "peregrin-dotenv",
  "peregrin-engine",
  "peregrin-git",
  "peregrin-http",
- "peregrin-keyring",
  "peregrin-node",
- "peregrin-secret",
- "peregrin-systemd",
- "peregrin-telemetry",
  "sepia-acp",
  "sepia-convert",
  "sepia-core",
@@ -2580,19 +2628,11 @@ dependencies = [
 ]
 
 [[package]]
-name = "peregrin-dotenv"
-version = "0.0.0"
-dependencies = [
- "peregrin-secret",
- "tempfile",
-]
-
-[[package]]
 name = "peregrin-driver"
 version = "0.0.0"
 dependencies = [
+ "hypha-secret",
  "peregrin-core",
- "peregrin-secret",
  "peregrin-store",
  "serde_json",
  "thiserror 2.0.21",
@@ -2733,12 +2773,12 @@ dependencies = [
 name = "peregrin-engine"
 version = "0.0.0"
 dependencies = [
+ "hypha-secret",
  "peregrin-bus",
  "peregrin-core",
  "peregrin-driver",
  "peregrin-loader",
  "peregrin-loader-yaml",
- "peregrin-secret",
  "peregrin-store",
  "peregrin-template",
  "serde",
@@ -2768,10 +2808,10 @@ dependencies = [
  "form_urlencoded",
  "futures",
  "http-body-util",
+ "hypha-telemetry",
  "nix",
  "peregrin-push",
  "peregrin-session",
- "peregrin-telemetry",
  "sepia-acp",
  "sepia-convert",
  "sepia-core",
@@ -2800,6 +2840,7 @@ dependencies = [
  "axum",
  "form_urlencoded",
  "futures",
+ "hypha-telemetry",
  "keyring",
  "peregrin-control",
  "peregrin-http",
@@ -2807,7 +2848,6 @@ dependencies = [
  "peregrin-outbox",
  "peregrin-push",
  "peregrin-sync",
- "peregrin-telemetry",
  "sepia-core",
  "sepia-driver-devin",
  "sepia-testkit",
@@ -2821,13 +2861,6 @@ dependencies = [
  "tracing-subscriber",
  "ureq",
  "uuid",
-]
-
-[[package]]
-name = "peregrin-keyring"
-version = "0.0.0"
-dependencies = [
- "peregrin-secret",
 ]
 
 [[package]]
@@ -2877,10 +2910,13 @@ dependencies = [
  "axum",
  "chrono",
  "futures",
+ "hypha-dotenv",
+ "hypha-keyring",
+ "hypha-secret",
+ "hypha-telemetry",
  "nix",
  "peregrin-bus",
  "peregrin-core",
- "peregrin-dotenv",
  "peregrin-driver",
  "peregrin-driver-agent",
  "peregrin-driver-council",
@@ -2894,16 +2930,13 @@ dependencies = [
  "peregrin-driver-subworkflow",
  "peregrin-engine",
  "peregrin-http",
- "peregrin-keyring",
  "peregrin-loader",
  "peregrin-loader-yaml",
  "peregrin-queue",
- "peregrin-secret",
  "peregrin-session",
  "peregrin-sink-github-status",
  "peregrin-store",
  "peregrin-store-json",
- "peregrin-telemetry",
  "sepia-acp",
  "sepia-convert",
  "sepia-core",
@@ -2992,14 +3025,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "peregrin-secret"
-version = "0.0.0"
-
-[[package]]
-name = "peregrin-service"
-version = "0.0.0"
-
-[[package]]
 name = "peregrin-session"
 version = "0.0.0"
 dependencies = [
@@ -3072,27 +3097,6 @@ dependencies = [
  "tokio-util",
  "tracing",
  "ureq",
-]
-
-[[package]]
-name = "peregrin-systemd"
-version = "0.0.0"
-dependencies = [
- "peregrin-service",
- "tempfile",
-]
-
-[[package]]
-name = "peregrin-telemetry"
-version = "0.0.0"
-dependencies = [
- "http 1.5.0",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry_sdk",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
 ]
 
 [[package]]

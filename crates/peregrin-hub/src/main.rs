@@ -11,9 +11,9 @@ use peregrin_hub::{HubConfig, hub_state, router};
 #[tokio::main]
 async fn main() -> std::io::Result<()> {
     // fmt + RUST_LOG as always; OTLP span export layered on when
-    // PEREGRIN_OTEL_ENDPOINT / OTEL_EXPORTER_OTLP_* is set. The guard's
+    // HYPHA_OTEL_ENDPOINT / OTEL_EXPORTER_OTLP_* is set. The guard's
     // Drop flushes the provider on exit.
-    let _telemetry = peregrin_telemetry::init();
+    let _telemetry = hypha_telemetry::init();
 
     let config = HubConfig::from_env().map_err(std::io::Error::other)?;
     let addr = config.socket_addr().map_err(std::io::Error::other)?;

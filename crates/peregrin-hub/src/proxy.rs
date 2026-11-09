@@ -94,7 +94,7 @@ fn sse_bridge(
     // Empty when export is off (and under coverage, where the global
     // propagator is the noop — the loop is unreachable there).
     #[cfg(not(coverage))]
-    for (k, v) in peregrin_telemetry::trace_headers() {
+    for (k, v) in hypha_telemetry::trace_headers() {
         req = req.header(&k, v);
     }
     let upstream = match req.call() {
@@ -233,7 +233,7 @@ pub async fn passthrough(State(state): State<HubState>, req: Request<Body>) -> R
     // Inject before `spawn_blocking` — the current span's context is
     // only visible on this task (blocking workers don't inherit it).
     #[cfg(not(coverage))]
-    let trace = peregrin_telemetry::trace_headers();
+    let trace = hypha_telemetry::trace_headers();
     let result = tokio::task::spawn_blocking(move || {
         let mut builder = ureq::http::Request::builder()
             .method(method.as_str())

@@ -38,10 +38,11 @@ session plane over the wire — it never reimplements it.
 | `crates/peregrin-driver` + `-shell` | campaign driver port + impls |
 | `crates/peregrin-loader` + `-yaml` | campaign loading |
 | `crates/peregrin-{template,store,bus,remote(-http)}` | engine ports |
-| `crates/peregrin-{config(-toml),secret,keyring,dotenv,service,systemd}` | platform ports (sturn/bupha pattern) |
+| `crates/peregrin-{config(-toml)}` | platform config ports (sturn/bupha pattern) |
+| `hypha-{secret,keyring,dotenv,service,systemd,telemetry}` | extracted substrate leaf crates — git deps on [9aia/hypha](https://github.com/9aia/hypha) |
 | `crates/peregrin-control` | arbitration — lock registry, takeover policy, merge/route |
 | `crates/peregrin-{node,hub,http,sync,outbox,push,node-api}` | daemons + transport + node port |
-| `crates/peregrin-{cli,auth,acp-client,telemetry,testkit}` | binaries, credentials, sepia-wire client, OTEL, fixtures |
+| `crates/peregrin-{cli,auth,acp-client,testkit}` | binaries, credentials, sepia-wire client, fixtures |
 
 `libraries/` holds the workflow stdlib (reusable `.node.yml`,
 `.snippet.yml`, `.field.yml` artifacts). `project/` carries the ADRs —

@@ -883,7 +883,7 @@ fn run_push(cmd: &PushCommands) -> Result<(), CliError> {
 /// coverage comes from tests that launch `peregrin serve` for real.
 #[cfg(coverage)]
 fn serve() -> Result<(), CliError> {
-    let _telemetry = peregrin_telemetry::init();
+    let _telemetry = hypha_telemetry::init();
     let _ = peregrin_http::Env::parse().map_err(|e| CliError(e.to_string()))?;
     Err(CliError(
         "serve is excluded under coverage — it blocks forever".into(),
@@ -893,9 +893,9 @@ fn serve() -> Result<(), CliError> {
 #[cfg(not(coverage))]
 fn serve() -> Result<(), CliError> {
     // fmt + RUST_LOG as always; OTLP span export layered on when
-    // PEREGRIN_OTEL_ENDPOINT / OTEL_EXPORTER_OTLP_* is set. The guard's
+    // HYPHA_OTEL_ENDPOINT / OTEL_EXPORTER_OTLP_* is set. The guard's
     // Drop flushes the provider when `block_on` returns.
-    let _telemetry = peregrin_telemetry::init();
+    let _telemetry = hypha_telemetry::init();
     let env = peregrin_http::Env::parse().map_err(|e| CliError(e.to_string()))?;
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()

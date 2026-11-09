@@ -4,8 +4,8 @@
 //! `SEPIA_DEVIN_DB`). Plane tunables `sepia-session`/`sepia-acp` read
 //! directly (`SEPIA_LOCK_TTL_MS`, `SEPIA_HISTORY_LIMIT`,
 //! `SEPIA_INHERIT_ENV`, `SEPIA_DEBUG`) deliberately don't ride `Env`;
-//! neither do the OTEL knobs `peregrin-telemetry` reads at boot
-//! (`PEREGRIN_OTEL_ENDPOINT`, `PEREGRIN_OTEL_SERVICE_NAME`, and the standard
+//! neither do the OTEL knobs `hypha-telemetry` reads at boot
+//! (`HYPHA_OTEL_ENDPOINT`, `HYPHA_OTEL_SERVICE_NAME`, and the standard
 //! `OTEL_EXPORTER_OTLP_*` vars — see `DEPLOY.md` "Telemetry").
 //! `Env::parse` fails fast on bad values, like the TS schema.
 

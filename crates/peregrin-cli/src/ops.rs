@@ -5,7 +5,7 @@
 //! (`tamias_store_local::Store`), materializes a node config (`include:`
 //! the bundle's `main.yaml` + operator `config:` params + an inline
 //! `github-webhook` ingress node per `--repo`), and writes a per-user
-//! systemd unit via `peregrin-systemd` — *without* enabling it
+//! systemd unit via `hypha-systemd` — *without* enabling it
 //! (`peregrin service enable --unit <name>` is the operator's step).
 //! `deploy webhook` / `destroy webhook` register/remove each watched
 //! repo's push hook via the GitHub REST API, mirroring `bupha deploy
@@ -30,12 +30,12 @@ use std::time::Duration;
 
 use serde_json::{Map, Value, json};
 
+use hypha_dotenv::DotenvSecrets;
+use hypha_keyring::KeyringSecrets;
+use hypha_secret::Secrets;
 use peregrin_config::ConfigSource;
 use peregrin_core::Campaign;
-use peregrin_dotenv::DotenvSecrets;
 use peregrin_git::{Listing, Worktrees};
-use peregrin_keyring::KeyringSecrets;
-use peregrin_secret::Secrets;
 use tamias_store_local::Store;
 
 use crate::CliError;
@@ -102,7 +102,7 @@ impl Default for OpsEnv {
         Self {
             store_root: peregrin_node::peregrin_home().join("store"),
             config_dir: config_dir(),
-            unit_dir: peregrin_systemd::default_unit_dir(),
+            unit_dir: hypha_systemd::default_unit_dir(),
             home: peregrin_node::peregrin_home(),
         }
     }
@@ -528,7 +528,7 @@ fn parse_repo(spec: &str) -> Result<Value, CliError> {
 /// `create --template <bundle>` — resolve the installed bundle,
 /// materialize `<name>.yaml` (include the bundle's `main.yaml` +
 /// merged operator params + the inline `github-webhook` ingress node
-/// from `--repo`) and write `<name>.service` via `peregrin-systemd`.
+/// from `--repo`) and write `<name>.service` via `hypha-systemd`.
 /// The unit is written, never enabled — the operator runs `peregrin
 /// service enable --unit <name>` themselves.
 pub fn create(
@@ -653,7 +653,7 @@ pub fn create(
         "--history".into(),
         history.to_string_lossy().into_owned(),
     ];
-    let unit_path = peregrin_systemd::write_unit(
+    let unit_path = hypha_systemd::write_unit(
         &env.unit_dir,
         &unit_name,
         &exec,
@@ -775,10 +775,9 @@ pub fn destroy_webhook(
 }
 
 /// `destroy service <name>` — disable + remove the unit
-/// (`peregrin-systemd::remove` is tolerant of a missing unit/bus).
+/// (`hypha-systemd::remove` is tolerant of a missing unit/bus).
 pub fn destroy_service(env: &OpsEnv, name: &str) -> Result<PathBuf, CliError> {
-    let path =
-        peregrin_systemd::remove(&env.unit_dir, name).map_err(|e| CliError(e.to_string()))?;
+    let path = hypha_systemd::remove(&env.unit_dir, name).map_err(|e| CliError(e.to_string()))?;
     println!("removed {}", path.display());
     Ok(path)
 }

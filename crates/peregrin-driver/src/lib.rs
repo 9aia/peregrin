@@ -354,12 +354,12 @@ impl ExecutionContext {
 }
 
 /// One fallback store leg of [`ExecutionContext::resolve_secret`] —
-/// a `peregrin_secret::Secrets` backend plus whether lookups into it
+/// a `hypha_secret::Secrets` backend plus whether lookups into it
 /// require the name to be capability-declared.
 #[derive(Clone)]
 pub struct SecretSource {
     /// The backend consulted on a record+env miss.
-    pub store: Rc<dyn peregrin_secret::Secrets>,
+    pub store: Rc<dyn hypha_secret::Secrets>,
     /// `true` → consulted only when the merged
     /// `capabilities.secrets` grant matches the name — the
     /// OS-keyring leg's opt-in (a per-lookup `secret-tool` spawn and

@@ -3,9 +3,9 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
+use hypha_secret::Secrets;
 use peregrin_core::Event;
 use peregrin_driver::{Driver, DriverError, ExecutionContext, NoopDriver, RunnerDriver};
-use peregrin_secret::Secrets;
 use serde_json::json;
 
 struct Echo;

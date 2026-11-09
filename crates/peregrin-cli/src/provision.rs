@@ -59,10 +59,10 @@ pub fn install(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, 
 /// # Errors
 /// Fails when the unit can't be written.
 pub fn deploy(_dir: &Path, name: &str, config: Option<&Path>) -> Result<String, CliError> {
-    let unit_dir = peregrin_systemd::default_unit_dir();
+    let unit_dir = hypha_systemd::default_unit_dir();
     let env_file = config.map_or_else(|| config_dir().join("env"), Path::to_path_buf);
     let exec = vec!["peregrin".to_string(), "serve".to_string()];
-    let path = peregrin_systemd::write_unit(
+    let path = hypha_systemd::write_unit(
         &unit_dir,
         name,
         &exec,
@@ -85,7 +85,7 @@ pub fn uninstall(name: &str, config: Option<&Path>) -> Result<String, CliError> 
     if path.is_file() {
         let _ = std::fs::remove_file(&path);
     }
-    let _ = peregrin_systemd::remove(&peregrin_systemd::default_unit_dir(), name);
+    let _ = hypha_systemd::remove(&hypha_systemd::default_unit_dir(), name);
     Ok(format!("removed config + unit for {name}"))
 }
 

@@ -16,9 +16,11 @@ never names a sepia type.
 ## Layout
 
 - `peregrin-core` pure domain (events, campaigns, nodes) — no I/O.
-- Ports: `peregrin-{driver,loader,store,bus,remote,config,secret,service,template}`;
-  impls `peregrin-{port}-{impl}` (`-shell`, `-yaml`, `-toml`, `-keyring`,
-  `-dotenv`, `-systemd`, `-http`).
+- Ports: `peregrin-{driver,loader,store,bus,remote,config,template}`;
+  impls `peregrin-{port}-{impl}` (`-shell`, `-yaml`, `-toml`, `-http`).
+  The substrate leaf crates — `hypha-{secret,keyring,dotenv,service,
+  systemd,telemetry}` — are extracted to
+  [9aia/hypha](https://github.com/9aia/hypha) and consumed as git deps.
 - `peregrin-control` — entity arbitration (lock registry, takeover
   policy, merge/route) — generic `EntityId`/`kind` mechanics.
 - `peregrin-node` (daemon: session plane + engine + api) · `peregrin-hub`
@@ -28,7 +30,7 @@ never names a sepia type.
   trait + entity DTOs + `HttpEntityApi`/`FakeEntityApi`) ·
   `peregrin-sync` (entity projection + sync engine) /
   `peregrin-outbox` (entity-scoped op queue) / `peregrin-push` ·
-  `peregrin-cli` (`peregrin` binary) · `peregrin-telemetry` ·
+  `peregrin-cli` (`peregrin` binary) · `hypha-telemetry` (git dep) ·
   `peregrin-testkit` · `xtask`.
 - `libraries/` — workflow stdlib artifacts. `project/` — nested repo
   with the ADRs (the design history + port spec).
