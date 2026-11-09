@@ -18,8 +18,12 @@ fn free_port() -> u16 {
 /// (SIGKILL discards it). Fall back to `kill()` when it won't die, so
 /// teardown never hangs the suite.
 fn stop(child: &mut std::process::Child) {
+    stop_sig(child, "-INT");
+}
+
+fn stop_sig(child: &mut std::process::Child, sig: &str) {
     let _ = std::process::Command::new("kill")
-        .args(["-INT", &child.id().to_string()])
+        .args([sig, &child.id().to_string()])
         .status();
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(15);
     loop {
@@ -289,4 +293,103 @@ fn node_attach_prompt_stream_e2e() {
     drop(resp);
     drop(client);
     stop(&mut child);
+}
+
+/// Ephemeral mode end-to-end: `PEREGRIN_EPHEMERAL=1` + SIGTERM flushes
+/// live/locked entity snapshots to `$PEREGRIN_HOME/snapshots/` before
+/// exit — the CI-runner contract (PL-006 P2).
+#[test]
+fn ephemeral_node_sigterm_flushes_snapshots() {
+    let tmp = tempfile::tempdir().unwrap();
+    let home = tmp.path().join("home");
+    std::fs::create_dir_all(&home).unwrap();
+
+    let port = free_port();
+    let mut child = std::process::Command::new(sepia_testkit::ensure_driver_bin("peregrin-node"))
+        .env("PEREGRIN_EPHEMERAL", "1")
+        // In-process session plane — no `sepia serve` subprocess, no
+        // driver discovery; the campaign plane is what we exercise.
+        .env("PEREGRIN_SESSION_PLANE", "local")
+        .env("PEREGRIN_HOME", &home)
+        .env("PEREGRIN_META", home.join("meta.json"))
+        .env("PEREGRIN_NODE", home.join("node.json"))
+        .env("PEREGRIN_PORT", port.to_string())
+        .env("PEREGRIN_HOST", "127.0.0.1")
+        .env("HOME", tmp.path())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .unwrap();
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(60);
+    let base = format!("http://127.0.0.1:{port}");
+    loop {
+        match ureq::get(format!("{base}/api/health")).call() {
+            Ok(_) => break,
+            Err(_) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(std::time::Duration::from_millis(100));
+            }
+            Err(e) => {
+                let _ = child.kill();
+                let _ = child.wait();
+                panic!("ephemeral node never came up: {e}");
+            }
+        }
+    }
+
+    // A `paused` campaign entity — `locked: true` in its index doc, so
+    // the flush must pick it up. Imported snapshots land paused by
+    // contract (no runner thread exists on this side of the wire).
+    let snapshot = serde_json::json!({
+        "format": "campaign-snapshot/v1",
+        "kind": "campaign",
+        "entity": {"id": "run-eph1", "kind": "campaign"},
+        "state": "paused",
+        "log": [{"type": "node.started", "source": "test"}],
+        "pendingTimers": [],
+        "counters": {}
+    });
+    let resp = ureq::post(format!("{base}/api/entities/snapshot"))
+        .send_json(&snapshot)
+        .unwrap();
+    assert_eq!(resp.status(), 201);
+
+    // And an idle entity that must NOT flush (queued, unlocked).
+    let resp = ureq::post(format!("{base}/api/entities"))
+        .send_json(serde_json::json!({
+            "kind": "campaign",
+            "indexDoc": {"id": "run-idle", "name": "idle"}
+        }))
+        .unwrap();
+    assert_eq!(resp.status(), 201);
+
+    // SIGTERM — the signal CI runners/supervisors actually send.
+    stop_sig(&mut child, "-TERM");
+
+    let snap = home.join("snapshots/campaign/run-eph1.snapshot.json");
+    let manifest = home.join("snapshots/index.json");
+    assert!(
+        snap.exists(),
+        "expected flushed snapshot at {}",
+        snap.display()
+    );
+    assert!(manifest.exists(), "expected index.json manifest");
+    let body: serde_json::Value = serde_json::from_slice(&std::fs::read(&snap).unwrap()).unwrap();
+    assert_eq!(body["format"], "campaign-snapshot/v1");
+    assert_eq!(body["entity"]["id"], "run-eph1");
+    let idx: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(&manifest).unwrap()).unwrap();
+    let files: Vec<&str> = idx["snapshots"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|e| e["file"].as_str().unwrap())
+        .collect();
+    assert_eq!(files, vec!["campaign/run-eph1.snapshot.json"]);
+    assert!(
+        !home
+            .join("snapshots/campaign/run-idle.snapshot.json")
+            .exists(),
+        "idle entity must not flush"
+    );
 }

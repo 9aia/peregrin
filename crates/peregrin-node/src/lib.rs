@@ -4,11 +4,14 @@
 //! dev mode) and campaigns (the in-process [`campaign`] plane —
 //! `peregrin-engine` + the ported driver impls). Mounts the `/api/*`
 //! surface and shuts the session plane down on SIGINT/SIGTERM.
-//! Orchestration/policy layers sit above this: multi-node
-//! arbitration, the hub.
+//! `PEREGRIN_EPHEMERAL`/`--ephemeral` adds the CI-runner lifecycle:
+//! SIGTERM-aware shutdown plus a snapshot flush of live/locked
+//! entities ([`ephemeral`]). Orchestration/policy layers sit above
+//! this: multi-node arbitration, the hub.
 
 pub mod campaign;
 pub mod campaign_entity;
+pub mod ephemeral;
 pub mod supervisor;
 
 pub use campaign_entity::{CAMPAIGN_KIND, CampaignEntityPlane};
@@ -140,6 +143,19 @@ async fn run(env: &Env, state: AppState, plane: Arc<dyn SessionPlane>) -> std::i
     // `/api/user`, `/api/health`) over the `PEREGRIN_*`→`HYPHA_*`
     // env mapping — operators never set a `HYPHA_*` var.
     let hypha = peregrin_http::hypha_state(env, &state);
+    // Ephemeral mode (`PEREGRIN_EPHEMERAL` / `peregrin serve
+    // --ephemeral`): capture the same merged kind registry the router
+    // serves plus the flush config before `compose` consumes both —
+    // the shutdown path exports live/locked entity snapshots through
+    // the live planes (see `ephemeral`).
+    let flush = if env.ephemeral {
+        Some((
+            peregrin_http::merged_kinds(&state, &hypha),
+            ephemeral::FlushConfig::from_env(env, state.node_identity().id),
+        ))
+    } else {
+        None
+    };
     let app = peregrin_http::compose(state, hypha);
     // `ConnectInfo` feeds the /api/pair limiter its client-IP key.
     axum::serve(
@@ -147,9 +163,31 @@ async fn run(env: &Env, state: AppState, plane: Arc<dyn SessionPlane>) -> std::i
         app.into_make_service_with_connect_info::<std::net::SocketAddr>(),
     )
     .with_graceful_shutdown(async move {
-        let _ = tokio::signal::ctrl_c().await;
+        shutdown_signal().await;
         tracing::info!("peregrin-node shutting down");
+        if let Some((kinds, cfg)) = flush {
+            ephemeral::flush(&kinds, &cfg).await;
+        }
         plane.close_all().await;
     })
     .await
+}
+
+/// Block until SIGINT (ctrl-c) — or SIGTERM on unix, which is what
+/// supervisors and CI runners actually send. `tokio::signal::ctrl_c`
+/// alone only covers SIGINT, so an ephemeral node SIGTERMed by its
+/// orchestrator would die without flushing.
+async fn shutdown_signal() {
+    #[cfg(unix)]
+    {
+        use tokio::signal::unix::{SignalKind, signal};
+        if let Ok(mut term) = signal(SignalKind::terminate()) {
+            tokio::select! {
+                _ = tokio::signal::ctrl_c() => {}
+                _ = term.recv() => {}
+            }
+            return;
+        }
+    }
+    let _ = tokio::signal::ctrl_c().await;
 }

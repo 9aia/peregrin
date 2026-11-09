@@ -298,6 +298,58 @@ fn env_parses_defaults_and_fail_fast() {
     assert_eq!(Env::from_map(&zero).unwrap().sse_keep_alive, Duration::ZERO);
 }
 
+#[test]
+fn env_parses_ephemeral_and_snapshot_knobs() {
+    // Defaults: ephemeral off, snapshot dir under PEREGRIN_HOME.
+    let env = Env::from_map(&HashMap::new()).unwrap();
+    assert!(!env.ephemeral);
+    assert!(env.snapshot_target.is_none());
+    assert!(env.snapshot_dir.ends_with("snapshots"));
+
+    // Truthy spellings set the flag; anything else leaves it off.
+    for v in ["1", "true", "YES", " on "] {
+        let vars = HashMap::from([("PEREGRIN_EPHEMERAL".to_string(), v.to_string())]);
+        assert!(Env::from_map(&vars).unwrap().ephemeral, "{v}");
+    }
+    for v in ["0", "false", "no", "off", "maybe"] {
+        let vars = HashMap::from([("PEREGRIN_EPHEMERAL".to_string(), v.to_string())]);
+        assert!(!Env::from_map(&vars).unwrap().ephemeral, "{v}");
+    }
+
+    // The handoff surface: target trims a trailing slash, the token
+    // falls back to PEREGRIN_TOKEN, the node selector passes through.
+    let home = std::env::temp_dir().join("peregrin-env-test-home");
+    let vars = HashMap::from([
+        ("PEREGRIN_HOME".to_string(), home.display().to_string()),
+        ("PEREGRIN_TOKEN".to_string(), "sekrit".to_string()),
+        (
+            "PEREGRIN_SNAPSHOT_TARGET".to_string(),
+            "http://peer:18787/".to_string(),
+        ),
+        (
+            "PEREGRIN_SNAPSHOT_NODE".to_string(),
+            "durable-1".to_string(),
+        ),
+        (
+            "PEREGRIN_SNAPSHOT_DIR".to_string(),
+            "/tmp/snaps".to_string(),
+        ),
+    ]);
+    let env = Env::from_map(&vars).unwrap();
+    assert_eq!(env.snapshot_target.as_deref(), Some("http://peer:18787"));
+    assert_eq!(env.snapshot_token.as_deref(), Some("sekrit"));
+    assert_eq!(env.snapshot_node.as_deref(), Some("durable-1"));
+    assert_eq!(env.snapshot_dir, std::path::PathBuf::from("/tmp/snaps"));
+
+    // An explicit PEREGRIN_SNAPSHOT_TOKEN wins over the fallback.
+    let mut vars2 = vars.clone();
+    vars2.insert("PEREGRIN_SNAPSHOT_TOKEN".to_string(), "other".to_string());
+    assert_eq!(
+        Env::from_map(&vars2).unwrap().snapshot_token.as_deref(),
+        Some("other")
+    );
+}
+
 // ---------- health / cors / 404 ---------------------------------------
 
 #[tokio::test]

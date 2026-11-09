@@ -380,6 +380,16 @@ fn align_substrate(state: &AppState, hypha: &mut hypha_http::HyphaState) {
     hypha.auth_cookie = Arc::from("sepia_token");
     hypha.health_probe = Some(health_probe(Arc::clone(&state.plane)));
 
+    hypha.kinds = merged_kinds(state, hypha);
+}
+
+/// The kind registry [`compose`] installs on the substrate state —
+/// `sepia-session` FIRST (the default plane for bare ops/kind-less
+/// creates/imports), then the substrate state's own planes, then
+/// [`AppState::kinds`] extras. Public so shutdown paths that need the
+/// same live planes the router serves (the ephemeral snapshot flush)
+/// don't re-derive the merge order.
+pub fn merged_kinds(state: &AppState, hypha: &hypha_http::HyphaState) -> KindRegistry {
     let mut kinds = KindRegistry::new();
     kinds.register(Arc::new(sepia_peregrin::SepiaEntityPlane::new(Arc::new(
         SessionPlaneBackend::new(state),
@@ -390,7 +400,7 @@ fn align_substrate(state: &AppState, hypha: &mut hypha_http::HyphaState) {
     for plane in state.kinds.planes() {
         kinds.register(Arc::clone(plane));
     }
-    hypha.kinds = kinds;
+    kinds
 }
 
 /// Compose the full node surface — the substrate routes

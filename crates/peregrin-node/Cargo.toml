@@ -48,6 +48,7 @@ tracing.workspace = true
 sepia-convert.workspace = true
 peregrin-http.workspace = true
 hypha-http.workspace = true
+hypha-node-api.workspace = true
 hypha-telemetry.workspace = true
 futures.workspace = true
 nix = { version = "0.29", default-features = false, features = ["signal", "process"] }

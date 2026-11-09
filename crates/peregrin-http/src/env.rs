@@ -73,6 +73,30 @@ pub struct Env {
     pub pair_code_path: PathBuf,
     /// `<home>/tokens.json` — sha256 hashes of issued pair credentials.
     pub tokens_path: PathBuf,
+    /// `PEREGRIN_EPHEMERAL` — elastic/CI node mode (`peregrin serve
+    /// --ephemeral` sets the same flag): SIGTERM-aware graceful
+    /// shutdown plus a snapshot flush of live/locked entities on exit
+    /// (see `peregrin_node::ephemeral`). Node identity, auth, and the
+    /// `/api/*` surface are unchanged — ephemeral is a lifecycle
+    /// mode, not a trust downgrade.
+    pub ephemeral: bool,
+    /// `PEREGRIN_SNAPSHOT_DIR` — the shutdown flush's output dir
+    /// (default `<home>/snapshots`): `<kind>/<id>.snapshot.json`
+    /// files plus an `index.json` manifest.
+    pub snapshot_dir: PathBuf,
+    /// `PEREGRIN_SNAPSHOT_TARGET` — optional peer node (or hub) base
+    /// URL that receives each flushed snapshot via
+    /// `POST /api/entities/snapshot` during shutdown.
+    pub snapshot_target: Option<String>,
+    /// `PEREGRIN_SNAPSHOT_TOKEN` — bearer for `snapshot_target`;
+    /// falls back to `PEREGRIN_TOKEN` (single-secret deployments
+    /// reuse it across nodes).
+    pub snapshot_token: Option<String>,
+    /// `PEREGRIN_SNAPSHOT_NODE` — optional `?node=` selector sent with
+    /// the handoff POST; meaningful when `snapshot_target` is a hub
+    /// (routes the import to that hub-registered node). `None` = the
+    /// target's default/primary node.
+    pub snapshot_node: Option<String>,
 }
 
 fn home_dir() -> PathBuf {
@@ -110,6 +134,19 @@ fn ms_or_default(raw: Option<&String>, default: u64) -> u64 {
 
 fn millis_u64(raw: Option<&String>, default: u64) -> u64 {
     raw.and_then(|v| v.parse::<u64>().ok()).unwrap_or(default)
+}
+
+/// Truthy env flag — `1`/`true`/`yes`/`on` (case-insensitive) set it;
+/// anything else (including absent) leaves it off. Deliberately
+/// permissive: a typo must not flip lifecycle semantics, and the
+/// explicit-off spellings all read false anyway.
+fn env_flag(get: &impl Fn(&str) -> Option<String>, key: &str) -> bool {
+    get(key).is_some_and(|v| {
+        matches!(
+            v.trim().to_ascii_lowercase().as_str(),
+            "1" | "true" | "yes" | "on"
+        )
+    })
 }
 
 /// Count-valued knob: absent/unparseable → default (never silently 0 —
@@ -187,6 +224,13 @@ impl Env {
             .filter(|n| !n.trim().is_empty())
             .unwrap_or_else(hostname_or_default);
 
+        // The handoff reuses the node's own bearer when no
+        // target-specific token is set — one secret guards the whole
+        // ephemeral fleet in the common deployment.
+        let snapshot_token = get("PEREGRIN_SNAPSHOT_TOKEN")
+            .filter(|t| !t.is_empty())
+            .or_else(|| token.clone().filter(|t| !t.is_empty()));
+
         Ok(Self {
             port,
             host,
@@ -227,6 +271,16 @@ impl Env {
             ),
             pair_code_path: home.join("pair-code"),
             tokens_path: home.join("tokens.json"),
+            ephemeral: env_flag(&get, "PEREGRIN_EPHEMERAL"),
+            snapshot_dir: get("PEREGRIN_SNAPSHOT_DIR")
+                .map_or_else(|| home.join("snapshots"), PathBuf::from),
+            snapshot_target: get("PEREGRIN_SNAPSHOT_TARGET")
+                .map(|t| t.trim_end_matches('/').to_string())
+                .filter(|t| !t.is_empty()),
+            snapshot_token,
+            snapshot_node: get("PEREGRIN_SNAPSHOT_NODE")
+                .map(|n| n.trim().to_string())
+                .filter(|n| !n.is_empty()),
             home,
         })
     }

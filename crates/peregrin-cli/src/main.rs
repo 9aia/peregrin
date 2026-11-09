@@ -576,7 +576,13 @@ enum Commands {
     },
     /// Serve the peregrin node — the `/api/*` surface (PEREGRIN_* env
     /// configures it)
-    Serve,
+    Serve {
+        /// Ephemeral/CI node mode — SIGTERM-aware shutdown plus a
+        /// snapshot flush of live/locked entities on exit
+        /// (`PEREGRIN_EPHEMERAL=1` is the env equivalent)
+        #[arg(long)]
+        ephemeral: bool,
+    },
     /// Foreign config → peregrin node-config workflow conversion
     /// (ADR-0081 bupha importer)
     #[command(subcommand)]
@@ -882,21 +888,25 @@ fn run_push(cmd: &PushCommands) -> Result<(), CliError> {
 /// real body is compiled out under `cfg(coverage)`; spawned-binary
 /// coverage comes from tests that launch `peregrin serve` for real.
 #[cfg(coverage)]
-fn serve() -> Result<(), CliError> {
+fn serve(ephemeral: bool) -> Result<(), CliError> {
     let _telemetry = hypha_telemetry::init();
-    let _ = peregrin_http::Env::parse().map_err(|e| CliError(e.to_string()))?;
+    let mut env = peregrin_http::Env::parse().map_err(|e| CliError(e.to_string()))?;
+    env.ephemeral |= ephemeral;
+    let _ = env;
     Err(CliError(
         "serve is excluded under coverage — it blocks forever".into(),
     ))
 }
 
 #[cfg(not(coverage))]
-fn serve() -> Result<(), CliError> {
+fn serve(ephemeral: bool) -> Result<(), CliError> {
     // fmt + RUST_LOG as always; OTLP span export layered on when
     // HYPHA_OTEL_ENDPOINT / OTEL_EXPORTER_OTLP_* is set. The guard's
     // Drop flushes the provider when `block_on` returns.
     let _telemetry = hypha_telemetry::init();
-    let env = peregrin_http::Env::parse().map_err(|e| CliError(e.to_string()))?;
+    let mut env = peregrin_http::Env::parse().map_err(|e| CliError(e.to_string()))?;
+    // `--ephemeral` is the flag spelling of `PEREGRIN_EPHEMERAL=1`.
+    env.ephemeral |= ephemeral;
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()
@@ -956,7 +966,7 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
             println!("{PEREGRIN_VERSION}");
             Ok(())
         }
-        Commands::Serve => serve(),
+        Commands::Serve { ephemeral } => serve(*ephemeral),
     }
 }
 

@@ -3008,6 +3008,7 @@ dependencies = [
  "hypha-dotenv",
  "hypha-http",
  "hypha-keyring",
+ "hypha-node-api",
  "hypha-secret",
  "hypha-telemetry",
  "nix",
