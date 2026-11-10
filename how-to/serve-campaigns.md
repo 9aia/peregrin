@@ -116,3 +116,8 @@ journalctl -u peregrin-campaigns -f   # per-run events print as [<campaign>] ...
 serving is a workload, not a host service — keep the unit above (or
 equivalent) as the campaign-plane supervisor. If the hub and the
 campaign fleet share a host, run them as separate units.
+
+For bundles that declare `provider.services[]` (e.g.
+`libraries/ci-gate`), `tamias deploy <pkg>` renders this unit shape
+automatically — see [Distribution](../reference/distribution.md)'s
+"Tamias provider packages" section.
