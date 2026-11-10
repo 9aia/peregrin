@@ -1,5 +1,10 @@
 # ci-gate
 
+> **Migrating.** The org gate is moving back to bupha — see
+> `9aia/bupha` `libraries/ci-gate` (`type: bupha` tamias bundle)
+> and org-ledger PL-013. This bundle stays live until the webhook
+> cutover lands; do not extend it.
+
 The org CI gate as a peregrin bundle: on a `push` event → detached
 worktree at the pushed sha → per-repo job → GitHub commit status.
 This is the **fleet artifact** — `main.yaml` is the full
