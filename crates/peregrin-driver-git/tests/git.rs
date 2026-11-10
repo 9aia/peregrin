@@ -472,7 +472,7 @@ fn absolute_inner_cwd_stays_in_the_worktree() {
 #[test]
 fn url_source_clones_into_cache_and_reuses_it() {
     let tmp = TempDir::new().unwrap();
-    let (repo, first, head) = fixture_repo(tmp.path());
+    let (repo, first, _head) = fixture_repo(tmp.path());
     let d = GitDriver::new(shell_lookup());
     let ctx = ctx();
     let b = base(&tmp);
@@ -487,11 +487,18 @@ fn url_source_clones_into_cache_and_reuses_it() {
     assert_eq!(git(&cache, &["rev-parse", "--is-bare-repository"]), "true");
 
     // Second run hits the cache — fetch refreshes, new sha resolves.
-    let p2 = json!({"url": url, "sha": head, "base": b, "inner": shell_inner(
+    // The new commit lands AFTER the clone so the cache must really
+    // fetch it (`clone --bare` writes no fetch refspec; a bare
+    // `fetch origin` would update nothing).
+    fs::write(repo.join("f"), "three").unwrap();
+    git(&repo, &["add", "."]);
+    git(&repo, &["commit", "-m", "three"]);
+    let head2 = git(&repo, &["rev-parse", "HEAD"]);
+    let p2 = json!({"url": url, "sha": head2, "base": b, "inner": shell_inner(
         "test \"$(git rev-parse HEAD)\" = \"$PERE_SHA\"")});
     let out = d.invoke(&node(p2), &[], &ctx).unwrap();
     assert_eq!(out[0].kind, "n.done");
-    assert_eq!(out[0].payload["sha"], head);
+    assert_eq!(out[0].payload["sha"], head2);
 }
 
 #[test]

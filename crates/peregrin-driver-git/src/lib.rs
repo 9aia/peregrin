@@ -85,6 +85,13 @@ use peregrin_template::{
 /// it; `~` expands per the `peregrin-git` convention.
 const DEFAULT_BASE: &str = "~/.local/share/peregrin/worktrees";
 
+/// Refspec for cache-refresh fetches. `git clone --bare` writes no
+/// `remote.origin.fetch` (observed on git 2.56), so a bare
+/// `fetch origin` only updates FETCH_HEAD — refs never move and
+/// `rev-parse` can't see new commits. Passing the refspec on argv
+/// works for caches cloned before any config repair.
+const FETCH_REFSPEC: &str = "+refs/heads/*:refs/heads/*";
+
 /// A stable, filesystem-safe cache key for a clone source —
 /// `<slug>-<fnv8>`, where the slug keeps the source readable in
 /// `list()` output and the hash keeps distinct sources distinct.
@@ -234,6 +241,7 @@ impl<G: Git + Clone> GitDriver<G> {
                     OsStr::new("fetch"),
                     OsStr::new("--prune"),
                     OsStr::new("origin"),
+                    OsStr::new(FETCH_REFSPEC),
                 ],
             );
             return Ok(cache);
@@ -286,6 +294,7 @@ impl<G: Git + Clone> GitDriver<G> {
                         OsStr::new("fetch"),
                         OsStr::new("--prune"),
                         OsStr::new("origin"),
+                        OsStr::new(FETCH_REFSPEC),
                     ],
                 );
                 self.git
