@@ -41,8 +41,8 @@ Follow Diátaxis: `docs/tutorials/` (learn) · `docs/how-to/` (tasks) ·
 
 ## Releasing
 
-- crates.io publish is dep-ordered via `scripts/release.sh` (bupha
-  watch trigger — register the watch ops-side). Every internal dep
+- crates.io publish is dep-ordered via `scripts/release.sh` (manual —
+  bupha watch retired, releases are operator-run). Every internal dep
   carries a `version` req alongside its git source, so publishing
   resolves against the registry — but only after the org order
   **hypha → sepia → tamias → peregrin** has 0.1.0/0.1.x on crates.io.

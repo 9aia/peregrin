@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# bupha gate for v2 — runs in a detached worktree of the pushed sha.
+# ci-gate campaign gate for v2 — runs in a detached worktree of the
+# pushed sha (bupha watch is retired; the peregrin ci-gate campaign
+# is the gate).
 # check = fmt + clippy -D warnings; test = spawned-bin
 # prebuild + `cargo nextest run --workspace` (plain cargo test when
 # nextest is absent).
 set -euo pipefail
 
-# The bupha watcher unit runs with the minimal systemd PATH
+# The gate may run with the minimal systemd PATH
 # (/usr/local/bin:/usr/bin) whenever it starts before the session env is
 # imported — pull the user tool dirs in ourselves so cargo, nextest,
 # and the installed sepia binaries resolve like in a login shell.

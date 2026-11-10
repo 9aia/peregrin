@@ -2,10 +2,8 @@
 # Run manually: `./scripts/release.sh` from the repo root (needs
 # `.env` with CARGO_REGISTRY_TOKEN; dist + gh for binary artifacts).
 # bupha is deprecated — no watch registration; releases are operator-run.
-# The leading sleep is the debounce window: a newer push kills this
-# run via cancel_running, so only the last push in a quiet window
-# releases. Runs inside a detached worktree — commits/tags are pushed
-# from here, not from the main checkout.
+# The leading sleep is the debounce window: only the last invocation
+# in a quiet window releases. Commits/tags are pushed to main.
 #
 # crates.io status (T-003): every internal dep carries a `version`
 # req alongside its git source, so `cargo publish` resolves them
@@ -78,11 +76,11 @@ for t in $tags; do git tag "$t"; done
 ver="$(grep -m1 '^version' crates/peregrin-cli/Cargo.toml | cut -d'"' -f2)"
 git push -q origin HEAD:main --tags
 
-# binaries: tag-triggered .github/workflows/release.yml builds the
-# release tarballs (`peregrin-<target>.tar.gz` — the name
-# install-peregrin probes) on `v*`/`peregrin-v*` tags. To ship:
+# binaries: releases are manual — GHA workflows were removed org-wide.
+# This script bumps, publishes, and tags; the `dist build` path below
+# produces release tarballs (`peregrin-<target>.tar.gz` — the name
+# install-peregrin probes). To ship:
 #   git tag peregrin-v${ver} && git push origin peregrin-v${ver}
-# The local `dist build` path below is the ops fallback (host arch).
 if command -v dist >/dev/null && command -v gh >/dev/null; then
     dist build --output-format=json > /tmp/dist-manifest.json 2>&1 || true
     for f in target/distrib/*; do
