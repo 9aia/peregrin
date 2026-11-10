@@ -20,7 +20,7 @@ supersede:
 | Field | Type | Default | Meaning |
 | --- | --- | --- | --- |
 | `key` | template | `""` | `{dotted.path}` placeholders resolved against the trigger event's `payload`; events resolving to the same key are alternative triggers for the same logical run (one branch, one PR, one WAL head). Empty = a constant key, so every event targets the same run. |
-| `mode` | `latest-wins` \| `fifo` | `latest-wins` | Pending-job dedupe: `latest-wins` replaces the pending job that shares the key (only the newest trigger for a target runs — the displaced job's queue *position* is inherited); `fifo` appends (every trigger runs). |
+| `mode` | `latest-wins` \| `fifo` | `latest-wins` | Pending-job dedupe: `latest-wins` replaces the pending job that shares the key (only the newest trigger for a target runs — the displaced job's queue *position* is inherited); `fifo` appends (every trigger runs) up to `MAX_PENDING_PER_KEY` (32) per key — beyond that the key's *oldest* pending job is evicted. |
 | `cancel_running` | bool | `false` | `true`: a new event marks the *active* run superseded — the queue raises a one-shot cancel signal the caller delivers to the run. `false`: new events always queue behind the active run. |
 
 ## Key template grammar
@@ -109,3 +109,33 @@ start, cancelled_active }`; `finish()` → `Option<PendingRun>`.
 - The runner itself stays `!Send` (Rc internals) — runs execute on
   the loop thread; the channel is the entire cross-thread input
   surface.
+
+## Durable queue (`--queue-store`)
+
+Without a store the queue is memory-only — a restart loses every
+pending trigger. `campaign run --queue-store <path>` (supervisor
+mode only) opens a sqlite `QueueStore`
+(`peregrin-queue-sqlite`) and makes the queue durable:
+
+- **What persists** — pending submissions grouped by supersede key
+  (per-key writes, so peers never clobber each other) plus the
+  in-flight marker. Written through on every submit/drain/finish.
+- **What replays** — on boot, `RunSupervisor::with_store` loads the
+  snapshot and runs it through `Queue::restore` *before* the loop
+  accepts new triggers: pending jobs restore in drain order and the
+  interrupted run's marker re-queues at the **front**
+  (at-least-once — it gets another shot). Under `latest-wins` a newer
+  same-key pending entry still supersedes it, exactly as live.
+- **Re-validation** — persisted rows aren't a trust boundary: each
+  entry's stored key must match `policy.key_of(event)` (a changed
+  `supersede:` block or corrupt row drops it, logged), and restored
+  entries go through the same dedupe/bound path as live submits, so
+  a restored queue can't hold a state submits couldn't produce.
+- **Failure policy** — an unreadable store fails the boot (queued
+  triggers would be silently lost otherwise); per-entry corruption
+  is skipped with a warning; write failures mid-run are logged and
+  degrade durability rather than killing runs.
+
+The store file is ordinary sqlite — `queue_pending(key, seq, job)`
+rows plus a singleton `queue_running` row; safe to inspect with
+`sqlite3`.
