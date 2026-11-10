@@ -2,7 +2,7 @@
 # P-009). `tamias install <ref>` fetches this; the bundle's main.yaml
 # is a complete campaign (ingress webhook node included — see below).
 name: docs-deploy
-version: "0.1.0"
+version: "0.1.1"
 # `peregrin-bundle` routes install/deploy/uninstall through
 # `tamias-driver-peregrin` (capabilities: types ["peregrin-bundle"]).
 type: peregrin-bundle
@@ -36,7 +36,7 @@ provider:
     # --listen/--path govern the one socket.
     - name: campaign
       exec: >-
-        peregrin campaign serve ~/.config/peregrin/serve
+        ~/.local/bin/peregrin campaign serve ~/.config/peregrin/serve
         --listen 127.0.0.1:29173 --path /hook
         --history-dir ~/.local/share/peregrin/serve-history
         --queue-store-dir ~/.local/share/peregrin/serve-queues

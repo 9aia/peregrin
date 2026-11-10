@@ -4,7 +4,7 @@
 # generates the operator node config (`~/.config/peregrin/ci-gate.yaml`)
 # from the `provider:` block below.
 name: ci-gate
-version: "0.2.0"
+version: "0.2.1"
 # `peregrin-bundle` routes install/deploy/uninstall through
 # `tamias-driver-peregrin` (capabilities: types ["peregrin-bundle"]).
 type: peregrin-bundle
@@ -36,7 +36,7 @@ provider:
     # queue dirs are namespaced per campaign inside.
     - name: campaign
       exec: >-
-        peregrin campaign serve ~/.config/peregrin/serve
+        ~/.local/bin/peregrin campaign serve ~/.config/peregrin/serve
         --listen 127.0.0.1:29173 --path /hook
         --history-dir ~/.local/share/peregrin/serve-history
         --queue-store-dir ~/.local/share/peregrin/serve-queues
