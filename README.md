@@ -53,7 +53,7 @@ the engine's design history and spec.
 ```bash
 cargo xtask check    # fmt + clippy -D warnings
 cargo xtask test     # whole suite (nextest if present)
-cargo xtask install  # release-build peregrin + hub → ~/.local
+cargo xtask install  # release-build peregrin + hub + tamias-driver-peregrin → ~/.local
 ```
 
 [CONTRIBUTING](CONTRIBUTING.md) · [SECURITY](SECURITY.md) ·
