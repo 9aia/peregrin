@@ -41,9 +41,10 @@
 //! each name resolves against the run's secrets record first, then
 //! the ambient environment, and a miss is audited like any other
 //! secret miss. Resolved values reach git as
-//! `-c core.sshCommand=<v>` / `-c http.extraHeader=AUTHORIZATION:
-//! bearer <v>` on clone/fetch — argv-scoped, never persisted into
-//! the cached clone's config.
+//! `-c core.sshCommand=<v>` / `-c http.extraHeader=Authorization:
+//! Basic <b64(x:v)>` on clone/fetch — argv-scoped, never persisted
+//! into the cached clone's config. Basic covers PATs and `gho_`
+//! OAuth tokens; `bearer` is rejected by smart-HTTP for OAuth.
 
 use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
@@ -345,10 +346,37 @@ fn cred_args(
     }
     for name in env_names(params.get("token_env")) {
         if let Some(value) = resolve(name) {
-            args.push(format!("http.extraHeader=AUTHORIZATION: bearer {value}"));
+            args.push(format!(
+                "http.extraHeader=Authorization: Basic {}",
+                basic_b64(&format!("x:{value}"))
+            ));
         }
     }
     args
+}
+
+/// `Authorization: Basic` userinfo — `x:<token>` basic-auth works for
+/// PATs and `gho_` OAuth tokens alike; `bearer` is rejected by
+/// smart-HTTP for OAuth tokens.
+fn basic_b64(input: &str) -> String {
+    const A: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
+    for chunk in input.as_bytes().chunks(3) {
+        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        out.push(A[(b[0] >> 2) as usize] as char);
+        out.push(A[((b[0] << 4 | b[1] >> 4) & 63) as usize] as char);
+        out.push(if chunk.len() > 1 {
+            A[((b[1] << 2 | b[2] >> 6) & 63) as usize] as char
+        } else {
+            '='
+        });
+        out.push(if chunk.len() > 2 {
+            A[(b[2] & 63) as usize] as char
+        } else {
+            '='
+        });
+    }
+    out
 }
 
 /// Filesystem-safe worktree dest name: `<idempotency-key>-<sha12>`
