@@ -3,7 +3,8 @@
 > **Deprecated (GitHub Actions removal):** the workflows this page
 > references (`peregrin-ci.yml`, `ephemeral-fleet.yml`,
 > `install-peregrin`) were deleted — the org no longer uses GitHub
-> Actions. The *concept* below (ephemeral `peregrin serve --ephemeral`
+> Actions, and the shared `install-peregrin` composite action has
+> since been removed as orphaned. The *concept* below (ephemeral `peregrin serve --ephemeral`
 > nodes joining a long-lived hub) still applies to any ephemeral host
 > (bare runners, cloud VMs, containers); only the GHA-specific pieces
 > are gone. See [run-a-ci-node](./run-a-ci-node.md) for the node side.
@@ -16,7 +17,8 @@ to a hub that outlives them. GitHub Actions ships the pieces:
 - `.github/workflows/ephemeral-fleet.yml` — a `workflow_dispatch`
   **example** that boots a matrix of runners as nodes.
 - `.github/actions/install-peregrin` — the shared install step
-  (release binary when published, `cargo install --git` until then).
+  (release binary when published, `cargo install --git` until then);
+  removed with the workflows — nothing references it anymore.
 
 ## Topology — read this first
 
