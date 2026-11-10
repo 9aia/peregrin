@@ -7,23 +7,33 @@ worktree at the pushed sha → `bun install` + the repo's own
 under `docs/deploy`. This is the campaign-shaped replacement for the
 GHA `deploy.yml` workflows deleted org-wide in C3.
 
-## v1 scope (D1 audit)
+## v1 scope (D1 audit + D6 dual-checkout)
 
-Only repos whose `docs:deploy` is **self-contained** in the docs
-tree — the `docs` orphan branch *is* the site checkout
-(`package.json` + `bun.lock` + `.vitepress/` at its root), so the
-worktree root is the build root:
+Two repo shapes, one campaign:
 
-| repo | `docs:deploy` | verdict |
-| --- | --- | --- |
-| `9aia/sepia` | `bun run build && bunx gh-pages -d .vitepress/dist` | v1 |
-| `9aia/peregrin` | same | v1 |
-| `9aia/lasius` | `bun run docs:build && bunx gh-pages -d .vitepress/dist` | v1 |
+- **Self-contained** — the `docs` orphan branch *is* the site
+  checkout (`package.json` + `bun.lock` + `.vitepress/` at its
+  root), so the worktree root is the build root: `9aia/sepia`,
+  `9aia/peregrin`, `9aia/lasius`.
+- **Gen-dependent** — `docs:deploy` runs `docs:gen`/`docs:api`
+  steps that `cd ..` into the main checkout for `cargo run` /
+  `cargo doc`: `9aia/myco`, `9aia/tamias`, `9aia/cuora`, `9aia/pavo`,
+  `9aia/hypha`, `9aia/sturn`, `9aia/kuda`, `9aia/mimus`, `9aia/bupha`.
+  Their git nodes set `params.dest: "docs-<repo>-<sha>/docs"` +
+  `params.extra_worktrees: [{ref: "${config.main_ref}"}]` (driver-git
+  D6): the docs-branch worktree lands at `<run>/docs`, a second
+  worktree of `refs/heads/main` at `<run>`, and the inner shell's
+  cwd stays the docs worktree — exactly the dev layout (`repo/` +
+  `repo/docs/` worktree), so `cd ..` hits the main checkout and the
+  gen scripts' `docs/…` output paths land back in the docs tree.
+  Both checkouts are destroyed with the run (`keep` retains both).
 
-**Deferred — gen-dependent** (deploy runs `docs:gen`/`docs:api`
-which `cd ..` into the main checkout for `cargo run`/`cargo doc` —
-needs dual-checkout support, PL-009 D6): `myco`, `tamias`, `hypha`,
-`sturn`, `kuda`, `mimus`, `bupha`, `cuora`, `pavo`.
+The shipped `cmd` exports a persistent per-host
+`CARGO_TARGET_DIR=$HOME/.local/share/peregrin/cargo-target` — the
+worktrees are ephemeral, so without it every deploy cold-builds the
+gen step and can exceed the 600s inner-shell cap. (mimus's
+`docs:api` pins `CARGO_TARGET_DIR=target` itself, so it stays
+cold — a repo-side fix, not ours.)
 
 **Deferred — `9aia.github.io`**: the site lives on `main` (no `docs`
 branch), the toolchain is pnpm (`pnpm-lock.yaml`, no `docs:deploy`
@@ -34,12 +44,17 @@ without an operator decision.
 ## Mechanics
 
 - **Ingress**: `docs.ingress.webhook` (`github-webhook`) watches the
-  three repos; `secret_env` names follow the existing
+  twelve repos; `secret_env` names follow the existing
   `BUPHA_WH_<OWNER>_<REPO>` convention — *names only*, granted via
-  `capabilities.secrets` (`BUPHA_TOKEN` + the three `BUPHA_WH_*`).
-  `~/.config/peregrin/env` must carry values for
-  `BUPHA_WH_9AIA_SEPIA`/`BUPHA_WH_9AIA_LASIUS` (only
-  `BUPHA_WH_9AIA_PEREGRIN` exists today) plus `BUPHA_TOKEN`.
+  `capabilities.secrets` (`BUPHA_TOKEN` + the twelve `BUPHA_WH_*`).
+  `~/.config/peregrin/env` must carry a `BUPHA_WH_9AIA_<REPO>` value
+  per watched repo plus `BUPHA_TOKEN`. As of D6 the env file already
+  has `BUPHA_WH_9AIA_{BUPHA,CUORA,KUDA,MIMUS,MYCO,PEREGRIN,STURN}`;
+  ops must add `BUPHA_WH_9AIA_{SEPIA,LASIUS,TAMIAS,PAVO,HYPHA}` (and
+  confirm `BUPHA_TOKEN`). The webhook node resolves every listed
+  `secret_env` at startup, so all twelve values must exist before
+  deploying — a repo whose secret is missing fails the whole
+  ingress, not just its own pushes.
 - **Routing**: `docs.route` re-emits every verified push as
   `push.<repo>.<ref>.<clone_url>.<sha>`; per-repo pipelines subscribe
   `push.<repo>.refs/heads/docs.**.*` — main-branch pushes route but
@@ -47,7 +62,9 @@ without an operator decision.
 - **Deploy**: `driver: git` materializes a detached worktree at the
   pushed sha (clone cache under `worktree_base/.repos`, creds via
   argv-scoped `http.extraHeader` — never persisted); the inner shell
-  runs `config.cmd` at the worktree root.
+  runs `config.cmd` at the worktree root. Gen-dependent repos add a
+  second `extra_worktrees` checkout of `main_ref` at the run root —
+  see "v1 scope" above.
 - **gh-pages auth**: the worktree's `origin` is the reported
   `clone_url`, so `gh-pages` detects the repo itself. The shipped cmd
   exports an env-scoped `credential.helper` (reads `$BUPHA_TOKEN`)
@@ -82,8 +99,8 @@ ignored under `serve`). The `docs-deploy-campaign.service` unit is
 the standalone fallback on `127.0.0.1:29174`.
 
 Forge-hook registration (pointing each repo's webhook at the public
-URL) and adding the `BUPHA_WH_9AIA_SEPIA`/`BUPHA_WH_9AIA_LASIUS`
-values to `~/.config/peregrin/env` are operator steps.
+URL) and adding the missing `BUPHA_WH_9AIA_*` values to
+`~/.config/peregrin/env` (see Ingress above) are operator steps.
 
 ## Params (validated against `params.schema.json`)
 
@@ -93,4 +110,5 @@ values to `~/.config/peregrin/env` are operator steps.
 | `token_env` | `BUPHA_TOKEN` | Secret **name** for clone auth + gh-pages push + statuses |
 | `timeout` | `600` | Inner shell timeout, seconds |
 | `context` | `docs/deploy` | Commit-status context |
+| `main_ref` | `refs/heads/main` | Ref checked out at `<run>` for gen-dependent repos' dual-checkout |
 | `cmd` | see `main.yaml` | Deploy command at the worktree root |

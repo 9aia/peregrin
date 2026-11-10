@@ -30,6 +30,11 @@
       "pattern": "^[A-Za-z0-9._/-]+$",
       "description": "GitHub commit-status context posted on the pushed docs-branch sha."
     },
+    "main_ref": {
+      "type": "string",
+      "default": "refs/heads/main",
+      "description": "Ref the gen-dependent repos' second worktree checks out at the run root (<run>), so docs:deploy's `cd ..` gen steps (cargo run/doc) see the main checkout. Ignored by the self-contained repos."
+    },
     "cmd": {
       "type": "string",
       "description": "Deploy command run at the worktree root (= the docs branch root). Default: bun install (frozen-lockfile, plain fallback) + env-scoped git credential.helper/author + `bun run docs:deploy`. Override per-install; keep the credential.helper export or gh-pages pushes will be anonymous."

@@ -26,6 +26,23 @@
 //! `PERE_{WORKTREE,SHA,REPO,CLONE_URL}` unless the inner params
 //! already declare them.
 //!
+//! `params.extra_worktrees` materializes *additional* checkouts of
+//! the same repo at other refs — `[{ref, dir}]` where `ref` is a
+//! branch/tag/ref name (`refs/heads/main`, `main`, a tag; revision
+//! syntax like `@{…}`/`~`/`^` is rejected) resolved via
+//! `rev-parse --verify` with one best-effort `fetch origin` retry,
+//! and `dir` is a relative path under the **primary worktree's
+//! parent directory** (`"."` — the default — places the extra at the
+//! parent itself). Extras are created *before* the primary: a nested
+//! layout puts the primary inside a dir an extra may occupy (the
+//! docs-deploy shape — primary `dest: "<run>/docs"` = the docs-branch
+//! checkout, extra `refs/heads/main` at `"."` = the `<run>` main
+//! checkout its `cd ..` gen scripts expect). Entries are created
+//! shallowest-path-first so a container extra lands before anything
+//! nested under it, and cleanup destroys the primary before the
+//! extras in reverse order — an extra can *contain* the primary's
+//! dir, and `worktree remove` is recursive.
+//!
 //! The inner driver's last event collapses to an `inner_rc`
 //! (`payload.rc`, else `1` for a `.failed`-kinded event, else `0`)
 //! that `params.emit`'s rc→type map can remap; otherwise `0` emits
@@ -47,7 +64,7 @@
 //! OAuth tokens; `bearer` is rejected by smart-HTTP for OAuth.
 
 use std::ffi::{OsStr, OsString};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::sync::Arc;
 
 use serde_json::{Map, Value};
@@ -240,6 +257,49 @@ impl<G: Git + Clone> GitDriver<G> {
         .map_err(|error| format!("clone '{source}' failed: {error}"))?;
         Ok(cache)
     }
+
+    /// Resolve an `extra_worktrees[].ref` to a full commit sha in
+    /// `repo`. `rev-parse --verify` first; on a miss, one best-effort
+    /// `fetch origin` (credential args ride argv like clone/fetch) and
+    /// a retry — covers refs the cached clone hasn't seen yet. A repo
+    /// without `origin` just fails the retry and reports the
+    /// rev-parse error.
+    fn resolve_ref(
+        &self,
+        repo: &Path,
+        reference: &str,
+        creds: &[String],
+    ) -> Result<String, String> {
+        let verify = format!("{reference}^{{commit}}");
+        let rev = [
+            OsStr::new("rev-parse"),
+            OsStr::new("--verify"),
+            OsStr::new(&verify),
+        ];
+        match self.git.run(repo, &rev) {
+            Ok(out) => Ok(out.trim().to_string()),
+            Err(first) => {
+                let _ = self.run_with_creds(
+                    repo,
+                    creds,
+                    &[
+                        OsStr::new("fetch"),
+                        OsStr::new("--prune"),
+                        OsStr::new("origin"),
+                    ],
+                );
+                self.git
+                    .run(repo, &rev)
+                    .map(|out| out.trim().to_string())
+                    .map_err(|_| {
+                        format!(
+                            "extra worktree ref '{reference}' not resolvable in {}: {first}",
+                            repo.display()
+                        )
+                    })
+            }
+        }
+    }
 }
 
 /// `params.inner` — a bare driver name or a node fragment
@@ -313,6 +373,72 @@ fn env_names(raw: Option<&Value>) -> Vec<&str> {
         Some(Value::Array(items)) => items.iter().filter_map(Value::as_str).collect(),
         _ => Vec::new(),
     }
+}
+
+/// One `params.extra_worktrees` entry — an additional checkout of the
+/// same repo at `reference`, placed at `dir` relative to the primary
+/// worktree's parent directory (`"."` = the parent itself).
+struct ExtraWorktree {
+    reference: String,
+    dir: String,
+}
+
+/// A ref name safe to hand `rev-parse`: branch/tag/`refs/…` names and
+/// full shas only — no leading `-` (flag injection into the argv),
+/// no `..`, and none of the revision syntax (`@{`, `~`, `^`, `:`,
+/// globs) that could resolve outside the intended ref.
+fn valid_ref(reference: &str) -> bool {
+    !reference.is_empty()
+        && !reference.starts_with('-')
+        && !reference.starts_with('.')
+        && !reference.contains("..")
+        && reference
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '_' | '/' | '-'))
+}
+
+/// A relative dir safe to join under the run root: no absolute path,
+/// no `..` escape, no prefixes — `.`/`./x`-style `CurDir` components
+/// are fine (they collapse away at the join).
+fn valid_rel_dir(dir: &str) -> bool {
+    !dir.is_empty()
+        && Path::new(dir)
+            .components()
+            .all(|c| matches!(c, Component::Normal(_) | Component::CurDir))
+}
+
+/// Parse `params.extra_worktrees` — `[{ref, dir?}]`; `dir` defaults
+/// to `"."` (the primary worktree's parent). Malformed shapes are
+/// param errors, like `params.inner`.
+fn parse_extra_worktrees(raw: Option<&Value>) -> Result<Vec<ExtraWorktree>, String> {
+    let Some(value) = raw else {
+        return Ok(Vec::new());
+    };
+    let items = value
+        .as_array()
+        .ok_or("params.extra_worktrees must be an array")?;
+    let mut extras = Vec::with_capacity(items.len());
+    for item in items {
+        let map = item
+            .as_object()
+            .ok_or("params.extra_worktrees entries must be objects")?;
+        let reference = map
+            .get("ref")
+            .and_then(Value::as_str)
+            .filter(|r| valid_ref(r))
+            .ok_or("params.extra_worktrees entry missing a valid 'ref'")?;
+        let dir = map.get("dir").and_then(Value::as_str).unwrap_or(".");
+        if !valid_rel_dir(dir) {
+            return Err(format!(
+                "params.extra_worktrees entry 'dir' {dir:?} must be a relative path without '..'"
+            ));
+        }
+        extras.push(ExtraWorktree {
+            reference: reference.to_string(),
+            dir: dir.to_string(),
+        });
+    }
+    Ok(extras)
 }
 
 /// Resolve credential names to `-c` config args. Each name resolves
@@ -484,6 +610,7 @@ fn input_schema() -> EventSchema {
             "inner": {},
             "base": {"type": "string"},
             "dest": {"type": "string"},
+            "extra_worktrees": {},
             "keep": {},
             "emit": {"type": "object"},
             "ssh_env": {},
@@ -569,6 +696,8 @@ impl<G: Git + Clone> Driver for GitDriver<G> {
             })?;
         let inner = parse_inner(params.get("inner"))
             .map_err(|error| DriverError::new(format!("git node '{}': {error}", node.id)))?;
+        let extras = parse_extra_worktrees(params.get("extra_worktrees"))
+            .map_err(|error| DriverError::new(format!("git node '{}': {error}", node.id)))?;
         let inner_driver = self.lookup.driver(&inner.driver).ok_or_else(|| {
             DriverError::new(format!(
                 "git node '{}' has no driver registered for inner '{}'",
@@ -637,9 +766,91 @@ impl<G: Git + Clone> Driver for GitDriver<G> {
         };
         let dest = non_empty_str(&params, "dest")
             .map_or_else(|| default_dest(node, ctx, &resolved), str::to_string);
+
+        // --- extra worktrees: same repo, other refs ------------------
+        // `dir` resolves under the primary's parent dir — the "run
+        // root" for a nested `dest` like `<run>/docs`. Ref resolution
+        // happens before anything is created; creation is
+        // shallowest-path-first so a container extra (the run root
+        // itself) lands before anything nested under it, and ALWAYS
+        // before the primary — a primary created first would leave
+        // the run root non-empty and `worktree add` would refuse it.
+        let mut prepared: Vec<(PathBuf, String)> = Vec::with_capacity(extras.len());
+        if !extras.is_empty() {
+            // Mirror `Worktrees::dest_path`: `~`-expand, relative joins
+            // under the (already absolutized) base.
+            let expanded = expand_path(Path::new(&dest));
+            let dest_abs = if expanded.is_absolute() {
+                expanded
+            } else {
+                worktrees.base().join(expanded)
+            };
+            let run_root = dest_abs
+                .parent()
+                .map_or_else(|| worktrees.base().to_path_buf(), Path::to_path_buf);
+            for extra in &extras {
+                match self.resolve_ref(&repo, &extra.reference, &creds) {
+                    Ok(extra_sha) => {
+                        let mut path = run_root.clone();
+                        for component in Path::new(&extra.dir).components() {
+                            if let Component::Normal(part) = component {
+                                path.push(part);
+                            }
+                        }
+                        prepared.push((path, extra_sha));
+                    }
+                    Err(error) => {
+                        return Ok(vec![failed_event(node, error, &facts(Path::new("")))]);
+                    }
+                }
+            }
+            // Parents before children regardless of yaml order.
+            prepared.sort_by_key(|(path, _)| path.components().count());
+        }
+        let mut created_extras: Vec<peregrin_git::Worktree> = Vec::with_capacity(prepared.len());
+        for (path, extra_sha) in &prepared {
+            match worktrees.create(&repo, extra_sha, path) {
+                Ok(extra) if extra.sha == *extra_sha => created_extras.push(extra),
+                Ok(extra) => {
+                    // Adopted a foreign checkout at the wrong sha —
+                    // same contract as the primary below: leave it
+                    // (and its record) for `Worktrees::cleanup`, but
+                    // destroy the extras this run did create.
+                    for made in created_extras.iter().rev() {
+                        let _ = worktrees.destroy(&made.path);
+                    }
+                    return Ok(vec![failed_event(
+                        node,
+                        format!(
+                            "worktree {} is detached at {}, expected {extra_sha}",
+                            extra.path.display(),
+                            extra.sha
+                        ),
+                        &facts(&extra.path),
+                    )]);
+                }
+                Err(error) => {
+                    for made in created_extras.iter().rev() {
+                        let _ = worktrees.destroy(&made.path);
+                    }
+                    return Ok(vec![failed_event(
+                        node,
+                        format!("extra worktree create failed: {error}"),
+                        &facts(Path::new("")),
+                    )]);
+                }
+            }
+        }
+
         let worktree = match worktrees.create(&repo, &resolved, &dest) {
             Ok(worktree) => worktree,
             Err(error) => {
+                // The primary never landed — the extras are ours and
+                // safe to take back down (nothing foreign can be
+                // nested inside them yet).
+                for made in created_extras.iter().rev() {
+                    let _ = worktrees.destroy(&made.path);
+                }
                 return Ok(vec![failed_event(
                     node,
                     format!("worktree create failed: {error}"),
@@ -650,7 +861,10 @@ impl<G: Git + Clone> Driver for GitDriver<G> {
         if worktree.sha != resolved {
             // `create` adopted a foreign checkout at the dest — leave
             // it (and its record) for `Worktrees::cleanup` rather than
-            // deleting something peregrin-git didn't create.
+            // deleting something peregrin-git didn't create. The
+            // extras stay recorded too: one may BE the run root
+            // containing this foreign checkout, so taking it down
+            // synchronously could delete the adopted dir with it.
             return Ok(vec![failed_event(
                 node,
                 format!(
@@ -700,14 +914,32 @@ impl<G: Git + Clone> Driver for GitDriver<G> {
         let inner_result = inner_driver.invoke(&inner_node, triggers, ctx);
 
         // --- cleanup: destroy unless kept-for-debug -----------------
+        // Primary first, then extras in reverse creation order
+        // (deepest first): an extra can be the run root CONTAINING
+        // the primary's dir, and `worktree remove` is recursive —
+        // removing the container first would take the primary's
+        // checkout with it. Every entry is attempted; the first
+        // error is reported.
         let keep = params.get("keep").is_some_and(js_truthy);
-        let cleanup = if keep {
-            worktrees.keep(&worktree.path).map(|_| ())
-        } else {
-            worktrees.destroy(&worktree.path)
+        let mut cleanup_error = None;
+        let mut teardown = |path: &Path| {
+            let result = if keep {
+                worktrees.keep(path).map(|_| ())
+            } else {
+                worktrees.destroy(path)
+            };
+            if let Err(error) = result
+                && cleanup_error.is_none()
+            {
+                cleanup_error = Some(error.to_string());
+            }
         };
+        teardown(&worktree.path);
+        for extra in created_extras.iter().rev() {
+            teardown(&extra.path);
+        }
         let facts = facts(&worktree.path);
-        if let Err(error) = cleanup {
+        if let Some(error) = cleanup_error {
             return Ok(vec![failed_event(
                 node,
                 format!("worktree cleanup failed: {error}"),
