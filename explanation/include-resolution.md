@@ -127,4 +127,4 @@ without vendoring them. See
 | Reusable node template by name | `snippet: devin` |
 | Reusable value fragment by name | `on: ${snippet(pr-triggers)}` |
 | Share fragments across workflows in one repo | `include:` a `snippets:` file, then `snippet: name` |
-| Share fragments across machines/git refs | a bundle — `peregrin install`, manifest `include:` |
+| Share fragments across machines/git refs | a bundle — `tamias install`, manifest `include:` |

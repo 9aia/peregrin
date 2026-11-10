@@ -25,6 +25,8 @@ aren't arrays are a hard error.
 | `state` | map | Campaign-level state seed for `${state.*}`. |
 | `annotations` | map | Free-form metadata (ADR-0009). |
 | `snippets` | `{name: body}` | **Load-time only** — consumed by the expansion pass; never reaches the typed model. |
+| `supersede` | map | Queue policy for trigger events that outpace the executor — `key` (template over the trigger payload, e.g. `"{repo}:{ref}"`), `mode` (`latest-wins` \| `fifo`), `cancel_running` (bool). Declared **plus** an ingress-driver node engages supervisor mode — see [Queue & supersede](queue-supersede.md). |
+| `runs_on` | `[label]` | Runner labels this campaign requires (PL-007 fleet scheduling). Every label must appear in the hosting node's advertised capabilities (`/api/node`, fed by `PEREGRIN_RUNNER_LABELS`) — AND semantics; empty matches anywhere. Enforced by `campaign.start` ops, `campaign serve` hosting, and hub fleet dispatch — see [Fleet runners](fleet-runners.md). |
 
 ## Node fields
 

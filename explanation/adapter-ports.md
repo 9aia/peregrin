@@ -7,9 +7,12 @@ care which implementation backs any of them.
 
 This is the same ports-and-adapters split the rest of the workspace
 follows: policy crates are pure, every I/O seam is a port
-(`peregrin-{store,bus,remote,config,secret,service,loader,template}`)
-with impls behind it (`-json`, `-toml`, `-yaml`, `-keyring`,
-`-dotenv`, `-http`, `-systemd`). See
+(`peregrin-{store,bus,remote,config,loader,template}`) with impls
+behind it (`-json`, `-toml`, `-yaml`, `-http`). The generic substrate
+seams — secrets (`hypha-secret` + `-keyring`/`-dotenv`), services
+(`hypha-service` + `-systemd`), the entity plane, outbox, sync, and
+the generic HTTP surface — are `hypha-*` crates consumed as git deps;
+peregrin keeps the integration ports. See
 [Architecture](architecture.md#ports-and-adapters).
 
 ## The event log — `EventStore`

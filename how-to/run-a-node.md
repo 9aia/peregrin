@@ -9,7 +9,8 @@ hosts the session plane and answers `/api/*` for the hub and CLI.
 peregrin serve
 ```
 
-Binds `PEREGRIN_HOST:PEREGRIN_PORT` — default `127.0.0.1:8787`. Check it:
+Binds `PEREGRIN_HOST:PEREGRIN_PORT` — default `127.0.0.1:18787`
+(`PEREGRIN_PORT` falls back to the generic `PORT`). Check it:
 
 ```bash
 peregrin health
@@ -31,14 +32,14 @@ as a bearer token; the hub uses `PEREGRIN_NODE_TOKEN` per node.
 
 ## Pairing
 
-The web UI exchanges a short-lived code for a bearer token:
+Clients exchange a short-lived code for a bearer credential:
 
 ```bash
 peregrin pair      # prints a code on the node
+peregrin redeem <code>   # trades it for a token
 ```
 
-Then `peregrin redeem <code>` (or the UI's pair flow) trades it for a
-token. `/api/pair` is rate-limited — `PEREGRIN_PAIR_LIMIT_PER_MIN` /
+`/api/pair` is rate-limited — `PEREGRIN_PAIR_LIMIT_PER_MIN` /
 `_PER_DAY`.
 
 ## The session plane
@@ -71,12 +72,14 @@ export PEREGRIN_SESSION_PLANE=local    # or: inprocess
 
 ## systemd
 
-`hypha-service` + `hypha-systemd` are the service port and
-adapter — a unit file keeps the node alive and restarts it. `peregrin
-service install` writes + enables the unit (`--hub` manages the hub,
-`--system` a system unit); `peregrin service disable` stops it and keeps
-it stopped across logins (unit file kept) until `peregrin service
-enable`. `status`, `restart` and `logs` round out the verbs.
+Service lifecycle is **tamias**'s job — peregrin ships the provider
+(`tamias-driver-peregrin`), tamias renders and owns the units. Deploy a
+node through `tamias install`/`deploy` of a package that declares the
+peregrin provider and `provider.services[]`; tamias writes the unit,
+enables it, and owns start/stop/restart/logs. The hidden
+`peregrin provision {install,deploy,uninstall}` verbs are the provider
+entrypoints tamias shells out to — they generate node config and never
+write service units themselves.
 
 ## Ephemeral nodes (CI runners)
 

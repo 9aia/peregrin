@@ -19,5 +19,5 @@ features:
   - title: Campaigns
     details: Declarative workflows over agents — graph-walking engine, YAML loader, templating, durable runs.
   - title: Hub
-    details: Aggregation across nodes — merged session views, sync, arbitration, and the Leptos web UI.
+    details: Aggregation across nodes — merged entity/session views, sync, lock arbitration, and fleet dispatch.
 ---

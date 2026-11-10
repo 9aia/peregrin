@@ -28,8 +28,9 @@ export PEREGRIN_HOME=$RUNNER_TEMP/peregrin   # per-job home
 ## Auth — no pairing needed
 
 Node→hub trust is **configuration, not pairing**. The hub's operator
-lists the runner in `PEREGRIN_NODES` (or `HYPHA_NODES`) like any other
-node:
+lists the runner in `PEREGRIN_NODES` like any other node — for
+`peregrin-hub` that is the only variable it reads (`HYPHA_NODES` is the
+standalone `hypha-hub` binary's contract):
 
 ```bash
 # on the hub

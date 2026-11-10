@@ -31,23 +31,25 @@ a shared fragment library — it becomes a *bundle*: a
 `.node.yml`, `.driver.yml`, `.field.yml` files.
 
 ```bash
-peregrin install git:9aia/peregrin//libraries/ci-gate   # → the store
-peregrin list && peregrin info ci-gate
-peregrin create --template ci-gate --repo owner/repo  # materialize
+tamias install git:9aia/peregrin//libraries/ci-gate   # → the tamias store
+tamias list && tamias info ci-gate
+tamias deploy ci-gate                                 # materialize + unit
 ```
 
-- **Install** — fetch from fs/git/http, unpack into
-  `~/.local/share/peregrin/store/<name>@<version>/`, record the
-  resolved pin (commit sha or `sha256:` digest). Refs pin by git ref
-  or content digest; the fetch cache makes warm installs free.
+- **Install** — fetch from fs/git/http/cf, unpack into tamias's
+  install store (`~/.local/share/tamias/<name>@<version>/`), record
+  the resolved pin (commit sha or `sha256:` digest). Refs pin by git
+  ref or content digest; the fetch cache makes warm installs free.
 - **Compose** — a manifest's `include:` deep-merges base bundles
   under the local payload, same rules as file-level includes.
-- **Instantiate** — `peregrin create --template <bundle>` writes the
-  operator's node config (the bundle's `main.yaml` included,
-  `config:` params merged, an ingress node per `--repo`) plus a
-  service unit. The *operator* config is where secrets and watched
-  repos bind — a bundle never ships `params.repos`/`secret_env`
-  values.
+- **Instantiate** — `tamias deploy` runs `tamias-driver-peregrin`'s
+  `deploy` verb, which writes the operator's node config (the
+  bundle's `main.yaml` included, `config:` params merged, a
+  `github-webhook` ingress node built from `provider.ingress[]`)
+  into `~/.config/peregrin/` and the campaign-host dir — and renders
+  `provider.services[]` as systemd units. The *operator* config is
+  where secrets and watched repos bind — a bundle never ships
+  `params.repos`/`secret_env` values.
 
 The ref grammar, store layout, cache, and verbs are specified in
 [Distribution](../reference/distribution.md).
@@ -68,4 +70,4 @@ stays out of the engine.
 - [Include and snippet resolution](include-resolution.md) — the
   file-level half
 - [Your first gate](../tutorials/first-gate.md) — the install →
-  create → deploy flow end to end
+  deploy → hooks flow end to end

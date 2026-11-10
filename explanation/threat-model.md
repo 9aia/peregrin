@@ -12,7 +12,7 @@ safety claims.
 | Role | Who/what | Trust level | What it controls |
 | --- | --- | --- | --- |
 | **Campaign author** | Human who writes the campaign YAML and its `capabilities:` | Trusted | The capability boundary (the "constitution") |
-| **Operator** | Human who runs `install`/`create`/`deploy` and feeds the secrets record | Trusted | Which bundles exist, which repos are watched, the secret *values* |
+| **Operator** | Human who runs `tamias install`/`deploy` and feeds the secrets record | Trusted | Which bundles exist, which repos are watched, the secret *values* |
 | **Generator** | AI that creates new node specs | Untrusted | Node specs (data) |
 | **Reviewer** | AI that reduces the generator's capabilities before injection | Semi-trusted | Which self-attested caps survive |
 | **Engine** | `Runner::execute_node` — the dispatch-time check | Trusted (mechanical) | Whether a node's resolved `params:` may run |
@@ -112,27 +112,28 @@ pattern is to **strip caps, not narrow**.
   confinement — run untrusted campaigns in a container or VM.
 - **The secrets record source.** `RunOptions.secrets` is fed by the
   caller; the engine gates *reads*, but who populates the record is
-  an operator decision. The ops verbs resolve names through env →
-  keyring → `~/.config/peregrin/env` — the run-side feed of that
-  chain is pending wiring.
+  an operator decision. The campaign plane resolves names through
+  ambient env → keyring → `~/.config/peregrin/env` (`PEREGRIN_ENV`) —
+  the run-side feed of that chain.
 
 **Summary:** the engine confines the **declared interface**. It does
 not confine the **runtime behaviour** within that interface.
 
 ## Supply chain: the bundle is code
 
-`peregrin install <ref>` fetches a bundle and `create` materializes
-a config that *executes* it — a bundle is remote code running on
-your node, with your secrets record. The mitigations are pinning,
-not sandboxing:
+`tamias install <ref>` fetches a bundle and `tamias deploy` +
+`tamias-driver-peregrin deploy` materializes a config that
+*executes* it — a bundle is remote code running on your node, with
+your secrets record. The mitigations are pinning, not sandboxing:
 
 - `#<ref>` pins to a branch/tag/sha; the resolved commit sha is
   always recorded, and `#sha256:` tarball refs are content-pinned.
-- `peregrin verify <name>` digest-checks installed contents against
+- `tamias verify <name>` digest-checks installed contents against
   the recorded sha.
 - A bundle can declare `capabilities:` — treat a bundle's requested
   caps the way you treat a mobile app's permission list. Audit
-  `peregrin info <name>` before `create`.
+  `tamias info <name>` and the manifest's `provider:` block before
+  `tamias deploy`.
 
 ## Practical guidance
 

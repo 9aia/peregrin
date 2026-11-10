@@ -61,9 +61,10 @@ campaign's `params.repos[].name`:
   `params.pull_request_actions` (default `opened,synchronize,reopened`)
   decides which actions it receives — a `synchronize` reaches a route
   that accepts it and is a verified no-op for one that doesn't.
-  `peregrin deploy webhook` subscribes a repo's hook to
-  `pull_request` only when at least one watching node sets the param;
-  push-only campaigns keep a `push`-only subscription. PR payloads
+  Hook *registration* is the deploy driver's job — `tamias driver
+  exec <pkg> hooks register` subscribes a repo's hook to
+  `pull_request` when the manifest declares it; push-only campaigns
+  keep a `push`-only subscription. PR payloads
   carry the head repo's `clone_url`, so fork heads are checkable with
   a suitably scoped token — see
   [first-gate](../tutorials/first-gate.md#pull-request-triggers-opt-in).
@@ -111,13 +112,9 @@ systemctl enable --now peregrin-campaigns
 journalctl -u peregrin-campaigns -f   # per-run events print as [<campaign>] ...
 ```
 
-`peregrin provision` / tamias manage host-level service lifecycle
-(install/deploy/uninstall of the `peregrin serve` hub); campaign
-serving is a workload, not a host service — keep the unit above (or
-equivalent) as the campaign-plane supervisor. If the hub and the
+Host-level service lifecycle is tamias's job — `tamias deploy` of a
+`peregrin-bundle` renders exactly this unit shape as the shared
+`peregrin-campaign.service` (see
+[Distribution](../reference/distribution.md)). Campaign serving is a
+workload hosted by that unit; if the `peregrin serve` hub and the
 campaign fleet share a host, run them as separate units.
-
-For bundles that declare `provider.services[]` (e.g.
-`libraries/ci-gate`), `tamias deploy <pkg>` renders this unit shape
-automatically — see [Distribution](../reference/distribution.md)'s
-"Tamias provider packages" section.

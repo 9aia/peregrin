@@ -59,15 +59,17 @@ A stock node resolves (`peregrin_node::campaign::registry`):
 | `schedule` | temporal | Emits `emits[0]` at each `params.cron` occurrence in `params.timezone` (IANA, default UTC; 5- or 6-field cron). Recurs through a synthetic `{id}.fire` re-arm; `max_fires` bounds emissions (`1` = one-shot, `unlimited` = default). |
 | `noop` | builtin | Emits `node.done`; tests and scaffolding. |
 | `runner` | builtin | Injects node specs from the trigger's `payload.nodes` — the self-modifying primitive. |
+| `mock-agent` | action | Test/dev agent stub — canned responses, no real CLI. |
 
-Two ingress drivers exist as crates — `github-webhook` (HMAC-verified
-push + `pull_request` listener; PR actions filter via
-`params.pull_request_actions`, default `opened,synchronize,reopened`)
-and `sturn-poll` (git-ref WAL poller) — and compose
-the same way once the node's per-run wiring hands them the run's
-`Injector`. The v1 `python`/`cli`/`stdin`/generic `webhook`/
-`streaming` drivers and the litellm/apprise plugin drivers are not
-ported.
+Two ingress drivers ship wired into the campaign plane —
+`github-webhook` (HMAC-verified push + `pull_request` listener; PR
+actions filter via `params.pull_request_actions`, default
+`opened,synchronize,reopened`) and `sturn-poll` (git-ref WAL poller).
+`campaign run` registers them against the run-scoped `Injector`;
+`campaign serve` uses a shared injector + webhook demux across every
+hosted campaign (`peregrin_node::campaign::registry_with_ingress[_shared]`).
+The v1 `python`/`cli`/`stdin`/generic `webhook`/`streaming` drivers
+and the litellm/apprise plugin drivers are not ported.
 
 ## What a driver gets — `ExecutionContext`
 

@@ -1,11 +1,16 @@
 # Your first gate
 
 This tutorial walks the operator flow end to end: install the
-`ci-gate` bundle, materialize a node config from it, register the
-repo webhook, run the gate as a service, and watch pushes turn into
-commit statuses. You'll need the `peregrin` binary
-([Getting started](getting-started.md)) and a GitHub token with
-`repo` + `admin:repo_hook` scopes.
+`ci-gate` bundle through tamias, deploy the shared campaign host,
+register the repo webhook, and watch pushes turn into commit
+statuses. You'll need the `peregrin`, `peregrin-hub`, and
+`tamias-driver-peregrin` binaries
+([Getting started](getting-started.md)), `tamias` itself, and a GitHub
+token with `repo` + `admin:repo_hook` scopes.
+
+Distribution, provisioning, and service lifecycle are **tamias**'s job —
+peregrin ships only the provider (`tamias-driver-peregrin`). See
+[Distribution](../reference/distribution.md) for the boundary.
 
 The bundle: on a `push` event → detached worktree at the pushed sha
 → your gate command runs inside it → a GitHub commit status posts
@@ -17,154 +22,104 @@ cancels the in-flight run.
 ```bash
 # `//` splits repo from subdir; `#` pins a ref (it defaults to the
 # repo's default branch — this bundle lives on `v2`).
-peregrin install git:9aia/peregrin//libraries/ci-gate#v2
-peregrin list          # name@version, resolved sha, source ref
-peregrin info ci-gate  # manifest, provenance, size
+tamias install git:9aia/peregrin//libraries/ci-gate#v2
+tamias list          # installed packages, resolved refs
 ```
 
-The store lands at `~/.local/share/peregrin/store/ci-gate@<version>/`
-— payload plus a `.peregrin-store.json` recording the source ref and
-resolved commit sha. See
-[Distribution](../reference/distribution.md) for the full ref
-grammar (`#tag`, `#sha256:`, tarballs, local paths).
-
-## 2. Materialize the config
+## 2. Deploy it
 
 ```bash
-peregrin create --template ci-gate \
-  --repo owner/repo \
-  --set cmd='bash scripts/ci.sh' \
-  --set public_url=https://gate.example.com
+tamias deploy ci-gate
 ```
 
-`create` writes three things:
+`tamias deploy` does two things for a `peregrin-bundle`:
 
-- **Node config** — `~/.config/peregrin/ci-gate.yaml`: includes the
-  bundle's `main.yaml`, merges your `--set` values into `config:`,
-  and adds the inline ingress node. Each `--repo owner/name[:ENV]`
-  becomes a watched repo; the secret-env suffix names the webhook
-  secret (default `PEREGRIN_WH_<OWNER>_<REPO>`).
-- **Service unit** — `~/.config/systemd/user/ci-gate.service`,
-  running `peregrin campaign run <config> --history
-  $PEREGRIN_HOME/history.jsonl`. Written, *not* enabled.
-- **Secrets skeleton** — `~/.config/peregrin/env` (created `0o600`
-  if absent) listing every secret NAME the deployment references.
+- renders `provider.services[]` into per-user systemd units. Every
+  `peregrin-bundle` declares `provider.name: peregrin`, so they all
+  share **one** unit — `peregrin-campaign.service` — whose
+  `ExecStart` is `peregrin campaign serve
+  ~/.config/peregrin/serve --listen 127.0.0.1:29173 --path /hook …`.
+  One process hosts every deployed bundle on a single webhook
+  listener, demuxing verified pushes by `repository.full_name`.
+- runs `tamias-driver-peregrin deploy`, which generates the operator
+  node config `~/.config/peregrin/ci-gate.yaml` — the bundle's
+  `main.yaml` plus a `github-webhook` ingress node and the
+  `capabilities.secrets` grant derived from the manifest's
+  `provider.ingress[]` declaration — and drops a copy into the
+  campaign-host dir `~/.config/peregrin/serve/ci-gate.yaml`.
 
-The `capabilities.secrets` block in the generated config is the grant
-the secret gate checks: the webhook and status drivers may resolve
-exactly those names, nothing else. Removing a name there revokes it.
-
-```yaml
-# ~/.config/peregrin/ci-gate.yaml — what create emits
-name: ci-gate
-annotations:
-  generated_by: peregrin create --template ci-gate
-  bundle: ci-gate@0.1.0
-include:
-  - /home/you/.local/share/peregrin/store/ci-gate@0.1.0/main.yaml
-config:
-  name: ci-gate
-  cmd: bash scripts/ci.sh
-  public_url: https://gate.example.com
-capabilities:
-  secrets:
-    - GITHUB_TOKEN
-    - PEREGRIN_WH_OWNER_REPO
-nodes:
-  - id: ci-gate.ingress
-    driver: github-webhook
-    on: [start]
-    emits: [ci-gate.ingress.listening, push]
-    params:
-      repos:
-        - name: owner/repo
-          secret_env: PEREGRIN_WH_OWNER_REPO
-```
+The `capabilities.secrets` block is the grant the secret gate checks:
+the webhook and status drivers may resolve exactly those names,
+nothing else.
 
 ## 3. Fill the secrets
 
-Edit `~/.config/peregrin/env` — config and bundles carry a secret
-NAME, never its value. The campaign resolves the name from this file
-(the unit loads it via `EnvironmentFile`, so it *is* the environment
-the run sees), and a name that doesn't resolve fails the node rather
-than silently degrading:
+Secrets live in `~/.config/peregrin/env` (the unit loads it via
+`EnvironmentFile`; create it `0o600` if absent). Config and bundles
+carry a secret NAME, never its value — a name that doesn't resolve
+fails the node rather than silently degrading:
 
 ```bash
 GITHUB_TOKEN=ghp_…                 # forge token (statuses + clones + hooks)
-PEREGRIN_WH_OWNER_REPO=…           # the webhook secret for owner/repo
+PEREGRIN_WH_9AIA_PEREGRIN=…        # webhook secret, PEREGRIN_WH_<OWNER>_<REPO>
 ```
 
-Ambient env also resolves — `export GITHUB_TOKEN=…` before
-`peregrin campaign run` works for a quick shell session without
-touching the file (and beats it: env precedes the file leg).
+Ambient env also resolves — `export GITHUB_TOKEN=…` before a manual
+`campaign run` beats the file (env precedes the file leg).
 
 ## 4. Check the box
 
 ```bash
-peregrin doctor --config ~/.config/peregrin/ci-gate.yaml
+tamias driver exec ci-gate health     # JSON probe: webhook ping / unit state
+tamias driver exec ci-gate status     # per-unit is-active/is-enabled
+tamias driver exec ci-gate logs       # journalctl over the provider units
+peregrin campaign validate ~/.config/peregrin/ci-gate.yaml
 ```
 
-Doctor verifies the config loads, the dirs exist, the secret names
-resolve, and the tools the campaign needs are on PATH. Fix what it
-reports before continuing.
+Host diagnostics (`doctor`) live in tamias — `tamias doctor`. Fix
+what they report before continuing.
 
 ## 5. Register the webhook
 
 ```bash
-peregrin deploy webhook --config ~/.config/peregrin/ci-gate.yaml
-# owner/repo: created hook -> https://gate.example.com/hook
+tamias driver exec ci-gate hooks register --dry-run   # print the plan first
+tamias driver exec ci-gate hooks register
 ```
 
-This reads every `github-webhook` node's `params.repos` and upserts
-a hook at `<public_url><hook-path>` via the GitHub API — exact-URL
-match, so re-running is safe. The subscribed event list is `push`
-only unless a `github-webhook` node sets
-`params.pull_request_actions` (see below); the command inspects the
-nodes and subscribes `pull_request` automatically for those. `--url`
-overrides `config.public_url`; `--token-env` overrides which secret
-name holds the forge token. The webhook listener binds
-`127.0.0.1:29173` on `/hook` by default (the `listen` param of the
-`github-webhook` node) — change it when another service already holds
-that port (bupha watchers are retired, but a stray process can still
-hold it). Point your tunnel or
-reverse proxy at it.
+`hooks register` upserts the forge webhooks the manifest's
+`provider.ingress[].hooks[]` declare — `ci-gate` ships `hooks: []`
+(its `main.yaml` is a full `peregrin import bupha` artifact that owns
+its ingress inline), so for this bundle the hooks already exist or are
+registered by hand; bundles that *do* declare hooks get exact-URL
+upserts here, and `hooks unregister` removes them.
+
+The webhook listener binds `127.0.0.1:29173` on `/hook` (the shared
+`--listen`/`--path` of `campaign serve`) — one socket serves every
+installed `peregrin-bundle`. Point your tunnel or reverse proxy at
+`https://ci.luisfuturist.com` (the manifest's `public_url`).
 
 ### Pull-request triggers (opt-in)
 
-`github-webhook` also verifies `pull_request` deliveries. The
-accepted actions are set per node with `params.pull_request_actions`
-(default `opened,synchronize,reopened`):
-
-```yaml
-    params:
-      repos:
-        - name: owner/repo
-          secret_env: PEREGRIN_WH_OWNER_REPO
-      pull_request_actions: [opened, synchronize, reopened]
-```
-
-The value may be a list or a comma-separated string; the default
-(when the param is absent) is `opened,synchronize,reopened`, and any
-action outside the configured set is verified, deduped, and answered
-`200` as a no-op — it never reaches the run. A `pull_request` event
-carries kind `pull_request` with payload fields `repo`, `number`,
-`action`, `sha` (PR head), `ref` (head branch), `base_ref`, `actor`,
-and `clone_url` — the head repository's clone URL when GitHub sends
-one, so a fork head checks out correctly. That means checking out a
-fork's head requires a token with read access to the fork
-repository; no extra fork-safety machinery is provided. With the
-param set, `peregrin deploy webhook` subscribes the hook to both
-`push` and `pull_request`; without it the hook stays `push`-only —
-the node still answers verified PR deliveries if GitHub sends them
-(e.g. a manually configured hook).
+`github-webhook` verifies `pull_request` deliveries when a node sets
+`params.pull_request_actions` (default `opened,synchronize,reopened`
+— accepted actions outside the set are answered `200` as no-ops). A
+`pull_request` event carries kind `pull_request` with payload fields
+`repo`, `number`, `action`, `sha` (PR head), `ref` (head branch),
+`base_ref`, `actor`, and `clone_url`. Checking out a fork's head
+requires a token with read access to the fork repository.
 
 ## 6. Run the gate
 
 ```bash
-peregrin service enable --unit ci-gate   # start now + at login
-peregrin service status --unit ci-gate
-peregrin service logs --unit ci-gate -f
+systemctl --user enable --now peregrin-campaign.service
+systemctl --user status peregrin-campaign.service
+tamias driver exec ci-gate logs          # journalctl over the provider units
 ```
+
+The unit's `ExecStart` is fixed by the shared provider — `campaign
+serve` reads every `*.yaml` in `~/.config/peregrin/serve/`, so a
+second `tamias deploy` of another bundle lands on the same listener
+with no unit changes.
 
 ## 7. Push and watch
 
@@ -172,42 +127,43 @@ Every push to `owner/repo` on the gated ref flows: webhook →
 verified → `push` event → worktree at the sha → `ci/<name>` status.
 
 ```bash
-peregrin runs                    # newest-first: sha repo status wall events
-peregrin runs --repo owner/repo  # one repo
-peregrin log -n 50               # raw JSONL history tail
-peregrin explain 1a2b3c          # why a sha did/didn't run — events + outcome
+peregrin runs --history ~/.local/share/peregrin/serve-history/ci-gate.jsonl
+peregrin runs --repo owner/repo --history ~/.local/share/peregrin/serve-history/ci-gate.jsonl
+peregrin log -n 50 --history ~/.local/share/peregrin/serve-history/ci-gate.jsonl
+peregrin explain 1a2b3c --history ~/.local/share/peregrin/serve-history/ci-gate.jsonl
 ```
 
-`runs` reads `$PEREGRIN_HOME/history.jsonl` — the durable log the
-unit's `--history` flag appends to. Statuses are `done`, `failed`,
-`cancelled` (superseded), or `running`.
+`campaign serve --history-dir` appends one JSONL per campaign
+(`<dir>/<campaign-name>.jsonl`); the observability verbs read any
+`--history` log, including `campaign run --history` output. Statuses
+are `done`, `failed`, `cancelled` (superseded), or `running`.
 
 ## 8. Tear down
 
 ```bash
-peregrin destroy webhook --all \
-  --config ~/.config/peregrin/ci-gate.yaml   # delete the registered hooks
-peregrin destroy service ci-gate             # disable + remove the unit
-peregrin destroy worktrees \
-  --config ~/.config/peregrin/ci-gate.yaml   # clean leftover run worktrees
+tamias driver exec ci-gate hooks unregister   # if hooks were registered
+tamias uninstall ci-gate                      # removes units + payload;
+                                            # the driver drops the generated
+                                            # configs (host dir + ~/.config)
 ```
 
 ## Wiring status
 
-The ops verbs, the `ci-gate` bundle, and the `github-webhook`/
-`sturn-poll` ingress drivers are landed **and wired**: `campaign run`
-registers the ingress drivers against the run-scoped `Injector`,
-wires the secret-resolution stores (keyring + env file behind the
-record and ambient env), and parks on the webhook channel.
-`peregrin campaign run --dry-run <config>` prints the node graph and
-the `<node>.listening` event without side effects; `validate` checks
-the wiring statically. The observability verbs work on any
-`--history` log, including `campaign run --history` output.
+The ingress drivers (`github-webhook`, `sturn-poll`) are landed **and
+wired**: `campaign run` and `campaign serve` register them against the
+run's/shared `Injector`, wire the secret-resolution stores (keyring +
+`~/.config/peregrin/env` behind the record and ambient env), and park
+on the webhook channel — `campaign serve` shares ONE listener across
+hosted campaigns. `peregrin campaign run --dry-run <config>` prints
+the node graph without side effects; `campaign validate` checks the
+wiring statically.
 
 ## Where next
 
-- [Distribution](../reference/distribution.md) — `update`, `pin`,
-  `verify`, the fetch cache
+- [Distribution](../reference/distribution.md) — tamias refs, stores,
+  and the provider boundary
+- [Fleet runners](../reference/fleet-runners.md) — `runs_on` labels and
+  hub-side dispatch for campaign entities
 - [Queue & supersede](../reference/queue-supersede.md) — the
   latest-wins + cancel-running policy the gate rides
 - [Campaign schema](../reference/campaign-schema.md) — author your

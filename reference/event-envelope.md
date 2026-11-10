@@ -45,7 +45,7 @@ validation.
 | `workflow.cancel` | A cancellation request event | `{reason}` |
 | `workflow.cancelled` | Run ended via cancel or `stop_on` | `{reason}` |
 | `workflow.failed` | A node failure marked the run failed | `{node, error}` |
-| `workflow.cycle_detected` | Cycle detection tripped (observer `cycle` flag) | — |
+| `workflow.cycle_detected` | Reserved — cycle detection is not ported (see [Loop protection](../explanation/loop-protection.md)); no emitter today | — |
 | `node.failed` | Driver error, validation failure, capability violation, retry exhausted | `{error, node}` |
 | `node.exhausted` | `max_fires` cap reached (once per node) | `{node, maxFires}` |
 | `node.skipped` | `state.skip_if` evaluated truthy | `{node, state_key}` |

@@ -9,12 +9,14 @@ subprocess wire rather than by linking internals.
 
 ```
                  ┌─────────────── peregrin-hub ───────────────┐
-                 │  aggregation · sync · arbitration · web UI  │
+                 │  hypha-hub gateway · sync · arbitration ·    │
+                 │  fleet dispatch (headless — no UI on main)   │
                  └──────────────┬───────────────┬─────────────┘
                         HTTP+SSE │               │ HTTP+SSE
                   ┌──────────────▼──┐    ┌───────▼──────────┐
                   │ peregrin-node A │    │ peregrin-node B  │
-                  │  /api/* surface │    │  /api/* surface  │
+                  │  session routes │    │  session routes  │
+                  │  + entity plane │    │  + entity plane  │
                   └───────┬─────────┘    └────────┬─────────┘
                   spawn + │ ndjson JSON-RPC       │
                   ┌───────▼─────────┐    ┌────────▼─────────┐
@@ -49,12 +51,26 @@ negotiates protocol versions at spawn.
 
 - **Session plane** — the sepia surface: sessions, agents, attach,
   prompts, events. Nodes own it; the hub proxies it.
-- **Orchestration plane** — peregrin's own: campaigns (declarative
-  workflows over agents via `peregrin-engine` + loaders + templates),
-  the event bus, remote transport, and the outbox for offline ordering.
-- **App plane** — `peregrin-http`/`peregrin-web`: REST + SSE, the
-  Leptos UI, node-local overlay state (`PEREGRIN_META` — pins, archives,
-  run spans; node-owned, not part of the session wire).
+- **Entity plane (substrate)** — the generic `hypha-*` layer:
+  `Entity {id, kind, indexDoc}` + namespaced ops + opaque snapshots,
+  the outbox, locks, sync, and the `/api/entities*` + generic routes
+  (`/api/events`, `/api/node`, `/api/pair`, `/api/auth/*`,
+  `/api/push/*`, `/api/fs`, `/api/user`, `/api/health`). Hypha never
+  names an integration's type; peregrin registers its kinds.
+- **Integration planes** — peregrin's own: sessions register as
+  `kind="sepia-session"` entities (via the `sepia-peregrin` adapter
+  in the sepia repo), campaigns as `kind="campaign"` entities
+  (`campaign.start|pause|resume|cancel|signal` ops, `campaign
+  serve` hosting, `runs_on` fleet scheduling). Campaign *workflows*
+  run on `peregrin-engine` + loaders + templates — the event bus,
+  remote transport, and the outbox for offline ordering.
+- **App plane** — `peregrin-http` composes the session routes with
+  hypha's generic routes under one listener; `peregrin-hub` is a
+  thin `hypha-hub` gateway (merged entity views, sync, arbitration,
+  fleet dispatch). Node-local overlay state (`PEREGRIN_META` — pins,
+  archives, run spans) is node-owned, not part of the session wire.
+  The Leptos web UI is experimental and lives on the
+  `experimental/web` branch — `main` is headless.
 
 ## Ports and adapters
 

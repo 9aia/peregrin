@@ -1,20 +1,28 @@
-# Distribution — bundle refs, store, cache, verbs
+# Distribution — bundles, tamias, the provider boundary
 
-ADR-0079. A *bundle* is a manifest (`tamias.yaml` / `.yml` /
-`.toml`) plus a payload of workflows, `.node.yml`, `.driver.yml` and
-`.field.yml` files. `peregrin install <ref>` fetches one from the
-filesystem, a git remote, or an HTTP tarball, unpacks it into a local
-store, and records the resolved pin.
+A *bundle* is a manifest (`tamias.yaml` / `.yml` / `.toml`) plus a
+payload of workflows, `.node.yml`, `.driver.yml` and `.field.yml`
+files — the `peregrin-bundle` content type. **Distribution itself
+lives in tamias**: refs, transport, the install store, the fetch
+cache, deploy, and service lifecycle are all `tamias` verbs. Peregrin
+ships only the *provider* — `tamias-driver-peregrin` — which turns a
+bundle's `provider:` block into an operator node config and lets
+tamias render its service units.
+
+The old `peregrin install/remove/list/info/update/pin/verify/cache/
+bundle` verbs are **gone** — run them via `tamias`. The hidden
+`peregrin provision {install,deploy,uninstall}` commands remain as the
+provider entrypoints tamias shells out to.
 
 ## Ref grammar
 
 ```
-peregrin install ./ci-gate                                  # filepath — dev loop
-peregrin install git:9aia/peregrin/libraries/ci-gate        # shorthand (github), default branch
-peregrin install git:github.com/9aia/peregrin//libraries/ci-gate#v0.2.0
-peregrin install git:git@github.com:9aia/peregrin//libraries/ci-gate#main
-peregrin install git:https://gitlab.com/grp/sub/repo//dir   # any git url
-peregrin install https://9aia.com/bundles/ci-gate-0.2.tgz   # non-git tarball
+tamias install ./ci-gate                                  # filepath — dev loop
+tamias install git:9aia/peregrin/libraries/ci-gate        # shorthand (github), default branch
+tamias install git:github.com/9aia/peregrin//libraries/ci-gate#v0.2.0
+tamias install git:git@github.com:9aia/peregrin//libraries/ci-gate#main
+tamias install git:https://gitlab.com/grp/sub/repo//dir   # any git url
+tamias install https://9aia.com/bundles/ci-gate-0.2.tgz   # non-git tarball
 ```
 
 - **`git:<url>[//<subdir>][#<ref>]`** — `//` (go-getter convention)
@@ -36,22 +44,23 @@ peregrin install https://9aia.com/bundles/ci-gate-0.2.tgz   # non-git tarball
   `.tar` file unpacks.
 - **`http(s)://…​.tgz|.tar.gz`** → `source-http`, with an optional
   `#sha256:<hex>` (or `#sha256=<hex>`) digest pin verified on fetch.
+- **`cf:`** refs hit the Cloudflare registry source.
 
-## Store + fetch cache
+## Store + fetch cache (tamias)
 
-- **Store** — `~/.local/share/peregrin/store/<name>@<version-or-sha>/`
-  holds unpacked bundles. `name` aliases the entry so campaigns and
-  `peregrin run` can resolve `bundle:<name>` refs. Each entry carries
-  `.peregrin-store.json`: the source ref, resolved sha (commit sha or
-  `sha256:` digest), payload digest, and installed-at.
-- **Fetch cache** — `~/.cache/peregrin/fetch/<key>/` is
-  content-addressed (`git-<sha>` for git, `sha256-<hex>` for content
-  digests). Install is two-phase fetch→unpack: a warm cache makes
-  repeat installs and air-gapped nodes free — a ref whose pin is
-  already known (a `#sha` or a `#sha256:` tarball digest) skips the
+- **Install store** — `<name>@<version-or-sha>/` under
+  `~/.local/share/tamias/` holds unpacked packages; each entry records
+  the source ref, resolved sha, and payload digest.
+- **Fetch cache** — content-addressed `~/.cache/tamias/fetch/<key>/`
+  (`git-<sha>` for git, `sha256-<hex>` for content digests). Install
+  is two-phase fetch→unpack: a warm cache makes repeat installs and
+  air-gapped nodes free — a ref whose pin is already known skips the
   transport entirely on a cache hit.
-- `remove` drops only the store entry; the cache evicts by age or
-  `cache clean --all`, never by `remove`.
+- `tamias remove <name>` drops only the store entry; the cache evicts
+  by age or `tamias cache clean --all`, never by `remove`.
+- `tamias verify <name>` recomputes the payload digest and fails on
+  mismatch; `tamias doctor` runs store/cache/registry/content-type
+  diagnostics.
 
 ## `include:` composition
 
@@ -65,52 +74,48 @@ node can't double-fire it. Earlier `include:` entries outrank later
 ones. Conflicting `.yaml`/`.yml`/`.json` files merge document-wise;
 every other conflict resolves whole-file.
 
-## Verbs
+## Tamias verbs (the ones that replaced `peregrin …`)
 
 ```
-peregrin install <ref>          # fetch → store (+ alias)
-peregrin remove <name>          # drop store entry; cache untouched
-peregrin list                   # installed bundles, refs, digests
-peregrin info <name>            # manifest, source ref, resolved sha, size
-peregrin update <name>|--all    # re-resolve the recorded source ref
-peregrin pin <name> <ref>       # retarget the recorded ref
-peregrin verify <name>          # digest-check store contents vs recorded sha
-peregrin cache clean [--all]    # evict fetch cache (--days N, default 30)
-peregrin bundle pack <dir>      # authoring — dir + manifest → .tgz
+tamias install <ref>          # fetch → store (+ alias); dispatches the
+                              # content-type driver's install verb
+tamias add|update <name>      # update re-resolves the recorded source ref
+tamias remove <name>          # drop store entry; cache untouched
+tamias list                   # installed packages, refs, digests
+tamias info <name>            # manifest, source ref, resolved sha, size
+tamias pin <name> <ref>       # retarget the recorded ref
+tamias verify <name>          # digest-check store contents vs recorded sha
+tamias cache clean [--all]    # evict fetch cache
+tamias deploy <name>          # render provider.services[] units + run the
+                              # kind driver's deploy verb
+tamias service enable|disable|status|logs   # unit lifecycle
+tamias doctor                 # host diagnostics
+tamias bundle pack <dir>      # authoring — dir + manifest → .tgz
 ```
 
-- `update` re-resolves the recorded source ref — the upgrade path for
-  moving refs like branches; pinned tags/shas re-confirm.
-- `pin` retargets the recorded ref and refetches when the resolved
-  digest differs.
-- `verify` recomputes the payload digest and fails on mismatch.
-- `bundle pack` writes `<name>-<version>.tgz` (or `--out`), installable
-  via `peregrin install ./x.tgz` or an `https://` URL.
-- Names accept `name` or `name@version`; a bare name with several
-  installed versions is an ambiguity error.
+## The `peregrin-bundle` provider
 
-## Tamias provider packages (`type:` + `provider:`)
-
-Distribution itself lives in **tamias** — `tamias install|deploy|
-uninstall|provider list|run|logs` own the store, the fetch cache, and
-host-service lifecycle. A bundle opts into the declarative runtime by
-declaring `type: <kind>` (routed to `tamias-driver-<kind>` — peregrin
-ships `tamias-driver-peregrin` for `peregrin-bundle`) plus a
+A bundle opts into the declarative runtime by declaring
+`type: peregrin-bundle` (routed to `tamias-driver-peregrin`) plus a
 `provider:` block in `tamias.yaml`:
 
 ```yaml
 type: peregrin-bundle
 provider:
-  name: ci-gate                  # unit prefix (default: package name)
+  name: peregrin                  # SHARED identity — see below
   services:
-    - name: campaign             # → unit <provider>-<service>
-      exec: "peregrin campaign serve ~/.config/peregrin/ci-gate.yaml …"
+    - name: campaign              # rendered as <provider>-<service>
+      exec: >-
+        ~/.local/bin/peregrin campaign serve ~/.config/peregrin/serve
+        --listen 127.0.0.1:29173 --path /hook
+        --history-dir ~/.local/share/peregrin/serve-history
+        --queue-store-dir ~/.local/share/peregrin/serve-queues
       env_file: "~/.config/peregrin/env"
       workdir: "~"
       restart: on-failure
   ingress:
     - public_url: https://ci.example.com
-      listen: 127.0.0.1:39271
+      listen: 127.0.0.1:29173
       path: /hook
       hooks:
         - forge: github
@@ -119,48 +124,65 @@ provider:
   verbs: [run, logs]
 ```
 
+- **Shared provider identity (T8-7).** Every `peregrin-bundle`
+  declares `provider.name: peregrin`, so all their `campaign` services
+  render **one** unit — `peregrin-campaign.service` — whose
+  `ExecStart` is `campaign serve ~/.config/peregrin/serve`, a
+  directory the deploy driver fills with one generated node config per
+  installed bundle. `campaign serve` hosts them all on ONE webhook
+  listener (demux by `repository.full_name`). Shared-unit services
+  MUST keep `exec` identical across bundles — last deploy wins the
+  unit file.
 - `tamias install <ref>` fetches + stores the package and dispatches
-  the kind driver's `install` verb. For `peregrin-bundle` that verb is
-  a no-op: the operator node config is generated by `deploy`, which
-  sees the stable store dir (install only sees the evictable fetch
-  cache).
+  the driver's `install` verb — a **no-op** for `peregrin-bundle` (the
+  node config is generated by `deploy`, which sees the stable store
+  dir; install only sees the evictable fetch cache).
 - `tamias deploy <name>` dispatches the driver's `deploy` verb —
   `tamias-driver-peregrin` regenerates `~/.config/peregrin/<name>.yaml`
   as the operator node config: `include:` of the bundle's `main.yaml`,
-  a `github-webhook` ingress node built from `provider.ingress[]
-  .hooks` (`forge: github` only; `secret_env` = `PEREGRIN_WH_<OWNER>_
-  <REPO>`), `config.public_url`, and `capabilities.secrets`. Tamias
-  then renders every `provider.services[]` entry as a per-user systemd
-  unit (`<provider.name>-<service>.service`), written + daemon-reloaded
-  but not enabled — `tamias service enable <unit>` is the operator's
-  step. Deploy prints a hint when `ingress[].hooks[]` is non-empty —
-  registration stays explicit (see below).
+  a `github-webhook` ingress node built from the manifest's
+  `provider.ingress[].hooks` (`forge: github` only; `secret_env` =
+  `PEREGRIN_WH_<OWNER>_<REPO>`), `config.public_url`, and
+  `capabilities.secrets`. The same
+  doc is dropped into the campaign-host dir
+  `~/.config/peregrin/serve/<name>.yaml`. Tamias then renders
+  `provider.services[]` as per-user units, written + daemon-reloaded.
 - `tamias driver exec <pkg> <verb> [args…]` dispatches the driver's
-  ops verbs (`tamias-driver-peregrin` declares `hooks`, `health`,
-  `status`, `logs` in `capabilities`):
+  ops verbs (`hooks`, `health`, `status`, `logs`, `config-schema`,
+  `capabilities`):
   - `hooks register|unregister [--dry-run] [--api-base <url>]
     [--token-env <NAME>]` — upsert/remove the forge webhooks
-    `provider.ingress[].hooks[]` declare (`forge: github`; hook URL =
-    `<public_url><path>`). Idempotent — the upsert matches on the
-    exact hook URL. Secrets resolve by NAME through the
-    env → keyring → `~/.config/peregrin/env` chain (`GITHUB_TOKEN` +
+    `provider.ingress[].hooks[]` declare. Idempotent — the upsert
+    matches on the exact hook URL (`public_url` + `path`). Secrets
+    resolve by NAME through the env → keyring →
+    `~/.config/peregrin/env` chain (`GITHUB_TOKEN` +
     `PEREGRIN_WH_<OWNER>_<REPO>`); values are never printed.
     **`--dry-run` first** — it prints the plan without touching the
     forge API or the secret chain. `public_url` fronts a tunnel the
     operator confirms, so `tamias deploy` never auto-registers.
   - `health` — JSON `{ok, probes[]}`: a github-webhook `ping`
-    (`POST <listen><path>`, `X-GitHub-Event: ping` → `200 pong`) per
+    (`POST` to the ingress `listen`+`path`, `X-GitHub-Event: ping` →
+    `200 pong`) per
     ingress that declares both, else `systemctl --user is-active` per
     provider unit.
   - `status` — JSON per-unit `is-active`/`is-enabled`.
   - `logs [--lines N]` — `journalctl --user` over the provider units
     (no follow — dispatch is bounded).
 - `tamias uninstall <name>` removes the provider units + store entry;
-  the driver's `uninstall` verb removes the node config (plus any
-  legacy `<name>.service` a pre-provider `deploy` wrote).
+  the driver's `uninstall` verb removes the node config, its
+  campaign-host file, and any legacy `<name>.service` a pre-provider
+  `deploy` wrote.
 - `~` in `exec`/`env_file`/`workdir` expands at unit-render or
   `campaign serve` time — ExecStart argv is data, no shell.
+- `peregrin provision {install,deploy,uninstall}` (with `--dir`,
+  `--name`, optional `--config`) is the hidden provider entrypoint
+  tamias invokes — it never writes service units itself.
 
-`libraries/ci-gate` is the pilot: `ci-gate-campaign.service` runs
-`peregrin campaign serve ~/.config/peregrin/ci-gate.yaml` against the
-generated config. See the bundle's README for the full operator flow.
+`libraries/ci-gate` is the pilot: `provider.name: peregrin` +
+`services[].name: campaign` renders the shared
+`peregrin-campaign.service` hosting every deployed bundle. Its
+`tamias.yaml` ships `ingress[].hooks: []` — the bundle's `main.yaml`
+is a full `peregrin import bupha` artifact that owns its ingress
+inline (per-repo cmds/contexts/secret names), so manifest hooks would
+only generate a duplicate webhook node. See the bundle's README for
+the full operator flow.

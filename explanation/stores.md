@@ -42,10 +42,11 @@ instead of scanning the full log per publish.
 
 Not quite — the split is explicit in v2: the *default* is ephemeral
 (`MemoryStore`, the TS `handl run` behavior), and durability is the
-`--history` flag. The `create`d campaign units run with
-`--history` pointed at `$PEREGRIN_HOME/history.jsonl`, so deployed
-gates persist every event as it happens. Use `peregrin campaign run
---replay <log>` to seed a run from a prior log.
+`--history` flag. Deployed campaign units run under `campaign serve
+--history-dir`, which appends one JSONL per campaign
+(`<dir>/<campaign>.jsonl`), so gates persist every event as it
+happens. Use `peregrin campaign run --replay <log>` to seed a run
+from a prior log.
 
 ## See also
 

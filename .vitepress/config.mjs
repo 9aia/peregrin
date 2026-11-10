@@ -41,6 +41,7 @@ export default defineConfig({
           { text: 'Fleet runners', link: '/reference/fleet-runners' },
           { text: 'Distribution', link: '/reference/distribution' },
           { text: 'HTTP API', link: '/reference/api' },
+          { text: 'MCP server', link: '/reference/mcp' },
           { text: 'Environment', link: '/reference/environment' },
         ],
       },

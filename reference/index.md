@@ -9,7 +9,9 @@
 
 ## Runtime
 
-- [Distribution — bundles, store, cache](distribution.md)
+- [Distribution — bundles, tamias, provider](distribution.md)
+- [Fleet runners — `runs_on` + hub dispatch](fleet-runners.md)
 - [Queue & supersede](queue-supersede.md)
 - [HTTP API](api.md)
+- [MCP server](mcp.md)
 - [Environment](environment.md)
