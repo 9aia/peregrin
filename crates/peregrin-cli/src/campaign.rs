@@ -5,8 +5,8 @@
 //! and summarizes its wiring. The TS `typegen` verb and the
 //! otel/metrics observer flags are not ported yet.
 
-use std::collections::BTreeSet;
-use std::path::Path;
+use std::collections::{BTreeMap, BTreeSet};
+use std::path::{Path, PathBuf};
 
 use peregrin_core::{Campaign, Event, MaxFires, TriggerMode};
 use peregrin_engine::RunOptions;
@@ -122,6 +122,107 @@ fn run_supervised(
         .join()
         .map_err(|_| CliError("campaign supervisor thread panicked".to_string()))?
         .map_err(|e| CliError(e.to_string()))
+}
+
+/// `peregrin campaign serve` — the multi-campaign daemon (PL-007
+/// C1b): load every campaign yaml under `paths` (each arg a yaml file
+/// or a directory of `*.yaml`/`*.yml`), host one `RunSupervisor`
+/// per campaign via [`peregrin_node::serve::serve_campaigns`], and
+/// share ONE `github-webhook` listener demuxing verified pushes to
+/// each campaign by `repository.full_name` (all-match — see
+/// `peregrin_node::serve`). Blocks on `rt`'s SIGINT/SIGTERM wait,
+/// then drains every supervisor and exits.
+///
+/// `history_dir`/`queue_store_dir` give each campaign its own
+/// `<name>.jsonl`/`<name>.db` so durable state never crosses
+/// campaigns (`campaign run`'s `--history`/`--queue-store` flags,
+/// namespaced).
+///
+/// # Errors
+/// [`CliError`] on path expansion, yaml load, duplicate campaign
+/// names, listener bind failure, or a campaign's supervisor error
+/// during drain.
+pub fn serve(
+    paths: &[PathBuf],
+    listen: &str,
+    path: &str,
+    history_dir: Option<&Path>,
+    queue_store_dir: Option<&Path>,
+    rt: &tokio::runtime::Runtime,
+) -> Result<(), CliError> {
+    let files = expand_campaign_paths(paths)?;
+    let mut hosted = Vec::with_capacity(files.len());
+    for file in &files {
+        let campaign = peregrin_node::campaign::load(file).map_err(|e| CliError(e.to_string()))?;
+        hosted.push(peregrin_node::serve::HostedCampaign {
+            name: peregrin_node::serve::campaign_name(&campaign, file),
+            campaign,
+            source: file.clone(),
+        });
+    }
+    let config = peregrin_node::serve::ServeConfig {
+        listen: listen.to_string(),
+        path: path.to_string(),
+        history_dir: history_dir.map(Path::to_path_buf),
+        queue_store_dir: queue_store_dir.map(Path::to_path_buf),
+        on_run: Some(std::sync::Arc::new(|name: &str, log: &[Event]| {
+            for event in log {
+                println!("[{name}] {} {} {}", event.ts, event.source, event.kind);
+            }
+        })),
+        secrets: BTreeMap::new(),
+    };
+    let served = peregrin_node::serve::serve_campaigns(hosted, &config)
+        .map_err(|e| CliError(e.to_string()))?;
+    match served.listener {
+        Some(addr) => println!(
+            "campaign serve: {} campaigns, webhook listener on http://{addr}{path}",
+            served.campaigns.len()
+        ),
+        None => println!(
+            "campaign serve: {} campaigns (no github-webhook nodes — no listener)",
+            served.campaigns.len()
+        ),
+    }
+    rt.block_on(peregrin_node::shutdown_signal());
+    served.join().map_err(|e| CliError(e.to_string()))
+}
+
+/// Expand `campaign serve` path args into yaml files — a file passes
+/// through, a directory contributes its top-level `*.yaml`/`*.yml`
+/// entries (sorted for deterministic order). Nested dirs and other
+/// extensions are ignored.
+fn expand_campaign_paths(paths: &[PathBuf]) -> Result<Vec<PathBuf>, CliError> {
+    let mut files = Vec::new();
+    for path in paths {
+        if path.is_dir() {
+            let mut entries: Vec<PathBuf> = std::fs::read_dir(path)
+                .map_err(|e| CliError(format!("read {}: {e}", path.display())))?
+                .filter_map(std::result::Result::ok)
+                .map(|entry| entry.path())
+                .filter(|p| {
+                    p.extension()
+                        .and_then(|e| e.to_str())
+                        .is_some_and(|e| matches!(e, "yaml" | "yml"))
+                })
+                .collect();
+            entries.sort();
+            files.extend(entries);
+        } else if path.is_file() {
+            files.push(path.clone());
+        } else {
+            return Err(CliError(format!(
+                "campaign path {} does not exist",
+                path.display()
+            )));
+        }
+    }
+    if files.is_empty() {
+        return Err(CliError(
+            "no campaign yamls found — pass yaml files or directories of *.yaml/*.yml".to_string(),
+        ));
+    }
+    Ok(files)
 }
 
 /// `handl validate` — expand the yaml and print the summary plus

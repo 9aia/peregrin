@@ -28,6 +28,7 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
@@ -272,6 +273,18 @@ pub struct SupervisedOptions {
     /// on boot the supervisor replays the snapshot before accepting
     /// new triggers. `None` keeps the queue in-memory only.
     pub queue_store: Option<Arc<dyn QueueStore>>,
+    /// The shared webhook demux (`campaign serve`) — when set, the
+    /// listener run's `github-webhook` nodes register their repo
+    /// watches into it via [`SharedWebhookDriver`] instead of binding
+    /// their own socket (one listener for every hosted campaign).
+    /// `None` keeps the solo [`GithubWebhookDriver`] behavior.
+    pub shared_webhook: Option<Arc<peregrin_driver_github_webhook::SharedWebhook>>,
+    /// Shutdown flag (`campaign serve`'s SIGTERM path) — once set the
+    /// loop stops accepting triggers and drains exactly like a
+    /// trigger-channel disconnect: the active run finishes, pending
+    /// jobs run, the listener run is cancelled. Polled on the loop's
+    /// tick, so an idle supervisor notices within ~100ms.
+    pub shutdown: Option<Arc<AtomicBool>>,
     /// Called with each finished run's event log, in finish order —
     /// the CLI prints it. Runs on the supervisor thread.
     pub on_run: Option<OnRunDone>,
@@ -288,6 +301,8 @@ impl Default for SupervisedOptions {
             secret_stores: Arc::new(campaign::default_secret_stores),
             history: None,
             queue_store: None,
+            shared_webhook: None,
+            shutdown: None,
             on_run: None,
         }
     }
@@ -357,6 +372,8 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
         secret_stores,
         history,
         queue_store,
+        shared_webhook,
+        shutdown,
         on_run,
     } = options;
     let materials = Arc::new(RunMaterials {
@@ -371,8 +388,14 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
     let external = trigger_injector.clone();
 
     // Ingress nodes fire inside the listener run; everything else is
-    // the per-trigger worker graph.
-    let listener_registry = campaign::registry_with_ingress(&trigger_injector);
+    // the per-trigger worker graph. `shared_webhook` swaps the solo
+    // `github-webhook` driver for the demux-registering one — every
+    // hosted campaign's webhook nodes then share the daemon's single
+    // listener instead of racing for the default port.
+    let listener_registry = match &shared_webhook {
+        Some(demux) => campaign::registry_with_ingress_shared(&trigger_injector, demux),
+        None => campaign::registry_with_ingress(&trigger_injector),
+    };
     let (listener_campaign, worker_campaign) =
         campaign::split_ingress(campaign, &listener_registry);
 
@@ -406,6 +429,7 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
             listener_injector,
             materials,
             queue_store,
+            shutdown,
             on_run,
         )
     });
@@ -453,6 +477,7 @@ fn supervise_loop(
     listener_injector: Option<Injector>,
     materials: Arc<RunMaterials>,
     queue_store: Option<Arc<dyn QueueStore>>,
+    shutdown: Option<Arc<AtomicBool>>,
     mut on_run: Option<OnRunDone>,
 ) -> Result<Vec<Event>, CampaignError> {
     /// How long the loop parks on the trigger channel while a run is
@@ -477,15 +502,35 @@ fn supervise_loop(
 
     loop {
         if !triggers_done {
-            let timeout = if worker.is_some() { Some(TICK) } else { None };
-            if trigger_ingress.wait(timeout, &mut buf) == WaitOutcome::Disconnected {
+            // `campaign serve`'s shutdown flag takes the same path as
+            // a trigger-channel disconnect — stop reading, drain.
+            // With a flag configured the loop always ticks so an
+            // idle supervisor still notices; without one the old
+            // park-forever-when-idle behavior is unchanged. The flag
+            // path still does a final `drain_into`: triggers already
+            // queued when shutdown lands are in-flight work, not new
+            // triggers — they submit before the drain begins.
+            if shutdown
+                .as_ref()
+                .is_some_and(|flag| flag.load(Ordering::Relaxed))
+            {
                 triggers_done = true;
-            }
-            for event in buf.drain(..) {
-                let outcome = supervisor.submit(event);
-                if let Some(pending) = outcome.start {
-                    worker = Some(spawn_worker(pending, &worker_campaign, &materials));
+                trigger_ingress.drain_into(&mut buf);
+            } else {
+                let timeout = if worker.is_some() || shutdown.is_some() {
+                    Some(TICK)
+                } else {
+                    None
+                };
+                if trigger_ingress.wait(timeout, &mut buf) == WaitOutcome::Disconnected {
+                    triggers_done = true;
                 }
+            }
+        }
+        for event in buf.drain(..) {
+            let outcome = supervisor.submit(event);
+            if let Some(pending) = outcome.start {
+                worker = Some(spawn_worker(pending, &worker_campaign, &materials));
             }
         }
         // Harvest the finished run — `finish` hands the queue slot to
