@@ -231,6 +231,32 @@ fn serve_expands_dirs_and_errors_fast() {
     );
 }
 
+#[test]
+fn serve_expands_tilde_in_paths() {
+    // Provider-rendered units carry `~` paths (ExecStart argv is data,
+    // no shell) — `serve` must expand them before stat-ing. A missing
+    // `~/…` file errors with the *expanded* absolute path.
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+    let err = peregrin_cli::campaign::serve(
+        &[PathBuf::from("~/peregrin-no-such-campaign-xyz.yaml")],
+        "127.0.0.1:0",
+        "/hook",
+        None,
+        None,
+        &rt,
+    )
+    .unwrap_err()
+    .to_string();
+    let home = std::env::var("HOME").unwrap();
+    assert!(
+        err.contains(&format!("{home}/peregrin-no-such-campaign-xyz.yaml")),
+        "err: {err}"
+    );
+}
+
 /// The binary e2e — the real `peregrin` drives load + engine + shell
 /// side effects, and the event log lands on stdout.
 #[test]

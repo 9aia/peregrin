@@ -1,10 +1,53 @@
 # ci-gate — bupha's CI gate as a peregrin bundle (ADR-0080/ADR-0081).
-# `peregrin install <ref>` fetches this; `peregrin create --template
-# ci-gate` (P6) materializes the node config + service unit around it.
+# `tamias install <ref>` fetches this; `tamias deploy ci-gate` renders
+# the provider service unit(s) and `tamias-driver-peregrin deploy`
+# generates the operator node config (`~/.config/peregrin/ci-gate.yaml`)
+# from the `provider:` block below.
 name: ci-gate
 version: "0.1.0"
+# `peregrin-bundle` routes install/deploy/uninstall through
+# `tamias-driver-peregrin` (capabilities: types ["peregrin-bundle"]).
+type: peregrin-bundle
 description: >-
   Push-to-verdict CI gate: github-webhook/sturn push event → detached
   worktree at the pushed sha → inner shell run → GitHub commit status
   (ci/<campaign>). Latest-wins supersede on {repo}:{ref} with
   cancel_running, mirroring bupha's queue semantics.
+
+# The declarative runtime spec — `tamias deploy` renders each
+# `services[]` entry as a per-user systemd unit named
+# `<provider.name>-<service>` (here `ci-gate-campaign.service`, kept
+# distinct from any hand-made `ci-gate.service`).
+provider:
+  name: ci-gate
+  services:
+    # The campaign daemon: host the generated node config
+    # (`~/.config/peregrin/ci-gate.yaml` — `include:`s this bundle's
+    # main.yaml plus the github-webhook ingress node the driver
+    # writes at deploy). `--listen`/`--path` mirror the ingress
+    # declaration below; the shared listener demuxes verified pushes
+    # to the campaign by repository.full_name.
+    - name: campaign
+      exec: >-
+        peregrin campaign serve ~/.config/peregrin/ci-gate.yaml
+        --listen 127.0.0.1:39271 --path /hook
+        --history-dir ~/.local/share/peregrin/history
+        --queue-store-dir ~/.local/share/peregrin/queues
+      env_file: "~/.config/peregrin/env"
+      workdir: "~"
+      restart: on-failure
+  ingress:
+    # Declarative only — forge-hook registration is the deploy
+    # driver's job (T8-5); nothing here performs live registration.
+    # `public_url` fronts `listen`/`path` on the campaign daemon.
+    - public_url: https://ci.luisfuturist.com
+      listen: 127.0.0.1:39271
+      path: /hook
+      hooks:
+        - forge: github
+          repo: 9aia/peregrin
+          events: [push]
+  # Advisory verb hints for `tamias provider list`/`tamias run` —
+  # no health probe: the campaign daemon serves only the hook path,
+  # there is no /health endpoint to curl.
+  verbs: [run, logs]

@@ -151,6 +151,10 @@ pub fn serve(
     rt: &tokio::runtime::Runtime,
 ) -> Result<(), CliError> {
     let files = expand_campaign_paths(paths)?;
+    // `~` expands here (not in the unit's ExecStart — systemd argv is
+    // data, no shell) so provider manifests can write portable paths.
+    let history_dir = history_dir.map(tilde_path);
+    let queue_store_dir = queue_store_dir.map(tilde_path);
     let mut hosted = Vec::with_capacity(files.len());
     for file in &files {
         let campaign = peregrin_node::campaign::load(file).map_err(|e| CliError(e.to_string()))?;
@@ -163,8 +167,8 @@ pub fn serve(
     let config = peregrin_node::serve::ServeConfig {
         listen: listen.to_string(),
         path: path.to_string(),
-        history_dir: history_dir.map(Path::to_path_buf),
-        queue_store_dir: queue_store_dir.map(Path::to_path_buf),
+        history_dir,
+        queue_store_dir,
         on_run: Some(std::sync::Arc::new(|name: &str, log: &[Event]| {
             for event in log {
                 println!("[{name}] {} {} {}", event.ts, event.source, event.kind);
@@ -188,13 +192,22 @@ pub fn serve(
     served.join().map_err(|e| CliError(e.to_string()))
 }
 
+/// `~`/`~/…` expansion for a CLI path arg — `peregrin_config`'s
+/// convention (`~user` and plain paths pass through).
+fn tilde_path(path: &Path) -> PathBuf {
+    PathBuf::from(peregrin_config::expand_tilde(&path.to_string_lossy()))
+}
+
 /// Expand `campaign serve` path args into yaml files — a file passes
 /// through, a directory contributes its top-level `*.yaml`/`*.yml`
 /// entries (sorted for deterministic order). Nested dirs and other
-/// extensions are ignored.
+/// extensions are ignored. `~` expands per arg so provider-rendered
+/// units can carry portable paths.
 fn expand_campaign_paths(paths: &[PathBuf]) -> Result<Vec<PathBuf>, CliError> {
     let mut files = Vec::new();
     for path in paths {
+        let path = tilde_path(path);
+        let path = path.as_path();
         if path.is_dir() {
             let mut entries: Vec<PathBuf> = std::fs::read_dir(path)
                 .map_err(|e| CliError(format!("read {}: {e}", path.display())))?
@@ -209,7 +222,7 @@ fn expand_campaign_paths(paths: &[PathBuf]) -> Result<Vec<PathBuf>, CliError> {
             entries.sort();
             files.extend(entries);
         } else if path.is_file() {
-            files.push(path.clone());
+            files.push(path.to_path_buf());
         } else {
             return Err(CliError(format!(
                 "campaign path {} does not exist",
