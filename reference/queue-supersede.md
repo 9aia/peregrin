@@ -139,3 +139,9 @@ mode only) opens a sqlite `QueueStore`
 The store file is ordinary sqlite — `queue_pending(key, seq, job)`
 rows plus a singleton `queue_running` row; safe to inspect with
 `sqlite3`.
+
+Under `peregrin campaign serve --queue-store-dir <dir>` each hosted
+campaign gets its own store at `<dir>/<campaign>.db` — same schema,
+same semantics, independent namespaces. Likewise `--history-dir`
+namespaces run history as `<dir>/<campaign>.jsonl`. See
+[Serve a fleet of campaigns](../how-to/serve-campaigns.md).
