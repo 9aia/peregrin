@@ -125,7 +125,8 @@ overrides `config.public_url`; `--token-env` overrides which secret
 name holds the forge token. The webhook listener binds
 `127.0.0.1:29173` on `/hook` by default (the `listen` param of the
 `github-webhook` node) — change it when another service already holds
-that port (a running bupha watcher does). Point your tunnel or
+that port (bupha watchers are retired, but a stray process can still
+hold it). Point your tunnel or
 reverse proxy at it.
 
 ### Pull-request triggers (opt-in)
