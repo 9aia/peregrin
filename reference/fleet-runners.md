@@ -66,3 +66,24 @@ dead-letter. Campaign entities hosted by `campaign serve` keep their
 durable SQLite queue — on restart, interrupted runs requeue at the
 front per the queue's at-least-once semantics, and `supersede` keys
 still dedupe retriggered work.
+
+## Hub-side dispatch
+
+When a campaign entity is created through the hub **without** an
+explicit node pin (`POST /api/entities`, no `node` field or `?node=`)
+and its declared `runs_on` labels are non-empty, the hub's
+`FleetDispatchApi` decorator picks an eligible node automatically:
+
+- Eligible = node `status != "down"` and `runs_on` satisfied over the
+  node's persisted `capabilities` labels.
+- Sort order is `(ephemeral, id)` — durable nodes are preferred,
+  ephemeral runners are the fallback; ties break on node id, so the
+  pick is fully deterministic.
+- The created entity is then *owned* by the picked node, so
+  `campaign.start` ops route there and pass the existing label gate.
+
+Callers can still pin explicitly (`node` field / `?node=`); pinned or
+label-less creates pass through untouched. Known seams: moving an
+entity already pinned to an ineligible node is snapshot
+export/import territory; there is no re-dispatch on node death and no
+load-aware scheduling yet.
