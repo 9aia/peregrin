@@ -20,20 +20,26 @@ description: >-
 # ingress node when hooks[] names github repos, which would
 # double-deliver every push.
 provider:
-  name: docs-deploy
+  # SHARED provider identity (T8-7) — see ci-gate's tamias.yaml: every
+  # `peregrin-bundle` declares `provider.name: peregrin` so all their
+  # `campaign` services render ONE `peregrin-campaign.service` hosting
+  # every bundle's generated config in `~/.config/peregrin/serve/` on
+  # a single webhook listener. Keep `exec` identical to the other
+  # bundles' — last deploy wins the unit file.
+  name: peregrin
   services:
-    # The campaign daemon. `--listen` is deliberately NOT 29173: the
-    # production wiring (PL-009 D5) adds this bundle's main.yaml to
-    # the existing `campaign serve` invocation next to
-    # ci-gate-full.yaml — ONE SharedWebhook listener demuxes by repo
-    # and the per-node listen param is ignored there. This unit is
-    # the standalone fallback on its own port.
+    # The shared campaign host. This bundle's generated config
+    # (`~/.config/peregrin/serve/docs-deploy.yaml`) `include:`s
+    # main.yaml, whose own github-webhook node (fixed v1 repo set)
+    # joins the shared listener's repo demux — under `campaign serve`
+    # the per-node listen/path params are ignored; the daemon's
+    # --listen/--path govern the one socket.
     - name: campaign
       exec: >-
-        peregrin campaign serve ~/.config/peregrin/docs-deploy.yaml
-        --listen 127.0.0.1:29174 --path /hook
-        --history-dir ~/.local/share/peregrin/history
-        --queue-store-dir ~/.local/share/peregrin/queues
+        peregrin campaign serve ~/.config/peregrin/serve
+        --listen 127.0.0.1:29173 --path /hook
+        --history-dir ~/.local/share/peregrin/serve-history
+        --queue-store-dir ~/.local/share/peregrin/serve-queues
       env_file: "~/.config/peregrin/env"
       workdir: "~"
       restart: on-failure
@@ -41,8 +47,10 @@ provider:
     # Declarative only — forge-hook registration is the deploy
     # driver's job and stays an operator step; no hooks[] are
     # declared (see the note above — the campaign yaml owns repos[]).
+    # `listen`/`path` mirror the shared unit's --listen/--path: this
+    # bundle's public_url fronts the SAME listener as ci-gate's.
     - public_url: https://docs-deploy.luisfuturist.com
-      listen: 127.0.0.1:29174
+      listen: 127.0.0.1:29173
       path: /hook
       hooks: []
   # Advisory verb hints for `tamias provider list`/`tamias run` —

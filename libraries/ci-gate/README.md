@@ -11,8 +11,8 @@ this a declarative tamias package:
 
 ```sh
 tamias install ./libraries/ci-gate          # or a git:/http: ref
-tamias deploy ci-gate                       # → ci-gate-campaign.service
-systemctl --user enable --now ci-gate-campaign.service
+tamias deploy ci-gate                       # → peregrin-campaign.service
+systemctl --user enable --now peregrin-campaign.service
 ```
 
 - `tamias install` dispatches `tamias-driver-peregrin install`, which
@@ -22,14 +22,22 @@ systemctl --user enable --now ci-gate-campaign.service
   *regenerates* that node config from `provider.ingress[]`: the
   `github-webhook` ingress node (`repos[]` from `hooks[]`,
   `secret_env` = `PEREGRIN_WH_<OWNER>_<REPO>`), `config.public_url`,
-  and `capabilities.secrets` — then tamias itself renders each
-  `provider.services[]` entry as a per-user unit
-  (`ci-gate-campaign.service` here, deliberately distinct from any
-  hand-made `ci-gate.service`). The unit is written + daemon-reloaded
-  but **not** enabled; enabling and forge-hook registration stay
-  operator steps.
-- `tamias uninstall ci-gate` removes the units + store entry; the
-  driver `uninstall` verb removes the node config.
+  and `capabilities.secrets` — **and** drops the same doc into the
+  campaign-host dir `~/.config/peregrin/serve/ci-gate.yaml`.
+- `provider.name: peregrin` is the **shared** provider identity
+  (T8-7): every `peregrin-bundle` declares it, so all their `campaign`
+  services render ONE unit — `peregrin-campaign.service` — whose
+  `ExecStart` is `peregrin campaign serve ~/.config/peregrin/serve
+  --listen 127.0.0.1:29173 --path /hook …`. `campaign serve` hosts
+  every `*.yaml` in that dir — one generated config per deployed
+  bundle — on a single webhook listener demuxed by
+  `repository.full_name`. Shared-unit services must keep `exec`
+  identical across bundles (last deploy wins the unit file). The unit
+  is written + daemon-reloaded but **not** enabled; enabling and
+  forge-hook registration stay operator steps.
+- `tamias uninstall ci-gate` removes the units + store entry + both
+  node configs; if another bundle still declares the shared unit,
+  tamias re-renders it from the survivor instead of dropping it.
 
 The bundle is the *policy* graph only. The node config (a workflow
 document itself, per ADR-0080) is where the operator binds ingress and
@@ -90,11 +98,12 @@ one only knows forge hooks).
 ### Legacy path
 
 `peregrin provision deploy` no longer writes a systemd unit — it is
-the same node-config generator the driver calls. Pre-provider
-`ci-gate.service` units keep working (`campaign run`/`serve` are
-unchanged); migrate by `tamias deploy ci-gate` + enabling
-`ci-gate-campaign.service`, then `systemctl --user disable --now
-ci-gate.service`.
+the same node-config generator the driver calls (now writing both
+`~/.config/peregrin/ci-gate.yaml` and the host copy
+`~/.config/peregrin/serve/ci-gate.yaml`). Pre-provider `ci-gate.service`
+units keep working (`campaign run`/`serve` are unchanged); migrate by
+`tamias deploy ci-gate` + enabling `peregrin-campaign.service`, then
+`systemctl --user disable --now ci-gate.service`.
 
 ## Params (validated against `params.schema.json`)
 

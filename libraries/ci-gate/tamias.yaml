@@ -16,32 +16,41 @@ description: >-
 
 # The declarative runtime spec — `tamias deploy` renders each
 # `services[]` entry as a per-user systemd unit named
-# `<provider.name>-<service>` (here `ci-gate-campaign.service`, kept
+# `<provider.name>-<service>` (here `peregrin-campaign.service`, kept
 # distinct from any hand-made `ci-gate.service`).
 provider:
-  name: ci-gate
+  # SHARED provider identity (T8-7): every `peregrin-bundle` declares
+  # `provider.name: peregrin` so all their `campaign` services render
+  # ONE unit — `peregrin-campaign.service` — whose ExecStart is
+  # `campaign serve ~/.config/peregrin/serve`, a directory the
+  # deploy driver fills with one generated node config per installed
+  # bundle. `campaign serve` hosts them all on ONE webhook listener
+  # (demux by repository.full_name). Shared-unit services MUST keep
+  # `exec` identical across bundles — last deploy wins the unit file.
+  name: peregrin
   services:
-    # The campaign daemon: host the generated node config
-    # (`~/.config/peregrin/ci-gate.yaml` — `include:`s this bundle's
-    # main.yaml plus the github-webhook ingress node the driver
-    # writes at deploy). `--listen`/`--path` mirror the ingress
-    # declaration below; the shared listener demuxes verified pushes
-    # to the campaign by repository.full_name.
+    # The campaign host: serve every generated config in the host dir.
+    # `--listen`/`--path` are the shared listener's bind; the generated
+    # github-webhook node's own listen/path params are ignored under
+    # `campaign serve` (the daemon's flags govern the socket). history/
+    # queue dirs are namespaced per campaign inside.
     - name: campaign
       exec: >-
-        peregrin campaign serve ~/.config/peregrin/ci-gate.yaml
-        --listen 127.0.0.1:39271 --path /hook
-        --history-dir ~/.local/share/peregrin/history
-        --queue-store-dir ~/.local/share/peregrin/queues
+        peregrin campaign serve ~/.config/peregrin/serve
+        --listen 127.0.0.1:29173 --path /hook
+        --history-dir ~/.local/share/peregrin/serve-history
+        --queue-store-dir ~/.local/share/peregrin/serve-queues
       env_file: "~/.config/peregrin/env"
       workdir: "~"
       restart: on-failure
   ingress:
     # Declarative only — forge-hook registration is the deploy
     # driver's job (T8-5); nothing here performs live registration.
-    # `public_url` fronts `listen`/`path` on the campaign daemon.
+    # `public_url` fronts the shared listener (`listen`/`path` must
+    # match the unit's `--listen`/`--path` — ONE socket serves every
+    # bundle; each bundle keeps its own public_url/tunnel hostname).
     - public_url: https://ci.luisfuturist.com
-      listen: 127.0.0.1:39271
+      listen: 127.0.0.1:29173
       path: /hook
       hooks:
         - forge: github

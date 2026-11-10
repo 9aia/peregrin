@@ -96,23 +96,28 @@ switch the repo's Pages source from Actions-artifact to the
 
 ```sh
 tamias install ./libraries/docs-deploy
-tamias deploy docs-deploy        # → docs-deploy-campaign.service
+tamias deploy docs-deploy        # → peregrin-campaign.service (shared)
 ```
 
 `tamias install`/`deploy` dispatch `tamias-driver-peregrin`, which
-writes `~/.config/peregrin/docs-deploy.yaml` (`include:` of the
+writes `~/.config/peregrin/docs-deploy.yaml` **and** the campaign-host
+copy `~/.config/peregrin/serve/docs-deploy.yaml` (`include:` of the
 bundle's `main.yaml`). Because the campaign yaml ships its own
 webhook node, `provider.ingress` deliberately declares **no**
 `hooks[]` — otherwise deploy would generate a second ingress node
 (`PEREGRIN_WH_*` names) and every push would double-deliver.
 
-**Production wiring (PL-009 D5, not done here):** the intended live
-topology is adding this bundle's `main.yaml` to the existing
-`campaign serve` invocation next to `ci-gate-full.yaml` — the shared
-`SharedWebhook` demuxes verified pushes by `repository.full_name`, so
-one listener serves both campaigns (per-node `listen`/`path` are
-ignored under `serve`). The `docs-deploy-campaign.service` unit is
-the standalone fallback on `127.0.0.1:29174`.
+**Shared campaign host (T8-7):** `provider.name: peregrin` is the
+provider identity every `peregrin-bundle` shares, so this bundle's
+`campaign` service renders the same `peregrin-campaign.service` as
+ci-gate's — ONE unit running `campaign serve
+~/.config/peregrin/serve`, which hosts every deployed bundle's
+generated config on a single `SharedWebhook` listener demuxed by
+`repository.full_name` (per-node `listen`/`path` are ignored under
+`serve`). There is no per-bundle standalone unit anymore; keep the
+`exec` identical to the other bundles' (last deploy wins the unit
+file). `tamias uninstall docs-deploy` removes this bundle's host
+config; the shared unit survives while any bundle still declares it.
 
 Forge-hook registration (pointing each repo's webhook at the public
 URL) and adding the missing `BUPHA_WH_9AIA_*` values to

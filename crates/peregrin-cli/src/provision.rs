@@ -17,10 +17,14 @@
 //!   and `config.public_url`/`capabilities.secrets` derived from the
 //!   manifest's `provider.ingress[]` declaration. Forge-hook
 //!   *registration* is not performed — the ingress block is data for a
-//!   later driver pass.
-//! - `uninstall` — remove the node config + any legacy `<name>.service`
-//!   unit a pre-provider `deploy` may have written (provider units are
-//!   removed by `tamias uninstall` itself).
+//!   later driver pass. The same doc is also dropped into the
+//!   **campaign-host dir** (`<config>/serve/<name>.yaml`): every
+//!   deployed `peregrin-bundle` lands one file there, and the provider
+//!   unit's `campaign serve <dir>` hosts them all on ONE shared webhook
+//!   listener (T8-7 — several bundles, one unit, demux by repo).
+//! - `uninstall` — remove the node config, its campaign-host file, and
+//!   any legacy `<name>.service` unit a pre-provider `deploy` may have
+//!   written (provider units are removed by `tamias uninstall` itself).
 
 use std::path::{Path, PathBuf};
 
@@ -40,6 +44,18 @@ fn config_path(name: &str, config: Option<&Path>) -> PathBuf {
         || config_dir().join(format!("{name}.yaml")),
         Path::to_path_buf,
     )
+}
+
+/// The campaign-host dir — `<config>/serve/`. `peregrin campaign serve`
+/// accepts directories of `*.yaml`/`*.yml` and hosts every campaign it
+/// finds on ONE shared webhook listener (demux by `repository.full_name`),
+/// so `deploy` drops one generated node config per bundle here and the
+/// provider unit's `ExecStart` names the dir — not any single config —
+/// letting one systemd unit serve every installed `peregrin-bundle`.
+/// The dir is driver-owned: hand-edited yamls are fine to add, but
+/// `<name>.yaml` files are regenerated on every `deploy`.
+fn host_dir() -> PathBuf {
+    config_dir().join("serve")
 }
 
 /// The bundle's campaign entrypoint — `main.yaml`/`main.yml` inside the
@@ -199,7 +215,8 @@ pub fn install(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, 
 }
 
 /// `deploy` — (re)generate the operator node config from the bundle's
-/// `provider:` block. No unit is written: `tamias deploy` renders
+/// `provider:` block, plus its campaign-host copy under
+/// [`host_dir`]. No unit is written: `tamias deploy` renders
 /// `provider.services[]` into `<provider>-<service>` units itself.
 /// Regenerating overwrites operator hand-edits — the manifest is the
 /// source of truth.
@@ -207,13 +224,30 @@ pub fn install(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, 
 /// # Errors
 /// Fails when the bundle dir has no `main.yaml` or the write fails.
 pub fn deploy(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, CliError> {
+    deploy_in(dir, name, config, &host_dir())
+}
+
+/// [`deploy`] with the campaign-host dir injected — tests point it at a
+/// tempdir instead of the real `~/.config/peregrin/serve`.
+fn deploy_in(
+    dir: &Path,
+    name: &str,
+    config: Option<&Path>,
+    host: &Path,
+) -> Result<String, CliError> {
     let main = bundle_main(dir)?;
     let path = config_path(name, config);
     let doc = deploy_config_doc(name, &main, dir);
     write_config(&path, &doc)?;
+    // The campaign host: one generated config per deployed bundle in a
+    // shared dir — `campaign serve <dir>` (the provider unit's
+    // ExecStart) hosts them all on one listener.
+    let host_path = host.join(format!("{name}.yaml"));
+    write_config(&host_path, &doc)?;
     Ok(format!(
-        "wrote node config {} (units render via `tamias deploy {name}`)",
-        path.display()
+        "wrote node config {} + host config {} (units render via `tamias deploy {name}`)",
+        path.display(),
+        host_path.display()
     ))
 }
 
@@ -308,19 +342,30 @@ pub fn config_schema() -> Result<String, CliError> {
     serde_json::to_string_pretty(&schema).map_err(|e| CliError(e.to_string()))
 }
 
-/// `uninstall` — remove the node config + any legacy `<name>.service`
-/// unit a pre-provider `deploy` wrote. Provider-declared units
-/// (`<provider>-<service>`) are `tamias uninstall`'s job.
+/// `uninstall` — remove the node config, its campaign-host file, and
+/// any legacy `<name>.service` unit a pre-provider `deploy` wrote.
+/// Provider-declared units (`<provider>-<service>`) are `tamias
+/// uninstall`'s job.
 ///
 /// # Errors
 /// Best-effort — always returns Ok unless the name is empty.
 pub fn uninstall(name: &str, config: Option<&Path>) -> Result<String, CliError> {
+    Ok(uninstall_in(name, config, &host_dir()))
+}
+
+/// [`uninstall`] with the campaign-host dir injected (test seam, same
+/// as [`deploy_in`]).
+fn uninstall_in(name: &str, config: Option<&Path>, host: &Path) -> String {
     let path = config_path(name, config);
     if path.is_file() {
         let _ = std::fs::remove_file(&path);
     }
+    let host_path = host.join(format!("{name}.yaml"));
+    if host_path.is_file() {
+        let _ = std::fs::remove_file(&host_path);
+    }
     let _ = hypha_systemd::remove(&hypha_systemd::default_unit_dir(), name);
-    Ok(format!("removed config + legacy unit for {name}"))
+    format!("removed config + host config + legacy unit for {name}")
 }
 
 // --- provider ops verbs (T8-5) -------------------------------------------------
@@ -751,9 +796,16 @@ provider:
     #[test]
     fn deploy_generates_the_operator_node_config() {
         let (tmp, dir) = bundle_dir();
+        let host = tmp.path().join("host");
         let cfg = tmp.path().join("ci-gate.yaml");
-        let line = deploy(&dir, "ci-gate", Some(&cfg)).unwrap();
+        let line = deploy_in(&dir, "ci-gate", Some(&cfg), &host).unwrap();
         assert!(line.contains("wrote node config"));
+        // the same doc lands in the campaign-host dir for `campaign serve`
+        let host_cfg = host.join("ci-gate.yaml");
+        assert_eq!(
+            std::fs::read_to_string(&host_cfg).unwrap(),
+            std::fs::read_to_string(&cfg).unwrap()
+        );
         let text = std::fs::read_to_string(&cfg).unwrap();
         // include the bundle's main.yaml (absolute store path)
         assert!(text.contains(&dir.join("main.yaml").display().to_string()));
@@ -785,12 +837,31 @@ provider:
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("main.yaml"), "name: x\n").unwrap();
         // no tamias.yaml at all → manifest load fails → bare doc
+        let host = tmp.path().join("host");
         let cfg = tmp.path().join("plain.yaml");
-        deploy(&dir, "plain", Some(&cfg)).unwrap();
+        deploy_in(&dir, "plain", Some(&cfg), &host).unwrap();
+        assert!(host.join("plain.yaml").is_file());
         let text = std::fs::read_to_string(&cfg).unwrap();
         assert!(text.contains("include:"));
         assert!(!text.contains("github-webhook"));
         assert!(!text.contains("capabilities"));
+    }
+
+    #[test]
+    fn uninstall_removes_the_host_config() {
+        // A fake name keeps `hypha_systemd::remove` off any real unit —
+        // the host-dir leg is what this test covers.
+        let tmp = tempfile::tempdir().unwrap();
+        let host = tmp.path().join("host");
+        std::fs::create_dir_all(&host).unwrap();
+        let host_cfg = host.join("t87-x.yaml");
+        std::fs::write(&host_cfg, "name: t87-x\n").unwrap();
+        let cfg = tmp.path().join("t87-x.yaml");
+        std::fs::write(&cfg, "name: t87-x\n").unwrap();
+        let line = uninstall_in("t87-x", Some(&cfg), &host);
+        assert!(line.contains("host config"), "{line}");
+        assert!(!host_cfg.exists());
+        assert!(!cfg.exists());
     }
 
     #[test]
@@ -810,12 +881,42 @@ provider:
         let manifest = tamias_core::Manifest::load(&dir).unwrap();
         assert_eq!(manifest.kind.as_deref(), Some("peregrin-bundle"));
         let provider = manifest.provider.as_ref().unwrap();
-        assert_eq!(provider.name.as_deref(), Some("ci-gate"));
+        // T8-7: `provider.name` is the SHARED campaign-host identity —
+        // every peregrin-bundle declares `peregrin` so their `campaign`
+        // services render one `peregrin-campaign.service`.
+        assert_eq!(provider.name.as_deref(), Some("peregrin"));
         assert_eq!(provider.services.len(), 1);
         assert_eq!(provider.services[0].name, "campaign");
-        assert!(provider.services[0].exec.contains("campaign serve"));
+        let exec = &provider.services[0].exec;
+        assert!(exec.contains("campaign serve"), "{exec}");
+        assert!(exec.contains(".config/peregrin/serve"), "{exec}");
         assert_eq!(provider.ingress.len(), 1);
         assert_eq!(provider.ingress[0].hooks[0].repo, "9aia/peregrin");
+    }
+
+    /// docs-deploy joins the same shared campaign host (T8-7): same
+    /// `provider.name`, same serve-dir exec, no declared hooks (its
+    /// campaign yaml owns the repo list).
+    #[test]
+    fn shipped_docs_deploy_manifest_shares_the_campaign_host() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../libraries/docs-deploy");
+        let manifest = tamias_core::Manifest::load(&dir).unwrap();
+        assert_eq!(manifest.kind.as_deref(), Some("peregrin-bundle"));
+        let provider = manifest.provider.as_ref().unwrap();
+        assert_eq!(provider.name.as_deref(), Some("peregrin"));
+        assert_eq!(provider.services.len(), 1);
+        assert_eq!(provider.services[0].name, "campaign");
+        // Identical exec to ci-gate's — the shared unit converges
+        // last-deploy-wins only while every declarer agrees.
+        let gate = tamias_core::Manifest::load(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../libraries/ci-gate"),
+        )
+        .unwrap();
+        assert_eq!(
+            provider.services[0].exec,
+            gate.provider.as_ref().unwrap().services[0].exec
+        );
+        assert!(provider.ingress.iter().all(|i| i.hooks.is_empty()));
     }
 
     // --- T8-5 ops verbs ---------------------------------------------------

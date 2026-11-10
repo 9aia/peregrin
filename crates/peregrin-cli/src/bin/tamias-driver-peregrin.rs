@@ -61,8 +61,12 @@ enum Cmd {
         #[arg(long)]
         config: Option<PathBuf>,
     },
-    /// Remove the node config + any legacy unit.
+    /// Remove the node config + host config + any legacy unit. `--dir`
+    /// is accepted for dispatch parity (tamias always passes it) and
+    /// ignored — uninstall resolves paths from `--name`.
     Uninstall {
+        #[arg(long)]
+        dir: PathBuf,
         #[arg(long)]
         name: String,
         #[arg(long)]
@@ -153,7 +157,7 @@ fn main() -> ExitCode {
             return ExitCode::SUCCESS;
         }
         Cmd::Deploy { dir, name, config } => provision::deploy(&dir, &name, config.as_deref()),
-        Cmd::Uninstall { name, config } => provision::uninstall(&name, config.as_deref()),
+        Cmd::Uninstall { name, config, .. } => provision::uninstall(&name, config.as_deref()),
         Cmd::Hooks {
             action,
             dir,
