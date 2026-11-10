@@ -14,6 +14,7 @@
 //!   `HYPHA_*` variable is ever required.
 //! - [`router`]/[`hub_state`] — thin re-shapes over `hypha_hub`'s.
 
+pub mod fleet;
 pub mod kind_policies;
 
 pub use kind_policies::default_kind_policies;
@@ -166,7 +167,12 @@ pub fn hub_state_from(
     hypha_hub::hub_state_from_with(lookup, &config.to_hypha(), default_kind_policies())
 }
 
-/// Build the axum router — `hypha_hub::router` verbatim.
-pub fn router(state: HubState) -> axum::Router {
+/// Build the axum router — `hypha_hub::router` over a
+/// [`fleet::FleetDispatchApi`]-wrapped entity api, so unpinned
+/// `campaign` creates carrying `runs_on` labels land on an eligible
+/// node (PL-007 C4). Everything else — reads, ops, snapshots,
+/// passthrough — is hypha's verbatim.
+pub fn router(mut state: HubState) -> axum::Router {
+    state.node = std::sync::Arc::new(fleet::FleetDispatchApi::new(state.node));
     hypha_hub::router(state)
 }

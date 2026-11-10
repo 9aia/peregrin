@@ -1284,8 +1284,17 @@ impl Campaign {
     /// be present (AND semantics; empty `runs_on` matches anywhere).
     #[must_use]
     pub fn runs_on_matches(&self, node_labels: &[String]) -> bool {
-        self.runs_on
-            .iter()
-            .all(|req| node_labels.iter().any(|l| l == req))
+        runs_on_satisfied(&self.runs_on, node_labels)
     }
+}
+
+/// The `runs_on` AND-match as a free function — the fleet picker
+/// (`peregrin-hub`) matches candidate node capabilities without
+/// materializing a [`Campaign`]. Every required label must appear in
+/// `node_labels`; an empty `runs_on` matches anywhere.
+#[must_use]
+pub fn runs_on_satisfied(runs_on: &[String], node_labels: &[String]) -> bool {
+    runs_on
+        .iter()
+        .all(|req| node_labels.iter().any(|l| l == req))
 }

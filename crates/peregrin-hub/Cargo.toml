@@ -19,8 +19,11 @@ workspace = true
 [dependencies]
 hypha-hub.workspace = true
 hypha-http.workspace = true
+hypha-node-api.workspace = true
 hypha-sync.workspace = true
 hypha-telemetry.workspace = true
+peregrin-core.workspace = true
+async-trait.workspace = true
 axum.workspace = true
 serde_json.workspace = true
 tokio.workspace = true
