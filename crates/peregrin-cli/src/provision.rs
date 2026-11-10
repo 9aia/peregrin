@@ -227,6 +227,13 @@ pub fn deploy(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, C
     deploy_in(dir, name, config, &host_dir())
 }
 
+/// The bundle's declared content type (`tamias.yaml` `type:`) —
+/// `peregrin-node` bundles manage the node daemon itself and carry
+/// no campaign payload.
+fn bundle_kind(dir: &Path) -> Option<String> {
+    tamias_core::Manifest::load(dir).ok()?.kind
+}
+
 /// [`deploy`] with the campaign-host dir injected — tests point it at a
 /// tempdir instead of the real `~/.config/peregrin/serve`.
 fn deploy_in(
@@ -235,6 +242,14 @@ fn deploy_in(
     config: Option<&Path>,
     host: &Path,
 ) -> Result<String, CliError> {
+    // `peregrin-node` bundles ship no `main.yaml` — there is no
+    // campaign to host; `tamias deploy` renders `provider.services[]`
+    // (the `peregrin-node.service` unit) itself.
+    if bundle_kind(dir).as_deref() == Some("peregrin-node") {
+        return Ok(format!(
+            "{name}: peregrin-node bundle — no campaign config (units render via `tamias deploy {name}`)"
+        ));
+    }
     let main = bundle_main(dir)?;
     let path = config_path(name, config);
     let doc = deploy_config_doc(name, &main, dir);
@@ -848,6 +863,26 @@ provider:
     }
 
     #[test]
+    fn deploy_node_bundle_writes_no_campaign_config() {
+        // `peregrin-node` manages the daemon itself — no main.yaml,
+        // no node config; `tamias deploy` renders the unit.
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("peregrin-node@0.1.0");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("tamias.yaml"),
+            "name: peregrin-node\ntype: peregrin-node\nprovider:\n  name: peregrin\n  services:\n    - name: node\n      exec: \"peregrin serve\"\n",
+        )
+        .unwrap();
+        let host = tmp.path().join("host");
+        let cfg = tmp.path().join("peregrin-node.yaml");
+        let line = deploy_in(&dir, "peregrin-node", Some(&cfg), &host).unwrap();
+        assert!(line.contains("peregrin-node bundle"), "{line}");
+        assert!(!cfg.exists());
+        assert!(!host.join("peregrin-node.yaml").exists());
+    }
+
+    #[test]
     fn uninstall_removes_the_host_config() {
         // A fake name keeps `hypha_systemd::remove` off any real unit —
         // the host-dir leg is what this test covers.
@@ -891,7 +926,13 @@ provider:
         assert!(exec.contains("campaign serve"), "{exec}");
         assert!(exec.contains(".config/peregrin/serve"), "{exec}");
         assert_eq!(provider.ingress.len(), 1);
-        assert_eq!(provider.ingress[0].hooks[0].repo, "9aia/peregrin");
+        // hooks: [] is deliberate — main.yaml is the full
+        // `peregrin import bupha` artifact with its own inline
+        // github-webhook node; manifest hooks would double-deliver.
+        assert_eq!(
+            provider.ingress[0].hooks,
+            [] as [tamias_core::ProviderHook; 0]
+        );
     }
 
     /// docs-deploy joins the same shared campaign host (T8-7): same
@@ -917,6 +958,23 @@ provider:
             gate.provider.as_ref().unwrap().services[0].exec
         );
         assert!(provider.ingress.iter().all(|i| i.hooks.is_empty()));
+    }
+
+    /// The shipped peregrin-node bundle manages the daemon itself:
+    /// `peregrin-node` type, no campaign payload, one `node` service
+    /// rendering `peregrin-node.service`.
+    #[test]
+    fn shipped_peregrin_node_manifest_validates() {
+        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../libraries/peregrin-node");
+        let manifest = tamias_core::Manifest::load(&dir).unwrap();
+        assert_eq!(manifest.kind.as_deref(), Some("peregrin-node"));
+        assert!(!dir.join("main.yaml").exists());
+        let provider = manifest.provider.as_ref().unwrap();
+        assert_eq!(provider.name.as_deref(), Some("peregrin"));
+        assert_eq!(provider.services.len(), 1);
+        assert_eq!(provider.services[0].name, "node");
+        assert!(provider.services[0].exec.contains("peregrin serve"));
+        assert_eq!(provider.ingress, [] as [tamias_core::ProviderIngress; 0]);
     }
 
     // --- T8-5 ops verbs ---------------------------------------------------

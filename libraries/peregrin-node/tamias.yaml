@@ -1,0 +1,32 @@
+# peregrin-node — the node daemon itself as a tamias bundle.
+#
+# Unlike the campaign bundles (ci-gate, docs-deploy), this package
+# manages the peregrin *node* — `peregrin serve`, the session/entity
+# API on 127.0.0.1:18787 — not a workflow. There is no `main.yaml`
+# campaign payload: `type: peregrin-node` tells tamias-driver-peregrin
+# to skip node-config generation on deploy, and `provider.services[]`
+# renders the unit — `peregrin-node.service` (provider `peregrin` +
+# service `node`).
+name: peregrin-node
+version: "0.1.0"
+type: peregrin-node
+description: >-
+  The peregrin node daemon as a tamias-managed user service —
+  `peregrin serve` with the session plane, entity API and campaign
+  engine on PEREGRIN_HOST:PEREGRIN_PORT (default 127.0.0.1:18787).
+
+provider:
+  # Same shared provider identity as the campaign bundles — the unit
+  # name is <provider>-<service>, so `node` renders
+  # `peregrin-node.service`, distinct from `peregrin-campaign.service`.
+  name: peregrin
+  services:
+    - name: node
+      exec: >-
+        ~/.local/bin/peregrin serve
+      env_file: "~/.config/peregrin/env"
+      workdir: "~"
+      restart: on-failure
+  # No ingress — the node is not a webhook endpoint. `health`/`status`
+  # fall back to `systemctl --user is-active` on the rendered unit.
+  verbs: [status, logs, health]

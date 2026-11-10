@@ -1,5 +1,7 @@
 //! tamias-driver-peregrin — the tamias content **driver** for
-//! `peregrin-bundle`. tamias discovers this on `PATH` /
+//! `peregrin-bundle` and `peregrin-node` (the node daemon itself —
+//! no campaign payload; `deploy` skips node-config generation for
+//! it). tamias discovers this on `PATH` /
 //! `<tamias-home>/drivers/` and runs
 //! `<driver> <verb> --dir <d> --name <n> [--config <c>]`.
 //!
@@ -182,7 +184,7 @@ fn main() -> ExitCode {
         Cmd::ConfigSchema { .. } => provision::config_schema(),
         Cmd::Capabilities => {
             println!(
-                "{{\"types\":[\"peregrin-bundle\"],\"verbs\":[\"install\",\"deploy\",\"uninstall\",\"hooks\",\"health\",\"status\",\"logs\",\"config-schema\"]}}"
+                "{{\"types\":[\"peregrin-bundle\",\"peregrin-node\"],\"verbs\":[\"install\",\"deploy\",\"uninstall\",\"hooks\",\"health\",\"status\",\"logs\",\"config-schema\"]}}"
             );
             return ExitCode::SUCCESS;
         }
