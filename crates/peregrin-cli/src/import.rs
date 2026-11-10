@@ -64,8 +64,9 @@ const DEFAULT_SECRET_ENV: &str = "BUPHA_WEBHOOK_SECRET";
 const DEFAULT_LISTEN: &str = "127.0.0.1:29173";
 /// bupha's `default_context` (`[status] context`).
 const DEFAULT_CONTEXT: &str = "ci/bupha";
-/// bupha's `default_wt_base`.
-const DEFAULT_WORKTREE_BASE: &str = "/tmp/bupha";
+/// Worktree base emitted for every job — driver-git's own default;
+/// bupha's `worktree.base` is its runtime dir and never imported.
+const DEFAULT_WORKTREE_BASE: &str = "~/.local/share/peregrin/worktrees";
 /// Runner kinds that map onto the inner `driver: shell`.
 const SHELL_RUNNER_KINDS: &[&str] = &["script", "shell"];
 /// Runner-extra keys with their own warning text — anything else gets
@@ -312,6 +313,30 @@ fn non_empty(value: Option<&String>) -> Option<&str> {
     value.map(String::as_str).filter(|v| !v.is_empty())
 }
 
+/// Recursively collect every `secret_env`/`token_env` param value in a
+/// params subtree — the names `capabilities.secrets` must grant.
+fn collect_secrets(value: &Value, out: &mut BTreeSet<String>) {
+    match value {
+        Value::Object(map) => {
+            for (k, v) in map {
+                if matches!(k.as_str(), "secret_env" | "token_env")
+                    && let Some(s) = v.as_str()
+                {
+                    out.insert(s.to_string());
+                } else {
+                    collect_secrets(v, out);
+                }
+            }
+        }
+        Value::Array(items) => {
+            for item in items {
+                collect_secrets(item, out);
+            }
+        }
+        _ => {}
+    }
+}
+
 /// The effective webhook-secret name for a repo — repo override, then
 /// the trigger fallback, then bupha's default. Secret *names* pass
 /// through; values never enter the emitted config.
@@ -483,7 +508,9 @@ fn job_nodes(
         "inner".into(),
         json!({
             "driver": "shell",
-            "params": { "cmd": inner_cmd },
+            // driver-shell defaults to 30s and caps at 600s — bupha
+            // runs have no such bound, so gate cmds get the cap.
+            "params": { "cmd": inner_cmd, "timeout": 600 },
         }),
     );
     git_params.insert("emit".into(), json!({ "0": done, "default": failed }));
@@ -747,11 +774,23 @@ fn convert(path: &Path, config: &BuphaConfig) -> (Value, Vec<String>, usize, usi
     }
 
     // --- one gate pipeline per job -------------------------------------
-    let worktree_base = config
+    // bupha's `worktree.base` is *its* runtime dir — importing it
+    // verbatim makes peregrin share (and `bupha destroy worktrees`
+    // delete) bupha's trees. driver-git's own default is the right
+    // base; an explicit bupha base is dropped with a warning.
+    if config
         .worktree
         .as_ref()
         .and_then(|w| non_empty(w.base.as_ref()))
-        .unwrap_or(DEFAULT_WORKTREE_BASE);
+        .is_some()
+    {
+        warnings.push(
+            "worktree.base dropped — bupha's runtime dir isn't portable; \
+             driver-git uses ~/.local/share/peregrin/worktrees"
+                .to_string(),
+        );
+    }
+    let worktree_base = DEFAULT_WORKTREE_BASE;
     let api_base = trigger.and_then(|t| non_empty(t.api_base.as_ref()));
     let status_kind = config
         .status
@@ -887,7 +926,17 @@ fn convert(path: &Path, config: &BuphaConfig) -> (Value, Vec<String>, usize, usi
         }
     }
 
-    let workflow = json!({
+    // `capabilities.secrets` — the webhook/status drivers deny any
+    // `secret_env`/`token_env` name the grant doesn't declare, so the
+    // emitted workflow must list every name it references or ingress
+    // registers zero routes.
+    let mut secret_names = BTreeSet::new();
+    for node in &nodes {
+        if let Some(params) = node.get("params") {
+            collect_secrets(params, &mut secret_names);
+        }
+    }
+    let mut workflow = json!({
         "name": "ci-gate",
         "annotations": {
             "generated_by": "peregrin import bupha",
@@ -896,6 +945,11 @@ fn convert(path: &Path, config: &BuphaConfig) -> (Value, Vec<String>, usize, usi
         "supersede": supersede,
         "nodes": Value::Array(nodes.clone()),
     });
+    if !secret_names.is_empty() {
+        workflow["capabilities"] = json!({
+            "secrets": secret_names.iter().cloned().collect::<Vec<_>>(),
+        });
+    }
     (workflow, warnings, repo_count, jobs)
 }
 
@@ -1124,9 +1178,12 @@ cache: {conf: x}
         assert_eq!(git1["on"][0], "push.a/one.refs/heads/main.**.*");
         assert_eq!(git1["params"]["url"], "${event.match.1}");
         assert_eq!(git1["params"]["sha"], "${event.match.2}");
-        assert_eq!(git1["params"]["base"], "~/wt");
+        // bupha's worktree.base is its runtime dir — dropped for the
+        // driver-git default, with a warning.
+        assert_eq!(git1["params"]["base"], "~/.local/share/peregrin/worktrees");
         assert_eq!(git1["params"]["token_env"], "BUPHA_TOKEN");
         assert_eq!(git1["params"]["inner"]["params"]["cmd"], "bash ci.sh");
+        assert_eq!(git1["params"]["inner"]["params"]["timeout"], 600);
         assert_eq!(git1["max_fires"], "unlimited");
         // Sinks: status_repo + context composition.
         let st = nodes
