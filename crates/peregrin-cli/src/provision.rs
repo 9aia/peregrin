@@ -217,6 +217,97 @@ pub fn deploy(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, C
     ))
 }
 
+/// `config-schema` — the JSON Schema (draft 2020-12) of the node config
+/// this driver generates (`install`'s minimal doc and `deploy`'s full
+/// operator doc — the schema accepts both). Reached via tamias's
+/// reserved `config-schema` verb (`tamias driver config-schema <pkg>`).
+///
+/// The file on disk is YAML; the schema applies to its mapping — YAML
+/// is a JSON superset for every shape written here. Deliberately
+/// permissive: operators may hand-edit keys the generator doesn't emit
+/// (the node config is also read by `peregrin` itself), so only the
+/// fields `deploy_config_doc`/`install` always write are `required`.
+///
+/// # Errors
+/// Fails only if the schema can't serialize (never in practice).
+pub fn config_schema() -> Result<String, CliError> {
+    let schema = json!({
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "title": "peregrin node config",
+        "description": "The --config YAML a peregrin-bundle provider consumes — written by `tamias install`/`tamias deploy` via tamias-driver-peregrin. YAML mapping; schema is draft 2020-12.",
+        "type": "object",
+        "required": ["name", "include", "config"],
+        "properties": {
+            "name": {"type": "string", "description": "Node/config name (the package name)."},
+            "annotations": {
+                "type": "object",
+                "properties": {
+                    "generated_by": {"type": "string"}
+                }
+            },
+            "include": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Bundle entrypoints (the payload's main.yaml path)."
+            },
+            "config": {
+                "type": "object",
+                "required": ["name"],
+                "properties": {
+                    "name": {"type": "string"},
+                    "public_url": {
+                        "type": "string",
+                        "description": "Ingress public URL from provider.ingress[].public_url."
+                    }
+                }
+            },
+            "capabilities": {
+                "type": "object",
+                "properties": {
+                    "secrets": {
+                        "type": "array",
+                        "items": {"type": "string"},
+                        "description": "Secret NAMES the node may resolve (GITHUB_TOKEN, PEREGRIN_WH_<REPO>, …) — never values."
+                    }
+                }
+            },
+            "nodes": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "required": ["id", "driver"],
+                    "properties": {
+                        "id": {"type": "string"},
+                        "driver": {"type": "string"},
+                        "on": {"type": "array", "items": {"type": "string"}},
+                        "emits": {"type": "array", "items": {"type": "string"}},
+                        "params": {
+                            "type": "object",
+                            "properties": {
+                                "listen": {"type": "string"},
+                                "path": {"type": "string"},
+                                "repos": {
+                                    "type": "array",
+                                    "items": {
+                                        "type": "object",
+                                        "required": ["name", "secret_env"],
+                                        "properties": {
+                                            "name": {"type": "string", "description": "owner/repo"},
+                                            "secret_env": {"type": "string", "description": "Webhook-secret env NAME (PEREGRIN_WH_<OWNER>_<REPO>)."}
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "description": "Extra campaign nodes — deploy emits one github-webhook ingress node per provider.ingress declaration."
+            }
+        }
+    });
+    serde_json::to_string_pretty(&schema).map_err(|e| CliError(e.to_string()))
+}
+
 /// `uninstall` — remove the node config + any legacy `<name>.service`
 /// unit a pre-provider `deploy` wrote. Provider-declared units
 /// (`<provider>-<service>`) are `tamias uninstall`'s job.
@@ -1025,5 +1116,53 @@ provider:
         let out = logs_inner(&dir, "ci-gate", 50, &journal).unwrap();
         assert!(out.contains("ci-gate-campaign.service"), "{out}");
         assert!(out.contains("fake-journal"), "{out}");
+    }
+
+    #[test]
+    fn config_schema_parses_and_covers_the_generated_doc() {
+        // `config-schema` output is a JSON Schema (draft 2020-12) whose
+        // properties name every key `deploy_config_doc`/`install` emit.
+        let text = config_schema().unwrap();
+        let schema: serde_json::Value = serde_json::from_str(&text).unwrap();
+        assert_eq!(
+            schema["$schema"],
+            "https://json-schema.org/draft/2020-12/schema"
+        );
+        assert_eq!(schema["type"], "object");
+        let props = schema["properties"].as_object().unwrap();
+        // The full deploy doc (bundle_dir carries an ingress provider).
+        let (_tmp, dir) = bundle_dir();
+        let doc = deploy_config_doc("ci-gate", &dir.join("main.yaml"), &dir);
+        for (key, _) in doc.as_object().unwrap() {
+            assert!(
+                props.contains_key(key),
+                "generated key '{key}' not in schema"
+            );
+        }
+        // Nested shapes the generator writes.
+        let cfg = props["config"]["properties"].as_object().unwrap();
+        for k in ["name", "public_url"] {
+            assert!(cfg.contains_key(k), "config.{k} not in schema");
+        }
+        let node = &props["nodes"]["items"];
+        for k in ["id", "driver", "on", "emits", "params"] {
+            assert!(
+                node["properties"].as_object().unwrap().contains_key(k),
+                "nodes[].{k} not in schema"
+            );
+        }
+        let params = node["properties"]["params"]["properties"]
+            .as_object()
+            .unwrap();
+        for k in ["listen", "path", "repos"] {
+            assert!(params.contains_key(k), "params.{k} not in schema");
+        }
+        let repo = &params["repos"]["items"];
+        for k in ["name", "secret_env"] {
+            assert!(
+                repo["properties"].as_object().unwrap().contains_key(k),
+                "repos[].{k} not in schema"
+            );
+        }
     }
 }

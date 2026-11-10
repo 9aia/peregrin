@@ -20,6 +20,9 @@
 //!   `listen`+`path`, else `systemctl --user is-active` per unit.
 //! - `status` — JSON per-unit `is-active`/`is-enabled`.
 //! - `logs [--lines N]` — `journalctl --user` over the provider units.
+//! - `config-schema` — reserved verb: prints the JSON Schema
+//!   (draft 2020-12) of the node config `deploy` writes, for
+//!   `tamias driver config-schema <pkg>`.
 //!
 //! Thin wrapper over `peregrin_cli::provision`.
 
@@ -117,6 +120,18 @@ enum Cmd {
         #[arg(long, default_value_t = 200)]
         lines: u32,
     },
+    /// Print the JSON Schema (draft 2020-12) of the `--config` node
+    /// config this driver generates — tamias's reserved `config-schema`
+    /// verb. Instance-agnostic: the flags are accepted for dispatch
+    /// parity and ignored.
+    ConfigSchema {
+        #[arg(long)]
+        dir: PathBuf,
+        #[arg(long)]
+        name: String,
+        #[arg(long)]
+        config: Option<PathBuf>,
+    },
     /// Report the content types + verbs this driver handles (JSON).
     Capabilities,
 }
@@ -160,9 +175,10 @@ fn main() -> ExitCode {
         Cmd::Logs {
             dir, name, lines, ..
         } => provision::logs(&dir, &name, lines),
+        Cmd::ConfigSchema { .. } => provision::config_schema(),
         Cmd::Capabilities => {
             println!(
-                "{{\"types\":[\"peregrin-bundle\"],\"verbs\":[\"install\",\"deploy\",\"uninstall\",\"hooks\",\"health\",\"status\",\"logs\"]}}"
+                "{{\"types\":[\"peregrin-bundle\"],\"verbs\":[\"install\",\"deploy\",\"uninstall\",\"hooks\",\"health\",\"status\",\"logs\",\"config-schema\"]}}"
             );
             return ExitCode::SUCCESS;
         }
