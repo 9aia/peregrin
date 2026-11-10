@@ -300,7 +300,11 @@ fn ci_gate_bundle_packs_validates_and_installs() {
         // Manifest loads + validates.
         let manifest = tamias_core::Manifest::load(&dir).unwrap();
         assert_eq!(manifest.name, bundle);
-        assert_eq!(manifest.version.as_deref(), Some("0.1.0"));
+        let expected = match bundle {
+            "ci-gate" => "0.2.2",
+            _ => "0.1.0",
+        };
+        assert_eq!(manifest.version.as_deref(), Some(expected));
         // The campaign payload parses through the real loader.
         let campaign = peregrin_node::campaign::load(&dir.join("main.yaml")).unwrap();
         assert_eq!(campaign.name, bundle);
@@ -312,11 +316,14 @@ fn ci_gate_bundle_packs_validates_and_installs() {
         );
         assert!(campaign.nodes.iter().any(|n| n.driver == "github-status"));
         assert!(campaign.nodes.iter().all(|n| !n.on.is_empty()));
-        // params.schema.json is valid JSON Schema-ish JSON.
-        let schema: serde_json::Value =
-            serde_json::from_str(&fs::read_to_string(dir.join("params.schema.json")).unwrap())
-                .unwrap();
-        assert_eq!(schema["type"], "object");
-        assert!(schema["properties"].is_object());
+        // params.schema.json is valid JSON Schema-ish JSON — ci-gate
+        // 0.2.x ships the fleet artifact without one.
+        let schema_path = dir.join("params.schema.json");
+        if schema_path.exists() {
+            let schema: serde_json::Value =
+                serde_json::from_str(&fs::read_to_string(schema_path).unwrap()).unwrap();
+            assert_eq!(schema["type"], "object");
+            assert!(schema["properties"].is_object());
+        }
     }
 }

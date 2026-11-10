@@ -357,11 +357,13 @@ fn ci_gate_operator_overlay_splits_into_listener_and_workers() {
     let (injector, _ingress) = peregrin_engine::ingress();
     let registry = campaign::registry_with_ingress(&injector);
     let (listener, worker) = campaign::split_ingress(&campaign, &registry);
-    assert_eq!(listener.nodes.len(), 1);
-    assert_eq!(listener.nodes[0].id, "gate.ingress");
-    assert_eq!(worker.nodes.len(), campaign.nodes.len() - 1);
+    // The bundle ships its own `ci.ingress.webhook` since 0.2.x — the
+    // listener half holds both webhook nodes; the worker half none.
+    assert_eq!(listener.nodes.len(), 2);
+    assert!(listener.nodes.iter().any(|n| n.id == "gate.ingress"));
+    assert_eq!(worker.nodes.len(), campaign.nodes.len() - 2);
     assert!(worker.nodes.iter().all(|n| n.driver != "github-webhook"));
-    assert!(listener.nodes[0].driver == "github-webhook");
+    assert!(listener.nodes.iter().all(|n| n.driver == "github-webhook"));
 }
 
 #[test]
