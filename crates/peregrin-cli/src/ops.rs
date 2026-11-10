@@ -47,11 +47,11 @@ use crate::CliError;
 const CONFIG_NAMES: [&str; 3] = ["peregrin.yaml", "peregrin.yml", "peregrin.toml"];
 
 /// The webhook node's default hook path (`params.path`).
-const DEFAULT_HOOK_PATH: &str = "/hook";
+pub(crate) const DEFAULT_HOOK_PATH: &str = "/hook";
 /// The default forge REST endpoint (`params.api_base`).
-const DEFAULT_API_BASE: &str = "https://api.github.com";
+pub(crate) const DEFAULT_API_BASE: &str = "https://api.github.com";
 /// The default forge-token secret NAME (`config.token_env`).
-const DEFAULT_TOKEN_ENV: &str = "GITHUB_TOKEN";
+pub(crate) const DEFAULT_TOKEN_ENV: &str = "GITHUB_TOKEN";
 /// The default worktree base (`config.worktree_base`).
 const DEFAULT_WORKTREE_BASE: &str = "~/.local/share/peregrin/worktrees";
 
@@ -129,7 +129,7 @@ fn cli(e: impl std::fmt::Display) -> CliError {
 /// The secret chain — environment → OS keyring → the config-dir env
 /// file. Verbs read secret *names* from config; values only ever
 /// resolve through here (the per-impl binding rule).
-fn secret(env: &OpsEnv, name: &str) -> Option<String> {
+pub(crate) fn secret(env: &OpsEnv, name: &str) -> Option<String> {
     std::env::var(name)
         .ok()
         .filter(|v| !v.is_empty())
@@ -143,7 +143,7 @@ fn secret(env: &OpsEnv, name: &str) -> Option<String> {
 }
 
 /// The unresolved-secret error — names the file the value could land in.
-fn missing_secret(env: &OpsEnv, name: &str) -> CliError {
+pub(crate) fn missing_secret(env: &OpsEnv, name: &str) -> CliError {
     CliError(format!(
         "secret '{name}' unresolved — set it in the environment, the OS \
          keyring (service 'peregrin') or {}",
