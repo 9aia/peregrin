@@ -11,8 +11,9 @@
 # env file, never here). Under `campaign serve` the shared
 # `SharedWebhook` demux delivers each verified push to every campaign
 # watching the repo, so this file can sit next to `ci-gate-full.yaml`
-# on the one listener — the `on:` patterns below only match
-# `refs/heads/docs`, ci-gate's only `refs/heads/main`.
+# on the one listener — the `on:` patterns below match
+# `refs/heads/docs` everywhere except 9aia.github.io (whose site IS
+# main), so they never collide with ci-gate's `refs/heads/main`.
 #
 # Scope: self-contained docs trees (sepia/peregrin/lasius — the
 # `docs` orphan branch IS the site checkout) plus the gen-dependent
@@ -22,8 +23,11 @@
 # `params.extra_worktrees` (PL-009 D6): the docs-branch worktree lands
 # at `<run>/docs` and a second worktree of `config.main_ref` at
 # `<run>`, so the gen steps see the same layout as a dev checkout.
-# 9aia.github.io stays out: pnpm toolchain, no `docs:deploy` script,
-# Pages artifact-deploy semantics — operator decision pending.
+# 9aia.github.io is the odd one out: the site lives on `main` (no
+# `docs` branch), so its triplet subscribes `refs/heads/main` —
+# self-contained, no extra_worktrees. Its Pages source must be the
+# `gh-pages` branch (was `actions/deploy-pages` artifact deploy —
+# operator switches Pages source once; the built output is identical).
 name: docs-deploy
 
 # Operator-facing knobs (see params.schema.json + README.md).
@@ -81,6 +85,7 @@ capabilities:
     - BUPHA_WH_9AIA_KUDA
     - BUPHA_WH_9AIA_MIMUS
     - BUPHA_WH_9AIA_BUPHA
+    - BUPHA_WH_9AIA_GITHUB_IO
 
 annotations:
   title: Docs deploy
@@ -128,6 +133,8 @@ nodes:
           secret_env: BUPHA_WH_9AIA_MIMUS
         - name: 9aia/bupha
           secret_env: BUPHA_WH_9AIA_BUPHA
+        - name: 9aia/9aia.github.io
+          secret_env: BUPHA_WH_9AIA_GITHUB_IO
 
   # Route every verified push as a typed event
   # `push.<repo>.<ref>.<clone_url>.<sha>` — `on:` matches types only,
@@ -693,6 +700,50 @@ nodes:
     emits: [docs.9aia-bupha.status-posted]
     params:
       repo: "9aia/bupha"
+      sha: "${event.payload.sha:-${event.match.1}}"
+      context: "${config.context}"
+      token_env: "${config.token_env}"
+      description: "${event.type}"
+
+  # 9aia.github.io — the org site lives on `main` (no docs branch), so
+  # this triplet subscribes refs/heads/main; self-contained (site
+  # checkout IS the repo root), no extra_worktrees.
+  - id: docs.9aia-github-io
+    driver: git
+    on: [push.9aia/9aia.github.io.refs/heads/main.**.*]
+    max_fires: unlimited
+    emits: [docs.9aia-github-io.done, docs.9aia-github-io.failed]
+    params:
+      url: "${event.match.1}"
+      sha: "${event.match.2}"
+      base: "${config.worktree_base}"
+      token_env: "${config.token_env}"
+      inner:
+        driver: shell
+        params:
+          cmd: "${config.cmd}"
+          timeout: "${config.timeout:-600}"
+      emit:
+        "0": "docs.9aia-github-io.done"
+        default: "docs.9aia-github-io.failed"
+  - id: docs.9aia-github-io.pending
+    driver: github-status
+    on: [push.9aia/9aia.github.io.refs/heads/main.**.*]
+    max_fires: unlimited
+    emits: [docs.9aia-github-io.status-posted]
+    params:
+      repo: "9aia/9aia.github.io"
+      sha: "${event.match.2}"
+      state: pending
+      context: "${config.context}"
+      token_env: "${config.token_env}"
+  - id: docs.9aia-github-io.status
+    driver: github-status
+    on: [docs.9aia-github-io.done, docs.9aia-github-io.failed, docs.9aia-github-io.failed.*]
+    max_fires: unlimited
+    emits: [docs.9aia-github-io.status-posted]
+    params:
+      repo: "9aia/9aia.github.io"
       sha: "${event.payload.sha:-${event.match.1}}"
       context: "${config.context}"
       token_env: "${config.token_env}"

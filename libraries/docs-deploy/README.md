@@ -1,8 +1,9 @@
 # docs-deploy
 
 Docs-site deployment as a peregrin bundle (PL-009 / P-009): on a
-verified `push` to a watched repo's `refs/heads/docs` → detached
-worktree at the pushed sha → `bun install` + the repo's own
+verified `push` to a watched repo's `refs/heads/docs` (or
+`refs/heads/main` for `9aia.github.io`, whose site *is* main) →
+detached worktree at the pushed sha → `bun install` + the repo's own
 `docs:deploy` (vitepress build → `gh-pages`) → GitHub commit status
 under `docs/deploy`. This is the campaign-shaped replacement for the
 GHA `deploy.yml` workflows deleted org-wide in C3.
@@ -27,6 +28,17 @@ Two repo shapes, one campaign:
   `repo/docs/` worktree), so `cd ..` hits the main checkout and the
   gen scripts' `docs/…` output paths land back in the docs tree.
   Both checkouts are destroyed with the run (`keep` retains both).
+- **Main-branch site** — `9aia/9aia.github.io`: the org site lives on
+  `main` (no `docs` branch), so its triplet subscribes
+  `push.9aia/9aia.github.io.refs/heads/main.**.*`. Self-contained —
+  the repo root IS the site (`bun install` + `docs:deploy` =
+  `vitepress build` → `bunx gh-pages -d dist`). Its `secret_env` is
+  `BUPHA_WH_9AIA_GITHUB_IO` (dots in the repo name can't ride an env
+  var). **Operator step:** the repo's Pages source is currently
+  `build_type: workflow` (the deleted `deploy.yml`'s
+  `actions/deploy-pages`); switch it once to *Deploy from a branch →
+  `gh-pages` / (root)* — the built output is identical, only the
+  delivery mechanism changes.
 
 The shipped `cmd` exports a persistent per-host
 `CARGO_TARGET_DIR=$HOME/.local/share/peregrin/cargo-target` — the
@@ -35,30 +47,34 @@ gen step and can exceed the 600s inner-shell cap. (mimus's
 `docs:api` pins `CARGO_TARGET_DIR=target` itself, so it stays
 cold — a repo-side fix, not ours.)
 
-**Deferred — `9aia.github.io`**: the site lives on `main` (no `docs`
-branch), the toolchain is pnpm (`pnpm-lock.yaml`, no `docs:deploy`
-script), and the deleted `deploy.yml` used `actions/deploy-pages`
-artifact deploy — Pages-source semantics don't map onto `gh-pages`
-without an operator decision.
+**Converted — `9aia.github.io`** (was deferred): migrated pnpm → bun
+(`bun.lock`, `docs:deploy` script on the repo's `ghpages-conv`
+branch), and its triplet watches `refs/heads/main`. Remaining ops:
+create the `BUPHA_WH_9AIA_GITHUB_IO` webhook secret + forge hook, and
+switch the repo's Pages source from Actions-artifact to the
+`gh-pages` branch (see v1 scope above).
 
 ## Mechanics
 
 - **Ingress**: `docs.ingress.webhook` (`github-webhook`) watches the
-  twelve repos; `secret_env` names follow the existing
-  `BUPHA_WH_<OWNER>_<REPO>` convention — *names only*, granted via
-  `capabilities.secrets` (`BUPHA_TOKEN` + the twelve `BUPHA_WH_*`).
+  thirteen repos; `secret_env` names follow the existing
+  `BUPHA_WH_<OWNER>_<REPO>` convention (dots sanitized —
+  `9aia.github.io` → `BUPHA_WH_9AIA_GITHUB_IO`) — *names only*, granted via
+  `capabilities.secrets` (`BUPHA_TOKEN` + the thirteen `BUPHA_WH_*`).
   `~/.config/peregrin/env` must carry a `BUPHA_WH_9AIA_<REPO>` value
   per watched repo plus `BUPHA_TOKEN`. As of D6 the env file already
   has `BUPHA_WH_9AIA_{BUPHA,CUORA,KUDA,MIMUS,MYCO,PEREGRIN,STURN}`;
-  ops must add `BUPHA_WH_9AIA_{SEPIA,LASIUS,TAMIAS,PAVO,HYPHA}` (and
+  ops must add `BUPHA_WH_9AIA_{SEPIA,LASIUS,TAMIAS,PAVO,HYPHA}` plus
+  `BUPHA_WH_9AIA_GITHUB_IO` (and
   confirm `BUPHA_TOKEN`). The webhook node resolves every listed
-  `secret_env` at startup, so all twelve values must exist before
+  `secret_env` at startup, so all thirteen values must exist before
   deploying — a repo whose secret is missing fails the whole
   ingress, not just its own pushes.
 - **Routing**: `docs.route` re-emits every verified push as
   `push.<repo>.<ref>.<clone_url>.<sha>`; per-repo pipelines subscribe
-  `push.<repo>.refs/heads/docs.**.*` — main-branch pushes route but
-  match nothing (ci-gate's territory).
+  `push.<repo>.refs/heads/docs.**.*` — except `9aia.github.io`, which
+  subscribes `refs/heads/main` — so main-branch pushes on the other
+  repos route but match nothing (ci-gate's territory).
 - **Deploy**: `driver: git` materializes a detached worktree at the
   pushed sha (clone cache under `worktree_base/.repos`, creds via
   argv-scoped `http.extraHeader` — never persisted); the inner shell
