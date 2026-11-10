@@ -46,6 +46,7 @@ and its drivers) — those are documented in
 | `PEREGRIN_NODE_TOKEN` | — | Token the hub presents to nodes |
 | `PEREGRIN_SITE_ROOT` | bundled | Web-bundle root override |
 | `PEREGRIN_CREDENTIAL_STORE` | `keyring` | `keyring` or `dotenv` secrets backend |
+| `PEREGRIN_EPHEMERAL_DEAD_AFTER` | 300s | Seconds an ephemeral node may stay down before the hub reaps its entities (maps to `HYPHA_EPHEMERAL_DEAD_AFTER`) |
 
 ## CLI (`peregrin`)
 
