@@ -1,0 +1,20 @@
+[package]
+name = "peregrin-queue-sqlite"
+description = "SQLite QueueStore impl — the durable supersede queue behind campaign run --queue-store"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+[dependencies]
+peregrin-queue.workspace = true
+rusqlite.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+[dev-dependencies]
+peregrin-core.workspace = true
+tempfile.workspace = true

@@ -317,3 +317,35 @@ fn ci_gate_operator_overlay_splits_into_listener_and_workers() {
     assert!(worker.nodes.iter().all(|n| n.driver != "github-webhook"));
     assert!(listener.nodes[0].driver == "github-webhook");
 }
+
+#[test]
+fn supervised_runs_write_through_the_queue_store() {
+    use std::sync::Arc;
+
+    use peregrin_queue::{MemoryQueueStore, QueueStore};
+
+    let store = Arc::new(MemoryQueueStore::new());
+    let campaign = load(&sleep_campaign("fifo", false, 0.2));
+    let run = supervise(
+        &campaign,
+        SupervisedOptions {
+            queue_store: Some(store.clone()),
+            ..SupervisedOptions::default()
+        },
+    );
+    run.injector
+        .inject(trigger("a", json!({"sha": "1"})))
+        .unwrap();
+    run.injector
+        .inject(trigger("a", json!({"sha": "2"})))
+        .unwrap();
+    drop(run.injector);
+    let logs = run.join.join().unwrap().unwrap();
+    assert_eq!(logs.iter().filter(|e| e.kind == "workflow.done").count(), 2);
+
+    // Every run finished and the queue drained — the durable store
+    // holds nothing: no pending submissions, no in-flight marker.
+    let snapshot = store.load().unwrap();
+    assert!(snapshot.pending.is_empty(), "queue drained: {snapshot:?}");
+    assert!(snapshot.running.is_none(), "no run in flight");
+}

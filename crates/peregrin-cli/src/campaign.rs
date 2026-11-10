@@ -28,6 +28,7 @@ pub fn run(
     dry_run: bool,
     replay: Option<&Path>,
     history: Option<&Path>,
+    queue_store: Option<&Path>,
 ) -> Result<Vec<Event>, CliError> {
     let replay_events = match replay {
         Some(path) => load_replay(path)?,
@@ -57,7 +58,7 @@ pub fn run(
         && !dry_run
         && options.replay_events.is_empty()
     {
-        return run_supervised(&campaign, history);
+        return run_supervised(&campaign, history, queue_store);
     }
     // Ingress variants: `github-webhook`/`sturn-poll` nodes get a
     // run-scoped `Injector`, and a campaign declaring one serves
@@ -84,9 +85,26 @@ pub fn run(
 /// run shares — `peregrin runs`/`log`/`explain` read it back). Blocks
 /// until the trigger channel closes — the ingress listeners exiting —
 /// and the queue drains; returns the logs concatenated for callers.
-fn run_supervised(campaign: &Campaign, history: Option<&Path>) -> Result<Vec<Event>, CliError> {
+fn run_supervised(
+    campaign: &Campaign,
+    history: Option<&Path>,
+    queue_store: Option<&Path>,
+) -> Result<Vec<Event>, CliError> {
+    // `--queue-store` opens the sqlite durable queue — pending
+    // triggers + the in-flight marker replay on the next boot
+    // (docs/reference/queue-supersede.md). Open happens here so a bad
+    // path fails fast, before any listener binds.
+    let store = queue_store
+        .map(|path| {
+            peregrin_queue_sqlite::SqliteQueueStore::open(path).map(|store| {
+                std::sync::Arc::new(store) as std::sync::Arc<dyn peregrin_queue::QueueStore>
+            })
+        })
+        .transpose()
+        .map_err(|e| CliError(format!("failed to open queue store: {e}")))?;
     let options = peregrin_node::supervisor::SupervisedOptions {
         history: history.map(Path::to_path_buf),
+        queue_store: store,
         on_run: Some(Box::new(|log: &[Event]| {
             for event in log {
                 println!("{} {} {}", event.ts, event.source, event.kind);

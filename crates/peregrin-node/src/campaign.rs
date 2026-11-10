@@ -42,6 +42,10 @@ pub enum CampaignError {
     /// reachable via [`runner_with_log`].
     #[error("{0}")]
     Store(#[from] JsonStoreError),
+    /// The durable supersede-queue store failed to load at
+    /// supervisor boot (`supervise` with `queue_store` set).
+    #[error("queue store: {0}")]
+    QueueStore(#[from] peregrin_queue::QueueStoreError),
 }
 
 /// `DefaultDriverRegistryLive` — the drivers a stock node resolves:

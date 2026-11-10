@@ -428,6 +428,12 @@ enum CampaignCommands {
         /// --history; `peregrin runs`/`explain`/`log` read it back)
         #[arg(long)]
         history: Option<PathBuf>,
+        /// Durable supersede-queue store (sqlite) — pending triggers
+        /// and the in-flight run survive a restart and replay on boot.
+        /// Only applies to `supersede:` campaigns with ingress nodes
+        /// (supervisor mode)
+        #[arg(long)]
+        queue_store: Option<PathBuf>,
     },
     /// Expand a campaign yaml and summarize its wiring (includes,
     /// nodes, unemitting-subscription warnings)
@@ -861,7 +867,15 @@ fn run_campaign(cmd: &CampaignCommands) -> Result<(), CliError> {
             dry_run,
             replay,
             history,
-        } => campaign::run(workflow, *dry_run, replay.as_deref(), history.as_deref()).map(|_| ()),
+            queue_store,
+        } => campaign::run(
+            workflow,
+            *dry_run,
+            replay.as_deref(),
+            history.as_deref(),
+            queue_store.as_deref(),
+        )
+        .map(|_| ()),
         CampaignCommands::Validate { workflow } => campaign::validate(workflow).map(|_| ()),
     }
 }

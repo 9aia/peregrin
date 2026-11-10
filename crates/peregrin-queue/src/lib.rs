@@ -22,9 +22,20 @@
 //! trigger event, `drain` when a run slot frees, `finish` when a run
 //! ends, `take_cancel` to read the pending cancellation signal. See
 //! `docs/reference/queue-supersede.md`.
+//!
+//! Durability is a port, not a feature: [`QueueStore`] persists the
+//! pending submissions per supersede key plus the in-flight marker
+//! so a restarted supervisor replays what a dead process left
+//! behind ([`Queue::snapshot`] / [`Queue::restore`] are the
+//! serde-shaped boundary). `peregrin-queue-sqlite` ships the
+//! production sqlite impl; [`MemoryQueueStore`] covers tests.
 
 mod policy;
 mod queue;
+mod store;
 
 pub use policy::{Mode, Supersede, resolve_key};
-pub use queue::{Decision, Disposition, Job, Queue};
+pub use queue::{
+    Decision, Disposition, Job, MAX_PENDING_PER_KEY, Queue, QueueSnapshot, RestoreOutcome,
+};
+pub use store::{MemoryQueueStore, QueueStore, QueueStoreError};

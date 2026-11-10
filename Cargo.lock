@@ -2660,6 +2660,8 @@ dependencies = [
  "peregrin-git",
  "peregrin-http",
  "peregrin-node",
+ "peregrin-queue",
+ "peregrin-queue-sqlite",
  "sepia-acp",
  "sepia-convert",
  "sepia-core",
@@ -3061,6 +3063,18 @@ dependencies = [
  "peregrin-core",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "peregrin-queue-sqlite"
+version = "0.1.0"
+dependencies = [
+ "peregrin-core",
+ "peregrin-queue",
+ "rusqlite",
+ "serde_json",
+ "tempfile",
+ "tracing",
 ]
 
 [[package]]
