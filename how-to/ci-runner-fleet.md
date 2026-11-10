@@ -1,5 +1,13 @@
 # Run a CI runner fleet
 
+> **Deprecated (GitHub Actions removal):** the workflows this page
+> references (`peregrin-ci.yml`, `ephemeral-fleet.yml`,
+> `install-peregrin`) were deleted — the org no longer uses GitHub
+> Actions. The *concept* below (ephemeral `peregrin serve --ephemeral`
+> nodes joining a long-lived hub) still applies to any ephemeral host
+> (bare runners, cloud VMs, containers); only the GHA-specific pieces
+> are gone. See [run-a-ci-node](./run-a-ci-node.md) for the node side.
+
 A *fleet* is N ephemeral peregrin nodes booted on CI runners, joined
 to a hub that outlives them. GitHub Actions ships the pieces:
 
