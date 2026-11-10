@@ -187,6 +187,50 @@ fn validate_errors_on_missing_file() {
     assert!(peregrin_cli::campaign::validate(Path::new("/nonexistent.yaml")).is_err());
 }
 
+#[test]
+fn serve_expands_dirs_and_errors_fast() {
+    let tmp = tempfile::tempdir().unwrap();
+    // `serve` blocks once campaigns boot — every assertion here must
+    // fail *before* that point: path expansion, yaml load, or the
+    // early `serve_campaigns` validation.
+    std::fs::write(tmp.path().join("a.yaml"), "name: a\nnodes: []\n").unwrap();
+    std::fs::write(tmp.path().join("b.yml"), "name: b\nnodes: []\n").unwrap();
+    std::fs::write(tmp.path().join("skip.txt"), "name: x\n").unwrap();
+    let rt = || {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .build()
+            .unwrap()
+    };
+
+    // A dir holding an unloadable yaml fails at load — proving the
+    // *.yaml/*.yml glob expanded (skip.txt is never read).
+    let bad = tmp.path().join("bad");
+    std::fs::create_dir(&bad).unwrap();
+    std::fs::write(bad.join("broken.yaml"), "nodes: [unclosed\n").unwrap();
+    assert!(
+        peregrin_cli::campaign::serve(&[bad], "127.0.0.1:0", "/hook", None, None, &rt()).is_err()
+    );
+
+    // Empty dir → no campaign yamls; missing path → does not exist.
+    let empty = tmp.path().join("empty");
+    std::fs::create_dir(&empty).unwrap();
+    assert!(
+        peregrin_cli::campaign::serve(&[empty], "127.0.0.1:0", "/hook", None, None, &rt()).is_err()
+    );
+    assert!(
+        peregrin_cli::campaign::serve(
+            &[tmp.path().join("nope.yaml")],
+            "127.0.0.1:0",
+            "/hook",
+            None,
+            None,
+            &rt()
+        )
+        .is_err()
+    );
+}
+
 /// The binary e2e — the real `peregrin` drives load + engine + shell
 /// side effects, and the event log lands on stdout.
 #[test]

@@ -3032,6 +3032,7 @@ dependencies = [
  "peregrin-loader",
  "peregrin-loader-yaml",
  "peregrin-queue",
+ "peregrin-queue-sqlite",
  "peregrin-session",
  "peregrin-sink-github-status",
  "peregrin-store",

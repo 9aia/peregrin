@@ -12,6 +12,7 @@
 pub mod campaign;
 pub mod campaign_entity;
 pub mod ephemeral;
+pub mod serve;
 pub mod supervisor;
 
 pub use campaign_entity::{CAMPAIGN_KIND, CampaignEntityPlane};
@@ -176,8 +177,9 @@ async fn run(env: &Env, state: AppState, plane: Arc<dyn SessionPlane>) -> std::i
 /// Block until SIGINT (ctrl-c) — or SIGTERM on unix, which is what
 /// supervisors and CI runners actually send. `tokio::signal::ctrl_c`
 /// alone only covers SIGINT, so an ephemeral node SIGTERMed by its
-/// orchestrator would die without flushing.
-async fn shutdown_signal() {
+/// orchestrator would die without flushing. Shared by `serve` (the
+/// node) and `campaign serve` (the campaign daemon's drain path).
+pub async fn shutdown_signal() {
     #[cfg(unix)]
     {
         use tokio::signal::unix::{SignalKind, signal};

@@ -441,6 +441,32 @@ enum CampaignCommands {
         /// Path to the campaign YAML
         workflow: PathBuf,
     },
+    /// Host N campaign yamls under one process — each gets its own
+    /// supervisor (supersede queue, history, worker runs) while ALL
+    /// `github-webhook` nodes share ONE listener that demuxes
+    /// verified pushes by `repository.full_name` (all-match). SIGINT/
+    /// SIGTERM drains every campaign and exits.
+    Serve {
+        /// Campaign YAML files and/or directories of *.yaml/*.yml —
+        /// every campaign found is hosted
+        paths: Vec<PathBuf>,
+        /// Shared webhook listener bind address
+        #[arg(long, default_value = "127.0.0.1:29173")]
+        listen: String,
+        /// Shared hook path (literal route)
+        #[arg(long, default_value = "/hook")]
+        path: String,
+        /// Per-campaign durable history dir — each campaign appends
+        /// to <dir>/<campaign-name>.jsonl (`peregrin runs`/`log`/
+        /// `explain` read them back)
+        #[arg(long)]
+        history_dir: Option<PathBuf>,
+        /// Per-campaign durable supersede-queue dir — each campaign
+        /// opens <dir>/<campaign-name>.db so pending triggers and
+        /// the in-flight run replay per campaign on restart
+        #[arg(long)]
+        queue_store_dir: Option<PathBuf>,
+    },
 }
 
 // --- push --------------------------------------------------------------------
@@ -860,7 +886,7 @@ fn run_projects(cmd: &ProjectsCommands) -> Result<(), CliError> {
     }
 }
 
-fn run_campaign(cmd: &CampaignCommands) -> Result<(), CliError> {
+fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
     match cmd {
         CampaignCommands::Run {
             workflow,
@@ -877,6 +903,20 @@ fn run_campaign(cmd: &CampaignCommands) -> Result<(), CliError> {
         )
         .map(|_| ()),
         CampaignCommands::Validate { workflow } => campaign::validate(workflow).map(|_| ()),
+        CampaignCommands::Serve {
+            paths,
+            listen,
+            path,
+            history_dir,
+            queue_store_dir,
+        } => campaign::serve(
+            paths,
+            listen,
+            path,
+            history_dir.as_deref(),
+            queue_store_dir.as_deref(),
+            rt,
+        ),
     }
 }
 
@@ -934,7 +974,7 @@ fn ops_env() -> ops::OpsEnv {
     ops::OpsEnv::default()
 }
 
-fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
+fn dispatch(cli: &Cli, rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
     match &cli.command {
         Commands::Health { args } => node_ops::health(args),
         Commands::Node { args } => node_ops::node(args),
@@ -956,7 +996,7 @@ fn dispatch(cli: &Cli, _rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
             args,
         } => node_ops::sessions_prompt(session_id, text, agent.agent.as_deref(), args),
         Commands::Sessions(cmd) => run_sessions(cmd),
-        Commands::Campaign(cmd) => run_campaign(cmd),
+        Commands::Campaign(cmd) => run_campaign(cmd, rt),
         Commands::Projects(cmd) => run_projects(cmd),
         Commands::Config(cmd) => run_config(cmd),
         Commands::Push(cmd) => run_push(cmd),
@@ -1129,6 +1169,9 @@ mod tests {
             // Campaign verbs — load fails fast on a missing file.
             vec!["peregrin", "campaign", "run", "/nonexistent.yaml"],
             vec!["peregrin", "campaign", "validate", "/nonexistent.yaml"],
+            // `campaign serve` errors on the missing path before it
+            // could block — the only safe in-process dispatch.
+            vec!["peregrin", "campaign", "serve", "/nonexistent"],
             vec![
                 "peregrin",
                 "campaign",

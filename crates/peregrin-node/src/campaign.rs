@@ -46,6 +46,11 @@ pub enum CampaignError {
     /// supervisor boot (`supervise` with `queue_store` set).
     #[error("queue store: {0}")]
     QueueStore(#[from] peregrin_queue::QueueStoreError),
+    /// `campaign serve` composition failure — duplicate campaign
+    /// names, an empty host list, or the shared webhook listener
+    /// failing to bind.
+    #[error("campaign serve: {0}")]
+    Serve(String),
 }
 
 /// `DefaultDriverRegistryLive` — the drivers a stock node resolves:
@@ -127,6 +132,30 @@ pub fn registry_with_ingress(injector: &Injector) -> Registry {
             "github-webhook",
             Arc::new(peregrin_driver_github_webhook::GithubWebhookDriver::new(
                 injector.clone(),
+            )),
+        )
+        .with(
+            "sturn-poll",
+            Arc::new(peregrin_driver_sturn::SturnDriver::new(injector.clone())),
+        )
+}
+
+/// [`registry_with_ingress`] for `campaign serve`: `github-webhook`
+/// resolves to [`SharedWebhookDriver`] — it registers the node's repo
+/// watches into the shared demux instead of binding its own socket —
+/// while `sturn-poll` and every worker driver are unchanged. The
+/// daemon binds the one listener via `demux.serve(...)`.
+#[must_use]
+pub fn registry_with_ingress_shared(
+    injector: &Injector,
+    demux: &Arc<peregrin_driver_github_webhook::SharedWebhook>,
+) -> Registry {
+    registry()
+        .with(
+            "github-webhook",
+            Arc::new(peregrin_driver_github_webhook::SharedWebhookDriver::new(
+                injector.clone(),
+                Arc::clone(demux),
             )),
         )
         .with(

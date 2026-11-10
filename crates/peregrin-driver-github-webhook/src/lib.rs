@@ -43,6 +43,23 @@
 //! Emitted (returned) events: `{node.id}.listening` on bind (or with
 //! `dry_run: true` under `ctx.dry_run`), `node.failed` when the bind
 //! fails — the v1 `webhook` driver conventions.
+//!
+//! # Shared ingress (`campaign serve`)
+//!
+//! [`SharedWebhook`] is the same verify/dedup/parse pipeline behind a
+//! repo→routes *demux*: [`SharedWebhookDriver`] (registered as
+//! `github-webhook` by `peregrin_node::campaign::registry_with_ingress_shared`)
+//! never binds a socket — its `invoke` resolves the node's `repos`
+//! secrets exactly like the solo driver and registers one [`Route`]
+//! per repo (secret + the campaign's trigger [`Injector`] + the node
+//! id as event `source` + the `api_base`-derived web base). The daemon
+//! binds ONE listener via [`SharedWebhook::serve`] and every verified
+//! push is delivered to *all* routes whose secret validated — so N
+//! campaigns watching the same repo each get the event (a repo
+//! registered with different secrets per campaign delivers only to
+//! the campaigns whose secret signed the delivery). Non-matching
+//! repos still 404; the per-node `listen`/`path` params are ignored —
+//! the daemon's bind/path flags govern the single socket.
 
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::net::{SocketAddr, TcpListener};
@@ -128,27 +145,44 @@ enum Delivery {
 }
 
 /// The normalized push — everything the injected `push` event's
-/// payload carries.
+/// payload carries. `clone_url` stays `Option`: the payload's own
+/// `repository.clone_url` wins, else each delivery route derives the
+/// fallback from *its* `api_base` web base (routes can disagree).
 struct Push {
     repo: String,
     git_ref: String,
     sha: String,
     before: String,
     actor: String,
-    clone_url: String,
+    clone_url: Option<String>,
 }
 
-/// Per-listener state shared into the request handler — everything
-/// read-only except `seen` (the dedup ring request threads mutate).
+/// One watched repo's delivery target — where a verified push for
+/// `repo` lands. The solo [`GithubWebhookDriver`] registers exactly
+/// one route per repo; [`SharedWebhook`] accumulates routes across
+/// campaigns (`campaign serve`'s demux).
+#[derive(Clone)]
+pub struct Route {
+    /// The resolved webhook secret for this repo (this campaign's
+    /// `secret_env` resolution — never a literal in params).
+    pub secret: String,
+    /// The campaign's trigger channel — verified pushes land here as
+    /// `push` events.
+    pub injector: Injector,
+    /// `source` stamped on injected events — the owning node id.
+    pub source: String,
+    /// Web base derived from the node's `api_base` — the `clone_url`
+    /// fallback when a payload omits `repository.clone_url`.
+    pub web_base: String,
+}
+
+/// Per-listener state shared into the request handler — the repo→
+/// routes demux plus the dedup ring request threads mutate. Routes
+/// sit behind a mutex because `campaign serve` registers them from
+/// listener-run threads while request threads read.
 struct Shared {
-    /// Watched repo `full_name` → resolved webhook secret.
-    secrets: HashMap<String, String>,
-    /// The run's ingress channel — verified pushes land here.
-    injector: Injector,
-    /// `source` for injected events — the firing node's id.
-    source: String,
-    /// Web base derived from `params.api_base` — `clone_url` fallback.
-    web_base: String,
+    /// Watched repo `full_name` → delivery routes (all-match demux).
+    routes: Mutex<HashMap<String, Vec<Route>>>,
     /// `X-GitHub-Delivery` dedup ring.
     seen: Mutex<Seen>,
 }
@@ -215,49 +249,50 @@ impl GithubWebhookDriver {
             .as_ref()
             .and_then(|handle| handle.addr)
     }
+}
 
-    /// Re-resolve `node.params` the way `driver: http`/`shell` do —
-    /// `event.*` binds the first trigger so `repos`/`listen` can
-    /// template off whatever woke the node.
-    fn resolve_params(
-        &self,
-        node: &Node,
-        triggers: &[Event],
-        ctx: &ExecutionContext,
-    ) -> Result<Map<String, Value>, DriverError> {
-        let tctx = Context {
-            strict: ctx.strict,
-            missing_secrets: ctx.missing_secrets.clone(),
-            capabilities: (*ctx.capabilities).clone(),
-            effects: &*self.effects,
-        };
-        let state_view = |key: &str| ctx.state.borrow().get(key);
-        let secret_view = |name: &str| ctx.resolve_secret(name);
-        let resolved = resolve_value_opts(
-            &node.params,
-            &tctx,
-            &Options {
-                node: Some(node),
-                functions: &[],
-                scope: Scope {
-                    event: triggers.first().map(|event| EventScope {
-                        event,
-                        patterns: &node.on,
-                    }),
-                    config: Some(&ctx.config),
-                    params: ParamsScope::Resolved(&ctx.params),
-                    state: Some(&state_view),
-                    node: Some(NodeScope {
-                        id: &node.id,
-                        fires: ctx.fires,
-                    }),
-                    secrets: Some(&secret_view),
-                },
+/// Re-resolve `node.params` the way `driver: http`/`shell` do —
+/// `event.*` binds the first trigger so `repos`/`listen` can
+/// template off whatever woke the node. Shared by the solo and the
+/// shared-ingress drivers.
+fn resolve_params(
+    effects: &dyn Effects,
+    node: &Node,
+    triggers: &[Event],
+    ctx: &ExecutionContext,
+) -> Result<Map<String, Value>, DriverError> {
+    let tctx = Context {
+        strict: ctx.strict,
+        missing_secrets: ctx.missing_secrets.clone(),
+        capabilities: (*ctx.capabilities).clone(),
+        effects,
+    };
+    let state_view = |key: &str| ctx.state.borrow().get(key);
+    let secret_view = |name: &str| ctx.resolve_secret(name);
+    let resolved = resolve_value_opts(
+        &node.params,
+        &tctx,
+        &Options {
+            node: Some(node),
+            functions: &[],
+            scope: Scope {
+                event: triggers.first().map(|event| EventScope {
+                    event,
+                    patterns: &node.on,
+                }),
+                config: Some(&ctx.config),
+                params: ParamsScope::Resolved(&ctx.params),
+                state: Some(&state_view),
+                node: Some(NodeScope {
+                    id: &node.id,
+                    fires: ctx.fires,
+                }),
+                secrets: Some(&secret_view),
             },
-        )
-        .map_err(|error| DriverError::new(error.to_string()))?;
-        Ok(resolved.as_object().cloned().unwrap_or_default())
-    }
+        },
+    )
+    .map_err(|error| DriverError::new(error.to_string()))?;
+    Ok(resolved.as_object().cloned().unwrap_or_default())
 }
 
 /// `params.<key>` as a non-empty string, else `default`.
@@ -436,9 +471,9 @@ fn signature_valid(secret: &str, body: &[u8], signature: Option<&str>) -> bool {
 /// Parse a verified `push` delivery's already-decoded JSON — the
 /// `Event.payload` fields, bupha's skip rules (branch deletion,
 /// all-zero `after`) and sha safety check included. `repo` is the
-/// `repository.full_name` hint [`respond`] already verified against
-/// the watch list.
-fn parse_push(v: &Value, repo: &str, web_base: &str) -> Delivery {
+/// `repository.full_name` hint [`respond`] already matched against
+/// the route table.
+fn parse_push(v: &Value, repo: &str) -> Delivery {
     let (Some(git_ref), Some(sha)) = (
         v.get("ref").and_then(Value::as_str),
         v.get("after").and_then(Value::as_str),
@@ -469,7 +504,7 @@ fn parse_push(v: &Value, repo: &str, web_base: &str) -> Delivery {
         clone_url: v
             .pointer("/repository/clone_url")
             .and_then(Value::as_str)
-            .map_or_else(|| format!("{web_base}/{repo}.git"), str::to_string),
+            .map(str::to_string),
     })
 }
 
@@ -481,7 +516,11 @@ fn header<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
 /// The whole request contract — one POST in, one status+message out.
 /// Ordered exactly like bupha's `WebhookSource`: the hook path and
 /// method are enforced by the route (404/405), then ping → event
-/// check → repo hint → verify → dedup → parse → inject.
+/// check → repo hint → verify → dedup → parse → inject *to every
+/// matched route* (the `campaign serve` all-match demux — a repo two
+/// campaigns watch delivers to both; routes whose secret didn't
+/// validate the signature are skipped, so a repo registered under
+/// different per-campaign secrets only reaches the signer).
 fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'static str) {
     let event_kind = header(headers, "x-github-event");
     if event_kind == Some("ping") {
@@ -492,24 +531,31 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
         return (StatusCode::BAD_REQUEST, "not a push event");
     }
     // The body parse and `repository.full_name` peek are untrusted
-    // until verify passes — the name only selects which watched repo
-    // (and its secret) applies. An unwatched repo can never verify
-    // (no secret of ours signed it): reject, don't ignore.
+    // until verify passes — the name only selects which routes (and
+    // their secrets) apply. An unwatched repo can never verify (no
+    // secret of ours signed it): reject, don't ignore.
     let Ok(v) = serde_json::from_slice::<Value>(body) else {
         return (StatusCode::NOT_FOUND, "unwatched repo");
     };
-    let Some(repo) = v
-        .pointer("/repository/full_name")
-        .and_then(Value::as_str)
-        .filter(|name| shared.secrets.contains_key(*name))
-    else {
+    let Some(repo) = v.pointer("/repository/full_name").and_then(Value::as_str) else {
         return (StatusCode::NOT_FOUND, "unwatched repo");
     };
-    if !signature_valid(
-        &shared.secrets[repo],
-        body,
-        header(headers, "x-hub-signature-256"),
-    ) {
+    let routes: Vec<Route> = shared
+        .routes
+        .lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .get(repo)
+        .cloned()
+        .unwrap_or_default();
+    if routes.is_empty() {
+        return (StatusCode::NOT_FOUND, "unwatched repo");
+    }
+    let signature = header(headers, "x-hub-signature-256");
+    let matched: Vec<&Route> = routes
+        .iter()
+        .filter(|route| signature_valid(&route.secret, body, signature))
+        .collect();
+    if matched.is_empty() {
         return (StatusCode::UNAUTHORIZED, "bad signature");
     }
     if let Some(id) = header(headers, "x-github-delivery") {
@@ -522,27 +568,41 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
             return (StatusCode::OK, "duplicate delivery");
         }
     }
-    match parse_push(&v, repo, &shared.web_base) {
+    match parse_push(&v, repo) {
         Delivery::Skip => (StatusCode::OK, "ignored: no-op event"),
         Delivery::Malformed => (StatusCode::BAD_REQUEST, "unparseable payload"),
         Delivery::Push(push) => {
-            let event = Event::new(
-                "push",
-                serde_json::json!({
-                    "repo": push.repo,
-                    "ref": push.git_ref,
-                    "sha": push.sha,
-                    "before": push.before,
-                    "actor": push.actor,
-                    "clone_url": push.clone_url,
-                }),
-                &shared.source,
-            );
-            match shared.injector.inject(event) {
+            // One event per matched route — `source` and the
+            // `clone_url` fallback are per-route (each campaign's
+            // node id and `api_base`).
+            let mut delivered = false;
+            for route in &matched {
+                let clone_url = push
+                    .clone_url
+                    .clone()
+                    .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
+                let event = Event::new(
+                    "push",
+                    serde_json::json!({
+                        "repo": push.repo,
+                        "ref": push.git_ref,
+                        "sha": push.sha,
+                        "before": push.before,
+                        "actor": push.actor,
+                        "clone_url": clone_url,
+                    }),
+                    &route.source,
+                );
+                // A route whose campaign already ended drops the
+                // event — the others still count as delivered.
+                delivered |= route.injector.inject(event).is_ok();
+            }
+            if delivered {
                 // bupha's `Verdict::Queued` → 202.
-                Ok(()) => (StatusCode::ACCEPTED, "queued"),
-                // The run ended under the listener — receiver dropped.
-                Err(_) => (StatusCode::SERVICE_UNAVAILABLE, "run ended"),
+                (StatusCode::ACCEPTED, "queued")
+            } else {
+                // Every matched run ended under the listener.
+                (StatusCode::SERVICE_UNAVAILABLE, "run ended")
             }
         }
     }
@@ -655,7 +715,7 @@ impl Driver for GithubWebhookDriver {
         triggers: &[Event],
         ctx: &ExecutionContext,
     ) -> Result<Vec<Event>, DriverError> {
-        let params = self.resolve_params(node, triggers, ctx)?;
+        let params = resolve_params(&*self.effects, node, triggers, ctx)?;
         let listen = str_param(&params, "listen", DEFAULT_LISTEN);
         let path = str_param(&params, "path", DEFAULT_PATH);
         if !valid_path(&path) {
@@ -687,6 +747,7 @@ impl Driver for GithubWebhookDriver {
         }
 
         let secrets = resolve_secrets(&specs, node, ctx)?;
+        let web_base = web_base(&api_base);
 
         let listener = match TcpListener::bind(&listen) {
             Ok(listener) => listener,
@@ -698,11 +759,19 @@ impl Driver for GithubWebhookDriver {
             }
         };
         let addr = listener.local_addr().ok();
+        // One route per watched repo — the solo driver's whole route
+        // table (the demux generalizes this to N campaigns).
+        let mut routes: HashMap<String, Vec<Route>> = HashMap::new();
+        for spec in &specs {
+            routes.entry(spec.name.clone()).or_default().push(Route {
+                secret: secrets[&spec.name].clone(),
+                injector: self.injector.clone(),
+                source: node.id.clone(),
+                web_base: web_base.clone(),
+            });
+        }
         let shared = Arc::new(Shared {
-            secrets,
-            injector: self.injector.clone(),
-            source: node.id.clone(),
-            web_base: web_base(&api_base),
+            routes: Mutex::new(routes),
             seen: Mutex::new(Seen::new(SEEN_CAP)),
         });
         let handle = spawn_listener(listener, shared, &path, addr);
@@ -714,6 +783,272 @@ impl Driver for GithubWebhookDriver {
             serde_json::json!({
                 "listen": listen,
                 "path": path,
+                "repos": names,
+                "api_base": api_base,
+            }),
+            &node.id,
+        )])
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Shared ingress — `campaign serve`'s one-listener-N-campaigns demux.
+// ---------------------------------------------------------------------------
+
+/// The shared webhook ingress `campaign serve` binds once for every
+/// hosted campaign: a repo→routes demux over the same
+/// verify/dedup/parse pipeline [`GithubWebhookDriver`] uses solo.
+///
+/// [`SharedWebhookDriver`]s (one per campaign's `github-webhook`
+/// node, inside that campaign's persistent listener run) call
+/// [`register`](Self::register) when they fire; [`serve`](Self::serve)
+/// binds the socket — the order doesn't matter, requests simply 404
+/// until a route exists. [`stop`](Self::stop) (or drop) ends the
+/// listener thread; routes may stay registered — deliveries to a
+/// dead campaign's channel just fail inject and count toward the
+/// all-or-nothing status like the solo driver's `run ended` arm.
+pub struct SharedWebhook {
+    /// The route table + dedup ring the request handler reads —
+    /// `Arc` so `register` and `serve` share it with the listener
+    /// thread.
+    shared: Arc<Shared>,
+    /// The live listener — `Some` between [`serve`](Self::serve) and
+    /// [`stop`](Self::stop)/drop.
+    listener: Mutex<Option<ListenerHandle>>,
+}
+
+impl SharedWebhook {
+    /// An empty demux — no routes, not yet serving.
+    #[must_use]
+    pub fn new() -> Self {
+        Self {
+            shared: Arc::new(Shared {
+                routes: Mutex::new(HashMap::new()),
+                seen: Mutex::new(Seen::new(SEEN_CAP)),
+            }),
+            listener: Mutex::new(None),
+        }
+    }
+
+    /// Register `route` for `repo` (`repository.full_name`) — called
+    /// by [`SharedWebhookDriver::invoke`] once per `params.repos[]`
+    /// entry. Re-registering appends: two campaigns watching the same
+    /// repo both receive deliveries (all-match), and a repo listed
+    /// twice *within* one campaign delivers twice (the supervisor's
+    /// supersede dedupe absorbs the duplicate trigger).
+    pub fn register(&self, repo: &str, route: Route) {
+        self.shared
+            .routes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .entry(repo.to_string())
+            .or_default()
+            .push(route);
+    }
+
+    /// The watched repo names — status surfaces and tests.
+    #[must_use]
+    pub fn repos(&self) -> Vec<String> {
+        let mut repos: Vec<String> = self
+            .shared
+            .routes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .keys()
+            .cloned()
+            .collect();
+        repos.sort();
+        repos
+    }
+
+    /// Total registered routes across all repos.
+    #[must_use]
+    pub fn route_count(&self) -> usize {
+        self.shared
+            .routes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .values()
+            .map(Vec::len)
+            .sum()
+    }
+
+    /// Bind `listen` and spawn the serve thread on `path` — the same
+    /// socket lifecycle [`GithubWebhookDriver`] gets from `invoke`,
+    /// minus the run. `listen: "…:0"` resolves to the assigned port
+    /// via [`bound_addr`](Self::bound_addr). Calling twice is an
+    /// error — one demux, one socket.
+    ///
+    /// # Errors
+    /// `path` failing the literal-route rule, a bind failure, or a
+    /// second `serve` call — as a displayable message.
+    pub fn serve(&self, listen: &str, path: &str) -> Result<SocketAddr, String> {
+        if !valid_path(path) {
+            return Err(format!(
+                "shared webhook 'path' must be a literal route \
+                 (leading '/', no captures): '{path}'"
+            ));
+        }
+        let mut slot = self.listener.lock().unwrap_or_else(PoisonError::into_inner);
+        if slot.is_some() {
+            return Err("shared webhook listener already serving".to_string());
+        }
+        let listener = TcpListener::bind(listen)
+            .map_err(|e| format!("shared webhook failed to bind {listen}: {e}"))?;
+        let addr = listener
+            .local_addr()
+            .map_err(|e| format!("shared webhook local_addr: {e}"))?;
+        *slot = Some(spawn_listener(
+            listener,
+            Arc::clone(&self.shared),
+            path,
+            Some(addr),
+        ));
+        Ok(addr)
+    }
+
+    /// The bound address — `None` before [`serve`](Self::serve) or
+    /// after [`stop`](Self::stop).
+    #[must_use]
+    pub fn bound_addr(&self) -> Option<SocketAddr> {
+        self.listener
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .as_ref()
+            .and_then(|handle| handle.addr)
+    }
+
+    /// Stop the listener — signals the serve thread and joins it, so
+    /// no socket outlives the call. Routes stay registered (deliveries
+    /// to dead channels just fail inject); the slot clears, so a
+    /// later [`serve`](Self::serve) re-binds.
+    pub fn stop(&self) {
+        self.listener
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+    }
+}
+
+impl Default for SharedWebhook {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl Drop for SharedWebhook {
+    fn drop(&mut self) {
+        // Last `Arc` gone — `ListenerHandle`'s own Drop signals +
+        // joins the serve thread.
+        let _ = self
+            .listener
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .take();
+    }
+}
+
+/// `driver: github-webhook` under `campaign serve` — resolves the
+/// node's `repos`/secrets exactly like [`GithubWebhookDriver`] but
+/// registers routes into a [`SharedWebhook`] demux instead of binding
+/// its own listener (the daemon owns the one socket; the node's
+/// `listen`/`path` params are ignored). Still `is_ingress` — the
+/// campaign's listener run fires it once and it stays parked.
+pub struct SharedWebhookDriver {
+    effects: Arc<dyn Effects>,
+    /// The campaign's queue-facing trigger channel — becomes every
+    /// registered route's delivery target.
+    injector: Injector,
+    /// The demux this driver's `invoke` registers into.
+    demux: Arc<SharedWebhook>,
+    output: Vec<EventSchema>,
+}
+
+impl SharedWebhookDriver {
+    /// A driver over [`SystemEffects`] registering into `demux`.
+    #[must_use]
+    pub fn new(injector: Injector, demux: Arc<SharedWebhook>) -> Self {
+        Self::with_effects(injector, demux, Arc::new(SystemEffects))
+    }
+
+    /// A driver over custom effects (tests).
+    #[must_use]
+    pub fn with_effects(
+        injector: Injector,
+        demux: Arc<SharedWebhook>,
+        effects: Arc<dyn Effects>,
+    ) -> Self {
+        Self {
+            effects,
+            injector,
+            demux,
+            output: output_schemas(),
+        }
+    }
+}
+
+impl Driver for SharedWebhookDriver {
+    fn name(&self) -> &'static str {
+        "github-webhook"
+    }
+
+    fn is_ingress(&self) -> bool {
+        true
+    }
+
+    fn output(&self) -> &[EventSchema] {
+        &self.output
+    }
+
+    /// Resolve `repos` + secrets like the solo driver, register one
+    /// [`Route`] per repo into the demux, return `{id}.listening`
+    /// marked `shared: true`. No socket is bound — the daemon's
+    /// [`SharedWebhook::serve`] owns it.
+    fn invoke(
+        &self,
+        node: &Node,
+        triggers: &[Event],
+        ctx: &ExecutionContext,
+    ) -> Result<Vec<Event>, DriverError> {
+        let params = resolve_params(&*self.effects, node, triggers, ctx)?;
+        let api_base = str_param(&params, "api_base", DEFAULT_API_BASE);
+        let specs = parse_repo_specs(&params, node)?;
+        let names: Vec<Value> = specs
+            .iter()
+            .map(|spec| Value::String(spec.name.clone()))
+            .collect();
+        let kind = format!("{}.listening", node.id);
+
+        if ctx.dry_run {
+            return Ok(vec![Event::new(
+                kind,
+                serde_json::json!({
+                    "dry_run": true,
+                    "shared": true,
+                    "repos": names,
+                }),
+                &node.id,
+            )]);
+        }
+
+        let secrets = resolve_secrets(&specs, node, ctx)?;
+        let web_base = web_base(&api_base);
+        for spec in &specs {
+            self.demux.register(
+                &spec.name,
+                Route {
+                    secret: secrets[&spec.name].clone(),
+                    injector: self.injector.clone(),
+                    source: node.id.clone(),
+                    web_base: web_base.clone(),
+                },
+            );
+        }
+
+        Ok(vec![Event::new(
+            kind,
+            serde_json::json!({
+                "shared": true,
                 "repos": names,
                 "api_base": api_base,
             }),
