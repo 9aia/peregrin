@@ -252,6 +252,10 @@ pub struct RepoWatch {
     pub hook_path: String,
     /// The node's forge API base (`params.api_base`).
     pub api_base: String,
+    /// The node opted into `pull_request` deliveries
+    /// (`params.pull_request_actions` present) — the repo hook
+    /// subscribes to that event type too.
+    pub pull_request: bool,
     /// The ingress node id this entry came from.
     pub node: String,
 }
@@ -269,6 +273,13 @@ fn watched_repos(campaign: &Campaign) -> Result<Vec<RepoWatch>, CliError> {
         let params = node.params.as_object().cloned().unwrap_or_default();
         let hook_path = literal(&params, "path").unwrap_or(DEFAULT_HOOK_PATH);
         let api_base = literal(&params, "api_base").unwrap_or(DEFAULT_API_BASE);
+        // PR opt-in is the param's *presence* — the driver filters
+        // actions itself; the hook only needs the event type
+        // subscribed. A templated value can't resolve here, so it
+        // reads as push-only (same `literal` rule as path/api_base).
+        let pull_request = params
+            .get("pull_request_actions")
+            .is_some_and(|v| !v.is_null());
         let Some(repos) = params
             .get("repos")
             .and_then(Value::as_array)
@@ -300,6 +311,7 @@ fn watched_repos(campaign: &Campaign) -> Result<Vec<RepoWatch>, CliError> {
                     secret_env: secret_env.to_string(),
                     hook_path: hook_path.to_string(),
                     api_base: api_base.to_string(),
+                    pull_request,
                     node: node.id.clone(),
                 });
             }
@@ -397,27 +409,42 @@ fn find_hook(
     }
 }
 
-/// Register or update the repo's push webhook pointing at `hook_url`
+/// The GitHub hook `events` list for a watch — `push` always, plus
+/// `pull_request` when the node's `params.pull_request_actions`
+/// opted in (the driver filters actions per route; the hook just
+/// needs the event type subscribed).
+fn hook_events(watch: &RepoWatch) -> Vec<&'static str> {
+    if watch.pull_request {
+        vec!["push", "pull_request"]
+    } else {
+        vec!["push"]
+    }
+}
+
+/// Register or update the repo's webhook pointing at `hook_url`
 /// (`POST`/`PATCH /repos/{repo}/hooks`) — the `bupha deploy webhook`
 /// upsert: only a hook already pointing at this exact URL is taken
-/// over. Returns the human message.
+/// over. `events` is the hook's subscribed event-type list
+/// ([`hook_events`]). Returns the human message.
 pub fn register_hook(
     token: &str,
     repo: &str,
     hook_url: &str,
     secret: &str,
     api_base: &str,
+    events: &[&str],
 ) -> Result<String, CliError> {
     let agent = gh_agent();
     let existing = find_hook(&agent, api_base, repo, hook_url, token)?;
     let config = json!({"url": hook_url, "content_type": "json", "secret": secret});
+    let events = events.to_vec();
     if let Some(id) = existing {
         agent
             .patch(format!("{api_base}/repos/{repo}/hooks/{id}"))
             .header("Authorization", &format!("Bearer {token}"))
             .header("Accept", "application/vnd.github+json")
             .header("User-Agent", "peregrin")
-            .send_json(json!({"config": config, "events": ["push"], "active": true}))
+            .send_json(json!({"config": config, "events": events, "active": true}))
             .map_err(|e| CliError(format!("update hook {id} on {repo}: {e}")))?;
         Ok(format!("{repo}: updated hook {id} -> {hook_url}"))
     } else {
@@ -428,7 +455,7 @@ pub fn register_hook(
             .header("User-Agent", "peregrin")
             .send_json(json!({
                 "name": "web", "config": config,
-                "events": ["push"], "active": true}))
+                "events": events, "active": true}))
             .map_err(|e| CliError(format!("create hook on {repo}: {e}")))?;
         Ok(format!("{repo}: created hook -> {hook_url}"))
     }
@@ -723,6 +750,7 @@ pub fn deploy_webhook(
             &hook_url,
             &hook_secret,
             &watch.api_base,
+            &hook_events(watch),
         )?;
         println!("{msg}");
         lines.push(msg);
@@ -900,7 +928,7 @@ pub struct RunRecord {
     pub sha: String,
     /// The repo the first sha-carrying event names (`payload.repo`).
     pub repo: String,
-    /// done | failed | cancelled | running.
+    /// done | failed | cancelled | superseded | running.
     pub status: String,
     /// First event ts (ms).
     pub first_ts: i64,
@@ -919,7 +947,9 @@ fn type_segment(kind: &str) -> &str {
 /// The run status — the last verdict-type event in the group wins:
 /// `*.failed`/`workflow.failed`/`node.failed` → `failed`,
 /// `workflow.cancelled`/`*cancelled` → `cancelled`,
-/// `*.done`/`workflow.done` → `done`, else `running`.
+/// `*.done`/`workflow.done` → `done`, `*.superseded` → `superseded`
+/// (the queue's displaced-pending marker — the trigger never ran),
+/// else `running`.
 fn run_status(events: &[Value]) -> String {
     let mut status = "running";
     for event in events {
@@ -927,6 +957,7 @@ fn run_status(events: &[Value]) -> String {
             "cancelled" => "cancelled",
             "failed" => "failed",
             "done" => "done",
+            "superseded" => "superseded",
             _ => status,
         };
     }
@@ -1147,4 +1178,79 @@ pub fn log(env: &OpsEnv, history: Option<&Path>, n: usize) -> Result<Vec<String>
         println!("{line}");
     }
     Ok(tail)
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use peregrin_core::Node;
+
+    fn webhook_node(params: Value) -> Node {
+        Node {
+            id: "hook".into(),
+            driver: "github-webhook".into(),
+            params,
+            ..Default::default()
+        }
+    }
+
+    fn campaign_with(nodes: Vec<Node>) -> Campaign {
+        Campaign {
+            nodes,
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn hook_events_push_only_by_default_pr_when_opted_in() {
+        // No `pull_request_actions` → push-only hook (backward compat).
+        let campaign = campaign_with(vec![webhook_node(json!({
+            "repos": [{"name": "o/r", "secret_env": "WH"}],
+        }))]);
+        let watches = watched_repos(&campaign).unwrap();
+        assert_eq!(watches.len(), 1);
+        assert!(!watches[0].pull_request);
+        assert_eq!(hook_events(&watches[0]), vec!["push"]);
+
+        // The param's presence opts the hook into pull_request —
+        // string and list forms both count; the driver filters
+        // actions itself.
+        for params in [
+            json!({"pull_request_actions": "opened", "repos": [{"name": "o/r", "secret_env": "WH"}]}),
+            json!({"pull_request_actions": ["opened"], "repos": [{"name": "o/r", "secret_env": "WH"}]}),
+        ] {
+            let campaign = campaign_with(vec![webhook_node(params)]);
+            let watches = watched_repos(&campaign).unwrap();
+            assert!(watches[0].pull_request);
+            assert_eq!(hook_events(&watches[0]), vec!["push", "pull_request"]);
+        }
+    }
+
+    #[test]
+    fn run_status_marks_superseded_records() {
+        let event = |kind: &str, sha: &str| json!({"type": kind, "payload": {"sha": sha}});
+        // A displaced pending trigger: only its `*.superseded` marker
+        // ever lands in the log → status `superseded`.
+        let events = vec![event("push.superseded", "abc123")];
+        assert_eq!(run_status(&events), "superseded");
+        // A real run's verdict still wins over an earlier marker for
+        // the same sha (re-push of the same commit).
+        let events = vec![
+            event("push.superseded", "abc123"),
+            event("push", "abc123"),
+            event("ci-gate.done", "abc123"),
+        ];
+        assert_eq!(run_status(&events), "done");
+        // And `collect_runs` groups the marker under its sha/repo.
+        let recs = collect_runs(&[json!({
+            "type": "push.superseded",
+            "ts": 1,
+            "payload": {"sha": "abc123", "repo": "o/r", "superseded": true},
+        })]);
+        assert_eq!(recs.len(), 1);
+        assert_eq!(recs[0].sha, "abc123");
+        assert_eq!(recs[0].repo, "o/r");
+        assert_eq!(recs[0].status, "superseded");
+    }
 }

@@ -115,6 +115,88 @@ fn latest_wins_dedupes_pending_behind_the_active_run() {
 }
 
 #[test]
+fn displaced_pending_run_leaves_a_superseded_marker() {
+    let campaign = load(PUSH_NOOP);
+    let mut supervisor = RunSupervisor::new(policy(Mode::LatestWins, false));
+    let _active = supervisor
+        .submit(trigger("a", json!({"sha": "1"})))
+        .start
+        .unwrap();
+    supervisor.submit(trigger("a", json!({"sha": "old"})));
+    let outcome = supervisor.submit(trigger("a", json!({"sha": "new"})));
+    assert!(
+        matches!(
+            outcome.decision.disposition,
+            Disposition::ReplacedPending(_)
+        ),
+        "latest-wins displaced the pending 'old' trigger"
+    );
+
+    // The superseding run's channel carries the trigger AND the
+    // `push.superseded` marker for the displaced one.
+    let next = supervisor.finish().unwrap();
+    assert_eq!(next.job.event.payload["sha"], "new");
+    let log = campaign::runner()
+        .with_ingress(next.ingress)
+        .run(&campaign, &RunOptions::default())
+        .unwrap();
+    let kinds: Vec<&str> = log.iter().map(|e| e.kind.as_str()).collect();
+    assert!(kinds.contains(&"push.superseded"), "trace: {kinds:?}");
+    let marker = log.iter().find(|e| e.kind == "push.superseded").unwrap();
+    assert_eq!(marker.source, "__runner__");
+    assert_eq!(marker.payload["sha"], "old", "the displaced sha");
+    assert_eq!(marker.payload["repo"], "a");
+    assert_eq!(marker.payload["superseded"], true);
+    assert_eq!(marker.payload["key"], "a");
+    assert_eq!(marker.payload["superseded_by"]["kind"], "push");
+    // Only ONE real `push` published — "old" never ran.
+    let pushes: Vec<&Event> = log.iter().filter(|e| e.kind == "push").collect();
+    assert_eq!(pushes.len(), 1);
+    assert_eq!(pushes[0].payload["sha"], "new");
+    assert_eq!(log.last().unwrap().kind, "workflow.done");
+    assert!(supervisor.finish().is_none());
+    assert!(supervisor.is_idle());
+}
+
+#[test]
+fn markers_accumulate_per_key_and_only_ride_that_keys_run() {
+    let mut supervisor = RunSupervisor::new(policy(Mode::LatestWins, false));
+    let _active = supervisor.submit(trigger("a", json!({}))).start.unwrap();
+    // Two displacements on key "a", one queued job on key "b".
+    supervisor.submit(trigger("a", json!({"sha": "a1"})));
+    supervisor.submit(trigger("a", json!({"sha": "a2"})));
+    supervisor.submit(trigger("a", json!({"sha": "a3"})));
+    supervisor.submit(trigger("b", json!({"sha": "b1"})));
+
+    // finish → key "a"'s newest job drains first (it inherited the
+    // displaced job's queue position); both markers ride it.
+    let next = supervisor.finish().unwrap();
+    assert_eq!(next.job.event.payload["sha"], "a3");
+    let mut drained = Vec::new();
+    next.ingress.drain_into(&mut drained);
+    let markers: Vec<&Event> = drained
+        .iter()
+        .filter(|e| e.kind == "push.superseded")
+        .collect();
+    assert_eq!(markers.len(), 2, "a1 and a2 were both displaced");
+    let shas: Vec<&str> = markers
+        .iter()
+        .filter_map(|e| e.payload["sha"].as_str())
+        .collect();
+    assert_eq!(shas, ["a1", "a2"], "markers keep displacement order");
+
+    // Key "b"'s run carries no markers — they're per-key.
+    let next_b = supervisor.finish().unwrap();
+    assert_eq!(next_b.job.key, "b");
+    let mut drained = Vec::new();
+    next_b.ingress.drain_into(&mut drained);
+    assert!(
+        drained.iter().all(|e| e.kind != "push.superseded"),
+        "key b's run sees only its own trigger"
+    );
+}
+
+#[test]
 fn cancel_running_injects_workflow_cancel_into_the_active_run() {
     // A slow run in flight; the second trigger supersedes it.
     let campaign = load(

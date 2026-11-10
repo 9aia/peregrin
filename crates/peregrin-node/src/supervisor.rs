@@ -35,8 +35,9 @@ use std::time::Duration;
 use peregrin_core::{Campaign, Event};
 use peregrin_driver::{DriverError, SecretSource};
 use peregrin_engine::{Ingress, Injector, RunOptions, Runner, WaitOutcome, ingress};
-use peregrin_queue::{Decision, Job, Queue, QueueStore, QueueStoreError, Supersede};
+use peregrin_queue::{Decision, Disposition, Job, Queue, QueueStore, QueueStoreError, Supersede};
 use peregrin_store::MemoryDlq;
+use serde_json::json;
 
 use crate::campaign::{self, CampaignError};
 
@@ -82,6 +83,15 @@ pub struct RunSupervisor {
     /// The durable queue store — `None` keeps the queue purely
     /// in-memory (the pre-C1a behavior).
     store: Option<Arc<dyn QueueStore>>,
+    /// `*.superseded` marker events awaiting the next run of their
+    /// supersede key — a displaced *pending* job never runs, so its
+    /// observability record rides the run that superseded it (injected
+    /// into that run's channel at drain, where it publishes into the
+    /// run's event log and the shared `--history` JSONL like any other
+    /// event). In-memory only: a restart drops markers for jobs the
+    /// durable store still holds — the displaced trigger itself is
+    /// gone either way.
+    superseded: BTreeMap<String, Vec<Event>>,
 }
 
 impl RunSupervisor {
@@ -92,6 +102,7 @@ impl RunSupervisor {
             queue: Queue::new(policy),
             injector: None,
             store: None,
+            superseded: BTreeMap::new(),
         }
     }
 
@@ -124,6 +135,7 @@ impl RunSupervisor {
             queue: restored.queue,
             injector: None,
             store: Some(store),
+            superseded: BTreeMap::new(),
         })
     }
 
@@ -140,7 +152,21 @@ impl RunSupervisor {
     /// is active the event queues per the policy (and cancels it
     /// under `cancel_running`).
     pub fn submit(&mut self, event: Event) -> SubmitOutcome {
+        // The incoming trigger's identity for `superseded_by` — cloned
+        // up front because `queue.submit` consumes the event.
+        let incoming = (event.id.clone(), event.kind.clone(), event.ts);
         let decision = self.queue.submit(event);
+        // A displaced *pending* job never runs — record a
+        // `<kind>.superseded` marker for it now; `start_next` injects
+        // it into the channel of the run that next drains this key
+        // (the superseding trigger's run), where it publishes into
+        // that run's event log and the shared `--history` JSONL.
+        if let Disposition::ReplacedPending(displaced) = &decision.disposition {
+            self.superseded
+                .entry(decision.key.clone())
+                .or_default()
+                .push(superseded_marker(displaced, &incoming, &decision.key));
+        }
         // Drain the queue's one-shot signal whenever one is pending —
         // `decision.cancel_active` just reports *this* submit raised
         // it; a signal from an earlier submit must not linger.
@@ -240,6 +266,15 @@ impl RunSupervisor {
         let (injector, ingress) = ingress();
         // Cannot fail — `ingress` is alive inside the PendingRun.
         let _ = injector.inject(job.event.clone());
+        // `*.superseded` markers stashed by `submit` ride this run —
+        // they publish after the trigger like any injected event, so
+        // a node matching `*.superseded` (e.g. a verdict sink posting
+        // an honest status for the displaced sha) sees them.
+        if let Some(markers) = self.superseded.remove(&job.key) {
+            for marker in markers {
+                let _ = injector.inject(marker);
+            }
+        }
         self.injector = Some(injector.clone());
         Some(PendingRun {
             job,
@@ -247,6 +282,40 @@ impl RunSupervisor {
             ingress,
         })
     }
+}
+
+/// The `<kind>.superseded` marker a displaced pending job leaves —
+/// `push` → `push.superseded`, etc. The payload is the displaced
+/// trigger's payload verbatim plus `superseded: true`,
+/// `superseded_by` (the incoming trigger's `{id, kind, ts}`) and the
+/// resolved `key`, so sha/repo-carrying triggers keep grouping under
+/// their own `peregrin runs` record. A non-object payload wraps into
+/// `{superseded, superseded_by, key, trigger}` instead. Emitted by
+/// `__runner__` — the queue, not a node, produced it.
+fn superseded_marker(displaced: &Job, incoming: &(String, String, i64), key: &str) -> Event {
+    let superseded_by = json!({
+        "id": incoming.0,
+        "kind": incoming.1,
+        "ts": incoming.2,
+    });
+    let mut payload = displaced.event.payload.clone();
+    if let Some(obj) = payload.as_object_mut() {
+        obj.insert("superseded".to_string(), json!(true));
+        obj.insert("superseded_by".to_string(), superseded_by);
+        obj.insert("key".to_string(), json!(key));
+    } else {
+        payload = json!({
+            "superseded": true,
+            "superseded_by": superseded_by,
+            "key": key,
+            "trigger": displaced.event.payload.clone(),
+        });
+    }
+    Event::new(
+        format!("{}.superseded", displaced.event.kind),
+        payload,
+        "__runner__",
+    )
 }
 
 // ---------------------------------------------------------------------------
