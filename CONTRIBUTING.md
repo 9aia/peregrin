@@ -52,8 +52,8 @@ Follow Diátaxis: `docs/tutorials/` (learn) · `docs/how-to/` (tasks) ·
   publishes as `peregrin-cli` (ships `peregrin`, `peregrin-hub`,
   `peregrin-mcp`, `tamias-driver-peregrin` bins).
   `peregrin-testkit` is `publish = false`.
-- Release binaries: push a `v*`/`peregrin-v*` tag —
-  `.github/workflows/release.yml` builds
+- Release binaries: run `scripts/release.sh` manually (there is no
+  release CI — releases are operator-driven). It builds
   `peregrin-<target>.tar.gz` (linux x86_64, macOS aarch64/x86_64)
   carrying all four bins. `install-peregrin` probes
   `peregrin-x86_64-unknown-linux-gnu.tar.gz` automatically once the
