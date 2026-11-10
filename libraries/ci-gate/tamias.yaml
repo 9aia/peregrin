@@ -4,7 +4,7 @@
 # generates the operator node config (`~/.config/peregrin/ci-gate.yaml`)
 # from the `provider:` block below.
 name: ci-gate
-version: "0.1.0"
+version: "0.2.0"
 # `peregrin-bundle` routes install/deploy/uninstall through
 # `tamias-driver-peregrin` (capabilities: types ["peregrin-bundle"]).
 type: peregrin-bundle
@@ -52,10 +52,13 @@ provider:
     - public_url: https://ci.luisfuturist.com
       listen: 127.0.0.1:29173
       path: /hook
-      hooks:
-        - forge: github
-          repo: 9aia/peregrin
-          events: [push]
+      # hooks: [] — the fleet campaign owns its ingress: main.yaml is
+      # the full `peregrin import bupha` artifact (188 repos, per-repo
+      # cmds/contexts/secret_env names inline, incl. its own
+      # github-webhook node). Manifest hooks[] would make `deploy`
+      # generate a SECOND webhook node + PEREGRIN_WH_* secrets —
+      # wrong for this bundle. Same pattern as docs-deploy.
+      hooks: []
   # Advisory verb hints for `tamias provider list`/`tamias run` —
   # no health probe: the campaign daemon serves only the hook path,
   # there is no /health endpoint to curl.

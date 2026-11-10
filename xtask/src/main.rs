@@ -339,7 +339,7 @@ fn main() -> anyhow::Result<()> {
             anyhow::ensure!(status.success(), "coverage run failed");
         }
         Some("install") => {
-            let bins = ["peregrin", "peregrin-hub"];
+            let bins = ["peregrin", "peregrin-hub", "tamias-driver-peregrin"];
             let mut build = vec!["build", "--release"];
             for bin in &bins {
                 build.push("--bin");
