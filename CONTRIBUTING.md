@@ -55,6 +55,5 @@ Follow Diátaxis: `docs/tutorials/` (learn) · `docs/how-to/` (tasks) ·
 - Release binaries: run `scripts/release.sh` manually (there is no
   release CI — releases are operator-driven). It builds
   `peregrin-<target>.tar.gz` (linux x86_64, macOS aarch64/x86_64)
-  carrying all four bins. `install-peregrin` probes
-  `peregrin-x86_64-unknown-linux-gnu.tar.gz` automatically once the
-  first release exists.
+  carrying all four bins — `peregrin-x86_64-unknown-linux-gnu.tar.gz`
+  is the name installers probe once the first release exists.
