@@ -186,3 +186,16 @@ is a full `peregrin import bupha` artifact that owns its ingress
 inline (per-repo cmds/contexts/secret names), so manifest hooks would
 only generate a duplicate webhook node. See the bundle's README for
 the full operator flow.
+
+## The `peregrin-node` type — the daemon itself
+
+`libraries/peregrin-node` manages the node daemon, not a campaign:
+`type: peregrin-node`, **no `main.yaml` payload**, and a
+`provider.services[]` entry (`name: node`, `exec: peregrin serve`).
+The driver recognizes the type and skips node-config generation on
+`deploy` — there is no campaign to host — while `tamias deploy`
+still renders the unit: `peregrin-node.service` (provider `peregrin`
++ service `node`, distinct from the shared `peregrin-campaign.service`).
+The node reads `PEREGRIN_*` env, so `env_file` points at
+`~/.config/peregrin/env`; `health`/`status` fall back to unit
+`is-active` since there is no ingress probe.
