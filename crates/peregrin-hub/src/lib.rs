@@ -159,6 +159,7 @@ pub fn hub_state_from(
                 .or_else(|| Some(OsString::from(".peregrin"))),
             "HYPHA_NODES" => get("PEREGRIN_NODES"),
             "HYPHA_CREDENTIAL_STORE" => get("PEREGRIN_CREDENTIAL_STORE"),
+            "HYPHA_EPHEMERAL_DEAD_AFTER" => get("PEREGRIN_EPHEMERAL_DEAD_AFTER"),
             _ => None,
         }
     };
