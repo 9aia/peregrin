@@ -56,6 +56,17 @@ campaign's `params.repos[].name`:
   redelivery is answered `200 duplicate` once, before fan-out.
 - A repo no campaign watches gets `404`, same as the single-campaign
   driver.
+- `pull_request` deliveries fan out the same way, but per-route
+  action filtering applies: each campaign's
+  `params.pull_request_actions` (default `opened,synchronize,reopened`)
+  decides which actions it receives — a `synchronize` reaches a route
+  that accepts it and is a verified no-op for one that doesn't.
+  `peregrin deploy webhook` subscribes a repo's hook to
+  `pull_request` only when at least one watching node sets the param;
+  push-only campaigns keep a `push`-only subscription. PR payloads
+  carry the head repo's `clone_url`, so fork heads are checkable with
+  a suitably scoped token — see
+  [first-gate](../tutorials/first-gate.md#pull-request-triggers-opt-in).
 - A campaign whose run has ended simply drops injections; if every
   matching route is closed the listener answers `503`.
 

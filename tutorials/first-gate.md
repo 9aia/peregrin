@@ -116,14 +116,46 @@ peregrin deploy webhook --config ~/.config/peregrin/ci-gate.yaml
 ```
 
 This reads every `github-webhook` node's `params.repos` and upserts
-a `push`-events hook at `<public_url><hook-path>` via the GitHub API
-— exact-URL match, so re-running is safe. `--url` overrides
-`config.public_url`; `--token-env` overrides which secret name holds
-the forge token. The webhook listener binds
+a hook at `<public_url><hook-path>` via the GitHub API — exact-URL
+match, so re-running is safe. The subscribed event list is `push`
+only unless a `github-webhook` node sets
+`params.pull_request_actions` (see below); the command inspects the
+nodes and subscribes `pull_request` automatically for those. `--url`
+overrides `config.public_url`; `--token-env` overrides which secret
+name holds the forge token. The webhook listener binds
 `127.0.0.1:29173` on `/hook` by default (the `listen` param of the
 `github-webhook` node) — change it when another service already holds
 that port (a running bupha watcher does). Point your tunnel or
 reverse proxy at it.
+
+### Pull-request triggers (opt-in)
+
+`github-webhook` also verifies `pull_request` deliveries. The
+accepted actions are set per node with `params.pull_request_actions`
+(default `opened,synchronize,reopened`):
+
+```yaml
+    params:
+      repos:
+        - name: owner/repo
+          secret_env: PEREGRIN_WH_OWNER_REPO
+      pull_request_actions: [opened, synchronize, reopened]
+```
+
+The value may be a list or a comma-separated string; the default
+(when the param is absent) is `opened,synchronize,reopened`, and any
+action outside the configured set is verified, deduped, and answered
+`200` as a no-op — it never reaches the run. A `pull_request` event
+carries kind `pull_request` with payload fields `repo`, `number`,
+`action`, `sha` (PR head), `ref` (head branch), `base_ref`, `actor`,
+and `clone_url` — the head repository's clone URL when GitHub sends
+one, so a fork head checks out correctly. That means checking out a
+fork's head requires a token with read access to the fork
+repository; no extra fork-safety machinery is provided. With the
+param set, `peregrin deploy webhook` subscribes the hook to both
+`push` and `pull_request`; without it the hook stays `push`-only —
+the node still answers verified PR deliveries if GitHub sends them
+(e.g. a manually configured hook).
 
 ## 6. Run the gate
 

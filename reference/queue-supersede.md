@@ -110,6 +110,30 @@ start, cancelled_active }`; `finish()` → `Option<PendingRun>`.
   the loop thread; the channel is the entire cross-thread input
   surface.
 
+## Superseded-run observability
+
+When `latest-wins` displaces a *pending* job — or a `fifo`-bounded
+key evicts its oldest pending entry — the displaced trigger does not
+vanish silently. `RunSupervisor` keeps the displaced `Job` per
+supersede key and injects a marker event into the **next replacement
+run for that key**, alongside its trigger:
+
+- Kind `push.superseded`, source `__runner__`, payload carrying the
+  displaced trigger's `repo`/`sha` (where the event payload has them),
+  the `key`, `superseded: true`, and a `superseded_by` object naming
+  the replacement event's kind.
+- Multiple displacements for one key accumulate in order and all
+  land on the same replacement run; other keys never see them.
+- Because the marker is an ordinary injected event, it is logged in
+  the run's event log **and** persisted to `--history` JSONL like any
+  other event — the displaced SHA is auditable after the fact.
+
+No GitHub commit status is posted automatically: status posting is a
+campaign-level concern (`peregrin-sink-github-status` needs campaign
+node execution context, which the queue layer doesn't have). A
+campaign that wants a "superseded" status on the displaced SHA adds a
+`github-status` node matching the `push.superseded` event type.
+
 ## Durable queue (`--queue-store`)
 
 Without a store the queue is memory-only — a restart loses every

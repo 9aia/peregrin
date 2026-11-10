@@ -61,7 +61,9 @@ A stock node resolves (`peregrin_node::campaign::registry`):
 | `runner` | builtin | Injects node specs from the trigger's `payload.nodes` — the self-modifying primitive. |
 
 Two ingress drivers exist as crates — `github-webhook` (HMAC-verified
-push listener) and `sturn-poll` (git-ref WAL poller) — and compose
+push + `pull_request` listener; PR actions filter via
+`params.pull_request_actions`, default `opened,synchronize,reopened`)
+and `sturn-poll` (git-ref WAL poller) — and compose
 the same way once the node's per-run wiring hands them the run's
 `Injector`. The v1 `python`/`cli`/`stdin`/generic `webhook`/
 `streaming` drivers and the litellm/apprise plugin drivers are not

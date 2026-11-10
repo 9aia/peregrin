@@ -198,8 +198,12 @@ shipped ones verify before they inject:
 - `github-webhook` — `X-Hub-Signature-256` HMAC-SHA256 per repo
   (secret *names* in `params.repos[].secret_env`, resolved through
   the secrets gate), watched-repo allowlist, delivery-id dedup,
-  2 MiB body cap; non-push events and unwatched repos are rejected
-  before an event is ever injected.
+  2 MiB body cap; unwatched repos, unverified signatures, and
+  non-`push`/`pull_request` event types are rejected before an event
+  is ever injected. `pull_request` deliveries are additionally
+  action-filtered per route (`params.pull_request_actions`, default
+  `opened,synchronize,reopened`) — a verified delivery for an
+  unwanted action is a `200` no-op, never an injected event.
 - `sturn-poll` — unauthenticated by design (it diffs git refs
   locally); `actor` is unattested `""`.
 
