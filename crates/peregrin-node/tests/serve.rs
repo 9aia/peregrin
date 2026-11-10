@@ -111,6 +111,7 @@ fn config(logs: &RunLog) -> ServeConfig {
         queue_store_dir: None,
         on_run: Some(on_run(logs)),
         secrets: Default::default(),
+        labels: Vec::new(),
     }
 }
 
@@ -299,4 +300,29 @@ fn campaign_name_falls_back_to_the_file_stem() {
         serve::campaign_name(&unnamed, Path::new("dir/my-camp.yaml")),
         "my-camp"
     );
+}
+
+#[test]
+fn serve_skips_campaigns_whose_runs_on_the_node_lacks() {
+    // PL-007 C4 fleet gate: `runs_on` labels the node doesn't
+    // advertise → the campaign is skipped; when nothing matches the
+    // serve errors instead of hosting half a fleet.
+    let yaml = "name: pinned\nruns_on: [runner:gpu]\n\
+         supersede:\n  key: \"{{repo}}\"\n  mode: latest-wins\n\
+         nodes:\n  - id: work\n    driver: shell\n    on: [push]\n    \
+         emits: [work.done]\n    params:\n      cmd: \"true\"\n      \
+         emit:\n        \"0\": work.done\n";
+    let logs = capture();
+    let mut cfg = config(&logs);
+    cfg.labels = vec!["runner:linux".to_string()];
+    let err = serve::serve_campaigns(vec![hosted("pinned", load(yaml))], &cfg)
+        .err()
+        .expect("unmatched runs_on must not be hosted");
+    assert!(err.to_string().contains("runner labels"), "{err}");
+
+    // With the label advertised the same campaign hosts fine.
+    cfg.labels = vec!["runner:gpu".to_string()];
+    let served = serve::serve_campaigns(vec![hosted("pinned", load(yaml))], &cfg).unwrap();
+    served.request_shutdown();
+    served.join().unwrap();
 }

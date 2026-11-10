@@ -90,6 +90,12 @@ pub struct ServeConfig {
     /// explicit record leg of secret resolution (ambient env →
     /// keyring → env file follow via the default stores).
     pub secrets: BTreeMap<String, String>,
+    /// This node's runner labels — the `runs_on` matcher's
+    /// right-hand side (PL-007 C4). Campaigns whose `runs_on` isn't
+    /// fully satisfied are skipped with a warning: a fleet node only
+    /// hosts campaigns it declared itself eligible for. The CLI
+    /// fills this from `PEREGRIN_RUNNER_LABELS`.
+    pub labels: Vec<String>,
 }
 
 /// The daemon in flight — [`serve_campaigns`]'s return. `Drop`
@@ -222,6 +228,32 @@ pub fn serve_campaigns(
 ) -> Result<Served, CampaignError> {
     if hosted.is_empty() {
         return Err(CampaignError::Serve("no campaigns to serve".to_string()));
+    }
+    // Fleet gate (PL-007 C4): a campaign's `runs_on` labels must all
+    // be advertised by this node — drop ineligible campaigns up
+    // front so their queues/webhook routes never half-exist here.
+    let hosted: Vec<HostedCampaign> = hosted
+        .into_iter()
+        .filter(|entry| {
+            if entry.campaign.runs_on_matches(&config.labels) {
+                true
+            } else {
+                tracing::warn!(
+                    campaign = %entry.name,
+                    source = %entry.source.display(),
+                    runs_on = ?entry.campaign.runs_on,
+                    labels = ?config.labels,
+                    "campaign requires runner labels this node doesn't \
+                     advertise — skipping under `campaign serve`"
+                );
+                false
+            }
+        })
+        .collect();
+    if hosted.is_empty() {
+        return Err(CampaignError::Serve(
+            "no campaigns match this node's runner labels".to_string(),
+        ));
     }
     // Names key the per-campaign files — duplicates would share a
     // history/queue db, so reject them up front.

@@ -456,6 +456,10 @@ pub fn hypha_state(env: &Env, state: &AppState) -> hypha_http::HyphaState {
     if env.ephemeral {
         capabilities.push("ephemeral".into());
     }
+    // Fleet runner labels (`PEREGRIN_RUNNER_LABELS`) ride the same
+    // capability list — campaign `runs_on:` matchers and the hub's
+    // sync projection read them off `GET /api/node`.
+    capabilities.extend(env.runner_labels.iter().cloned());
     hypha_http::HyphaState::from_env(&env.to_hypha())
         .with_agent_lister(agent_lister(&state.plane))
         .with_node_capabilities(capabilities)

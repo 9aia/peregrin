@@ -1081,6 +1081,18 @@ pub struct Campaign {
     /// fresh run over the worker nodes.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub supersede: Option<Supersede>,
+    /// `runs_on:` — runner labels this campaign requires (PL-007 C4
+    /// fleet scheduling). Every entry must appear in the hosting
+    /// node's advertised capability list (`/api/node` `capabilities`,
+    /// fed by `PEREGRIN_RUNNER_LABELS`) for the node to claim the
+    /// campaign — `campaign.start` ops and `campaign serve` hosting
+    /// both enforce the match. Empty = any node may run it.
+    ///
+    /// ```yaml
+    /// runs_on: [runner:linux, gpu]
+    /// ```
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub runs_on: Vec<String>,
     /// Directory the campaign was loaded from — the anchor `include:`
     /// and `subworkflow` `params.path` resolve against (ADR-0022).
     /// Provenance metadata the loader stamps after [`Campaign::from_dict`];
@@ -1147,6 +1159,7 @@ impl Campaign {
             state: map_or_empty(raw.get("state")),
             annotations: map_or_empty(raw.get("annotations")),
             supersede,
+            runs_on: string_list(raw.get("runs_on"), &[]),
             source_dir: None,
         })
     }
@@ -1218,6 +1231,17 @@ impl Campaign {
                 Value::Object(self.annotations.clone()),
             );
         }
+        if !self.runs_on.is_empty() {
+            d.insert(
+                "runs_on".to_string(),
+                Value::Array(
+                    self.runs_on
+                        .iter()
+                        .map(|s| Value::String(s.clone()))
+                        .collect(),
+                ),
+            );
+        }
         if let Some(supersede) = &self.supersede {
             d.insert(
                 "supersede".to_string(),
@@ -1248,5 +1272,20 @@ impl Campaign {
         if self.supersede.is_none() {
             self.supersede.clone_from(&other.supersede);
         }
+        for label in &other.runs_on {
+            if !self.runs_on.contains(label) {
+                self.runs_on.push(label.clone());
+            }
+        }
+    }
+
+    /// Whether this node's advertised capability labels satisfy the
+    /// campaign's `runs_on` requirements — every required label must
+    /// be present (AND semantics; empty `runs_on` matches anywhere).
+    #[must_use]
+    pub fn runs_on_matches(&self, node_labels: &[String]) -> bool {
+        self.runs_on
+            .iter()
+            .all(|req| node_labels.iter().any(|l| l == req))
     }
 }

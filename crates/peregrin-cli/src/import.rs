@@ -70,10 +70,9 @@ const DEFAULT_WORKTREE_BASE: &str = "~/.local/share/peregrin/worktrees";
 /// Runner kinds that map onto the inner `driver: shell`.
 const SHELL_RUNNER_KINDS: &[&str] = &["script", "shell"];
 /// Runner-extra keys with their own warning text — anything else gets
-/// the generic "unmapped" warning.
+/// the generic "unmapped" warning. (`isolate`/`memory_max` are absent:
+/// they map onto driver-shell's systemd-run scope and aren't dropped.)
 const KNOWN_DROPPED_RUNNER_KEYS: &[&str] = &[
-    "isolate",
-    "memory_max",
     "sccache_conf",
     "cli_source",
     "function",
@@ -479,13 +478,12 @@ fn job_nodes(
         if key == "cmd" {
             continue;
         }
+        // Carried into the inner shell params below — not dropped.
+        if key == "isolate" || key == "memory_max" {
+            continue;
+        }
         let why = if KNOWN_DROPPED_RUNNER_KEYS.contains(&key.as_str()) {
-            match key.as_str() {
-                "isolate" | "memory_max" => {
-                    "cgroup isolation is a driver option not yet wired into driver-git"
-                }
-                _ => "a dagger/impl-specific knob with no shell equivalent",
-            }
+            "a dagger/impl-specific knob with no shell equivalent"
         } else {
             "unmapped runner key"
         };
@@ -504,13 +502,32 @@ fn job_nodes(
     git_params.insert("sha".into(), json!("${event.match.2}"));
     git_params.insert("base".into(), json!(worktree_base));
     git_params.insert("token_env".into(), json!(token_env));
+    // `isolate`/`memory_max` now map onto driver-shell's systemd-run
+    // scope — carry them into the inner params instead of dropping.
+    let mut inner_params = Map::new();
+    inner_params.insert("cmd".into(), json!(inner_cmd));
+    inner_params.insert("timeout".into(), json!(600));
+    if let Some(r) = runner {
+        if r.extra.get("isolate").is_some_and(peregrin_core::js_truthy) {
+            inner_params.insert("isolate".into(), json!(true));
+        }
+        if let Some(max) = r
+            .extra
+            .get("memory_max")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            inner_params.insert("memory_max".into(), json!(max));
+        }
+    }
     git_params.insert(
         "inner".into(),
         json!({
             "driver": "shell",
             // driver-shell defaults to 30s and caps at 600s — bupha
             // runs have no such bound, so gate cmds get the cap.
-            "params": { "cmd": inner_cmd, "timeout": 600 },
+            "params": Value::Object(inner_params),
         }),
     );
     git_params.insert("emit".into(), json!({ "0": done, "default": failed }));
