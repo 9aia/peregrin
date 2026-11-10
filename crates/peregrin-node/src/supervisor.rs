@@ -34,7 +34,7 @@ use std::time::Duration;
 use peregrin_core::{Campaign, Event};
 use peregrin_driver::{DriverError, SecretSource};
 use peregrin_engine::{Ingress, Injector, RunOptions, Runner, WaitOutcome, ingress};
-use peregrin_queue::{Decision, Job, Queue, Supersede};
+use peregrin_queue::{Decision, Job, Queue, QueueStore, QueueStoreError, Supersede};
 use peregrin_store::MemoryDlq;
 
 use crate::campaign::{self, CampaignError};
@@ -78,6 +78,9 @@ pub struct RunSupervisor {
     /// The active run's injector — `Some` from `start` until
     /// `finish`. Clones of it are what external producers hold.
     injector: Option<Injector>,
+    /// The durable queue store — `None` keeps the queue purely
+    /// in-memory (the pre-C1a behavior).
+    store: Option<Arc<dyn QueueStore>>,
 }
 
 impl RunSupervisor {
@@ -87,7 +90,40 @@ impl RunSupervisor {
         Self {
             queue: Queue::new(policy),
             injector: None,
+            store: None,
         }
+    }
+
+    /// A supervisor over `policy` *with* a durable [`QueueStore`] —
+    /// loads the persisted snapshot and replays it through
+    /// [`Queue::restore`] before this supervisor accepts anything:
+    /// pending submissions come back in drain order and an
+    /// interrupted run's marker re-queues at the front
+    /// (at-least-once). Entries the restore validation rejects are
+    /// logged and dropped.
+    ///
+    /// # Errors
+    /// [`QueueStoreError`] when the store can't be read — a corrupt
+    /// *entry* never fails the load (restore drops it), but an
+    /// unreadable store means the durable state is unknowable, so
+    /// booting anyway would silently lose queued triggers.
+    pub fn with_store(
+        policy: Supersede,
+        store: Arc<dyn QueueStore>,
+    ) -> Result<Self, QueueStoreError> {
+        let snapshot = store.load()?;
+        let restored = Queue::restore(policy, snapshot);
+        if !restored.dropped.is_empty() {
+            tracing::warn!(
+                "queue store: dropped {} persisted job(s) that failed re-validation",
+                restored.dropped.len()
+            );
+        }
+        Ok(Self {
+            queue: restored.queue,
+            injector: None,
+            store: Some(store),
+        })
     }
 
     /// The underlying queue — pending/active inspection for status
@@ -109,6 +145,18 @@ impl RunSupervisor {
         // it; a signal from an earlier submit must not linger.
         let cancelled_active = self.cancel_active();
         let start = self.start_next();
+        if self.store.is_some() {
+            // Persist *after* the drain: `start_next` may have popped a
+            // pending job (possibly of this same key) into `running`,
+            // and the per-key writes must reflect post-mutation state.
+            self.persist_key(&decision.key);
+            if let Some(pending) = &start
+                && pending.job.key != decision.key
+            {
+                self.persist_key(&pending.job.key);
+            }
+            self.persist_running();
+        }
         SubmitOutcome {
             decision,
             start,
@@ -121,7 +169,14 @@ impl RunSupervisor {
     pub fn finish(&mut self) -> Option<PendingRun> {
         self.queue.finish();
         self.injector = None;
-        self.start_next()
+        let start = self.start_next();
+        if self.store.is_some() {
+            if let Some(pending) = &start {
+                self.persist_key(&pending.job.key);
+            }
+            self.persist_running();
+        }
+        start
     }
 
     /// No active run and nothing pending.
@@ -141,6 +196,36 @@ impl RunSupervisor {
         self.injector
             .as_ref()
             .is_some_and(|injector| injector.inject(Event::cancel(&reason)).is_ok())
+    }
+
+    /// Write this key's current pending set to the store — a no-op
+    /// without one. Persist failures are logged, not fatal: the
+    /// in-memory queue stays authoritative for this process's
+    /// lifetime; durability degrades rather than killing runs.
+    fn persist_key(&self, key: &str) {
+        let Some(store) = &self.store else {
+            return;
+        };
+        let jobs: Vec<Job> = self
+            .queue
+            .pending()
+            .filter(|job| job.key == key)
+            .cloned()
+            .collect();
+        if let Err(e) = store.persist_key(key, &jobs) {
+            tracing::error!("queue store persist_key({key:?}) failed: {e}");
+        }
+    }
+
+    /// Write the in-flight marker (or clear it) — same failure
+    /// policy as [`Self::persist_key`].
+    fn persist_running(&self) {
+        let Some(store) = &self.store else {
+            return;
+        };
+        if let Err(e) = store.set_running(self.queue.active()) {
+            tracing::error!("queue store set_running failed: {e}");
+        }
     }
 
     /// Drain the queue into a `PendingRun` when no run is active —
@@ -182,6 +267,11 @@ pub struct SupervisedOptions {
     /// the `campaign run --history` JSONL `peregrin runs`/`log`/
     /// `explain` read back. `None` keeps run logs ephemeral.
     pub history: Option<PathBuf>,
+    /// The durable queue store (`campaign run --queue-store`) —
+    /// pending triggers and the in-flight marker survive a restart:
+    /// on boot the supervisor replays the snapshot before accepting
+    /// new triggers. `None` keeps the queue in-memory only.
+    pub queue_store: Option<Arc<dyn QueueStore>>,
     /// Called with each finished run's event log, in finish order —
     /// the CLI prints it. Runs on the supervisor thread.
     pub on_run: Option<OnRunDone>,
@@ -197,6 +287,7 @@ impl Default for SupervisedOptions {
             secrets: BTreeMap::new(),
             secret_stores: Arc::new(campaign::default_secret_stores),
             history: None,
+            queue_store: None,
             on_run: None,
         }
     }
@@ -265,6 +356,7 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
         secrets,
         secret_stores,
         history,
+        queue_store,
         on_run,
     } = options;
     let materials = Arc::new(RunMaterials {
@@ -313,6 +405,7 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
             listener_thread,
             listener_injector,
             materials,
+            queue_store,
             on_run,
         )
     });
@@ -349,8 +442,9 @@ fn spawn_worker(
 /// is recorded and returned after shutdown.
 // `needless_pass_by_value`: every argument must be *owned* — the
 // loop runs on a freshly-spawned thread — even though the body only
-// borrows them.
-#[allow(clippy::needless_pass_by_value)]
+// borrows them. `too_many_arguments`: the loop's inputs are the
+// supervise() destructuring, one param each.
+#[allow(clippy::needless_pass_by_value, clippy::too_many_arguments)]
 fn supervise_loop(
     policy: Supersede,
     trigger_ingress: Ingress,
@@ -358,6 +452,7 @@ fn supervise_loop(
     listener: Option<JoinHandle<Result<Vec<Event>, DriverError>>>,
     listener_injector: Option<Injector>,
     materials: Arc<RunMaterials>,
+    queue_store: Option<Arc<dyn QueueStore>>,
     mut on_run: Option<OnRunDone>,
 ) -> Result<Vec<Event>, CampaignError> {
     /// How long the loop parks on the trigger channel while a run is
@@ -366,7 +461,14 @@ fn supervise_loop(
     /// parks until the next event or disconnect.
     const TICK: Duration = Duration::from_millis(100);
 
-    let mut supervisor = RunSupervisor::new(policy);
+    // Boot: with a store, load + replay the persisted queue *before*
+    // the loop accepts any trigger — restored pending jobs (the
+    // interrupted run re-queued at the front) drain ahead of anything
+    // that arrives from here on.
+    let mut supervisor = match queue_store {
+        Some(store) => RunSupervisor::with_store(policy, store)?,
+        None => RunSupervisor::new(policy),
+    };
     let mut worker: Option<RunHandle> = None;
     let mut triggers_done = false;
     let mut logs = Vec::new();

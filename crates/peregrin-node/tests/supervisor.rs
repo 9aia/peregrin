@@ -198,3 +198,69 @@ fn caller_held_injector_still_emits_mid_run() {
     assert!(kinds.contains(&"ext.extra"), "external producer delivered");
     assert_eq!(log.last().unwrap().kind, "workflow.done");
 }
+
+// ---------------------------------------------------------------------------
+// Durable queue store — restart replay (C1a)
+// ---------------------------------------------------------------------------
+
+#[test]
+fn store_replays_pending_and_running_across_a_restart() {
+    use std::sync::Arc;
+
+    use peregrin_queue::{MemoryQueueStore, QueueStore};
+
+    let store = Arc::new(MemoryQueueStore::new());
+    let policy = policy(Mode::Fifo, false);
+
+    // "Process 1": A starts (running marker), B + C stay pending, then
+    // the process "dies" — the supervisor is dropped mid-flight.
+    {
+        let mut s1 = RunSupervisor::with_store(policy.clone(), store.clone()).unwrap();
+        let _active = s1.submit(trigger("a", json!({"sha": "A"}))).start.unwrap();
+        s1.submit(trigger("b", json!({"sha": "B"})));
+        s1.submit(trigger("c", json!({"sha": "C"})));
+        drop(s1); // kill — no finish, no drain
+    }
+
+    // What the dead process left behind: A in-flight, B+C pending.
+    let persisted = store.load().unwrap();
+    assert_eq!(persisted.running.unwrap().event.payload["sha"], "A");
+    assert_eq!(persisted.pending.len(), 2);
+
+    // "Process 2": same store — the snapshot replays before any new
+    // trigger. A re-queues at the FRONT (at-least-once), then B, C.
+    let mut s2 = RunSupervisor::with_store(policy, store).unwrap();
+    assert!(s2.queue().active().is_none());
+    assert_eq!(s2.queue().pending_len(), 3);
+
+    // A new trigger arrives — the restored front job starts first,
+    // the new one queues behind everything.
+    let outcome = s2.submit(trigger("d", json!({"sha": "D"})));
+    let first = outcome.start.expect("restored queue drains");
+    assert_eq!(first.job.event.payload["sha"], "A");
+
+    let shas: Vec<String> = [first]
+        .into_iter()
+        .chain(std::iter::from_fn(|| s2.finish()))
+        .map(|p| p.job.event.payload["sha"].as_str().unwrap().to_string())
+        .collect();
+    assert_eq!(
+        shas,
+        ["A", "B", "C", "D"],
+        "replay order: interrupted, pending, new"
+    );
+    assert!(s2.is_idle());
+}
+
+#[test]
+fn store_is_optional_and_absent_means_memory_only() {
+    // Regression: no store configured — identical in-memory behavior.
+    let mut supervisor = RunSupervisor::new(policy(Mode::Fifo, false));
+    let _active = supervisor.submit(trigger("a", json!({}))).start.unwrap();
+    supervisor.submit(trigger("b", json!({})));
+    drop(supervisor);
+    // Nothing to assert beyond construction — the point is `new`
+    // still works with no store and no restore path runs.
+    let s2 = RunSupervisor::new(policy(Mode::Fifo, false));
+    assert!(s2.is_idle(), "fresh supervisor starts empty");
+}
