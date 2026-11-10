@@ -133,8 +133,28 @@ provider:
   then renders every `provider.services[]` entry as a per-user systemd
   unit (`<provider.name>-<service>.service`), written + daemon-reloaded
   but not enabled — `tamias service enable <unit>` is the operator's
-  step. Forge-hook *registration* is not performed; `ingress[]` is
-  declarative data until a driver pass consumes it.
+  step. Deploy prints a hint when `ingress[].hooks[]` is non-empty —
+  registration stays explicit (see below).
+- `tamias driver exec <pkg> <verb> [args…]` dispatches the driver's
+  ops verbs (`tamias-driver-peregrin` declares `hooks`, `health`,
+  `status`, `logs` in `capabilities`):
+  - `hooks register|unregister [--dry-run] [--api-base <url>]
+    [--token-env <NAME>]` — upsert/remove the forge webhooks
+    `provider.ingress[].hooks[]` declare (`forge: github`; hook URL =
+    `<public_url><path>`). Idempotent — the upsert matches on the
+    exact hook URL. Secrets resolve by NAME through the
+    env → keyring → `~/.config/peregrin/env` chain (`GITHUB_TOKEN` +
+    `PEREGRIN_WH_<OWNER>_<REPO>`); values are never printed.
+    **`--dry-run` first** — it prints the plan without touching the
+    forge API or the secret chain. `public_url` fronts a tunnel the
+    operator confirms, so `tamias deploy` never auto-registers.
+  - `health` — JSON `{ok, probes[]}`: a github-webhook `ping`
+    (`POST <listen><path>`, `X-GitHub-Event: ping` → `200 pong`) per
+    ingress that declares both, else `systemctl --user is-active` per
+    provider unit.
+  - `status` — JSON per-unit `is-active`/`is-enabled`.
+  - `logs [--lines N]` — `journalctl --user` over the provider units
+    (no follow — dispatch is bounded).
 - `tamias uninstall <name>` removes the provider units + store entry;
   the driver's `uninstall` verb removes the node config (plus any
   legacy `<name>.service` a pre-provider `deploy` wrote).
