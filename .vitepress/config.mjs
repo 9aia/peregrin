@@ -38,6 +38,7 @@ export default defineConfig({
           { text: 'Campaign schema', link: '/reference/campaign-schema' },
           { text: 'Scope resolution', link: '/reference/scope-resolution' },
           { text: 'Queue & supersede', link: '/reference/queue-supersede' },
+          { text: 'Fleet runners', link: '/reference/fleet-runners' },
           { text: 'Distribution', link: '/reference/distribution' },
           { text: 'HTTP API', link: '/reference/api' },
           { text: 'Environment', link: '/reference/environment' },

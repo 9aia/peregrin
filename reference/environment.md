@@ -32,6 +32,7 @@ and its drivers) — those are documented in
 | `PEREGRIN_SNAPSHOT_TARGET` | — | Peer node/hub base URL that receives flushed snapshots via `POST /api/entities/snapshot` |
 | `PEREGRIN_SNAPSHOT_TOKEN` | `PEREGRIN_TOKEN` | Bearer for `PEREGRIN_SNAPSHOT_TARGET` |
 | `PEREGRIN_SNAPSHOT_NODE` | — | `?node=` selector for the handoff POST (hub targets) |
+| `PEREGRIN_RUNNER_LABELS` | — | Comma-separated fleet labels appended to `/api/node` capabilities; campaign `runs_on:` matches against them (see [Fleet runners](/reference/fleet-runners)) |
 | `HYPHA_OTEL_ENDPOINT` | — | OTEL collector endpoint (tracing) |
 
 ## Hub (`peregrin-hub`)
