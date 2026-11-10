@@ -187,6 +187,219 @@ fn listening_event_reports_bound_addr_and_verified_push_injects() {
     );
 }
 
+// ---------------------------------------------------------------------------
+// pull_request deliveries
+// ---------------------------------------------------------------------------
+
+const HEAD_SHA: &str = "3333333333333333333333333333333333333333";
+
+fn pr_body(action: &str) -> Vec<u8> {
+    json!({
+        "action": action,
+        "number": 42,
+        "pull_request": {
+            "head": {
+                "sha": HEAD_SHA,
+                "ref": "feature/pr",
+                "repo": { "clone_url": "https://github.com/octocat/widgets.git" },
+            },
+            "base": { "ref": "main" },
+            "user": { "login": "octocat" },
+        },
+        "sender": { "login": "hubot" },
+        "repository": {
+            "full_name": REPO,
+            "clone_url": "https://github.com/acme/widgets.git",
+        },
+    })
+    .to_string()
+    .into_bytes()
+}
+
+fn post_pr(url: &str, secret: &str, body: &[u8], delivery: Option<&str>) -> (u16, String) {
+    let mut headers = vec![
+        ("x-github-event".to_string(), "pull_request".to_string()),
+        (
+            "x-hub-signature-256".to_string(),
+            signature_header(secret, body),
+        ),
+    ];
+    if let Some(id) = delivery {
+        headers.push(("x-github-delivery".to_string(), id.to_string()));
+    }
+    let refs: Vec<(&str, &str)> = headers
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.as_str()))
+        .collect();
+    post(url, &refs, body)
+}
+
+#[test]
+fn verified_pull_request_injects_head_payload() {
+    let (_driver, chan, base) = serving(default_params(), &default_ctx());
+    let url = format!("{base}/hook");
+    let (status, text) = post_pr(&url, SECRET, &pr_body("opened"), None);
+    assert_eq!((status, text.as_str()), (202, "queued"));
+
+    let mut drained = Vec::new();
+    assert_eq!(chan.drain_into(&mut drained), 1);
+    let event = &drained[0];
+    assert_eq!(event.kind, "pull_request");
+    assert_eq!(event.source, "hook");
+    assert_eq!(
+        event.payload,
+        json!({
+            "repo": "acme/widgets",
+            "number": 42,
+            "action": "opened",
+            "sha": HEAD_SHA,
+            "ref": "feature/pr",
+            "base_ref": "main",
+            // sender.login wins over pull_request.user.login.
+            "actor": "hubot",
+            // The head repo's clone_url (fork-aware) wins over the
+            // base repository's.
+            "clone_url": "https://github.com/octocat/widgets.git",
+        })
+    );
+}
+
+#[test]
+fn pull_request_actions_param_filters_per_route() {
+    // Only `opened` accepted — `synchronize` verifies but is a no-op.
+    let params = json!({
+        "listen": "127.0.0.1:0",
+        "pull_request_actions": "opened",
+        "repos": [{ "name": REPO, "secret_env": "WH_SECRET" }],
+    });
+    let (_driver, chan, base) = serving(params, &default_ctx());
+    let url = format!("{base}/hook");
+    assert_eq!(
+        post_pr(&url, SECRET, &pr_body("synchronize"), None),
+        (200, "ignored: no-op event".to_string())
+    );
+    assert_eq!(post_pr(&url, SECRET, &pr_body("opened"), None).0, 202);
+    let mut drained = Vec::new();
+    assert_eq!(chan.drain_into(&mut drained), 1);
+    assert_eq!(drained[0].kind, "pull_request");
+
+    // List form + whitespace/empties tolerated; default set covers
+    // synchronize/reopened when the param is absent.
+    let params = json!({
+        "listen": "127.0.0.1:0",
+        "pull_request_actions": [" closed ", "", "labeled"],
+        "repos": [{ "name": REPO, "secret_env": "WH_SECRET" }],
+    });
+    let (_driver2, chan2, base2) = serving(params, &default_ctx());
+    let url2 = format!("{base2}/hook");
+    assert_eq!(post_pr(&url2, SECRET, &pr_body("labeled"), None).0, 202);
+    assert_eq!(
+        post_pr(&url2, SECRET, &pr_body("opened"), None),
+        (200, "ignored: no-op event".to_string())
+    );
+    let mut drained = Vec::new();
+    assert_eq!(chan2.drain_into(&mut drained), 1);
+
+    // Absent param → the default set: synchronize lands, closed doesn't.
+    let (_driver3, chan3, base3) = serving(default_params(), &default_ctx());
+    let url3 = format!("{base3}/hook");
+    assert_eq!(post_pr(&url3, SECRET, &pr_body("synchronize"), None).0, 202);
+    assert_eq!(
+        post_pr(&url3, SECRET, &pr_body("closed"), None),
+        (200, "ignored: no-op event".to_string())
+    );
+    let mut drained = Vec::new();
+    assert_eq!(chan3.drain_into(&mut drained), 1);
+}
+
+#[test]
+fn pull_request_verify_dedup_and_malformed() {
+    let (_driver, chan, base) = serving(default_params(), &default_ctx());
+    let url = format!("{base}/hook");
+    let body = pr_body("opened");
+    // Same HMAC gate as push.
+    assert_eq!(post_pr(&url, "wrong-secret", &body, None).0, 401);
+    // Delivery-id dedup spans event kinds.
+    assert_eq!(
+        post_pr(&url, SECRET, &body, Some("pr-delivery-1")),
+        (202, "queued".to_string())
+    );
+    assert_eq!(
+        post_pr(&url, SECRET, &body, Some("pr-delivery-1")),
+        (200, "duplicate delivery".to_string())
+    );
+    // Malformed: missing action / number / head sha, unsafe sha.
+    for (mut payload, needle) in [
+        (
+            json!({"number": 1, "pull_request": {"head": {"sha": HEAD_SHA}}}),
+            "missing action",
+        ),
+        (
+            json!({"action": "opened", "pull_request": {"head": {"sha": HEAD_SHA}}}),
+            "missing number",
+        ),
+        (
+            json!({"action": "opened", "number": 1, "pull_request": {"head": {"sha": "../x"}}}),
+            "unsafe sha",
+        ),
+    ] {
+        payload["repository"] = json!({"full_name": REPO});
+        let raw = payload.to_string().into_bytes();
+        let (status, text) = post_pr(&url, SECRET, &raw, None);
+        assert_eq!(
+            (status, text.as_str()),
+            (400, "unparseable payload"),
+            "{needle}"
+        );
+    }
+    let mut drained = Vec::new();
+    assert_eq!(chan.drain_into(&mut drained), 1, "only the first landed");
+}
+
+#[test]
+fn pull_request_clone_url_falls_back_like_push() {
+    // No head.repo.clone_url and no repository.clone_url → the route's
+    // api_base web base derives it.
+    let params = json!({
+        "listen": "127.0.0.1:0",
+        "api_base": "https://ghe.acme/api/v3",
+        "repos": [{ "name": REPO, "secret_env": "WH_SECRET" }],
+    });
+    let (_driver, chan, base) = serving(params, &default_ctx());
+    let body = json!({
+        "action": "opened",
+        "number": 7,
+        "pull_request": { "head": { "sha": HEAD_SHA, "ref": "x" }, "base": { "ref": "main" } },
+        "repository": { "full_name": REPO },
+    })
+    .to_string()
+    .into_bytes();
+    assert_eq!(post_pr(&format!("{base}/hook"), SECRET, &body, None).0, 202);
+    let mut drained = Vec::new();
+    assert_eq!(chan.drain_into(&mut drained), 1);
+    assert_eq!(
+        drained[0].payload["clone_url"],
+        "https://ghe.acme/acme/widgets.git"
+    );
+    // actor falls back to pull_request.user.login when sender is absent.
+    let body = json!({
+        "action": "reopened",
+        "number": 7,
+        "pull_request": {
+            "head": { "sha": HEAD_SHA, "ref": "x" },
+            "base": { "ref": "main" },
+            "user": { "login": "octocat" },
+        },
+        "repository": { "full_name": REPO },
+    })
+    .to_string()
+    .into_bytes();
+    assert_eq!(post_pr(&format!("{base}/hook"), SECRET, &body, None).0, 202);
+    let mut drained = Vec::new();
+    assert_eq!(chan.drain_into(&mut drained), 1);
+    assert_eq!(drained[0].payload["actor"], "octocat");
+}
+
 #[test]
 fn listening_payload_and_driver_metadata() {
     let (injector, _chan) = ingress();
@@ -276,9 +489,9 @@ fn non_push_events_and_missing_event_header_rejected() {
     let (_driver, _chan, base) = serving(default_params(), &default_ctx());
     let url = format!("{base}/hook");
     let (status, text) = post(&url, &[("x-github-event", "issues")], b"{}");
-    assert_eq!((status, text.as_str()), (400, "not a push event"));
+    assert_eq!((status, text.as_str()), (400, "unsupported event"));
     let (status, text) = post(&url, &[], b"{}");
-    assert_eq!((status, text.as_str()), (400, "not a push event"));
+    assert_eq!((status, text.as_str()), (400, "unsupported event"));
 }
 
 #[test]

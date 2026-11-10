@@ -23,6 +23,11 @@ fn route(secret: &str, injector: &Injector, source: &str) -> Route {
         injector: injector.clone(),
         source: source.to_string(),
         web_base: "https://github.com".to_string(),
+        pull_request_actions: vec![
+            "opened".to_string(),
+            "synchronize".to_string(),
+            "reopened".to_string(),
+        ],
     }
 }
 
@@ -337,6 +342,102 @@ fn shared_driver_end_to_end_over_http() {
     assert_eq!(events.len(), 1);
     assert_eq!(events[0].kind, "push");
     assert_eq!(events[0].source, "hook");
+}
+
+fn pr_body(repo: &str, action: &str) -> Vec<u8> {
+    json!({
+        "action": action,
+        "number": 42,
+        "pull_request": {
+            "head": {
+                "sha": "3333333333333333333333333333333333333333",
+                "ref": "feature/pr",
+                "repo": { "clone_url": "https://github.com/octocat/widgets.git" },
+            },
+            "base": { "ref": "main" },
+        },
+        "sender": { "login": "octocat" },
+        "repository": { "full_name": repo },
+    })
+    .to_string()
+    .into_bytes()
+}
+
+fn post_pr(url: &str, secret: &str, body: &[u8]) -> (u16, String) {
+    let signature = signature_header(secret, body);
+    let headers = [
+        ("x-github-event", "pull_request"),
+        ("x-hub-signature-256", signature.as_str()),
+    ];
+    post(url, &headers, body)
+}
+
+#[test]
+fn pull_request_demuxes_and_filters_actions_per_route() {
+    let demux = Arc::new(SharedWebhook::new());
+    let (inj_a, chan_a) = ingress();
+    let (inj_b, chan_b) = ingress();
+    // Campaign A wants every default action; campaign B only `opened`.
+    demux.register(REPO_A, route(SECRET_A, &inj_a, "hook-a"));
+    let mut narrow = route(SECRET_A, &inj_b, "hook-b");
+    narrow.pull_request_actions = vec!["opened".to_string()];
+    demux.register(REPO_A, narrow);
+    let base = serving(&demux);
+    let url = format!("{base}/hook");
+
+    // `synchronize`: verified + deduped globally, but only A's route
+    // accepts the action.
+    assert_eq!(
+        post_pr(&url, SECRET_A, &pr_body(REPO_A, "synchronize")),
+        (202, "queued".to_string())
+    );
+    let events_a = drain(&chan_a);
+    assert_eq!(events_a.len(), 1);
+    assert_eq!(events_a[0].kind, "pull_request");
+    assert_eq!(events_a[0].source, "hook-a");
+    assert_eq!(events_a[0].payload["action"], "synchronize");
+    assert_eq!(events_a[0].payload["number"], 42);
+    assert_eq!(
+        events_a[0].payload["sha"],
+        "3333333333333333333333333333333333333333"
+    );
+    assert_eq!(events_a[0].payload["base_ref"], "main");
+    assert!(drain(&chan_b).is_empty(), "B doesn't want synchronize");
+
+    // `opened`: both routes take it.
+    assert_eq!(
+        post_pr(&url, SECRET_A, &pr_body(REPO_A, "opened")),
+        (202, "queued".to_string())
+    );
+    assert_eq!(drain(&chan_a).len(), 1);
+    assert_eq!(drain(&chan_b).len(), 1);
+
+    // An action NO route wants → verified no-op.
+    assert_eq!(
+        post_pr(&url, SECRET_A, &pr_body(REPO_A, "closed")),
+        (200, "ignored: no-op event".to_string())
+    );
+
+    // Same HMAC gate — a PR signed with the wrong secret 401s.
+    assert_eq!(post_pr(&url, "wrong", &pr_body(REPO_A, "opened")).0, 401);
+}
+
+#[test]
+fn shared_driver_registers_pull_request_actions() {
+    let demux = Arc::new(SharedWebhook::new());
+    let (trigger_inj, _trigger_chan) = ingress();
+    let driver = SharedWebhookDriver::new(trigger_inj, Arc::clone(&demux));
+    let params = json!({
+        "pull_request_actions": "opened, labeled",
+        "repos": [{ "name": REPO_A, "secret_env": "WH_A" }],
+    });
+    let events = driver
+        .invoke(&webhook_node(params), &[], &ctx_with(&[("WH_A", SECRET_A)]))
+        .unwrap();
+    assert_eq!(
+        events[0].payload["pull_request_actions"],
+        json!(["opened", "labeled"])
+    );
 }
 
 #[test]

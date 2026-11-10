@@ -24,6 +24,18 @@
 //! → `202 queued` with `Event{type:"push", payload:{repo, ref, sha,
 //! before, actor, clone_url}, source: <node id>}` injected.
 //!
+//! `pull_request` deliveries get the same verify/dedup treatment and
+//! inject `Event{type:"pull_request", payload:{repo, number, action,
+//! sha, ref, base_ref, clone_url, actor}}` — `sha`/`ref`/`clone_url`
+//! describe the PR *head* so a campaign can check it out and post
+//! statuses. `params.pull_request_actions` (comma-separated string or
+//! list; default `opened,synchronize,reopened`) filters which actions
+//! a route accepts — a verified delivery whose action no matched
+//! route wants answers `200 ignored`. Note for fork PRs: the head
+//! sha lives in the base repo's object store, but `clone_url` points
+//! at the head repo — checking it out needs the repo token scoped for
+//! both; the driver stays agnostic (credentials are campaign params).
+//!
 //! Params (template-resolved like the other impls):
 //!
 //! - `listen` — bind address, default `127.0.0.1:29173` (bupha's
@@ -39,6 +51,11 @@
 //!   derives the web base used for the `clone_url` fallback when a
 //!   payload omits `repository.clone_url` (GHE `/api/v3` suffix or
 //!   `api.` subdomain are stripped).
+//! - `pull_request_actions` — which `pull_request` actions this node
+//!   accepts (default `opened,synchronize,reopened`); a comma-separated
+//!   string or a list of strings. `peregrin deploy webhook` subscribes
+//!   the repo hook to `pull_request` events only when this param is
+//!   set — push-only stays the default.
 //!
 //! Emitted (returned) events: `{node.id}.listening` on bind (or with
 //! `dry_run: true` under `ctx.dry_run`), `node.failed` when the bind
@@ -89,6 +106,10 @@ const DEFAULT_LISTEN: &str = "127.0.0.1:29173";
 const DEFAULT_PATH: &str = "/hook";
 /// `params.api_base` default — the public GitHub REST endpoint.
 const DEFAULT_API_BASE: &str = "https://api.github.com";
+/// `params.pull_request_actions` default — the PR lifecycle actions a
+/// campaign almost always wants (a draft/ready flip or a close isn't
+/// a new head to build).
+const DEFAULT_PR_ACTIONS: &[&str] = &["opened", "synchronize", "reopened"];
 /// Request-body cap — bupha's 2 MiB.
 const MAX_BODY: usize = 2 * 1024 * 1024;
 /// Delivery-id dedup ring bound — replays older than this re-emit.
@@ -142,6 +163,8 @@ enum Delivery {
     Malformed,
     /// Fields for the `push` event payload.
     Push(Push),
+    /// Fields for the `pull_request` event payload.
+    PullRequest(PullRequest),
 }
 
 /// The normalized push — everything the injected `push` event's
@@ -153,6 +176,22 @@ struct Push {
     git_ref: String,
     sha: String,
     before: String,
+    actor: String,
+    clone_url: Option<String>,
+}
+
+/// The normalized pull request — everything the injected
+/// `pull_request` event's payload carries, head-side (`sha`/`ref`/
+/// `clone_url` describe `pull_request.head` so a campaign can check
+/// the PR head out). `clone_url` stays `Option` for the same
+/// per-route `api_base` fallback reason as [`Push`].
+struct PullRequest {
+    repo: String,
+    number: u64,
+    action: String,
+    sha: String,
+    git_ref: String,
+    base_ref: String,
     actor: String,
     clone_url: Option<String>,
 }
@@ -174,6 +213,10 @@ pub struct Route {
     /// Web base derived from the node's `api_base` — the `clone_url`
     /// fallback when a payload omits `repository.clone_url`.
     pub web_base: String,
+    /// `pull_request` actions this route accepts — the node's
+    /// `params.pull_request_actions` resolved per campaign, so two
+    /// campaigns watching one repo can want different action sets.
+    pub pull_request_actions: Vec<String>,
 }
 
 /// Per-listener state shared into the request handler — the repo→
@@ -293,6 +336,35 @@ fn resolve_params(
     )
     .map_err(|error| DriverError::new(error.to_string()))?;
     Ok(resolved.as_object().cloned().unwrap_or_default())
+}
+
+/// `params.pull_request_actions` → the accepted action set — a
+/// comma-separated string (`"opened,synchronize"`) or a list of
+/// strings; missing/empty/non-string falls back to
+/// [`DEFAULT_PR_ACTIONS`]. Entries trim and drop empties.
+fn parse_pr_actions(params: &Map<String, Value>) -> Vec<String> {
+    let raw: Vec<String> = match params.get("pull_request_actions") {
+        Some(Value::String(s)) => s.split(',').map(str::to_string).collect(),
+        Some(Value::Array(items)) => items
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::to_string)
+            .collect(),
+        _ => Vec::new(),
+    };
+    let actions: Vec<String> = raw
+        .into_iter()
+        .map(|a| a.trim().to_string())
+        .filter(|a| !a.is_empty())
+        .collect();
+    if actions.is_empty() {
+        DEFAULT_PR_ACTIONS
+            .iter()
+            .map(|a| (*a).to_string())
+            .collect()
+    } else {
+        actions
+    }
 }
 
 /// `params.<key>` as a non-empty string, else `default`.
@@ -508,6 +580,54 @@ fn parse_push(v: &Value, repo: &str) -> Delivery {
     })
 }
 
+/// Parse a verified `pull_request` delivery's already-decoded JSON —
+/// the `Event.payload` fields. The head sha must pass the same
+/// revision-safety check as a push `after`; `repo` is the
+/// `repository.full_name` hint [`respond`] already matched. The
+/// `action` itself isn't judged here — each delivery *route* filters
+/// against its own `pull_request_actions`.
+fn parse_pull_request(v: &Value, repo: &str) -> Delivery {
+    let (Some(action), Some(number), Some(sha)) = (
+        v.get("action").and_then(Value::as_str),
+        v.get("number").and_then(Value::as_u64),
+        v.pointer("/pull_request/head/sha").and_then(Value::as_str),
+    ) else {
+        return Delivery::Malformed;
+    };
+    if !is_valid_sha(sha) {
+        return Delivery::Malformed;
+    }
+    let text = |value: Option<&Value>| {
+        value
+            .and_then(Value::as_str)
+            .map_or_else(String::new, str::to_string)
+    };
+    Delivery::PullRequest(PullRequest {
+        repo: repo.to_string(),
+        number,
+        action: action.to_string(),
+        sha: sha.to_string(),
+        git_ref: text(v.pointer("/pull_request/head/ref")),
+        base_ref: text(v.pointer("/pull_request/base/ref")),
+        actor: {
+            let sender = text(v.pointer("/sender/login"));
+            if sender.is_empty() {
+                text(v.pointer("/pull_request/user/login"))
+            } else {
+                sender
+            }
+        },
+        // The head repo's clone_url wins (fork PRs point at the
+        // fork); the base repository's is the fallback, then each
+        // route's `api_base` web base — same rule as `push`.
+        clone_url: v
+            .pointer("/pull_request/head/repo/clone_url")
+            .or_else(|| v.pointer("/repository/clone_url"))
+            .and_then(Value::as_str)
+            .map(str::to_string),
+    })
+}
+
 /// `Option<&str>` view of a header (non-UTF8 values read as absent).
 fn header<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     headers.get(name).and_then(|value| value.to_str().ok())
@@ -527,8 +647,8 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
         // Hook-registration probe — no signature, no queue.
         return (StatusCode::OK, "pong");
     }
-    if event_kind != Some("push") {
-        return (StatusCode::BAD_REQUEST, "not a push event");
+    if !matches!(event_kind, Some("push" | "pull_request")) {
+        return (StatusCode::BAD_REQUEST, "unsupported event");
     }
     // The body parse and `repository.full_name` peek are untrusted
     // until verify passes — the name only selects which routes (and
@@ -568,7 +688,11 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
             return (StatusCode::OK, "duplicate delivery");
         }
     }
-    match parse_push(&v, repo) {
+    match if event_kind == Some("pull_request") {
+        parse_pull_request(&v, repo)
+    } else {
+        parse_push(&v, repo)
+    } {
         Delivery::Skip => (StatusCode::OK, "ignored: no-op event"),
         Delivery::Malformed => (StatusCode::BAD_REQUEST, "unparseable payload"),
         Delivery::Push(push) => {
@@ -602,6 +726,52 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
                 (StatusCode::ACCEPTED, "queued")
             } else {
                 // Every matched run ended under the listener.
+                (StatusCode::SERVICE_UNAVAILABLE, "run ended")
+            }
+        }
+        Delivery::PullRequest(pr) => {
+            // The action filter is per-route: campaigns watching the
+            // same repo can want different `pull_request` actions.
+            // Routes whose set excludes the action are skipped; if
+            // none remain it's a verified no-op → 200 ignored.
+            let interested: Vec<&Route> = matched
+                .iter()
+                .filter(|route| {
+                    route
+                        .pull_request_actions
+                        .iter()
+                        .any(|action| action == &pr.action)
+                })
+                .copied()
+                .collect();
+            if interested.is_empty() {
+                return (StatusCode::OK, "ignored: no-op event");
+            }
+            let mut delivered = false;
+            for route in &interested {
+                let clone_url = pr
+                    .clone_url
+                    .clone()
+                    .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
+                let event = Event::new(
+                    "pull_request",
+                    serde_json::json!({
+                        "repo": pr.repo,
+                        "number": pr.number,
+                        "action": pr.action,
+                        "sha": pr.sha,
+                        "ref": pr.git_ref,
+                        "base_ref": pr.base_ref,
+                        "actor": pr.actor,
+                        "clone_url": clone_url,
+                    }),
+                    &route.source,
+                );
+                delivered |= route.injector.inject(event).is_ok();
+            }
+            if delivered {
+                (StatusCode::ACCEPTED, "queued")
+            } else {
                 (StatusCode::SERVICE_UNAVAILABLE, "run ended")
             }
         }
@@ -726,6 +896,7 @@ impl Driver for GithubWebhookDriver {
             )));
         }
         let api_base = str_param(&params, "api_base", DEFAULT_API_BASE);
+        let pr_actions = parse_pr_actions(&params);
         let specs = parse_repo_specs(&params, node)?;
         let names: Vec<Value> = specs
             .iter()
@@ -741,6 +912,7 @@ impl Driver for GithubWebhookDriver {
                     "listen": listen,
                     "path": path,
                     "repos": names,
+                    "pull_request_actions": pr_actions,
                 }),
                 &node.id,
             )]);
@@ -768,6 +940,7 @@ impl Driver for GithubWebhookDriver {
                 injector: self.injector.clone(),
                 source: node.id.clone(),
                 web_base: web_base.clone(),
+                pull_request_actions: pr_actions.clone(),
             });
         }
         let shared = Arc::new(Shared {
@@ -785,6 +958,7 @@ impl Driver for GithubWebhookDriver {
                 "path": path,
                 "repos": names,
                 "api_base": api_base,
+                "pull_request_actions": pr_actions,
             }),
             &node.id,
         )])
@@ -1012,6 +1186,7 @@ impl Driver for SharedWebhookDriver {
     ) -> Result<Vec<Event>, DriverError> {
         let params = resolve_params(&*self.effects, node, triggers, ctx)?;
         let api_base = str_param(&params, "api_base", DEFAULT_API_BASE);
+        let pr_actions = parse_pr_actions(&params);
         let specs = parse_repo_specs(&params, node)?;
         let names: Vec<Value> = specs
             .iter()
@@ -1026,6 +1201,7 @@ impl Driver for SharedWebhookDriver {
                     "dry_run": true,
                     "shared": true,
                     "repos": names,
+                    "pull_request_actions": pr_actions,
                 }),
                 &node.id,
             )]);
@@ -1041,6 +1217,7 @@ impl Driver for SharedWebhookDriver {
                     injector: self.injector.clone(),
                     source: node.id.clone(),
                     web_base: web_base.clone(),
+                    pull_request_actions: pr_actions.clone(),
                 },
             );
         }
@@ -1051,6 +1228,7 @@ impl Driver for SharedWebhookDriver {
                 "shared": true,
                 "repos": names,
                 "api_base": api_base,
+                "pull_request_actions": pr_actions,
             }),
             &node.id,
         )])
