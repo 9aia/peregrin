@@ -945,3 +945,144 @@ fn sha_templates_from_the_trigger_event() {
     assert_eq!(out[0].kind, "n.done");
     assert_eq!(out[0].payload["sha"], first);
 }
+
+// ---------------------------------------------------------------------------
+// extra_worktrees: dual-checkout layouts (PL-009 D6)
+// ---------------------------------------------------------------------------
+
+/// The docs-deploy shape: primary = `first` at `<run>/docs`, extra =
+/// `main` (head) at `<run>` — the inner cmd's `cd ..` must land in the
+/// main checkout.
+#[test]
+fn extra_worktrees_dual_checkout_layout() {
+    let tmp = TempDir::new().unwrap();
+    let (repo, first, head) = fixture_repo(tmp.path());
+    let d = GitDriver::new(shell_lookup());
+    let b = base(&tmp);
+    let mut p = params(&repo, &b, &first, &shell_inner("true"));
+    p["dest"] = json!("run-x/docs");
+    p["extra_worktrees"] = json!([{"ref": "refs/heads/main", "dir": "."}]);
+    // pwd is the docs checkout; `..` is the main checkout at head.
+    p["inner"] = shell_inner(&format!(
+        "test \"$(git rev-parse HEAD)\" = \"{first}\" && \
+         test \"$(cd .. && git rev-parse HEAD)\" = \"{head}\" && \
+         test -f ../f && test -f ../sub/g"
+    ));
+    let out = d.invoke(&node(p), &[], &ctx()).unwrap();
+    assert_eq!(out[0].kind, "n.done", "{}", out[0].payload);
+    // Both worktrees destroyed — nothing tracked remains.
+    let w = peregrin_git::Worktrees::new(&b);
+    assert_eq!(w.list().unwrap().len(), 0);
+}
+
+#[test]
+fn extra_worktrees_subdir_and_multiple_entries() {
+    let tmp = TempDir::new().unwrap();
+    let (repo, first, head) = fixture_repo(tmp.path());
+    let d = GitDriver::new(shell_lookup());
+    let b = base(&tmp);
+    let mut p = params(&repo, &b, &first, &shell_inner("true"));
+    p["dest"] = json!("run-y/docs");
+    // Shallowest-first creation regardless of yaml order: the run
+    // root (".") is listed AFTER the nested "vendor" entry on purpose.
+    p["extra_worktrees"] = json!([
+        {"ref": "main", "dir": "vendor"},
+        {"ref": "refs/heads/main"},
+    ]);
+    p["inner"] = shell_inner(&format!(
+        "test \"$(cd ../vendor && git rev-parse HEAD)\" = \"{head}\" && \
+         test \"$(cd .. && git rev-parse HEAD)\" = \"{head}\""
+    ));
+    let out = d.invoke(&node(p), &[], &ctx()).unwrap();
+    assert_eq!(out[0].kind, "n.done", "{}", out[0].payload);
+    assert_eq!(peregrin_git::Worktrees::new(&b).list().unwrap().len(), 0);
+}
+
+#[test]
+fn extra_worktrees_cleanup_on_inner_failure_and_keep() {
+    let tmp = TempDir::new().unwrap();
+    let (repo, first, _) = fixture_repo(tmp.path());
+    let d = GitDriver::new(shell_lookup());
+    let b = base(&tmp);
+    let mut p = params(&repo, &b, &first, &shell_inner("exit 3"));
+    p["dest"] = json!("run-z/docs");
+    p["extra_worktrees"] = json!([{"ref": "main", "dir": "."}]);
+    let out = d.invoke(&node(p), &[], &ctx()).unwrap();
+    assert_eq!(out[0].kind, "node.failed");
+    assert_eq!(out[0].payload["inner_rc"], 3);
+    assert_eq!(peregrin_git::Worktrees::new(&b).list().unwrap().len(), 0);
+
+    // `keep` retains every checkout for debugging.
+    let mut p = params(&repo, &b, &first, &shell_inner("true"));
+    p["dest"] = json!("run-k/docs");
+    p["keep"] = json!(true);
+    p["extra_worktrees"] = json!([{"ref": "main", "dir": "."}]);
+    let out = d.invoke(&node(p), &[], &ctx()).unwrap();
+    assert_eq!(out[0].kind, "n.done");
+    let w = peregrin_git::Worktrees::new(&b);
+    let kept: Vec<_> = w
+        .list()
+        .unwrap()
+        .into_iter()
+        .filter_map(|l| match l {
+            peregrin_git::Listing::Tracked(wt) if wt.kept => Some(wt.path),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(kept.len(), 2, "kept: {kept:?}");
+    for path in &kept {
+        assert!(path.is_dir());
+    }
+}
+
+#[test]
+fn extra_worktrees_unresolvable_ref_is_node_failed() {
+    let tmp = TempDir::new().unwrap();
+    let (repo, first, _) = fixture_repo(tmp.path());
+    let d = GitDriver::new(shell_lookup());
+    let b = base(&tmp);
+    let mut p = params(&repo, &b, &first, &shell_inner("true"));
+    p["dest"] = json!("run-bad/docs");
+    p["extra_worktrees"] = json!([{"ref": "refs/heads/nope", "dir": "."}]);
+    let out = d.invoke(&node(p), &[], &ctx()).unwrap();
+    assert_eq!(out[0].kind, "node.failed");
+    assert!(
+        out[0].payload["error"]
+            .as_str()
+            .unwrap()
+            .contains("refs/heads/nope")
+    );
+    // Nothing materialized — the primary was never created either.
+    assert_eq!(peregrin_git::Worktrees::new(&b).list().unwrap().len(), 0);
+}
+
+#[test]
+fn extra_worktrees_malformed_params_are_driver_errors() {
+    let tmp = TempDir::new().unwrap();
+    let (repo, first, _) = fixture_repo(tmp.path());
+    let d = GitDriver::new(shell_lookup());
+    let ctx = ctx();
+    let b = base(&tmp);
+
+    for bad in [
+        json!("main"),                                  // not an array
+        json!(["main"]),                                // not an object
+        json!([{"dir": "."}]),                          // missing ref
+        json!([{"ref": ""}]),                           // empty ref
+        json!([{"ref": "--upload-pack=touch /tmp/x"}]), // flag injection
+        json!([{"ref": "main@{u}"}]),                   // revision syntax
+        json!([{"ref": "a..b"}]),                       // dotdot ref
+        json!([{"ref": "main", "dir": "../escape"}]),   // dir escape
+        json!([{"ref": "main", "dir": "/abs"}]),        // absolute dir
+    ] {
+        let mut p = params(&repo, &b, &first, &shell_inner("true"));
+        p["extra_worktrees"] = bad;
+        let err = d.invoke(&node(p), &[], &ctx).unwrap_err();
+        assert!(
+            err.reason.contains("extra_worktrees"),
+            "reason: {}",
+            err.reason
+        );
+    }
+    assert!(!tmp.path().join("worktrees").exists());
+}
