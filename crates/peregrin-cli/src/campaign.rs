@@ -175,6 +175,19 @@ pub fn serve(
             }
         })),
         secrets: BTreeMap::new(),
+        // Fleet labels (`PEREGRIN_RUNNER_LABELS`) gate `runs_on`
+        // campaigns — same env the node daemon advertises on
+        // `/api/node`, so `campaign serve` and `peregrin serve`
+        // agree on eligibility.
+        labels: std::env::var("PEREGRIN_RUNNER_LABELS")
+            .map(|v| {
+                v.split(',')
+                    .map(str::trim)
+                    .filter(|s| !s.is_empty())
+                    .map(str::to_string)
+                    .collect()
+            })
+            .unwrap_or_default(),
     };
     let served = peregrin_node::serve::serve_campaigns(hosted, &config)
         .map_err(|e| CliError(e.to_string()))?;

@@ -183,6 +183,21 @@ fn validate_a_libraries_campaign() {
 }
 
 #[test]
+fn validate_docs_deploy_bundle() {
+    // PL-009: the docs-deploy bundle ships its own ingress node, so —
+    // unlike ci-gate's include-only main.yaml — it must validate with
+    // zero unemitting-subscription warnings.
+    let lines =
+        peregrin_cli::campaign::validate(&libraries_dir().join("docs-deploy/main.yaml")).unwrap();
+    assert!(lines.iter().any(|l| l == "workflow: docs-deploy"));
+    assert!(
+        !lines.iter().any(|l| l.contains("WARNING")),
+        "lines: {lines:?}"
+    );
+    assert_eq!(lines.last().map(String::as_str), Some("OK"));
+}
+
+#[test]
 fn validate_errors_on_missing_file() {
     assert!(peregrin_cli::campaign::validate(Path::new("/nonexistent.yaml")).is_err());
 }

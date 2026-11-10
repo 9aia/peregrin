@@ -128,8 +128,18 @@ fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
             }) as BoxFuture<'static, Result<String, sepia_session::ControlError>>
         }) as peregrin_http::ImportSession
     };
-    let campaign_plane = Arc::new(CampaignEntityPlane::new());
-    AppState::from_env(env, Arc::clone(plane))
+    let app_state = AppState::from_env(env, Arc::clone(plane));
+    // The campaign plane's `runs_on` gate reads the same capability
+    // list `GET /api/node` advertises — session caps plus the
+    // ephemeral lifecycle tag and `PEREGRIN_RUNNER_LABELS` fleet
+    // labels (PL-007 C4).
+    let mut labels = peregrin_http::node_capabilities(&app_state);
+    if env.ephemeral {
+        labels.push("ephemeral".into());
+    }
+    labels.extend(env.runner_labels.iter().cloned());
+    let campaign_plane = Arc::new(CampaignEntityPlane::new().with_labels(labels));
+    app_state
         .with_kind(campaign_plane)
         .with_convert(convert)
         .with_import_session(import)

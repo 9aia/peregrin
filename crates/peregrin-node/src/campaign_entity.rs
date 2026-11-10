@@ -118,6 +118,12 @@ pub struct CampaignEntity {
 #[derive(Clone, Default)]
 pub struct CampaignEntityPlane {
     entities: Arc<RwLock<HashMap<String, CampaignEntity>>>,
+    /// This node's advertised capability labels — the `runs_on`
+    /// matcher's right-hand side (PL-007 C4 fleet scheduling). Fed
+    /// from the same list `GET /api/node` reports, so a remote
+    /// `campaign.start` lands only on nodes that declared they can
+    /// run it.
+    labels: Arc<Vec<String>>,
 }
 
 impl CampaignEntityPlane {
@@ -125,7 +131,15 @@ impl CampaignEntityPlane {
     pub fn new() -> Self {
         Self {
             entities: Arc::new(RwLock::new(HashMap::new())),
+            labels: Arc::new(Vec::new()),
         }
+    }
+
+    /// Advertise this node's capability labels for `runs_on` matching.
+    #[must_use]
+    pub fn with_labels(mut self, labels: Vec<String>) -> Self {
+        self.labels = Arc::new(labels);
+        self
     }
 
     /// Access the underlying entities map (for diagnostics/tests).
@@ -679,6 +693,22 @@ impl CampaignEntityPlane {
     /// and terminal states conflict — a second runner on the same
     /// entity would race the first for its state slot.
     fn launch(&self, id: &str, campaign: Campaign, dry_run: bool) -> Response {
+        // Fleet gate (PL-007 C4): `runs_on` labels must all be
+        // advertised by THIS node — the op was routed here by entity
+        // ownership, but eligibility is the campaign's own contract.
+        // A mismatched start conflicts rather than queueing forever
+        // on a node that can never satisfy it.
+        if !campaign.runs_on_matches(&self.labels) {
+            return json_resp(
+                StatusCode::CONFLICT,
+                json!({
+                    "error": format!(
+                        "campaign requires runner labels {:?} — this node advertises {:?}",
+                        campaign.runs_on, self.labels
+                    )
+                }),
+            );
+        }
         let (injector, ingress) = peregrin_engine::ingress();
         let now = chrono::Utc::now().to_rfc3339();
 

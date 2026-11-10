@@ -97,6 +97,12 @@ pub struct Env {
     /// (routes the import to that hub-registered node). `None` = the
     /// target's default/primary node.
     pub snapshot_node: Option<String>,
+    /// `PEREGRIN_RUNNER_LABELS` — comma-separated runner/fleet labels
+    /// (`runner:linux,gpu`) appended to the `/api/node` capability
+    /// list. Campaign `runs_on:` requirements match against these —
+    /// the hub's sync projection persists them for fleet routing
+    /// (PL-007 C4).
+    pub runner_labels: Vec<String>,
 }
 
 fn home_dir() -> PathBuf {
@@ -281,6 +287,15 @@ impl Env {
             snapshot_node: get("PEREGRIN_SNAPSHOT_NODE")
                 .map(|n| n.trim().to_string())
                 .filter(|n| !n.is_empty()),
+            runner_labels: get("PEREGRIN_RUNNER_LABELS")
+                .map(|v| {
+                    v.split(',')
+                        .map(str::trim)
+                        .filter(|s| !s.is_empty())
+                        .map(str::to_string)
+                        .collect()
+                })
+                .unwrap_or_default(),
             home,
         })
     }

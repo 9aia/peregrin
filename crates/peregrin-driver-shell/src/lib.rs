@@ -15,7 +15,7 @@ use std::time::{Duration, Instant};
 
 use serde_json::{Map, Value};
 
-use peregrin_core::{Event, EventSchema, Node};
+use peregrin_core::{Event, EventSchema, Node, js_truthy};
 use peregrin_driver::{Driver, DriverError, ExecutionContext};
 use peregrin_template::{
     Context, Effects, EventScope, NodeScope, Options, ParamsScope, Scope, SystemEffects,
@@ -156,6 +156,56 @@ fn output_schemas() -> Vec<EventSchema> {
     ]
 }
 
+/// `systemd-run` availability — probed once per process. `isolate`
+/// params fail honestly when the user manager can't scope the
+/// command rather than silently running unconfined.
+fn systemd_run() -> Option<&'static str> {
+    static AVAILABLE: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
+    let ok = *AVAILABLE.get_or_init(|| {
+        std::env::var_os("PATH").is_some_and(|path| {
+            std::env::split_paths(&path).any(|dir| dir.join("systemd-run").is_file())
+        })
+    });
+    ok.then_some("systemd-run")
+}
+
+/// Build the spawn `Command` — plain shell, or `systemd-run --user
+/// --scope` wrapping it when `isolate`/`memory_max` ask for cgroup
+/// confinement (PL-007 C4 job isolation). `memory_max` implies
+/// isolation: a cap without a scope is meaningless. Non-unix or a
+/// missing `systemd-run` surfaces as `Err` — never a silent
+/// unconfined run.
+fn spawn_command(cmd: &str, isolate: bool, memory_max: Option<&str>) -> Result<Command, String> {
+    #[cfg(unix)]
+    {
+        let confine = isolate || memory_max.is_some();
+        if !confine {
+            return Ok(shell_command(cmd));
+        }
+        let Some(bin) = systemd_run() else {
+            return Err(
+                "isolate/memory_max requested but `systemd-run` not found on PATH \
+                 (needs systemd --user)"
+                    .to_string(),
+            );
+        };
+        let mut command = Command::new(bin);
+        command.args(["--user", "--scope", "--quiet", "--collect"]);
+        if let Some(max) = memory_max {
+            command.arg("-p").arg(format!("MemoryMax={max}"));
+        }
+        command.arg("--").arg("sh").arg("-c").arg(cmd);
+        Ok(command)
+    }
+    #[cfg(not(unix))]
+    {
+        if isolate || memory_max.is_some() {
+            return Err("isolate/memory_max is only supported on unix (systemd-run)".to_string());
+        }
+        Ok(shell_command(cmd))
+    }
+}
+
 /// Build the system-shell command (`sh -c` unix, `cmd /C` windows).
 fn shell_command(cmd: &str) -> Command {
     #[cfg(unix)]
@@ -209,8 +259,10 @@ fn spawn_shell(
     env: &Map<String, Value>,
     timeout: Duration,
     cwd: Option<&str>,
+    isolate: bool,
+    memory_max: Option<&str>,
 ) -> Result<(i64, String, String), String> {
-    let mut command = shell_command(cmd);
+    let mut command = spawn_command(cmd, isolate, memory_max)?;
     if let Some(dir) = cwd {
         command.current_dir(dir);
     }
@@ -313,7 +365,17 @@ impl Driver for ShellDriver {
             .get("cwd")
             .and_then(Value::as_str)
             .filter(|dir| !dir.is_empty());
-        let (rc, stdout, stderr) = match spawn_shell(cmd, &env, timeout, cwd) {
+        // Job isolation (PL-007 C4): `isolate: true` wraps the shell
+        // in `systemd-run --user --scope`; `memory_max: "512M"` adds
+        // `-p MemoryMax=` and implies isolation. Both fail loudly
+        // when systemd user scopes aren't available.
+        let isolate = params.get("isolate").is_some_and(js_truthy);
+        let memory_max = params
+            .get("memory_max")
+            .and_then(Value::as_str)
+            .map(str::trim)
+            .filter(|s| !s.is_empty());
+        let (rc, stdout, stderr) = match spawn_shell(cmd, &env, timeout, cwd, isolate, memory_max) {
             Err(error) => {
                 return Ok(vec![Event::new(
                     "node.failed",

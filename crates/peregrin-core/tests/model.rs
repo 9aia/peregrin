@@ -322,3 +322,31 @@ fn schedule_node_without_emits_still_self_retriggers() {
     }));
     assert!(node.on.contains(&"daily.fire".to_string()));
 }
+
+#[test]
+fn campaign_runs_on_parses_and_roundtrips() {
+    let campaign = Campaign::from_dict(&json!({
+        "name": "fleet",
+        "runs_on": ["runner:linux", "gpu"],
+    }))
+    .unwrap();
+    assert_eq!(campaign.runs_on, ["runner:linux", "gpu"]);
+    let dict = campaign.to_dict();
+    assert_eq!(dict["runs_on"], json!(["runner:linux", "gpu"]));
+    // Absent runs_on stays absent in the dict.
+    let plain = Campaign::from_dict(&json!({"name": "any"})).unwrap();
+    assert!(plain.runs_on.is_empty());
+    assert!(plain.to_dict().get("runs_on").is_none());
+}
+
+#[test]
+fn runs_on_matches_requires_every_label() {
+    let campaign = Campaign::from_dict(&json!({"runs_on": ["runner:linux", "gpu"]})).unwrap();
+    let labels = |v: &[&str]| v.iter().map(|s| (*s).to_string()).collect::<Vec<_>>();
+    assert!(campaign.runs_on_matches(&labels(&["runner:linux", "gpu", "ephemeral"])));
+    assert!(!campaign.runs_on_matches(&labels(&["runner:linux"])));
+    assert!(!campaign.runs_on_matches(&labels(&[])));
+    // Empty runs_on matches anywhere.
+    let open = Campaign::from_dict(&json!({"name": "open"})).unwrap();
+    assert!(open.runs_on_matches(&labels(&[])));
+}
