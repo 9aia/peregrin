@@ -244,6 +244,52 @@ fn every_spawned_run_appends_to_the_shared_history() {
     );
 }
 
+#[test]
+fn displaced_pending_run_marks_the_shared_history() {
+    let tmp = tempfile::tempdir().unwrap();
+    let history = tmp.path().join("history.jsonl");
+    let campaign = load(&sleep_campaign("latest-wins", false, 0.3));
+    let run = supervise(
+        &campaign,
+        SupervisedOptions {
+            history: Some(history.clone()),
+            ..SupervisedOptions::default()
+        },
+    );
+    // sha 1 starts the (slow) run; sha 2 + sha 3 queue behind it —
+    // latest-wins displaces sha 2 before sha 3's run starts.
+    for sha in ["1", "2", "3"] {
+        run.injector
+            .inject(trigger("a/b", json!({"sha": sha})))
+            .unwrap();
+    }
+    drop(run.injector);
+    let logs = run.join.join().unwrap().unwrap();
+
+    // The aggregated log carries the marker inside sha 3's run.
+    let marker = logs
+        .iter()
+        .find(|e| e.kind == "push.superseded")
+        .expect("displaced pending run leaves a marker");
+    assert_eq!(marker.payload["sha"], "2");
+    assert_eq!(marker.payload["superseded"], true);
+
+    // …and it persisted to the shared `--history` JSONL — the
+    // surface `peregrin runs`/`explain` reads (status `superseded`).
+    let text = std::fs::read_to_string(&history).unwrap();
+    let events: Vec<Value> = text
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| serde_json::from_str(l).unwrap())
+        .collect();
+    let persisted = events
+        .iter()
+        .find(|e| e["type"] == "push.superseded")
+        .expect("marker persisted to history");
+    assert_eq!(persisted["payload"]["sha"], "2");
+    assert_eq!(persisted["payload"]["superseded"], true);
+}
+
 // ---------------------------------------------------------------------------
 // ci-gate — the shipped `supersede:` block is live config now
 // ---------------------------------------------------------------------------
