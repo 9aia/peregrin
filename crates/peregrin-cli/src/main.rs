@@ -1048,7 +1048,8 @@ enum ProvisionCommands {
         #[arg(long)]
         config: Option<PathBuf>,
     },
-    /// Write the per-user systemd unit.
+    /// (Re)generate the operator node config from the bundle's
+    /// `provider:` block — units come from `tamias deploy` itself.
     Deploy {
         #[arg(long)]
         dir: PathBuf,

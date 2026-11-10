@@ -362,7 +362,11 @@ fn basic_b64(input: &str) -> String {
     const A: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
     let mut out = String::with_capacity(input.len().div_ceil(3) * 4);
     for chunk in input.as_bytes().chunks(3) {
-        let b = [chunk[0], *chunk.get(1).unwrap_or(&0), *chunk.get(2).unwrap_or(&0)];
+        let b = [
+            chunk[0],
+            *chunk.get(1).unwrap_or(&0),
+            *chunk.get(2).unwrap_or(&0),
+        ];
         out.push(A[(b[0] >> 2) as usize] as char);
         out.push(A[((b[0] << 4 | b[1] >> 4) & 63) as usize] as char);
         out.push(if chunk.len() > 1 {

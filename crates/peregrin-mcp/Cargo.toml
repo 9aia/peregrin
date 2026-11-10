@@ -14,16 +14,22 @@ name = "peregrin-mcp"
 path = "src/main.rs"
 
 [dependencies]
-tamias-core.workspace = true
-tamias-store-local.workspace = true
-tamias-cache-local.workspace = true
+# Pinned to the pre-provider tamias rev: this crate recomposes the old
+# two-phase `resolve`/`fetch` source API (`SourceRef`, `Resolved`,
+# `overlay`, `dir_digest`) which the workspace rev (provider schema +
+# shared install pipeline) removed. Migrating `bundle_install` onto
+# `tamias-install` is a separate task — the revs coexist as distinct
+# sources (tamias-core 0.1.0 vs 0.1.1) and no tamias types cross crates.
+tamias-core = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-store-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
 peregrin-core.workspace = true
 peregrin-engine.workspace = true
 peregrin-node.workspace = true
-tamias-source.workspace = true
-tamias-source-fs.workspace = true
-tamias-source-git.workspace = true
-tamias-source-http.workspace = true
+tamias-source = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-source-fs = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-source-git = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
+tamias-source-http = { git = "ssh://git@github.com/9aia/tamias.git", rev = "f31a2b0fe3c480df385e660ec1c001b818dceecc", version = "0.1" }
 peregrin-store.workspace = true
 peregrin-store-json.workspace = true
 serde_json.workspace = true
