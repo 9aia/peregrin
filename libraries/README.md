@@ -33,9 +33,10 @@ artifacts (`peregrin install <ref>`), not loader fragments:
 | Directory  | Bundle    | Purpose                                                              |
 | ---------- | --------- | -------------------------------------------------------------------- |
 | `ci-gate/` | `ci-gate` | Push → worktree-at-sha → shell run → `ci/<campaign>` status gate.   |
+| `docs-deploy/` | `docs-deploy` | Push to `refs/heads/docs` → worktree → `bun install` + `docs:deploy` (vitepress → gh-pages) → `docs/deploy` status. |
 | `release/` | `release` | Release pipeline (tag → `cargo publish`) on release-ref pushes.      |
 
-Both document their operator params in `params.schema.json` + their
+Each documents its operator params in `params.schema.json` + its
 `README.md` — see `peregrin import bupha` for the fleet-shaped
 equivalent.
 

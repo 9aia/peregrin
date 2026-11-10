@@ -1,0 +1,51 @@
+# docs-deploy — docs-site deployment as a peregrin bundle (PL-009 /
+# P-009). `tamias install <ref>` fetches this; the bundle's main.yaml
+# is a complete campaign (ingress webhook node included — see below).
+name: docs-deploy
+version: "0.1.0"
+# `peregrin-bundle` routes install/deploy/uninstall through
+# `tamias-driver-peregrin` (capabilities: types ["peregrin-bundle"]).
+type: peregrin-bundle
+description: >-
+  Push to refs/heads/docs → detached worktree at the pushed sha →
+  bun install + the repo's own docs:deploy (vitepress build →
+  gh-pages) → docs/deploy commit status. Latest-wins supersede on
+  {repo}:{ref} with cancel_running. Replaces the deleted GHA
+  deploy.yml workflows for self-contained docs trees.
+
+# Unlike ci-gate, the campaign yaml ships its own github-webhook
+# ingress node (fixed v1 repo set, BUPHA_WH_* secret names) — so
+# provider.ingress declares listen/path/public_url for the units and
+# health probes but NO hooks: `tamias deploy` only generates a second
+# ingress node when hooks[] names github repos, which would
+# double-deliver every push.
+provider:
+  name: docs-deploy
+  services:
+    # The campaign daemon. `--listen` is deliberately NOT 29173: the
+    # production wiring (PL-009 D5) adds this bundle's main.yaml to
+    # the existing `campaign serve` invocation next to
+    # ci-gate-full.yaml — ONE SharedWebhook listener demuxes by repo
+    # and the per-node listen param is ignored there. This unit is
+    # the standalone fallback on its own port.
+    - name: campaign
+      exec: >-
+        peregrin campaign serve ~/.config/peregrin/docs-deploy.yaml
+        --listen 127.0.0.1:29174 --path /hook
+        --history-dir ~/.local/share/peregrin/history
+        --queue-store-dir ~/.local/share/peregrin/queues
+      env_file: "~/.config/peregrin/env"
+      workdir: "~"
+      restart: on-failure
+  ingress:
+    # Declarative only — forge-hook registration is the deploy
+    # driver's job and stays an operator step; no hooks[] are
+    # declared (see the note above — the campaign yaml owns repos[]).
+    - public_url: https://docs-deploy.luisfuturist.com
+      listen: 127.0.0.1:29174
+      path: /hook
+      hooks: []
+  # Advisory verb hints for `tamias provider list`/`tamias run` —
+  # no health probe: the campaign daemon serves only the hook path,
+  # there is no /health endpoint to curl.
+  verbs: [run, logs]

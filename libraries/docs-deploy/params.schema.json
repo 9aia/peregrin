@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://9aia.dev/peregrin/bundles/docs-deploy/params.schema.json",
+  "title": "docs-deploy params",
+  "description": "Operator-facing config keys for the docs-deploy bundle — ADR-0081's locked decision: bundle params validate against JSON Schema. token_env/secret_env are secret NAMES, never values.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "worktree_base": {
+      "type": "string",
+      "default": "~/.local/share/peregrin/worktrees",
+      "description": "driver-git base — worktrees and the clone cache live under it."
+    },
+    "token_env": {
+      "type": "string",
+      "default": "BUPHA_TOKEN",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+      "description": "NAME of the secret holding the forge token (clone auth + gh-pages push + status posts). Never the value. Must match the $<name> the deploy cmd's credential.helper echoes — the shipped cmd assumes BUPHA_TOKEN."
+    },
+    "timeout": {
+      "type": "integer",
+      "default": 600,
+      "minimum": 1,
+      "maximum": 600,
+      "description": "Inner shell timeout in seconds (driver cap: 600)."
+    },
+    "context": {
+      "type": "string",
+      "default": "docs/deploy",
+      "pattern": "^[A-Za-z0-9._/-]+$",
+      "description": "GitHub commit-status context posted on the pushed docs-branch sha."
+    },
+    "cmd": {
+      "type": "string",
+      "description": "Deploy command run at the worktree root (= the docs branch root). Default: bun install (frozen-lockfile, plain fallback) + env-scoped git credential.helper/author + `bun run docs:deploy`. Override per-install; keep the credential.helper export or gh-pages pushes will be anonymous."
+    }
+  }
+}
