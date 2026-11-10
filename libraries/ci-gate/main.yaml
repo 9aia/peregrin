@@ -393,6 +393,8 @@ nodes:
       secret_env: BUPHA_WH_9AIA_CUORA
     - name: 9aia/peregrin
       secret_env: BUPHA_WH_9AIA_PEREGRIN
+    - name: 9aia/tamias
+      secret_env: BUPHA_WH_9AIA_TAMIAS
 - id: ci.route
   driver: shell
   on:
@@ -9574,6 +9576,54 @@ nodes:
     context: ci/bupha/main
     token_env: BUPHA_TOKEN
     sha: ${event.payload.sha:-${event.match.1}}
+- id: ci.9aia-tamias-main
+  driver: git
+  on:
+  - push.9aia/tamias.refs/heads/main.**.*
+  max_fires: unlimited
+  emits:
+  - ci.9aia-tamias-main.done
+  - ci.9aia-tamias-main.failed
+  params:
+    url: ${event.match.1}
+    sha: ${event.match.2}
+    base: ~/.local/share/peregrin/worktrees
+    token_env: BUPHA_TOKEN
+    inner:
+      driver: shell
+      params:
+        cmd: bash scripts/ci.sh
+        timeout: 600
+    emit:
+      '0': ci.9aia-tamias-main.done
+      default: ci.9aia-tamias-main.failed
+- id: ci.9aia-tamias-main.pending
+  driver: github-status
+  on:
+  - push.9aia/tamias.refs/heads/main.**.*
+  max_fires: unlimited
+  emits:
+  - ci.9aia-tamias-main.status-posted
+  params:
+    repo: 9aia/tamias
+    context: ci/bupha/main
+    token_env: BUPHA_TOKEN
+    sha: ${event.match.2}
+    state: pending
+- id: ci.9aia-tamias-main.status
+  driver: github-status
+  on:
+  - ci.9aia-tamias-main.done
+  - ci.9aia-tamias-main.failed
+  - ci.9aia-tamias-main.failed.*
+  max_fires: unlimited
+  emits:
+  - ci.9aia-tamias-main.status-posted
+  params:
+    repo: 9aia/tamias
+    context: ci/bupha/main
+    token_env: BUPHA_TOKEN
+    sha: ${event.payload.sha:-${event.match.1}}
 - id: ci.failmap
   driver: shell
   on:
@@ -9598,6 +9648,7 @@ capabilities:
   - BUPHA_WH_9AIA_MYCO
   - BUPHA_WH_9AIA_PEREGRIN
   - BUPHA_WH_9AIA_STURN
+  - BUPHA_WH_9AIA_TAMIAS
   - BUPHA_WH_HANDL_LANG_DOCS
   - BUPHA_WH_HANDL_LANG_ENGINE_EXEC
   - BUPHA_WH_HANDL_LANG_ENGINE_EXEC_BYTECODE

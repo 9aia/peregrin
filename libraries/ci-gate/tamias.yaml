@@ -4,7 +4,7 @@
 # generates the operator node config (`~/.config/peregrin/ci-gate.yaml`)
 # from the `provider:` block below.
 name: ci-gate
-version: "0.2.1"
+version: "0.2.2"
 # `peregrin-bundle` routes install/deploy/uninstall through
 # `tamias-driver-peregrin` (capabilities: types ["peregrin-bundle"]).
 type: peregrin-bundle
