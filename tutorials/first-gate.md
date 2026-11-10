@@ -1,5 +1,10 @@
 # Your first gate
 
+> **Note:** the org's own CI gate is migrating back to bupha
+> (`9aia/bupha//libraries/ci-gate`, `type: bupha`) — see org-ledger
+> PL-013. This tutorial still applies to `peregrin-bundle` gates in
+> general; the ci-gate bundle stays live until cutover.
+
 This tutorial walks the operator flow end to end: install the
 `ci-gate` bundle through tamias, deploy the shared campaign host,
 register the repo webhook, and watch pushes turn into commit
