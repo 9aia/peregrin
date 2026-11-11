@@ -100,20 +100,20 @@ peregrin-testkit = { path = "crates/peregrin-testkit", version = "0.2.0" }
 # (the branch carrying the `sepia serve` store-op surface —
 # `sessions.export`/`import`/`convert`); sibling-checkout path deps
 # ride `[patch]` (see `.cargo/config.toml.example`).
-sepia-core = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-proto = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-acp = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-session = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-driver = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-host = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-meta = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-convert = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-testkit = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
-sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.1.0" }
+sepia-core = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-proto = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-acp = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-session = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-driver = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-host = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-meta = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-convert = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-testkit = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
 
 # hypha — the extracted substrate (PL-005): leaf crates landed in P4a
 # (secrets, telemetry, service/systemd, dotenv); the entity-plane
@@ -141,10 +141,10 @@ hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", vers
 # bupha↔hypha/peregrin seam). Git dep on `main` like the other
 # sibling integrations; `peregrin-node`'s default-on `bupha` feature
 # registers `CiJobPlane` next to `CampaignEntityPlane`.
-bupha-plane = { git = "ssh://git@github.com/9aia/bupha.git", branch = "main", version = "0.1.0" }
+bupha-plane = { git = "ssh://git@github.com/9aia/bupha.git", branch = "main", version = "0.2.0" }
 # Fleet-config loading for the ci-job plane's indexDoc normalization
 # (`CiJobPlane::with_watched`) — `peregrin-node`'s `bupha` feature.
-bupha-config-file = { git = "ssh://git@github.com/9aia/bupha.git", branch = "main", version = "0.1.0" }
+bupha-config-file = { git = "ssh://git@github.com/9aia/bupha.git", branch = "main", version = "0.2.0" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }
