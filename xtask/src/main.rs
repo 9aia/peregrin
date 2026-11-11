@@ -29,8 +29,10 @@ fn llvm_cov_available() -> bool {
 /// Binaries tests shell out to — one prebuild beats N in-test
 /// `cargo build`s serializing on locks. `sepia-*` binaries come from
 /// the sibling sepia checkout (path deps); tests resolve them via
-/// SEPIA_TESTKIT_PREBUILT paths.
-const TEST_BINS: &[&str] = &["peregrin", "peregrin-node"];
+/// SEPIA_TESTKIT_PREBUILT paths. The `peregrin` command itself is
+/// gone — the engine e2e spawns `tamias-driver-peregrin run`, the
+/// same entrypoint the tamias `bins[]` shim's `cli` verb takes.
+const TEST_BINS: &[&str] = &["peregrin-node", "tamias-driver-peregrin"];
 
 fn prebuild() -> anyhow::Result<()> {
     let mut args = vec!["build"];
@@ -203,6 +205,87 @@ fn testkit_bin_dirs(first: Option<&std::path::Path>) -> String {
     dirs.join(":")
 }
 
+/// Captured stdout of a command — for probes like `rustc -vV`.
+fn run_out(args: &[&str]) -> Option<String> {
+    let (prog, rest) = args.split_first()?;
+    let out = Command::new(prog).args(rest).output().ok()?;
+    out.status
+        .success()
+        .then(|| String::from_utf8_lossy(&out.stdout).into_owned())
+}
+
+/// The host target triple — the `drivers/bin/<triple>/` and
+/// `tools/bin/<triple>/` selectors tamias uses for compiled payloads.
+fn host_triple() -> String {
+    run_out(&["rustc", "-vV"])
+        .and_then(|v| {
+            v.lines()
+                .find_map(|l| l.strip_prefix("host: ").map(str::to_string))
+        })
+        .unwrap_or_else(|| "x86_64-unknown-linux-gnu".to_string())
+}
+
+/// Release-build `bin` and stage it at `dest` (creating parents,
+/// marking it executable on unix).
+fn stage_release_bin(bin: &str, dest: &std::path::Path) -> anyhow::Result<()> {
+    if let Some(parent) = dest.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::copy(format!("target/release/{bin}"), dest)
+        .map_err(|e| anyhow::anyhow!("copy {bin} → {}: {e}", dest.display()))?;
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(dest, std::fs::Permissions::from_mode(0o755));
+    }
+    Ok(())
+}
+
+/// `pack` — stage the tamias pack payload (T-012): release-build the
+/// binaries `libraries/peregrin/tamias.yaml` ships and drop them
+/// under the pack's payload dirs —
+///
+/// - `tamias-driver-peregrin` → `drivers/bin/<host-triple>/` (the
+///   bundled driver `bins[].driver: peregrin` resolves),
+/// - `peregrin-node`/`peregrin-hub` → `tools/bin/<host-triple>/`
+///   (payload bins — real daemon binaries, declared in `bins[]`).
+///
+/// All gitignored on purpose: the binaries are build artifacts; the
+/// committed pack is just `tamias.yaml` + this staging verb.
+fn pack() -> anyhow::Result<()> {
+    run(
+        "cargo",
+        &[
+            "build",
+            "--release",
+            "--bin",
+            "tamias-driver-peregrin",
+            "--bin",
+            "peregrin-node",
+            "--bin",
+            "peregrin-hub",
+        ],
+    )?;
+    let triple = host_triple();
+    let pack = std::path::Path::new("libraries/peregrin");
+    stage_release_bin(
+        "tamias-driver-peregrin",
+        &pack
+            .join("drivers/bin")
+            .join(&triple)
+            .join("tamias-driver-peregrin"),
+    )?;
+    for bin in ["peregrin-node", "peregrin-hub"] {
+        stage_release_bin(bin, &pack.join("tools/bin").join(&triple).join(bin))?;
+    }
+    println!("pack staged under libraries/peregrin/ (triple {triple})");
+    println!();
+    println!("install the peregrin command (generated bins[] shim):");
+    println!("  tamias install --allow-drivers ./libraries/peregrin");
+    println!("  # or a pinned tarball: tamias bundle pack libraries/peregrin");
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     match std::env::args().nth(1).as_deref() {
         Some("check") => {
@@ -338,8 +421,16 @@ fn main() -> anyhow::Result<()> {
                 .status()?;
             anyhow::ensure!(status.success(), "coverage run failed");
         }
+        Some("pack") => pack()?,
         Some("install") => {
-            let bins = ["peregrin", "peregrin-hub", "tamias-driver-peregrin"];
+            // There is no `peregrin` cargo bin anymore — the command
+            // ships as the tamias pack in `libraries/peregrin`
+            // (`cargo xtask pack` + `tamias install
+            // --allow-drivers ./libraries/peregrin`). This installs
+            // the driver + daemon binaries themselves so
+            // `tamias-driver-peregrin`/`peregrin-hub` resolve on PATH
+            // even without the pack.
+            let bins = ["peregrin-hub", "tamias-driver-peregrin"];
             let mut build = vec!["build", "--release"];
             for bin in &bins {
                 build.push("--bin");
@@ -354,9 +445,13 @@ fn main() -> anyhow::Result<()> {
                 std::fs::copy(format!("target/release/{bin}"), out.join(bin))?;
             }
             println!("installed {bins:?} to {}", out.display());
+            eprintln!(
+                "xtask: the `peregrin` command comes from `cargo xtask pack` + \
+                 `tamias install --allow-drivers ./libraries/peregrin`"
+            );
         }
         Some(other) => anyhow::bail!("unknown task {other}"),
-        None => anyhow::bail!("usage: cargo xtask <check|test|install|coverage>"),
+        None => anyhow::bail!("usage: cargo xtask <check|test|pack|install|coverage>"),
     }
     Ok(())
 }

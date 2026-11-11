@@ -22,9 +22,12 @@ export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 # No sibling ../sepia in the detached worktree: deps come from the
 # committed ssh:// git deps (Cargo.lock-pinned revs, already in the
 # cargo git cache), and `xtask test`'s prebuild builds the spawned
-# sepia binaries (`sepia`, `sepia-driver-*`, `sepia-mock-acp-agent`)
-# inside that git checkout — the same target/debug sepia-testkit's
-# resolution falls back to.
+# sepia binaries (`sepia-driver-*`, `sepia-mock-acp-agent`) inside
+# that git checkout — the same target/debug sepia-testkit's
+# resolution falls back to. The `sepia` command itself is a tamias
+# shim post-T-012: `peregrin-session`'s PATH fallback resolves it on
+# machines with the sepia pack installed; dev checkouts may still
+# carry a stale `target/debug/sepia` artifact.
 
 cargo xtask check
 cargo xtask test

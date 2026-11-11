@@ -2665,7 +2665,6 @@ name = "pavo-driver-kit"
 version = "0.1.0"
 source = "git+ssh://git@github.com/9aia/pavo.git?rev=a7aff58c0f4ef902df99dbd56a8eddad907bcf0b#a7aff58c0f4ef902df99dbd56a8eddad907bcf0b"
 dependencies = [
- "clap",
  "pavo-protocol",
  "serde",
  "serde_json",

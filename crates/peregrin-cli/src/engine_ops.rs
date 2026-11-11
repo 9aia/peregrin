@@ -17,7 +17,7 @@
 //! ops — they never return or need inherited stdio — so they ride
 //! `surfaces` instead: surface drivers (tamias-driver-cli / -mcp,
 //! the pavo-driver-kit `surface` layer, or this binary's
-//! feature-gated `cli`/`mcp` verbs) expose them as streaming
+//! feature-gated `mcp` verb) expose them as streaming
 //! subcommands — `tamias-driver-peregrin cli serve` ≡
 //! `peregrin serve`.
 //!
@@ -284,7 +284,7 @@ fn argv(name: &str, cmd: &Command, params: &Map<String, Value>) -> Vec<String> {
 
 /// The bare-name entry the embedded surfaces use (`OpSpec.name` is
 /// `cli.`-stripped); the wire path goes `op_of` → `run_verb`.
-#[cfg(any(feature = "cli", feature = "mcp"))]
+#[cfg(feature = "mcp")]
 pub fn run_op(op: &str, params: &Map<String, Value>) -> Response {
     match op_of(&format!("cli.{}", op.strip_prefix("cli.").unwrap_or(op))) {
         Some(name) => run_verb(&name, params),

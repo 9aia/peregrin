@@ -272,16 +272,21 @@ fn serve_expands_tilde_in_paths() {
     );
 }
 
-/// The binary e2e — the real `peregrin` drives load + engine + shell
-/// side effects, and the event log lands on stdout.
+/// The binary e2e — the real engine drives load + engine + shell
+/// side effects, and the event log lands on stdout. The `peregrin`
+/// command is the tamias `bins[]` shim → `tamias-driver-peregrin`'s
+/// engine passthrough, so the spawned surface under test is
+/// `tamias-driver-peregrin run` (the same entrypoint the shim's
+/// `cli` verb takes).
 #[test]
 fn peregrin_binary_runs_a_campaign() {
     let tmp = tempfile::tempdir().unwrap();
     let path = write_chain(tmp.path());
-    let out = std::process::Command::new(sepia_testkit::ensure_driver_bin("peregrin"))
-        .args(["campaign", "run", path.to_str().unwrap()])
-        .output()
-        .unwrap();
+    let out =
+        std::process::Command::new(sepia_testkit::ensure_driver_bin("tamias-driver-peregrin"))
+            .args(["run", "campaign", "run", path.to_str().unwrap()])
+            .output()
+            .unwrap();
     assert!(
         out.status.success(),
         "stderr: {}",
@@ -297,17 +302,19 @@ fn peregrin_binary_runs_a_campaign() {
         "alpha"
     );
 
-    let out = std::process::Command::new(sepia_testkit::ensure_driver_bin("peregrin"))
-        .args([
-            "campaign",
-            "validate",
-            libraries_dir()
-                .join("common/new-feat/main.yaml")
-                .to_str()
-                .unwrap(),
-        ])
-        .output()
-        .unwrap();
+    let out =
+        std::process::Command::new(sepia_testkit::ensure_driver_bin("tamias-driver-peregrin"))
+            .args([
+                "run",
+                "campaign",
+                "validate",
+                libraries_dir()
+                    .join("common/new-feat/main.yaml")
+                    .to_str()
+                    .unwrap(),
+            ])
+            .output()
+            .unwrap();
     assert!(
         out.status.success(),
         "stderr: {}",

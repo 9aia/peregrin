@@ -35,11 +35,21 @@
 //!   version` ≡ `peregrin version`. Also the child side of `cli.*`
 //!   wire queries (`engine_ops::run_verb` re-execs this same verb
 //!   so engine output never touches the serve stream).
+//! - `cli <peregrin argv>` — the tamias `bins[]` shim verb: `tamias
+//!   bin exec` calls it with the standard `--dir`/`--name` driver
+//!   flags ahead of the user's argv; they're stripped and the rest
+//!   runs through `peregrin_cli::cli::run_from` in-process with
+//!   inherited stdio — full engine parity (`serve` streams, remote
+//!   verbs take `--node`/`--token`, `--help`/version, and every
+//!   bounded verb behave exactly like the retired `peregrin`
+//!   binary).
 //!
-//! Optional surfaces: features `cli`/`mcp` embed pavo-driver-kit's
-//! surface layer — `cli <op> [args]` is a generated CLI over the
-//! ops manifest (the surfaces ride as streaming subcommands),
-//! `mcp` serves the ops as MCP tools on stdio.
+//! Optional surfaces: feature `mcp` embeds pavo-driver-kit's
+//! surface layer — `mcp` serves the ops manifest as MCP tools on
+//! stdio, equivalent to the standalone `tamias-driver-mcp` surface
+//! driver minus the PATH/discovery hop. (`cli` needs no feature:
+//! it's the bins-shim passthrough above, not a generated surface —
+//! the engine's own argv grammar is the contract.)
 //!
 //! **tamias content-type driver** (`type: peregrin-bundle` /
 //! `peregrin-node` packages — tamias always passes `--dir <payload>
@@ -71,7 +81,7 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-#[cfg(any(feature = "cli", feature = "mcp"))]
+#[cfg(feature = "mcp")]
 use pavo_driver_kit as kit;
 use peregrin_cli::{engine_ops, ops, pavo, provision};
 
@@ -190,6 +200,33 @@ enum HookAction {
     Unregister,
 }
 
+/// `cli` verb argv (after the `cli` token) → engine argv (argv[0]
+/// included). `tamias bin exec`/`driver exec` prepend the standard
+/// driver flags — `--dir <entry>` `--name <pkg>` — which the engine
+/// doesn't know; consume the leading run of those two (`--flag v`
+/// and `--flag=v` forms) and pass everything else through untouched.
+/// `--config` is deliberately NOT stripped: it's not a peregrin
+/// global today, but a user-passed `--config` must reach whatever
+/// verb owns it.
+fn engine_argv(args: &[String]) -> Vec<String> {
+    let mut out = vec!["peregrin".to_string()];
+    let mut i = 0;
+    while i < args.len() {
+        let a = args[i].as_str();
+        if a == "--dir" || a == "--name" {
+            // flag + separate value — skip both (a trailing flag
+            // with no value just ends the scan).
+            i = (i + 2).min(args.len());
+        } else if a.starts_with("--dir=") || a.starts_with("--name=") {
+            i += 1;
+        } else {
+            break;
+        }
+    }
+    out.extend(args[i..].iter().cloned());
+    out
+}
+
 fn main() -> ExitCode {
     // pavo/tamias-shared verbs dispatch on argv[1] before clap —
     // pavo's probes are bare (`manifest`, `capabilities`, `serve`)
@@ -224,25 +261,26 @@ fn main() -> ExitCode {
         // The pavo wire loop — `{"op":"query","query":"cli.<verb>"}`
         // etc. over ndjson JSON-RPC on stdio.
         Some("serve") => std::process::exit(pavo::serve()),
-        // Embedded surface verbs (feature-gated, optional): the
-        // pavo-driver-kit surface layer renders this driver's own
-        // ops manifest — `cli` = generated clap CLI (op →
-        // subcommand, surfaces stream), `mcp` = ops → MCP tools
-        // over stdio.
-        #[cfg(feature = "cli")]
+        // The tamias `bins[]` shim verb (T-012): `tamias bin exec`
+        // runs `<driver> cli --dir <entry> --name <pkg> <peregrin
+        // argv>` for a declared `shim: cli` bin. peregrin's engine IS
+        // the CLI, so this is a passthrough — strip the two standard
+        // driver flags and hand the rest to `cli::run_from` with
+        // inherited stdio. That keeps full engine parity a generated
+        // ops→CLI surface can't express: every verb, `--help`/
+        // `--version`, the unbounded `serve`/`campaign serve`/
+        // `sessions attach` surfaces, and remote verbs' `--node`/
+        // `--token` flags all behave exactly like the retired
+        // `peregrin` binary.
         Some("cli") => {
-            let m =
-                kit::surface::OpsManifest::from_value(&engine_ops::manifest()).unwrap_or_default();
-            let argv: Vec<String> = std::iter::once("peregrin".to_string())
-                .chain(argv.iter().skip(1).cloned())
-                .collect();
-            std::process::exit(kit::surface::cli::run(
-                "peregrin",
-                &m,
-                &argv,
-                &mut peregrin_cli::surface::Engine,
-            ));
+            let argv = engine_argv(&argv[1..]);
+            std::process::exit(peregrin_cli::cli::run_from(argv));
         }
+        // Optional embedded surface (feature-gated): the
+        // pavo-driver-kit surface layer renders this driver's own
+        // ops manifest as MCP tools over stdio — the same ops the
+        // `cli.*` wire queries and the standalone
+        // tamias-driver-mcp binary expose.
         #[cfg(feature = "mcp")]
         Some("mcp") => {
             let m =

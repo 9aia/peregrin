@@ -1,7 +1,8 @@
-//! peregrin — the CLI's library surface. `src/main.rs` is the thin
-//! bin (`cli::run()`); every verb implementation lives here so
-//! integration tests and the `tamias-driver-peregrin` driver can
-//! drive the same code the binary runs.
+//! peregrin — the CLI's library surface. There is no `peregrin`
+//! binary: the command ships as the tamias pack's `bins[]` shim →
+//! `tamias-driver-peregrin cli` → [`cli::run_from`]. Every verb
+//! implementation lives here so integration tests and the driver
+//! can drive the same code the shim runs.
 //!
 //! The "CLI-as-generated-surface" model (P-021): [`cli`] is the
 //! engine — the clap tree plus `command()`/`parse_from()`/
@@ -22,7 +23,7 @@ pub mod ops;
 pub mod pair;
 pub mod pavo;
 pub mod provision;
-#[cfg(any(feature = "cli", feature = "mcp"))]
+#[cfg(feature = "mcp")]
 pub mod surface;
 
 /// The version stamp — same value `/api/node` reports

@@ -7,8 +7,12 @@ use std::process::{Command, Output};
 
 use tempfile::TempDir;
 
+/// The `peregrin` command is the tamias `bins[]` shim → this driver's
+/// engine passthrough — spawn `tamias-driver-peregrin run <argv>`, the
+/// same entrypoint the shim's `cli` verb and `cli.*` ops take.
 fn peregrin(args: &[&str]) -> Output {
-    Command::new(env!("CARGO_BIN_EXE_peregrin"))
+    Command::new(env!("CARGO_BIN_EXE_tamias-driver-peregrin"))
+        .arg("run")
         .args(args)
         .output()
         .unwrap()
