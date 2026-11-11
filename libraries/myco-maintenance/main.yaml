@@ -1,0 +1,43 @@
+# myco-maintenance — scheduled ledger hygiene as a peregrin bundle
+# (PL-016 / org T-022). `driver: schedule` fires `reap.due` on a cron;
+# `driver: shell` runs `myco reap` once per repo ledger under the
+# workspace repos dir and maps rc → event type.
+#
+# Requires `myco` on PATH (the campaign service inherits the env
+# from ~/.config/peregrin/env) and MYCO_REPOS_DIR pointing at the
+# dir containing repo clones (default: the 9aia workspace layout).
+name: myco-maintenance
+
+nodes:
+  - id: reap
+    driver: schedule
+    on: [start]
+    emits: [reap.due]
+    params:
+      cron: "23 */6 * * *"
+      timezone: America/Sao_Paulo
+
+  - id: sweep
+    driver: shell
+    on: [reap.due]
+    emits: [sweep.done, sweep.failed]
+    params:
+      # One `myco reap` per */project worktree; failures are counted,
+      # not fatal — a repo mid-rebase or offline shouldn't stall the
+      # rest of the sweep. rc 0 = every ledger reaped clean.
+      cmd: >-
+        set -u;
+        base="${MYCO_REPOS_DIR:-$HOME/GitHub/9aia/workspace/repos}";
+        fail=0; ran=0;
+        for wt in "$base"/*/project; do
+          [ -d "$wt" ] || continue;
+          ran=$((ran+1));
+          myco reap --idle-days 3 --dir "$wt" --json >/dev/null || fail=$((fail+1));
+        done;
+        echo "swept $ran ledgers, $fail failures";
+        [ "$fail" -eq 0 ]
+      cwd: "~"
+      timeout: 600
+      emit:
+        "0": "sweep.done"
+        default: "sweep.failed"

@@ -1,0 +1,35 @@
+# myco-maintenance — scheduled myco ledger hygiene as a peregrin
+# bundle (PL-016 / org T-022). `tamias install <ref>` fetches this;
+# `tamias deploy myco-maintenance` renders the shared campaign
+# service unit like every other peregrin-bundle.
+name: myco-maintenance
+version: "0.1.0"
+# `peregrin-bundle` routes install/deploy/uninstall through
+# `tamias-driver-peregrin` (capabilities: types ["peregrin-bundle"]).
+type: peregrin-bundle
+description: >-
+  Every 6h: `myco reap --idle-days 3` across every repo ledger under
+  the workspace repos dir — bulk-interrupts claimed/in-progress items
+  idle past the threshold in one commit per ledger. Requires `myco`
+  on PATH and MYCO_REPOS_DIR (or the default 9aia workspace layout)
+  in the service env (~/.config/peregrin/env).
+
+provider:
+  # SHARED provider identity (T8-7) — identical to ci-gate/docs-deploy:
+  # every peregrin-bundle declares provider.name: peregrin so all
+  # campaign services render ONE peregrin-campaign.service hosting
+  # every bundle's generated config in ~/.config/peregrin/serve/.
+  # Keep `exec` identical to the other bundles' — last deploy wins.
+  name: peregrin
+  services:
+    - name: campaign
+      exec: >-
+        ~/.local/bin/peregrin campaign serve ~/.config/peregrin/serve
+        --listen 127.0.0.1:29173 --path /hook
+        --history-dir ~/.local/share/peregrin/serve-history
+        --queue-store-dir ~/.local/share/peregrin/serve-queues
+      env_file: "~/.config/peregrin/env"
+      workdir: "~"
+      restart: on-failure
+  # No ingress: the campaign is schedule-driven, nothing listens.
+  verbs: [run, logs]
