@@ -1,0 +1,62 @@
+# ledger-notify — project-branch commit watcher → ntfy (T-025 /
+# PL-016 Phase 4). `driver: schedule` polls every ledger's
+# `refs/heads/project` tip against a local state file; on movement
+# it diffs `prev..tip` (subjects + `Actor:` trailers) and POSTs a
+# digest to $NTFY_URL. myco stays pull-only — this is a read-only
+# watcher on the git refs, no ledger writes.
+#
+# Env contract (service env, ~/.config/peregrin/env):
+#   NTFY_URL        required — e.g. https://ntfy.sh/<topic> (unset =
+#                   node no-ops cleanly, sweep.done)
+#   MYCO_REPOS_DIR  optional — dir containing repo clones
+#                   (default: the 9aia workspace layout)
+#   LEDGER_NOTIFY_STATE optional — state dir
+#                   (default: ~/.local/share/peregrin/ledger-notify)
+name: ledger-notify
+
+nodes:
+  - id: watch
+    driver: schedule
+    on: [start]
+    emits: [watch.due]
+    params:
+      cron: "7-59/15 * * * *"
+      timezone: America/Sao_Paulo
+
+  - id: sweep
+    driver: shell
+    on: [watch.due]
+    emits: [sweep.done, sweep.failed]
+    params:
+      cmd: >-
+        set -u;
+        base="${MYCO_REPOS_DIR:-$HOME/GitHub/9aia/workspace/repos}";
+        state="${LEDGER_NOTIFY_STATE:-$HOME/.local/share/peregrin/ledger-notify}";
+        mkdir -p "$state";
+        if [ -z "${NTFY_URL:-}" ]; then
+          echo "NTFY_URL unset — nothing to do"; exit 0;
+        fi;
+        fail=0; moved=0;
+        for wt in "$base"/*/project; do
+          [ -d "$wt" ] || continue;
+          name="${wt%/project}"; name="${name##*/}";
+          key=$(printf '%s' "$name" | tr -c 'a-zA-Z0-9' '_');
+          cur=$(git -C "$wt" rev-parse --verify -q refs/heads/project 2>/dev/null) || continue;
+          prev=$(cat "$state/$key" 2>/dev/null || true);
+          if [ -z "$prev" ]; then echo "$cur" > "$state/$key"; continue; fi;
+          if [ "$cur" != "$prev" ]; then
+            moved=$((moved+1));
+            msg=$(git -C "$wt" log --format='%h %s | actor:%(trailers:key=Actor,valueonly)' "$prev..$cur" | head -40);
+            { printf 'myco ledger %s moved %s..%s\n\n%s\n' "$name" "${prev:0:12}" "${cur:0:12}" "$msg"; } \
+              | curl -fsS -H "Title: myco ledger: $name" --data-binary @- "$NTFY_URL" \
+              || fail=$((fail+1));
+            echo "$cur" > "$state/$key";
+          fi;
+        done;
+        echo "checked ledgers, $moved moved, $fail notify failures";
+        [ "$fail" -eq 0 ]
+      cwd: "~"
+      timeout: 300
+      emit:
+        "0": "sweep.done"
+        default: "sweep.failed"

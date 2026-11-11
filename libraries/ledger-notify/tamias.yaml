@@ -1,0 +1,31 @@
+# ledger-notify — project-branch commit watcher → ntfy (T-025 /
+# PL-016 Phase 4). `tamias install <ref>` fetches this;
+# `tamias deploy ledger-notify` renders the shared campaign service
+# unit like every other peregrin-bundle.
+name: ledger-notify
+version: "0.1.0"
+# `peregrin-bundle` routes install/deploy/uninstall through
+# `tamias-driver-peregrin` (capabilities: types ["peregrin-bundle"]).
+type: peregrin-bundle
+description: >-
+  Every 15min: poll each repo's refs/heads/project tip under
+  MYCO_REPOS_DIR against a local state file; on movement POST a
+  commit digest (subjects + Actor trailers) to $NTFY_URL. Read-only
+  on the ledgers — myco stays pull-only.
+
+provider:
+  # SHARED provider identity (T8-7) — identical exec to the other
+  # bundles; last deploy wins the unit file, keep it identical.
+  name: peregrin
+  services:
+    - name: campaign
+      exec: >-
+        ~/.local/bin/peregrin campaign serve ~/.config/peregrin/serve
+        --listen 127.0.0.1:29173 --path /hook
+        --history-dir ~/.local/share/peregrin/serve-history
+        --queue-store-dir ~/.local/share/peregrin/serve-queues
+      env_file: "~/.config/peregrin/env"
+      workdir: "~"
+      restart: on-failure
+  # No ingress: schedule-driven, nothing listens.
+  verbs: [run, logs]
