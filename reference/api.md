@@ -104,6 +104,7 @@ read-only SSE feed.
 | `GET /api/sessions/:id/stream` | SSE stream for one session |
 | `GET /api/sessions/:id/permissions` | Pending permission requests |
 | `POST /api/sessions` | Create (`cwd`, `agent`, `title`, `model`) |
+| `POST /api/sessions/run` | Create + one blocking prompt turn → `PromptWaitResult` (`cwd` + `text`/`attachments`/`parts`, optional `timeoutMs`) |
 | `POST /api/sessions/import` | Import IR or `history` array → store |
 | `POST /api/sessions/:id/prompt` | Send a turn to an attached session |
 | `POST /api/sessions/:id/attach` | Attach (`takeover` preempts live holder) |
