@@ -16,6 +16,7 @@ merged across nodes, plus `/api/node-status`.
 | `GET /api/user` | OS user the node runs as |
 | `GET /api/fs` | Subdirectory listing for a path |
 | `GET /api/events` | SSE feed — session/meta/project/heartbeat |
+| `POST /api/events/inject` | Authenticated typed-event ingest into running campaigns — see below |
 | `GET /api/agents` | Agent runtimes registered on the plane |
 | `GET /api/client/keypair` | Client keypair for the entity plane |
 
@@ -49,6 +50,46 @@ snapshot bytes are opaque end-to-end.
 | `GET /api/entities/{id}/snapshot` | Single-entity snapshot export |
 | `GET /api/entity-index` | Projection index document |
 | `GET /api/pending-ops` | Durable outbox depth (hub: real; bare node: empty) |
+
+## Event ingest
+
+`POST /api/events/inject` is the authenticated write half of the
+event surface — external producers (the bupha CI worker's
+`ci.job.completed` emit, forge check runners, ops tooling) inject a
+typed event into the campaign engine. `GET /api/events` stays the
+read-only SSE feed.
+
+- **Auth** — the shared bearer gate: `Authorization: Bearer
+  <PEREGRIN_TOKEN>` (or a paired `sepia_…` credential /
+  `sepia_token` cookie); open on tokenless loopback like every other
+  `/api/*` route.
+- **Body** — `application/json`, ≤ 64 KiB:
+
+  ```json
+  {
+    "type": "ci.job.completed",
+    "payload": { "job": "build", "result": "success" },
+    "idempotencyKey": "job-1:success",
+    "campaign": "camp-entity-id",
+    "source": "bupha"
+  }
+  ```
+
+  `type` is required and non-empty (`kind` accepted as the `Event`
+  wire alias); `payload` defaults to `{}`; `source` defaults to
+  `"api"`; `idempotencyKey` (`idempotency_key` alias) dedups retries
+  against a bounded ring — a replayed key answers
+  `{"ok": true, "deduplicated": true}` without re-delivering;
+  `campaign` scopes the fan-out to one `kind="campaign"` entity.
+- **Fan-out** — the event is cloned into the ingress channel of
+  every *running* campaign entity (or the one named by `campaign`).
+  Stale/finished runs and closed channels are skipped.
+- **Responses** — `200 {"ok": true, "delivered": <runs that
+  accepted>}` (`delivered: 0` = accepted, but no campaign entity was
+  running); `200 {"ok": true, "deduplicated": true}` on a replayed
+  key; `400` malformed body / missing `type`; `401` bad credential;
+  `404` unknown scoped campaign; `413` over the body cap; `500` sink
+  failure; `501` when the node has no campaign plane wired.
 
 ## Sessions
 

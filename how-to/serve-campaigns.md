@@ -61,6 +61,16 @@ campaign's `params.repos[].name`:
   `params.pull_request_actions` (default `opened,synchronize,reopened`)
   decides which actions it receives — a `synchronize` reaches a route
   that accepts it and is a verified no-op for one that doesn't.
+- `check_run`, `check_suite` and commit-`status` deliveries fan out
+  the same way with their own per-route filters:
+  `params.check_run_actions`/`params.check_suite_actions` (both
+  default `completed` — only a finished check carries a verdict)
+  and `params.status_states` (default every state). Payloads carry
+  `repo`, `sha`, `ref`, `id`, `app`, `pull_requests` (PR numbers),
+  `actor`, `clone_url`, `delivery_id` — `check_run` adds `name`,
+  `status`, `conclusion`, `action`; `check_suite` the same minus
+  `name`; `status` carries `state`, `context`, `target_url`,
+  `description`, `branches` instead.
   Hook *registration* is the deploy driver's job — `tamias driver
   exec <pkg> hooks register` subscribes a repo's hook to
   `pull_request` when the manifest declares it; push-only campaigns

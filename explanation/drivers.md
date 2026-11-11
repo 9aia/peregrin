@@ -62,9 +62,13 @@ A stock node resolves (`peregrin_node::campaign::registry`):
 | `mock-agent` | action | Test/dev agent stub — canned responses, no real CLI. |
 
 Two ingress drivers ship wired into the campaign plane —
-`github-webhook` (HMAC-verified push + `pull_request` listener; PR
-actions filter via `params.pull_request_actions`, default
-`opened,synchronize,reopened`) and `sturn-poll` (git-ref WAL poller).
+`github-webhook` (HMAC-verified `push`, `pull_request`, `check_run`,
+`check_suite` and commit-`status` listener; actions filter via
+`params.pull_request_actions` — default
+`opened,synchronize,reopened` — and `params.check_run_actions` /
+`params.check_suite_actions` — default `completed` — while
+`params.status_states` defaults to every state) and `sturn-poll`
+(git-ref WAL poller).
 `campaign run` registers them against the run-scoped `Injector`;
 `campaign serve` uses a shared injector + webhook demux across every
 hosted campaign (`peregrin_node::campaign::registry_with_ingress[_shared]`).

@@ -113,6 +113,20 @@ installed `peregrin-bundle`. Point your tunnel or reverse proxy at
 `base_ref`, `actor`, and `clone_url`. Checking out a fork's head
 requires a token with read access to the fork repository.
 
+### Check-result triggers (opt-in)
+
+The same listener verifies `check_run`, `check_suite` and commit
+`status` deliveries — the CI-verdict half of a repair loop. Actions
+filter per route: `params.check_run_actions` /
+`params.check_suite_actions` default to `completed` only (the
+verdict-carrying action), `params.status_states` defaults to every
+state. A `check_run` event carries `repo`, `id`, `name`, `status`,
+`conclusion`, `action`, `sha`, `ref`, `app`, `pull_requests` (PR
+numbers), `actor`, `clone_url`, `delivery_id`; `status` carries
+`state`, `context`, `target_url`, `description`, `branches` instead.
+Hook *registration* for these event types is again the deploy
+driver's job — the GitHub hook must subscribe to them.
+
 ## 6. Run the gate
 
 ```bash

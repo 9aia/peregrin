@@ -199,11 +199,16 @@ shipped ones verify before they inject:
   (secret *names* in `params.repos[].secret_env`, resolved through
   the secrets gate), watched-repo allowlist, delivery-id dedup,
   2 MiB body cap; unwatched repos, unverified signatures, and
-  non-`push`/`pull_request` event types are rejected before an event
-  is ever injected. `pull_request` deliveries are additionally
-  action-filtered per route (`params.pull_request_actions`, default
-  `opened,synchronize,reopened`) — a verified delivery for an
-  unwanted action is a `200` no-op, never an injected event.
+  event types outside `push`/`pull_request`/`check_run`/
+  `check_suite`/`status` are rejected before an event is ever
+  injected. `pull_request`/`check_run`/`check_suite` deliveries are
+  additionally action-filtered per route
+  (`params.pull_request_actions` default
+  `opened,synchronize,reopened`; `params.check_run_actions` /
+  `params.check_suite_actions` default `completed`) and `status`
+  deliveries state-filtered (`params.status_states`, default every
+  state) — a verified delivery for an unwanted value is a `200`
+  no-op, never an injected event.
 - `sturn-poll` — unauthenticated by design (it diffs git refs
   locally); `actor` is unattested `""`.
 
