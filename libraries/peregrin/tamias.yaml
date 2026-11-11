@@ -31,7 +31,7 @@
 # `health`/`status`/`logs`/`config-schema`). Installing this pack
 # does not deploy a campaign or a node service.
 name: peregrin
-version: "0.1.0"
+version: "0.2.0"
 type: files
 description: >-
   Generic distributed orchestration — campaigns of event-driven

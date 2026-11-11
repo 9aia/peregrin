@@ -42,7 +42,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2024"
 rust-version = "1.85"
 license = "MIT"
@@ -51,15 +51,15 @@ description = "Generic distributed orchestration — campaigns of event-driven w
 
 [workspace.dependencies]
 # Internal crates.
-peregrin-session = { path = "crates/peregrin-session", version = "0.1.0" }
-peregrin-auth = { path = "crates/peregrin-auth", version = "0.1.0" }
-peregrin-bus = { path = "crates/peregrin-bus", version = "0.1.0" }
-peregrin-cli = { path = "crates/peregrin-cli", version = "0.1.0" }
-peregrin-config = { path = "crates/peregrin-config", version = "0.1.0" }
-peregrin-config-file = { path = "crates/peregrin-config-file", version = "0.1.0" }
-peregrin-config-toml = { path = "crates/peregrin-config-toml", version = "0.1.0" }
-peregrin-config-yaml = { path = "crates/peregrin-config-yaml", version = "0.1.0" }
-peregrin-core = { path = "crates/peregrin-core", version = "0.1.0" }
+peregrin-session = { path = "crates/peregrin-session", version = "0.2.0" }
+peregrin-auth = { path = "crates/peregrin-auth", version = "0.2.0" }
+peregrin-bus = { path = "crates/peregrin-bus", version = "0.2.0" }
+peregrin-cli = { path = "crates/peregrin-cli", version = "0.2.0" }
+peregrin-config = { path = "crates/peregrin-config", version = "0.2.0" }
+peregrin-config-file = { path = "crates/peregrin-config-file", version = "0.2.0" }
+peregrin-config-toml = { path = "crates/peregrin-config-toml", version = "0.2.0" }
+peregrin-config-yaml = { path = "crates/peregrin-config-yaml", version = "0.2.0" }
+peregrin-core = { path = "crates/peregrin-core", version = "0.2.0" }
 tamias-core = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6", version = "0.1" }
 tamias-source = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6", version = "0.1" }
 tamias-source-fs = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6", version = "0.1" }
@@ -67,34 +67,34 @@ tamias-source-git = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9da
 tamias-source-http = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6", version = "0.1" }
 tamias-store-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6", version = "0.1" }
 tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6", version = "0.1" }
-peregrin-driver = { path = "crates/peregrin-driver", version = "0.1.0" }
-peregrin-driver-agent = { path = "crates/peregrin-driver-agent", version = "0.1.0" }
-peregrin-driver-council = { path = "crates/peregrin-driver-council", version = "0.1.0" }
-peregrin-driver-git = { path = "crates/peregrin-driver-git", version = "0.1.0" }
-peregrin-driver-github-webhook = { path = "crates/peregrin-driver-github-webhook", version = "0.1.0" }
-peregrin-driver-http = { path = "crates/peregrin-driver-http", version = "0.1.0" }
-peregrin-driver-human = { path = "crates/peregrin-driver-human", version = "0.1.0" }
-peregrin-driver-schedule = { path = "crates/peregrin-driver-schedule", version = "0.1.0" }
-peregrin-driver-shell = { path = "crates/peregrin-driver-shell", version = "0.1.0" }
-peregrin-driver-sturn = { path = "crates/peregrin-driver-sturn", version = "0.1.0" }
-peregrin-driver-subworkflow = { path = "crates/peregrin-driver-subworkflow", version = "0.1.0" }
-peregrin-engine = { path = "crates/peregrin-engine", version = "0.1.0" }
-peregrin-git = { path = "crates/peregrin-git", version = "0.1.0" }
-peregrin-http = { path = "crates/peregrin-http", version = "0.1.0" }
-peregrin-hub = { path = "crates/peregrin-hub", version = "0.1.0" }
-peregrin-loader = { path = "crates/peregrin-loader", version = "0.1.0" }
-peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml", version = "0.1.0" }
-peregrin-mcp = { path = "crates/peregrin-mcp", version = "0.1.0" }
-peregrin-node = { path = "crates/peregrin-node", version = "0.1.0" }
-peregrin-queue = { path = "crates/peregrin-queue", version = "0.1.0" }
-peregrin-queue-sqlite = { path = "crates/peregrin-queue-sqlite", version = "0.1.0" }
-peregrin-remote = { path = "crates/peregrin-remote", version = "0.1.0" }
-peregrin-remote-http = { path = "crates/peregrin-remote-http", version = "0.1.0" }
-peregrin-sink-github-status = { path = "crates/peregrin-sink-github-status", version = "0.1.0" }
-peregrin-store = { path = "crates/peregrin-store", version = "0.1.0" }
-peregrin-store-json = { path = "crates/peregrin-store-json", version = "0.1.0" }
-peregrin-template = { path = "crates/peregrin-template", version = "0.1.0" }
-peregrin-testkit = { path = "crates/peregrin-testkit", version = "0.1.0" }
+peregrin-driver = { path = "crates/peregrin-driver", version = "0.2.0" }
+peregrin-driver-agent = { path = "crates/peregrin-driver-agent", version = "0.2.0" }
+peregrin-driver-council = { path = "crates/peregrin-driver-council", version = "0.2.0" }
+peregrin-driver-git = { path = "crates/peregrin-driver-git", version = "0.2.0" }
+peregrin-driver-github-webhook = { path = "crates/peregrin-driver-github-webhook", version = "0.2.0" }
+peregrin-driver-http = { path = "crates/peregrin-driver-http", version = "0.2.0" }
+peregrin-driver-human = { path = "crates/peregrin-driver-human", version = "0.2.0" }
+peregrin-driver-schedule = { path = "crates/peregrin-driver-schedule", version = "0.2.0" }
+peregrin-driver-shell = { path = "crates/peregrin-driver-shell", version = "0.2.0" }
+peregrin-driver-sturn = { path = "crates/peregrin-driver-sturn", version = "0.2.0" }
+peregrin-driver-subworkflow = { path = "crates/peregrin-driver-subworkflow", version = "0.2.0" }
+peregrin-engine = { path = "crates/peregrin-engine", version = "0.2.0" }
+peregrin-git = { path = "crates/peregrin-git", version = "0.2.0" }
+peregrin-http = { path = "crates/peregrin-http", version = "0.2.0" }
+peregrin-hub = { path = "crates/peregrin-hub", version = "0.2.0" }
+peregrin-loader = { path = "crates/peregrin-loader", version = "0.2.0" }
+peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml", version = "0.2.0" }
+peregrin-mcp = { path = "crates/peregrin-mcp", version = "0.2.0" }
+peregrin-node = { path = "crates/peregrin-node", version = "0.2.0" }
+peregrin-queue = { path = "crates/peregrin-queue", version = "0.2.0" }
+peregrin-queue-sqlite = { path = "crates/peregrin-queue-sqlite", version = "0.2.0" }
+peregrin-remote = { path = "crates/peregrin-remote", version = "0.2.0" }
+peregrin-remote-http = { path = "crates/peregrin-remote-http", version = "0.2.0" }
+peregrin-sink-github-status = { path = "crates/peregrin-sink-github-status", version = "0.2.0" }
+peregrin-store = { path = "crates/peregrin-store", version = "0.2.0" }
+peregrin-store-json = { path = "crates/peregrin-store-json", version = "0.2.0" }
+peregrin-template = { path = "crates/peregrin-template", version = "0.2.0" }
+peregrin-testkit = { path = "crates/peregrin-testkit", version = "0.2.0" }
 
 # sepia — the session plane these crates embed. Git deps on `main`
 # (the branch carrying the `sepia serve` store-op surface —

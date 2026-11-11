@@ -49,7 +49,7 @@ session plane over the wire — it never reimplements it.
 pack — the `peregrin` command ships as a tamias `bins[]` shim →
 `tamias-driver-peregrin cli` engine passthrough (no hand-rolled
 binary), with `peregrin-node`/`peregrin-hub` as payload bins.
-Install: `tamias install 9aia:peregrin@0.1.0` (org registry — needs
+Install: `tamias install 9aia:peregrin@0.2.0` (org registry — needs
 `TAMIAS_REGISTRY_TOKEN`), or `cargo xtask pack` +
 `tamias install --allow-drivers ./libraries/peregrin` from a checkout.
 `project/` carries the ADRs — the engine's design history and spec.
