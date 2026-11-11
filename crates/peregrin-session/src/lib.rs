@@ -512,6 +512,16 @@ impl SepiaService {
         if let Some(t) = timeout.filter(|t| !t.is_zero()) {
             p["timeoutMs"] = json!(t.as_millis() as u64);
         }
+        // The wire call blocks for the whole turn — the conn's per-call
+        // budget must outlive `timeout` plus settle/tail margin, or a
+        // real agent turn dies at the transport default (~30s) while
+        // the session keeps running. Unbounded waits get a de-facto
+        // ceiling; the HTTP route caps `timeoutMs` at two hours anyway.
+        let budget = timeout.map_or_else(
+            || Duration::from_secs(48 * 3600),
+            |t| t + Duration::from_secs(300),
+        );
+        self.current().set_call_timeout(budget);
         self.decode("sessions.prompt_wait", p).await
     }
 
