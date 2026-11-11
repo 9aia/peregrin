@@ -8,7 +8,14 @@ plane through `sepia serve`.
 ## Install
 
 The `peregrin` command ships as a tamias pack (`libraries/peregrin`)
-— there is no cargo bin to `cargo install`. From a checkout:
+— there is no cargo bin to `cargo install`. With `tamias` installed:
+
+```bash
+tamias install 9aia:peregrin@0.1.0    # org registry (needs TAMIAS_REGISTRY_TOKEN)
+```
+
+That deploys the `peregrin` shim plus the `peregrin-node`/
+`peregrin-hub` payload bins. From a checkout:
 
 ```bash
 cargo xtask pack                                        # stage release bins
