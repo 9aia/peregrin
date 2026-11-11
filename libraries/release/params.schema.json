@@ -30,8 +30,8 @@
     },
     "cmd": {
       "type": "string",
-      "default": "bash scripts/release.sh",
-      "description": "Release command (tag + cargo publish), run inside the worktree."
+      "default": "tarsi-serve release --yes",
+      "description": "Release command run inside the worktree. Default drives tarsi-serve (9aia/tarsi) — the repo's tarsi.toml configures units/publish targets; any shell pipeline still works."
     },
     "worktree_base": {
       "type": "string",

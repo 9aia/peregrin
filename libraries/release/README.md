@@ -2,8 +2,15 @@
 
 The release pipeline as a peregrin bundle — bupha's `release.sh` role:
 push to the release ref → detached worktree at the pushed sha → the
-release command (tag + `cargo publish` via `scripts/release.sh` or
-equivalent) → GitHub commit status under `ci/<campaign>`.
+release command → GitHub commit status under `ci/<campaign>`.
+
+The default command is **`tarsi-serve release --yes`** — [9aia/tarsi](https://github.com/9aia/tarsi)'s
+release expertise (workspace scan → conventional-commit bumps →
+changelog → manifests → tags → crates.io/GitHub Releases → push),
+driven one-shot. The released repo's `tarsi.toml` configures units,
+tag format, and publish targets; any other shell pipeline still
+works via the `cmd` param. `tarsi-serve` must be on PATH inside the
+worktree environment (`cargo install --git ssh://git@github.com/9aia/tarsi.git tarsi-serve`).
 
 Unlike `ci-gate`, `supersede.cancel_running` is **false**: a stale
 queued release is pointless (latest-wins dedupes pending jobs), but a
@@ -26,7 +33,7 @@ config:
   cmd: "bash scripts/release.sh"
   token_env: "GITHUB_TOKEN"
 capabilities:
-  secrets: [CARGO_REGISTRY_TOKEN]
+  secrets: [CARGO_REGISTRY_TOKEN, GITHUB_TOKEN]
 nodes:
   - id: release.ingress
     driver: github-webhook

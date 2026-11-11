@@ -17,7 +17,7 @@ config:
   repo: ""                          # owner/name to release; "" = any watched repo
   ref: "refs/heads/main"            # the release ref
   status_repo: ""                   # bupha's redirect; "" = config.repo
-  cmd: "bash scripts/release.sh"    # the release pipeline (tag + cargo publish)
+  cmd: "tarsi-serve release --yes"  # tarsi release expertise (plan → publish); tarsi.toml in the repo configures units
   worktree_base: "~/.local/share/peregrin/worktrees"
   token_env: "GITHUB_TOKEN"         # NAME of the forge-token secret — never a value
   timeout: 600
@@ -87,6 +87,7 @@ nodes:
           timeout: "${config.timeout:-600}"
           env:
             CARGO_REGISTRY_TOKEN: "${secret.CARGO_REGISTRY_TOKEN:-}"
+            GITHUB_TOKEN: "${secret.GITHUB_TOKEN:-}"
       emit:
         "0": release.done
         default: release.failed
