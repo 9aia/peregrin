@@ -2,7 +2,7 @@
 id = "ADR-0021"
 title = "ADR-0021: Map and reduce drivers"
 status = "done"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0021: Map and reduce drivers

@@ -3,7 +3,7 @@ id = "I-011"
 title = "ship or drop .driver.yml presets (ADR-0026) + *.field.yml/dependencies (ADR-0032/33) — bundles assume them; never shipped"
 status = "done"
 created = "2026-11-04"
-priority = "medium"
+priority = "med"
 +++
 
 # ship or drop .driver.yml presets (ADR-0026) + *.field.yml/dependencies (ADR-0032/33) — bundles assume them; never shipped

@@ -3,7 +3,7 @@ id = "PL-002"
 title = "v2 — sepia+peregrin restructure"
 status = "done"
 created = "2026-10-29"
-priority = "medium"
+priority = "med"
 +++
 
 # v2 — Sepia + Peregrin restructure plan

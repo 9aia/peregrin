@@ -2,7 +2,7 @@
 id = "ADR-0025"
 title = "ADR-0025: Migrating `with:` to `params`"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0025: Migrating `with:` to `params`

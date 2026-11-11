@@ -3,7 +3,7 @@ id = "ADR-0085"
 title = "Composable Lego-Style VM Architecture"
 status = "open"
 created = "2026-11-05"
-priority = "medium"
+priority = "med"
 +++
 
 # Composable Lego-Style VM Architecture

@@ -2,7 +2,7 @@
 id = "PL-001"
 title = "Distributed / production-ready plan"
 status = "done"
-priority = "medium"
+priority = "med"
 +++
 
 # Distributed / production-ready plan

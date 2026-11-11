@@ -2,7 +2,7 @@
 id = "ADR-0011"
 title = "ADR-0011: Web UI for Peregrin"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0011: Web UI for Peregrin

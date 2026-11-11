@@ -2,7 +2,7 @@
 id = "ADR-0008"
 title = "ADR-0008: `handl install` and multi-registry package resolution"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0008: `handl install` and multi-registry package resolution

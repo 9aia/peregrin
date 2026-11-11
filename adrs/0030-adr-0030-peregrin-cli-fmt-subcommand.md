@@ -2,7 +2,7 @@
 id = "ADR-0030"
 title = "ADR-0030: Peregrin CLI `fmt` subcommand"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0030: Peregrin CLI `fmt` subcommand

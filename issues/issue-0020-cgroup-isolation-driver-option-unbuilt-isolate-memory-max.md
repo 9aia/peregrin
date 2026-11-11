@@ -3,7 +3,7 @@ id = "I-020"
 title = "cgroup isolation driver option unbuilt (isolate/memory_max)"
 status = "open"
 created = "2026-11-07"
-priority = "medium"
+priority = "med"
 +++
 
 # cgroup isolation driver option unbuilt (isolate/memory_max)

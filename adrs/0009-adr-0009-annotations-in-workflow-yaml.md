@@ -2,7 +2,7 @@
 id = "ADR-0009"
 title = "ADR-0009: Annotations in workflow YAML"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0009: Annotations in workflow YAML

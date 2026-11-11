@@ -3,7 +3,7 @@ id = "ADR-0089"
 title = "Serialization Framework"
 status = "open"
 created = "2026-11-05"
-priority = "medium"
+priority = "med"
 +++
 
 # Serialization Framework

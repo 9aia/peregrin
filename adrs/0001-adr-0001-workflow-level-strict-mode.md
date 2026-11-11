@@ -2,7 +2,7 @@
 id = "ADR-0001"
 title = "ADR-0001: Workflow-level strict mode"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0001: Workflow-level strict mode

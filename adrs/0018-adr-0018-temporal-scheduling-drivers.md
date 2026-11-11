@@ -2,7 +2,7 @@
 id = "ADR-0018"
 title = "ADR-0018: Temporal scheduling drivers"
 status = "done"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0018: Temporal scheduling drivers

@@ -2,7 +2,7 @@
 id = "ADR-0040"
 title = "ADR-0040: Provider-based observability CLI"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0040: Provider-based observability CLI

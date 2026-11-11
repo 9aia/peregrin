@@ -2,7 +2,7 @@
 id = "ADR-0033"
 title = "ADR-0033: A `dependencies` built-in field for custom fields"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0033: A `dependencies` built-in field for custom fields

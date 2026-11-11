@@ -2,7 +2,7 @@
 id = "ADR-0027"
 title = "ADR-0027: Rename export-log to traces"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0027: Rename export-log to traces

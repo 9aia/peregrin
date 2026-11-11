@@ -2,7 +2,7 @@
 id = "ADR-0013"
 title = "ADR-0013: Persistent State for Agents and Events"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0013: Persistent State for Agents and Events

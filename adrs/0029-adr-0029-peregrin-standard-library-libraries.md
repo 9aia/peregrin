@@ -2,7 +2,7 @@
 id = "ADR-0029"
 title = "ADR-0029: Peregrin standard library (libraries/)"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0029: Peregrin standard library (libraries/)

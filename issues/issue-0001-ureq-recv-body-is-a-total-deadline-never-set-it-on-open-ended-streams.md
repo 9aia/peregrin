@@ -4,7 +4,7 @@ title = "ureq recv_body is a total deadline — never set it on open-ended strea
 status = "done"
 created = "2026-11-02"
 owner = "devin"
-priority = "medium"
+priority = "med"
 labels = ["gotcha"]
 +++
 

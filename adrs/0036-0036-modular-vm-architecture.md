@@ -2,7 +2,7 @@
 id = "ADR-0036"
 title = "0036 — Modular VM Architecture"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # 0036 — Modular VM Architecture

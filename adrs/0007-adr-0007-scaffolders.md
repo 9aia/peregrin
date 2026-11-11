@@ -2,7 +2,7 @@
 id = "ADR-0007"
 title = "ADR-0007: Scaffolders"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0007: Scaffolders

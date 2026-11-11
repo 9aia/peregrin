@@ -3,7 +3,7 @@ id = "ADR-0079"
 title = "install/remove — abstracted refs (file/git/http), artifact store + cache"
 status = "done"
 created = "2026-11-04"
-priority = "medium"
+priority = "med"
 +++
 
 # install/remove — abstracted refs (file/git/http), artifact store + cache

@@ -2,7 +2,7 @@
 id = "ADR-0003"
 title = "ADR-0003: Secrets provider abstraction"
 status = "done"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0003: Secrets provider abstraction

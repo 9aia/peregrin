@@ -3,7 +3,7 @@ id = "I-010"
 title = "queue/supersede location — engine vs node wrapper; spec event→key dedup, active-run cancel, drain"
 status = "done"
 created = "2026-11-04"
-priority = "medium"
+priority = "med"
 +++
 
 # queue/supersede location — engine vs node wrapper; spec event→key dedup, active-run cancel, drain

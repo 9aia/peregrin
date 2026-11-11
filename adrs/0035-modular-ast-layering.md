@@ -2,7 +2,7 @@
 id = "ADR-0035"
 title = "Modular AST Layering"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # Modular AST Layering

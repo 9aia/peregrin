@@ -3,7 +3,7 @@ id = "I-022"
 title = "params.schema.json validation not wired — README overstates"
 status = "open"
 created = "2026-11-07"
-priority = "medium"
+priority = "med"
 +++
 
 # params.schema.json validation not wired — README overstates

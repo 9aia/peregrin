@@ -2,7 +2,7 @@
 id = "ADR-0024"
 title = "ADR-0024: Custom functions via YAML"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0024: Custom functions via YAML

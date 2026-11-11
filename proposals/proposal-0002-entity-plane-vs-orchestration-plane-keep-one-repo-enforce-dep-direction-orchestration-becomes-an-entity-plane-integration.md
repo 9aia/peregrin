@@ -4,7 +4,7 @@ title = "Entity plane vs orchestration plane: keep one repo, enforce dep directi
 status = "open"
 created = "2026-11-09"
 owner = "devin"
-priority = "medium"
+priority = "med"
 labels = ["architecture", "peregrin"]
 +++
 

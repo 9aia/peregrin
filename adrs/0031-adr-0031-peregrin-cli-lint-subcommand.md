@@ -2,7 +2,7 @@
 id = "ADR-0031"
 title = "ADR-0031: Peregrin CLI `lint` subcommand"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0031: Peregrin CLI `lint` subcommand

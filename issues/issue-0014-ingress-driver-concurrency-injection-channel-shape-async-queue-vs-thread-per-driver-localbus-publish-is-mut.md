@@ -3,7 +3,7 @@ id = "I-014"
 title = "ingress-driver concurrency — injection channel shape (async queue vs thread-per-driver); LocalBus::publish is &mut"
 status = "done"
 created = "2026-11-04"
-priority = "medium"
+priority = "med"
 +++
 
 # ingress-driver concurrency — injection channel shape (async queue vs thread-per-driver); LocalBus::publish is &mut

@@ -2,7 +2,7 @@
 id = "ADR-0022"
 title = "ADR-0022: Subworkflow driver"
 status = "done"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0022: Subworkflow driver

@@ -3,7 +3,7 @@ id = "ADR-0090"
 title = "First-Class Testing Standard Library for handl"
 status = "open"
 created = "2026-11-05"
-priority = "medium"
+priority = "med"
 +++
 
 # First-Class Testing Standard Library for handl

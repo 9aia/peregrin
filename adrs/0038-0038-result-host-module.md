@@ -2,7 +2,7 @@
 id = "ADR-0038"
 title = "0038 — Result Host Module"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # 0038 — Result Host Module

@@ -2,7 +2,7 @@
 id = "ADR-0010"
 title = "ADR-0010: Versioning for workflows, snippets, and nodes"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0010: Versioning for workflows, snippets, and nodes

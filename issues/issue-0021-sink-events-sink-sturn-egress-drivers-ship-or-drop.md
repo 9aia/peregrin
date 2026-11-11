@@ -3,7 +3,7 @@ id = "I-021"
 title = "sink-events / sink-sturn egress drivers: ship or drop"
 status = "open"
 created = "2026-11-07"
-priority = "medium"
+priority = "med"
 +++
 
 # sink-events / sink-sturn egress drivers: ship or drop

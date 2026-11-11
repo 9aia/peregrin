@@ -3,7 +3,7 @@ id = "P-001"
 title = "Campaigns as entities — closing the entity-plane loop"
 status = "done"
 created = "2026-11-05"
-priority = "medium"
+priority = "med"
 +++
 
 # Campaigns as entities — closing the entity-plane loop

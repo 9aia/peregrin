@@ -2,7 +2,7 @@
 id = "ADR-0026"
 title = "ADR-0026: Custom drivers via YAML"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0026: Custom drivers via YAML

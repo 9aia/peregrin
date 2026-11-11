@@ -2,7 +2,7 @@
 id = "ADR-0032"
 title = "ADR-0032: User-defined workflow fields via `*.field.yml`"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0032: User-defined workflow fields via `*.field.yml`

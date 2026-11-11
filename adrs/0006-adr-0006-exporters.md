@@ -2,7 +2,7 @@
 id = "ADR-0006"
 title = "ADR-0006: Exporters"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0006: Exporters

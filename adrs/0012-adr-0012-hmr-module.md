@@ -2,7 +2,7 @@
 id = "ADR-0012"
 title = "ADR-0012: HMR Module"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0012: HMR Module

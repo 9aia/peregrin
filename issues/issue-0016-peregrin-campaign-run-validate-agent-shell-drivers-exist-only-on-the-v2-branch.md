@@ -4,7 +4,7 @@ title = "peregrin campaign run/validate + agent/shell drivers exist only on the 
 status = "done"
 created = "2026-11-03"
 owner = "devin"
-priority = "medium"
+priority = "med"
 labels = ["campaign", "peregrin"]
 +++
 

@@ -3,7 +3,7 @@ id = "I-013"
 title = ".handl/ vs .peregrin/ discovery root + auto-discovery boundaries for node-config workflows (security)"
 status = "done"
 created = "2026-11-04"
-priority = "medium"
+priority = "med"
 +++
 
 # .handl/ vs .peregrin/ discovery root + auto-discovery boundaries for node-config workflows (security)

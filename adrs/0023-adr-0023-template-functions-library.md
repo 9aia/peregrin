@@ -2,7 +2,7 @@
 id = "ADR-0023"
 title = "ADR-0023: Template functions library"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0023: Template functions library

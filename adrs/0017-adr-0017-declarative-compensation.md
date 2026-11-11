@@ -2,7 +2,7 @@
 id = "ADR-0017"
 title = "ADR-0017: Declarative compensation"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0017: Declarative compensation

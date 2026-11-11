@@ -3,7 +3,7 @@ id = "ADR-0087"
 title = "Colorless Execution — Async/Sync as a Host Concern"
 status = "open"
 created = "2026-11-05"
-priority = "medium"
+priority = "med"
 +++
 
 # Colorless Execution — Async/Sync as a Host Concern

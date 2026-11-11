@@ -2,7 +2,7 @@
 id = "ADR-0034"
 title = "ADR-0034: A shared `parser-common` core for handl and other front-ends"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0034: A shared `parser-common` core for handl and other front-ends

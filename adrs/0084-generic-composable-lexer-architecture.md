@@ -3,7 +3,7 @@ id = "ADR-0084"
 title = "Generic, Composable Lexer Architecture"
 status = "open"
 created = "2026-11-05"
-priority = "medium"
+priority = "med"
 +++
 
 # Generic, Composable Lexer Architecture

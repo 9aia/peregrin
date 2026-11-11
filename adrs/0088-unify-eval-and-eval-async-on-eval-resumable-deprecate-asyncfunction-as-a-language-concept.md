@@ -3,7 +3,7 @@ id = "ADR-0088"
 title = "Unify `eval` and `eval_async` on `eval_resumable`; Deprecate `AsyncFunction` as a Language Concept"
 status = "open"
 created = "2026-11-05"
-priority = "medium"
+priority = "med"
 +++
 
 # Unify `eval` and `eval_async` on `eval_resumable`; Deprecate `AsyncFunction` as a Language Concept

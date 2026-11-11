@@ -2,7 +2,7 @@
 id = "ADR-0004"
 title = "ADR-0004: Council driver for agent voting"
 status = "done"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0004: Council driver for agent voting

@@ -3,7 +3,7 @@ id = "ADR-0086"
 title = "Generic, Pluggable Value and Function Representation for handl-vm"
 status = "open"
 created = "2026-11-05"
-priority = "medium"
+priority = "med"
 +++
 
 # Generic, Pluggable Value and Function Representation for handl-vm

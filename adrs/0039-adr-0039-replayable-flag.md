@@ -2,7 +2,7 @@
 id = "ADR-0039"
 title = "ADR-0039: `replayable` flag"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0039: `replayable` flag

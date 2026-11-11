@@ -2,7 +2,7 @@
 id = "ADR-0015"
 title = "Replace `mode: all` with `dependsOn` glob patterns"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # Replace `mode: all` with `dependsOn` glob patterns

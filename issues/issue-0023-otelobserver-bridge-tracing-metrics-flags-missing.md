@@ -3,7 +3,7 @@ id = "I-023"
 title = "OtelObserver bridge + --tracing/--metrics flags missing"
 status = "open"
 created = "2026-11-07"
-priority = "medium"
+priority = "med"
 +++
 
 # OtelObserver bridge + --tracing/--metrics flags missing

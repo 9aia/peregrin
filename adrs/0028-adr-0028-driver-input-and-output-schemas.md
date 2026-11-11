@@ -2,7 +2,7 @@
 id = "ADR-0028"
 title = "ADR-0028: Driver input and output schemas"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0028: Driver input and output schemas

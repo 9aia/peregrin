@@ -2,7 +2,7 @@
 id = "ADR-0002"
 title = "ADR-0002: DLQ, queue, and export-log adapters"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0002: DLQ, queue, and export-log adapters

@@ -2,7 +2,7 @@
 id = "ADR-0020"
 title = "ADR-0020: Package registry and local DX"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0020: Package registry and local DX

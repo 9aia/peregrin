@@ -2,7 +2,7 @@
 id = "ADR-0014"
 title = "ADR-0014: Exhaust Node"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0014: Exhaust Node

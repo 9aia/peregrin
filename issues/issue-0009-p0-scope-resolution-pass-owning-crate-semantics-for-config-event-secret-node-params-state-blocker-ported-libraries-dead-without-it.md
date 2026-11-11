@@ -3,7 +3,7 @@ id = "I-009"
 title = "P0: scope-resolution pass — owning crate + semantics for ${config|event|secret|node|params|state} (blocker: ported libraries dead without it)"
 status = "done"
 created = "2026-11-04"
-priority = "medium"
+priority = "med"
 +++
 
 # P0: scope-resolution pass — owning crate + semantics for ${config|event|secret|node|params|state} (blocker: ported libraries dead without it)

@@ -2,7 +2,7 @@
 id = "ADR-0037"
 title = "ADR-0037: VM Build-Kit and Categorical Canonical Semantics"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0037: VM Build-Kit and Categorical Canonical Semantics

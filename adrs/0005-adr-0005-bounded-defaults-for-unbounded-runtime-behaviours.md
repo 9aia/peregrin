@@ -2,7 +2,7 @@
 id = "ADR-0005"
 title = "ADR-0005: Bounded defaults for unbounded runtime behaviours"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0005: Bounded defaults for unbounded runtime behaviours

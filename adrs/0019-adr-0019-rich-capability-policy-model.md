@@ -2,7 +2,7 @@
 id = "ADR-0019"
 title = "ADR-0019: Rich capability policy model"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0019: Rich capability policy model

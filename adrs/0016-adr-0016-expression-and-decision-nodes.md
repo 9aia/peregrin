@@ -2,7 +2,7 @@
 id = "ADR-0016"
 title = "ADR-0016: Expression and decision nodes"
 status = "open"
-priority = "medium"
+priority = "med"
 +++
 
 # ADR-0016: Expression and decision nodes
