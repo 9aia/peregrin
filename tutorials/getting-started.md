@@ -7,14 +7,19 @@ plane through `sepia serve`.
 
 ## Install
 
+The `peregrin` command ships as a tamias pack (`libraries/peregrin`)
+— there is no cargo bin to `cargo install`. From a checkout:
+
 ```bash
-cargo install --path crates/peregrin-cli --bin peregrin
-cargo install --path crates/peregrin-cli --bin peregrin-hub
-cargo install --path <sepia-checkout>/crates/sepia-cli
+cargo xtask pack                                        # stage release bins
+cargo install --path crates/peregrin-hub               # the hub daemon
+tamias install --allow-drivers ./libraries/peregrin    # the peregrin command
 ```
 
-Or inside a checkout, `cargo xtask install` builds `peregrin`,
-`peregrin-hub`, and `tamias-driver-peregrin` into `~/.local`.
+Or inside a checkout, `cargo xtask install` builds
+`peregrin-hub` and `tamias-driver-peregrin` into `~/.local` — pair it
+with `cargo xtask pack` + the `tamias install` above for the
+`peregrin` command itself.
 
 ## Run the node
 

@@ -62,11 +62,15 @@ of chasing auto-minted `node_<hex>` ids.
 
 ## Installing peregrin on the runner
 
-Until published releases exist, install from source:
+Until published releases exist, install from source — the `peregrin`
+command is a tamias `bins[]` shim, so stage the pack payload and let
+tamias deploy it:
 
 ```bash
 git config --global url."https://github.com/".insteadOf "ssh://git@github.com/"
-cargo install --git https://github.com/9aia/peregrin.git --locked --bin peregrin --branch <ref>
+git clone https://github.com/9aia/peregrin.git && cd peregrin
+cargo xtask pack                                   # release bins → libraries/peregrin/{drivers,tools}/bin/<triple>/
+tamias install --allow-drivers ./libraries/peregrin
 ```
 
 Two things to know:
@@ -75,8 +79,10 @@ Two things to know:
   `sepia`/`tamias`/`hypha` crates as `ssh://git@github.com/…` deps;
   runners have no SSH keys. The repos are public, so https works.
 - **It compiles the dependency graph** — expect several minutes on a
-  cold cache. Once release tarballs ship, download
-  `peregrin-x86_64-unknown-linux-gnu.tar.gz` instead.
+  cold cache (`cargo xtask pack` release-builds the driver plus the
+  `peregrin-node`/`peregrin-hub` payload bins). Once release
+  tarballs ship, download `peregrin-x86_64-unknown-linux-gnu.tar.gz`
+  instead.
 
 ## Session plane honesty
 
