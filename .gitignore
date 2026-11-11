@@ -41,6 +41,10 @@ target/
 /target
 node_modules
 Cargo.lock.tmp
+
+# tamias pack payload — built by `cargo xtask pack`
+/libraries/peregrin/drivers/
+/libraries/peregrin/tools/
 # .cargo/config.toml is committed (xtask alias); local [patch]
 # overrides for sibling sepia checkouts belong in that file — see
 # .cargo/config.toml.example.

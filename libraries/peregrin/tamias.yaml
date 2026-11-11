@@ -1,0 +1,55 @@
+# peregrin — the orchestration CLI as a tamias package (T-012: the
+# replication of the cuora P-023 pilot — a real product CLI riding
+# `bins[]`, no hand-rolled binary).
+#
+# `cargo xtask pack` release-builds the payload into this dir
+# (gitignored build artifacts):
+#
+# - `drivers/bin/<host-triple>/tamias-driver-peregrin` — the bundled
+#   driver `bins[].driver: peregrin` resolves; `tamias install
+#   ./libraries/peregrin` (or the packed `.tgz` / a registry ref)
+#   registers it into `<tamias-home>/drivers/`.
+# - `tools/bin/<host-triple>/{peregrin-node,peregrin-hub}` — payload
+#   bins: the two daemon binaries are real executables (not engine
+#   verbs), so they ship as payload and deploy verbatim.
+#
+# The `peregrin` shim is a generated script → `tamias bin exec` →
+# `tamias-driver-peregrin cli --dir <pkg> --name peregrin <argv>` →
+# the peregrin engine lib's `run_from` in-process with inherited
+# stdio. That is full argv parity with the retired `peregrin`
+# binary: every bounded verb, `--help`/`--version`, remote verbs'
+# `--node`/`--token`, and the unbounded surfaces — `peregrin serve`
+# (the node daemon, `peregrin_node::serve` in-process),
+# `campaign serve`/`run`, `sessions attach`/`stream`, `events` —
+# all stream end-to-end.
+#
+# NOTE: this pack is the *command* surface. The campaign/node
+# bundles (`libraries/{ci-gate,ci-ingress,release,…}`,
+# `type: peregrin-bundle`/`peregrin-node`) are a different thing —
+# content packs the same driver consumes via its tamias
+# content-type verbs (`install`/`deploy`/`uninstall`/`hooks`/
+# `health`/`status`/`logs`/`config-schema`). Installing this pack
+# does not deploy a campaign or a node service.
+name: peregrin
+version: "0.1.0"
+type: files
+description: >-
+  Generic distributed orchestration — campaigns of event-driven
+  workflows over generic entities across paired nodes. Every verb
+  rides the tamias-driver-peregrin engine passthrough; `serve`,
+  `campaign serve`/`run`, `sessions attach`/`stream`, and `events`
+  are the streaming surfaces. `peregrin-node`/`peregrin-hub` ship
+  as payload bins — the standalone daemons.
+
+bins:
+  # The command — generated shim → driver `cli` passthrough.
+  - name: peregrin
+    shim: cli
+    driver: peregrin
+  # The daemons — real binaries, not verbs of the `peregrin` CLI
+  # (`peregrin serve` covers the node in-process; these are the
+  # standalone entrypoints docs/systemd reference).
+  - name: peregrin-node
+    payload: tools/bin/x86_64-unknown-linux-gnu/peregrin-node
+  - name: peregrin-hub
+    payload: tools/bin/x86_64-unknown-linux-gnu/peregrin-hub

@@ -9,7 +9,9 @@ Fork freely under MIT.
 pure domain; ports are `peregrin-{driver,store,bus,remote,config,
 loader,template}`; impls are `peregrin-{port}-{impl}`
 crates; `peregrin-node`/`peregrin-hub` are the daemons;
-`peregrin-cli` (`peregrin`) is the composition root. The substrate
+`peregrin-cli` is the engine lib + `tamias-driver-peregrin` (the
+`peregrin` command itself is the tamias pack's `bins[]` shim in
+`libraries/peregrin` — there is no hand-rolled binary). The substrate
 crates — `hypha-{node-api,outbox,control,sync,push,http,hub}` plus
 the earlier `hypha-{secret,keyring,dotenv,service,systemd,
 telemetry}` leaves — live in [9aia/hypha](https://github.com/9aia/hypha)
@@ -48,9 +50,11 @@ Follow Diátaxis: `docs/tutorials/` (learn) · `docs/how-to/` (tasks) ·
   **hypha → sepia → tamias → peregrin** has 0.1.0/0.1.x on crates.io.
   Until then the publish loop fails on the first crate; the binary
   release path below works standalone.
-- crates.io names: `peregrin`/`peregrin-cli` are free — the CLI
-  publishes as `peregrin-cli` (ships `peregrin`, `peregrin-hub`,
-  `peregrin-mcp`, `tamias-driver-peregrin` bins).
+- crates.io names: `peregrin`/`peregrin-cli` are free — the engine
+  publishes as `peregrin-cli` (ships the `tamias-driver-peregrin`
+  bin; the `peregrin` command is the tamias pack's shim, and
+  `peregrin-node`/`peregrin-hub`/`peregrin-mcp` bins come from
+  their own crates).
   `peregrin-testkit` is `publish = false`.
 - Release binaries: run `scripts/release.sh` manually (there is no
   release CI — releases are operator-driven). It builds

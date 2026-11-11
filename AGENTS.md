@@ -36,19 +36,24 @@ names a sepia type in the substrate.
   composition root) · `peregrin-hub` (thin `hypha-hub` gateway —
   `SepiaSessionPolicy`/`CampaignKindPolicy` + the `PEREGRIN_*` env
   mapping) · `peregrin-http` (session routes + composition, above) ·
-  `peregrin-cli` (`peregrin` binary + the `tamias-driver-peregrin`
-  dual-surface driver — pavo `manifest`/`serve`/`ops`/`run` plus the
-  tamias `install`/`deploy`/`uninstall`/`hooks`/`health`/`status`/
-  `logs`/`config-schema` verbs; the CLI is lib-ified as
-  `peregrin_cli::cli` — `command()`/`parse_from()`/`run_from()` —
-  and `engine_ops` derives the `cli.<verb>` ops manifest from that
-  clap tree. Unbounded verbs (`serve`, `campaign serve`/`run`,
-  `sessions attach`/`stream`, `events`) are `surfaces`, never ops;
-  remote verbs are ops taking `--node`/`--token` and degrade
-  cleanly with no node. Features `cli`/`mcp` embed the
-  pavo-driver-kit generated surfaces) · `hypha-telemetry` (git dep) ·
-  `peregrin-testkit` · `xtask`.
-- `libraries/` — workflow stdlib artifacts. `project/` — nested repo
+  `peregrin-cli` (engine lib — the clap tree `command()`/
+  `parse_from()`/`run_from()` plus every verb; **no `peregrin`
+  binary**: the command ships as the tamias pack in
+  `libraries/peregrin` — `bins: [{name: peregrin, shim: cli,
+  driver: peregrin}]` → `tamias-driver-peregrin`'s `cli`
+  passthrough. `peregrin-node`/`peregrin-hub` ship as `tools/bin/`
+  payload bins. The driver is dual-surface — pavo
+  `manifest`/`serve`/`ops`/`run` plus the tamias
+  `install`/`deploy`/`uninstall`/`hooks`/`health`/`status`/
+  `logs`/`config-schema` verbs; `engine_ops` derives the `cli.<verb>`
+  ops manifest from the clap tree. Unbounded verbs (`serve`,
+  `campaign serve`/`run`, `sessions attach`/`stream`, `events`) are
+  `surfaces`, never ops; remote verbs are ops taking
+  `--node`/`--token` and degrade cleanly with no node. Feature
+  `mcp` embeds the pavo-driver-kit generated MCP surface) ·
+  `hypha-telemetry` (git dep) · `peregrin-testkit` · `xtask`.
+- `libraries/` — workflow stdlib artifacts plus the `peregrin`
+  product pack (`type: files`, `bins[]`). `project/` — nested repo
   with the ADRs (the design history + port spec).
 
 ## Commands
@@ -56,7 +61,13 @@ names a sepia type in the substrate.
 ```bash
 cargo xtask check          # fmt + clippy -D warnings
 cargo xtask test           # suite (nextest if present)
-cargo xtask install        # release peregrin + hub → ~/.local
+cargo xtask pack           # stage libraries/peregrin payload
+                           # (release bins → drivers/bin + tools/bin/<triple>/)
+cargo xtask install        # release peregrin-hub + tamias-driver-peregrin
+                           # → ~/.local (the `peregrin` command itself is
+                           # the tamias pack's generated bins[] shim —
+                           # `cargo xtask pack` + `tamias install
+                           # --allow-drivers ./libraries/peregrin`)
 cargo xtask coverage       # llvm-cov report (HTML → target/llvm-cov/html);
                            # extra args pass through, e.g. --fail-under-lines 100
 ```
@@ -120,6 +131,14 @@ read it before changing engine semantics.
 <!-- /sturn:agent-awareness -->
 
 ## Distribution & host lifecycle live in tamias
+
+The `peregrin` **command** ships as a tamias pack —
+`libraries/peregrin/tamias.yaml` (`type: files`) declares
+`bins: [{name: peregrin, shim: cli, driver: peregrin}]` plus
+`peregrin-node`/`peregrin-hub` as `tools/bin/<triple>/` payload
+bins; `cargo xtask pack` stages the release binaries (gitignored).
+There is no hand-rolled `peregrin` binary — install via
+`tamias install --allow-drivers ./libraries/peregrin`.
 
 Bundle **distribution**, **provisioning**, **deploy**, and **service**
 lifecycle are **tamias**'s job — the host/shell metaservice (sibling repo

@@ -31,6 +31,12 @@ See `references/substrate.md` for the fuller picture.
 
 ## The verb surface
 
+The `peregrin` command is a tamias `bins[]` shim (T-012) — a
+generated script → `tamias bin exec` → `tamias-driver-peregrin cli`
+engine passthrough; argv is identical to the retired binary. Install:
+`cargo xtask pack` + `tamias install --allow-drivers
+./libraries/peregrin`.
+
 Human CLI (`peregrin`) vs agent surface (`peregrin-mcp`, stdio
 JSON-RPC — the same library calls, no shelling out):
 
