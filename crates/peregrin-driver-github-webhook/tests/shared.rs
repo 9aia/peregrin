@@ -28,6 +28,14 @@ fn route(secret: &str, injector: &Injector, source: &str) -> Route {
             "synchronize".to_string(),
             "reopened".to_string(),
         ],
+        check_run_actions: vec!["completed".to_string()],
+        check_suite_actions: vec!["completed".to_string()],
+        status_states: vec![
+            "error".to_string(),
+            "failure".to_string(),
+            "pending".to_string(),
+            "success".to_string(),
+        ],
     }
 }
 
@@ -438,6 +446,272 @@ fn shared_driver_registers_pull_request_actions() {
         events[0].payload["pull_request_actions"],
         json!(["opened", "labeled"])
     );
+}
+
+// ---------------------------------------------------------------------------
+// check_run / check_suite / status deliveries
+// ---------------------------------------------------------------------------
+
+fn check_run_body(repo: &str, action: &str) -> Vec<u8> {
+    json!({
+        "action": action,
+        "check_run": {
+            "id": 987_654,
+            "name": "ci / build",
+            "status": "completed",
+            "conclusion": "failure",
+            "head_sha": "4444444444444444444444444444444444444444",
+            "head_branch": "feature/fix",
+            "app": { "slug": "github-actions", "name": "GitHub Actions" },
+            "pull_requests": [{ "number": 42 }],
+        },
+        "sender": { "login": "octocat" },
+        "repository": {
+            "full_name": repo,
+            "clone_url": "https://github.com/octocat/widgets.git",
+        },
+    })
+    .to_string()
+    .into_bytes()
+}
+
+fn post_kind(url: &str, secret: &str, kind: &str, body: &[u8]) -> (u16, String) {
+    let signature = signature_header(secret, body);
+    let headers = [
+        ("x-github-event", kind),
+        ("x-hub-signature-256", signature.as_str()),
+    ];
+    post(url, &headers, body)
+}
+
+#[test]
+fn check_run_completed_injects_typed_payload() {
+    let demux = Arc::new(SharedWebhook::new());
+    let (inj, chan) = ingress();
+    demux.register(REPO_A, route(SECRET_A, &inj, "hook"));
+    let base = serving(&demux);
+    let url = format!("{base}/hook");
+
+    assert_eq!(
+        post_kind(
+            &url,
+            SECRET_A,
+            "check_run",
+            &check_run_body(REPO_A, "completed")
+        ),
+        (202, "queued".to_string())
+    );
+    let events = drain(&chan);
+    assert_eq!(events.len(), 1);
+    let event = &events[0];
+    assert_eq!(event.kind, "check_run");
+    assert_eq!(event.source, "hook");
+    assert_eq!(event.payload["repo"], REPO_A);
+    assert_eq!(event.payload["id"], 987_654);
+    assert_eq!(event.payload["name"], "ci / build");
+    assert_eq!(event.payload["status"], "completed");
+    assert_eq!(event.payload["conclusion"], "failure");
+    assert_eq!(event.payload["action"], "completed");
+    assert_eq!(
+        event.payload["sha"],
+        "4444444444444444444444444444444444444444"
+    );
+    assert_eq!(event.payload["ref"], "feature/fix");
+    assert_eq!(event.payload["app"], "github-actions");
+    assert_eq!(event.payload["pull_requests"], json!([42]));
+    assert_eq!(event.payload["actor"], "octocat");
+    assert_eq!(
+        event.payload["clone_url"],
+        "https://github.com/octocat/widgets.git"
+    );
+
+    // Non-`completed` actions are filtered by the default route —
+    // verified, deduped, then a no-op.
+    assert_eq!(
+        post_kind(
+            &url,
+            SECRET_A,
+            "check_run",
+            &check_run_body(REPO_A, "created")
+        ),
+        (200, "ignored: no-op event".to_string())
+    );
+    assert_eq!(drain(&chan).len(), 0);
+
+    // A route that opts into `created` takes it.
+    let (inj_b, chan_b) = ingress();
+    let mut eager = route(SECRET_A, &inj_b, "hook-b");
+    eager.check_run_actions = vec!["created".to_string(), "completed".to_string()];
+    demux.register(REPO_A, eager);
+    assert_eq!(
+        post_kind(
+            &url,
+            SECRET_A,
+            "check_run",
+            &check_run_body(REPO_A, "created")
+        ),
+        (202, "queued".to_string())
+    );
+    let events_b = drain(&chan_b);
+    assert_eq!(events_b.len(), 1);
+    assert_eq!(events_b[0].source, "hook-b");
+    // The default route still skipped it.
+    assert_eq!(drain(&chan).len(), 0);
+}
+
+fn check_suite_body(repo: &str, action: &str) -> Vec<u8> {
+    json!({
+        "action": action,
+        "check_suite": {
+            "id": 555,
+            "status": "completed",
+            "conclusion": "success",
+            "head_sha": "5555555555555555555555555555555555555555",
+            "head_branch": "main",
+            "app": { "slug": "github-actions" },
+        },
+        "sender": { "login": "octocat" },
+        "repository": { "full_name": repo },
+    })
+    .to_string()
+    .into_bytes()
+}
+
+#[test]
+fn check_suite_completed_injects_without_name() {
+    let demux = Arc::new(SharedWebhook::new());
+    let (inj, chan) = ingress();
+    demux.register(REPO_A, route(SECRET_A, &inj, "hook"));
+    let base = serving(&demux);
+    let url = format!("{base}/hook");
+
+    assert_eq!(
+        post_kind(
+            &url,
+            SECRET_A,
+            "check_suite",
+            &check_suite_body(REPO_A, "completed")
+        ),
+        (202, "queued".to_string())
+    );
+    let events = drain(&chan);
+    assert_eq!(events.len(), 1);
+    let event = &events[0];
+    assert_eq!(event.kind, "check_suite");
+    assert_eq!(event.payload["id"], 555);
+    assert_eq!(event.payload["conclusion"], "success");
+    assert_eq!(
+        event.payload["sha"],
+        "5555555555555555555555555555555555555555"
+    );
+    assert_eq!(event.payload["ref"], "main");
+    assert_eq!(event.payload["app"], "github-actions");
+    assert_eq!(event.payload["pull_requests"], json!([]));
+    // clone_url falls back to the route's web base.
+    assert_eq!(
+        event.payload["clone_url"],
+        "https://github.com/acme/widgets.git"
+    );
+
+    // `requested` is outside the default `completed`-only set.
+    assert_eq!(
+        post_kind(
+            &url,
+            SECRET_A,
+            "check_suite",
+            &check_suite_body(REPO_A, "requested")
+        ),
+        (200, "ignored: no-op event".to_string())
+    );
+}
+
+fn status_body(repo: &str, state: &str) -> Vec<u8> {
+    json!({
+        "state": state,
+        "context": "ci/bupha",
+        "sha": "6666666666666666666666666666666666666666",
+        "target_url": "https://ci.example.com/runs/1",
+        "description": "build finished",
+        "branches": [{ "name": "main" }, { "name": "feature/x" }],
+        "sender": { "login": "bupha" },
+        "repository": { "full_name": repo },
+    })
+    .to_string()
+    .into_bytes()
+}
+
+#[test]
+fn status_delivery_filters_states_and_carries_context() {
+    let demux = Arc::new(SharedWebhook::new());
+    let (inj, chan) = ingress();
+    demux.register(REPO_A, route(SECRET_A, &inj, "hook"));
+    let base = serving(&demux);
+    let url = format!("{base}/hook");
+
+    // Every state is in the default set — `failure` delivers.
+    assert_eq!(
+        post_kind(&url, SECRET_A, "status", &status_body(REPO_A, "failure")),
+        (202, "queued".to_string())
+    );
+    let events = drain(&chan);
+    assert_eq!(events.len(), 1);
+    let event = &events[0];
+    assert_eq!(event.kind, "status");
+    assert_eq!(event.payload["repo"], REPO_A);
+    assert_eq!(
+        event.payload["sha"],
+        "6666666666666666666666666666666666666666"
+    );
+    assert_eq!(event.payload["state"], "failure");
+    assert_eq!(event.payload["context"], "ci/bupha");
+    assert_eq!(event.payload["target_url"], "https://ci.example.com/runs/1");
+    assert_eq!(event.payload["description"], "build finished");
+    assert_eq!(event.payload["branches"], json!(["main", "feature/x"]));
+    assert_eq!(event.payload["actor"], "bupha");
+
+    // A route narrowed to terminal states skips `pending` — but the
+    // default route (all states) still takes it: per-route filtering.
+    let (inj_b, chan_b) = ingress();
+    let mut terminal = route(SECRET_A, &inj_b, "hook-b");
+    terminal.status_states = vec![
+        "error".to_string(),
+        "failure".to_string(),
+        "success".to_string(),
+    ];
+    demux.register(REPO_A, terminal);
+    assert_eq!(
+        post_kind(&url, SECRET_A, "status", &status_body(REPO_A, "pending")),
+        (202, "queued".to_string())
+    );
+    assert_eq!(drain(&chan).len(), 1, "default route takes pending");
+    assert!(drain(&chan_b).is_empty(), "terminal route skips pending");
+
+    assert_eq!(
+        post_kind(&url, SECRET_A, "status", &status_body(REPO_A, "success")),
+        (202, "queued".to_string())
+    );
+    assert_eq!(drain(&chan).len(), 1);
+    assert_eq!(drain(&chan_b).len(), 1);
+}
+
+#[test]
+fn unsupported_event_kinds_still_400() {
+    let demux = Arc::new(SharedWebhook::new());
+    let (inj, chan) = ingress();
+    demux.register(REPO_A, route(SECRET_A, &inj, "hook"));
+    let base = serving(&demux);
+    let url = format!("{base}/hook");
+    let body = push_body(REPO_A);
+    let signature = signature_header(SECRET_A, &body);
+    let headers = [
+        ("x-github-event", "issues"),
+        ("x-hub-signature-256", signature.as_str()),
+    ];
+    assert_eq!(
+        post(&url, &headers, &body),
+        (400, "unsupported event".to_string())
+    );
+    assert!(drain(&chan).is_empty(), "unsupported kind injects nothing");
 }
 
 #[test]

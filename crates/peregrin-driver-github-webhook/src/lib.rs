@@ -38,6 +38,25 @@
 //! at the head repo — checking it out needs the repo token scoped for
 //! both; the driver stays agnostic (credentials are campaign params).
 //!
+//! Check deliveries ride the same pipeline: `check_run` injects
+//! `Event{type:"check_run", payload:{repo, id, name, status,
+//! conclusion, action, sha, ref, app, pull_requests, actor,
+//! clone_url, delivery_id}}`, `check_suite` the same shape minus
+//! `name` (`sha`/`ref` come from `head_sha`/`head_branch`), and
+//! `status` (the legacy commit-status API) `Event{type:"status",
+//! payload:{repo, sha, state, context, target_url, description,
+//! branches, actor, clone_url, delivery_id}}`. `id` is the forge's
+//! stable check_run/check_suite object id; `pull_requests` is the
+//! array of PR numbers the check is attached to (empty when none).
+//! Per-route filters mirror
+//! `pull_request_actions`: `check_run_actions` and
+//! `check_suite_actions` (both default `completed` — the only action
+//! carrying a verdict; `created`/`requested` are opt-in noise) and
+//! `status_states` (default every state — `error`, `failure`,
+//! `pending`, `success`). Whether GitHub *sends* these deliveries is
+//! the hook's subscribed-events list — the driver's job is only to
+//! verify/parse/inject what arrives.
+//!
 //! Params (template-resolved like the other impls):
 //!
 //! - `listen` — bind address, default `127.0.0.1:29173` (bupha's
@@ -58,6 +77,14 @@
 //!   string or a list of strings. `peregrin deploy webhook` subscribes
 //!   the repo hook to `pull_request` events only when this param is
 //!   set — push-only stays the default.
+//! - `check_run_actions` / `check_suite_actions` — which `action`s of
+//!   each check delivery this node accepts (both default
+//!   `completed`); same string-or-list shape as
+//!   `pull_request_actions`.
+//! - `status_states` — which commit-`status` `state`s this node
+//!   accepts (default `error,failure,pending,success` — i.e. all); a
+//!   campaign that only wants terminal states lists
+//!   `error,failure,success`.
 //!
 //! Emitted (returned) events: `{node.id}.listening` on bind (or with
 //! `dry_run: true` under `ctx.dry_run`), `node.failed` when the bind
@@ -112,6 +139,13 @@ const DEFAULT_API_BASE: &str = "https://api.github.com";
 /// campaign almost always wants (a draft/ready flip or a close isn't
 /// a new head to build).
 const DEFAULT_PR_ACTIONS: &[&str] = &["opened", "synchronize", "reopened"];
+/// `params.check_run_actions`/`check_suite_actions` default — only a
+/// *finished* check carries a verdict; `created`/`requested`/`rerequested`
+/// are opt-in via the param.
+const DEFAULT_CHECK_ACTIONS: &[&str] = &["completed"];
+/// `params.status_states` default — every commit-status state; the
+/// param exists for campaigns that only want terminal ones.
+const DEFAULT_STATUS_STATES: &[&str] = &["error", "failure", "pending", "success"];
 /// Request-body cap — bupha's 2 MiB.
 const MAX_BODY: usize = 2 * 1024 * 1024;
 /// Delivery-id dedup ring bound — replays older than this re-emit.
@@ -167,6 +201,12 @@ enum Delivery {
     Push(Push),
     /// Fields for the `pull_request` event payload.
     PullRequest(PullRequest),
+    /// Fields for the `check_run` event payload.
+    CheckRun(CheckRun),
+    /// Fields for the `check_suite` event payload.
+    CheckSuite(CheckSuite),
+    /// Fields for the `status` (commit status) event payload.
+    Status(CommitStatus),
 }
 
 /// The normalized push — everything the injected `push` event's
@@ -198,6 +238,62 @@ struct PullRequest {
     clone_url: Option<String>,
 }
 
+/// The normalized `check_run` — everything the injected `check_run`
+/// event's payload carries. `sha` is `check_run.head_sha`; `ref` is
+/// the head branch (`head_branch`, falling back to the check suite's
+/// `head_branch`); `pull_requests` carries the attached PR numbers.
+/// `clone_url` stays `Option` for the same per-route `api_base`
+/// fallback reason as [`Push`].
+struct CheckRun {
+    repo: String,
+    id: u64,
+    name: String,
+    action: String,
+    status: String,
+    conclusion: String,
+    sha: String,
+    git_ref: String,
+    app: String,
+    pull_requests: Vec<u64>,
+    actor: String,
+    clone_url: Option<String>,
+}
+
+/// The normalized `check_suite` — the suite-level rollup of the
+/// `check_run` deliveries it groups. Same field set minus `name`
+/// (suites are unnamed); `sha`/`ref` come from `head_sha`/
+/// `head_branch`.
+struct CheckSuite {
+    repo: String,
+    id: u64,
+    action: String,
+    status: String,
+    conclusion: String,
+    sha: String,
+    git_ref: String,
+    app: String,
+    pull_requests: Vec<u64>,
+    actor: String,
+    clone_url: Option<String>,
+}
+
+/// The normalized commit `status` (the legacy statuses API — what
+/// `github-status`-style sinks post). `state` is the verdict
+/// (`error`/`failure`/`pending`/`success`); `branches` lists the
+/// branch names the status was reported against (empty for a bare
+/// sha).
+struct CommitStatus {
+    repo: String,
+    sha: String,
+    state: String,
+    context: String,
+    target_url: String,
+    description: String,
+    branches: Vec<String>,
+    actor: String,
+    clone_url: Option<String>,
+}
+
 /// One watched repo's delivery target — where a verified push for
 /// `repo` lands. The solo [`GithubWebhookDriver`] registers exactly
 /// one route per repo; [`SharedWebhook`] accumulates routes across
@@ -219,6 +315,15 @@ pub struct Route {
     /// `params.pull_request_actions` resolved per campaign, so two
     /// campaigns watching one repo can want different action sets.
     pub pull_request_actions: Vec<String>,
+    /// `check_run` actions this route accepts —
+    /// `params.check_run_actions`, same per-campaign resolution.
+    pub check_run_actions: Vec<String>,
+    /// `check_suite` actions this route accepts —
+    /// `params.check_suite_actions`.
+    pub check_suite_actions: Vec<String>,
+    /// Commit-`status` states this route accepts —
+    /// `params.status_states`.
+    pub status_states: Vec<String>,
 }
 
 /// Per-listener state shared into the request handler — the repo→
@@ -340,12 +445,13 @@ fn resolve_params(
     Ok(resolved.as_object().cloned().unwrap_or_default())
 }
 
-/// `params.pull_request_actions` → the accepted action set — a
-/// comma-separated string (`"opened,synchronize"`) or a list of
-/// strings; missing/empty/non-string falls back to
-/// [`DEFAULT_PR_ACTIONS`]. Entries trim and drop empties.
-fn parse_pr_actions(params: &Map<String, Value>) -> Vec<String> {
-    let raw: Vec<String> = match params.get("pull_request_actions") {
+/// `params.<key>` → the accepted value set — a comma-separated string
+/// (`"opened,synchronize"`) or a list of strings; missing/empty/
+/// non-string falls back to `default`. Entries trim and drop empties.
+/// `pull_request_actions`, `check_run_actions`, `check_suite_actions`
+/// and `status_states` all parse through here.
+fn parse_list_param(params: &Map<String, Value>, key: &str, default: &[&str]) -> Vec<String> {
+    let raw: Vec<String> = match params.get(key) {
         Some(Value::String(s)) => s.split(',').map(str::to_string).collect(),
         Some(Value::Array(items)) => items
             .iter()
@@ -354,19 +460,40 @@ fn parse_pr_actions(params: &Map<String, Value>) -> Vec<String> {
             .collect(),
         _ => Vec::new(),
     };
-    let actions: Vec<String> = raw
+    let values: Vec<String> = raw
         .into_iter()
         .map(|a| a.trim().to_string())
         .filter(|a| !a.is_empty())
         .collect();
-    if actions.is_empty() {
-        DEFAULT_PR_ACTIONS
-            .iter()
-            .map(|a| (*a).to_string())
-            .collect()
+    if values.is_empty() {
+        default.iter().map(|a| (*a).to_string()).collect()
     } else {
-        actions
+        values
     }
+}
+
+/// `params.pull_request_actions` → the accepted action set
+/// ([`DEFAULT_PR_ACTIONS`] when unset).
+fn parse_pr_actions(params: &Map<String, Value>) -> Vec<String> {
+    parse_list_param(params, "pull_request_actions", DEFAULT_PR_ACTIONS)
+}
+
+/// `params.check_run_actions` → the accepted `check_run` action set
+/// ([`DEFAULT_CHECK_ACTIONS`] when unset).
+fn parse_check_run_actions(params: &Map<String, Value>) -> Vec<String> {
+    parse_list_param(params, "check_run_actions", DEFAULT_CHECK_ACTIONS)
+}
+
+/// `params.check_suite_actions` → the accepted `check_suite` action
+/// set ([`DEFAULT_CHECK_ACTIONS`] when unset).
+fn parse_check_suite_actions(params: &Map<String, Value>) -> Vec<String> {
+    parse_list_param(params, "check_suite_actions", DEFAULT_CHECK_ACTIONS)
+}
+
+/// `params.status_states` → the accepted commit-status `state` set
+/// ([`DEFAULT_STATUS_STATES`] when unset).
+fn parse_status_states(params: &Map<String, Value>) -> Vec<String> {
+    parse_list_param(params, "status_states", DEFAULT_STATUS_STATES)
 }
 
 /// `params.<key>` as a non-empty string, else `default`.
@@ -630,9 +757,194 @@ fn parse_pull_request(v: &Value, repo: &str) -> Delivery {
     })
 }
 
+/// `value` as a string, `""` when absent/non-string — the
+/// payload fields' absent-tolerant read shared by every `parse_*`.
+fn text(value: Option<&Value>) -> String {
+    value
+        .and_then(Value::as_str)
+        .map_or_else(String::new, str::to_string)
+}
+
+/// `app.slug` falling back to `app.name`, `""` when absent — the
+/// check deliveries' app attribution.
+fn app_slug(app: Option<&Value>) -> String {
+    app.and_then(|a| a.get("slug").or_else(|| a.get("name")))
+        .and_then(Value::as_str)
+        .map_or_else(String::new, str::to_string)
+}
+
+/// `pull_requests[].number` → the attached PR-number list (`[]` when
+/// the field is absent — checks on plain branch pushes carry none).
+fn pr_numbers(list: Option<&Value>) -> Vec<u64> {
+    list.and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|pr| pr.get("number").and_then(Value::as_u64))
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+/// `repository.clone_url` — the payload's own wins; each route's
+/// `api_base` web base is the fallback at inject time (the
+/// per-route divergence `clone_url: Option` exists for).
+fn payload_clone_url(v: &Value) -> Option<String> {
+    v.pointer("/repository/clone_url")
+        .and_then(Value::as_str)
+        .map(str::to_string)
+}
+
+/// Parse a verified `check_run` delivery's already-decoded JSON —
+/// the `Event.payload` fields off `check_run.*`. `head_sha` passes
+/// the same revision-safety check as a push `after`; the `action`
+/// isn't judged here — each delivery *route* filters against its own
+/// `check_run_actions` (the `pull_request` convention).
+fn parse_check_run(v: &Value, repo: &str) -> Delivery {
+    let (Some(action), Some(id), Some(sha)) = (
+        v.get("action").and_then(Value::as_str),
+        v.pointer("/check_run/id").and_then(Value::as_u64),
+        v.pointer("/check_run/head_sha").and_then(Value::as_str),
+    ) else {
+        return Delivery::Malformed;
+    };
+    if !is_valid_sha(sha) {
+        return Delivery::Malformed;
+    }
+    let check = v.pointer("/check_run").cloned().unwrap_or(Value::Null);
+    Delivery::CheckRun(CheckRun {
+        repo: repo.to_string(),
+        id,
+        name: text(check.get("name")),
+        action: action.to_string(),
+        status: text(check.get("status")),
+        conclusion: text(check.get("conclusion")),
+        sha: sha.to_string(),
+        // `head_branch` sits on the check run in current payloads;
+        // the parent suite's is the fallback for older shapes.
+        git_ref: text(
+            check
+                .get("head_branch")
+                .or_else(|| check.pointer("/check_suite/head_branch")),
+        ),
+        app: app_slug(check.get("app")),
+        pull_requests: pr_numbers(check.get("pull_requests")),
+        actor: text(v.pointer("/sender/login")),
+        clone_url: payload_clone_url(v),
+    })
+}
+
+/// Parse a verified `check_suite` delivery — the suite-level
+/// rollup, same field set as [`parse_check_run`] minus `name`
+/// (suites are unnamed). `head_sha`/`head_branch` live directly on
+/// `check_suite`.
+fn parse_check_suite(v: &Value, repo: &str) -> Delivery {
+    let (Some(action), Some(id), Some(sha)) = (
+        v.get("action").and_then(Value::as_str),
+        v.pointer("/check_suite/id").and_then(Value::as_u64),
+        v.pointer("/check_suite/head_sha").and_then(Value::as_str),
+    ) else {
+        return Delivery::Malformed;
+    };
+    if !is_valid_sha(sha) {
+        return Delivery::Malformed;
+    }
+    let suite = v.pointer("/check_suite").cloned().unwrap_or(Value::Null);
+    Delivery::CheckSuite(CheckSuite {
+        repo: repo.to_string(),
+        id,
+        action: action.to_string(),
+        status: text(suite.get("status")),
+        conclusion: text(suite.get("conclusion")),
+        sha: sha.to_string(),
+        git_ref: text(suite.get("head_branch")),
+        app: app_slug(suite.get("app")),
+        pull_requests: pr_numbers(suite.get("pull_requests")),
+        actor: text(v.pointer("/sender/login")),
+        clone_url: payload_clone_url(v),
+    })
+}
+
+/// Parse a verified `status` (commit status) delivery — the legacy
+/// statuses API surface. `sha`/`state`/`context` are the contract;
+/// `sha` passes the same revision-safety check as a push `after`.
+/// There is no `action` — the per-route `status_states` filter
+/// matches on `state` instead.
+fn parse_status(v: &Value, repo: &str) -> Delivery {
+    let (Some(state), Some(context), Some(sha)) = (
+        v.get("state").and_then(Value::as_str),
+        v.get("context").and_then(Value::as_str),
+        v.get("sha").and_then(Value::as_str),
+    ) else {
+        return Delivery::Malformed;
+    };
+    if !is_valid_sha(sha) {
+        return Delivery::Malformed;
+    }
+    let branches = v
+        .get("branches")
+        .and_then(Value::as_array)
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|b| b.get("name").and_then(Value::as_str).map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+    Delivery::Status(CommitStatus {
+        repo: repo.to_string(),
+        sha: sha.to_string(),
+        state: state.to_string(),
+        context: context.to_string(),
+        target_url: text(v.get("target_url")),
+        description: text(v.get("description")),
+        branches,
+        actor: text(v.pointer("/sender/login")),
+        clone_url: payload_clone_url(v),
+    })
+}
+
 /// `Option<&str>` view of a header (non-UTF8 values read as absent).
 fn header<'a>(headers: &'a HeaderMap, name: &str) -> Option<&'a str> {
     headers.get(name).and_then(|value| value.to_str().ok())
+}
+
+/// The per-route fan-out every parsed delivery shares: `build`
+/// produces the event (its `source` and `clone_url` fallback are
+/// route-local), each matched route's channel gets a clone, `202`
+/// when at least one run took it, `503` when every matched run
+/// ended.
+fn fan_out(routes: &[&Route], build: impl Fn(&Route) -> Event) -> (StatusCode, &'static str) {
+    let mut delivered = false;
+    for route in routes {
+        // A route whose campaign already ended drops the event —
+        // the others still count as delivered.
+        delivered |= route.injector.inject(build(route)).is_ok();
+    }
+    if delivered {
+        // bupha's `Verdict::Queued` → 202.
+        (StatusCode::ACCEPTED, "queued")
+    } else {
+        // Every matched run ended under the listener.
+        (StatusCode::SERVICE_UNAVAILABLE, "run ended")
+    }
+}
+
+/// The action/state filter the gated deliveries share
+/// (`pull_request_actions`, `check_run_actions`,
+/// `check_suite_actions`, `status_states`): routes whose accepted set
+/// excludes the delivery's value are skipped; none remaining → a
+/// verified no-op (`200 ignored`), not an error.
+fn interested<'a>(
+    matched: &[&'a Route],
+    value: &str,
+    accepted: impl Fn(&Route) -> &[String],
+) -> Vec<&'a Route> {
+    matched
+        .iter()
+        .copied()
+        .filter(|route| accepted(route).iter().any(|a| a == value))
+        .collect()
 }
 
 /// The whole request contract — one POST in, one status+message out.
@@ -649,7 +961,10 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
         // Hook-registration probe — no signature, no queue.
         return (StatusCode::OK, "pong");
     }
-    if !matches!(event_kind, Some("push" | "pull_request")) {
+    if !matches!(
+        event_kind,
+        Some("push" | "pull_request" | "check_run" | "check_suite" | "status")
+    ) {
         return (StatusCode::BAD_REQUEST, "unsupported event");
     }
     // The body parse and `repository.full_name` peek are untrusted
@@ -696,73 +1011,50 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
             return (StatusCode::OK, "duplicate delivery");
         }
     }
-    match if event_kind == Some("pull_request") {
-        parse_pull_request(&v, repo)
-    } else {
-        parse_push(&v, repo)
+    match match event_kind {
+        Some("pull_request") => parse_pull_request(&v, repo),
+        Some("check_run") => parse_check_run(&v, repo),
+        Some("check_suite") => parse_check_suite(&v, repo),
+        Some("status") => parse_status(&v, repo),
+        _ => parse_push(&v, repo),
     } {
         Delivery::Skip => (StatusCode::OK, "ignored: no-op event"),
         Delivery::Malformed => (StatusCode::BAD_REQUEST, "unparseable payload"),
-        Delivery::Push(push) => {
+        Delivery::Push(push) => fan_out(&matched, |route| {
             // One event per matched route — `source` and the
             // `clone_url` fallback are per-route (each campaign's
             // node id and `api_base`).
-            let mut delivered = false;
-            for route in &matched {
-                let clone_url = push
-                    .clone_url
-                    .clone()
-                    .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
-                let event = Event::new(
-                    "push",
-                    serde_json::json!({
-                        "repo": push.repo,
-                        "ref": push.git_ref,
-                        "sha": push.sha,
-                        "before": push.before,
-                        "actor": push.actor,
-                        "clone_url": clone_url,
-                        "delivery_id": delivery_id,
-                    }),
-                    &route.source,
-                );
-                // A route whose campaign already ended drops the
-                // event — the others still count as delivered.
-                delivered |= route.injector.inject(event).is_ok();
-            }
-            if delivered {
-                // bupha's `Verdict::Queued` → 202.
-                (StatusCode::ACCEPTED, "queued")
-            } else {
-                // Every matched run ended under the listener.
-                (StatusCode::SERVICE_UNAVAILABLE, "run ended")
-            }
-        }
+            let clone_url = push
+                .clone_url
+                .clone()
+                .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
+            Event::new(
+                "push",
+                serde_json::json!({
+                    "repo": push.repo,
+                    "ref": push.git_ref,
+                    "sha": push.sha,
+                    "before": push.before,
+                    "actor": push.actor,
+                    "clone_url": clone_url,
+                    "delivery_id": delivery_id,
+                }),
+                &route.source,
+            )
+        }),
         Delivery::PullRequest(pr) => {
             // The action filter is per-route: campaigns watching the
             // same repo can want different `pull_request` actions.
-            // Routes whose set excludes the action are skipped; if
-            // none remain it's a verified no-op → 200 ignored.
-            let interested: Vec<&Route> = matched
-                .iter()
-                .filter(|route| {
-                    route
-                        .pull_request_actions
-                        .iter()
-                        .any(|action| action == &pr.action)
-                })
-                .copied()
-                .collect();
+            let interested = interested(&matched, &pr.action, |route| &route.pull_request_actions);
             if interested.is_empty() {
                 return (StatusCode::OK, "ignored: no-op event");
             }
-            let mut delivered = false;
-            for route in &interested {
+            fan_out(&interested, |route| {
                 let clone_url = pr
                     .clone_url
                     .clone()
                     .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
-                let event = Event::new(
+                Event::new(
                     "pull_request",
                     serde_json::json!({
                         "repo": pr.repo,
@@ -776,14 +1068,99 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
                         "delivery_id": delivery_id,
                     }),
                     &route.source,
-                );
-                delivered |= route.injector.inject(event).is_ok();
+                )
+            })
+        }
+        Delivery::CheckRun(check) => {
+            let interested = interested(&matched, &check.action, |route| &route.check_run_actions);
+            if interested.is_empty() {
+                return (StatusCode::OK, "ignored: no-op event");
             }
-            if delivered {
-                (StatusCode::ACCEPTED, "queued")
-            } else {
-                (StatusCode::SERVICE_UNAVAILABLE, "run ended")
+            fan_out(&interested, |route| {
+                let clone_url = check
+                    .clone_url
+                    .clone()
+                    .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
+                Event::new(
+                    "check_run",
+                    serde_json::json!({
+                        "repo": check.repo,
+                        "id": check.id,
+                        "name": check.name,
+                        "status": check.status,
+                        "conclusion": check.conclusion,
+                        "action": check.action,
+                        "sha": check.sha,
+                        "ref": check.git_ref,
+                        "app": check.app,
+                        "pull_requests": check.pull_requests,
+                        "actor": check.actor,
+                        "clone_url": clone_url,
+                        "delivery_id": delivery_id,
+                    }),
+                    &route.source,
+                )
+            })
+        }
+        Delivery::CheckSuite(suite) => {
+            let interested =
+                interested(&matched, &suite.action, |route| &route.check_suite_actions);
+            if interested.is_empty() {
+                return (StatusCode::OK, "ignored: no-op event");
             }
+            fan_out(&interested, |route| {
+                let clone_url = suite
+                    .clone_url
+                    .clone()
+                    .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
+                Event::new(
+                    "check_suite",
+                    serde_json::json!({
+                        "repo": suite.repo,
+                        "id": suite.id,
+                        "status": suite.status,
+                        "conclusion": suite.conclusion,
+                        "action": suite.action,
+                        "sha": suite.sha,
+                        "ref": suite.git_ref,
+                        "app": suite.app,
+                        "pull_requests": suite.pull_requests,
+                        "actor": suite.actor,
+                        "clone_url": clone_url,
+                        "delivery_id": delivery_id,
+                    }),
+                    &route.source,
+                )
+            })
+        }
+        Delivery::Status(status) => {
+            // `status` has no `action` — the filter matches `state`.
+            let interested = interested(&matched, &status.state, |route| &route.status_states);
+            if interested.is_empty() {
+                return (StatusCode::OK, "ignored: no-op event");
+            }
+            fan_out(&interested, |route| {
+                let clone_url = status
+                    .clone_url
+                    .clone()
+                    .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
+                Event::new(
+                    "status",
+                    serde_json::json!({
+                        "repo": status.repo,
+                        "sha": status.sha,
+                        "state": status.state,
+                        "context": status.context,
+                        "target_url": status.target_url,
+                        "description": status.description,
+                        "branches": status.branches,
+                        "actor": status.actor,
+                        "clone_url": clone_url,
+                        "delivery_id": delivery_id,
+                    }),
+                    &route.source,
+                )
+            })
         }
     }
 }
@@ -907,6 +1284,9 @@ impl Driver for GithubWebhookDriver {
         }
         let api_base = str_param(&params, "api_base", DEFAULT_API_BASE);
         let pr_actions = parse_pr_actions(&params);
+        let check_run_actions = parse_check_run_actions(&params);
+        let check_suite_actions = parse_check_suite_actions(&params);
+        let status_states = parse_status_states(&params);
         let specs = parse_repo_specs(&params, node)?;
         let names: Vec<Value> = specs
             .iter()
@@ -923,6 +1303,9 @@ impl Driver for GithubWebhookDriver {
                     "path": path,
                     "repos": names,
                     "pull_request_actions": pr_actions,
+                    "check_run_actions": check_run_actions,
+                    "check_suite_actions": check_suite_actions,
+                    "status_states": status_states,
                 }),
                 &node.id,
             )]);
@@ -951,6 +1334,9 @@ impl Driver for GithubWebhookDriver {
                 source: node.id.clone(),
                 web_base: web_base.clone(),
                 pull_request_actions: pr_actions.clone(),
+                check_run_actions: check_run_actions.clone(),
+                check_suite_actions: check_suite_actions.clone(),
+                status_states: status_states.clone(),
             });
         }
         let shared = Arc::new(Shared {
@@ -969,6 +1355,9 @@ impl Driver for GithubWebhookDriver {
                 "repos": names,
                 "api_base": api_base,
                 "pull_request_actions": pr_actions,
+                "check_run_actions": check_run_actions,
+                "check_suite_actions": check_suite_actions,
+                "status_states": status_states,
             }),
             &node.id,
         )])
@@ -1197,6 +1586,9 @@ impl Driver for SharedWebhookDriver {
         let params = resolve_params(&*self.effects, node, triggers, ctx)?;
         let api_base = str_param(&params, "api_base", DEFAULT_API_BASE);
         let pr_actions = parse_pr_actions(&params);
+        let check_run_actions = parse_check_run_actions(&params);
+        let check_suite_actions = parse_check_suite_actions(&params);
+        let status_states = parse_status_states(&params);
         let specs = parse_repo_specs(&params, node)?;
         let names: Vec<Value> = specs
             .iter()
@@ -1212,6 +1604,9 @@ impl Driver for SharedWebhookDriver {
                     "shared": true,
                     "repos": names,
                     "pull_request_actions": pr_actions,
+                    "check_run_actions": check_run_actions,
+                    "check_suite_actions": check_suite_actions,
+                    "status_states": status_states,
                 }),
                 &node.id,
             )]);
@@ -1228,6 +1623,9 @@ impl Driver for SharedWebhookDriver {
                     source: node.id.clone(),
                     web_base: web_base.clone(),
                     pull_request_actions: pr_actions.clone(),
+                    check_run_actions: check_run_actions.clone(),
+                    check_suite_actions: check_suite_actions.clone(),
+                    status_states: status_states.clone(),
                 },
             );
         }
@@ -1239,6 +1637,9 @@ impl Driver for SharedWebhookDriver {
                 "repos": names,
                 "api_base": api_base,
                 "pull_request_actions": pr_actions,
+                "check_run_actions": check_run_actions,
+                "check_suite_actions": check_suite_actions,
+                "status_states": status_states,
             }),
             &node.id,
         )])
