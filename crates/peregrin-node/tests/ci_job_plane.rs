@@ -59,7 +59,7 @@ fn mk_app() -> Router {
     });
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
     let state = AppState::new(Arc::new(LocalPlane(plane, None)))
-        .with_kind(ci_job_plane(vec!["arch=arm64".to_string()]));
+        .with_kind(ci_job_plane(vec!["arch=arm64".to_string()], vec![]));
     app(state)
 }
 

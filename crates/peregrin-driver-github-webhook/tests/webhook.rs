@@ -183,6 +183,10 @@ fn listening_event_reports_bound_addr_and_verified_push_injects() {
             "before": "1111111111111111111111111111111111111111",
             "actor": "octocat",
             "clone_url": "https://github.com/acme/widgets.git",
+            // No X-GitHub-Delivery header → empty string, not absent
+            // (the ci-ingress `${event.payload.delivery_id}` template
+            // must always resolve).
+            "delivery_id": "",
         })
     );
 }
@@ -260,6 +264,7 @@ fn verified_pull_request_injects_head_payload() {
             // The head repo's clone_url (fork-aware) wins over the
             // base repository's.
             "clone_url": "https://github.com/octocat/widgets.git",
+            "delivery_id": "",
         })
     );
 }
@@ -583,6 +588,9 @@ fn duplicate_delivery_is_acked_without_reinjecting() {
     );
     let mut drained = Vec::new();
     assert_eq!(chan.drain_into(&mut drained), 1);
+    // The delivery id rides the payload for the indexDoc's
+    // `deliveryId` (P-002 §1 audit/dedup).
+    assert_eq!(drained[0].payload["delivery_id"], "delivery-1");
 }
 
 #[test]

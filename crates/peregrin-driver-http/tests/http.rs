@@ -302,6 +302,83 @@ fn notify_message_override_and_json_scheme() {
     assert!(request.contains("\"body\":\"custom note\""));
 }
 
+/// A stub that answers one canned response per accepted connection —
+/// the `params.retries` harness (first N-1 fail, last succeeds or
+/// also fails).
+fn serve_sequence(responses: &'static [&'static str]) -> (String, thread::JoinHandle<()>) {
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let url = format!("http://{}", listener.local_addr().unwrap());
+    let join = thread::spawn(move || {
+        for response in responses {
+            let (mut stream, _) = listener.accept().unwrap();
+            let mut buf = Vec::new();
+            let mut tmp = [0_u8; 8192];
+            loop {
+                match stream.read(&mut tmp) {
+                    Ok(0) | Err(_) => break,
+                    Ok(n) => {
+                        buf.extend_from_slice(&tmp[..n]);
+                        if request_complete(&buf) {
+                            break;
+                        }
+                    }
+                }
+            }
+            let _ = stream.write_all(response.as_bytes());
+            let _ = stream.flush();
+        }
+    });
+    (url, join)
+}
+
+#[test]
+fn retries_5xx_then_succeeds() {
+    let (url, join) = serve_sequence(&[
+        "HTTP/1.1 500 ERR\r\ncontent-length: 0\r\n\r\n",
+        "HTTP/1.1 200 OK\r\ncontent-length: 2\r\n\r\nok",
+    ]);
+    let ctx = ExecutionContext::default();
+    let out = driver_call(&node(json!({"url": url, "retries": 1})), &ctx);
+    assert_eq!(out[0].kind, "http.done");
+    assert_eq!(out[0].payload["status"], 200);
+    assert_eq!(out[0].payload["attempts"], 2);
+    join.join().unwrap();
+}
+
+#[test]
+fn retries_exhaustion_reports_attempts() {
+    let (url, join) = serve_sequence(&[
+        "HTTP/1.1 503 ERR\r\ncontent-length: 0\r\n\r\n",
+        "HTTP/1.1 503 ERR\r\ncontent-length: 0\r\n\r\n",
+        "HTTP/1.1 503 ERR\r\ncontent-length: 0\r\n\r\n",
+    ]);
+    let ctx = ExecutionContext::default();
+    let out = driver_call(&node(json!({"url": url, "retries": 2})), &ctx);
+    assert_eq!(out[0].kind, "http.failed");
+    assert_eq!(out[0].payload["status"], 503);
+    assert_eq!(out[0].payload["attempts"], 3);
+    join.join().unwrap();
+}
+
+#[test]
+fn no_retry_on_4xx_or_by_default() {
+    let ctx = ExecutionContext::default();
+    // 404 is deterministic — `retries` doesn't replay it.
+    let (url, join) = serve_sequence(&["HTTP/1.1 404 NF\r\ncontent-length: 0\r\n\r\n"]);
+    let out = driver_call(&node(json!({"url": url, "retries": 3})), &ctx);
+    assert_eq!(out[0].kind, "http.failed");
+    assert_eq!(out[0].payload["status"], 404);
+    assert_eq!(out[0].payload["attempts"], 1);
+    join.join().unwrap();
+
+    // And without `retries` a 500 fails on the first attempt.
+    let (url, join) = serve_sequence(&["HTTP/1.1 500 ERR\r\ncontent-length: 0\r\n\r\n"]);
+    let out = driver_call(&node(json!({"url": url})), &ctx);
+    assert_eq!(out[0].kind, "http.failed");
+    assert_eq!(out[0].payload["attempts"], 1);
+    join.join().unwrap();
+}
+
 #[test]
 fn notify_failures() {
     let ctx = ExecutionContext::default();

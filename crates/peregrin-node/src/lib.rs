@@ -11,6 +11,8 @@
 
 pub mod campaign;
 pub mod campaign_entity;
+#[cfg(feature = "bupha")]
+pub mod ci_fleet;
 pub mod ephemeral;
 pub mod serve;
 pub mod supervisor;
@@ -22,10 +24,21 @@ pub use campaign_entity::{CAMPAIGN_KIND, CampaignEntityPlane};
 /// seam). `labels` are this node's advertised capabilities — the
 /// `runsOn` claim gate's right-hand side, the same list campaign
 /// `runs_on` matchers read. Only exists under the `bupha` feature.
+/// `watched` is the fleet-resolved spec list ([`ci_fleet::fleet_specs`])
+/// — when non-empty the plane normalizes ci-job indexDocs against it
+/// at create (P-002's "resolved at ingest", sourced from the same
+/// `Config::watched()` the worker execs against).
 #[cfg(feature = "bupha")]
 #[must_use]
-pub fn ci_job_plane(labels: Vec<String>) -> Arc<dyn peregrin_http::EntityPlane> {
-    Arc::new(bupha_plane::CiJobPlane::new().with_labels(labels))
+pub fn ci_job_plane(
+    labels: Vec<String>,
+    watched: Vec<bupha_plane::WatchedRepo>,
+) -> Arc<dyn peregrin_http::EntityPlane> {
+    Arc::new(
+        bupha_plane::CiJobPlane::new()
+            .with_labels(labels)
+            .with_watched(watched),
+    )
 }
 
 use std::path::PathBuf;
@@ -161,7 +174,7 @@ fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
         .with_import_session(import);
     #[cfg(feature = "bupha")]
     {
-        state = state.with_kind(ci_job_plane(ci_labels));
+        state = state.with_kind(ci_job_plane(ci_labels, ci_fleet::fleet_specs()));
     }
     state
 }

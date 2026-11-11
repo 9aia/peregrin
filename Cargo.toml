@@ -142,6 +142,9 @@ hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", vers
 # sibling integrations; `peregrin-node`'s default-on `bupha` feature
 # registers `CiJobPlane` next to `CampaignEntityPlane`.
 bupha-plane = { git = "ssh://git@github.com/9aia/bupha.git", branch = "main", version = "0.1.0" }
+# Fleet-config loading for the ci-job plane's indexDoc normalization
+# (`CiJobPlane::with_watched`) — `peregrin-node`'s `bupha` feature.
+bupha-config-file = { git = "ssh://git@github.com/9aia/bupha.git", branch = "main", version = "0.1.0" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }

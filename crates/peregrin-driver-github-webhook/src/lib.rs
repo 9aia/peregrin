@@ -22,11 +22,13 @@
 //! `X-GitHub-Delivery` → `200 duplicate`, deleted/zero-sha pushes →
 //! `200 ignored`, malformed signed payloads → `400`, verified pushes
 //! → `202 queued` with `Event{type:"push", payload:{repo, ref, sha,
-//! before, actor, clone_url}, source: <node id>}` injected.
+//! before, actor, clone_url, delivery_id}, source: <node id>}`
+//! injected (`delivery_id` = `X-GitHub-Delivery`, "" when absent —
+//! feeds the ci-job indexDoc's `deliveryId`).
 //!
 //! `pull_request` deliveries get the same verify/dedup treatment and
 //! inject `Event{type:"pull_request", payload:{repo, number, action,
-//! sha, ref, base_ref, clone_url, actor}}` — `sha`/`ref`/`clone_url`
+//! sha, ref, base_ref, clone_url, actor, delivery_id}}` — `sha`/`ref`/`clone_url`
 //! describe the PR *head* so a campaign can check it out and post
 //! statuses. `params.pull_request_actions` (comma-separated string or
 //! list; default `opened,synchronize,reopened`) filters which actions
@@ -678,12 +680,18 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
     if matched.is_empty() {
         return (StatusCode::UNAUTHORIZED, "bad signature");
     }
-    if let Some(id) = header(headers, "x-github-delivery") {
+    // `X-GitHub-Delivery` — dedup key AND payload field: the ci-job
+    // indexDoc's `deliveryId` (P-002 §1, audit/dedup) templates off
+    // `event.payload.delivery_id`. Always emitted (empty string when
+    // the header is absent) so `${event.payload.delivery_id}`
+    // resolves to "" rather than passing through verbatim.
+    let delivery_id = header(headers, "x-github-delivery").unwrap_or_default();
+    if !delivery_id.is_empty() {
         let fresh = shared
             .seen
             .lock()
             .unwrap_or_else(PoisonError::into_inner)
-            .insert(id);
+            .insert(delivery_id);
         if !fresh {
             return (StatusCode::OK, "duplicate delivery");
         }
@@ -714,6 +722,7 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
                         "before": push.before,
                         "actor": push.actor,
                         "clone_url": clone_url,
+                        "delivery_id": delivery_id,
                     }),
                     &route.source,
                 );
@@ -764,6 +773,7 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
                         "base_ref": pr.base_ref,
                         "actor": pr.actor,
                         "clone_url": clone_url,
+                        "delivery_id": delivery_id,
                     }),
                     &route.source,
                 );

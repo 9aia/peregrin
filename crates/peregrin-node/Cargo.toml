@@ -16,9 +16,10 @@ workspace = true
 # plane is inert until ci-job entities are created, and the ingress
 # side (`libraries/ci-ingress`) needs it resident to enqueue.
 default = ["bupha"]
-bupha = ["dep:bupha-plane"]
+bupha = ["dep:bupha-plane", "dep:bupha-config-file"]
 
 [dependencies]
+bupha-config-file = { workspace = true, optional = true }
 bupha-plane = { workspace = true, optional = true }
 sepia-acp.workspace = true
 peregrin-session.workspace = true

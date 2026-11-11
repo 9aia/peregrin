@@ -6,10 +6,16 @@
 //! application/json` default; number/boolean via `String(v)`), and
 //! `params.timeout` in seconds (default 300 — ADR-0005). A 2xx
 //! response emits `http.done`, any other status `http.failed`, both
-//! carrying `{status, body, url, method, headers}`; a JSON
+//! carrying `{status, body, url, method, headers, attempts}`; a JSON
 //! `content-type` parses the body, falling back to text. A transport
 //! failure emits `http.failed` with `status: 0` (the TS converts the
 //! fetch rejection, not `Effect.fail`).
+//!
+//! `params.retries` (default 0, capped at 10) re-sends the request
+//! after a transport failure or a retryable status (429/5xx) with a
+//! linear 250 ms×attempt backoff — opt-in because retrying is only
+//! safe for idempotent endpoints (the ci-ingress `POST
+//! /api/entities` dedups on the deterministic entity id).
 //!
 //! `params.notify` + `params.apprise` sends a notification through the
 //! TS `handl-plugin-apprise` `send` path: `tgram:`/`jsons:`/`json:`
@@ -166,6 +172,12 @@ fn send_request(
     .map_err(|error| error.to_string())
 }
 
+/// Linear backoff between `params.retries` attempts — 250 ms × the
+/// attempt number that just failed (attempt 1 → 250 ms, 2 → 500 ms…).
+fn retry_delay(attempt: u64) -> Duration {
+    Duration::from_millis(250 * attempt)
+}
+
 /// `readBody` — `content-type` containing `application/json` parses,
 /// unparseable JSON falls back to the raw text (`orElseSucceed(text)`);
 /// a read failure is a `DriverError`.
@@ -278,22 +290,46 @@ impl Driver for HttpDriver {
                 Duration::from_secs_f64(seconds.max(0.0))
             });
         let body = make_body(params.get("body"), &mut headers);
+        // `params.retries` — extra attempts after the first, capped;
+        // only transport failures and 429/5xx retry (a 4xx is a
+        // deterministic rejection — replaying it changes nothing).
+        let retries = params
+            .get("retries")
+            .and_then(Value::as_u64)
+            .unwrap_or(0)
+            .min(10);
 
-        let result = send_request(&agent_with(timeout), &method, url, &headers, body);
-        let mut response = match result {
-            Err(error) => {
-                return Ok(vec![Event::new(
-                    "http.failed",
-                    serde_json::json!({
-                        "status": 0,
-                        "error": error,
-                        "url": url,
-                        "method": method,
-                    }),
-                    &node.id,
-                )]);
+        let mut attempt = 0_u64;
+        let mut response = loop {
+            attempt += 1;
+            match send_request(&agent_with(timeout), &method, url, &headers, body.clone()) {
+                Err(error) => {
+                    if attempt <= retries {
+                        std::thread::sleep(retry_delay(attempt));
+                        continue;
+                    }
+                    return Ok(vec![Event::new(
+                        "http.failed",
+                        serde_json::json!({
+                            "status": 0,
+                            "error": error,
+                            "url": url,
+                            "method": method,
+                            "attempts": attempt,
+                        }),
+                        &node.id,
+                    )]);
+                }
+                Ok(resp) => {
+                    let status = resp.status().as_u16();
+                    if attempt <= retries && (status == 429 || status >= 500) {
+                        drop(resp);
+                        std::thread::sleep(retry_delay(attempt));
+                        continue;
+                    }
+                    break resp;
+                }
             }
-            Ok(response) => response,
         };
 
         let response_body = read_body(&mut response)?;
@@ -315,6 +351,10 @@ impl Driver for HttpDriver {
             ("url".to_string(), Value::String(url.to_string())),
             ("method".to_string(), Value::String(method.clone())),
             ("headers".to_string(), Value::Object(response_headers)),
+            (
+                "attempts".to_string(),
+                Value::Number(serde_json::Number::from(attempt)),
+            ),
         ]);
 
         let apprise = params.get("apprise").and_then(Value::as_str);

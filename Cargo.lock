@@ -436,9 +436,48 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 
 [[package]]
+name = "bupha-config"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#5f560dabfe367ad7ed676eedc0a5f24236c101da"
+dependencies = [
+ "bupha-core",
+]
+
+[[package]]
+name = "bupha-config-file"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#5f560dabfe367ad7ed676eedc0a5f24236c101da"
+dependencies = [
+ "bupha-config",
+ "bupha-config-toml",
+ "bupha-config-yaml",
+ "bupha-core",
+]
+
+[[package]]
+name = "bupha-config-toml"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#5f560dabfe367ad7ed676eedc0a5f24236c101da"
+dependencies = [
+ "bupha-config",
+ "bupha-core",
+ "toml",
+]
+
+[[package]]
+name = "bupha-config-yaml"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#5f560dabfe367ad7ed676eedc0a5f24236c101da"
+dependencies = [
+ "bupha-config",
+ "bupha-core",
+ "serde_norway",
+]
+
+[[package]]
 name = "bupha-core"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#ce95ba09664347c2e2c4c302e82fb082140a3df9"
+source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#5f560dabfe367ad7ed676eedc0a5f24236c101da"
 dependencies = [
  "serde",
  "serde_json",
@@ -448,7 +487,7 @@ dependencies = [
 [[package]]
 name = "bupha-plane"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#ce95ba09664347c2e2c4c302e82fb082140a3df9"
+source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#5f560dabfe367ad7ed676eedc0a5f24236c101da"
 dependencies = [
  "async-trait",
  "axum",
@@ -1724,7 +1763,7 @@ dependencies = [
 [[package]]
 name = "hypha-http"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a74fd126c730e3e77d02c8a5cd4472fe04dcbeff"
 dependencies = [
  "async-trait",
  "axum",
@@ -1808,7 +1847,7 @@ dependencies = [
 [[package]]
 name = "hypha-push"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a74fd126c730e3e77d02c8a5cd4472fe04dcbeff"
 dependencies = [
  "base64 0.22.1",
  "futures",
@@ -1858,7 +1897,7 @@ dependencies = [
 [[package]]
 name = "hypha-telemetry"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a74fd126c730e3e77d02c8a5cd4472fe04dcbeff"
 dependencies = [
  "http 1.5.0",
  "opentelemetry",
@@ -3039,6 +3078,7 @@ version = "0.1.0"
 dependencies = [
  "async-trait",
  "axum",
+ "bupha-config-file",
  "bupha-plane",
  "chrono",
  "futures",
