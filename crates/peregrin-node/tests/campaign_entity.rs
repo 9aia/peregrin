@@ -694,3 +694,92 @@ async fn campaign_entity_delete_flow() {
     let res = app.oneshot(req).await.unwrap();
     assert_eq!(res.status(), StatusCode::NOT_FOUND);
 }
+
+// ---------- POST /api/events/inject fan-out ----------------------------
+
+use peregrin_engine::{Injector, ingress};
+use peregrin_node::campaign_entity::CampaignEntity;
+
+fn entity(id: &str, state: &str, injector: Option<Injector>) -> CampaignEntity {
+    let now = "2025-01-01T00:00:00Z".to_string();
+    CampaignEntity {
+        id: id.to_string(),
+        name: id.to_string(),
+        state: state.to_string(),
+        campaign: None,
+        campaign_ref: None,
+        started_at: None,
+        finished_at: None,
+        events_count: 0,
+        fires_count: 0,
+        failed_count: 0,
+        resume_count: 0,
+        log: Vec::new(),
+        pending_timers: Vec::new(),
+        injector,
+        pause_requested: false,
+        live_log: None,
+        live_timers: None,
+        created_at: now.clone(),
+        updated_at: now,
+    }
+}
+
+fn drain(chan: &peregrin_engine::Ingress) -> Vec<peregrin_core::Event> {
+    let mut out = Vec::new();
+    chan.drain_into(&mut out);
+    out
+}
+
+#[test]
+fn inject_event_fans_out_to_running_entities_only() {
+    let plane = CampaignEntityPlane::new();
+    let (inj_run, chan_run) = ingress();
+    let (inj_queued, chan_queued) = ingress();
+    let (inj_done, chan_done) = ingress();
+    let entities = plane.entities();
+    {
+        let mut map = entities.write().unwrap();
+        map.insert("run-1".into(), entity("run-1", "running", Some(inj_run)));
+        // Running but never started a runner — no injector to take it.
+        map.insert("run-2".into(), entity("run-2", "running", None));
+        map.insert(
+            "queued-1".into(),
+            entity("queued-1", "queued", Some(inj_queued)),
+        );
+        map.insert("done-1".into(), entity("done-1", "done", Some(inj_done)));
+    }
+
+    // Unscoped: every running entity with a live channel — `run-1`
+    // only (`run-2` has no injector, the rest aren't running).
+    let delivered = plane
+        .inject_event("ci.job.completed", json!({"job": "build"}), "test", None)
+        .unwrap();
+    assert_eq!(delivered, 1);
+    let events = drain(&chan_run);
+    assert_eq!(events.len(), 1);
+    assert_eq!(events[0].kind, "ci.job.completed");
+    assert_eq!(events[0].source, "test");
+    assert_eq!(events[0].payload["job"], "build");
+    assert!(drain(&chan_queued).is_empty());
+    assert!(drain(&chan_done).is_empty());
+
+    // Scoped to the running entity → delivers; scoped to a non-running
+    // one → accepted but zero; unknown id → 404.
+    assert_eq!(
+        plane
+            .inject_event("k", json!({}), "test", Some("run-1"))
+            .unwrap(),
+        1
+    );
+    assert_eq!(
+        plane
+            .inject_event("k", json!({}), "test", Some("queued-1"))
+            .unwrap(),
+        0
+    );
+    let err = plane
+        .inject_event("k", json!({}), "test", Some("nope"))
+        .unwrap_err();
+    assert_eq!(err.status, StatusCode::NOT_FOUND);
+}

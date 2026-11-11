@@ -38,6 +38,7 @@ use hypha_http::{EntityContext, EntityPlane};
 use peregrin_bus::{LocalBus, Observer};
 use peregrin_core::{Campaign, Event};
 use peregrin_engine::{Injector, PendingTimer, RunOptions, Runner};
+use peregrin_http::DeliverError;
 use peregrin_loader::Loader;
 use peregrin_loader_yaml::YamlLoader;
 use peregrin_store::MemoryStore;
@@ -146,6 +147,66 @@ impl CampaignEntityPlane {
     #[must_use]
     pub fn entities(&self) -> Arc<RwLock<HashMap<String, CampaignEntity>>> {
         Arc::clone(&self.entities)
+    }
+
+    /// `POST /api/events/inject` fan-out — build one `Event` and push
+    /// it into the ingress channel of every `running` entity (or just
+    /// `scope`'s when given — the route's optional `campaign` field).
+    /// Returns how many live runs accepted it; `0` means the event was
+    /// accepted but nothing was running to see it. A scoped id that
+    /// doesn't exist is a `404` [`DeliverError`]; a scoped entity that
+    /// isn't `running` delivers `0` (the event is simply too late for
+    /// it — same semantics as an unscoped emit).
+    ///
+    /// Per-run drops (a channel whose runner already exited between
+    /// the state read and the send) count as not-delivered, matching
+    /// the webhook driver's `run ended` accounting.
+    ///
+    /// # Errors
+    /// [`DeliverError`] — 404 for an unknown `scope`, 500 when the
+    /// entity map lock is poisoned.
+    pub fn inject_event(
+        &self,
+        kind: &str,
+        payload: Value,
+        source: &str,
+        scope: Option<&str>,
+    ) -> Result<usize, DeliverError> {
+        let map = self
+            .entities
+            .read()
+            .map_err(|_| DeliverError::internal("entities lock poisoned"))?;
+        if let Some(id) = scope {
+            match map.get(id) {
+                None => {
+                    return Err(DeliverError {
+                        status: StatusCode::NOT_FOUND,
+                        message: format!("campaign entity '{id}' not found"),
+                    });
+                }
+                Some(entity) if entity.state != "running" => return Ok(0),
+                Some(_) => {}
+            }
+        }
+        let event = Event::new(kind, payload, source);
+        let mut delivered = 0;
+        for entity in map.values() {
+            if entity.state != "running" {
+                continue;
+            }
+            if scope.is_some_and(|id| entity.id != id) {
+                continue;
+            }
+            if let Some(injector) = &entity.injector {
+                // A clone per entity — each run's channel gets its own
+                // copy (the event log then shows the same `id`/`ts`,
+                // which is honest: it IS the same logical event).
+                if injector.inject(event.clone()).is_ok() {
+                    delivered += 1;
+                }
+            }
+        }
+        Ok(delivered)
     }
 }
 

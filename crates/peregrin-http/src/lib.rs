@@ -18,6 +18,7 @@
 pub mod auth;
 pub mod env;
 pub mod feed;
+pub mod ingest;
 pub mod node;
 pub mod push;
 pub mod routes;
@@ -48,6 +49,7 @@ pub use hypha_http::entity_plane;
 pub use hypha_http::entity_plane::{EntityContext, EntityPlane, KindRegistry};
 pub use hypha_http::pair;
 pub use hypha_http::{Quota, RateLimiter};
+pub use ingest::{DeliverError, EventDeliver, EventIngest, IngestDelivery, IngestOutcome};
 pub use node::{
     NodeIdentity, PEREGRIN_VERSION, PROTOCOL_VERSION, load_node_identity, save_node_identity,
 };
@@ -105,6 +107,11 @@ pub struct AppState {
     /// (`crate::push`'s `PushBackend for MetaStore`); shared with the
     /// substrate's `/api/push/*` at composition. `None` → 501s.
     pub push: Option<Arc<hypha_push::PushStore>>,
+    /// `POST /api/events/inject` backend — the campaign plane's
+    /// live-run fan-out plus the idempotency dedup ring
+    /// ([`crate::ingest`]). `None` → the route answers 501 (a node
+    /// without a campaign plane has nothing to feed).
+    pub event_ingest: Option<EventIngest>,
 }
 
 impl AppState {
@@ -137,6 +144,7 @@ impl AppState {
             import_session: None,
             convert: None,
             push: None,
+            event_ingest: None,
         }
     }
 
@@ -173,6 +181,10 @@ impl AppState {
             push: Some(Arc::new(hypha_push::PushStore::open(
                 crate::push::MetaPushBackend(MetaStore::open(&env.meta_path)),
             ))),
+            // The campaign plane's fan-out is wired by the
+            // composition root (`peregrin-node::app_state`) — `Env`
+            // alone doesn't know it.
+            event_ingest: None,
         }
     }
 
@@ -265,6 +277,14 @@ impl AppState {
     #[must_use]
     pub fn with_convert(mut self, f: ConvertSession) -> Self {
         self.convert = Some(f);
+        self
+    }
+
+    /// Wire the `POST /api/events/inject` backend — the campaign
+    /// plane's live-run fan-out ([`crate::ingest::EventIngest`]).
+    #[must_use]
+    pub fn with_event_ingest(mut self, ingest: EventIngest) -> Self {
+        self.event_ingest = Some(ingest);
         self
     }
 }
@@ -569,6 +589,7 @@ fn session_app(state: AppState) -> Router {
 
     Router::new()
         .route("/api/agents", any(routes::agents::agents))
+        .route("/api/events/inject", any(routes::events::inject))
         .route("/api/client/keypair", any(routes::client::keypair))
         .route("/api/config", any(routes::config::get))
         .route("/api/config/{key}", any(routes::config::set))

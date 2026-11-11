@@ -1480,3 +1480,219 @@ async fn oversized_json_bodies_get_413() {
 
     app.plane.close_all().await;
 }
+
+// ---------- POST /api/events/inject ------------------------------------
+
+/// Recorded sink deliveries: `(kind, payload, source, campaign, key)`.
+type SeenDeliveries = Arc<Mutex<Vec<(String, Value, String, Option<String>, Option<String>)>>>;
+
+fn recording_sink(
+    seen: SeenDeliveries,
+    result: Result<usize, (StatusCode, String)>,
+) -> peregrin_http::EventDeliver {
+    Arc::new(move |delivery: &peregrin_http::IngestDelivery| {
+        seen.lock().unwrap().push((
+            delivery.kind.clone(),
+            delivery.payload.clone(),
+            delivery.source.clone(),
+            delivery.campaign.clone(),
+            delivery.idempotency_key.clone(),
+        ));
+        match &result {
+            Ok(n) => Ok(*n),
+            Err((status, message)) => Err(peregrin_http::DeliverError {
+                status: *status,
+                message: message.clone(),
+            }),
+        }
+    })
+}
+
+/// `mk_app` plus an event-ingest backend — the campaign plane's stand-in.
+fn mk_ingest_app(
+    sink_result: Result<usize, (StatusCode, String)>,
+    token: Option<&str>,
+) -> (Router, SeenDeliveries) {
+    let (plane, _) = mk_plane(vec![], vec![]);
+    let seen: SeenDeliveries = Arc::new(Mutex::new(Vec::new()));
+    let state = AppState::new(Arc::new(LocalPlane(plane, None)))
+        .with_held_watch(Duration::ZERO)
+        .with_event_ingest(peregrin_http::EventIngest::new(recording_sink(
+            Arc::clone(&seen),
+            sink_result,
+        )))
+        .with_token(token.map(str::to_string));
+    (app(state), seen)
+}
+
+#[tokio::test]
+async fn inject_501_without_backend() {
+    let (plane, _) = mk_plane(vec![], vec![]);
+    let app = mk_app(&plane);
+    let (status, _, body) = call(
+        &app.router,
+        post(
+            "/api/events/inject",
+            Some(json!({"type": "ci.job.completed", "payload": {}})),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_IMPLEMENTED);
+    assert!(body["error"].as_str().unwrap().contains("not configured"));
+    app.plane.close_all().await;
+}
+
+#[tokio::test]
+async fn inject_delivers_typed_event_and_dedups() {
+    let (router, seen) = mk_ingest_app(Ok(2), None);
+
+    let body = json!({
+        "type": "ci.job.completed",
+        "payload": {"job": "build", "result": "success"},
+        "idempotencyKey": "job-1:success",
+        "campaign": "camp-1",
+        "source": "bupha",
+    });
+    let (status, _, resp) = call(&router, post("/api/events/inject", Some(body))).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(resp["ok"], true);
+    assert_eq!(resp["delivered"], 2);
+
+    {
+        let recorded = seen.lock().unwrap();
+        assert_eq!(recorded.len(), 1);
+        assert_eq!(recorded[0].0, "ci.job.completed");
+        assert_eq!(recorded[0].1["job"], "build");
+        assert_eq!(recorded[0].2, "bupha");
+        assert_eq!(recorded[0].3.as_deref(), Some("camp-1"));
+        assert_eq!(recorded[0].4.as_deref(), Some("job-1:success"));
+    }
+
+    // Replay → deduplicated, sink not re-invoked.
+    let body = json!({
+        "type": "ci.job.completed",
+        "payload": {"job": "build", "result": "success"},
+        "idempotencyKey": "job-1:success",
+    });
+    let (status, _, resp) = call(&router, post("/api/events/inject", Some(body))).await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(resp["deduplicated"], true);
+    assert_eq!(seen.lock().unwrap().len(), 1);
+}
+
+#[tokio::test]
+async fn inject_defaults_and_kind_alias() {
+    let (router, seen) = mk_ingest_app(Ok(0), None);
+    // `kind` is the Event wire alias; payload/source default.
+    let (status, _, resp) = call(
+        &router,
+        post("/api/events/inject", Some(json!({"kind": "ping"}))),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(resp["delivered"], 0); // accepted, nothing running
+    let recorded = seen.lock().unwrap();
+    assert_eq!(recorded[0].0, "ping");
+    assert_eq!(recorded[0].1, json!({}));
+    assert_eq!(recorded[0].2, "api");
+    assert_eq!(recorded[0].3, None);
+    assert_eq!(recorded[0].4, None);
+}
+
+#[tokio::test]
+async fn inject_body_validation() {
+    let (router, seen) = mk_ingest_app(Ok(1), None);
+
+    // Missing `type`/`kind`.
+    let (status, _, body) = call(
+        &router,
+        post("/api/events/inject", Some(json!({"payload": {}}))),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+    assert!(body["error"].as_str().unwrap().contains("type"));
+
+    // Empty `type`.
+    let (status, _, _) = call(
+        &router,
+        post("/api/events/inject", Some(json!({"type": ""}))),
+    )
+    .await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    // Non-object body.
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/events/inject")
+        .header("content-type", "application/json")
+        .body(Body::from("[1,2,3]"))
+        .unwrap();
+    let (status, _, _) = call(&router, req).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    // Not JSON at all.
+    let req = Request::builder()
+        .method("POST")
+        .uri("/api/events/inject")
+        .header("content-type", "application/json")
+        .body(Body::from("not json"))
+        .unwrap();
+    let (status, _, _) = call(&router, req).await;
+    assert_eq!(status, StatusCode::BAD_REQUEST);
+
+    assert!(seen.lock().unwrap().is_empty());
+}
+
+#[tokio::test]
+async fn inject_sink_error_maps_status() {
+    let (router, _) = mk_ingest_app(
+        Err((
+            StatusCode::NOT_FOUND,
+            "campaign entity 'nope' not found".into(),
+        )),
+        None,
+    );
+    let (status, _, body) = call(
+        &router,
+        post(
+            "/api/events/inject",
+            Some(json!({"type": "k", "campaign": "nope"})),
+        ),
+    )
+    .await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+    assert_eq!(body["error"], "campaign entity 'nope' not found");
+}
+
+#[tokio::test]
+async fn inject_auth_gate_applies() {
+    let (router, seen) = mk_ingest_app(Ok(1), Some("sekrit"));
+    let body = json!({"type": "k"});
+
+    // No credential → 401.
+    let (status, _, _) = call(&router, post("/api/events/inject", Some(body.clone()))).await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    // Wrong credential → 401.
+    let (status, _, _) = call(
+        &router,
+        bearer(post("/api/events/inject", Some(body.clone())), "wrong"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::UNAUTHORIZED);
+
+    // Bearer → 200.
+    let (status, _, resp) = call(
+        &router,
+        bearer(post("/api/events/inject", Some(body)), "sekrit"),
+    )
+    .await;
+    assert_eq!(status, StatusCode::OK);
+    assert_eq!(resp["delivered"], 1);
+    assert_eq!(seen.lock().unwrap().len(), 1);
+
+    // Wrong method falls through to 404 (the `any()` + guard
+    // convention), still behind auth.
+    let (status, _, _) = call(&router, bearer(get("/api/events/inject"), "sekrit")).await;
+    assert_eq!(status, StatusCode::NOT_FOUND);
+}

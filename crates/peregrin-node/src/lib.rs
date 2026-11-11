@@ -172,10 +172,25 @@ async fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
     #[cfg(feature = "bupha")]
     let ci_labels = labels.clone();
     let campaign_plane = Arc::new(CampaignEntityPlane::new().with_labels(labels));
+    // `POST /api/events/inject` fans typed events out to every
+    // *running* campaign entity's ingress channel (scoped by the
+    // body's optional `campaign` id) — the bupha worker's
+    // `ci.job.completed` emit and forge check runners land here.
+    let ingest_plane = Arc::clone(&campaign_plane);
     let mut state = app_state
         .with_kind(campaign_plane)
         .with_convert(convert)
-        .with_import_session(import);
+        .with_import_session(import)
+        .with_event_ingest(peregrin_http::EventIngest::new(Arc::new(
+            move |delivery: &peregrin_http::IngestDelivery| {
+                ingest_plane.inject_event(
+                    &delivery.kind,
+                    delivery.payload.clone(),
+                    &delivery.source,
+                    delivery.campaign.as_deref(),
+                )
+            },
+        )));
     #[cfg(feature = "bupha")]
     {
         // Keep the concrete `Arc` — boot rehydration (T-072) feeds
