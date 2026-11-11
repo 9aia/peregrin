@@ -77,6 +77,12 @@
 //!   string or a list of strings. `peregrin deploy webhook` subscribes
 //!   the repo hook to `pull_request` events only when this param is
 //!   set — push-only stays the default.
+//! - `push_refs` — which push `ref`s this node accepts (comma-separated
+//!   string or list of full refs like `refs/heads/main`); unset/empty
+//!   accepts every ref. Per-route like the action filters — campaigns
+//!   that only want default-branch pushes (e.g. CI enqueue) list them
+//!   here instead of shell-gating downstream, which would drop the
+//!   event payload the next node needs.
 //! - `check_run_actions` / `check_suite_actions` — which `action`s of
 //!   each check delivery this node accepts (both default
 //!   `completed`); same string-or-list shape as
@@ -324,6 +330,9 @@ pub struct Route {
     /// Commit-`status` states this route accepts —
     /// `params.status_states`.
     pub status_states: Vec<String>,
+    /// `push` refs this route accepts — `params.push_refs`; empty
+    /// accepts every ref.
+    pub push_refs: Vec<String>,
 }
 
 /// Per-listener state shared into the request handler — the repo→
@@ -494,6 +503,25 @@ fn parse_check_suite_actions(params: &Map<String, Value>) -> Vec<String> {
 /// ([`DEFAULT_STATUS_STATES`] when unset).
 fn parse_status_states(params: &Map<String, Value>) -> Vec<String> {
     parse_list_param(params, "status_states", DEFAULT_STATUS_STATES)
+}
+
+/// `params.push_refs` → the accepted push ref set. Unlike the
+/// action/state filters there is no default list — empty means
+/// "accept every ref" (the pre-filter behaviour).
+fn parse_push_refs(params: &Map<String, Value>) -> Vec<String> {
+    let raw: Vec<String> = match params.get("push_refs") {
+        Some(Value::String(s)) => s.split(',').map(str::to_string).collect(),
+        Some(Value::Array(items)) => items
+            .iter()
+            .filter_map(Value::as_str)
+            .map(str::to_string)
+            .collect(),
+        _ => Vec::new(),
+    };
+    raw.into_iter()
+        .map(|r| r.trim().to_string())
+        .filter(|r| !r.is_empty())
+        .collect()
 }
 
 /// `params.<key>` as a non-empty string, else `default`.
@@ -1020,28 +1048,44 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
     } {
         Delivery::Skip => (StatusCode::OK, "ignored: no-op event"),
         Delivery::Malformed => (StatusCode::BAD_REQUEST, "unparseable payload"),
-        Delivery::Push(push) => fan_out(&matched, |route| {
-            // One event per matched route — `source` and the
-            // `clone_url` fallback are per-route (each campaign's
-            // node id and `api_base`).
-            let clone_url = push
-                .clone_url
-                .clone()
-                .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
-            Event::new(
-                "push",
-                serde_json::json!({
-                    "repo": push.repo,
-                    "ref": push.git_ref,
-                    "sha": push.sha,
-                    "before": push.before,
-                    "actor": push.actor,
-                    "clone_url": clone_url,
-                    "delivery_id": delivery_id,
-                }),
-                &route.source,
-            )
-        }),
+        Delivery::Push(push) => {
+            // `push_refs` is per-route like the action/state filters:
+            // empty accepts every ref, otherwise the delivery's full
+            // `refs/heads/…` must be listed. None remaining → verified
+            // no-op, same as an uninteresting action.
+            let interested: Vec<&Route> = matched
+                .iter()
+                .copied()
+                .filter(|route| {
+                    route.push_refs.is_empty() || route.push_refs.iter().any(|r| r == &push.git_ref)
+                })
+                .collect();
+            if interested.is_empty() {
+                return (StatusCode::OK, "ignored: no-op event");
+            }
+            fan_out(&interested, |route| {
+                // One event per matched route — `source` and the
+                // `clone_url` fallback are per-route (each campaign's
+                // node id and `api_base`).
+                let clone_url = push
+                    .clone_url
+                    .clone()
+                    .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
+                Event::new(
+                    "push",
+                    serde_json::json!({
+                        "repo": push.repo,
+                        "ref": push.git_ref,
+                        "sha": push.sha,
+                        "before": push.before,
+                        "actor": push.actor,
+                        "clone_url": clone_url,
+                        "delivery_id": delivery_id,
+                    }),
+                    &route.source,
+                )
+            })
+        }
         Delivery::PullRequest(pr) => {
             // The action filter is per-route: campaigns watching the
             // same repo can want different `pull_request` actions.
@@ -1287,6 +1331,7 @@ impl Driver for GithubWebhookDriver {
         let check_run_actions = parse_check_run_actions(&params);
         let check_suite_actions = parse_check_suite_actions(&params);
         let status_states = parse_status_states(&params);
+        let push_refs = parse_push_refs(&params);
         let specs = parse_repo_specs(&params, node)?;
         let names: Vec<Value> = specs
             .iter()
@@ -1306,6 +1351,7 @@ impl Driver for GithubWebhookDriver {
                     "check_run_actions": check_run_actions,
                     "check_suite_actions": check_suite_actions,
                     "status_states": status_states,
+                    "push_refs": push_refs,
                 }),
                 &node.id,
             )]);
@@ -1337,6 +1383,7 @@ impl Driver for GithubWebhookDriver {
                 check_run_actions: check_run_actions.clone(),
                 check_suite_actions: check_suite_actions.clone(),
                 status_states: status_states.clone(),
+                push_refs: push_refs.clone(),
             });
         }
         let shared = Arc::new(Shared {
@@ -1589,6 +1636,7 @@ impl Driver for SharedWebhookDriver {
         let check_run_actions = parse_check_run_actions(&params);
         let check_suite_actions = parse_check_suite_actions(&params);
         let status_states = parse_status_states(&params);
+        let push_refs = parse_push_refs(&params);
         let specs = parse_repo_specs(&params, node)?;
         let names: Vec<Value> = specs
             .iter()
@@ -1607,6 +1655,7 @@ impl Driver for SharedWebhookDriver {
                     "check_run_actions": check_run_actions,
                     "check_suite_actions": check_suite_actions,
                     "status_states": status_states,
+                    "push_refs": push_refs,
                 }),
                 &node.id,
             )]);
@@ -1626,6 +1675,7 @@ impl Driver for SharedWebhookDriver {
                     check_run_actions: check_run_actions.clone(),
                     check_suite_actions: check_suite_actions.clone(),
                     status_states: status_states.clone(),
+                    push_refs: push_refs.clone(),
                 },
             );
         }

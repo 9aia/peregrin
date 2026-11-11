@@ -36,6 +36,7 @@ fn route(secret: &str, injector: &Injector, source: &str) -> Route {
             "pending".to_string(),
             "success".to_string(),
         ],
+        push_refs: Vec::new(),
     }
 }
 
@@ -691,6 +692,44 @@ fn status_delivery_filters_states_and_carries_context() {
         (202, "queued".to_string())
     );
     assert_eq!(drain(&chan).len(), 1);
+    assert_eq!(drain(&chan_b).len(), 1);
+}
+
+#[test]
+fn push_refs_filter_is_per_route() {
+    let demux = Arc::new(SharedWebhook::new());
+    let (inj_a, chan_a) = ingress();
+    let (inj_b, chan_b) = ingress();
+    // Route A accepts only main pushes; route B (empty) takes all.
+    let mut main_only = route(SECRET_A, &inj_a, "hook-main");
+    main_only.push_refs = vec!["refs/heads/main".to_string()];
+    demux.register(REPO_A, main_only);
+    demux.register(REPO_A, route(SECRET_A, &inj_b, "hook-all"));
+    let base = serving(&demux);
+    let url = format!("{base}/hook");
+
+    let feature_body = json!({
+        "ref": "refs/heads/feature/x",
+        "before": "1111111111111111111111111111111111111111",
+        "after": "2222222222222222222222222222222222222222",
+        "pusher": { "name": "octocat" },
+        "repository": { "full_name": REPO_A },
+    })
+    .to_string()
+    .into_bytes();
+    assert_eq!(
+        post_push(&url, SECRET_A, &feature_body, None),
+        (202, "queued".to_string())
+    );
+    assert!(drain(&chan_a).is_empty(), "main-only route skips feature");
+    assert_eq!(drain(&chan_b).len(), 1, "unfiltered route takes it");
+
+    // A main push reaches both routes.
+    assert_eq!(
+        post_push(&url, SECRET_A, &push_body(REPO_A), None),
+        (202, "queued".to_string())
+    );
+    assert_eq!(drain(&chan_a).len(), 1);
     assert_eq!(drain(&chan_b).len(), 1);
 }
 
