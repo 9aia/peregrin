@@ -1,0 +1,109 @@
+# ci-ingress — forge webhook → `kind="ci-job"` enqueue (P-002 §4,
+# ADR-0007, bupha T-058/T-063). A verified `push` delivery becomes a
+# `POST /api/entities {kind:"ci-job"}` on the peregrin node that hosts
+# the ci-job plane (`peregrin serve` with the `bupha` feature) —
+# create IS `ci.enqueue`, and the deterministic entity id
+# `ci:{key}:{sha}:{attempt}` dedups webhook replays for free.
+#
+# Shape mirrors `libraries/ci-gate`: the `github-webhook` node emits
+# raw `push` events; `ci.route` re-emits them typed
+# (`push.{repo}.{ref}.{clone_url}.{sha}`) so per-repo `on:` patterns
+# can pick them apart; `ci.enqueue` is the generic catch-all that
+# POSTs the indexDoc. Per-repo job specs (queue policy, `:job` key
+# suffix, runsOn, context, maxAttempts) are added as extra
+# `driver: http` nodes on the typed events — see README.md.
+name: ci-ingress
+
+# Operator-facing knobs (see params.schema.json + README.md).
+config:
+  # Base URL of the node hosting the ci-job entity plane — the
+  # `peregrin serve` daemon (`/api/entities` is the hypha substrate
+  # surface). Same-host deployments use loopback.
+  node_url: "http://127.0.0.1:7700"
+  # ci-job indexDoc defaults applied to EVERY watched repo. `queue`
+  # is the lane policy ("latest" = newest push wins, "all" = bounded
+  # FIFO); `context` is the forge status label prefix. Per-repo
+  # overrides live on extra enqueue nodes (README).
+  queue: "latest"
+  context: "ci/bupha"
+
+# Secret NAMES the drivers may resolve — the node bearer token plus
+# one webhook HMAC secret per watched repo (`BUPHA_WH_<OWNER>_<REPO>`
+# convention). Values never appear here; they live in the operator's
+# env file (`~/.config/peregrin/env`).
+capabilities:
+  secrets:
+    - PEREGRIN_NODE_TOKEN
+    - BUPHA_WH_9AIA_BUPHA
+
+nodes:
+# --- ingress: verified forge pushes -------------------------------------
+- id: ci.ingress.webhook
+  driver: github-webhook
+  on:
+  - start
+  emits:
+  - ci.ingress.webhook.listening
+  - push
+  params:
+    # Under `campaign serve` the daemon's --listen/--path govern the
+    # ONE shared socket — these are ignored there (same as ci-gate).
+    listen: 127.0.0.1:29173
+    path: /hook
+    # v1 watches a single repo — extend `repos[]` (and
+    # capabilities.secrets) per deployment. `secret_env` names the
+    # secret, never the value.
+    repos:
+    - name: 9aia/bupha
+      secret_env: BUPHA_WH_9AIA_BUPHA
+
+# --- routing: raw `push` → typed `push.{repo}.{ref}.{url}.{sha}` ------
+# The catch-all enqueue below doesn't need this, but per-repo
+# enqueue nodes subscribe the typed kinds (ci-gate's ci.route
+# precedent). `event.match.1` = clone_url, `event.match.2` = sha.
+- id: ci.route
+  driver: shell
+  on:
+  - push
+  max_fires: unlimited
+  emits:
+  - push.**
+  - route.unmatched
+  params:
+    cmd: 'true'
+    emit:
+      '0': push.${event.payload.repo}.${event.payload.ref}.${event.payload.clone_url}.${event.payload.sha}
+      default: route.unmatched
+
+# --- enqueue: push → POST /api/entities (kind="ci-job") -----------------
+# `key` is the worker fleet.toml `[[repo]] key` the job resolves
+# against — repo full_name for whole-repo gates (`owner/name`),
+# `owner/name:job` for per-job lanes. The worker's own config
+# supplies runner/status; the indexDoc's queue/context are the
+# plane's lane policy + status label.
+- id: ci.enqueue
+  driver: http
+  on:
+  - push
+  max_fires: unlimited
+  emits:
+  - http.done
+  - http.failed
+  params:
+    url: "${config.node_url}/api/entities"
+    method: POST
+    timeout: 30
+    headers:
+      authorization: "Bearer ${secret.PEREGRIN_NODE_TOKEN}"
+      content-type: application/json
+    body:
+      kind: ci-job
+      indexDoc:
+        key: "${event.payload.repo}"
+        repo: "${event.payload.repo}"
+        ref: "${event.payload.ref}"
+        sha: "${event.payload.sha}"
+        event: push
+        sender: "${event.payload.actor}"
+        queue: "${config.queue}"
+        context: "${config.context}"

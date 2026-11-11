@@ -189,12 +189,46 @@ impl KindPolicy for CampaignKindPolicy {
     }
 }
 
+/// `kind="ci-job"` — bupha's CI-job entity (P-002, the
+/// bupha↔hypha/peregrin seam). The plane's own CAS makes every
+/// transition single-threaded on the owning node, so `ci.*` ops are
+/// deliberately **not** lock-gated: `ci.renew`/`ci.complete` must
+/// reach a `running` (locked) job — gating them on the entity lock
+/// would deadlock the claim holder against itself.
+///
+/// Outbox classification: `ci.enqueue`/`ci.cancel` are idempotent
+/// (`pending` enqueue is a no-op, cancel on terminal is a no-op) so
+/// they retry as [`OpKind::Metadata`]; `ci.claim`/`ci.renew`/
+/// `ci.release`/`ci.complete`/`ci.status` are one-shot — a replayed
+/// claim 409s on the CAS, a replayed complete 409s on the fence —
+/// so they [`OpKind::Turn`] dead-letter rather than retry into a
+/// conflict.
+pub struct CiJobKindPolicy;
+
+impl KindPolicy for CiJobKindPolicy {
+    fn entity_kinds(&self) -> &'static [&'static str] {
+        &["ci-job"]
+    }
+
+    fn owns_op(&self, op: &str) -> bool {
+        op.starts_with("ci.")
+    }
+
+    fn op_kind(&self, op: &str) -> OpKind {
+        match op {
+            "ci.enqueue" | "ci.cancel" => OpKind::Metadata,
+            _ => OpKind::Turn,
+        }
+    }
+}
+
 /// The registry the hub boots with — sepia-session first so it stays
 /// the default kind for kind-less creates/imports.
 pub fn default_kind_policies() -> KindPolicies {
     let mut policies = KindPolicies::new();
     policies.register(Arc::new(SepiaSessionPolicy));
     policies.register(Arc::new(CampaignKindPolicy));
+    policies.register(Arc::new(CiJobKindPolicy));
     policies
 }
 
@@ -236,6 +270,55 @@ mod tests {
             "campaign.resume",
             "campaign.signal",
             "campaign.unknown",
+        ] {
+            assert_eq!(policy.op_kind(op), OpKind::Turn, "{op}");
+        }
+    }
+
+    #[test]
+    fn ci_job_policy_claims_ci_ops_without_lock_gating() {
+        let policy = CiJobKindPolicy;
+        assert_eq!(policy.entity_kinds(), &["ci-job"][..]);
+        for op in [
+            "ci.enqueue",
+            "ci.claim",
+            "ci.renew",
+            "ci.release",
+            "ci.complete",
+            "ci.cancel",
+            "ci.status",
+        ] {
+            assert!(policy.owns_op(op), "{op} should be claimed");
+            // Never gated — the plane's CAS is the mutual exclusion;
+            // gating would strand renew/complete behind the lock the
+            // claim itself holds.
+            assert!(!policy.op_gated(op), "{op} must not contend for the lock");
+        }
+        for op in [
+            "sepia.prompt",
+            "campaign.start",
+            "entity.delete",
+            "ci",
+            "other.op",
+        ] {
+            assert!(!policy.owns_op(op), "{op} should not be claimed");
+        }
+    }
+
+    #[test]
+    fn ci_job_op_kind_classification() {
+        let policy = CiJobKindPolicy;
+        // Idempotent transitions retry; CAS/fence-guarded mutations
+        // dead-letter on replay failure.
+        assert_eq!(policy.op_kind("ci.enqueue"), OpKind::Metadata);
+        assert_eq!(policy.op_kind("ci.cancel"), OpKind::Metadata);
+        for op in [
+            "ci.claim",
+            "ci.renew",
+            "ci.release",
+            "ci.complete",
+            "ci.status",
+            "ci.unknown",
         ] {
             assert_eq!(policy.op_kind(op), OpKind::Turn, "{op}");
         }

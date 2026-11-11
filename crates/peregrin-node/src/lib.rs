@@ -17,6 +17,17 @@ pub mod supervisor;
 
 pub use campaign_entity::{CAMPAIGN_KIND, CampaignEntityPlane};
 
+/// The `kind="ci-job"` entity plane — bupha's CI-job semantics over
+/// hypha's `EntityPlane` port (P-002, the bupha↔hypha/peregrin
+/// seam). `labels` are this node's advertised capabilities — the
+/// `runsOn` claim gate's right-hand side, the same list campaign
+/// `runs_on` matchers read. Only exists under the `bupha` feature.
+#[cfg(feature = "bupha")]
+#[must_use]
+pub fn ci_job_plane(labels: Vec<String>) -> Arc<dyn peregrin_http::EntityPlane> {
+    Arc::new(bupha_plane::CiJobPlane::new().with_labels(labels))
+}
+
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -138,11 +149,21 @@ fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
         labels.push("ephemeral".into());
     }
     labels.extend(env.runner_labels.iter().cloned());
+    // The ci-job plane's `runsOn` gate reads the same capability
+    // list — a bupha worker's `[worker] labels` are advertised here
+    // via `PEREGRIN_RUNNER_LABELS` (P-002 §4).
+    #[cfg(feature = "bupha")]
+    let ci_labels = labels.clone();
     let campaign_plane = Arc::new(CampaignEntityPlane::new().with_labels(labels));
-    app_state
+    let mut state = app_state
         .with_kind(campaign_plane)
         .with_convert(convert)
-        .with_import_session(import)
+        .with_import_session(import);
+    #[cfg(feature = "bupha")]
+    {
+        state = state.with_kind(ci_job_plane(ci_labels));
+    }
+    state
 }
 
 async fn run(env: &Env, state: AppState, plane: Arc<dyn SessionPlane>) -> std::io::Result<()> {

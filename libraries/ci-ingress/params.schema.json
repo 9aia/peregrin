@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://9aia.dev/peregrin/bundles/ci-ingress/params.schema.json",
+  "title": "ci-ingress params",
+  "description": "Operator-facing config keys for the ci-ingress bundle — ADR-0081's locked decision: bundle params validate against JSON Schema. Secret references are NAMES, never values.",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "node_url": {
+      "type": "string",
+      "default": "http://127.0.0.1:7700",
+      "description": "Base URL of the peregrin node hosting the ci-job entity plane (`peregrin serve` with the bupha feature — /api/entities is the hypha substrate surface). Same-host deployments use loopback."
+    },
+    "queue": {
+      "type": "string",
+      "enum": ["latest", "all"],
+      "default": "latest",
+      "description": "ci-job lane policy applied to every enqueued job: \"latest\" keeps one pending slot per key (newest push wins), \"all\" is a bounded FIFO (MAX_PENDING=32). Per-repo overrides go on extra enqueue nodes."
+    },
+    "context": {
+      "type": "string",
+      "default": "ci/bupha",
+      "pattern": "^[A-Za-z0-9._/-]+$",
+      "description": "Forge commit-status context label recorded on the ci-job indexDoc (the worker's status sink posts under it)."
+    }
+  }
+}

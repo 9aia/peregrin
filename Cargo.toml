@@ -137,6 +137,12 @@ hypha-push = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", ver
 hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 
+# bupha — the `kind="ci-job"` entity plane (P-002, the
+# bupha↔hypha/peregrin seam). Git dep on `main` like the other
+# sibling integrations; `peregrin-node`'s default-on `bupha` feature
+# registers `CiJobPlane` next to `CampaignEntityPlane`.
+bupha-plane = { git = "ssh://git@github.com/9aia/bupha.git", branch = "main", version = "0.1.0" }
+
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["preserve_order"] }
@@ -253,3 +259,11 @@ panic = "unwind" # keep unwind: tests + tokio supervise panics
 inherits = "release"
 lto = "fat"
 codegen-units = 1
+
+# bupha-plane declares `hypha-http` over `https://github.com/9aia/
+# hypha.git` (bupha's CI fetches unauthenticated) while every
+# peregrin hypha dep is `ssh://` — patch the https source onto the
+# ssh git dep so the graph holds ONE hypha-http. Two sources would
+# duplicate the crate and split `EntityPlane`/`KindRegistry` types.
+[patch."https://github.com/9aia/hypha.git"]
+hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
