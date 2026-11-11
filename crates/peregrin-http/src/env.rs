@@ -86,7 +86,10 @@ pub struct Env {
     pub snapshot_dir: PathBuf,
     /// `PEREGRIN_SNAPSHOT_TARGET` — optional peer node (or hub) base
     /// URL that receives each flushed snapshot via
-    /// `POST /api/entities/snapshot` during shutdown.
+    /// `POST /api/entities/snapshot` during shutdown. With the `bupha`
+    /// feature it doubles as the boot-time ci-job rehydrate source
+    /// (T-072): `GET /api/entity-index` rebuilds this node's
+    /// `kind="ci-job"` plane before the listener binds.
     pub snapshot_target: Option<String>,
     /// `PEREGRIN_SNAPSHOT_TOKEN` — bearer for `snapshot_target`;
     /// falls back to `PEREGRIN_TOKEN` (single-secret deployments

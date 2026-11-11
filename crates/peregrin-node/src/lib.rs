@@ -13,6 +13,8 @@ pub mod campaign;
 pub mod campaign_entity;
 #[cfg(feature = "bupha")]
 pub mod ci_fleet;
+#[cfg(feature = "bupha")]
+pub mod ci_rehydrate;
 pub mod ephemeral;
 pub mod serve;
 pub mod supervisor;
@@ -101,7 +103,7 @@ pub async fn serve(env: &Env) -> std::io::Result<()> {
             .await
             .map_err(|e| std::io::Error::other(format!("sepia serve failed: {e}")))?;
         let plane: Arc<dyn SessionPlane> = Arc::new(peregrin_session::ServicePlane(service));
-        let state = app_state(env, &plane);
+        let state = app_state(env, &plane).await;
         return run(env, state, plane).await;
     }
 
@@ -115,15 +117,17 @@ pub async fn serve(env: &Env) -> std::io::Result<()> {
         Arc::clone(&local.plane),
         Some(local),
     ));
-    let state = app_state(env, &plane);
+    let state = app_state(env, &plane).await;
     run(env, state, plane).await
 }
 
 /// The `AppState` both plane modes mount — convert/import ride the
 /// `SessionPlane` itself (`sessions.convert`/`sessions.import` over
 /// `sepia serve`, `Local`'s driver-wire ops in-process), so the seam
-/// wiring is identical either way.
-fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
+/// wiring is identical either way. Async because the `bupha`
+/// feature's ci-job plane rehydrates from the hub entity index
+/// before the listener binds (T-072).
+async fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
     let convert = {
         let plane = Arc::clone(plane);
         Arc::new(move |id: String, target: ImportTarget| {
@@ -174,7 +178,17 @@ fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
         .with_import_session(import);
     #[cfg(feature = "bupha")]
     {
-        state = state.with_kind(ci_job_plane(ci_labels, ci_fleet::fleet_specs()));
+        // Keep the concrete `Arc` — boot rehydration (T-072) feeds
+        // the hub's entity-index docs straight into the plane before
+        // `run` binds the listener (so the hub's first reconcile sees
+        // the restored state, not an empty plane).
+        let ci_plane = Arc::new(
+            bupha_plane::CiJobPlane::new()
+                .with_labels(ci_labels)
+                .with_watched(ci_fleet::fleet_specs()),
+        );
+        state = state.with_kind(ci_plane.clone());
+        ci_rehydrate::rehydrate(env, &state.node_identity().id, &ci_plane).await;
     }
     state
 }
