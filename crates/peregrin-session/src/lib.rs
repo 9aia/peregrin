@@ -535,6 +535,22 @@ impl SepiaService {
             .map(|_| ())
     }
 
+    /// `sessions.set_mode` — ACP `session/set_mode` on the holder.
+    pub async fn set_mode_t(
+        &self,
+        id: &str,
+        mode_id: &str,
+        agent: Option<&str>,
+    ) -> Result<(), ControlError> {
+        let mut p = Self::agent_param(agent);
+        p["id"] = json!(id);
+        p["mode"] = json!(mode_id);
+        self.call("sessions.set_mode", p)
+            .await
+            .map_err(to_control)
+            .map(|_| ())
+    }
+
     /// `sessions.permission` — resolve a pending permission request.
     pub async fn respond_to_permission_t(
         &self,
@@ -709,6 +725,15 @@ pub trait SessionPlane: Send + Sync {
         agent: Option<&str>,
         timeout: Option<Duration>,
     ) -> Result<PromptWaitResult, ControlError>;
+    /// Switch a live session's agent mode (`sessions.set_mode` → ACP
+    /// `session/set_mode`) — the unattended-run knob for agents that
+    /// gate tool use behind permission prompts.
+    async fn set_mode(
+        &self,
+        id: &str,
+        mode_id: &str,
+        agent: Option<&str>,
+    ) -> Result<(), ControlError>;
     /// Cancel a running turn.
     async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError>;
     /// Resolve a pending permission request.
@@ -839,6 +864,14 @@ impl SessionPlane for LocalPlane {
         timeout: Option<Duration>,
     ) -> Result<PromptWaitResult, ControlError> {
         self.0.prompt_wait(id, &parts, agent, timeout).await
+    }
+    async fn set_mode(
+        &self,
+        id: &str,
+        mode_id: &str,
+        agent: Option<&str>,
+    ) -> Result<(), ControlError> {
+        self.0.set_mode(id, mode_id, agent).await
     }
     async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError> {
         self.0.cancel(id, agent).await
@@ -991,6 +1024,14 @@ impl SessionPlane for ServicePlane {
         timeout: Option<Duration>,
     ) -> Result<PromptWaitResult, ControlError> {
         self.0.prompt_wait_t(id, parts, agent, timeout).await
+    }
+    async fn set_mode(
+        &self,
+        id: &str,
+        mode_id: &str,
+        agent: Option<&str>,
+    ) -> Result<(), ControlError> {
+        self.0.set_mode_t(id, mode_id, agent).await
     }
     async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError> {
         self.0.cancel_t(id, agent).await

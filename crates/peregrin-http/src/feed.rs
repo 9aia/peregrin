@@ -826,6 +826,14 @@ mod cov_more_tests {
         ) -> Result<sepia_session::PromptWaitResult, ControlError> {
             unimplemented!()
         }
+        async fn set_mode(
+            &self,
+            _: &str,
+            _: &str,
+            _: Option<&str>,
+        ) -> Result<(), ControlError> {
+            unimplemented!()
+        }
         async fn cancel(&self, _: &str, _: Option<&str>) -> Result<(), ControlError> {
             unimplemented!()
         }

@@ -166,6 +166,7 @@ struct CreateFields {
     title: Option<String>,
     model: Option<String>,
     fallbacks: Option<Vec<String>>,
+    mode: Option<String>,
 }
 
 /// Parse the create-shaped fields out of an already-validated JSON
@@ -206,12 +207,18 @@ fn parse_create_fields(
             )));
         }
     };
+    let mode = match body.get("mode") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(s)) => Some(s.clone()),
+        _ => return Err(Box::new(bad_request("mode must be a string"))),
+    };
     Ok(CreateFields {
         cwd,
         agent,
         title,
         model,
         fallbacks,
+        mode,
     })
 }
 
@@ -256,6 +263,25 @@ pub(crate) fn track_created(
     }
 }
 
+/// `mode` → `sessions.set_mode` on the fresh session; absent mode is a
+/// no-op. `Err` carries the error response — the session already
+/// exists at that point, so callers surface the failure honestly.
+async fn apply_mode(
+    state: &AppState,
+    id: &str,
+    agent_id: &str,
+    mode: Option<&str>,
+) -> Result<(), Box<Response>> {
+    if let Some(mode) = mode {
+        state
+            .plane
+            .set_mode(id, mode, Some(agent_id))
+            .await
+            .map_err(|e| Box::new(error_response(&e)))?;
+    }
+    Ok(())
+}
+
 /// `POST /api/sessions` — create a session under an agent runtime.
 async fn create(state: &AppState, req: Request<Body>) -> Response {
     let body = match read_json_body(req, SMALL_JSON_BODY).await {
@@ -288,6 +314,11 @@ async fn create(state: &AppState, req: Request<Body>) -> Response {
             error_response(&e)
         }
         Ok(created) => {
+            if let Err(res) =
+                apply_mode(state, &created.id, &created.agent_id, fields.mode.as_deref()).await
+            {
+                return *res;
+            }
             track_created(
                 state,
                 &created.id,
@@ -384,6 +415,11 @@ pub async fn run(State(state): State<AppState>, method: Method, req: Request<Bod
         fields.title,
         fields.model,
     );
+    if let Err(res) =
+        apply_mode(&state, &created.id, &created.agent_id, fields.mode.as_deref()).await
+    {
+        return *res;
+    }
     match state
         .plane
         .prompt_wait(&created.id, parts, fields.agent.as_deref(), timeout)
