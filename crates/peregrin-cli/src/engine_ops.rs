@@ -152,11 +152,19 @@ fn param_json(a: &Arg) -> Value {
     } else {
         a.get_long().unwrap_or(id)
     };
-    json!({
+    // Bearer tokens are secret-bearing params — surfaces steer
+    // callers to `--params-stdin` instead of argv (pavo surface
+    // contract; older pavo revs ignore the marker).
+    let secret = matches!(name, "token" | "source-token");
+    let mut p = json!({
         "name": name,
         "kind": kind(a),
         "doc": a.get_help().map(ToString::to_string).unwrap_or_default(),
-    })
+    });
+    if secret {
+        p["secret"] = json!(true);
+    }
+    p
 }
 
 /// The `ops` query/`ops` argv verb payload — self-describing so

@@ -66,13 +66,13 @@ nix = { version = "0.29", default-features = false, features = ["fs", "user"] }
 # `tamias-driver-peregrin`'s pavo surface. Git deps so
 # `cargo install --git` works without a sibling ../pavo checkout;
 # `rev` pins the surface-driver layer (`pavo_driver_kit::surface`).
-pavo-protocol = { git = "ssh://git@github.com/9aia/pavo.git", rev = "1f5e37afdb0b66a1ef908c2cc2448248493399c2", version = "0.1.0" }
-pavo-driver-kit = { git = "ssh://git@github.com/9aia/pavo.git", rev = "1f5e37afdb0b66a1ef908c2cc2448248493399c2", version = "0.1.0" }
+pavo-protocol = { git = "ssh://git@github.com/9aia/pavo.git", rev = "a7aff58c0f4ef902df99dbd56a8eddad907bcf0b", version = "0.1.0" }
+pavo-driver-kit = { git = "ssh://git@github.com/9aia/pavo.git", rev = "a7aff58c0f4ef902df99dbd56a8eddad907bcf0b", version = "0.1.0" }
 [dev-dependencies]
 tempfile.workspace = true
 # Conformance gate — `cargo test` runs pavo's wire-contract suite
 # against this crate's own `tamias-driver-peregrin serve` binary.
-pavo-testkit = { git = "ssh://git@github.com/9aia/pavo.git", rev = "1f5e37afdb0b66a1ef908c2cc2448248493399c2" }
+pavo-testkit = { git = "ssh://git@github.com/9aia/pavo.git", rev = "a7aff58c0f4ef902df99dbd56a8eddad907bcf0b" }
 sepia-testkit.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["rt"] }

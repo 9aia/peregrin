@@ -21,7 +21,12 @@ fn default_peregrin_home() -> PathBuf {
 }
 
 fn default_pair_url() -> String {
-    let port = std::env::var("PORT").unwrap_or_else(|_| "18787".into());
+    // Mirror the serve bind order (`PEREGRIN_PORT` → `PORT` →
+    // 18787, peregrin-http env.rs) so the printed URL matches the
+    // port the node actually listens on.
+    let port = std::env::var("PEREGRIN_PORT")
+        .or_else(|_| std::env::var("PORT"))
+        .unwrap_or_else(|_| "18787".into());
     format!("http://localhost:{port}")
 }
 
