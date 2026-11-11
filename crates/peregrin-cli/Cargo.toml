@@ -9,6 +9,17 @@ license.workspace = true
 
 [lints]
 workspace = true
+
+[features]
+# Embedded surfaces (pavo-driver-kit's surface layer) — optional,
+# acyclic: the driver gains `cli`/`mcp` argv verbs that serve its own
+# ops manifest; the standalone tamias-driver-cli/-mcp binaries front
+# the same ops without any feature. default = ops driver + `run`
+# passthrough only.
+default = []
+cli = ["pavo-driver-kit/cli"]
+mcp = ["pavo-driver-kit/mcp"]
+
 [[bin]]
 name = "peregrin"
 path = "src/main.rs"
@@ -50,8 +61,18 @@ clap = { version = "4", features = ["derive"] }
 ureq.workspace = true
 time.workspace = true
 nix = { version = "0.29", default-features = false, features = ["fs", "user"] }
+# The pavo wire contract + driver-authoring kit — the `serve` loop
+# and manifest/ViewSpec/QueryBinding builders behind
+# `tamias-driver-peregrin`'s pavo surface. Git deps so
+# `cargo install --git` works without a sibling ../pavo checkout;
+# `rev` pins the surface-driver layer (`pavo_driver_kit::surface`).
+pavo-protocol = { git = "ssh://git@github.com/9aia/pavo.git", rev = "1f5e37afdb0b66a1ef908c2cc2448248493399c2", version = "0.1.0" }
+pavo-driver-kit = { git = "ssh://git@github.com/9aia/pavo.git", rev = "1f5e37afdb0b66a1ef908c2cc2448248493399c2", version = "0.1.0" }
 [dev-dependencies]
 tempfile.workspace = true
+# Conformance gate — `cargo test` runs pavo's wire-contract suite
+# against this crate's own `tamias-driver-peregrin serve` binary.
+pavo-testkit = { git = "ssh://git@github.com/9aia/pavo.git", rev = "1f5e37afdb0b66a1ef908c2cc2448248493399c2" }
 sepia-testkit.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["rt"] }

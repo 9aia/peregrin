@@ -36,7 +36,17 @@ names a sepia type in the substrate.
   composition root) · `peregrin-hub` (thin `hypha-hub` gateway —
   `SepiaSessionPolicy`/`CampaignKindPolicy` + the `PEREGRIN_*` env
   mapping) · `peregrin-http` (session routes + composition, above) ·
-  `peregrin-cli` (`peregrin` binary) · `hypha-telemetry` (git dep) ·
+  `peregrin-cli` (`peregrin` binary + the `tamias-driver-peregrin`
+  dual-surface driver — pavo `manifest`/`serve`/`ops`/`run` plus the
+  tamias `install`/`deploy`/`uninstall`/`hooks`/`health`/`status`/
+  `logs`/`config-schema` verbs; the CLI is lib-ified as
+  `peregrin_cli::cli` — `command()`/`parse_from()`/`run_from()` —
+  and `engine_ops` derives the `cli.<verb>` ops manifest from that
+  clap tree. Unbounded verbs (`serve`, `campaign serve`/`run`,
+  `sessions attach`/`stream`, `events`) are `surfaces`, never ops;
+  remote verbs are ops taking `--node`/`--token` and degrade
+  cleanly with no node. Features `cli`/`mcp` embed the
+  pavo-driver-kit generated surfaces) · `hypha-telemetry` (git dep) ·
   `peregrin-testkit` · `xtask`.
 - `libraries/` — workflow stdlib artifacts. `project/` — nested repo
   with the ADRs (the design history + port spec).

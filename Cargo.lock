@@ -2661,6 +2661,39 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f38d5652c16fde515bb1ecef450ab0f6a219d619a7274976324d5e377f7dceba"
 
 [[package]]
+name = "pavo-driver-kit"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/pavo.git?rev=1f5e37afdb0b66a1ef908c2cc2448248493399c2#1f5e37afdb0b66a1ef908c2cc2448248493399c2"
+dependencies = [
+ "clap",
+ "pavo-protocol",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "pavo-protocol"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/pavo.git?rev=1f5e37afdb0b66a1ef908c2cc2448248493399c2#1f5e37afdb0b66a1ef908c2cc2448248493399c2"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "pavo-testkit"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/pavo.git?rev=1f5e37afdb0b66a1ef908c2cc2448248493399c2#1f5e37afdb0b66a1ef908c2cc2448248493399c2"
+dependencies = [
+ "pavo-protocol",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.21",
+]
+
+[[package]]
 name = "pem"
 version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2723,6 +2756,9 @@ dependencies = [
  "hypha-systemd",
  "hypha-telemetry",
  "nix",
+ "pavo-driver-kit",
+ "pavo-protocol",
+ "pavo-testkit",
  "peregrin-config",
  "peregrin-config-toml",
  "peregrin-core",
