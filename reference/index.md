@@ -13,5 +13,5 @@
 - [Fleet runners — `runs_on` + hub dispatch](fleet-runners.md)
 - [Queue & supersede](queue-supersede.md)
 - [HTTP API](api.md)
-- [MCP server](mcp.md)
+- [Engine ops surface](ops.md)
 - [Environment](environment.md)

@@ -1,9 +1,11 @@
 # Getting started
 
 This tutorial takes you from zero to a running peregrin node plus the
-hub that aggregates it. You will need Rust (`cargo`) and
+hub that aggregates it. You will need
+[tamias](https://github.com/9aia/tamias) and
 [sepia](https://9aia.com/sepia/) installed — peregrin drives the session
-plane through `sepia serve`.
+plane through `sepia serve`. Rust (`cargo`) is only needed for the
+build-from-checkout path below.
 
 ## Install
 
@@ -11,7 +13,7 @@ The `peregrin` command ships as a tamias pack (`libraries/peregrin`)
 — there is no cargo bin to `cargo install`. With `tamias` installed:
 
 ```bash
-tamias install 9aia:peregrin@0.1.0    # org registry (needs TAMIAS_REGISTRY_TOKEN)
+tamias install 9aia:peregrin@0.2.0    # org registry (needs TAMIAS_REGISTRY_TOKEN)
 ```
 
 That deploys the `peregrin` shim plus the `peregrin-node`/

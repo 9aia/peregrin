@@ -80,9 +80,10 @@ Two things to know:
   runners have no SSH keys. The repos are public, so https works.
 - **It compiles the dependency graph** — expect several minutes on a
   cold cache (`cargo xtask pack` release-builds the driver plus the
-  `peregrin-node`/`peregrin-hub` payload bins). Once release
-  tarballs ship, download `peregrin-x86_64-unknown-linux-gnu.tar.gz`
-  instead.
+  `peregrin-node`/`peregrin-hub` payload bins). Once release tarballs
+  ship (`peregrin-<target>.tar.gz` — payload bins only; the `peregrin`
+  command still comes from the tamias pack), unpack them onto `PATH`
+  instead of building.
 
 ## Session plane honesty
 
