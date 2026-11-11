@@ -1,3 +1,8 @@
+# DEPRECATED (PL-015 WS3): raw git/gh/agent calls violate the
+# ownership boundaries — migrate to lasius forge verbs (pr create/merge). Kept for common/new-feat,
+# common/refactor and meta/workflows/create until those move to
+# workspace/workflows/.
+
 # common/snippets/github/pr: push branch and open a GitHub PR.
 # Parent must set id, on, emits, params.emit and params.env.PR_TITLE/PR_BODY.
 annotations:

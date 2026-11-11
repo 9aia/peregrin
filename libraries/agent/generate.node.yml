@@ -1,3 +1,8 @@
+# DEPRECATED (PL-015 WS3): raw git/gh/agent calls violate the
+# ownership boundaries — migrate to sepia sessions via /api/sessions/run (PL-015). Kept for common/new-feat,
+# common/refactor and meta/workflows/create until those move to
+# workspace/workflows/.
+
 # meta/snippets/agent/generate: generic generator agent.
 # Parent must set params.prompt or params.prompt_file.
 annotations:

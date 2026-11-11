@@ -1,3 +1,8 @@
+# DEPRECATED (PL-015 WS3): raw git/gh/agent calls violate the
+# ownership boundaries — migrate to lasius vcs verbs (worktree/commit/push). Kept for common/new-feat,
+# common/refactor and meta/workflows/create until those move to
+# workspace/workflows/.
+
 # common/snippets/git/commit: stage and commit with a given subject/body.
 # Parent must set id, on, emits, params.emit and params.env.COMMIT_SUBJECT/COMMIT_BODY.
 annotations:
