@@ -600,6 +600,7 @@ fn session_app(state: AppState) -> Router {
             "/api/sessions/import",
             any(routes::sessions::import_session),
         )
+        .route("/api/sessions/run", any(routes::sessions::run))
         .route("/api/sessions/{id}", any(routes::sessions::item))
         .route("/api/sessions/{id}/meta", any(routes::sessions::meta_alias))
         .route("/api/sessions/{id}/history", any(routes::sessions::history))

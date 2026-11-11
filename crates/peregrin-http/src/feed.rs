@@ -817,6 +817,15 @@ mod cov_more_tests {
         ) -> Result<(), ControlError> {
             unimplemented!()
         }
+        async fn prompt_wait(
+            &self,
+            _: &str,
+            _: Vec<sepia_acp::types::PromptPart>,
+            _: Option<&str>,
+            _: Option<std::time::Duration>,
+        ) -> Result<sepia_session::PromptWaitResult, ControlError> {
+            unimplemented!()
+        }
         async fn cancel(&self, _: &str, _: Option<&str>) -> Result<(), ControlError> {
             unimplemented!()
         }

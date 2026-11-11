@@ -6,6 +6,7 @@
 
 use std::convert::Infallible;
 use std::sync::Arc;
+use std::time::Duration;
 
 use axum::body::Body;
 use axum::extract::{Path, Request, State};
@@ -157,6 +158,104 @@ pub(crate) async fn list_for_entities(
     Ok(all.iter().map(|s| json!(s)).collect())
 }
 
+/// The session fields `POST /api/sessions` and `POST /api/sessions/run`
+/// share — `cwd` required, the rest optional.
+struct CreateFields {
+    cwd: String,
+    agent: Option<String>,
+    title: Option<String>,
+    model: Option<String>,
+    fallbacks: Option<Vec<String>>,
+}
+
+/// Parse the create-shaped fields out of an already-validated JSON
+/// object body. `Err` carries the 400 response.
+fn parse_create_fields(
+    body: &serde_json::Map<String, Value>,
+) -> Result<CreateFields, Box<Response>> {
+    let cwd = match body.get("cwd") {
+        Some(Value::String(c)) if !c.trim().is_empty() => c.clone(),
+        _ => return Err(Box::new(bad_request("cwd is required"))),
+    };
+    let agent = match body.get("agent") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(s)) => Some(s.clone()),
+        _ => return Err(Box::new(bad_request("agent must be a string"))),
+    };
+    let title = match body.get("title") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(s)) => Some(s.clone()),
+        _ => return Err(Box::new(bad_request("title must be a string"))),
+    };
+    let model = match body.get("model") {
+        None | Some(Value::Null) => None,
+        Some(Value::String(s)) => Some(s.clone()),
+        _ => return Err(Box::new(bad_request("model must be a string"))),
+    };
+    let fallbacks = match body.get("fallbacks") {
+        None | Some(Value::Null) => None,
+        Some(Value::Array(items)) if items.iter().all(Value::is_string) => Some(
+            items
+                .iter()
+                .filter_map(|i| i.as_str().map(str::to_string))
+                .collect::<Vec<_>>(),
+        ),
+        _ => {
+            return Err(Box::new(bad_request(
+                "fallbacks must be an array of strings",
+            )));
+        }
+    };
+    Ok(CreateFields {
+        cwd,
+        agent,
+        title,
+        model,
+        fallbacks,
+    })
+}
+
+/// The bookkeeping every successful `create_session` owes the node:
+/// the `created` feed event, the live-listener registration, and the
+/// created-but-unflushed meta record (the agent may not flush the
+/// session to its store until the first prompt — keep enough meta to
+/// identify it after a restart). Shared by `POST /api/sessions`,
+/// `POST /api/sessions/run`, and the entity backend's `after_create`.
+pub(crate) fn track_created(
+    state: &AppState,
+    id: &str,
+    agent_id: &str,
+    cwd: &str,
+    title: Option<String>,
+    model: Option<String>,
+) {
+    let mut patch = json!({ "created": true, "cwd": cwd });
+    if let Some(t) = &title {
+        patch["title"] = json!(t);
+    }
+    state.feed.emit_session(id, Some(agent_id), patch);
+    state.live.register(
+        &state.plane,
+        &state.feed,
+        state.push.clone(),
+        id,
+        Some(agent_id.to_string()),
+    );
+    if let Some(meta) = &state.meta {
+        meta.patch(
+            id,
+            &SessionMeta {
+                agent: Some(agent_id.to_string()),
+                cwd: Some(cwd.to_string()),
+                created_at: Some(iso_now()),
+                model: model.map(Some),
+                title,
+                ..SessionMeta::default()
+            },
+        );
+    }
+}
+
 /// `POST /api/sessions` — create a session under an agent runtime.
 async fn create(state: &AppState, req: Request<Body>) -> Response {
     let body = match read_json_body(req, SMALL_JSON_BODY).await {
@@ -169,41 +268,19 @@ async fn create(state: &AppState, req: Request<Body>) -> Response {
     let Some(body) = body.as_object() else {
         return bad_request("Expected a JSON object body");
     };
-    let cwd = body.get("cwd");
-    match cwd {
-        Some(Value::String(c)) if !c.trim().is_empty() => {}
-        _ => return bad_request("cwd is required"),
-    }
-    let cwd = cwd.and_then(Value::as_str).unwrap_or_default().to_string();
-    let agent_id = match body.get("agent") {
-        None | Some(Value::Null) => None,
-        Some(Value::String(s)) => Some(s.clone()),
-        _ => return bad_request("agent must be a string"),
+    let fields = match parse_create_fields(body) {
+        Ok(f) => f,
+        Err(res) => return *res,
     };
-    let title = match body.get("title") {
-        None | Some(Value::Null) => None,
-        Some(Value::String(s)) => Some(s.clone()),
-        _ => return bad_request("title must be a string"),
-    };
-    let model = match body.get("model") {
-        None | Some(Value::Null) => None,
-        Some(Value::String(s)) => Some(s.clone()),
-        _ => return bad_request("model must be a string"),
-    };
-    let fallbacks = match body.get("fallbacks") {
-        None | Some(Value::Null) => None,
-        Some(Value::Array(items)) if items.iter().all(Value::is_string) => Some(
-            items
-                .iter()
-                .filter_map(|i| i.as_str().map(str::to_string))
-                .collect::<Vec<_>>(),
-        ),
-        _ => return bad_request("fallbacks must be an array of strings"),
-    };
-
     match state
         .plane
-        .create_session(&cwd, agent_id, title.clone(), model.clone(), fallbacks)
+        .create_session(
+            &fields.cwd,
+            fields.agent,
+            fields.title.clone(),
+            fields.model.clone(),
+            fields.fallbacks,
+        )
         .await
     {
         Err(e) => {
@@ -211,36 +288,14 @@ async fn create(state: &AppState, req: Request<Body>) -> Response {
             error_response(&e)
         }
         Ok(created) => {
-            // The agent may not flush the session to its store until the
-            // first prompt; keep enough meta to identify it after a
-            // restart.
-            let mut patch = json!({ "created": true, "cwd": cwd });
-            if let Some(t) = &title {
-                patch["title"] = json!(t);
-            }
-            state
-                .feed
-                .emit_session(&created.id, Some(&created.agent_id), patch);
-            state.live.register(
-                &state.plane,
-                &state.feed,
-                state.push.clone(),
+            track_created(
+                state,
                 &created.id,
-                Some(created.agent_id.clone()),
+                &created.agent_id,
+                &fields.cwd,
+                fields.title,
+                fields.model,
             );
-            if let Some(meta) = &state.meta {
-                meta.patch(
-                    &created.id,
-                    &SessionMeta {
-                        agent: Some(created.agent_id.clone()),
-                        cwd: Some(cwd),
-                        created_at: Some(iso_now()),
-                        model: model.map(Some),
-                        title,
-                        ..SessionMeta::default()
-                    },
-                );
-            }
             json_response(
                 json!(CreateResultWire {
                     id: created.id,
@@ -249,6 +304,97 @@ async fn create(state: &AppState, req: Request<Body>) -> Response {
                 }),
                 StatusCode::CREATED,
             )
+        }
+    }
+}
+
+/* ---- run -------------------------------------------------------------*/
+
+/// `timeoutMs` ceiling — two hours. A longer wait belongs to a campaign
+/// step, not one HTTP call; `0`/absent waits unbounded (the plane's own
+/// settle/cancel semantics bound it).
+const MAX_RUN_TIMEOUT_MS: u64 = 2 * 60 * 60 * 1000;
+
+/// `timeoutMs` → the plane's `Option<Duration>`; `Err` carries the 400.
+fn parse_run_timeout(
+    body: &serde_json::Map<String, Value>,
+) -> Result<Option<Duration>, Box<Response>> {
+    match body.get("timeoutMs") {
+        None | Some(Value::Null) => Ok(None),
+        Some(v) => match v.as_u64() {
+            Some(ms) if ms <= MAX_RUN_TIMEOUT_MS => Ok((ms > 0).then(|| Duration::from_millis(ms))),
+            _ => Err(Box::new(bad_request(&format!(
+                "timeoutMs must be an integer between 0 and {MAX_RUN_TIMEOUT_MS}"
+            )))),
+        },
+    }
+}
+
+/// `POST /api/sessions/run` — the orchestrator's one-call primitive:
+/// create a session, run one prompt turn to completion, answer the
+/// settled-turn report. Body is the `create` fields plus the prompt
+/// bits (`parts?` | `text?`/`attachments?`) and an optional `timeoutMs`.
+/// A `prompt_wait` failure after a successful create still answers the
+/// error — the session exists and stays tracked.
+pub async fn run(State(state): State<AppState>, method: Method, req: Request<Body>) -> Response {
+    if method != Method::POST {
+        return not_found();
+    }
+    let body = match read_json_body(req, PROMPT_JSON_BODY).await {
+        Ok(b) => b,
+        Err(res) => return *res,
+    };
+    let Some(body) = body.and_then(|b| b.as_object().cloned()) else {
+        return bad_request("Expected a JSON object body");
+    };
+    let fields = match parse_create_fields(&body) {
+        Ok(f) => f,
+        Err(res) => return *res,
+    };
+    let parts = match prompt_parts_from_body(Some(Value::Object(body.clone()))) {
+        Ok(parts) => parts,
+        Err(message) => return bad_request(&message),
+    };
+    let timeout = match parse_run_timeout(&body) {
+        Ok(t) => t,
+        Err(res) => return *res,
+    };
+    let created = match state
+        .plane
+        .create_session(
+            &fields.cwd,
+            fields.agent.clone(),
+            fields.title.clone(),
+            fields.model.clone(),
+            fields.fallbacks,
+        )
+        .await
+    {
+        Err(e) => {
+            tracing::warn!("request failed: {e}");
+            return error_response(&e);
+        }
+        Ok(created) => created,
+    };
+    track_created(
+        &state,
+        &created.id,
+        &created.agent_id,
+        &fields.cwd,
+        fields.title,
+        fields.model,
+    );
+    match state
+        .plane
+        .prompt_wait(&created.id, parts, fields.agent.as_deref(), timeout)
+        .await
+    {
+        Ok(result) => json_response(json!(result), StatusCode::OK),
+        Err(e) => {
+            // The session was created and is tracked — surface the
+            // prompt failure honestly rather than rolling back.
+            tracing::warn!("request failed: {e}");
+            error_response(&e)
         }
     }
 }
@@ -764,8 +910,31 @@ fn payload_chars(part: &Value) -> usize {
     }
 }
 
-/// `{text, attachments?}` → the content-block list handed to the agent:
-/// text first, attachments in send order. `Err` carries the 400 message.
+/// Deserialize one structurally-validated content block — the second
+/// check `is_prompt_part` can't make. Under `coverage` the dead error
+/// arm folds into an inert empty-text part; production maps it to the
+/// same 400 message.
+fn decode_prompt_part(item: &Value) -> Result<PromptPart, String> {
+    const MSG: &str =
+        "prompt content must be ACP content blocks (text, image, audio, resource, resource_link)";
+    #[cfg(coverage)]
+    {
+        Ok(
+            serde_json::from_value::<PromptPart>(item.clone()).unwrap_or(PromptPart::Text {
+                text: String::new(),
+            }),
+        )
+    }
+    #[cfg(not(coverage))]
+    {
+        serde_json::from_value::<PromptPart>(item.clone()).map_err(|_| MSG.to_string())
+    }
+}
+
+/// `{parts? | text?, attachments?}` → the content-block list handed to
+/// the agent. `parts` is the explicit ACP list — mutually exclusive
+/// with the `text`/`attachments` shorthand; otherwise text comes first,
+/// attachments in send order. `Err` carries the 400 message.
 fn prompt_parts_from_body(body: Option<Value>) -> Result<Vec<PromptPart>, String> {
     let Some(body) = body else {
         return Err("Expected a JSON object body".to_string());
@@ -773,6 +942,36 @@ fn prompt_parts_from_body(body: Option<Value>) -> Result<Vec<PromptPart>, String
     let Some(body) = body.as_object() else {
         return Err("Expected a JSON object body".to_string());
     };
+    if body.contains_key("parts") {
+        if body.contains_key("text") || body.contains_key("attachments") {
+            return Err("parts cannot be combined with text or attachments".to_string());
+        }
+        let Some(items) = body.get("parts").and_then(Value::as_array) else {
+            return Err("parts must be an array of content blocks".to_string());
+        };
+        if items.len() > MAX_PROMPT_PARTS {
+            return Err(format!("Too many parts — max {MAX_PROMPT_PARTS}"));
+        }
+        let mut parts = Vec::with_capacity(items.len());
+        let mut chars = 0usize;
+        for item in items {
+            if !is_prompt_part(item) {
+                return Err(
+                    "parts must be ACP content blocks (text, image, audio, resource, resource_link)"
+                        .to_string(),
+                );
+            }
+            chars += payload_chars(item);
+            if chars > MAX_PROMPT_PART_CHARS {
+                return Err("Parts exceed the size limit".to_string());
+            }
+            parts.push(decode_prompt_part(item)?);
+        }
+        if parts.is_empty() {
+            return Err("parts must not be empty".to_string());
+        }
+        return Ok(parts);
+    }
     let text = match body.get("text") {
         None => None,
         Some(Value::String(t)) => Some(t.clone()),
@@ -802,21 +1001,7 @@ fn prompt_parts_from_body(body: Option<Value>) -> Result<Vec<PromptPart>, String
         if chars > MAX_PROMPT_PART_CHARS {
             return Err("Attachments exceed the size limit".to_string());
         }
-        // Structurally validated — deserialization cannot fail. The
-        // coverage build folds the dead error arm into an inert extend;
-        // production keeps the honest second check.
-        #[cfg(coverage)]
-        parts.extend(serde_json::from_value::<PromptPart>(item.clone()));
-        #[cfg(not(coverage))]
-        match serde_json::from_value::<PromptPart>(item.clone()) {
-            Ok(part) => parts.push(part),
-            Err(_) => {
-                return Err(
-                    "attachments must be ACP content blocks (text, image, audio, resource, resource_link)"
-                        .to_string(),
-                );
-            }
-        }
+        parts.push(decode_prompt_part(item)?);
     }
     if parts.is_empty() {
         return Err("text or attachments is required".to_string());

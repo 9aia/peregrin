@@ -111,6 +111,15 @@ async fn local_plane_full_surface() {
         .await;
     plane.detach("s1").await;
     let _ = plane.prompt("s1", Vec::new(), None).await;
+    let _ = plane.prompt_wait("s1", Vec::new(), None, None).await;
+    let _ = plane
+        .prompt_wait(
+            "s1",
+            vec![sepia_acp::types::PromptPart::Text { text: "hi".into() }],
+            Some("devin"),
+            Some(std::time::Duration::from_millis(1)),
+        )
+        .await;
     let _ = plane.cancel("s1", None).await;
     let _ = plane
         .respond_to_permission("s1", "r1", Some("o"), None)
@@ -241,6 +250,15 @@ async fn service_plane_full_surface() {
         .await;
     plane.detach("s1").await;
     let _ = plane.prompt("s1", Vec::new(), None).await;
+    let _ = plane.prompt_wait("s1", Vec::new(), None, None).await;
+    let _ = plane
+        .prompt_wait(
+            "s1",
+            vec![sepia_acp::types::PromptPart::Text { text: "hi".into() }],
+            Some("devin"),
+            Some(std::time::Duration::from_millis(1)),
+        )
+        .await;
     let _ = plane.cancel("s1", Some("devin")).await;
     let _ = plane
         .respond_to_permission("s1", "r1", Some("o"), None)

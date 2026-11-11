@@ -269,6 +269,7 @@ async fn route_sweep() {
         (Method::POST, "/api/sessions/s1/rewind"),
         (Method::POST, "/api/sessions/s1/convert"),
         (Method::POST, "/api/sessions/s1/prompt"),
+        (Method::POST, "/api/sessions/run"),
         (Method::POST, "/api/sessions/import"),
     ] {
         call(&app, m.clone(), path, j(json!({}))).await;
@@ -283,6 +284,7 @@ async fn route_sweep() {
         "/api/sessions/s1/convert",
         "/api/sessions/s1/prompt",
         "/api/sessions/s1/stream",
+        "/api/sessions/run",
     ] {
         call(&app, Method::GET, path, None).await;
     }
@@ -803,7 +805,8 @@ use sepia_acp::PromptPart;
 use sepia_proto::SessionEvent;
 use sepia_session::{
     AgentInfo, AttachResult, ControlError, ControlErrorCode, CreateResult, HistoryOptions,
-    HistoryPage, RestoreRequest, RestoreResult, RewindRequest, RewindResult, SessionSummary,
+    HistoryPage, PromptWaitResult, RestoreRequest, RestoreResult, RewindRequest, RewindResult,
+    SessionSummary,
 };
 use tokio::sync::broadcast;
 
@@ -821,7 +824,26 @@ fn boom() -> ControlError {
     ControlError::new(ControlErrorCode::Internal, "plane exploded")
 }
 
-struct OkPlane;
+fn wait_result(id: &str) -> PromptWaitResult {
+    PromptWaitResult {
+        session_id: id.into(),
+        agent_id: "devin".into(),
+        stop_reason: Some("end_turn".into()),
+        text: "done".into(),
+        event_count: 3,
+        lagged_events: 0,
+        duration_ms: 12.5,
+        timed_out: false,
+        error: None,
+    }
+}
+
+/// `wait_err` flips only `prompt_wait` — the `/api/sessions/run`
+/// create-then-fail path needs a plane whose create succeeds.
+#[derive(Default)]
+struct OkPlane {
+    wait_err: bool,
+}
 
 #[async_trait::async_trait]
 impl SessionPlane for OkPlane {
@@ -864,7 +886,11 @@ impl SessionPlane for OkPlane {
         _m: Option<String>,
         _f: Option<Vec<String>>,
     ) -> Result<CreateResult, ControlError> {
-        Err(boom())
+        Ok(CreateResult {
+            id: "created-1".into(),
+            agent_id: "devin".into(),
+            capabilities: Default::default(),
+        })
     }
     async fn detach(&self, _id: &str) {}
     async fn prompt(
@@ -874,6 +900,18 @@ impl SessionPlane for OkPlane {
         _a: Option<&str>,
     ) -> Result<(), ControlError> {
         Ok(())
+    }
+    async fn prompt_wait(
+        &self,
+        id: &str,
+        _p: Vec<PromptPart>,
+        _a: Option<&str>,
+        _t: Option<Duration>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        if self.wait_err {
+            return Err(boom());
+        }
+        Ok(wait_result(id))
     }
     async fn cancel(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Ok(())
@@ -998,6 +1036,15 @@ impl SessionPlane for FailPlane {
     ) -> Result<(), ControlError> {
         Err(boom())
     }
+    async fn prompt_wait(
+        &self,
+        _id: &str,
+        _p: Vec<PromptPart>,
+        _a: Option<&str>,
+        _t: Option<Duration>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        Err(boom())
+    }
     async fn cancel(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Err(boom())
     }
@@ -1076,7 +1123,7 @@ fn state_for<P: SessionPlane + 'static>(plane: P) -> (Router, tempfile::TempDir)
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn plane_ok_arms() {
-    let (app, _dir) = state_for(OkPlane);
+    let (app, _dir) = state_for(OkPlane::default());
     let j = |v: Value| Some(v);
     // Success arms behind the plane boundary.
     assert_eq!(
@@ -1272,7 +1319,7 @@ async fn prompt_part_validation_arms() {
 async fn import_convert_arms() {
     let dir = tempfile::tempdir().unwrap();
     let meta = MetaStore::open(&dir.path().join("meta.json"));
-    let state = AppState::new(Arc::new(OkPlane))
+    let state = AppState::new(Arc::new(OkPlane::default()))
         .with_meta(meta)
         .with_held_watch(Duration::ZERO)
         .with_import_session(Arc::new(|_s, _t| {
@@ -1357,7 +1404,7 @@ async fn import_convert_arms() {
 async fn import_executor_errs() {
     let dir = tempfile::tempdir().unwrap();
     let meta = MetaStore::open(&dir.path().join("meta.json"));
-    let state = AppState::new(Arc::new(OkPlane))
+    let state = AppState::new(Arc::new(OkPlane::default()))
         .with_meta(meta)
         .with_import_session(Arc::new(|_s, _t| {
             Box::pin(async move {
@@ -1399,7 +1446,7 @@ async fn feed_watch_and_misc_arms() {
     let watches = peregrin_http::HeldWatches::new(Duration::ZERO);
     let feed = peregrin_http::EventFeed::new();
     let failing: Arc<dyn SessionPlane> = Arc::new(FailPlane);
-    let ok: Arc<dyn SessionPlane> = Arc::new(OkPlane);
+    let ok: Arc<dyn SessionPlane> = Arc::new(OkPlane::default());
     watches.tick(&failing, &feed).await;
     watches.watch("s1", Some("devin"));
     watches.watch("s1", Some("devin")); // already-watched → early return
@@ -1499,7 +1546,7 @@ async fn auth_pair_and_env_arms() {
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn serve_binds_and_answers() {
-    let (app_router, dir) = state_for(OkPlane);
+    let (app_router, dir) = state_for(OkPlane::default());
     drop(app_router);
     // A free port: bind :0, read it back, drop.
     let port = std::net::TcpListener::bind("127.0.0.1:0")
@@ -1512,13 +1559,13 @@ async fn serve_binds_and_answers() {
     vars.insert("PEREGRIN_HOST".into(), "127.0.0.1".into());
     vars.insert("PEREGRIN_PORT".into(), port.to_string());
     let env = Env::from_map(&vars).unwrap();
-    let state = AppState::new(Arc::new(OkPlane)).with_held_watch(Duration::ZERO);
+    let state = AppState::new(Arc::new(OkPlane::default())).with_held_watch(Duration::ZERO);
     let serve = tokio::spawn(async move { peregrin_http::serve(&env, state).await });
     tokio::time::sleep(Duration::from_millis(200)).await;
     serve.abort();
     let _ = serve.await;
     // with_origins builder arm.
-    let _ = AppState::new(Arc::new(OkPlane)).with_origins(vec!["http://a".into()]);
+    let _ = AppState::new(Arc::new(OkPlane::default())).with_origins(vec!["http://a".into()]);
 }
 
 /// Malformed-body arms on the validated session routes + the
@@ -1949,6 +1996,15 @@ impl SessionPlane for StreamPlane {
     ) -> Result<(), ControlError> {
         Ok(())
     }
+    async fn prompt_wait(
+        &self,
+        _id: &str,
+        _p: Vec<PromptPart>,
+        _a: Option<&str>,
+        _t: Option<Duration>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        unimplemented!()
+    }
     async fn cancel(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Ok(())
     }
@@ -2149,7 +2205,7 @@ async fn meta_less_and_body_error_arms() {
 /// fallbacks else + `rewind` Ok arm (confirm:true).
 #[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 async fn create_fallbacks_and_rewind_ok() {
-    let (app, _dir) = state_for(OkPlane);
+    let (app, _dir) = state_for(OkPlane::default());
     let j = |v: Value| Some(v);
     call(
         &app,
@@ -2207,4 +2263,136 @@ async fn serve_binds_and_loops() {
     });
     tokio::time::sleep(Duration::from_millis(150)).await;
     task.abort();
+}
+
+/// `POST /api/sessions/run` — create + one blocking turn. Happy path
+/// returns the `PromptWaitResult` wire shape; the error arms cover
+/// missing cwd, bad prompt bits, a `timeoutMs` over the cap, a
+/// `prompt_wait` failure after a successful create, and a create
+/// failure.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn sessions_run_route() {
+    let j = |v: Value| Some(v);
+    let (app, _dir) = state_for(OkPlane::default());
+    // Happy path — text shorthand + every create field + timeoutMs.
+    let (s, b) = call_str(
+        &app,
+        Method::POST,
+        "/api/sessions/run",
+        &json!({
+            "cwd": "/w", "agent": "devin", "title": "t", "model": "m",
+            "fallbacks": ["f"], "text": "hi", "timeoutMs": 5000
+        })
+        .to_string(),
+        "application/json",
+    )
+    .await;
+    assert_eq!(s, StatusCode::OK);
+    let v: Value = serde_json::from_str(&b).unwrap();
+    assert_eq!(v["sessionId"], "created-1");
+    assert_eq!(v["agentId"], "devin");
+    assert_eq!(v["stopReason"], "end_turn");
+    assert_eq!(v["text"], "done");
+    assert_eq!(v["timedOut"], false);
+    // Explicit `parts` + attachments-style body, no timeout.
+    assert_eq!(
+        call(
+            &app,
+            Method::POST,
+            "/api/sessions/run",
+            j(json!({
+                "cwd": "/w",
+                "parts": [{"type": "text", "text": "hi"}]
+            })),
+        )
+        .await,
+        StatusCode::OK
+    );
+    assert_eq!(
+        call(
+            &app,
+            Method::POST,
+            "/api/sessions/run",
+            j(json!({"cwd": "/w", "attachments": [{"type": "text", "text": "a"}]})),
+        )
+        .await,
+        StatusCode::OK
+    );
+    // `timeoutMs: 0` waits unbounded — same as absent.
+    assert_eq!(
+        call(
+            &app,
+            Method::POST,
+            "/api/sessions/run",
+            j(json!({"cwd": "/w", "text": "hi", "timeoutMs": 0})),
+        )
+        .await,
+        StatusCode::OK
+    );
+    // Error arms — all 400s before the plane is touched.
+    for body in [
+        json!({}),
+        json!({"cwd": "/w"}),
+        json!({"cwd": "/w", "text": "hi", "parts": [{"type": "text", "text": "x"}]}),
+        json!({"cwd": "/w", "parts": "x", "text": "hi"}),
+        json!({"cwd": "/w", "parts": []}),
+        json!({"cwd": "/w", "parts": [1]}),
+        json!({"cwd": "/w", "text": "hi", "timeoutMs": "x"}),
+        json!({"cwd": "/w", "text": "hi", "timeoutMs": -1}),
+        json!({"cwd": "/w", "text": "hi", "timeoutMs": 1.5}),
+        json!({"cwd": "/w", "text": "hi", "timeoutMs": 7_200_001}),
+        json!({"cwd": 1, "text": "hi"}),
+        json!({"cwd": "/w", "agent": 1, "text": "hi"}),
+        json!({"cwd": "/w", "title": 1, "text": "hi"}),
+        json!({"cwd": "/w", "model": 1, "text": "hi"}),
+        json!({"cwd": "/w", "fallbacks": [1], "text": "hi"}),
+    ] {
+        assert_eq!(
+            call(&app, Method::POST, "/api/sessions/run", j(body.clone())).await,
+            StatusCode::BAD_REQUEST,
+            "{body}"
+        );
+    }
+    // Malformed JSON + non-object bodies.
+    for raw in ["{bad", "[]", "null"] {
+        let (s, _) = call_str(
+            &app,
+            Method::POST,
+            "/api/sessions/run",
+            raw,
+            "application/json",
+        )
+        .await;
+        assert_eq!(s, StatusCode::BAD_REQUEST, "{raw}");
+    }
+    // Wrong method → the route-table 404.
+    assert_eq!(
+        call(&app, Method::GET, "/api/sessions/run", None).await,
+        StatusCode::NOT_FOUND
+    );
+    // `prompt_wait` fails after a successful create → the plane error
+    // surfaces (the session exists and stays tracked).
+    let (app_wait, _d2) = state_for(OkPlane { wait_err: true });
+    assert_eq!(
+        call(
+            &app_wait,
+            Method::POST,
+            "/api/sessions/run",
+            j(json!({"cwd": "/w", "text": "hi"})),
+        )
+        .await,
+        StatusCode::INTERNAL_SERVER_ERROR
+    );
+    // `create_session` fails → the error surfaces before any wait.
+    let (app_fail, _d3) = state_for(FailPlane);
+    assert_eq!(
+        call(
+            &app_fail,
+            Method::POST,
+            "/api/sessions/run",
+            j(json!({"cwd": "/w", "text": "hi"})),
+        )
+        .await,
+        StatusCode::INTERNAL_SERVER_ERROR
+    );
 }

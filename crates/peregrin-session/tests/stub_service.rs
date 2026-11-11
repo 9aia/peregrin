@@ -106,6 +106,14 @@ fn serve() {
             "fail.baddata" => emit(json!({
                 "jsonrpc":"2.0","id":id,
                 "error":{"code":-32000,"message":"boom","data":{"code":42,"cause":"kaboom"}}})),
+            // The blocking turn — answers a full `PromptWaitResult`.
+            "sessions.prompt_wait" => emit(json!({
+                "jsonrpc":"2.0","id":id,
+                "result":{
+                    "sessionId":sid,"agentId":"devin",
+                    "stopReason":"end_turn","text":"done",
+                    "eventCount":3,"laggedEvents":0,
+                    "durationMs":1.5,"timedOut":false}})),
             "sessions.get" if sid == "badshape" => emit(json!({
                 "jsonrpc":"2.0","id":id,"result":{"definitely":"not a session"}})),
             _ => emit(json!({"jsonrpc":"2.0","id":id,"result":{}})),
@@ -148,6 +156,21 @@ async fn stub_drives_full_surface() {
         .expect("event batch timed out")
         .expect("channel closed");
     assert_eq!(events.len(), 1);
+    // `prompt_wait` — the typed decode over the stub's full result,
+    // timeout bound included.
+    let waited = plane
+        .prompt_wait(
+            "s1",
+            vec![sepia_acp::types::PromptPart::Text { text: "hi".into() }],
+            Some("devin"),
+            Some(std::time::Duration::from_millis(250)),
+        )
+        .await
+        .unwrap();
+    assert_eq!(waited.session_id, "s1");
+    assert_eq!(waited.stop_reason.as_deref(), Some("end_turn"));
+    assert_eq!(waited.text, "done");
+    assert!(!waited.timed_out);
     // Respawn: `shutdown` exits the child → the next call respawns.
     plane.0.shutdown().await.unwrap();
     tokio::time::sleep(std::time::Duration::from_millis(150)).await;

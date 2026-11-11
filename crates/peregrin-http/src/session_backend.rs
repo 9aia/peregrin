@@ -23,14 +23,14 @@ use sepia_core::Session;
 use sepia_meta::{RunSpan, SessionMeta};
 use sepia_peregrin::SessionBackend;
 use sepia_session::{
-    AttachResult, ControlError, ControlErrorCode, CreateResult, ImportOverrides, RestoreRequest,
-    RestoreResult, RewindRequest, RewindResult, SessionSummary,
+    AttachResult, ControlError, ControlErrorCode, CreateResult, ImportOverrides, PromptWaitResult,
+    RestoreRequest, RestoreResult, RewindRequest, RewindResult, SessionSummary,
 };
 use serde_json::{Value, json};
 
 use crate::AppState;
+use crate::routes::now_ms_f64;
 use crate::routes::sessions::{ImportTarget, list_for_entities, summary_for_entities};
-use crate::routes::{iso_now, now_ms_f64};
 
 /// Decode a session-route wire row (`SummaryWire` JSON) back into the
 /// typed [`SessionSummary`] the entity doc's `indexDoc` carries. The
@@ -76,7 +76,8 @@ impl SessionPlaneBackend {
 
     /// The `created` feed event + live-listener registration +
     /// created-but-unflushed meta record the `POST /api/sessions`
-    /// route writes after a successful create.
+    /// route writes after a successful create — delegated to the
+    /// route's shared `track_created` so both surfaces stay identical.
     fn after_create(
         &self,
         id: &str,
@@ -85,31 +86,7 @@ impl SessionPlaneBackend {
         title: Option<String>,
         model: Option<String>,
     ) {
-        let mut patch = json!({ "created": true, "cwd": cwd });
-        if let Some(t) = &title {
-            patch["title"] = json!(t);
-        }
-        self.state.feed.emit_session(id, Some(agent_id), patch);
-        self.state.live.register(
-            &self.state.plane,
-            &self.state.feed,
-            self.state.push.clone(),
-            id,
-            Some(agent_id.to_string()),
-        );
-        if let Some(meta) = &self.state.meta {
-            meta.patch(
-                id,
-                &SessionMeta {
-                    agent: Some(agent_id.to_string()),
-                    cwd: Some(cwd.to_string()),
-                    created_at: Some(iso_now()),
-                    model: model.map(Some),
-                    title,
-                    ..SessionMeta::default()
-                },
-            );
-        }
+        crate::routes::sessions::track_created(&self.state, id, agent_id, cwd, title, model);
     }
 }
 
@@ -217,6 +194,19 @@ impl SessionBackend for SessionPlaneBackend {
         agent: Option<&str>,
     ) -> Result<(), ControlError> {
         self.state.plane.prompt(id, parts.to_vec(), agent).await
+    }
+
+    async fn prompt_wait(
+        &self,
+        id: &str,
+        parts: &[PromptPart],
+        agent: Option<&str>,
+        timeout: Option<std::time::Duration>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        self.state
+            .plane
+            .prompt_wait(id, parts.to_vec(), agent, timeout)
+            .await
     }
 
     async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError> {

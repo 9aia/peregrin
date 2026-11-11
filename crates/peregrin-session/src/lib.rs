@@ -6,6 +6,7 @@
 
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex, PoisonError};
+use std::time::Duration;
 
 use sepia_driver::rpc::{Notification, RpcError};
 use sepia_host::DriverClient;
@@ -320,8 +321,8 @@ use sepia_core::Session;
 use sepia_proto::SessionEvent;
 use sepia_session::{
     AgentInfo, AttachResult, ControlError, ControlErrorCode, CreateResult, HistoryOptions,
-    HistoryPage, ImportOverrides, Local, RestoreRequest, RestoreResult, RewindRequest,
-    RewindResult, SessionSummary, agent_for_backend,
+    HistoryPage, ImportOverrides, Local, PromptWaitResult, RestoreRequest, RestoreResult,
+    RewindRequest, RewindResult, SessionSummary, agent_for_backend,
 };
 
 fn control(code: ControlErrorCode, e: impl std::fmt::Display) -> ControlError {
@@ -491,6 +492,27 @@ impl SepiaService {
             .await
             .map_err(to_control)
             .map(|_| ())
+    }
+
+    /// `sessions.prompt_wait` — prompt and block until the turn reaches
+    /// a terminal state; `timeout` bounds the wait (`None` waits
+    /// unbounded — on expiry the turn is cancelled). The settled-turn
+    /// report rides the result, turn-level failures included.
+    pub async fn prompt_wait_t(
+        &self,
+        id: &str,
+        parts: Vec<PromptPart>,
+        agent: Option<&str>,
+        timeout: Option<Duration>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        let mut p = Self::agent_param(agent);
+        p["id"] = json!(id);
+        p["parts"] = json!(parts);
+        // `timeoutMs` 0/absent waits unbounded — only send a real bound.
+        if let Some(t) = timeout.filter(|t| !t.is_zero()) {
+            p["timeoutMs"] = json!(t.as_millis() as u64);
+        }
+        self.decode("sessions.prompt_wait", p).await
     }
 
     /// `sessions.cancel`.
@@ -667,6 +689,16 @@ pub trait SessionPlane: Send + Sync {
         parts: Vec<PromptPart>,
         agent: Option<&str>,
     ) -> Result<(), ControlError>;
+    /// Prompt and block until the turn settles — the one-call
+    /// orchestrator primitive (`POST /api/sessions/run`). `timeout`
+    /// bounds the wait; `None` waits until the turn ends.
+    async fn prompt_wait(
+        &self,
+        id: &str,
+        parts: Vec<PromptPart>,
+        agent: Option<&str>,
+        timeout: Option<Duration>,
+    ) -> Result<PromptWaitResult, ControlError>;
     /// Cancel a running turn.
     async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError>;
     /// Resolve a pending permission request.
@@ -788,6 +820,15 @@ impl SessionPlane for LocalPlane {
         agent: Option<&str>,
     ) -> Result<(), ControlError> {
         self.0.prompt(id, &parts, agent).await
+    }
+    async fn prompt_wait(
+        &self,
+        id: &str,
+        parts: Vec<PromptPart>,
+        agent: Option<&str>,
+        timeout: Option<Duration>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        self.0.prompt_wait(id, &parts, agent, timeout).await
     }
     async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError> {
         self.0.cancel(id, agent).await
@@ -931,6 +972,15 @@ impl SessionPlane for ServicePlane {
         agent: Option<&str>,
     ) -> Result<(), ControlError> {
         self.0.prompt_t(id, parts, agent).await
+    }
+    async fn prompt_wait(
+        &self,
+        id: &str,
+        parts: Vec<PromptPart>,
+        agent: Option<&str>,
+        timeout: Option<Duration>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        self.0.prompt_wait_t(id, parts, agent, timeout).await
     }
     async fn cancel(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError> {
         self.0.cancel_t(id, agent).await
