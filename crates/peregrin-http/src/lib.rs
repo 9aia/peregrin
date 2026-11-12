@@ -163,13 +163,15 @@ impl AppState {
     pub fn from_env(env: &Env, plane: Arc<dyn SessionPlane>) -> Self {
         let feed = EventFeed::new();
         let meta = MetaStore::open(&env.meta_path);
-        // P-006 phase 2 — projects/config/push-secrets live in the
-        // node-local KV (`<home>/kv.json`); sessions stay in meta.json.
-        // `migrate_meta` performs the one-shot import (marker-guarded)
-        // and declares the internal namespaces before anything serves.
+        // P-006 — projects/config/push-secrets live in the node-local
+        // KV (`<home>/kv.json`); sessions stay in meta.json.
+        // `migrate_meta` performs the one-shot import (marker-guarded,
+        // reading the legacy sections off meta.json directly —
+        // sepia-meta is sessions-only since phase 3) and declares the
+        // internal namespaces before anything serves.
         let kv: Arc<dyn hypha_kv::KvStore> =
             Arc::new(hypha_kv_file::JsonKvStore::open(&env.kv_path));
-        kv::migrate_meta(&meta, &kv);
+        kv::migrate_meta(&env.meta_path, &kv);
         Self {
             plane,
             kinds: KindRegistry::new(),

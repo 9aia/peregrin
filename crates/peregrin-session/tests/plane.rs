@@ -8,7 +8,7 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
-use peregrin_session::{LocalPlane, ServicePlane, SessionPlane, Spec, sepia_binary};
+use peregrin_session::{LocalPlane, ServicePlane, SessionPlane, Spec};
 use sepia_core::storage::SessionRepository;
 use sepia_core::{Session, StorageError};
 use sepia_session::{ControlPlane, ControlPlaneOptions, RestoreRequest, RewindRequest};
@@ -180,10 +180,11 @@ async fn local_plane_full_surface() {
 fn service_spec() -> Option<(Spec, tempfile::TempDir, tempfile::TempDir)> {
     let home = tempfile::tempdir().ok()?;
     let drivers = tempfile::tempdir().ok()?;
-    sepia_binary().map(|binary| {
+    peregrin_session::sepia_serve().map(|target| {
         (
             Spec {
-                binary,
+                binary: target.binary,
+                args: target.args,
                 env: vec![
                     ("SEPIA_HOME".into(), home.path().display().to_string()),
                     (

@@ -16,13 +16,20 @@ use tokio::sync::broadcast;
 /// The wire protocol this client speaks — must equal the `protocol`
 /// `sepia serve`'s `manifest` reports. Bumping the service's protocol
 /// on a breaking change makes old peregrin fail fast here, at spawn.
-pub const EXPECTED_PROTOCOL: u64 = 1;
+/// v2: `projects.*` left the method surface (P-006 phase 3 — projects
+/// and config live in peregrin's node-local KV now).
+pub const EXPECTED_PROTOCOL: u64 = 2;
 
 /// How to launch `sepia serve`.
 #[derive(Debug, Clone)]
 pub struct Spec {
-    /// The `sepia` binary (resolved by [`sepia_binary`]).
+    /// The `sepia` binary (resolved by [`sepia_serve`]).
     pub binary: PathBuf,
+    /// argv after the binary — `["serve"]` for a `sepia`-shaped
+    /// binary; `["run", "serve"]` when the resolved binary is
+    /// `tamias-driver-sepia` (its `run` passthrough reaches the same
+    /// engine serve loop).
+    pub args: Vec<String>,
     /// Extra env for the service process — `SEPIA_HOME`,
     /// `SEPIA_DRIVER_DIR`, `SEPIA_AGENT_*_COMMAND`, telemetry vars.
     pub env: Vec<(String, String)>,
@@ -30,11 +37,23 @@ pub struct Spec {
 
 impl Default for Spec {
     fn default() -> Self {
+        let (binary, args) = sepia_serve().map_or_else(
+            || (PathBuf::from("sepia"), vec!["serve".to_string()]),
+            |t| (t.binary, t.args),
+        );
         Self {
-            binary: sepia_binary().unwrap_or_else(|| PathBuf::from("sepia")),
+            binary,
+            args,
             env: Vec::new(),
         }
     }
+}
+
+/// A resolved `sepia serve` launch — the binary plus its argv tail.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ServeTarget {
+    pub binary: PathBuf,
+    pub args: Vec<String>,
 }
 
 /// Locate the `sepia` binary: `PEREGRIN_SEPIA` env, then dev builds —
@@ -45,36 +64,89 @@ impl Default for Spec {
 /// installed PATH sepia in a monorepo checkout. PATH is the fallback.
 #[must_use]
 pub fn sepia_binary() -> Option<PathBuf> {
-    if let Some(path) = std::env::var_os("PEREGRIN_SEPIA") {
-        return Some(PathBuf::from(path));
+    sepia_shaped_in(&candidate_dirs()).or_else(|| which_on_path("sepia"))
+}
+
+/// The full `sepia serve` resolution — [`sepia_binary`]'s `sepia`-shaped
+/// arms first, then `tamias-driver-sepia` in the same candidate dirs
+/// (spawned as `run serve` — the engine passthrough), then the PATH
+/// fallbacks. The driver arm exists because the `sepia` command is a
+/// tamias `bins[]` shim: it resolves the installed package through the
+/// tamias store under `$HOME`, so it breaks in hermetic envs that
+/// override HOME — `tamias-driver-sepia` is a real binary that needs
+/// no store lookup.
+#[must_use]
+pub fn sepia_serve() -> Option<ServeTarget> {
+    let dirs = candidate_dirs();
+    if let Some(binary) = sepia_shaped_in(&dirs) {
+        return Some(ServeTarget {
+            binary,
+            args: vec!["serve".to_string()],
+        });
     }
+    if let Some(binary) = driver_in(&dirs) {
+        return Some(ServeTarget {
+            binary,
+            args: vec!["run".to_string(), "serve".to_string()],
+        });
+    }
+    which_on_path("sepia")
+        .map(|binary| ServeTarget {
+            binary,
+            args: vec!["serve".to_string()],
+        })
+        .or_else(|| {
+            which_on_path("tamias-driver-sepia").map(|binary| ServeTarget {
+                binary,
+                args: vec!["run".to_string(), "serve".to_string()],
+            })
+        })
+}
+
+/// `PEREGRIN_SEPIA` — an explicit path always wins and is always
+/// `sepia`-shaped (`<bin> serve`).
+fn explicit_sepia() -> Option<PathBuf> {
+    std::env::var_os("PEREGRIN_SEPIA").map(PathBuf::from)
+}
+
+/// The dev-build search dirs, in precedence order: sibling sepia
+/// checkout targets (debug then release), `TESTKIT_BIN_DIRS`, and the
+/// shared cargo target dir.
+fn candidate_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
     if let Some(manifest) = std::env::var_os("CARGO_MANIFEST_DIR") {
         let root = PathBuf::from(manifest);
         for profile in ["debug", "release"] {
-            let candidate = root.join(format!("../../../sepia/target/{profile}/sepia"));
-            if candidate.is_file() {
-                return Some(candidate);
-            }
+            dirs.push(root.join(format!("../../../sepia/target/{profile}")));
         }
     }
-    if let Some(dirs) = std::env::var_os("TESTKIT_BIN_DIRS") {
-        for dir in std::env::split_paths(&dirs) {
-            let candidate = dir.join("sepia");
-            if candidate.is_file() {
-                return Some(candidate);
-            }
-        }
+    if let Some(list) = std::env::var_os("TESTKIT_BIN_DIRS") {
+        dirs.extend(std::env::split_paths(&list));
     }
     if let Some(home) = std::env::var_os("HOME") {
         for profile in ["debug", "release"] {
-            let candidate =
-                PathBuf::from(&home).join(format!(".cargo/shared-target/{profile}/sepia"));
-            if candidate.is_file() {
-                return Some(candidate);
-            }
+            dirs.push(PathBuf::from(&home).join(format!(".cargo/shared-target/{profile}")));
         }
     }
-    which_on_path("sepia")
+    dirs
+}
+
+/// First `sepia` file across `dirs` (after the `PEREGRIN_SEPIA`
+/// override).
+fn sepia_shaped_in(dirs: &[PathBuf]) -> Option<PathBuf> {
+    if let Some(path) = explicit_sepia() {
+        return Some(path);
+    }
+    dirs.iter()
+        .map(|dir| dir.join("sepia"))
+        .find(|p| p.is_file())
+}
+
+/// First `tamias-driver-sepia` file across `dirs`.
+fn driver_in(dirs: &[PathBuf]) -> Option<PathBuf> {
+    dirs.iter()
+        .map(|dir| dir.join("tamias-driver-sepia"))
+        .find(|p| p.is_file())
 }
 
 fn which_on_path(name: &str) -> Option<PathBuf> {
@@ -291,7 +363,8 @@ async fn spawn_one(
     spec: &Spec,
     notifications: &broadcast::Sender<Notification>,
 ) -> Result<DriverClient, RpcError> {
-    let client = DriverClient::spawn_with_env(&spec.binary, &["serve"], &spec.env)
+    let args: Vec<&str> = spec.args.iter().map(String::as_str).collect();
+    let client = DriverClient::spawn_with_env(&spec.binary, &args, &spec.env)
         .await
         .map_err(|e| RpcError::internal(format!("spawn {}: {e}", spec.binary.display())))?;
     // Forward child notifications into the service-level broadcast so
@@ -1198,7 +1271,7 @@ mod tests {
              while IFS= read -r line; do\n\
              id=$(printf '%s' \"$line\" | sed -n 's/.*\"id\":\\([0-9][0-9]*\\).*/\\1/p')\n\
              case \"$line\" in\n\
-             *manifest*) printf '{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"name\":\"stub\",\"version\":\"0\",\"protocol\":1,\"methods\":[]}}\\n' \"${id:-0}\" ;;\n\
+             *manifest*) printf '{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{\"name\":\"stub\",\"version\":\"0\",\"protocol\":%s,\"methods\":[]}}\\n' \"${id:-0}\" \"$STUB_PROTO\" ;;\n\
              *) printf '{\"jsonrpc\":\"2.0\",\"id\":%s,\"result\":{}}\\n' \"${id:-0}\" ;;\n\
              esac\n\
              done\n",
@@ -1211,7 +1284,8 @@ mod tests {
         }
         Spec {
             binary: script,
-            env: Vec::new(),
+            args: vec!["serve".to_string()],
+            env: vec![("STUB_PROTO".into(), EXPECTED_PROTOCOL.to_string())],
         }
     }
 

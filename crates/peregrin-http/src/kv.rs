@@ -15,7 +15,9 @@
 //! | `migration` | internal | the `meta-json` import marker             |
 //!
 //! `sessions` stay in sepia-meta's `meta.json` — only `projects` and
-//! `config` moved. `INTERNAL_CONFIG` survives as [`INTERNAL_CONFIG`]:
+//! `config` moved (sepia-meta is sessions-only since phase 3; legacy
+//! `projects`/`config` keys in meta.json are ignored on read and dropped
+//! on the next flush). `INTERNAL_CONFIG` survives as [`INTERNAL_CONFIG`]:
 //! the compat `/api/config*` routes keep rejecting those keys so the
 //! public `config` namespace can't be poisoned through the old wire;
 //! the generic `/api/kv*` surface enforces the same boundary via the
@@ -31,8 +33,17 @@ use std::sync::Arc;
 
 use hypha_http::{KvHook, KvWrite};
 use hypha_kv::{KvStore, Visibility};
-use sepia_meta::{MetaStore, Project, SessionMeta};
+use sepia_meta::{MetaStore, SessionMeta};
+use serde::Serialize;
 use serde_json::{Value, json};
+
+/// Compat `GET /api/projects` row — `{id, name}` (was
+/// `sepia_meta::Project` before the sepia-meta shrink).
+#[derive(Clone, Debug, Serialize)]
+pub struct Project {
+    pub id: String,
+    pub name: String,
+}
 
 /// Public app/UI config — the old meta.json `config` section.
 pub const NS_CONFIG: &str = "config";
@@ -179,17 +190,19 @@ pub fn write_hook(meta: Option<crate::feed::InstrumentedMeta>) -> KvHook {
 }
 
 /// One-shot meta.json → KV import, run at `AppState::from_env` boot.
-/// Guarded by a marker key in the internal `migration` namespace:
-/// sepia-meta still serializes its loaded `projects`/`config` maps
-/// back into meta.json on every session-meta flush (the sepia-meta
-/// shrink is phase 3), so without the marker a steady-state node
-/// would resurrect deleted projects/config on every restart.
+/// Guarded by a marker key in the internal `migration` namespace.
+///
+/// Reads the legacy `projects`/`config` sections straight off the
+/// meta.json file: sepia-meta is sessions-only since phase 3 and
+/// drops those keys on its next flush, so the import must run before
+/// (and independently of) the overlay store — a pre-phase-2 install
+/// upgrading straight here still gets its data across.
 ///
 /// Per-section guards (`kv.list(ns).is_empty()`) keep a partially
 /// populated store honest on the first run; `INTERNAL_CONFIG` keys in
 /// the meta config map land in the internal `push` namespace, never
 /// in public `config`.
-pub fn migrate_meta(meta: &MetaStore, kv: &Arc<dyn KvStore>) {
+pub fn migrate_meta(meta_path: &std::path::Path, kv: &Arc<dyn KvStore>) {
     // Idempotent declarations — a hand-edited kv.json can't publish
     // the internal namespaces by dropping their visibility.
     kv.declare(NS_PUSH, Visibility::Internal);
@@ -198,28 +211,41 @@ pub fn migrate_meta(meta: &MetaStore, kv: &Arc<dyn KvStore>) {
         return;
     }
 
-    let projects = meta.list_projects();
-    if !projects.is_empty() && kv.list(NS_PROJECT).is_empty() {
-        for project in projects {
-            kv.set(NS_PROJECT, &project.id, json!({ "name": project.name }));
+    // v2 meta.json is `{sessions, projects, config}`; anything else
+    // (v1 flat session map, missing/corrupt file) has no sections to
+    // import — the marker still lands so we don't re-scan every boot.
+    let record = std::fs::read_to_string(meta_path)
+        .ok()
+        .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
+        .and_then(|v| v.as_object().cloned())
+        .unwrap_or_default();
+
+    if let Some(projects) = record.get("projects").and_then(Value::as_object) {
+        if !projects.is_empty() && kv.list(NS_PROJECT).is_empty() {
+            for (id, value) in projects {
+                if let Some(name) = project_name(value) {
+                    kv.set(NS_PROJECT, id, json!({ "name": name }));
+                }
+            }
         }
     }
 
-    let config = meta.config();
-    if !config.is_empty() {
-        let mut public: BTreeMap<String, Value> = BTreeMap::new();
-        for (key, value) in config {
-            if INTERNAL_CONFIG.contains(&key.as_str()) {
-                if kv.get(NS_PUSH, &key).is_none() {
-                    kv.set(NS_PUSH, &key, value);
+    if let Some(config) = record.get("config").and_then(Value::as_object) {
+        if !config.is_empty() {
+            let mut public: BTreeMap<String, Value> = BTreeMap::new();
+            for (key, value) in config {
+                if INTERNAL_CONFIG.contains(&key.as_str()) {
+                    if kv.get(NS_PUSH, key).is_none() {
+                        kv.set(NS_PUSH, key, value.clone());
+                    }
+                } else {
+                    public.insert(key.clone(), value.clone());
                 }
-            } else {
-                public.insert(key, value);
             }
-        }
-        if !public.is_empty() && kv.list(NS_CONFIG).is_empty() {
-            for (key, value) in public {
-                kv.set(NS_CONFIG, &key, value);
+            if !public.is_empty() && kv.list(NS_CONFIG).is_empty() {
+                for (key, value) in public {
+                    kv.set(NS_CONFIG, &key, value);
+                }
             }
         }
     }
@@ -325,21 +351,38 @@ mod tests {
         );
     }
 
+    /// Write a legacy v2 meta.json — sepia-meta no longer stores
+    /// projects/config, so tests seed the file shape directly.
+    fn write_legacy_meta(path: &std::path::Path, projects: &Value, config: &Value) {
+        std::fs::write(
+            path,
+            serde_json::json!({
+                "sessions": {"s1": {"title": "T"}},
+                "projects": projects,
+                "config": config,
+            })
+            .to_string(),
+        )
+        .unwrap();
+    }
+
     #[test]
     fn migrate_meta_imports_once_and_splits_internal_keys() {
         let dir = tempfile::tempdir().unwrap();
         let meta_path = dir.path().join("meta.json");
-        {
-            let meta = MetaStore::open(&meta_path);
-            meta.ensure_project("proj_1", "Web");
-            meta.set_config("theme", json!("dark"));
-            meta.set_config("vapid", json!({"private": "x"}));
-            meta.set_config("pushSubscriptions", json!([]));
-        }
+        write_legacy_meta(
+            &meta_path,
+            &json!({"proj_1": {"name": "Web"}}),
+            &json!({
+                "theme": "dark",
+                "vapid": {"private": "x"},
+                "pushSubscriptions": [],
+            }),
+        );
         let kv: Arc<dyn KvStore> = Arc::new(hypha_kv_file::JsonKvStore::open(
             &dir.path().join("kv.json"),
         ));
-        migrate_meta(&MetaStore::open(&meta_path), &kv);
+        migrate_meta(&meta_path, &kv);
 
         assert_eq!(kv.visibility("push"), Visibility::Internal);
         assert_eq!(kv.visibility("migration"), Visibility::Internal);
@@ -353,7 +396,7 @@ mod tests {
         // Second boot: marker present → nothing re-imports even if the
         // project was deleted from KV (meta.json still carries it).
         kv.delete("project", "proj_1");
-        migrate_meta(&MetaStore::open(&meta_path), &kv);
+        migrate_meta(&meta_path, &kv);
         assert!(kv.get("project", "proj_1").is_none());
     }
 
@@ -361,18 +404,18 @@ mod tests {
     fn migrate_meta_skips_nonempty_namespaces() {
         let dir = tempfile::tempdir().unwrap();
         let meta_path = dir.path().join("meta.json");
-        {
-            let meta = MetaStore::open(&meta_path);
-            meta.ensure_project("proj_old", "Old");
-            meta.set_config("theme", json!("dark"));
-        }
+        write_legacy_meta(
+            &meta_path,
+            &json!({"proj_old": {"name": "Old"}}),
+            &json!({"theme": "dark"}),
+        );
         let kv: Arc<dyn KvStore> = Arc::new(hypha_kv_file::JsonKvStore::open(
             &dir.path().join("kv.json"),
         ));
         // Pre-populated namespaces win over the import.
         kv.set("project", "proj_new", json!({"name": "New"}));
         kv.set("config", "theme", json!("light"));
-        migrate_meta(&MetaStore::open(&meta_path), &kv);
+        migrate_meta(&meta_path, &kv);
         assert!(kv.get("project", "proj_old").is_none());
         assert_eq!(kv.get("config", "theme"), Some(json!("light")));
         // The marker still landed.

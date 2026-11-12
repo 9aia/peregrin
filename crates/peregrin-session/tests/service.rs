@@ -3,16 +3,17 @@
 //! binary resolves (CI without the sibling checkout can set
 //! `PEREGRIN_SEPIA` to a built binary).
 
-use peregrin_session::{SepiaService, Spec, sepia_binary};
+use peregrin_session::{SepiaService, Spec, sepia_serve};
 use serde_json::json;
 
 fn spec() -> Option<(Spec, tempfile::TempDir, tempfile::TempDir)> {
     let home = tempfile::tempdir().ok()?;
     let drivers = tempfile::tempdir().ok()?; // empty → no drivers probed
-    sepia_binary().map(|binary| {
+    sepia_serve().map(|target| {
         (
             Spec {
-                binary,
+                binary: target.binary,
+                args: target.args,
                 env: vec![
                     ("SEPIA_HOME".into(), home.path().display().to_string()),
                     (

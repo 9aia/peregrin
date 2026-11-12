@@ -84,20 +84,24 @@ pub async fn serve(env: &Env) -> std::io::Result<()> {
         std::env::var("PEREGRIN_SESSION_PLANE").as_deref(),
         Ok("local" | "inprocess")
     ) {
-        let spec = peregrin_session::Spec {
-            binary: peregrin_session::sepia_binary().ok_or_else(|| {
-                std::io::Error::new(
+        let spec = match peregrin_session::sepia_serve() {
+            Some(target) => peregrin_session::Spec {
+                binary: target.binary,
+                args: target.args,
+                // The child inherits the SEPIA_*/driver envs; forwarding the
+                // node's resolved cline dir keeps `PEREGRIN_CLINE_DIR`
+                // meaningful for the cline driver's read/write store.
+                env: vec![(
+                    "SEPIA_CLINE_DIR".into(),
+                    env.cline_dir.display().to_string(),
+                )],
+            },
+            None => {
+                return Err(std::io::Error::new(
                     std::io::ErrorKind::NotFound,
                     "sepia binary not found — set PEREGRIN_SEPIA or install sepia",
-                )
-            })?,
-            // The child inherits the SEPIA_*/driver envs; forwarding the
-            // node's resolved cline dir keeps `PEREGRIN_CLINE_DIR`
-            // meaningful for the cline driver's read/write store.
-            env: vec![(
-                "SEPIA_CLINE_DIR".into(),
-                env.cline_dir.display().to_string(),
-            )],
+                ));
+            }
         };
         let service = peregrin_session::SepiaService::spawn(spec)
             .await

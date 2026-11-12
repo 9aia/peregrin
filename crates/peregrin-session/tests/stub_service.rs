@@ -31,7 +31,7 @@ fn serve() {
         .ok()
         .and_then(|p| std::fs::read_to_string(p).ok())
         .and_then(|s| s.trim().parse().ok())
-        .unwrap_or(1);
+        .unwrap_or(peregrin_session::EXPECTED_PROTOCOL);
     let bad_manifest = std::env::var_os("STUB_MANIFEST_BAD").is_some();
     let stdin = std::io::stdin();
     let mut out = std::io::stdout();
@@ -126,6 +126,9 @@ fn stub(extra: &[(&str, String)]) -> Spec {
     env.extend(extra.iter().map(|(k, v)| ((*k).to_string(), v.clone())));
     Spec {
         binary: std::env::current_exe().unwrap(),
+        // The stub is re-exec'd as `<exe> serve` — libtest treats
+        // `serve` as a name filter selecting the stub `serve` test.
+        args: vec!["serve".to_string()],
         env,
     }
 }
@@ -214,13 +217,13 @@ async fn spawn_protocol_mismatch_fails() {
 async fn respawn_protocol_mismatch_fails() {
     let dir = tempfile::tempdir().unwrap();
     let proto = dir.path().join("proto");
-    std::fs::write(&proto, "1").unwrap();
+    std::fs::write(&proto, peregrin_session::EXPECTED_PROTOCOL.to_string()).unwrap();
     let spec = stub(&[("STUB_PROTO_FILE", proto.display().to_string())]);
     let service = SepiaService::spawn(spec).await.unwrap();
     service.shutdown().await.unwrap();
     tokio::time::sleep(std::time::Duration::from_millis(150)).await;
     // The respawned service reports a different protocol → surfaced.
-    std::fs::write(&proto, "2").unwrap();
+    std::fs::write(&proto, "999").unwrap();
     let err = service.sessions(false).await.unwrap_err();
     assert!(err.message.contains("respawned"));
 }
@@ -234,6 +237,7 @@ async fn bad_manifest_and_missing_binary_fail() {
     // Unspawnable binary → `spawn_one`'s map_err.
     let spec = Spec {
         binary: "/definitely/not/a/binary".into(),
+        args: vec!["serve".to_string()],
         env: Vec::new(),
     };
     let err = SepiaService::spawn(spec).await.err().unwrap();
@@ -241,6 +245,7 @@ async fn bad_manifest_and_missing_binary_fail() {
     // Spawnable but exits instantly → the `call` inside handshake errs.
     let spec = Spec {
         binary: "/bin/false".into(),
+        args: vec!["serve".to_string()],
         env: Vec::new(),
     };
     let _err = SepiaService::spawn(spec).await.err().unwrap();
