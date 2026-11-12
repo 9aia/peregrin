@@ -12,6 +12,8 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 
+use peregrin_secret_cuora::{CuoraServe, CuoraTransport};
+
 use hypha_kv::KvStore;
 use hypha_push::{Kind, PushStore};
 use sepia_proto::SessionEvent;
@@ -60,7 +62,9 @@ fn cuora_bin() -> PathBuf {
 
 /// `cuora get <ref>` → the raw value (one trailing newline stripped),
 /// `None` on any failure — missing binary, denied op, absent ref all
-/// read as "not here" so the kv fallback takes over.
+/// read as "not here" so the kv fallback takes over. The `cli`
+/// transport leg; `serve` goes through [`CuoraServe::get`], which
+/// applies the same collapse-to-`None` semantics.
 fn cuora_get(bin: &PathBuf, key: &str) -> Option<String> {
     let o = Command::new(bin)
         .args(["--actor", "peregrin", "get", &cuora_ref(key)])
@@ -128,6 +132,13 @@ fn cuora_put(bin: &PathBuf, key: &str, value: &str) -> std::io::Result<()> {
 pub struct CuoraPushBackend {
     /// The `cuora` binary (`PEREGRIN_CUORA_BIN` or PATH).
     bin: PathBuf,
+    /// `cli` per-call shells vs the persistent `cuora serve` child —
+    /// `PEREGRIN_CUORA_TRANSPORT`, same knob as `CuoraSecrets`.
+    transport: CuoraTransport,
+    /// The serve client — lazy spawn, shared by hydrate + every
+    /// `set_config` write. Constructed always; only the `serve`
+    /// transport ever spawns the child.
+    serve: CuoraServe,
     /// The kv `push` namespace — warm-fallback read source and the
     /// write-through mirror target during the migration.
     kv: Arc<dyn KvStore>,
@@ -139,20 +150,28 @@ pub struct CuoraPushBackend {
 impl CuoraPushBackend {
     /// Hydrate from cuora (per-key, falling back to the kv `push`
     /// namespace) and return the backend. The `cuora` binary comes
-    /// from `PEREGRIN_CUORA_BIN` or PATH.
+    /// from `PEREGRIN_CUORA_BIN` or PATH; the transport from
+    /// `PEREGRIN_CUORA_TRANSPORT`.
     pub fn open(kv: Arc<dyn KvStore>) -> Self {
         Self::open_with_bin(kv, cuora_bin())
     }
 
     /// [`Self::open`] with an explicit `cuora` binary — the test seam.
     pub fn open_with_bin(kv: Arc<dyn KvStore>, bin: PathBuf) -> Self {
+        Self::open_with(kv, bin, CuoraTransport::from_env())
+    }
+
+    /// [`Self::open_with_bin`] with an explicit transport — the
+    /// serve-transport test seam (env can't be set in tests).
+    pub fn open_with(kv: Arc<dyn KvStore>, bin: PathBuf, transport: CuoraTransport) -> Self {
+        let serve = CuoraServe::new(bin.clone());
         let mut cache = BTreeMap::new();
         for key in KEYS {
             // cuora first: its value is JSON text — parse it back to
             // the `Value` the kv namespace would have stored. A
             // failed get *or* an unparseable body falls through to
             // the warm kv copy.
-            let value = cuora_get(&bin, key)
+            let value = cuora_get_for(&bin, &serve, transport, key)
                 .and_then(|raw| serde_json::from_str::<Value>(&raw).ok())
                 .or_else(|| kv.get(crate::kv::NS_PUSH, key));
             if let Some(value) = value {
@@ -161,9 +180,34 @@ impl CuoraPushBackend {
         }
         Self {
             bin,
+            transport,
+            serve,
             kv,
             cache: Mutex::new(cache),
         }
+    }
+
+    /// `cuora put` for one push key on the configured transport.
+    fn put(&self, key: &str, value: &str) -> std::io::Result<()> {
+        match self.transport {
+            CuoraTransport::Cli => cuora_put(&self.bin, key, value),
+            CuoraTransport::Serve => self.serve.put(&cuora_ref(key), value),
+        }
+    }
+}
+
+/// The transport-dispatched `cuora get` — `cli` shells out per call,
+/// `serve` reuses the persistent child. Both collapse every failure
+/// to `None`.
+fn cuora_get_for(
+    bin: &PathBuf,
+    serve: &CuoraServe,
+    transport: CuoraTransport,
+    key: &str,
+) -> Option<String> {
+    match transport {
+        CuoraTransport::Cli => cuora_get(bin, key),
+        CuoraTransport::Serve => serve.get(&cuora_ref(key)),
     }
 }
 
@@ -184,7 +228,7 @@ impl hypha_push::PushBackend for CuoraPushBackend {
         // honest so a broker outage never strands the document.
         match serde_json::to_string(&value) {
             Ok(json) => {
-                if let Err(e) = cuora_put(&self.bin, key, &json) {
+                if let Err(e) = self.put(key, &json) {
                     tracing::warn!(
                         "cuora put {} failed ({e}) — push config kept in \
                          memory + kv mirror; retried on next write",
@@ -402,6 +446,58 @@ mod tests {
         backend.set_config("vapid", value.clone());
         assert_eq!(backend.config().get("vapid"), Some(&value));
         assert_eq!(kv.get(crate::kv::NS_PUSH, "vapid"), Some(value));
+    }
+
+    /// A fake `cuora serve` — ndjson on stdin/stdout. Push values
+    /// are JSON *text* (quotes and all), so `value` is extracted
+    /// with sed out to the `","actor"` boundary and kept
+    /// wire-escaped end-to-end: the db file stores the escaped form
+    /// and `get` re-emits it inside `"value":"…"`, which parses back
+    /// to the original text.
+    fn stub_cuora_serve(dir: &std::path::Path) -> PathBuf {
+        let script = format!(
+            "#!/bin/sh\n\
+             while IFS= read -r line; do\n\
+               op=$(printf '%s' \"$line\" | grep -o '\"op\":\"[a-z]*\"' | cut -d'\"' -f4)\n\
+               ref=$(printf '%s' \"$line\" | grep -o '\"ref\":\"[^\"]*\"' | cut -d'\"' -f4)\n\
+               val=$(printf '%s' \"$line\" | sed -n 's/.*\"value\":\"\\(.*\\)\",\"actor\":\"[^\"]*\".*/\\1/p')\n\
+               key=${{ref##*/}}\n\
+               f='{dir}/db-'\"$key\"\n\
+               case \"$op\" in\n\
+                 get) if [ -f \"$f\" ]; then \\\n                        v=$(cat \"$f\")\n\
+                        printf '{{\"id\":1,\"ok\":true,\"result\":{{\"value\":\"%s\"}}}}\\n' \"$v\"\n\
+                      else printf '{{\"id\":1,\"ok\":false,\"error\":{{\"code\":\"not_found\",\"message\":\"x\"}}}}\\n'; fi ;;\n\
+                 put) printf '%s' \"$val\" > \"$f\"\n\
+                      printf '{{\"id\":1,\"ok\":true,\"result\":{{}}}}\\n' ;;\n\
+                 *) printf '{{\"id\":1,\"ok\":false,\"error\":{{\"code\":\"unknown_op\",\"message\":\"x\"}}}}\\n' ;;\n\
+               esac\n\
+             done\n",
+            dir = dir.display(),
+        );
+        let bin = dir.join("cuora-serve-stub.sh");
+        std::fs::write(&bin, script).unwrap();
+        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        bin
+    }
+
+    #[test]
+    fn cuora_backend_serve_transport_roundtrip() {
+        let (dir, kv) = kv_store();
+        let bin = stub_cuora_serve(dir.path());
+        let backend = CuoraPushBackend::open_with(kv.clone(), bin.clone(), CuoraTransport::Serve);
+        // Nothing stored anywhere → empty hydrate.
+        assert!(backend.config().is_empty());
+        // set_config puts over the wire — the db file proves it —
+        // while cache + kv mirror behave exactly as under cli.
+        let vapid = serde_json::json!({"publicKey": "pk", "privateKey": "sk"});
+        backend.set_config("vapid", vapid.clone());
+        assert!(dir.path().join("db-vapid").exists());
+        assert_eq!(backend.config().get("vapid"), Some(&vapid));
+        assert_eq!(kv.get(crate::kv::NS_PUSH, "vapid"), Some(vapid.clone()));
+        // A fresh backend hydrates *from cuora* over a new serve
+        // child — the stored JSON text parses back to the Value.
+        let backend2 = CuoraPushBackend::open_with(kv, bin, CuoraTransport::Serve);
+        assert_eq!(backend2.config().get("vapid"), Some(&vapid));
     }
 
     #[test]

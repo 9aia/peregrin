@@ -3035,6 +3035,7 @@ dependencies = [
  "hypha-push",
  "hypha-telemetry",
  "nix",
+ "peregrin-secret-cuora",
  "peregrin-session",
  "sepia-acp",
  "sepia-convert",
@@ -3197,6 +3198,7 @@ name = "peregrin-secret-cuora"
 version = "0.2.0"
 dependencies = [
  "hypha-secret",
+ "serde_json",
  "tempfile",
 ]
 

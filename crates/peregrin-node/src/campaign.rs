@@ -349,7 +349,7 @@ pub fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
 /// values, cross into events or logs.
 #[must_use]
 pub fn default_secret_stores() -> Vec<SecretSource> {
-    default_secret_stores_with(peregrin_secret_cuora::CuoraSecrets::default())
+    default_secret_stores_with(peregrin_secret_cuora::CuoraSecrets::shared_default().clone())
 }
 
 /// [`default_secret_stores`] with an explicit cuora leg — the test
@@ -435,9 +435,9 @@ mod tests {
     #[test]
     fn default_secret_stores_orders_cuora_first() {
         let dir = tempfile::tempdir().unwrap();
-        let stores = default_secret_stores_with(peregrin_secret_cuora::CuoraSecrets {
-            bin: stub_cuora(dir.path(), "from-cuora", false),
-        });
+        let stores = default_secret_stores_with(peregrin_secret_cuora::CuoraSecrets::with_bin(
+            stub_cuora(dir.path(), "from-cuora", false),
+        ));
         assert_eq!(stores.len(), 3);
         assert!(stores[0].declared_only);
         assert!(stores[1].declared_only);

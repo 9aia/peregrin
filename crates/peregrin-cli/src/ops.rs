@@ -151,7 +151,11 @@ fn cli(e: impl std::fmt::Display) -> CliError {
 /// config; values only ever resolve through here (the per-impl
 /// binding rule).
 pub(crate) fn secret(env: &OpsEnv, name: &str) -> Option<String> {
-    secret_with(env, name, &peregrin_secret_cuora::CuoraSecrets::default())
+    secret_with(
+        env,
+        name,
+        peregrin_secret_cuora::CuoraSecrets::shared_default(),
+    )
 }
 
 /// [`secret`] with an explicit cuora leg — the test seam (a stub
@@ -753,17 +757,18 @@ mod tests {
         let name = "PEREGRIN_SECRET_CHAIN_TEST";
         std::fs::write(env.env_file(), format!("{name}=from-env-file\n")).unwrap();
 
-        let cuora = peregrin_secret_cuora::CuoraSecrets {
-            bin: stub_cuora(dir.path(), "from-cuora", false),
-        };
+        let cuora = peregrin_secret_cuora::CuoraSecrets::with_bin(stub_cuora(
+            dir.path(),
+            "from-cuora",
+            false,
+        ));
         assert_eq!(
             secret_with(&env, name, &cuora).as_deref(),
             Some("from-cuora")
         );
 
-        let failing = peregrin_secret_cuora::CuoraSecrets {
-            bin: stub_cuora(dir.path(), "", true),
-        };
+        let failing =
+            peregrin_secret_cuora::CuoraSecrets::with_bin(stub_cuora(dir.path(), "", true));
         assert_eq!(
             secret_with(&env, name, &failing).as_deref(),
             Some("from-env-file")

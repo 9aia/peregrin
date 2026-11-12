@@ -23,6 +23,7 @@ hypha-http.workspace = true
 hypha-kv.workspace = true
 hypha-kv-file.workspace = true
 hypha-telemetry.workspace = true
+peregrin-secret-cuora.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
