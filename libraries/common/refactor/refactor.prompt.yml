@@ -1,4 +1,0 @@
-|
-  We are refactoring "${state.refactor_id}": ${state.refactor_description}.
-  Spec: ${config.spec}
-  Working in ${state.worktree_path}.

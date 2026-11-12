@@ -1,7 +1,0 @@
-|
-  Review the refactor "${state.refactor_id}": ${state.refactor_description}.
-  Branch: ${state.branch}
-  Base: ${config.base}
-  Spec: ${config.spec}
-  Approve if the implementation matches the spec, checks and tests are
-  green, and repo conventions hold. Otherwise reject with feedback.

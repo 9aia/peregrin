@@ -110,10 +110,11 @@ fn registry_resolves_the_default_drivers() {
 fn load_expands_a_libraries_campaign() {
     // Real stdlib yaml: `include:` node files + snippet expansion must
     // produce a fully-wired Campaign.
-    let campaign = campaign::load(&libraries_dir().join("common/new-feat/main.yaml")).unwrap();
-    assert_eq!(campaign.name, "new-feat");
+    let campaign =
+        campaign::load(&libraries_dir().join("meta/workflows/create/main.yaml")).unwrap();
+    assert_eq!(campaign.name, "meta-create");
     assert!(
-        campaign.nodes.len() >= 10,
+        campaign.nodes.len() >= 5,
         "expected include-expanded nodes, got {}",
         campaign.nodes.len()
     );
@@ -121,7 +122,7 @@ fn load_expands_a_libraries_campaign() {
         campaign
             .nodes
             .iter()
-            .any(|n| n.id == "new-feat.impl" && n.driver == "agent"),
+            .any(|n| n.id == "agent.generate" && n.driver == "agent"),
         "agent node missing: {:?}",
         campaign.nodes.iter().map(|n| &n.id).collect::<Vec<_>>()
     );

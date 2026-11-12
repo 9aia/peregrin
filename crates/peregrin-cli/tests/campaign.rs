@@ -172,9 +172,9 @@ fn validate_a_libraries_campaign() {
     // Real stdlib yaml — includes/snippets expanded; every `on`
     // pattern is emitted, so no warnings.
     let lines =
-        peregrin_cli::campaign::validate(&libraries_dir().join("common/new-feat/main.yaml"))
+        peregrin_cli::campaign::validate(&libraries_dir().join("meta/workflows/create/main.yaml"))
             .unwrap();
-    assert!(lines.iter().any(|l| l == "workflow: new-feat"));
+    assert!(lines.iter().any(|l| l == "workflow: meta-create"));
     assert!(
         !lines.iter().any(|l| l.contains("WARNING")),
         "lines: {lines:?}"
@@ -309,7 +309,7 @@ fn peregrin_binary_runs_a_campaign() {
                 "campaign",
                 "validate",
                 libraries_dir()
-                    .join("common/new-feat/main.yaml")
+                    .join("meta/workflows/create/main.yaml")
                     .to_str()
                     .unwrap(),
             ])
@@ -321,6 +321,6 @@ fn peregrin_binary_runs_a_campaign() {
         String::from_utf8_lossy(&out.stderr)
     );
     let stdout = String::from_utf8_lossy(&out.stdout);
-    assert!(stdout.contains("workflow: new-feat"), "stdout: {stdout}");
+    assert!(stdout.contains("workflow: meta-create"), "stdout: {stdout}");
     assert!(stdout.contains("OK"), "stdout: {stdout}");
 }

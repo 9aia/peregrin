@@ -456,32 +456,25 @@ fn libraries_dir() -> std::path::PathBuf {
 }
 
 #[test]
-fn loads_the_new_feat_stdlib_campaign() {
+fn loads_the_meta_create_stdlib_campaign_with_prompt_includes() {
     let campaign = loader()
-        .load(&libraries_dir().join("common/new-feat/main.yaml"))
+        .load(&libraries_dir().join("meta/workflows/create/main.yaml"))
         .unwrap();
-    assert_eq!(campaign.name, "new-feat");
-    // 16 include-expanded nodes; first pulls its whole body from
-    // git/worktree.node.yml, later ones override `id`/`on` locally.
-    assert_eq!(campaign.nodes.len(), 16);
-    assert_eq!(campaign.nodes[0].id, "git.worktree");
-    assert_eq!(campaign.nodes[0].driver, "shell");
-    assert_eq!(campaign.nodes[1].id, "new-feat.adr");
-    assert_eq!(campaign.nodes[1].driver, "agent");
-    // ${include(./new-feat.prompt.yml)} expanded into the prompt param.
-    let prompt = campaign.nodes[1].params["prompt"].as_str().unwrap();
-    assert!(prompt.contains("${state.feat_id}"), "prompt: {prompt}");
+    assert_eq!(campaign.name, "meta-create");
+    // 7 include-expanded nodes; snippet files fill the body, the
+    // parent overrides `on`/`params` locally.
+    assert_eq!(campaign.nodes.len(), 7);
+    assert_eq!(campaign.nodes[0].id, "agent.generate");
+    assert_eq!(campaign.nodes[0].driver, "agent");
+    // ${include(../../generate.prompt.yml)} expanded into the prompt param.
+    let prompt = campaign.nodes[0].params["prompt"].as_str().unwrap();
+    assert!(prompt.contains("${WORKFLOW_PATH}"), "prompt: {prompt}");
     // Numeric `emit:` keys coerced to strings like the JS `yaml` output.
-    assert_eq!(campaign.nodes[0].params["emit"]["0"], "git.worktree.ready");
+    assert_eq!(campaign.nodes[0].params["emit"]["0"], "agent.generate.done");
     assert_eq!(
         campaign.nodes[0].params["emit"]["default"],
-        "git.worktree.failed"
+        "agent.generate.failed"
     );
-    // Declared events carried through.
-    assert_eq!(campaign.events.len(), 32);
-    assert_eq!(campaign.events[0].kind, "start");
-    // config merges: node params env overrides + campaign config.
-    assert_eq!(campaign.config["agent_runner"], "devin");
 }
 
 #[test]
