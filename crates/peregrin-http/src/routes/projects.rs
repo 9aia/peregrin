@@ -1,5 +1,9 @@
-//! Project CRUD — `routes/projects.ts` ported: named groups over session
-//! meta (`meta.projectIds`). All routes 501 without a meta store.
+//! Project CRUD — `routes/projects.ts` ported onto the KV `project`
+//! namespace (P-006 phase 2): named groups whose ids ride session
+//! meta's `projectIds`. Writes emit the same `project` feed events
+//! `InstrumentedMeta` did; deletes cascade-strip the id from every
+//! session meta (the `MetaStore::delete_project` half that stayed
+//! behind in sepia-meta). All routes 501 without a KV store.
 
 use axum::body::Body;
 use axum::extract::{Path, Request, State};
@@ -8,11 +12,12 @@ use axum::response::Response;
 use serde_json::json;
 
 use crate::AppState;
+use crate::kv::{self, NS_PROJECT};
 use crate::routes::{SMALL_JSON_BODY, json_response, not_found, ok, read_json_body};
 
-fn meta_missing() -> Response {
+fn kv_missing() -> Response {
     json_response(
-        json!({ "error": "Meta is not configured on this server" }),
+        json!({ "error": "KV store is not configured on this server" }),
         StatusCode::NOT_IMPLEMENTED,
     )
 }
@@ -39,14 +44,17 @@ pub async fn collection(
 ) -> Response {
     match method {
         Method::GET => {
-            let Some(meta) = &state.meta else {
-                return meta_missing();
+            let Some(store) = &state.kv else {
+                return kv_missing();
             };
-            json_response(json!({ "projects": meta.list_projects() }), StatusCode::OK)
+            json_response(
+                json!({ "projects": kv::list_projects(store.as_ref()) }),
+                StatusCode::OK,
+            )
         }
         Method::POST => {
-            let Some(meta) = &state.meta else {
-                return meta_missing();
+            let Some(store) = &state.kv else {
+                return kv_missing();
             };
             let body = match read_json_body(req, SMALL_JSON_BODY).await {
                 Ok(b) => b,
@@ -56,8 +64,14 @@ pub async fn collection(
                 Ok(n) => n,
                 Err(res) => return *res,
             };
+            let id = kv::new_project_id();
+            store.set(NS_PROJECT, &id, json!({ "name": name }));
+            state.feed.emit(
+                "project",
+                kv::project_set_payload(&id, &json!({ "name": name })),
+            );
             json_response(
-                json!({ "project": meta.create_project(&name) }),
+                json!({ "project": { "id": id, "name": name } }),
                 StatusCode::CREATED,
             )
         }
@@ -74,8 +88,8 @@ pub async fn item(
 ) -> Response {
     match method {
         Method::PATCH => {
-            let Some(meta) = &state.meta else {
-                return meta_missing();
+            let Some(store) = &state.kv else {
+                return kv_missing();
             };
             let body = match read_json_body(req, SMALL_JSON_BODY).await {
                 Ok(b) => b,
@@ -85,16 +99,32 @@ pub async fn item(
                 Ok(n) => n,
                 Err(res) => return *res,
             };
-            if !meta.rename_project(&id, &name) {
+            // `rename_project`'s existence check — a missing key is a
+            // 404, a present one takes the new name (sibling fields
+            // preserved by `ensure_project`).
+            if store.get(NS_PROJECT, &id).is_none() {
                 return json_response(json!({ "error": "Unknown project" }), StatusCode::NOT_FOUND);
             }
+            let _ = kv::ensure_project(store.as_ref(), &id, &name);
+            state.feed.emit(
+                "project",
+                kv::project_set_payload(&id, &json!({ "name": name })),
+            );
             ok()
         }
         Method::DELETE => {
-            let Some(meta) = &state.meta else {
-                return meta_missing();
+            let Some(store) = &state.kv else {
+                return kv_missing();
             };
-            meta.delete_project(&id);
+            if store.delete(NS_PROJECT, &id) {
+                // The cascade `MetaStore::delete_project` used to own:
+                // strip the id from every session meta's projectIds,
+                // silently (no `meta` feed events, like before).
+                if let Some(meta) = &state.meta {
+                    kv::strip_project_from_sessions(meta.store(), &id);
+                }
+                state.feed.emit("project", kv::project_delete_payload(&id));
+            }
             ok()
         }
         _ => not_found(),

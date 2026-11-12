@@ -130,7 +130,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -141,7 +141,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -871,7 +871,7 @@ dependencies = [
  "openssl-sys",
  "schannel",
  "socket2",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -887,7 +887,7 @@ dependencies = [
  "openssl-sys",
  "pkg-config",
  "vcpkg",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1255,7 +1255,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -1746,7 +1746,7 @@ dependencies = [
 [[package]]
 name = "hypha-control"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "serde",
  "serde_json",
@@ -1755,7 +1755,7 @@ dependencies = [
 [[package]]
 name = "hypha-dotenv"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "hypha-secret",
 ]
@@ -1763,14 +1763,17 @@ dependencies = [
 [[package]]
 name = "hypha-http"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a74fd126c730e3e77d02c8a5cd4472fe04dcbeff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "async-trait",
  "axum",
  "base64 0.22.1",
+ "ed25519-dalek",
  "form_urlencoded",
  "futures",
  "http-body-util",
+ "hypha-kv",
+ "hypha-kv-file",
  "hypha-push",
  "hypha-telemetry",
  "nix",
@@ -1787,7 +1790,7 @@ dependencies = [
 [[package]]
 name = "hypha-hub"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "async-trait",
  "axum",
@@ -1813,15 +1816,34 @@ dependencies = [
 [[package]]
 name = "hypha-keyring"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "hypha-secret",
 ]
 
 [[package]]
+name = "hypha-kv"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+dependencies = [
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "hypha-kv-file"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+dependencies = [
+ "hypha-kv",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "hypha-node-api"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "async-trait",
  "serde",
@@ -1833,7 +1855,7 @@ dependencies = [
 [[package]]
 name = "hypha-outbox"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "rusqlite",
  "serde",
@@ -1847,7 +1869,7 @@ dependencies = [
 [[package]]
 name = "hypha-push"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a74fd126c730e3e77d02c8a5cd4472fe04dcbeff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "base64 0.22.1",
  "futures",
@@ -1862,17 +1884,17 @@ dependencies = [
 [[package]]
 name = "hypha-secret"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 
 [[package]]
 name = "hypha-service"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 
 [[package]]
 name = "hypha-sync"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "hypha-outbox",
  "rusqlite",
@@ -1889,7 +1911,7 @@ dependencies = [
 [[package]]
 name = "hypha-systemd"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#04ed9d5fff93be3d2011c0a1d7569557eab7c703"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "hypha-service",
 ]
@@ -1897,7 +1919,7 @@ dependencies = [
 [[package]]
 name = "hypha-telemetry"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#a74fd126c730e3e77d02c8a5cd4472fe04dcbeff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
 dependencies = [
  "http 1.5.0",
  "opentelemetry",
@@ -2396,7 +2418,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -3003,12 +3025,12 @@ version = "0.2.0"
 dependencies = [
  "async-trait",
  "axum",
- "base64 0.22.1",
- "ed25519-dalek",
  "form_urlencoded",
  "futures",
  "http-body-util",
  "hypha-http",
+ "hypha-kv",
+ "hypha-kv-file",
  "hypha-push",
  "hypha-telemetry",
  "nix",
@@ -3673,7 +3695,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4320,7 +4342,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -4744,7 +4766,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.59.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]
@@ -5114,7 +5136,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.60.2",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

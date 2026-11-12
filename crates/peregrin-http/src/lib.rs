@@ -2,8 +2,8 @@
 //! The generic substrate surface (`/api/entities*`, `/api/events`,
 //! `/api/node`, `/api/pair`, `/api/auth/*`, `/api/push/*`, `/api/fs`,
 //! `/api/user`, `/api/health`) is `hypha-http`'s; this crate keeps the
-//! session plane — `/api/sessions*`, agents, projects, config, client
-//! keypair — plus the [`AppState`] both compose over. [`compose`]
+//! session plane — `/api/sessions*`, agents, projects, config — plus
+//! the [`AppState`] both compose over. [`compose`]
 //! merges the two routers under one listener and [`app`] builds the
 //! composed surface with a substrate state derived from `AppState`
 //! (the test/back-compat path); `peregrin-node`'s `serve` passes an
@@ -19,6 +19,7 @@ pub mod auth;
 pub mod env;
 pub mod feed;
 pub mod ingest;
+pub mod kv;
 pub mod node;
 pub mod push;
 pub mod routes;
@@ -68,8 +69,15 @@ pub struct AppState {
     /// behind `/api/entities*` (`sepia-session` is added by the
     /// composer itself, always first so it stays the default plane).
     pub kinds: KindRegistry,
-    /// The instrumented meta overlay — `None` → meta routes answer 501.
+    /// The instrumented meta overlay — session metas only since P-006
+    /// phase 2 (projects/config moved to [`Self::kv`]); `None` → meta
+    /// routes answer 501.
     pub meta: Option<InstrumentedMeta>,
+    /// Node-local KV store (P-006) — the `project`/`config`/`push`
+    /// namespaces behind the `/api/projects*` + `/api/config*` compat
+    /// routes and, shared at composition, the substrate's `/api/kv*`.
+    /// `None` → those surfaces answer 501.
+    pub kv: Option<Arc<dyn hypha_kv::KvStore>>,
     /// Process-wide node event feed behind `GET /api/events`.
     pub feed: EventFeed,
     /// Identity reported by `GET /api/node`; `PATCH /api/node` renames
@@ -121,6 +129,7 @@ impl AppState {
             plane,
             kinds: KindRegistry::new(),
             meta: None,
+            kv: None,
             feed: EventFeed::new(),
             node: Arc::new(Mutex::new(NodeIdentity {
                 id: format!("node_{}", &uuid::Uuid::new_v4().simple().to_string()[..16]),
@@ -154,10 +163,18 @@ impl AppState {
     pub fn from_env(env: &Env, plane: Arc<dyn SessionPlane>) -> Self {
         let feed = EventFeed::new();
         let meta = MetaStore::open(&env.meta_path);
+        // P-006 phase 2 — projects/config/push-secrets live in the
+        // node-local KV (`<home>/kv.json`); sessions stay in meta.json.
+        // `migrate_meta` performs the one-shot import (marker-guarded)
+        // and declares the internal namespaces before anything serves.
+        let kv: Arc<dyn hypha_kv::KvStore> =
+            Arc::new(hypha_kv_file::JsonKvStore::open(&env.kv_path));
+        kv::migrate_meta(&meta, &kv);
         Self {
             plane,
             kinds: KindRegistry::new(),
             meta: Some(InstrumentedMeta::new(meta, feed.clone())),
+            kv: Some(kv.clone()),
             feed,
             node: Arc::new(Mutex::new(load_node_identity(
                 &env.node_path,
@@ -179,7 +196,7 @@ impl AppState {
             import_session: None,
             convert: None,
             push: Some(Arc::new(hypha_push::PushStore::open(
-                crate::push::MetaPushBackend(MetaStore::open(&env.meta_path)),
+                crate::push::KvPushBackend(kv),
             ))),
             // The campaign plane's fan-out is wired by the
             // composition root (`peregrin-node::app_state`) — `Env`
@@ -206,6 +223,14 @@ impl AppState {
     #[must_use]
     pub fn with_meta(mut self, meta: MetaStore) -> Self {
         self.meta = Some(InstrumentedMeta::new(meta, self.feed.clone()));
+        self
+    }
+
+    /// Install the node-local KV store (P-006) — `None` leaves the
+    /// `/api/kv*` + projects/config compat surfaces answering 501.
+    #[must_use]
+    pub fn with_kv(mut self, kv: Option<Arc<dyn hypha_kv::KvStore>>) -> Self {
+        self.kv = kv;
         self
     }
 
@@ -396,6 +421,16 @@ fn align_substrate(state: &AppState, hypha: &mut hypha_http::HyphaState) {
     if let Some(push) = &state.push {
         hypha.push = Some(Arc::clone(push));
     }
+    // One KV store for both routers — the session state's instance
+    // wins over the substrate's own `HYPHA_KV` open (same file, but a
+    // single `JsonKvStore` keeps one in-memory map; two instances
+    // would lose each other's writes). The hook maps `project`-ns
+    // writes onto `project` feed events + the session-meta cascade;
+    // every other namespace stays silent.
+    if state.kv.is_some() {
+        hypha.kv.clone_from(&state.kv);
+    }
+    hypha.kv_hook = Some(kv::write_hook(state.meta.clone()));
     hypha.entity_host = Some(Arc::new(state.clone()));
     hypha.auth_cookie = Arc::from("sepia_token");
     hypha.health_probe = Some(health_probe(Arc::clone(&state.plane)));
@@ -573,7 +608,7 @@ async fn log_layer(req: Request<Body>, next: Next) -> Response {
 }
 
 /// The session-plane router — `/api/sessions*`, agents, projects,
-/// config, client keypair — with the auth gate, request log, CORS and
+/// config — with the auth gate, request log, CORS and
 /// trace layers. Every route is `any()` + an internal method guard so
 /// wrong-method requests fall through to the 404 (rather than axum's
 /// bare 405). The generic substrate routes (`/api/entities*`,
@@ -590,7 +625,8 @@ fn session_app(state: AppState) -> Router {
     Router::new()
         .route("/api/agents", any(routes::agents::agents))
         .route("/api/events/inject", any(routes::events::inject))
-        .route("/api/client/keypair", any(routes::client::keypair))
+        // `/api/client/keypair` is hypha-http's (`/api/kv*` phase 1) —
+        // registering it here too would panic the merge.
         .route("/api/config", any(routes::config::get))
         .route("/api/config/{key}", any(routes::config::set))
         .route("/api/projects", any(routes::projects::collection))

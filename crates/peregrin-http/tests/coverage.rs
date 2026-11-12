@@ -71,8 +71,12 @@ fn seeded() -> (Router, tempfile::TempDir) {
     .unwrap();
     store.sessions.lock().unwrap().insert("s1".into(), s);
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
+    let kv: Arc<dyn hypha_kv::KvStore> = Arc::new(hypha_kv_file::JsonKvStore::open(
+        &dir.path().join("kv.json"),
+    ));
     let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta)
+        .with_kv(Some(kv))
         .with_held_watch(Duration::ZERO)
         .with_keep_alive(Duration::from_millis(40));
     (app(state), dir)
@@ -490,9 +494,10 @@ async fn feed_and_push_wired() {
         sessions: Mutex::new(HashMap::new()),
     });
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
-    let push = hypha_push::PushStore::open(peregrin_http::push::MetaPushBackend(MetaStore::open(
-        &dir.path().join("p.json"),
-    )));
+    let kv: Arc<dyn hypha_kv::KvStore> = Arc::new(hypha_kv_file::JsonKvStore::open(
+        &dir.path().join("kv.json"),
+    ));
+    let push = hypha_push::PushStore::open(peregrin_http::push::KvPushBackend(kv));
     let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta)
         .with_push(Some(Arc::new(push)))
@@ -1794,12 +1799,14 @@ fn seeded_with_push() -> (Router, tempfile::TempDir) {
         sessions: Mutex::new(HashMap::new()),
     });
     let plane = ControlPlane::new(store, ControlPlaneOptions::default());
+    let kv: Arc<dyn hypha_kv::KvStore> = Arc::new(hypha_kv_file::JsonKvStore::open(
+        &dir.path().join("kv.json"),
+    ));
     let state = AppState::new(Arc::new(LocalPlane(plane, None)))
         .with_meta(meta)
+        .with_kv(Some(kv.clone()))
         .with_push(Some(std::sync::Arc::new(hypha_push::PushStore::open(
-            peregrin_http::push::MetaPushBackend(sepia_meta::MetaStore::open(
-                &dir.path().join("push.json"),
-            )),
+            peregrin_http::push::KvPushBackend(kv),
         ))));
     (app(state), dir)
 }
@@ -2194,10 +2201,11 @@ async fn meta_less_and_body_error_arms() {
         }),
         ControlPlaneOptions::default(),
     );
+    let kv: Arc<dyn hypha_kv::KvStore> = Arc::new(hypha_kv_file::JsonKvStore::open(
+        &dir.path().join("kv.json"),
+    ));
     let state = AppState::new(Arc::new(LocalPlane(plane, None))).with_push(Some(Arc::new(
-        hypha_push::PushStore::open(peregrin_http::push::MetaPushBackend(MetaStore::open(
-            &dir.path().join("p.json"),
-        ))),
+        hypha_push::PushStore::open(peregrin_http::push::KvPushBackend(kv)),
     )));
     let app = peregrin_http::app(state);
     call_str(
@@ -2404,4 +2412,166 @@ async fn sessions_run_route() {
         .await,
         StatusCode::INTERNAL_SERVER_ERROR
     );
+}
+
+/// P-006 phase 2 — the KV surface end to end: `/api/kv*` CRUD with
+/// internal-namespace hiding, the `/api/projects*` + `/api/config*`
+/// compat mapping, `project` feed events + the session-meta cascade
+/// through BOTH write paths (compat route and generic `/api/kv`),
+/// config-write silence, and the moved `/api/client/keypair`.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
+async fn kv_surface_compat_and_keypair() {
+    let dir = tempfile::tempdir().unwrap();
+    let meta = MetaStore::open(&dir.path().join("meta.json"));
+    // A session meta referencing p1 — the delete cascade must strip it.
+    let patch = sepia_meta::SessionMeta {
+        project_ids: Some(vec!["p1".into()]),
+        ..sepia_meta::SessionMeta::default()
+    };
+    meta.patch("s1", &patch);
+
+    let kv: Arc<dyn hypha_kv::KvStore> = Arc::new(hypha_kv_file::JsonKvStore::open(
+        &dir.path().join("kv.json"),
+    ));
+    kv.declare("push", hypha_kv::Visibility::Internal);
+    kv.set("push", "vapid", json!({"private": "x"}));
+
+    let store = Arc::new(MemStore {
+        sessions: Mutex::new(HashMap::new()),
+    });
+    let plane = ControlPlane::new(store, ControlPlaneOptions::default());
+    let state = AppState::new(Arc::new(LocalPlane(plane, None)))
+        .with_meta(meta.clone())
+        .with_kv(Some(kv.clone()))
+        .with_held_watch(Duration::ZERO);
+    let feed = state.feed.clone();
+    let mut feed_rx = feed.subscribe();
+    let app = app(state);
+
+    // Internal namespace: invisible to reads, rejected on writes.
+    let (s, _) = call_str(&app, Method::GET, "/api/kv/push", "", "text/plain").await;
+    assert_eq!(s, StatusCode::NOT_FOUND);
+    let (s, _) = call_str(&app, Method::GET, "/api/kv/push/vapid", "", "text/plain").await;
+    assert_eq!(s, StatusCode::NOT_FOUND);
+    let s = call(
+        &app,
+        Method::PUT,
+        "/api/kv/push/vapid",
+        Some(json!({"value": {}})),
+    )
+    .await;
+    assert_eq!(s, StatusCode::BAD_REQUEST);
+    // …but the store API reads it fine (the push backend does).
+    assert!(kv.get("push", "vapid").is_some());
+
+    // Compat config: PATCH writes land in the `config` namespace and
+    // surface through GET /api/config; internal keys stay rejected.
+    let (s, _) = call_str(
+        &app,
+        Method::PATCH,
+        "/api/config/theme",
+        r#"{"value":"dark"}"#,
+        "application/json",
+    )
+    .await;
+    assert_eq!(s, StatusCode::OK);
+    assert_eq!(kv.get("config", "theme"), Some(json!("dark")));
+    let (s, b) = call_str(&app, Method::GET, "/api/config", "", "text/plain").await;
+    assert_eq!(s, StatusCode::OK);
+    assert!(b.contains("\"theme\":\"dark\""), "{b}");
+    let s = call(
+        &app,
+        Method::PATCH,
+        "/api/config/vapid",
+        Some(json!({"value": {}})),
+    )
+    .await;
+    assert_eq!(s, StatusCode::BAD_REQUEST);
+
+    // Generic KV write → compat read (one store, two surfaces).
+    let s = call(
+        &app,
+        Method::PUT,
+        "/api/kv/config/scale",
+        Some(json!({"value": 2})),
+    )
+    .await;
+    assert_eq!(s, StatusCode::OK);
+    let (s, b) = call_str(&app, Method::GET, "/api/config", "", "text/plain").await;
+    assert_eq!(s, StatusCode::OK);
+    assert!(b.contains("\"scale\":2"), "{b}");
+
+    // Compat project create → generic KV read; feed got a `project`
+    // event in the InstrumentedMeta shape.
+    let (s, b) = call_str(
+        &app,
+        Method::POST,
+        "/api/projects",
+        r#"{"name":"Web"}"#,
+        "application/json",
+    )
+    .await;
+    assert_eq!(s, StatusCode::CREATED, "{b}");
+    let pid = serde_json::from_str::<Value>(&b).unwrap()["project"]["id"]
+        .as_str()
+        .unwrap()
+        .to_string();
+    assert!(kv.get("project", &pid).is_some());
+
+    // Generic /api/kv project write → `project` feed event + the
+    // session-meta cascade on delete.
+    let s = call(
+        &app,
+        Method::PUT,
+        "/api/kv/project/p1",
+        Some(json!({"value": {"name": "P1"}})),
+    )
+    .await;
+    assert_eq!(s, StatusCode::OK);
+    let s = call(&app, Method::DELETE, "/api/kv/project/p1", None).await;
+    assert_eq!(s, StatusCode::OK);
+    assert!(kv.get("project", "p1").is_none());
+    // Cascade: s1's projectIds no longer references p1.
+    assert_eq!(
+        meta.of("s1").unwrap().project_ids,
+        Some(Vec::<String>::new())
+    );
+
+    // Compat delete of the created project → deleted feed event.
+    let s = call(&app, Method::DELETE, &format!("/api/projects/{pid}"), None).await;
+    assert_eq!(s, StatusCode::OK);
+    assert!(kv.get("project", &pid).is_none());
+
+    // Feed contract: `project` events for project writes, NOTHING for
+    // config writes (the historical silence).
+    let mut kinds = Vec::new();
+    while let Ok(ev) = feed_rx.try_recv() {
+        kinds.push(ev.kind.to_string());
+    }
+    assert!(
+        kinds.iter().filter(|k| *k == "project").count() >= 3,
+        "{kinds:?}"
+    );
+    assert!(
+        !kinds.iter().any(|k| k == "kv" || k == "config"),
+        "{kinds:?}"
+    );
+
+    // `/api/client/keypair` — now hypha-http's route (same wire).
+    let (s, b) = call_str(&app, Method::POST, "/api/client/keypair", "", "text/plain").await;
+    assert_eq!(s, StatusCode::OK, "{b}");
+    let body: Value = serde_json::from_str(&b).unwrap();
+    assert_eq!(body["algorithm"], "Ed25519");
+    assert!(body["publicKey"].as_str().is_some_and(|k| !k.is_empty()));
+    assert!(body["secretKey"].as_str().is_some_and(|k| !k.is_empty()));
+    // Wrong method → 404 like every other `any()` route.
+    assert_eq!(
+        call(&app, Method::GET, "/api/client/keypair", None).await,
+        StatusCode::NOT_FOUND
+    );
+
+    // Namespace directory hides internal namespaces.
+    let (s, b) = call_str(&app, Method::GET, "/api/kv", "", "text/plain").await;
+    assert_eq!(s, StatusCode::OK, "{b}");
+    assert!(!b.contains("\"push\""), "{b}");
 }

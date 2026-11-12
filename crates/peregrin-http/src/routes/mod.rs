@@ -5,7 +5,6 @@
 //! JSON-body reading, and the wire structs the handlers serialize.
 
 pub mod agents;
-pub mod client;
 pub mod config;
 pub mod events;
 pub mod projects;

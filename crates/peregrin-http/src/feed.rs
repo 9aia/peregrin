@@ -112,8 +112,11 @@ pub fn busy_from_events(events: &[SessionEvent]) -> Option<bool> {
     None
 }
 
-/// `MetaStore` + feed emission — `instrumentMeta` in TS: every overlay
-/// write also lands on the node feed (`meta`/`project` events).
+/// `MetaStore` + feed emission — `instrumentMeta` in TS: every session
+/// overlay write also lands on the node feed (`meta` events). Project
+/// and config writes moved to the KV surface in P-006 phase 2 — see
+/// [`crate::kv`] for their feed contract (`project` events) and the
+/// delete cascade.
 #[derive(Clone)]
 pub struct InstrumentedMeta {
     store: MetaStore,
@@ -174,63 +177,6 @@ impl InstrumentedMeta {
                 session_payload(id, meta.agent.as_deref(), json!({ "deleted": true })),
             );
         }
-    }
-
-    pub fn list_projects(&self) -> Vec<sepia_meta::Project> {
-        self.store.list_projects()
-    }
-
-    pub fn create_project(&self, name: &str) -> sepia_meta::Project {
-        let project = self.store.create_project(name);
-        self.feed.emit(
-            "project",
-            json!({ "id": project.id, "patch": { "name": project.name } }),
-        );
-        project
-    }
-
-    /// Create under a caller-chosen id or refresh the name — the
-    /// idempotent half of a project transfer.
-    pub fn ensure_project(&self, id: &str, name: &str) -> sepia_meta::Project {
-        let before = self
-            .store
-            .list_projects()
-            .into_iter()
-            .find(|p| p.id == id)
-            .map(|p| p.name);
-        let project = self.store.ensure_project(id, name);
-        if before.as_deref() != Some(name) {
-            self.feed
-                .emit("project", json!({ "id": id, "patch": { "name": name } }));
-        }
-        project
-    }
-
-    pub fn rename_project(&self, id: &str, name: &str) -> bool {
-        let renamed = self.store.rename_project(id, name);
-        if renamed {
-            self.feed
-                .emit("project", json!({ "id": id, "patch": { "name": name } }));
-        }
-        renamed
-    }
-
-    pub fn delete_project(&self, id: &str) {
-        let existed = self.store.list_projects().iter().any(|p| p.id == id);
-        self.store.delete_project(id);
-        if existed {
-            self.feed
-                .emit("project", json!({ "id": id, "patch": { "deleted": true } }));
-        }
-    }
-
-    pub fn config(&self) -> std::collections::BTreeMap<String, Value> {
-        self.store.config()
-    }
-
-    /// Config isn't part of the feed — passes through untouched.
-    pub fn set_config(&self, key: &str, value: Value) {
-        self.store.set_config(key, value);
     }
 }
 
@@ -683,19 +629,6 @@ mod cov_tests {
         let _ = m.sessions();
         m.patch("s1", &SessionMeta::default());
         m.remove("s1");
-        let _ = m.list_projects();
-        m.create_project("p");
-        let same = m.ensure_project("x", "n");
-        assert_eq!(same.name, "n");
-        let _ = m.ensure_project("x", "n"); // same name — no emit
-        let _ = m.ensure_project("x", "n2"); // rename — emits
-        assert!(m.rename_project("x", "n3"));
-        assert!(!m.rename_project("missing", "n"));
-        m.delete_project("x");
-        m.delete_project("x"); // second delete is a no-op
-        let _ = m.config();
-        m.set_config("k", json!(1));
-        assert_eq!(m.config()["k"], json!(1));
         let _ = rx.try_recv();
     }
 
@@ -917,9 +850,10 @@ mod cov_more_tests {
         let plane: Arc<dyn SessionPlane> = Arc::new(plane);
         let feed = EventFeed::new();
         let mut feed_rx = feed.subscribe();
-        let push = hypha_push::PushStore::open(crate::push::MetaPushBackend(
-            sepia_meta::MetaStore::open(&tempfile::tempdir().unwrap().path().join("p.json")),
+        let kv: Arc<dyn hypha_kv::KvStore> = Arc::new(hypha_kv_file::JsonKvStore::open(
+            &tempfile::tempdir().unwrap().path().join("kv.json"),
         ));
+        let push = hypha_push::PushStore::open(crate::push::KvPushBackend(kv));
         listeners.register(
             &plane,
             &feed,

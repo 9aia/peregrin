@@ -183,8 +183,12 @@ struct TestApp {
 fn mk_app(plane: &Arc<ControlPlane>) -> TestApp {
     let dir = tempfile::tempdir().unwrap();
     let meta = MetaStore::open(&dir.path().join("meta.json"));
+    let kv: Arc<dyn hypha_kv::KvStore> = Arc::new(hypha_kv_file::JsonKvStore::open(
+        &dir.path().join("kv.json"),
+    ));
     let state = AppState::new(Arc::new(LocalPlane(plane.clone(), None)))
         .with_meta(meta.clone())
+        .with_kv(Some(kv))
         .with_node(peregrin_http::NodeIdentity {
             id: "node_test".into(),
             name: "testbox".into(),

@@ -131,6 +131,8 @@ hypha-sync = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", ver
 hypha-push = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-kv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-kv-file = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 
 # bupha — the `kind="ci-job"` entity plane (P-002, the
 # bupha↔hypha/peregrin seam). Git dep on `main` like the other

@@ -1,31 +1,35 @@
 //! Web Push wiring for the session plane — the `PushBackend`
-//! implementation that keeps subscriptions inside the meta overlay
-//! (where they've always lived) plus the session-event → notification
-//! mapping. The push *machinery* (VAPID, subscription store, send)
-//! is `hypha_push`; what to notify and when stays Peregrin's.
+//! implementation that keeps VAPID keys + subscriptions inside the
+//! KV's internal `push` namespace (P-006 phase 2; they used to live in
+//! the meta overlay's `config` document) plus the session-event →
+//! notification mapping. The push *machinery* (VAPID, subscription
+//! store, send) is `hypha_push`; what to notify and when stays
+//! Peregrin's.
 
 use std::collections::BTreeMap;
+use std::sync::Arc;
 
+use hypha_kv::KvStore;
 use hypha_push::{Kind, PushStore};
-use sepia_meta::MetaStore;
 use sepia_proto::SessionEvent;
 use serde_json::Value;
 
-/// The node's push persistence — the meta overlay's `config` document
-/// (`vapid` + `pushSubscriptions` keys), so subscriptions survive in
-/// `meta.json` exactly where they always did. A newtype because both
-/// `MetaStore` and `PushBackend` are foreign to this crate (orphan
-/// rule) — the wrapper is the local type the impl hangs on.
+/// The node's push persistence — the internal `push` KV namespace
+/// (`push/vapid`, `push/pushSubscriptions`), so secrets ride the same
+/// store-API-only visibility `/api/kv*` enforces for internal
+/// namespaces. A newtype because both `KvStore` and `PushBackend` are
+/// foreign to this crate's push surface (orphan rule) — the wrapper
+/// is the local type the impl hangs on.
 #[derive(Clone)]
-pub struct MetaPushBackend(pub MetaStore);
+pub struct KvPushBackend(pub Arc<dyn KvStore>);
 
-impl hypha_push::PushBackend for MetaPushBackend {
+impl hypha_push::PushBackend for KvPushBackend {
     fn config(&self) -> BTreeMap<String, Value> {
-        MetaStore::config(&self.0)
+        self.0.list(crate::kv::NS_PUSH)
     }
 
     fn set_config(&self, key: &str, value: Value) {
-        MetaStore::set_config(&self.0, key, value);
+        self.0.set(crate::kv::NS_PUSH, key, value);
     }
 }
 

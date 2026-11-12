@@ -73,6 +73,11 @@ pub struct Env {
     pub pair_code_path: PathBuf,
     /// `<home>/tokens.json` — sha256 hashes of issued pair credentials.
     pub tokens_path: PathBuf,
+    /// `PEREGRIN_KV`/`PEREGRIN_KV_PATH` — the node-local KV document
+    /// (`/api/kv*` + the projects/config compat routes, P-006);
+    /// `<home>/kv.json` by default. Shared with the substrate state —
+    /// one `JsonKvStore` instance serves both routers.
+    pub kv_path: PathBuf,
     /// `PEREGRIN_EPHEMERAL` — elastic/CI node mode (`peregrin serve
     /// --ephemeral` sets the same flag): SIGTERM-aware graceful
     /// shutdown plus a snapshot flush of live/locked entities on exit
@@ -280,6 +285,9 @@ impl Env {
             ),
             pair_code_path: home.join("pair-code"),
             tokens_path: home.join("tokens.json"),
+            kv_path: get("PEREGRIN_KV")
+                .or_else(|| get("PEREGRIN_KV_PATH"))
+                .map_or_else(|| home.join("kv.json"), PathBuf::from),
             ephemeral: env_flag(&get, "PEREGRIN_EPHEMERAL"),
             snapshot_dir: get("PEREGRIN_SNAPSHOT_DIR")
                 .map_or_else(|| home.join("snapshots"), PathBuf::from),
@@ -322,6 +330,7 @@ impl Env {
     /// | `<home>/pair-code`      | `pair_code_path`   |
     /// | `<home>/tokens.json`    | `tokens_path`      |
     /// | `<home>/push.json`      | `push_path`        |
+    /// | `PEREGRIN_KV[_PATH]`    | `kv_path`          |
     ///
     /// Note the push/pairing *files* are shared with `AppState`'s own
     /// backends at composition — `compose` installs the session
@@ -342,6 +351,7 @@ impl Env {
             pair_code_path: self.pair_code_path.clone(),
             tokens_path: self.tokens_path.clone(),
             push_path: self.home.join("push.json"),
+            kv_path: self.kv_path.clone(),
         }
     }
 }
