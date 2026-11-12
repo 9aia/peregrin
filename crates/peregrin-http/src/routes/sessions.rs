@@ -314,8 +314,13 @@ async fn create(state: &AppState, req: Request<Body>) -> Response {
             error_response(&e)
         }
         Ok(created) => {
-            if let Err(res) =
-                apply_mode(state, &created.id, &created.agent_id, fields.mode.as_deref()).await
+            if let Err(res) = apply_mode(
+                state,
+                &created.id,
+                &created.agent_id,
+                fields.mode.as_deref(),
+            )
+            .await
             {
                 return *res;
             }
@@ -415,8 +420,13 @@ pub async fn run(State(state): State<AppState>, method: Method, req: Request<Bod
         fields.title,
         fields.model,
     );
-    if let Err(res) =
-        apply_mode(&state, &created.id, &created.agent_id, fields.mode.as_deref()).await
+    if let Err(res) = apply_mode(
+        &state,
+        &created.id,
+        &created.agent_id,
+        fields.mode.as_deref(),
+    )
+    .await
     {
         return *res;
     }

@@ -913,12 +913,7 @@ impl SessionPlane for OkPlane {
         }
         Ok(wait_result(id))
     }
-    async fn set_mode(
-        &self,
-        _id: &str,
-        _m: &str,
-        _a: Option<&str>,
-    ) -> Result<(), ControlError> {
+    async fn set_mode(&self, _id: &str, _m: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Ok(())
     }
     async fn cancel(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
@@ -1053,12 +1048,7 @@ impl SessionPlane for FailPlane {
     ) -> Result<PromptWaitResult, ControlError> {
         Err(boom())
     }
-    async fn set_mode(
-        &self,
-        _id: &str,
-        _m: &str,
-        _a: Option<&str>,
-    ) -> Result<(), ControlError> {
+    async fn set_mode(&self, _id: &str, _m: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Err(boom())
     }
     async fn cancel(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
@@ -2021,12 +2011,7 @@ impl SessionPlane for StreamPlane {
     ) -> Result<PromptWaitResult, ControlError> {
         unimplemented!()
     }
-    async fn set_mode(
-        &self,
-        _id: &str,
-        _m: &str,
-        _a: Option<&str>,
-    ) -> Result<(), ControlError> {
+    async fn set_mode(&self, _id: &str, _m: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Ok(())
     }
     async fn cancel(&self, _id: &str, _a: Option<&str>) -> Result<(), ControlError> {
