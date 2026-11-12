@@ -41,6 +41,10 @@ capabilities:
   secrets:
     - PEREGRIN_NODE_TOKEN
     - BUPHA_WH_9AIA_BUPHA
+    - BUPHA_WH_9AIA_TAMIAS
+    - BUPHA_WH_9AIA_MYCO
+    - BUPHA_WH_9AIA_PEREGRIN
+    - BUPHA_WH_9AIA_CUORA
 
 nodes:
 # --- ingress: verified forge pushes + pull requests --------------------
@@ -57,14 +61,25 @@ nodes:
     # ONE shared socket — these are ignored there (same as ci-gate).
     listen: 127.0.0.1:29173
     path: /hook
-    # v1 watches a single repo — extend `repos[]` (and
-    # capabilities.secrets) per deployment. `secret_env` names the
-    # secret, never the value. `pull_request` deliveries are always
-    # parsed; `pull_request_actions` (default opened,synchronize,
+    # Watched repos — keep in lockstep with the worker fleet's
+    # [[repo]] set (bupha libraries/ci-gate/fleet.toml): a watched
+    # repo with no fleet spec still enqueues (indexDoc defaults
+    # apply), and a fleet repo nobody watches never sees pushes.
+    # `secret_env` names the secret, never the value.
+    # `pull_request` deliveries are always parsed;
+    # `pull_request_actions` (default opened,synchronize,
     # reopened) filters which actions inject.
     repos:
     - name: 9aia/bupha
       secret_env: BUPHA_WH_9AIA_BUPHA
+    - name: 9aia/tamias
+      secret_env: BUPHA_WH_9AIA_TAMIAS
+    - name: 9aia/myco
+      secret_env: BUPHA_WH_9AIA_MYCO
+    - name: 9aia/peregrin
+      secret_env: BUPHA_WH_9AIA_PEREGRIN
+    - name: 9aia/cuora
+      secret_env: BUPHA_WH_9AIA_CUORA
 
 # --- routing: raw events → typed `{type}.{repo}.{ref}.{url}.{sha}` ---
 # The catch-all enqueues below don't need this, but per-repo enqueue

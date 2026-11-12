@@ -3,7 +3,7 @@
 # the bundle's main.yaml is a complete campaign (ingress webhook node
 # included — see below).
 name: ci-ingress
-version: "0.1.0"
+version: "0.2.0"
 # `peregrin-bundle` routes install/deploy/uninstall through
 # `tamias-driver-peregrin` (capabilities: types ["peregrin-bundle"]).
 type: peregrin-bundle
@@ -14,8 +14,8 @@ description: >-
   lane policy lives plane-side; workers claim via ci.claim
   (tamias-driver-bupha worker).
 
-# The campaign yaml ships its own github-webhook ingress node (fixed
-# v1 repo set, BUPHA_WH_* secret names) — so provider.ingress declares
+# The campaign yaml ships its own github-webhook ingress node (the
+# fleet's repo set, BUPHA_WH_* secret names) — so provider.ingress declares
 # listen/path/public_url for the units but NO hooks: `tamias deploy`
 # only generates a second ingress node when hooks[] names github
 # repos, which would double-deliver every push. Same pattern as
