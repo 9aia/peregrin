@@ -197,8 +197,11 @@ impl AppState {
             live: LiveListeners::default(),
             import_session: None,
             convert: None,
+            // `PEREGRIN_PUSH_BACKEND` picks the persistence: `kv`
+            // (default — the `push` ns of kv.json) or `cuora` (the
+            // broker, kv-mirrored during the migration).
             push: Some(Arc::new(hypha_push::PushStore::open(
-                crate::push::KvPushBackend(kv),
+                crate::push::NodePushBackend::for_kind(kv, env.push_backend),
             ))),
             // The campaign plane's fan-out is wired by the
             // composition root (`peregrin-node::app_state`) — `Env`

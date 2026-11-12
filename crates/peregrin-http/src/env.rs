@@ -111,6 +111,23 @@ pub struct Env {
     /// the hub's sync projection persists them for fleet routing
     /// (PL-007 C4).
     pub runner_labels: Vec<String>,
+    /// `PEREGRIN_PUSH_BACKEND` — where Web Push state (VAPID keys +
+    /// subscriptions) lives: `kv` (default — the `push` namespace of
+    /// `kv.json`) or `cuora` (the cuora broker, refs
+    /// `cuora://peregrin/push/<key>`, dual-writing the kv namespace
+    /// as a warm fallback during the migration).
+    pub push_backend: PushBackendKind,
+}
+
+/// `PEREGRIN_PUSH_BACKEND` values — see [`Env::push_backend`].
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum PushBackendKind {
+    /// The node-local KV `push` namespace (`kv.json`).
+    #[default]
+    Kv,
+    /// The cuora secrets broker (`cuora://peregrin/push/*`), with a
+    /// write-through mirror into the KV namespace.
+    Cuora,
 }
 
 fn home_dir() -> PathBuf {
@@ -307,6 +324,20 @@ impl Env {
                         .collect()
                 })
                 .unwrap_or_default(),
+            push_backend: match get("PEREGRIN_PUSH_BACKEND")
+                .map(|v| v.trim().to_ascii_lowercase())
+                .as_deref()
+            {
+                None | Some("" | "kv") => PushBackendKind::Kv,
+                Some("cuora") => PushBackendKind::Cuora,
+                Some(other) => {
+                    tracing::warn!(
+                        "PEREGRIN_PUSH_BACKEND={other:?} unknown — expected \
+                         'kv' or 'cuora'; using 'kv'"
+                    );
+                    PushBackendKind::Kv
+                }
+            },
             home,
         })
     }
