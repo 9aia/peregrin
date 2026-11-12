@@ -16,7 +16,9 @@
 # `PEREGRIN_BUPHA_CONFIG`/`BUPHA_CONFIG`/`~/.config/bupha/bundles/`)
 # resolves queue/runsOn/runner/context/maxAttempts plane-side and
 # gates ref/event, so these nodes only carry what the wire event
-# knows. See README.md.
+# knows. Per-job lanes (`owner/name:job` keys, T-030) get a typed
+# enqueue node each — see "enqueue: per-job lanes" below. See
+# README.md.
 name: ci-ingress
 
 # Operator-facing knobs (see params.schema.json + README.md).
@@ -678,5 +680,54 @@ nodes:
         event: pull_request
         sender: "${event.payload.actor}"
         deliveryId: "${event.payload.delivery_id}"
+        queue: "${config.queue}"
+        context: "${config.context}"
+
+# --- enqueue: per-job lanes (`owner/name:job`, T-030) ------------------
+# `on:` matches event types only (no payload expressions), so a job
+# lane subscribes the TYPED event `ci.route` emits —
+# `push.<repo>.<ref>.<clone_url>.<sha>` pinned to the job's branch
+# (`**` re-joins clone_url's `.`-separated segments, the trailing `*`
+# is the sha → `${event.match.2}`). One node per lane: `key`/`ref`
+# are literals because the typed event's payload is the router's
+# `{stdout, rc, cmd}`, not the webhook payload — `sender`/
+# `deliveryId` don't survive the hop (the deterministic entity id
+# `ci:{key}:{sha}:{attempt}` still dedups replays, and a spec-armed
+# plane overwrites queue/context/runner from the fleet spec anyway).
+#
+# The raw-push `ci.enqueue` above still sees the same delivery: its
+# create resolves key `owner/name` against the repo's main-branch
+# fleet spec and 400s on the ref mismatch — expected `http.failed`
+# noise in the campaign log, NOT a misroute (the `:job` lane below
+# is the create that lands).
+#
+# To add a lane: declare `[[repo.jobs]]` in the owning bupha bundle's
+# fleet.toml, then copy this node with the lane's
+# `push.<repo>.<branch>.**.*` `on:` pattern, `key: "<repo>:<job>"`
+# and `ref: "<branch>"`.
+- id: ci.enqueue.job.9aia-bupha-docs
+  driver: http
+  on:
+  - push.9aia/bupha.refs/heads/docs.**.*
+  max_fires: unlimited
+  emits:
+  - http.done
+  - http.failed
+  params:
+    url: "${config.node_url}/api/entities"
+    method: POST
+    timeout: 30
+    retries: 3
+    headers:
+      authorization: "Bearer ${secret.PEREGRIN_NODE_TOKEN}"
+      content-type: application/json
+    body:
+      kind: ci-job
+      indexDoc:
+        key: "9aia/bupha:docs"
+        repo: "9aia/bupha"
+        ref: "refs/heads/docs"
+        sha: "${event.match.2}"
+        event: push
         queue: "${config.queue}"
         context: "${config.context}"

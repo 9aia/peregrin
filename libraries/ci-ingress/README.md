@@ -107,13 +107,44 @@ set `retries: 3` on the `driver: http` POST: transport failures and
 429/5xx re-send with linear backoff — safe because create is
 idempotent on `ci:{key}:{sha}:{attempt}`.
 
+## Per-job lanes (`owner/name:job`)
+
+A fleet `[[repo.jobs]]` entry resolves to the key
+`<owner>/<name>:<job>` (bupha T-030). `on:` matches event *types*
+only, so a lane can't ride the raw-push catch-all — each lane gets
+its own typed-event `driver: http` node subscribing the event
+`ci.route` emits, pinned to the job's branch:
+
+```yaml
+- id: ci.enqueue.job.9aia-bupha-docs   # shipped: the docs-deploy lane
+  driver: http
+  on: [push.9aia/bupha.refs/heads/docs.**.*]
+  params:
+    body:
+      kind: ci-job
+      indexDoc:
+        key: "9aia/bupha:docs"          # <repo>:<job> — the fleet key
+        repo: "9aia/bupha"
+        ref: "refs/heads/docs"          # the job's fleet branch
+        sha: "${event.match.2}"         # match.1 = clone_url, .2 = sha
+        event: push
+        queue: "${config.queue}"        # fallbacks; fleet spec wins
+        context: "${config.context}"
+```
+
+`key`/`ref` are literals — the typed event's payload is the
+router's `{stdout, rc, cmd}`, so `sender`/`deliveryId` don't
+survive the hop (the deterministic entity id still dedups replays).
+The raw-push catch-all still sees the same delivery and its create
+400s against the repo's main-branch fleet spec — expected
+`http.failed` noise, not a misroute. To add a lane: declare
+`[[repo.jobs]]` in the owning bundle's fleet.toml, then copy the
+node with the lane's `push.<repo>.<branch>.**.*` pattern, `key`,
+and `ref`.
+
 ## Not covered yet (filed remainders)
 
 - **Fork-PR shas** — a `pull_request` job checks out the head sha in
   the base repo's clone (`repo.dir`); fork heads may not exist in
   the base object store (same limitation as `bupha watch` — the
   indexDoc has no `clone_url` field to fetch the head repo).
-- **Per-repo enqueue nodes** — the catch-alls cover `owner/name`
-  keys; `owner/name:job` lanes still need a typed-event `driver:
-  http` node per job (same shape as `ci.enqueue`, different `key` —
-  the fleet spec supplies the rest).
