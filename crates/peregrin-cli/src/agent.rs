@@ -1,7 +1,8 @@
 //! The agent ops — the retired `peregrin-mcp` tool surface re-expressed
 //! as bounded engine verbs (P-028 / T-021). Every verb prints one JSON
-//! document so `cli.<verb>` op callers and the generated `mcp` surface
-//! get structured answers, never scraped prose.
+//! document so `cli.<verb>` op callers (and any surface driver
+//! fronting the ops manifest) get structured answers, never scraped
+//! prose.
 //!
 //! Tool → verb mapping (the MCP names were snake_case tools; the ops
 //! are dotted clap leaves):
@@ -411,7 +412,7 @@ pub struct SubmitArgs<'a> {
 /// immediately. Poll with `campaign status`/`campaign events`.
 ///
 /// The child is `current_exe run …` — under `cli.*` ops and the
-/// `cli`/`mcp` surfaces that's `tamias-driver-peregrin`, whose `run`
+/// `cli` surface that's `tamias-driver-peregrin`, whose `run`
 /// verb re-enters [`crate::cli::run_from`]. Its stdio is null: the
 /// JSONL log is the run's only record (same as MCP's `--log`).
 pub fn campaign_submit(env: &OpsEnv, args: &SubmitArgs<'_>) -> Result<Value, CliError> {

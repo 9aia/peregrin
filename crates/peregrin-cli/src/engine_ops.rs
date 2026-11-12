@@ -15,11 +15,10 @@
 //!
 //! Unbounded/host-interactive verbs can never be request/response
 //! ops — they never return or need inherited stdio — so they ride
-//! `surfaces` instead: surface drivers (tamias-driver-cli / -mcp,
-//! the pavo-driver-kit `surface` layer, or this binary's
-//! feature-gated `mcp` verb) expose them as streaming
-//! subcommands — `tamias-driver-peregrin cli serve` ≡
-//! `peregrin serve`.
+//! `surfaces` instead: surface drivers (tamias-driver-cli,
+//! tamias-driver-mcp, the pavo-driver-kit `surface` layer)
+//! expose them as streaming subcommands — `tamias-driver-peregrin
+//! cli serve` ≡ `peregrin serve`.
 //!
 //! `mutates` is honest: remote verbs write node state (sessions,
 //! projects, config, push subs, pairing tokens), `pair`/`import`
@@ -287,16 +286,6 @@ fn argv(name: &str, cmd: &Command, params: &Map<String, Value>) -> Vec<String> {
     }
     out.extend(positionals);
     out
-}
-
-/// The bare-name entry the embedded surfaces use (`OpSpec.name` is
-/// `cli.`-stripped); the wire path goes `op_of` → `run_verb`.
-#[cfg(feature = "mcp")]
-pub fn run_op(op: &str, params: &Map<String, Value>) -> Response {
-    match op_of(&format!("cli.{}", op.strip_prefix("cli.").unwrap_or(op))) {
-        Some(name) => run_verb(&name, params),
-        None => Response::err(format!("unknown op: {op}")),
-    }
 }
 
 /// Run one engine op by name: re-exec `run` in a child with

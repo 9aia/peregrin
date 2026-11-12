@@ -44,12 +44,12 @@
 //!   bounded verb behave exactly like the retired `peregrin`
 //!   binary).
 //!
-//! Optional surfaces: feature `mcp` embeds pavo-driver-kit's
-//! surface layer — `mcp` serves the ops manifest as MCP tools on
-//! stdio, equivalent to the standalone `tamias-driver-mcp` surface
-//! driver minus the PATH/discovery hop. (`cli` needs no feature:
-//! it's the bins-shim passthrough above, not a generated surface —
-//! the engine's own argv grammar is the contract.)
+//! MCP access, where needed, comes from the generic
+//! `tamias-driver-mcp` surface driver (pavo) fronting this driver's
+//! ops manifest — the embedded `mcp` verb was retired with
+//! `peregrin-mcp` (P-028/T-021); `cli` needs no feature: it's the
+//! bins-shim passthrough above, not a generated surface — the
+//! engine's own argv grammar is the contract.
 //!
 //! **tamias content-type driver** (`type: peregrin-bundle` /
 //! `peregrin-node` packages — tamias always passes `--dir <payload>
@@ -81,8 +81,6 @@ use std::path::PathBuf;
 use std::process::ExitCode;
 
 use clap::{Parser, Subcommand};
-#[cfg(feature = "mcp")]
-use pavo_driver_kit as kit;
 use peregrin_cli::{engine_ops, ops, pavo, provision};
 
 #[derive(Parser)]
@@ -275,23 +273,6 @@ fn main() -> ExitCode {
         Some("cli") => {
             let argv = engine_argv(&argv[1..]);
             std::process::exit(peregrin_cli::cli::run_from(argv));
-        }
-        // Optional embedded surface (feature-gated): the
-        // pavo-driver-kit surface layer renders this driver's own
-        // ops manifest as MCP tools over stdio — the same ops the
-        // `cli.*` wire queries and the standalone
-        // tamias-driver-mcp binary expose.
-        #[cfg(feature = "mcp")]
-        Some("mcp") => {
-            let m =
-                kit::surface::OpsManifest::from_value(&engine_ops::manifest()).unwrap_or_default();
-            match kit::surface::mcp::serve_stdio(&m, &mut peregrin_cli::surface::Engine) {
-                Ok(()) => return ExitCode::SUCCESS,
-                Err(e) => {
-                    eprintln!("tamias-driver-peregrin mcp: {e}");
-                    return ExitCode::FAILURE;
-                }
-            }
         }
         _ => {}
     }

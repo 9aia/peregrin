@@ -11,14 +11,12 @@ license.workspace = true
 workspace = true
 
 [features]
-# `mcp` embeds pavo-driver-kit's surface layer — the `mcp` argv verb
-# serves this driver's ops manifest as MCP tools on stdio, equivalent
-# to the standalone tamias-driver-mcp surface driver minus the
-# PATH/discovery hop. (`cli` is NOT a feature: it's the tamias
-# `bins[]` shim verb — an engine passthrough that needs nothing
-# optional.) default = ops driver + `run`/`cli` passthroughs only.
+# No optional surfaces: the ops manifest (`ops` argv + `cli.<verb>`
+# wire queries) is the whole agent surface — MCP, where wanted,
+# comes from pavo's generic `tamias-driver-mcp` surface driver
+# fronting this manifest (the embedded `mcp` verb retired with
+# `peregrin-mcp`, P-028/T-021).
 default = []
-mcp = ["pavo-driver-kit/mcp"]
 
 [dependencies]
 sepia-core.workspace = true
@@ -68,7 +66,8 @@ nix = { version = "0.29", default-features = false, features = ["fs", "user"] }
 # and manifest/ViewSpec/QueryBinding builders behind
 # `tamias-driver-peregrin`'s pavo surface. Git deps so
 # `cargo install --git` works without a sibling ../pavo checkout;
-# `rev` pins the surface-driver layer (`pavo_driver_kit::surface`).
+# `rev` pins the driver-authoring layer (`serve_stdio`, manifest/
+# capabilities builders).
 pavo-protocol = { git = "ssh://git@github.com/9aia/pavo.git", rev = "a7aff58c0f4ef902df99dbd56a8eddad907bcf0b", version = "0.1.0" }
 pavo-driver-kit = { git = "ssh://git@github.com/9aia/pavo.git", rev = "a7aff58c0f4ef902df99dbd56a8eddad907bcf0b", version = "0.1.0" }
 [dev-dependencies]

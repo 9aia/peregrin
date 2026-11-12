@@ -42,8 +42,9 @@ engine passthrough; argv is identical to the retired binary. Install:
 
 Human CLI (`peregrin`) vs agent surface — `tamias-driver-peregrin`'s
 `serve` JSON-RPC answers `cli.<verb>` ops derived from the engine's
-own clap tree (the standalone `peregrin-mcp` server is gone; the
-driver's optional `mcp` feature exposes the same ops as MCP tools):
+own clap tree (the standalone `peregrin-mcp` server and the
+driver's embedded `mcp` feature are gone — MCP, where wanted,
+comes from pavo's generic `tamias-driver-mcp peregrin`):
 
 | Intent | CLI / tamias | `cli.*` op |
 | --- | --- | --- |

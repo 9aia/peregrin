@@ -49,8 +49,9 @@ names a sepia type in the substrate.
   ops manifest from the clap tree. Unbounded verbs (`serve`,
   `campaign serve`/`run`, `sessions attach`/`stream`, `events`) are
   `surfaces`, never ops; remote verbs are ops taking
-  `--node`/`--token` and degrade cleanly with no node. Feature
-  `mcp` embeds the pavo-driver-kit generated MCP surface) ·
+  `--node`/`--token` and degrade cleanly with no node. No embedded
+  MCP surface — `tamias-driver-mcp` (pavo) fronts the ops manifest
+  generically) ·
   `hypha-telemetry` (git dep) · `peregrin-testkit` · `xtask`.
 - `libraries/` — workflow stdlib artifacts plus the `peregrin`
   product pack (`type: files`, `bins[]`). `project/` — nested repo

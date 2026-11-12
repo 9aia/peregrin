@@ -24,8 +24,6 @@ pub mod ops;
 pub mod pair;
 pub mod pavo;
 pub mod provision;
-#[cfg(feature = "mcp")]
-pub mod surface;
 
 /// The version stamp — same value `/api/node` reports
 /// (`peregrin-http`'s `PEREGRIN_VERSION` is the same

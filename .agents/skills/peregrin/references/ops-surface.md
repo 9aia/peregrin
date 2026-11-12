@@ -43,8 +43,9 @@ lands on `stderr` — honest data, not a wire failure.
 `sessions.stream`, `events` are listed under `surfaces` in the
 manifest: they never return or need inherited stdio, so they are
 reachable only via `run`/`cli` passthrough (or a streaming surface
-driver — the optional `mcp` feature exposes ops as MCP tools on
-stdio). The hidden `peregrin provision` plumbing is skipped too —
+driver — MCP, where wanted, comes from pavo's generic
+`tamias-driver-mcp` surface driver fronting this manifest). The
+hidden `peregrin provision` plumbing is skipped too —
 it stays reachable through `run`.
 
 ## Notes for agents
