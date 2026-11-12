@@ -443,7 +443,10 @@ impl LiveListeners {
         tokio::spawn(async move {
             // The subscription is resolved inside the task so `register`
             // stays sync like the TS call site.
-            let Ok(mut rx) = plane.subscribe(&id_owned, agent_id.as_deref()).await else {
+            // Non-pinning watch: this forwarder lives as long as the
+            // session is registered, so a pinning subscribe would hold
+            // the agent subprocess open past sepia's idle TTL (T-028).
+            let Ok(mut rx) = plane.watch(&id_owned, agent_id.as_deref()).await else {
                 return;
             };
             loop {

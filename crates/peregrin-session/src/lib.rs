@@ -788,6 +788,19 @@ pub trait SessionPlane: Send + Sync {
         id: &str,
         agent: Option<&str>,
     ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError>;
+    /// Non-pinning event stream — same batches as [`Self::subscribe`]
+    /// but the receiver never counts as a listener for sepia's idle
+    /// sweep, so background consumers (busy-tracking forwarders, log
+    /// mirrors) can't hold the agent subprocess open past the TTL.
+    /// Defaults to [`Self::subscribe`] for planes without a watch
+    /// channel.
+    async fn watch(
+        &self,
+        id: &str,
+        agent: Option<&str>,
+    ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
+        self.subscribe(id, agent).await
+    }
     /// Registered agents + last probed capabilities.
     async fn list_agents(&self) -> Vec<AgentInfo>;
     /// Whether the session's owning agent supports rewind/restore.
@@ -950,6 +963,13 @@ impl SessionPlane for LocalPlane {
     ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
         self.0.subscribe(id, agent).await
     }
+    async fn watch(
+        &self,
+        id: &str,
+        agent: Option<&str>,
+    ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
+        self.0.watch(id, agent).await
+    }
     async fn list_agents(&self) -> Vec<AgentInfo> {
         self.0.list_agents().await
     }
@@ -963,6 +983,49 @@ impl SessionPlane for LocalPlane {
 
 /// `sepia serve` subprocess plane — the production mode.
 pub struct ServicePlane(pub SepiaService);
+
+impl ServicePlane {
+    /// Shared `sessions.subscribe` fan-out; `keep_alive` maps to the
+    /// wire param — `false` selects sepia's non-pinning `watch` channel
+    /// so the receiver can't hold the agent subprocess past the idle
+    /// TTL.
+    async fn subscribe_inner(
+        &self,
+        id: &str,
+        agent: Option<&str>,
+        keep_alive: bool,
+    ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
+        // `sessions.subscribe` replies {"subscribed":true}; `session.event`
+        // notifications carry {"sessionId", "events":[...]} — fan them out
+        // to a per-subscribe channel filtered by id.
+        let session_id = id.to_string();
+        let (tx, rx) = broadcast::channel::<Vec<SessionEvent>>(256);
+        let mut source = self.0.notifications();
+        tokio::spawn(async move {
+            while let Ok(note) = source.recv().await {
+                if note.method != "session.event"
+                    || note.params.get("sessionId").and_then(Value::as_str)
+                        != Some(session_id.as_str())
+                {
+                    continue;
+                }
+                if let Ok(events) = serde_json::from_value::<Vec<SessionEvent>>(
+                    note.params.get("events").cloned().unwrap_or(Value::Null),
+                ) {
+                    let _ = tx.send(events);
+                }
+            }
+        });
+        self.0
+            .call(
+                "sessions.subscribe",
+                json!({ "id": id, "agent": agent, "keepAlive": keep_alive }),
+            )
+            .await
+            .map_err(to_control)?;
+        Ok(rx)
+    }
+}
 
 #[async_trait::async_trait]
 impl SessionPlane for ServicePlane {
@@ -1093,32 +1156,14 @@ impl SessionPlane for ServicePlane {
         id: &str,
         agent: Option<&str>,
     ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
-        // `sessions.subscribe` replies {"subscribed":true}; `session.event`
-        // notifications carry {"sessionId", "events":[...]} — fan them out
-        // to a per-subscribe channel filtered by id.
-        let session_id = id.to_string();
-        let (tx, rx) = broadcast::channel::<Vec<SessionEvent>>(256);
-        let mut source = self.0.notifications();
-        tokio::spawn(async move {
-            while let Ok(note) = source.recv().await {
-                if note.method != "session.event"
-                    || note.params.get("sessionId").and_then(Value::as_str)
-                        != Some(session_id.as_str())
-                {
-                    continue;
-                }
-                if let Ok(events) = serde_json::from_value::<Vec<SessionEvent>>(
-                    note.params.get("events").cloned().unwrap_or(Value::Null),
-                ) {
-                    let _ = tx.send(events);
-                }
-            }
-        });
-        self.0
-            .call("sessions.subscribe", json!({ "id": id, "agent": agent }))
-            .await
-            .map_err(to_control)?;
-        Ok(rx)
+        self.subscribe_inner(id, agent, true).await
+    }
+    async fn watch(
+        &self,
+        id: &str,
+        agent: Option<&str>,
+    ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
+        self.subscribe_inner(id, agent, false).await
     }
     async fn list_agents(&self) -> Vec<AgentInfo> {
         self.0.list_agents_t().await.unwrap_or_default()
