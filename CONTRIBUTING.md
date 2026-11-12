@@ -43,24 +43,22 @@ Follow Diátaxis: `docs/tutorials/` (learn) · `docs/how-to/` (tasks) ·
 
 ## Releasing
 
-- crates.io publish is dep-ordered via `scripts/release.sh` (manual —
-  releases are operator-run). Every internal dep
-  carries a `version` req alongside its git source, so publishing
-  resolves against the registry — but only after the org order
-  **hypha → sepia → tamias → peregrin** has 0.1.0/0.1.x on crates.io.
-  Until then the publish loop fails on the first crate; the binary
-  release path below works standalone.
-- crates.io names: `peregrin`/`peregrin-cli` are free — the engine
-  publishes as `peregrin-cli` (ships the `tamias-driver-peregrin`
-  bin; the `peregrin` command is the tamias pack's shim, and the
-  `peregrin-node`/`peregrin-hub` payload bins come from their own
-  crates).
-  `peregrin-testkit` is `publish = false`.
-- Release binaries: run `scripts/release.sh` manually (there is no
-  release CI — releases are operator-driven). It builds
+- Org policy (project ADR-0004): **crates.io is tamias-only** —
+  peregrin does not publish there. A release is a `<unit>-v<ver>`
+  tag plus a manual `tamias publish libraries/peregrin` of the pack.
+  The release plane is **tarsi** (`tarsi-serve` ops — project
+  ADR-0005); peregrin's own `libraries/release` bundle drives those
+  ops in campaigns, and the per-repo `scripts/release.sh` is being
+  converted to a thin shim over `tarsi-serve` (PL-014 E1).
+- The current `scripts/release.sh` still carries the legacy
+  per-crate crates.io publish (`peregrin-cli` et al., dep-ordered)
+  — it predates the shim conversion. `peregrin-testkit` is
+  `publish = false`; the `peregrin` command is the tamias pack's
+  `bins[]` shim, and the `peregrin-node`/`peregrin-hub` payload bins
+  ship via `libraries/peregrin` (`cargo xtask pack` stages them).
+- Release binaries: `scripts/release.sh` can still build
   `peregrin-<target>.tar.gz` (linux x86_64, macOS aarch64/x86_64)
   carrying the payload bins (`peregrin-node`, `peregrin-hub`,
-  `tamias-driver-peregrin` — the `peregrin` command itself is the
-  tamias pack's generated shim, not a cargo bin) —
+  `tamias-driver-peregrin`) via `dist`/`gh` —
   `peregrin-x86_64-unknown-linux-gnu.tar.gz` is the name installers
   probe once the first release exists.

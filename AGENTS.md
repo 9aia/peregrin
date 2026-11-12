@@ -54,7 +54,10 @@ names a sepia type in the substrate.
   generically) ·
   `hypha-telemetry` (git dep) · `peregrin-testkit` · `xtask`.
 - `libraries/` — workflow stdlib artifacts plus the `peregrin`
-  product pack (`type: files`, `bins[]`). `project/` — nested repo
+  product pack (`type: files`, `bins[]`); `libraries/release` is the
+  release campaign — it drives **tarsi**'s `tarsi-serve` ops
+  (`plan`/`check`/`release`), tarsi being the org release plane
+  (project ADR-0005). `project/` — nested repo
   with the ADRs (the design history + port spec).
 
 ## Commands

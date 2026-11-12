@@ -30,7 +30,7 @@ config:
   name: release
   repo: "9aia/peregrin"
   ref: "refs/heads/main"
-  cmd: "bash scripts/release.sh"
+  cmd: "tarsi-serve release --yes"
   token_env: "GITHUB_TOKEN"
 capabilities:
   secrets: [CARGO_REGISTRY_TOKEN, GITHUB_TOKEN]
