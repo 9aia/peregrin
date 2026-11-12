@@ -4,7 +4,7 @@
 #   SPEC_PATH=/path/to/spec.md \
 #   WORKFLOW_PATH=campaigns/my-campaign/main.yaml \
 #   WORKFLOW_NAME=my-campaign \
-#   handl run libraries/meta/workflows/create/main.yaml
+#   peregrin campaign run libraries/meta/workflows/create/main.yaml
 
 name: meta-create
 
@@ -14,7 +14,7 @@ annotations:
   author: peregrin
   tags: [meta, workflow, create]
   since: "0.1.0"
-  see: project/adrs/0029-stdlib-design.md
+  see: project/adrs/0029-adr-0029-peregrin-standard-library-libraries.md
 
 config:
   repo: "."

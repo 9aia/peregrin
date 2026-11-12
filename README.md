@@ -39,10 +39,10 @@ session plane over the wire — it never reimplements it.
 | `crates/peregrin-driver` + `-shell` | campaign driver port + impls |
 | `crates/peregrin-loader` + `-yaml` | campaign loading |
 | `crates/peregrin-{template,store,bus,remote(-http)}` | engine ports |
-| `crates/peregrin-{config(-toml)}` | platform config ports (sturn/bupha pattern) |
+| `crates/peregrin-config{,-toml,-yaml,-file}` | platform config ports + impls (sturn/bupha pattern) |
 | `hypha-{node-api,outbox,control,sync,push,http,hub,secret,keyring,dotenv,service,systemd,telemetry}` | extracted substrate crates — entity plane, sync engine, gateway, HTTP surface — git deps on [9aia/hypha](https://github.com/9aia/hypha) |
-| `crates/peregrin-{node,hub,http}` | daemons + session-plane transport — `peregrin-http` composes `hypha-http`'s generic routes with `/api/sessions*` under one listener |
-| `crates/peregrin-{cli,auth,acp-client,testkit}` | engine lib + `tamias-driver-peregrin`, credentials, sepia-wire client, fixtures |
+| `crates/peregrin-{node,hub,http,session}` | daemons + session-plane transport — `peregrin-http` composes `hypha-http`'s generic routes with `/api/sessions*` under one listener; `peregrin-session` is the sepia-wire client (`ServicePlane`) |
+| `crates/peregrin-{cli,auth,testkit}` | engine lib + `tamias-driver-peregrin`, credentials, fixtures |
 
 `libraries/` holds the workflow stdlib (reusable `.node.yml`,
 `.snippet.yml`, `.field.yml` artifacts) plus the `peregrin` product

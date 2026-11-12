@@ -1,6 +1,6 @@
 ---
 name: peregrin
-description: Drive the peregrin orchestration substrate — workflows, bundles, run logs — via the peregrin CLI, the peregrin-mcp server, or the library API. Trigger when running/validating campaigns, installing bundles, reading run logs, or editing orchestration code in this repo.
+description: Drive the peregrin orchestration substrate — workflows, bundles, run logs — via the peregrin CLI (a tamias bins[] shim), the driver's generated cli.<verb> ops surface, or the library API. Trigger when running/validating campaigns, installing bundles, reading run logs, or editing orchestration code in this repo.
 ---
 
 # peregrin — the orchestration substrate
@@ -20,9 +20,12 @@ the contract.
   drivers consume terminal events (sinks). "Trigger"/"sink" are docs
   vocabulary — one unified `driver` registry.
 - **Bundles** are distributable payload dirs (manifest +
-  workflows/fragments), installed into `<peregrin-home>/store`
-  through ADR-0079 refs (`./path`, `git:<url>[//subdir][#rev]`,
-  `https://….tgz#sha256:…`). `libraries/` is the in-repo stdlib.
+  workflows/fragments), installed into tamias's store
+  (`~/.local/share/tamias`) through `tamias install <ref>` —
+  `./path`, `git:<url>[//subdir][#rev]`, `https://….tgz#sha256:…`.
+  `libraries/` is the in-repo stdlib. Bundle lifecycle (install,
+  deploy, service units, hooks) is **tamias**'s job — peregrin only
+  ships the `tamias-driver-peregrin` provider.
 - **Events** are a closed five-field envelope (`type`, `payload`,
   `source`, `id`, `ts`) — `docs/reference/event-envelope.md`. Run
   logs are JSONL via `peregrin-store-json`.
@@ -37,24 +40,38 @@ engine passthrough; argv is identical to the retired binary. Install:
 `cargo xtask pack` + `tamias install --allow-drivers
 ./libraries/peregrin`.
 
-Human CLI (`peregrin`) vs agent surface (`peregrin-mcp`, stdio
-JSON-RPC — the same library calls, no shelling out):
+Human CLI (`peregrin`) vs agent surface — `tamias-driver-peregrin`'s
+`serve` JSON-RPC answers `cli.<verb>` ops derived from the engine's
+own clap tree (the standalone `peregrin-mcp` server is gone; the
+driver's optional `mcp` feature exposes the same ops as MCP tools):
 
-| Intent | CLI | MCP tool |
+| Intent | CLI / tamias | `cli.*` op |
 | --- | --- | --- |
-| Run a campaign | `peregrin campaign run <wf>` | `campaign_run` |
-| Check a workflow | `peregrin campaign validate <wf>` | `validate` |
-| Install a bundle | `peregrin install <ref>` | `bundle_install` |
-| Drop a bundle | `peregrin remove <name>` | `bundle_remove` |
-| List bundles | `peregrin list` | `bundle_list` |
-| Bundle detail | `peregrin info <name>` | `bundle_info` |
-| Find runs | *(logs on disk)* | `runs` |
-| Tail a run | — | `events` |
-| Summarize a run | — | `explain` |
+| Run a campaign | `peregrin campaign run <wf>` *(surface)* | `cli.campaign.submit` + `cli.campaign.status`/`events` (submit+poll — never blocks) |
+| Check a workflow | `peregrin campaign validate <wf> [--bundle b]` | `cli.campaign.validate` |
+| Install a bundle | `peregrin bundle install <ref>` ≡ `tamias install` | `cli.bundle.install` |
+| Drop a bundle | `peregrin bundle remove <name>` | `cli.bundle.remove` |
+| List bundles | `peregrin bundle list` | `cli.bundle.list` |
+| Bundle detail | `peregrin bundle info <name>` | `cli.bundle.info` |
+| Scan run logs | `peregrin logs runs [--dir d]` | `cli.logs.runs` |
+| Tail a run log | `peregrin logs events <path> [--type t] [--limit n]` | `cli.logs.events` (bounded) |
+| Explain a run log | `peregrin logs explain <path>` | `cli.logs.explain` |
+| Node ops | `peregrin sessions|projects|config|push …` | `cli.sessions.*`, `cli.projects.*`, … |
+| Push-run history | `peregrin runs|log|explain --history <log>` | `cli.runs`, `cli.log`, `cli.explain` |
 
-Tool schemas + params: `references/mcp-tools.md`. Everything is
-advisory — there is no enforcement layer here; coordination lives
-in sturn.
+Bundle ops are thin delegates over the **tamias** install pipeline
+and store (`$TAMIAS_HOME/store`, `$TAMIAS_CACHE`) — `bundle install`
+lands where `tamias install` does. `campaign submit` writes each
+run's JSONL log to `<peregrin-home>/runs/<run-id>.jsonl`; poll
+`campaign status` for the verdict, `campaign events`/`logs events`
+for the bounded tail. The old MCP `campaign_run` (block-until-done)
+is now submit+poll — loop `status` until `verdict` is `done`/
+`failed`/`cancelled`.
+
+Ops mechanics, params, `mutates`, and the `surfaces` list:
+`references/ops-surface.md`; full contract:
+`docs/reference/ops.md`. Everything is advisory — there is no
+enforcement layer here; coordination lives in sturn.
 
 ## Coordinating with sturn
 

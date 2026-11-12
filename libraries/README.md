@@ -8,13 +8,10 @@ workflows. Each file is a domain-namespaced artifact that the loader can
 
 | Directory   | Id pattern   | Purpose                                            |
 | ----------- | ------------ | -------------------------------------------------- |
-| `agent/`    | `agent.*`    | Agentic node presets: base, fix, review, generate. |
+| `agent/`    | `agent.*`    | **Deprecated (PL-015).** Agentic node presets kept only for `meta/workflows/create`. |
 | `circuit-breaker/` | `circuit-breaker.*` | Failure-count trip, cooldown, half-open probe, dispatch gate. |
-| `common/`   | unprefixed   | Cross-cutting, ready-made workflows.               |
 | `dead-letter/` | `dead-letter.*` | `*.dead`/`*.failed` capture, inventory, replay.  |
 | `display/`  | `display.*`  | User-facing reports and abort controls.            |
-| `git/`      | `git.*`      | Git worktrees, commits, and branches.              |
-| `github/`   | `github.*`   | GitHub PRs, reviews, and merges.                   |
 | `lang/`     | `lang.*`     | handl language reusable field patterns.            |
 | `map/`      | `map.*`      | Fan-out (planner + `runner` inject) and `fan_in` reduce — map/reduce as fragment (ADR-0021). |
 | `meta/`     | `meta.*`     | Meta-operations and workspace introspection.       |
@@ -25,10 +22,17 @@ workflows. Each file is a domain-namespaced artifact that the loader can
 `peregrin/` is the only project-specific namespace. The rest are general
 purpose and may be copied into other projects.
 
+Retired (PL-015): the `common/` ready-made workflows (`new-feat`,
+`refactor`) and the `git/`/`github/` snippet dirs were removed — the
+self-contained replacements live in the workspace `workflows/` bundles
+(`new-feat`, `refactor`, `pr-heal`, `docs-deploy`). `agent/` survives
+only because `meta/workflows/create` still includes it.
+
 ## Installable bundles (ADR-0079/0080)
 
 Directories carrying a `tamias.yaml` manifest are installable
-artifacts (`peregrin install <ref>`), not loader fragments:
+artifacts (`tamias install <ref>` — distribution is tamias's job),
+not loader fragments:
 
 | Directory  | Bundle    | Purpose                                                              |
 | ---------- | --------- | -------------------------------------------------------------------- |
@@ -60,12 +64,12 @@ equivalent.
 name: my-workflow
 
 nodes:
-  - include: ../libraries/git/worktree.node.yml
-    id: my.setup
-    on: [start]
-    params:
-      repo: "${config.repo}"
-      worktree_base: "${config.worktree_base}"
+  - include: ../libraries/retry/retry.node.yml
+    id: mytask.retry
+    on: [mytask.failed]
+    forward: [mytask.request]
+    until: [mytask.done, mytask.dead]
+    max_fires: 2
 ```
 
 The `include` merges the library file with the overrides you provide. The
@@ -77,24 +81,18 @@ Place a `.prompt.yml` file next to the workflow or node that uses it, then
 reference it with `include`:
 
 ```yaml
-# libraries/common/new-feat/main.yaml
+# libraries/meta/workflows/create/main.yaml
 nodes:
-  - include: ../../agent/base.node.yml
-    id: new-feat.adr
-    on: [worktree.ready]
+  - include: ../../../agent/generate.node.yml
     params:
-      permission_mode: normal
-      timeout: 600
-      prompt: |
-        ${include(./new-feat.prompt.yml)}
-        Write or update the ADR.
+      prompt: ${include(../../generate.prompt.yml)}
 ```
 
 ```yaml
-# libraries/common/new-feat/new-feat.prompt.yml
+# libraries/meta/generate.prompt.yml
 |
-  We are implementing feature "${state.feat_id}": ${state.feat_description}.
-  Working in ${state.worktree_path}.
+  Generate an agent-campaign workflow YAML and save it to ${WORKFLOW_PATH}.
+  Name the workflow ${WORKFLOW_NAME}.
 ```
 
 `.prompt.yml` files are not auto-discovered. The explicit `include` keeps the
@@ -107,7 +105,7 @@ dependency visible.
 3. Add an `annotations` block with at least `title`, `description`, and `tags`.
 4. Set `since: "0.1.0"` for the initial release.
 5. Set `timeout`, `emit` defaults, and `max_fires` for resilience.
-6. Run `handl validate` on a workflow that uses the node.
+6. Run `peregrin campaign validate` on a workflow that uses the node.
 
 ## Annotations
 
@@ -154,14 +152,13 @@ contracts are complete.
 
 ## Validation
 
-Run `handl validate <workflow>` on every workflow that uses a library node. Add
-or update a node in `packages/tests` or `libraries/tests` if the node is
-widely used.
+Run `peregrin campaign validate <workflow>` on every workflow that uses a
+library node. Add or update a node in `crates/peregrin-node/tests/libraries.rs`
+if the node is widely used.
 
 ## References
 
-- `project/adrs/0029-stdlib-design.md` — design rationale and conventions.
-- `project/adrs/0009-annotations.md` — the `annotations` field.
-- `packages/handl-file-router/src/index.ts` — file discovery suffixes.
-- `packages/handl-loader-yaml/src/loader.ts` — `include`, `snippet`, and merge
-  behavior.
+- `project/adrs/0029-adr-0029-peregrin-standard-library-libraries.md` — design rationale and conventions.
+- `project/adrs/0009-adr-0009-annotations-in-workflow-yaml.md` — the `annotations` field.
+- `docs/reference/campaign-schema.md` + `docs/explanation/include-resolution.md` —
+  `include`, `snippet`, and merge behavior as shipped.

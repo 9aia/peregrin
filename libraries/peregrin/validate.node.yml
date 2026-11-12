@@ -1,12 +1,12 @@
-# libraries/peregrin/validate: run handl validate on a workflow path.
+# libraries/peregrin/validate: run `peregrin campaign validate` on a workflow path.
 # Expects WORKFLOW_PATH env var or config.workflow_path.
 annotations:
   title: Peregrin validate
-  description: Run `handl validate` on a workflow path to verify correctness.
+  description: Run `peregrin campaign validate` on a workflow path to verify correctness.
   author: peregrin
   tags: [peregrin, validate, lint]
   since: "0.1.0"
-  see: project/adrs/0029-stdlib-design.md
+  see: project/adrs/0029-adr-0029-peregrin-standard-library-libraries.md
 
 id: peregrin.validate
 driver: shell
@@ -14,7 +14,7 @@ emits: [peregrin.validate.passed, peregrin.validate.failed]
 params:
   cmd: |
     cd "${config.repo:-.}"
-    handl validate "${WORKFLOW_PATH}" 2>&1
+    peregrin campaign validate "${WORKFLOW_PATH}" 2>&1
   emit:
     0: peregrin.validate.passed
     default: peregrin.validate.failed

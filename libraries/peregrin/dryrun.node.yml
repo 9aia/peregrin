@@ -1,12 +1,12 @@
-# libraries/peregrin/dryrun: run handl --dry-run on a workflow path.
-# Expects WORKFLOW_PATH env var or config.workflow_path.
+# libraries/peregrin/dryrun: run `peregrin campaign run --dry-run` on a
+# workflow path. Expects WORKFLOW_PATH env var or config.workflow_path.
 annotations:
   title: Peregrin dry run
-  description: Run `handl --dry-run` on a workflow path to verify structure.
+  description: Run `peregrin campaign run --dry-run` on a workflow path to verify structure.
   author: peregrin
   tags: [peregrin, dryrun, validate]
   since: "0.1.0"
-  see: project/adrs/0029-stdlib-design.md
+  see: project/adrs/0029-adr-0029-peregrin-standard-library-libraries.md
 
 id: peregrin.dryrun
 driver: shell
@@ -14,7 +14,7 @@ emits: [peregrin.dryrun.done, peregrin.dryrun.failed]
 params:
   cmd: |
     cd "${config.repo:-.}"
-    handl run "${WORKFLOW_PATH}" --dry-run --no-store 2>&1
+    peregrin campaign run "${WORKFLOW_PATH}" --dry-run 2>&1
   emit:
     0: peregrin.dryrun.done
     default: peregrin.dryrun.failed

@@ -52,12 +52,15 @@ Follow Diátaxis: `docs/tutorials/` (learn) · `docs/how-to/` (tasks) ·
   release path below works standalone.
 - crates.io names: `peregrin`/`peregrin-cli` are free — the engine
   publishes as `peregrin-cli` (ships the `tamias-driver-peregrin`
-  bin; the `peregrin` command is the tamias pack's shim, and
-  `peregrin-node`/`peregrin-hub`/`peregrin-mcp` bins come from
-  their own crates).
+  bin; the `peregrin` command is the tamias pack's shim, and the
+  `peregrin-node`/`peregrin-hub` payload bins come from their own
+  crates).
   `peregrin-testkit` is `publish = false`.
 - Release binaries: run `scripts/release.sh` manually (there is no
   release CI — releases are operator-driven). It builds
   `peregrin-<target>.tar.gz` (linux x86_64, macOS aarch64/x86_64)
-  carrying all four bins — `peregrin-x86_64-unknown-linux-gnu.tar.gz`
-  is the name installers probe once the first release exists.
+  carrying the payload bins (`peregrin-node`, `peregrin-hub`,
+  `tamias-driver-peregrin` — the `peregrin` command itself is the
+  tamias pack's generated shim, not a cargo bin) —
+  `peregrin-x86_64-unknown-linux-gnu.tar.gz` is the name installers
+  probe once the first release exists.

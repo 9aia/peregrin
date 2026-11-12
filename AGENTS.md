@@ -83,11 +83,9 @@ entities and campaigns as `kind="campaign"`, both hosted by
 `peregrin-node`. `/api/entities*` + the generic routes are the
 substrate surface (`hypha-http`), `/api/sessions*` the integration's;
 `peregrin-http` composes them into one router. Op kinds are
-namespaced (`sepia.prompt`, `campaign.*`, `entity.delete`); snapshots
-are kind-shaped bytes moved opaquely. `project/adrs/0091` is the
-contract. Op kinds are namespaced
-(`sepia.prompt`, `sepia.attach`, `entity.delete`); snapshots are
-kind-shaped bytes moved opaquely. `project/adrs/0091` is the contract.
+namespaced (`sepia.prompt`, `sepia.attach`, `entity.delete`,
+`campaign.*`); snapshots are kind-shaped bytes moved opaquely.
+`project/adrs/0091` is the contract.
 
 ## Rules
 

@@ -5,7 +5,7 @@ annotations:
   author: peregrin
   tags: [display, banner, report]
   since: "0.1.0"
-  see: project/adrs/0029-stdlib-design.md
+  see: project/adrs/0029-adr-0029-peregrin-standard-library-libraries.md
 
 driver: shell
 id: display.report

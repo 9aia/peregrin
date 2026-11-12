@@ -1,7 +1,6 @@
 # DEPRECATED (PL-015 WS3): raw git/gh/agent calls violate the
-# ownership boundaries — migrate to sepia sessions via /api/sessions/run (PL-015). Kept for common/new-feat,
-# common/refactor and meta/workflows/create until those move to
-# workspace/workflows/.
+# ownership boundaries — migrate to sepia sessions via /api/sessions/run (PL-015). Kept for
+# meta/workflows/create — the last consumer — until it migrates too.
 
 # meta/snippets/agent/fix: generic fix agent.
 # Parent must set params.prompt or params.prompt_file and on events.
@@ -11,7 +10,7 @@ annotations:
   author: peregrin
   tags: [agent, fix, snippet]
   since: "0.1.0"
-  see: project/adrs/0029-stdlib-design.md
+  see: project/adrs/0029-adr-0029-peregrin-standard-library-libraries.md
 
 id: agent.fix
 driver: agent

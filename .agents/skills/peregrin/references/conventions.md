@@ -24,7 +24,8 @@ cargo xtask coverage  # llvm-cov; --fail-under-lines 100 for new code
   liberally.
 - `cfg(coverage)` gates paths that can't run in-process (blocking
   stdio loops, service lifecycle, spawned binaries) — see
-  `peregrin-cli`'s service backends and `peregrin-mcp::serve`.
+  `peregrin-cli`'s service backends and `tamias-driver-peregrin`'s
+  bounded-serve paths (`cli.rs::serve`, `campaign::serve`).
 
 ## Docs
 

@@ -42,15 +42,19 @@ read.
 
 ## Bundles
 
-A bundle is a payload dir with `peregrin-bundle.{yaml,yml,toml}`
-(`name`, optional `version`, `description`, `include:`). Install
-resolves a ref → fetches → composes `include:` bases by overlay →
-installs under `<peregrin-home>/store/<name>@<label>` recording the
-source ref, resolved sha, payload digest. Fetches are
-content-addressed in `<cache>/fetch`. `include:` entries are store
-names or installable refs; `libraries/` is the in-repo stdlib of
-fragments (`retry`, `dead-letter`, `circuit-breaker`, `ci-gate`,
+A bundle is a payload dir with a `tamias.yaml` manifest (`name`,
+`version`, `type: peregrin-bundle`, optional `provider:` block,
+`include:`). Distribution is **tamias**'s: `tamias install <ref>`
+resolves `./path` / `git:<url>[//subdir][#rev]` / `http(s).tgz` /
+`cf:` refs, fetches into the content-addressed fetch cache
+(`~/.cache/tamias/fetch`), and unpacks into the install store
+(`~/.local/share/tamias/<name>@<version>/`) recording source ref,
+resolved sha, and payload digest. Manifest `include:` entries are
+store names or installable refs; `libraries/` is the in-repo stdlib
+of fragments (`retry`, `dead-letter`, `circuit-breaker`, `ci-gate`,
 `release`, `display`, `git`, `agent`, `common`, `test`, `peregrin`).
+Deploy/service lifecycle is `tamias deploy` + `tamias-driver-peregrin`'s
+provider verbs — see `docs/reference/distribution.md`.
 
 ## Scope resolution
 

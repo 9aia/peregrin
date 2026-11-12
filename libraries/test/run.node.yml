@@ -6,7 +6,7 @@ annotations:
   author: peregrin
   tags: [test, run, snippet]
   since: "0.1.0"
-  see: project/adrs/0029-stdlib-design.md
+  see: project/adrs/0029-adr-0029-peregrin-standard-library-libraries.md
 
 driver: shell
 id: test.run
