@@ -76,6 +76,76 @@ fn write_config(path: &Path, doc: &Value) -> Result<(), CliError> {
     std::fs::write(path, text).map_err(|e| CliError(e.to_string()))
 }
 
+/// `TAMIAS_DEPLOY_OVERRIDES` — injected by tamias dispatch into every
+/// driver spawn (T-026): the package's `deploy.d/<kind>/<name>/`
+/// drop-in dir. Fragments (`*.yaml`/`*.yml`/`*.json`, sorted by
+/// filename, later files win) merge over the generated doc via
+/// `tamias_core::merge_values` so operator config survives
+/// regeneration. The storage contract lives in tamias-driver's
+/// `overrides` module; drivers that generate no config ignore it.
+const OVERRIDES_ENV: &str = "TAMIAS_DEPLOY_OVERRIDES";
+
+/// Merge the ambient deploy-override fragments over `doc` in place.
+/// No env/no fragments → `Ok(())`; a malformed fragment errors —
+/// silently skipping would write config the operator didn't intend.
+fn apply_deploy_overrides(doc: &mut Value) -> Result<(), CliError> {
+    let Some(dir) = std::env::var_os(OVERRIDES_ENV).map(PathBuf::from) else {
+        return Ok(());
+    };
+    let Some(overrides) = load_override_fragments(&dir)? else {
+        return Ok(());
+    };
+    *doc = tamias_core::merge_values(&overrides, doc);
+    Ok(())
+}
+
+/// Fold every mergeable fragment in `dir` into one document — sorted
+/// by filename, later files higher priority (same contract as
+/// tamias-driver's `merged_overrides`). `Ok(None)` when the dir is
+/// absent or holds no fragments.
+fn load_override_fragments(dir: &Path) -> Result<Option<Value>, CliError> {
+    let read = match std::fs::read_dir(dir) {
+        Ok(read) => read,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) => return Err(CliError(e.to_string())),
+    };
+    let mut files: Vec<(String, PathBuf, bool)> = Vec::new();
+    for entry in read {
+        let entry = entry.map_err(|e| CliError(e.to_string()))?;
+        let path = entry.path();
+        let is_file = entry.file_type().is_ok_and(|t| t.is_file());
+        let is_json = path.extension().and_then(|e| e.to_str()) == Some("json");
+        let is_yaml = matches!(
+            path.extension().and_then(|e| e.to_str()),
+            Some("yaml" | "yml")
+        );
+        if is_file && (is_json || is_yaml) {
+            files.push((
+                entry.file_name().to_string_lossy().into_owned(),
+                path,
+                is_json,
+            ));
+        }
+    }
+    files.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut merged: Option<Value> = None;
+    for (_, path, is_json) in files {
+        let text = std::fs::read_to_string(&path).map_err(|e| CliError(e.to_string()))?;
+        let frag: Value = if is_json {
+            serde_json::from_str(&text)
+                .map_err(|e| CliError(format!("deploy override {}: {e}", path.display())))?
+        } else {
+            serde_yaml_ng::from_str(&text)
+                .map_err(|e| CliError(format!("deploy override {}: {e}", path.display())))?
+        };
+        merged = Some(match merged {
+            Some(acc) => tamias_core::merge_values(&frag, &acc),
+            None => frag,
+        });
+    }
+    Ok(merged)
+}
+
 /// `PEREGRIN_WH_<REPO>` — the webhook-secret env name convention:
 /// `owner/repo` uppercased, every non-alphanumeric byte a `_`
 /// (`9aia/peregrin` → `PEREGRIN_WH_9AIA_PEREGRIN`). Names only — the
@@ -210,7 +280,9 @@ pub fn install(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, 
     );
     doc.insert("include".into(), json!([main.display().to_string()]));
     doc.insert("config".into(), json!({"name": name}));
-    write_config(&path, &Value::Object(doc))?;
+    let mut doc = Value::Object(doc);
+    apply_deploy_overrides(&mut doc)?;
+    write_config(&path, &doc)?;
     Ok(format!("wrote node config {}", path.display()))
 }
 
@@ -252,7 +324,8 @@ fn deploy_in(
     }
     let main = bundle_main(dir)?;
     let path = config_path(name, config);
-    let doc = deploy_config_doc(name, &main, dir);
+    let mut doc = deploy_config_doc(name, &main, dir);
+    apply_deploy_overrides(&mut doc)?;
     write_config(&path, &doc)?;
     // The campaign host: one generated config per deployed bundle in a
     // shared dir — `campaign serve <dir>` (the provider unit's
@@ -806,6 +879,36 @@ provider:
         assert!(line.contains("wrote node config"));
         let text = std::fs::read_to_string(&cfg).unwrap();
         assert!(text.contains("include:"));
+    }
+
+    #[test]
+    fn override_fragments_merge_in_filename_order() {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path();
+        std::fs::write(
+            dir.join("00-base.yaml"),
+            "config:\n  name: x\n  keep: true\n  list: [a]\n",
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("zz-ops.json"),
+            r#"{"config": {"name": "y"}, "extra": 1}"#,
+        )
+        .unwrap();
+        std::fs::write(dir.join("notes.txt"), "ignored").unwrap();
+        let merged = load_override_fragments(dir).unwrap().unwrap();
+        assert_eq!(merged["config"]["name"], "y");
+        assert_eq!(merged["config"]["keep"], true);
+        assert_eq!(merged["config"]["list"], serde_json::json!(["a"]));
+        assert_eq!(merged["extra"], 1);
+        assert!(
+            load_override_fragments(&tmp.path().join("missing"))
+                .unwrap()
+                .is_none()
+        );
+        // a malformed fragment is an error, never silently skipped
+        std::fs::write(dir.join("bad.yaml"), "a: [unclosed").unwrap();
+        assert!(load_override_fragments(dir).is_err());
     }
 
     #[test]

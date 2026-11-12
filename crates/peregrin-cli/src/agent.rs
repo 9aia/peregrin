@@ -63,10 +63,7 @@ fn expand(path: &Path) -> PathBuf {
 /// → XDG → `~/.local|cache`), so `bundle install` here lands in the
 /// same store `tamias install` writes — one store, one pipeline.
 fn install_env(env: &OpsEnv) -> tamias_install::Env {
-    tamias_install::Env {
-        store_root: env.store_root.clone(),
-        cache_root: env.cache_root.clone(),
-    }
+    tamias_install::Env::for_config(env.store_root.clone(), env.cache_root.clone(), None)
 }
 
 fn entry_json(entry: &StoreEntry) -> Value {
