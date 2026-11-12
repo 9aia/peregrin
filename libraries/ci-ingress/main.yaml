@@ -65,6 +65,7 @@ capabilities:
     - BUPHA_WH_HANDL_LANG_ENGINE_TYPECHECK
     - BUPHA_WH_HANDL_LANG_ENGINE_TYPECHECK_NBE
     - BUPHA_WH_HANDL_LANG_EQSAT
+    - BUPHA_WH_HANDL_LANG_GAMEKIT
     - BUPHA_WH_HANDL_LANG_GRAPHOPT
     - BUPHA_WH_HANDL_LANG_HOST
     - BUPHA_WH_HANDL_LANG_HOST_TENSOR
@@ -214,6 +215,8 @@ nodes:
       secret_env: BUPHA_WH_HANDL_LANG_GRAPHOPT
     - name: handl-lang/eqsat
       secret_env: BUPHA_WH_HANDL_LANG_EQSAT
+    - name: handl-lang/gamekit
+      secret_env: BUPHA_WH_HANDL_LANG_GAMEKIT
     - name: handl-lang/docs
       secret_env: BUPHA_WH_HANDL_LANG_DOCS
     - name: 9aia/bupha
@@ -553,6 +556,8 @@ nodes:
     - name: handl-lang/engine
       secret_env: BUPHA_WEBHOOK_SECRET
     - name: handl-lang/egraph
+      secret_env: BUPHA_WEBHOOK_SECRET
+    - name: handl-lang/discovery
       secret_env: BUPHA_WEBHOOK_SECRET
     - name: handl-lang/kernelopt
       secret_env: BUPHA_WEBHOOK_SECRET
