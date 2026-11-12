@@ -122,6 +122,7 @@ sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main",
 # mixed revisions duplicate crates and split types.
 hypha-telemetry = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-secret = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-secret-cuora = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-keyring = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-dotenv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-service = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }

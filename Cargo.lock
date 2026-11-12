@@ -1746,7 +1746,7 @@ dependencies = [
 [[package]]
 name = "hypha-control"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "serde",
  "serde_json",
@@ -1755,7 +1755,7 @@ dependencies = [
 [[package]]
 name = "hypha-dotenv"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "hypha-secret",
 ]
@@ -1763,7 +1763,7 @@ dependencies = [
 [[package]]
 name = "hypha-http"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "async-trait",
  "axum",
@@ -1790,7 +1790,7 @@ dependencies = [
 [[package]]
 name = "hypha-hub"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "async-trait",
  "axum",
@@ -1816,7 +1816,7 @@ dependencies = [
 [[package]]
 name = "hypha-keyring"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "hypha-secret",
 ]
@@ -1824,7 +1824,7 @@ dependencies = [
 [[package]]
 name = "hypha-kv"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "serde",
  "serde_json",
@@ -1833,7 +1833,7 @@ dependencies = [
 [[package]]
 name = "hypha-kv-file"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "hypha-kv",
  "serde",
@@ -1843,7 +1843,7 @@ dependencies = [
 [[package]]
 name = "hypha-node-api"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "async-trait",
  "serde",
@@ -1855,7 +1855,7 @@ dependencies = [
 [[package]]
 name = "hypha-outbox"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "rusqlite",
  "serde",
@@ -1869,7 +1869,7 @@ dependencies = [
 [[package]]
 name = "hypha-push"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "base64 0.22.1",
  "futures",
@@ -1884,17 +1884,26 @@ dependencies = [
 [[package]]
 name = "hypha-secret"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+
+[[package]]
+name = "hypha-secret-cuora"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+dependencies = [
+ "hypha-secret",
+ "serde_json",
+]
 
 [[package]]
 name = "hypha-service"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 
 [[package]]
 name = "hypha-sync"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "hypha-outbox",
  "rusqlite",
@@ -1911,7 +1920,7 @@ dependencies = [
 [[package]]
 name = "hypha-systemd"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "hypha-service",
 ]
@@ -1919,7 +1928,7 @@ dependencies = [
 [[package]]
 name = "hypha-telemetry"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#024c20f5d1337be88248e1cefcb61dc84a3faea8"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
 dependencies = [
  "http 1.5.0",
  "opentelemetry",
@@ -3198,7 +3207,7 @@ name = "peregrin-secret-cuora"
 version = "0.2.0"
 dependencies = [
  "hypha-secret",
- "serde_json",
+ "hypha-secret-cuora",
  "tempfile",
 ]
 

@@ -11,7 +11,7 @@ license.workspace = true
 workspace = true
 [dependencies]
 hypha-secret.workspace = true
-serde_json.workspace = true
+hypha-secret-cuora.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true

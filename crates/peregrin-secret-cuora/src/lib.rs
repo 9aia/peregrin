@@ -1,5 +1,5 @@
-//! Cuora impl of `hypha_secret::Secrets` — the canonical secrets
-//! story, mirroring `bupha-secret-cuora`/`mimus-cuora`.
+//! Cuora impl of `hypha_secret::Secrets` — peregrin's env-facing
+//! shim over the shared [`hypha_secret_cuora`] adapter.
 //!
 //! Each peregrin secret NAME resolves to a fixed cuora ref:
 //! `cuora://peregrin/<NAME>` — e.g. `GITHUB_TOKEN` maps to
@@ -7,16 +7,16 @@
 //! so audit events, guardrails, and vault policy apply exactly as
 //! for every other consumer; peregrin never stores a value itself.
 //!
-//! Two transports, selected by `PEREGRIN_CUORA_TRANSPORT`:
+//! Two transports, selected by `PEREGRIN_CUORA_TRANSPORT` (the
+//! `<PRODUCT>_CUORA_TRANSPORT` convention — see `hypha-secret-cuora`):
 //!
 //! - `cli` (default) — shell `cuora get`/`put` per call. Secret
 //!   resolution happens a handful of times per run/verb, so a
 //!   per-call process is cheap and needs no shared mutable state.
 //! - `serve` — a persistent `cuora serve` child speaking the
 //!   ndjson JSON-RPC wire (`cuora-serve/1`) on stdio — see
-//!   [`serve`]/[`CuoraServe`]. Spawned lazily on first use, reused
-//!   for the client's lifetime, respawned on death. This is the
-//!   transport `cuora serve` exists for (orchestrator embedding).
+//!   [`CuoraServe`]. Spawned lazily on first use, reused for the
+//!   client's lifetime, respawned on death.
 //!
 //! A missing `cuora` binary, a denied op, or an absent ref all
 //! answer `None` — "not here" — so the caller's chain falls through
@@ -30,15 +30,11 @@
 //! with no peregrin-side plumbing (the serve child resolves env at
 //! spawn; per-request `env` overrides are not used).
 
-mod serve;
-
-pub use serve::{CuoraServe, CuoraTransport};
+pub use hypha_secret_cuora::{CuoraServe, CuoraTransport};
 
 use hypha_secret::Secrets;
-use std::io::Write;
 use std::path::PathBuf;
-use std::process::{Command, Stdio};
-use std::sync::{Arc, OnceLock};
+use std::sync::OnceLock;
 
 /// Ref namespace — every peregrin secret name lives under
 /// `cuora://peregrin/…` so `cuora list` shows the whole surface.
@@ -47,19 +43,25 @@ use std::sync::{Arc, OnceLock};
 /// `CuoraPushBackend`.)
 pub const NAMESPACE: &str = "peregrin";
 
+/// The env knobs this shim reads — re-exported for consumers that
+/// build their own transport legs (`peregrin-http`'s push backend).
+pub const BIN_ENV: &str = "PEREGRIN_CUORA_BIN";
+pub const TRANSPORT_ENV: &str = "PEREGRIN_CUORA_TRANSPORT";
+
 /// `Secrets` over cuora — CLI or `cuora serve` transport per
-/// [`CuoraTransport`]. The serve leg holds one shared child per
-/// `CuoraSecrets` clone group ([`Arc`]); clones share the process.
+/// [`CuoraTransport`]. Thin wrapper over
+/// [`hypha_secret_cuora::CuoraSecrets`] pinned to the `peregrin`
+/// scope; the env knobs stay peregrin's.
+///
+/// Clones share the serve child — see
+/// [`CuoraSecrets::shared_default`] for why that matters.
 #[derive(Clone)]
 pub struct CuoraSecrets {
     /// The `cuora` binary — `PEREGRIN_CUORA_BIN` when set, else
-    /// `cuora` resolved on PATH.
+    /// `cuora` resolved on PATH. Kept as a field (not just inside
+    /// `inner`) because consumers document it as the test seam.
     pub bin: PathBuf,
-    /// CLI vs persistent serve transport.
-    transport: CuoraTransport,
-    /// The serve client — constructed eagerly but spawns lazily on
-    /// first request, so the CLI transport never pays for it.
-    serve: Arc<CuoraServe>,
+    inner: hypha_secret_cuora::CuoraSecrets,
 }
 
 impl Default for CuoraSecrets {
@@ -72,7 +74,7 @@ impl std::fmt::Debug for CuoraSecrets {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("CuoraSecrets")
             .field("bin", &self.bin)
-            .field("transport", &self.transport)
+            .field("transport", &self.inner.transport())
             .finish_non_exhaustive()
     }
 }
@@ -82,16 +84,15 @@ impl CuoraSecrets {
     /// `PEREGRIN_CUORA_TRANSPORT`.
     fn from_env() -> Self {
         Self::with_transport(
-            std::env::var_os("PEREGRIN_CUORA_BIN")
-                .map_or_else(|| PathBuf::from("cuora"), PathBuf::from),
-            CuoraTransport::from_env(),
+            std::env::var_os(BIN_ENV).map_or_else(|| PathBuf::from("cuora"), PathBuf::from),
+            CuoraTransport::from_env(TRANSPORT_ENV),
         )
     }
 
     /// A store over `bin` with the env-selected transport.
     #[must_use]
     pub fn with_bin(bin: PathBuf) -> Self {
-        Self::with_transport(bin, CuoraTransport::from_env())
+        Self::with_transport(bin, CuoraTransport::from_env(TRANSPORT_ENV))
     }
 
     /// A store over `bin` on an explicit transport — the test seam
@@ -99,9 +100,10 @@ impl CuoraSecrets {
     #[must_use]
     pub fn with_transport(bin: PathBuf, transport: CuoraTransport) -> Self {
         Self {
-            serve: Arc::new(CuoraServe::new(bin.clone())),
-            bin,
-            transport,
+            bin: bin.clone(),
+            inner: hypha_secret_cuora::CuoraSecrets::new(NAMESPACE)
+                .with_bin(bin)
+                .with_transport(transport),
         }
     }
 
@@ -122,77 +124,22 @@ impl CuoraSecrets {
 /// Build the ref for a secret name. A free fn so tests pin the
 /// mapping without constructing the store.
 ///
-/// `GITHUB_TOKEN` → `cuora://peregrin/GITHUB_TOKEN`. Names are
-/// env-var-shaped (`[A-Z0-9_]`) which cuora's ref grammar accepts
-/// verbatim — no slugging, the name IS the ref tail, so
-/// `cuora put cuora://peregrin/<NAME>` is the migration path with
-/// zero translation.
+/// `GITHUB_TOKEN` → `cuora://peregrin/GITHUB_TOKEN`.
+#[must_use]
 pub fn rref(name: &str) -> String {
-    format!("cuora://{NAMESPACE}/{name}")
+    hypha_secret_cuora::rref(NAMESPACE, name)
 }
 
 impl Secrets for CuoraSecrets {
     fn get(&self, name: &str) -> Option<String> {
-        match self.transport {
-            CuoraTransport::Cli => self.get_cli(name),
-            CuoraTransport::Serve => self.serve.get(&rref(name)),
-        }
+        self.inner.get(name)
     }
 
-    /// Deploy-time migration: `cuora put` reads the value on stdin
-    /// (never argv — argv lands in shell history and `/proc`).
-    /// Under serve the value rides the request's `value` field —
-    /// the wire's designed channel, still never argv.
+    /// Deploy-time migration — `cuora put` reads the value on stdin
+    /// (never argv) on the CLI leg; under serve it rides the
+    /// request's `value` field, still never argv.
     fn set(&self, name: &str, value: &str) -> std::io::Result<()> {
-        match self.transport {
-            CuoraTransport::Cli => self.set_cli(name, value),
-            CuoraTransport::Serve => self.serve.put(&rref(name), value),
-        }
-    }
-}
-
-impl CuoraSecrets {
-    /// The `cli` transport's `get` — shell `cuora get` per lookup.
-    fn get_cli(&self, name: &str) -> Option<String> {
-        let o = Command::new(&self.bin)
-            .args(["--actor", "peregrin", "get", &rref(name)])
-            .stdin(Stdio::null())
-            .stderr(Stdio::null())
-            .output()
-            .ok()?;
-        if !o.status.success() {
-            return None;
-        }
-        // `cuora get` prints the value via println! — strip exactly
-        // one trailing newline (and a CR before it); interior
-        // whitespace is part of the value.
-        let mut s = String::from_utf8_lossy(&o.stdout).into_owned();
-        if let Some(stripped) = s.strip_suffix('\n') {
-            s = stripped.strip_suffix('\r').unwrap_or(stripped).to_string();
-        }
-        (!s.is_empty()).then_some(s)
-    }
-
-    /// The `cli` transport's `set` — `cuora put` with the value on
-    /// stdin (never argv — argv lands in shell history and `/proc`).
-    fn set_cli(&self, name: &str, value: &str) -> std::io::Result<()> {
-        let mut c = Command::new(&self.bin)
-            .args(["--actor", "peregrin", "put", &rref(name)])
-            .stdin(Stdio::piped())
-            .stderr(Stdio::null())
-            .spawn()?;
-        if let Some(mut stdin) = c.stdin.take() {
-            stdin.write_all(value.as_bytes())?;
-        }
-        let status = c.wait()?;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(std::io::Error::other(format!(
-                "cuora put {} exited {status}",
-                rref(name)
-            )))
-        }
+        self.inner.set(name, value)
     }
 }
 
@@ -260,8 +207,8 @@ mod tests {
     #[test]
     fn serve_transport_roundtrips_through_the_wire() {
         // A `cuora serve` stub in the ndjson wire shape — the same
-        // fake `serve.rs` tests use, inlined here so this test pins
-        // the *Secrets* dispatch, not the codec.
+        // fake `serve.rs` tests use in hypha-secret-cuora, inlined
+        // here so this test pins the *wrapper* dispatch.
         let dir = tempfile::tempdir().unwrap();
         let db = dir.path().join("db");
         let script = format!(

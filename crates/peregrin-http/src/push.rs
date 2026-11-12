@@ -12,7 +12,7 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 
-use peregrin_secret_cuora::{CuoraServe, CuoraTransport};
+use peregrin_secret_cuora::{BIN_ENV, CuoraServe, CuoraTransport, NAMESPACE, TRANSPORT_ENV};
 
 use hypha_kv::KvStore;
 use hypha_push::{Kind, PushStore};
@@ -57,7 +57,7 @@ fn cuora_ref(key: &str) -> String {
 /// it), else `cuora` on PATH. `CUORA_ENV`/`--env` resolution stays
 /// cuora's own: the child inherits the environment.
 fn cuora_bin() -> PathBuf {
-    std::env::var_os("PEREGRIN_CUORA_BIN").map_or_else(|| PathBuf::from("cuora"), PathBuf::from)
+    std::env::var_os(BIN_ENV).map_or_else(|| PathBuf::from("cuora"), PathBuf::from)
 }
 
 /// `cuora get <ref>` → the raw value (one trailing newline stripped),
@@ -158,13 +158,13 @@ impl CuoraPushBackend {
 
     /// [`Self::open`] with an explicit `cuora` binary — the test seam.
     pub fn open_with_bin(kv: Arc<dyn KvStore>, bin: PathBuf) -> Self {
-        Self::open_with(kv, bin, CuoraTransport::from_env())
+        Self::open_with(kv, bin, CuoraTransport::from_env(TRANSPORT_ENV))
     }
 
     /// [`Self::open_with_bin`] with an explicit transport — the
     /// serve-transport test seam (env can't be set in tests).
     pub fn open_with(kv: Arc<dyn KvStore>, bin: PathBuf, transport: CuoraTransport) -> Self {
-        let serve = CuoraServe::new(bin.clone());
+        let serve = CuoraServe::new(bin.clone(), NAMESPACE);
         let mut cache = BTreeMap::new();
         for key in KEYS {
             // cuora first: its value is JSON text — parse it back to
