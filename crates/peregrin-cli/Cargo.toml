@@ -41,6 +41,7 @@ peregrin-git.workspace = true
 peregrin-http.workspace = true
 hypha-keyring.workspace = true
 peregrin-node.workspace = true
+peregrin-secret-cuora.workspace = true
 peregrin-queue.workspace = true
 peregrin-queue-sqlite.workspace = true
 hypha-secret.workspace = true

@@ -2789,6 +2789,7 @@ dependencies = [
  "peregrin-node",
  "peregrin-queue",
  "peregrin-queue-sqlite",
+ "peregrin-secret-cuora",
  "peregrin-store",
  "peregrin-store-json",
  "scarab-config",
@@ -3129,6 +3130,7 @@ dependencies = [
  "peregrin-loader-yaml",
  "peregrin-queue",
  "peregrin-queue-sqlite",
+ "peregrin-secret-cuora",
  "peregrin-session",
  "peregrin-sink-github-status",
  "peregrin-store",
@@ -3188,6 +3190,14 @@ version = "0.2.0"
 dependencies = [
  "peregrin-core",
  "peregrin-remote",
+]
+
+[[package]]
+name = "peregrin-secret-cuora"
+version = "0.2.0"
+dependencies = [
+ "hypha-secret",
+ "tempfile",
 ]
 
 [[package]]

@@ -29,6 +29,7 @@ peregrin-driver.workspace = true
 hypha-dotenv.workspace = true
 hypha-keyring.workspace = true
 hypha-secret.workspace = true
+peregrin-secret-cuora.workspace = true
 peregrin-driver-agent.workspace = true
 peregrin-driver-council.workspace = true
 peregrin-driver-http.workspace = true

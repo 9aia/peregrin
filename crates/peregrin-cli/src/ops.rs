@@ -144,13 +144,27 @@ fn cli(e: impl std::fmt::Display) -> CliError {
 
 // --- secrets ---------------------------------------------------------------------
 
-/// The secret chain — environment → OS keyring → the config-dir env
-/// file. Verbs read secret *names* from config; values only ever
-/// resolve through here (the per-impl binding rule).
+/// The secret chain — environment → cuora broker → OS keyring →
+/// the config-dir env file (the bupha/mimus order: cuora is the
+/// canonical store, keyring + env file are legacy read-throughs
+/// kept during the migration). Verbs read secret *names* from
+/// config; values only ever resolve through here (the per-impl
+/// binding rule).
 pub(crate) fn secret(env: &OpsEnv, name: &str) -> Option<String> {
+    secret_with(env, name, &peregrin_secret_cuora::CuoraSecrets::default())
+}
+
+/// [`secret`] with an explicit cuora leg — the test seam (a stub
+/// `cuora` binary on `CuoraSecrets.bin`).
+fn secret_with(
+    env: &OpsEnv,
+    name: &str,
+    cuora: &peregrin_secret_cuora::CuoraSecrets,
+) -> Option<String> {
     std::env::var(name)
         .ok()
         .filter(|v| !v.is_empty())
+        .or_else(|| cuora.get(name))
         .or_else(|| KeyringSecrets::default().get(name))
         .or_else(|| {
             DotenvSecrets {
@@ -163,8 +177,9 @@ pub(crate) fn secret(env: &OpsEnv, name: &str) -> Option<String> {
 /// The unresolved-secret error — names the file the value could land in.
 pub(crate) fn missing_secret(env: &OpsEnv, name: &str) -> CliError {
     CliError(format!(
-        "secret '{name}' unresolved — set it in the environment, the OS \
-         keyring (service 'peregrin') or {}",
+        "secret '{name}' unresolved — set it in the environment, cuora \
+         (cuora://peregrin/{name}), the OS keyring (service 'peregrin') \
+         or {}",
         env.env_file().display()
     ))
 }
@@ -704,5 +719,54 @@ mod tests {
         assert_eq!(recs[0].sha, "abc123");
         assert_eq!(recs[0].repo, "o/r");
         assert_eq!(recs[0].status, "superseded");
+    }
+
+    /// A stub `cuora` binary — `get` prints `value`, anything else
+    /// exits 1. `fail` makes every call exit 1.
+    fn stub_cuora(dir: &Path, value: &str, fail: bool) -> PathBuf {
+        use std::os::unix::fs::PermissionsExt;
+        let script = if fail {
+            "#!/bin/sh\nexit 1\n".to_string()
+        } else {
+            format!(
+                "#!/bin/sh\nprintf '%s\\n' '{}'\n",
+                value.replace('\'', "'\\''")
+            )
+        };
+        let bin = dir.join("cuora-stub.sh");
+        std::fs::write(&bin, script).unwrap();
+        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        bin
+    }
+
+    /// The secret chain resolves cuora ahead of the env file: the
+    /// same name in both stores answers with the cuora value, and a
+    /// failing cuora falls through to the file. (The env leg can't
+    /// be exercised — edition-2024 forbids `env::set_var` — and the
+    /// keyring leg can't be stubbed without PATH fakery; the order
+    /// env → cuora → keyring → file is the code's `.or_else` chain.)
+    #[test]
+    fn secret_chain_prefers_cuora_then_falls_through() {
+        let dir = tempfile::tempdir().unwrap();
+        let env = OpsEnv::under(dir.path());
+        std::fs::create_dir_all(env.config_dir.clone()).unwrap();
+        let name = "PEREGRIN_SECRET_CHAIN_TEST";
+        std::fs::write(env.env_file(), format!("{name}=from-env-file\n")).unwrap();
+
+        let cuora = peregrin_secret_cuora::CuoraSecrets {
+            bin: stub_cuora(dir.path(), "from-cuora", false),
+        };
+        assert_eq!(
+            secret_with(&env, name, &cuora).as_deref(),
+            Some("from-cuora")
+        );
+
+        let failing = peregrin_secret_cuora::CuoraSecrets {
+            bin: stub_cuora(dir.path(), "", true),
+        };
+        assert_eq!(
+            secret_with(&env, name, &failing).as_deref(),
+            Some("from-env-file")
+        );
     }
 }

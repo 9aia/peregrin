@@ -1,0 +1,16 @@
+[package]
+name = "peregrin-secret-cuora"
+description = "Cuora `Secrets` impl — resolves `cuora://peregrin/<NAME>` through the cuora CLI"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+[dependencies]
+hypha-secret.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

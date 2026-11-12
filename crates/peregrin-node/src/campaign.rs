@@ -329,23 +329,38 @@ pub fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
 }
 
 /// The default fallback secret stores for `RunOptions.secret_stores`
-/// — the tail of the documented `record → env → keyring → file`
-/// chain (`ExecutionContext::resolve_secret` runs the record and the
-/// ambient environment first; these legs only see names that missed
-/// both):
+/// — the tail of the documented `record → env → cuora → keyring →
+/// file` chain (`ExecutionContext::resolve_secret` runs the record
+/// and the ambient environment first; these legs only see names
+/// that missed both):
 ///
-/// 1. **OS keyring** (`secret-tool`, service `peregrin`) —
-///    `declared_only`: a lookup spawns a process and reaches into OS
-///    credentials, so only names the merged `capabilities.secrets`
+/// 1. **Cuora broker** (`cuora get cuora://peregrin/<NAME>` via the
+///    `cuora` CLI — `peregrin-secret-cuora`) — the canonical store;
+///    `declared_only` like the keyring leg since a lookup spawns a
+///    process, so only names the merged `capabilities.secrets`
 ///    grant declares are ever looked up.
-/// 2. **The env file** (`~/.config/peregrin/env`, `PEREGRIN_ENV`
+/// 2. **OS keyring** (`secret-tool`, service `peregrin`) —
+///    `declared_only`, legacy read-through kept during the cuora
+///    migration.
+/// 3. **The env file** (`~/.config/peregrin/env`, `PEREGRIN_ENV`
 ///    override) — the always-available last leg.
 ///
 /// Values are only ever returned into the run's ctx — names, never
 /// values, cross into events or logs.
 #[must_use]
 pub fn default_secret_stores() -> Vec<SecretSource> {
+    default_secret_stores_with(peregrin_secret_cuora::CuoraSecrets::default())
+}
+
+/// [`default_secret_stores`] with an explicit cuora leg — the test
+/// seam (a stub `cuora` binary on `CuoraSecrets.bin`).
+#[must_use]
+pub fn default_secret_stores_with(cuora: peregrin_secret_cuora::CuoraSecrets) -> Vec<SecretSource> {
     vec![
+        SecretSource {
+            store: std::rc::Rc::new(cuora),
+            declared_only: true,
+        },
         SecretSource {
             store: std::rc::Rc::new(hypha_keyring::KeyringSecrets::default()),
             declared_only: true,
@@ -386,4 +401,50 @@ pub fn run(source: &Path, options: &RunOptions) -> Result<Vec<Event>, CampaignEr
     }
     let (mut runner, _injector) = runner_with_ingress();
     runner.run(&campaign, &options).map_err(CampaignError::Run)
+}
+
+#[cfg(test)]
+mod tests {
+    #![allow(clippy::unwrap_used)]
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    /// A stub `cuora` — `get` prints `value`; `fail` exits 1 always.
+    fn stub_cuora(dir: &Path, value: &str, fail: bool) -> PathBuf {
+        let script = if fail {
+            "#!/bin/sh\nexit 1\n".to_string()
+        } else {
+            format!(
+                "#!/bin/sh\nprintf '%s\\n' '{}'\n",
+                value.replace('\'', "'\\''")
+            )
+        };
+        let bin = dir.join("cuora-stub.sh");
+        std::fs::write(&bin, script).unwrap();
+        std::fs::set_permissions(&bin, std::fs::Permissions::from_mode(0o755)).unwrap();
+        bin
+    }
+
+    /// `default_secret_stores_with` orders cuora ahead of the keyring
+    /// and env-file legs: the cuora stub's value is what the first
+    /// store resolves, both process-spawning legs stay
+    /// `declared_only`, and the env file remains the always-available
+    /// last leg. (The keyring leg itself can't be stubbed —
+    /// `secret-tool` resolves on PATH and edition-2024 forbids
+    /// `env::set_var`.)
+    #[test]
+    fn default_secret_stores_orders_cuora_first() {
+        let dir = tempfile::tempdir().unwrap();
+        let stores = default_secret_stores_with(peregrin_secret_cuora::CuoraSecrets {
+            bin: stub_cuora(dir.path(), "from-cuora", false),
+        });
+        assert_eq!(stores.len(), 3);
+        assert!(stores[0].declared_only);
+        assert!(stores[1].declared_only);
+        assert!(!stores[2].declared_only);
+        assert_eq!(
+            stores[0].store.get("PEREGRIN_NODE_CHAIN_TEST").as_deref(),
+            Some("from-cuora")
+        );
+    }
 }

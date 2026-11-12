@@ -267,15 +267,17 @@ nodes:
 
 // --- secret resolution chain (I-018) ----------------------------------------
 
-/// `campaign::run` wires the default fallback stores: OS keyring
-/// declared-only, then the env file — in that order, so the
-/// documented `record → env → keyring → file` chain holds.
+/// `campaign::run` wires the default fallback stores: cuora broker
+/// and OS keyring declared-only (in that order), then the env file —
+/// so the documented `record → env → cuora → keyring → file` chain
+/// holds.
 #[test]
-fn default_secret_stores_wires_keyring_then_env_file() {
+fn default_secret_stores_wires_cuora_keyring_then_env_file() {
     let stores = campaign::default_secret_stores();
-    assert_eq!(stores.len(), 2);
+    assert_eq!(stores.len(), 3);
     assert!(stores[0].declared_only);
-    assert!(!stores[1].declared_only);
+    assert!(stores[1].declared_only);
+    assert!(!stores[2].declared_only);
 }
 
 /// The I-018 gap, end to end: a name absent from the env file and

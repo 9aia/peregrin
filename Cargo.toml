@@ -30,6 +30,7 @@ members = [
     "crates/peregrin-queue-sqlite",
     "crates/peregrin-remote",
     "crates/peregrin-remote-http",
+    "crates/peregrin-secret-cuora",
     "crates/peregrin-sink-github-status",
     "crates/peregrin-store",
     "crates/peregrin-store-json",
@@ -85,6 +86,7 @@ peregrin-queue = { path = "crates/peregrin-queue", version = "0.2.0" }
 peregrin-queue-sqlite = { path = "crates/peregrin-queue-sqlite", version = "0.2.0" }
 peregrin-remote = { path = "crates/peregrin-remote", version = "0.2.0" }
 peregrin-remote-http = { path = "crates/peregrin-remote-http", version = "0.2.0" }
+peregrin-secret-cuora = { path = "crates/peregrin-secret-cuora", version = "0.2.0" }
 peregrin-sink-github-status = { path = "crates/peregrin-sink-github-status", version = "0.2.0" }
 peregrin-store = { path = "crates/peregrin-store", version = "0.2.0" }
 peregrin-store-json = { path = "crates/peregrin-store-json", version = "0.2.0" }
