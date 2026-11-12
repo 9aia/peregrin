@@ -32,6 +32,8 @@ tamias-store-local.workspace = true
 tamias-cache-local.workspace = true
 peregrin-config.workspace = true
 peregrin-config-toml.workspace = true
+scarab-config = { git = "ssh://git@github.com/9aia/scarab.git", rev = "9364df88fad0ca46bd838467717a823893f47438", version = "0.1" }
+scarab-config-file = { git = "ssh://git@github.com/9aia/scarab.git", rev = "9364df88fad0ca46bd838467717a823893f47438", version = "0.1" }
 peregrin-core.workspace = true
 hypha-dotenv.workspace = true
 peregrin-engine.workspace = true

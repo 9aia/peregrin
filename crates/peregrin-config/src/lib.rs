@@ -1,6 +1,12 @@
-//! peregrin-config — the config port. Impls: `peregrin-config-toml`,
-//! `peregrin-config-yaml` (per-syntax), `peregrin-config-file`
-//! (search/dispatch). Same shape as the sturn/bupha port.
+//! peregrin-config — the config port's shared half: the
+//! [`ConfigSource`] trait, the `~` helpers, and
+//! [`campaign_from_raw`], the funnel every file adapter takes.
+//! File discovery lives in scarab-config (P-017 — the
+//! `peregrin-config-file`/`-yaml` crates are gone); TOML parsing
+//! rides `scarab-config-toml` inside `peregrin-config-toml`, and
+//! YAML goes through `peregrin-node`'s campaign loader (its
+//! `include:`/`snippet:` expansion needs the file's directory, so
+//! it can't be a text-only `ConfigFormat`).
 //!
 //! The loaded config is the workflow-shaped node document of
 //! ADR-0080 — a [`peregrin_core::Campaign`]. Every file adapter

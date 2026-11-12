@@ -6,9 +6,7 @@ members = [
     "crates/peregrin-bus",
     "crates/peregrin-cli",
     "crates/peregrin-config",
-    "crates/peregrin-config-file",
     "crates/peregrin-config-toml",
-    "crates/peregrin-config-yaml",
     "crates/peregrin-core",
     "crates/peregrin-driver",
     "crates/peregrin-driver-agent",
@@ -55,9 +53,7 @@ peregrin-auth = { path = "crates/peregrin-auth", version = "0.2.0" }
 peregrin-bus = { path = "crates/peregrin-bus", version = "0.2.0" }
 peregrin-cli = { path = "crates/peregrin-cli", version = "0.2.0" }
 peregrin-config = { path = "crates/peregrin-config", version = "0.2.0" }
-peregrin-config-file = { path = "crates/peregrin-config-file", version = "0.2.0" }
 peregrin-config-toml = { path = "crates/peregrin-config-toml", version = "0.2.0" }
-peregrin-config-yaml = { path = "crates/peregrin-config-yaml", version = "0.2.0" }
 peregrin-core = { path = "crates/peregrin-core", version = "0.2.0" }
 tamias-core = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
 tamias-source = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }

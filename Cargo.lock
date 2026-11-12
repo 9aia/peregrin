@@ -2769,6 +2769,8 @@ dependencies = [
  "peregrin-queue-sqlite",
  "peregrin-store",
  "peregrin-store-json",
+ "scarab-config",
+ "scarab-config-file",
  "sepia-acp",
  "sepia-convert",
  "sepia-core",
@@ -2804,35 +2806,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "peregrin-config-file"
-version = "0.2.0"
-dependencies = [
- "peregrin-config",
- "peregrin-config-toml",
- "peregrin-config-yaml",
- "peregrin-core",
- "tempfile",
-]
-
-[[package]]
 name = "peregrin-config-toml"
 version = "0.2.0"
 dependencies = [
  "peregrin-config",
  "peregrin-core",
+ "scarab-config",
+ "scarab-config-toml",
  "serde_json",
- "tempfile",
- "toml",
-]
-
-[[package]]
-name = "peregrin-config-yaml"
-version = "0.2.0"
-dependencies = [
- "peregrin-config",
- "peregrin-core",
- "serde_json",
- "serde_norway",
  "tempfile",
 ]
 
@@ -3741,6 +3722,46 @@ name = "ryu"
 version = "1.0.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9774ba4a74de5f7b1c1451ed6cd5285a32eddb5cccb8cc655a4e50009e06477f"
+
+[[package]]
+name = "scarab-config"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=9364df88fad0ca46bd838467717a823893f47438#9364df88fad0ca46bd838467717a823893f47438"
+dependencies = [
+ "serde_json",
+]
+
+[[package]]
+name = "scarab-config-file"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=9364df88fad0ca46bd838467717a823893f47438#9364df88fad0ca46bd838467717a823893f47438"
+dependencies = [
+ "scarab-config",
+ "scarab-config-toml",
+ "scarab-config-yaml",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "scarab-config-toml"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=9364df88fad0ca46bd838467717a823893f47438#9364df88fad0ca46bd838467717a823893f47438"
+dependencies = [
+ "scarab-config",
+ "serde",
+ "toml",
+]
+
+[[package]]
+name = "scarab-config-yaml"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=9364df88fad0ca46bd838467717a823893f47438#9364df88fad0ca46bd838467717a823893f47438"
+dependencies = [
+ "scarab-config",
+ "serde",
+ "serde_yaml_ng",
+]
 
 [[package]]
 name = "schannel"

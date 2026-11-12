@@ -27,10 +27,6 @@ use crate::CliError;
 
 // --- environment ---------------------------------------------------------------
 
-/// Node-config file names tried, in order — YAML first, TOML last
-/// (the `peregrin-config-file` search convention).
-const CONFIG_NAMES: [&str; 3] = ["peregrin.yaml", "peregrin.yml", "peregrin.toml"];
-
 /// The webhook node's default hook path (`params.path`).
 pub(crate) const DEFAULT_HOOK_PATH: &str = "/hook";
 /// The default forge REST endpoint (`params.api_base`).
@@ -131,7 +127,7 @@ fn tamias_cache_root() -> PathBuf {
 }
 
 /// `XDG_CONFIG_HOME/peregrin` → `~/.config/peregrin` (the
-/// `peregrin-config-file` search dir).
+/// scarab-config discovery dir).
 fn config_dir() -> PathBuf {
     std::env::var_os("XDG_CONFIG_HOME")
         .map(|d| PathBuf::from(d).join("peregrin"))
@@ -175,9 +171,14 @@ pub(crate) fn missing_secret(env: &OpsEnv, name: &str) -> CliError {
 
 // --- node config -------------------------------------------------------------------
 
-/// Resolve the node-config path: `--config`, else `./peregrin.*`,
-/// else `~/.config/peregrin/peregrin.*` (the `peregrin-config-file`
-/// search).
+/// Resolve the node-config path: `--config`, else the
+/// scarab-config file discovery over `[".", env.config_dir]` —
+/// `peregrin.{yaml,yml,toml}`, YAML preferred within each dir
+/// (P-017; dir-major order, the org convention — the old hand-rolled
+/// loop was format-major across the two dirs). `Value` is only the
+/// candidate carrier: `locate()` returns a path and `load_config`
+/// does the real parse (YAML via the campaign loader's include
+/// expansion, TOML via `TomlSource`).
 pub fn find_config(env: &OpsEnv, explicit: Option<&Path>) -> Result<PathBuf, CliError> {
     if let Some(path) = explicit {
         if path.exists() {
@@ -188,20 +189,16 @@ pub fn find_config(env: &OpsEnv, explicit: Option<&Path>) -> Result<PathBuf, Cli
             path.display()
         )));
     }
-    for name in CONFIG_NAMES {
-        let local = PathBuf::from(name);
-        if local.exists() {
-            return Ok(local);
-        }
-        let candidate = env.config_dir.join(name);
-        if candidate.exists() {
-            return Ok(candidate);
-        }
-    }
-    Err(CliError(format!(
-        "no peregrin.{{yaml,yml,toml}} found (search: ./, {}) — pass --config",
-        env.config_dir.display()
-    )))
+    let source = scarab_config_file::FileSource::<Value>::new(
+        scarab_config::Discovery::bare("peregrin")
+            .dirs([PathBuf::from("."), env.config_dir.clone()]),
+    );
+    source.locate().map_err(|_| {
+        CliError(format!(
+            "no peregrin.{{yaml,yml,toml}} found (search: ./, {}) — pass --config",
+            env.config_dir.display()
+        ))
+    })
 }
 
 /// Load the node config — yaml paths expand `include:`/snippets via
