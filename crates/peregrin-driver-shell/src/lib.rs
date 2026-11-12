@@ -23,11 +23,12 @@ use peregrin_template::{
 };
 
 /// `spawnSync`'s default timeout — 30 s (ADR-0005 default);
-/// `params.timeout` (seconds) overrides, capped at 10 minutes.
+/// `params.timeout` (seconds) overrides, capped at 2 hours — agent
+/// sessions legitimately run tens of minutes (pr-heal campaigns).
 const TIMEOUT: Duration = Duration::from_secs(30);
 /// Ceiling on a yaml-provided `params.timeout` — unbounded children
 /// are the ADR-0005 failure mode.
-const MAX_TIMEOUT: Duration = Duration::from_secs(600);
+const MAX_TIMEOUT: Duration = Duration::from_secs(7200);
 /// Poll cadence while waiting on the child.
 const POLL: Duration = Duration::from_millis(5);
 /// Cap on captured stdout/stderr — a chatty or hostile child must not
