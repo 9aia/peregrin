@@ -75,6 +75,13 @@ const READ_ONLY: &[&str] = &[
     "config.get",
     "push.vapid",
     "campaign.validate",
+    "campaign.status",
+    "campaign.events",
+    "bundle.list",
+    "bundle.info",
+    "logs.runs",
+    "logs.events",
+    "logs.explain",
     "sessions.list",
     "sessions.history",
     "sessions.checkpoints",
@@ -155,7 +162,7 @@ fn param_json(a: &Arg) -> Value {
     // Bearer tokens are secret-bearing params — surfaces steer
     // callers to `--params-stdin` instead of argv (pavo surface
     // contract; older pavo revs ignore the marker).
-    let secret = matches!(name, "token" | "source-token");
+    let secret = matches!(name, "token" | "source-token" | "secrets");
     let mut p = json!({
         "name": name,
         "kind": kind(a),

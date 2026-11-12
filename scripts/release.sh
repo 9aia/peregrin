@@ -39,7 +39,7 @@ order="peregrin-core peregrin-auth peregrin-session peregrin-hub \
        peregrin-driver-human peregrin-driver-git peregrin-engine \
        peregrin-http peregrin-driver-github-webhook \
        peregrin-driver-schedule peregrin-driver-sturn \
-       peregrin-driver-subworkflow peregrin-node peregrin-mcp \
+       peregrin-driver-subworkflow peregrin-node \
        peregrin-cli"
 
 touched=""

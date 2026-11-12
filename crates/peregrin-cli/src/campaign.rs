@@ -10,6 +10,7 @@ use std::path::{Path, PathBuf};
 
 use peregrin_core::{Campaign, Event, MaxFires, TriggerMode};
 use peregrin_engine::RunOptions;
+use serde_json::{Map, Value};
 
 use crate::CliError;
 
@@ -263,6 +264,44 @@ pub fn validate(workflow: &Path) -> Result<Vec<String>, CliError> {
         println!("{line}");
     }
     Ok(lines)
+}
+
+/// `campaign exec` — the hidden child `campaign submit` spawns: the
+/// retired MCP `campaign_run` body — load the workflow, merge `config`
+/// overrides top-level into `campaign.config`, run once with explicit
+/// `secrets` plus the default fallback secret stores (keyring →
+/// env file), event log durable at `history` (the JSONL store
+/// `campaign status`/`events`/`logs *` read back). Prints nothing —
+/// the log is the record. Single-run semantics always: no supervisor
+/// split, no ingress (the MCP tool's shape).
+///
+/// # Errors
+/// [`CliError`] on load, log-open, or engine failure.
+pub fn exec(
+    workflow: &Path,
+    history: &Path,
+    config: Option<&Map<String, Value>>,
+    secrets: Option<&BTreeMap<String, String>>,
+    dry_run: bool,
+) -> Result<Vec<Event>, CliError> {
+    let mut campaign =
+        peregrin_node::campaign::load(workflow).map_err(|e| CliError(e.to_string()))?;
+    if let Some(overrides) = config {
+        for (key, value) in overrides {
+            campaign.config.insert(key.clone(), value.clone());
+        }
+    }
+    let options = RunOptions {
+        dry_run,
+        secrets: secrets.cloned().unwrap_or_default(),
+        secret_stores: peregrin_node::campaign::default_secret_stores(),
+        ..RunOptions::default()
+    };
+    let mut runner =
+        peregrin_node::campaign::runner_with_log(history).map_err(|e| CliError(e.to_string()))?;
+    runner
+        .run(&campaign, &options)
+        .map_err(|e| CliError(e.to_string()))
 }
 
 /// `loadReplayEvents` — a JSON array of events or one JSON event per

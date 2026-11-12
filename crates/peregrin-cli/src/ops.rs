@@ -45,8 +45,16 @@ const DEFAULT_WORKTREE_BASE: &str = "~/.local/share/peregrin/worktrees";
 /// [`OpsEnv::under`].
 #[derive(Clone, Debug)]
 pub struct OpsEnv {
-    /// `<peregrin-home>/store` — the installed-bundle store.
+    /// The tamias install store (`$TAMIAS_HOME/store` →
+    /// `XDG_DATA_HOME/tamias/store` → `~/.local/share/tamias/store`) —
+    /// bundles are tamias packages; the `bundle.*` ops and
+    /// `campaign --bundle` resolve against the same store `tamias
+    /// install` writes.
     pub store_root: PathBuf,
+    /// The tamias fetch-cache root (`$TAMIAS_CACHE` →
+    /// `XDG_CACHE_HOME/tamias/fetch` → `~/.cache/tamias/fetch`) the
+    /// bundle verbs' install pipeline writes through.
+    pub cache_root: PathBuf,
     /// `~/.config/peregrin` — node configs + the `env` secrets file.
     pub config_dir: PathBuf,
     /// `~/.config/systemd/user` — per-user units.
@@ -61,6 +69,7 @@ impl OpsEnv {
     pub fn under(root: &Path) -> Self {
         Self {
             store_root: root.join("store"),
+            cache_root: root.join("cache"),
             config_dir: root.join("config"),
             unit_dir: root.join("units"),
             home: root.join("home"),
@@ -85,12 +94,40 @@ impl OpsEnv {
 impl Default for OpsEnv {
     fn default() -> Self {
         Self {
-            store_root: peregrin_node::peregrin_home().join("store"),
+            store_root: tamias_store_root(),
+            cache_root: tamias_cache_root(),
             config_dir: config_dir(),
             unit_dir: hypha_systemd::default_unit_dir(),
             home: peregrin_node::peregrin_home(),
         }
     }
+}
+
+/// The tamias install-store root — `tamias-cli`'s `store_root` chain
+/// verbatim (`TAMIAS_HOME`/`XDG_DATA_HOME`/`HOME`), so `bundle.*` ops
+/// see exactly what `tamias install` committed.
+fn tamias_store_root() -> PathBuf {
+    if let Some(root) = std::env::var_os("TAMIAS_HOME") {
+        return PathBuf::from(root).join("store");
+    }
+    std::env::var_os("XDG_DATA_HOME")
+        .map(|d| PathBuf::from(d).join("tamias/store"))
+        .or_else(|| {
+            std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".local/share/tamias/store"))
+        })
+        .unwrap_or_else(|| PathBuf::from(".tamias/store"))
+}
+
+/// The tamias fetch-cache root — `tamias-cli`'s `cache_root` chain
+/// verbatim (`TAMIAS_CACHE`/`XDG_CACHE_HOME`/`HOME`).
+fn tamias_cache_root() -> PathBuf {
+    if let Some(root) = std::env::var_os("TAMIAS_CACHE") {
+        return PathBuf::from(root);
+    }
+    std::env::var_os("XDG_CACHE_HOME")
+        .map(|d| PathBuf::from(d).join("tamias/fetch"))
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache/tamias/fetch")))
+        .unwrap_or_else(|| PathBuf::from(".tamias/fetch"))
 }
 
 /// `XDG_CONFIG_HOME/peregrin` → `~/.config/peregrin` (the

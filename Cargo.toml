@@ -27,7 +27,6 @@ members = [
     "crates/peregrin-hub",
     "crates/peregrin-loader",
     "crates/peregrin-loader-yaml",
-    "crates/peregrin-mcp",
     "crates/peregrin-node",
     "crates/peregrin-queue",
     "crates/peregrin-queue-sqlite",
@@ -67,6 +66,7 @@ tamias-source-git = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9da
 tamias-source-http = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6", version = "0.1" }
 tamias-store-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6", version = "0.1" }
 tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6", version = "0.1" }
+tamias-install = { git = "ssh://git@github.com/9aia/tamias.git", rev = "3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6", version = "0.1" }
 peregrin-driver = { path = "crates/peregrin-driver", version = "0.2.0" }
 peregrin-driver-agent = { path = "crates/peregrin-driver-agent", version = "0.2.0" }
 peregrin-driver-council = { path = "crates/peregrin-driver-council", version = "0.2.0" }
@@ -84,7 +84,6 @@ peregrin-http = { path = "crates/peregrin-http", version = "0.2.0" }
 peregrin-hub = { path = "crates/peregrin-hub", version = "0.2.0" }
 peregrin-loader = { path = "crates/peregrin-loader", version = "0.2.0" }
 peregrin-loader-yaml = { path = "crates/peregrin-loader-yaml", version = "0.2.0" }
-peregrin-mcp = { path = "crates/peregrin-mcp", version = "0.2.0" }
 peregrin-node = { path = "crates/peregrin-node", version = "0.2.0" }
 peregrin-queue = { path = "crates/peregrin-queue", version = "0.2.0" }
 peregrin-queue-sqlite = { path = "crates/peregrin-queue-sqlite", version = "0.2.0" }

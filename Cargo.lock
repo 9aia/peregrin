@@ -130,7 +130,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -141,7 +141,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -871,7 +871,7 @@ dependencies = [
  "openssl-sys",
  "schannel",
  "socket2",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -887,7 +887,7 @@ dependencies = [
  "openssl-sys",
  "pkg-config",
  "vcpkg",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1255,7 +1255,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2396,7 +2396,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -2767,6 +2767,8 @@ dependencies = [
  "peregrin-node",
  "peregrin-queue",
  "peregrin-queue-sqlite",
+ "peregrin-store",
+ "peregrin-store-json",
  "sepia-acp",
  "sepia-convert",
  "sepia-core",
@@ -2778,13 +2780,14 @@ dependencies = [
  "serde_json",
  "serde_norway",
  "serde_yaml_ng",
- "tamias-cache-local 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6)",
- "tamias-core 0.1.1",
- "tamias-source 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6)",
- "tamias-source-fs 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6)",
- "tamias-source-git 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6)",
- "tamias-source-http 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6)",
- "tamias-store-local 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6)",
+ "tamias-cache-local",
+ "tamias-core",
+ "tamias-install",
+ "tamias-source",
+ "tamias-source-fs",
+ "tamias-source-git",
+ "tamias-source-http",
+ "tamias-store-local",
  "tempfile",
  "time",
  "tokio",
@@ -3084,26 +3087,6 @@ dependencies = [
  "peregrin-loader",
  "serde_json",
  "serde_yaml_ng",
- "tempfile",
-]
-
-[[package]]
-name = "peregrin-mcp"
-version = "0.2.0"
-dependencies = [
- "peregrin-core",
- "peregrin-engine",
- "peregrin-node",
- "peregrin-store",
- "peregrin-store-json",
- "serde_json",
- "tamias-cache-local 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc)",
- "tamias-core 0.1.0",
- "tamias-source 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc)",
- "tamias-source-fs 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc)",
- "tamias-source-git 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc)",
- "tamias-source-http 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc)",
- "tamias-store-local 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc)",
  "tempfile",
 ]
 
@@ -3709,7 +3692,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -4316,7 +4299,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -4486,32 +4469,7 @@ source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf
 dependencies = [
  "serde",
  "serde_json",
- "tamias-core 0.1.1",
-]
-
-[[package]]
-name = "tamias-cache-local"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
-dependencies = [
- "tamias-core 0.1.0",
-]
-
-[[package]]
-name = "tamias-core"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
-dependencies = [
- "flate2",
- "hex",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "sha2",
- "tar",
- "thiserror 2.0.21",
- "toml",
+ "tamias-core",
 ]
 
 [[package]]
@@ -4533,74 +4491,97 @@ dependencies = [
 ]
 
 [[package]]
-name = "tamias-source"
+name = "tamias-driver"
 version = "0.1.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
 dependencies = [
- "tamias-core 0.1.1",
+ "serde_json",
+ "tamias-core",
 ]
 
 [[package]]
-name = "tamias-source"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
-dependencies = [
- "tamias-core 0.1.0",
-]
-
-[[package]]
-name = "tamias-source-fs"
+name = "tamias-install"
 version = "0.1.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
 dependencies = [
- "tamias-core 0.1.1",
- "tamias-source 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6)",
+ "tamias-cache-local",
+ "tamias-core",
+ "tamias-driver",
+ "tamias-source",
+ "tamias-source-cf",
+ "tamias-source-fs",
+ "tamias-source-git",
+ "tamias-source-http",
+ "tamias-store-local",
+ "tracing",
 ]
 
 [[package]]
-name = "tamias-source-fs"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
-dependencies = [
- "tamias-core 0.1.0",
- "tamias-source 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc)",
-]
-
-[[package]]
-name = "tamias-source-git"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
-dependencies = [
- "tamias-core 0.1.1",
- "tamias-source 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6)",
-]
-
-[[package]]
-name = "tamias-source-git"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
-dependencies = [
- "tamias-core 0.1.0",
- "tamias-source 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc)",
-]
-
-[[package]]
-name = "tamias-source-http"
+name = "tamias-registry"
 version = "0.1.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
 dependencies = [
- "tamias-core 0.1.1",
- "tamias-source 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6)",
+ "serde",
+ "serde_json",
+ "tamias-core",
+]
+
+[[package]]
+name = "tamias-registry-cf"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
+dependencies = [
+ "serde_json",
+ "tamias-core",
+ "tamias-registry",
  "ureq",
 ]
 
 [[package]]
+name = "tamias-source"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
+dependencies = [
+ "tamias-core",
+]
+
+[[package]]
+name = "tamias-source-cf"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
+dependencies = [
+ "tamias-core",
+ "tamias-registry",
+ "tamias-registry-cf",
+ "tamias-source",
+ "tamias-source-http",
+]
+
+[[package]]
+name = "tamias-source-fs"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
+dependencies = [
+ "tamias-core",
+ "tamias-source",
+]
+
+[[package]]
+name = "tamias-source-git"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
+dependencies = [
+ "tamias-core",
+ "tamias-source",
+]
+
+[[package]]
 name = "tamias-source-http"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
 dependencies = [
- "tamias-core 0.1.0",
- "tamias-source 0.1.0 (git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc)",
+ "tamias-core",
+ "tamias-source",
  "ureq",
 ]
 
@@ -4610,16 +4591,7 @@ version = "0.1.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6#3b9dac4e6c7cbaa809ac0cddf3f0a72f954e84e6"
 dependencies = [
  "serde_json",
- "tamias-core 0.1.1",
-]
-
-[[package]]
-name = "tamias-store-local"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=f31a2b0fe3c480df385e660ec1c001b818dceecc#f31a2b0fe3c480df385e660ec1c001b818dceecc"
-dependencies = [
- "serde_json",
- "tamias-core 0.1.0",
+ "tamias-core",
 ]
 
 [[package]]
@@ -4643,7 +4615,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -5013,7 +4985,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]

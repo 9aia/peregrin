@@ -14,7 +14,9 @@ use std::path::PathBuf;
 use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use crate::node_ops::{NodeArgs, TargetArgs};
-use crate::{CliError, PEREGRIN_VERSION, api, campaign, import, node_ops, ops, pair, provision};
+use crate::{
+    CliError, PEREGRIN_VERSION, agent, api, campaign, import, node_ops, ops, pair, provision,
+};
 
 fn default_peregrin_home() -> PathBuf {
     peregrin_node::peregrin_home()
@@ -443,8 +445,82 @@ enum CampaignCommands {
     /// Expand a campaign yaml and summarize its wiring (includes,
     /// nodes, unemitting-subscription warnings)
     Validate {
+        /// Path to the campaign YAML (or `--bundle`)
+        path: Option<PathBuf>,
+        /// Installed bundle whose `main.yaml`/`main.yml` validates
+        #[arg(long)]
+        bundle: Option<String>,
+        /// Workflow file inside `--bundle` (default `main.yaml`/`main.yml`)
+        #[arg(long)]
+        workflow: Option<String>,
+    },
+    /// Submit a workflow/bundle run on this machine's campaign plane —
+    /// returns `{run_id, log}` immediately; poll `campaign status` /
+    /// `campaign events` (the retired MCP `campaign_run`, submit+poll
+    /// per P-028 — never blocks)
+    Submit {
+        /// Path to the campaign YAML (or `--bundle`)
+        path: Option<PathBuf>,
+        /// Installed bundle whose `main.yaml`/`main.yml` runs
+        #[arg(long)]
+        bundle: Option<String>,
+        /// Workflow file inside `--bundle` (default `main.yaml`/`main.yml`)
+        #[arg(long)]
+        workflow: Option<String>,
+        /// JSON object merged top-level into the campaign's `config:`
+        #[arg(long)]
+        config: Option<String>,
+        /// JSON object of secret name→value for this run
+        #[arg(long)]
+        secrets: Option<String>,
+        /// Simulate the run without driver side effects
+        #[arg(long)]
+        dry_run: bool,
+        /// Explicit JSONL log path (default `<home>/runs/<run-id>.jsonl`)
+        #[arg(long)]
+        log: Option<PathBuf>,
+    },
+    /// Poll a `campaign submit` run — verdict, terminal event, counts
+    Status {
+        /// The run id `campaign submit` printed
+        run: String,
+        /// Read this log instead of `<home>/runs/<run>.jsonl`
+        #[arg(long)]
+        log: Option<PathBuf>,
+    },
+    /// Bounded tail of a `campaign submit` run's event log
+    Events {
+        /// The run id `campaign submit` printed
+        run: String,
+        /// Only events of this type
+        #[arg(long = "type")]
+        event_type: Option<String>,
+        /// Max events to return (the tail)
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+        /// Read this log instead of `<home>/runs/<run>.jsonl`
+        #[arg(long)]
+        log: Option<PathBuf>,
+    },
+    /// The `campaign submit` child's body — load + config merge +
+    /// single run into the JSONL log. Engine plumbing (hidden), not
+    /// an op: it blocks for the run's duration.
+    #[command(hide = true)]
+    Exec {
         /// Path to the campaign YAML
         workflow: PathBuf,
+        /// Durable JSONL event log the run appends to
+        #[arg(long)]
+        history: PathBuf,
+        /// JSON object merged top-level into the campaign's `config:`
+        #[arg(long)]
+        config: Option<String>,
+        /// JSON object of secret name→value for this run
+        #[arg(long)]
+        secrets: Option<String>,
+        /// Simulate the run without driver side effects
+        #[arg(long)]
+        dry_run: bool,
     },
     /// Host N campaign yamls under one process — each gets its own
     /// supervisor (supersede queue, history, worker runs) while ALL
@@ -471,6 +547,72 @@ enum CampaignCommands {
         /// the in-flight run replay per campaign on restart
         #[arg(long)]
         queue_store_dir: Option<PathBuf>,
+    },
+}
+
+// --- bundle store / run logs ---------------------------------------------------
+
+/// `peregrin bundle …` — the installed-bundle store verbs (the
+/// retired MCP `bundle_*` tools; install delegates to the shared
+/// tamias install pipeline).
+#[derive(Subcommand)]
+enum BundleCommands {
+    /// Install a bundle ref (`./path`, `git:<url>[//subdir][#rev]`,
+    /// `http(s) .tgz`) into the store
+    Install {
+        /// The source ref to install
+        reference: String,
+        /// Consent to register the package's bundled drivers
+        #[arg(long)]
+        allow_drivers: bool,
+    },
+    /// Drop an installed bundle's store entry (name or name@version) —
+    /// the fetch cache is untouched
+    Remove {
+        /// Store entry name (or `name@version`)
+        name: String,
+    },
+    /// List installed bundles — name@version, resolved sha, source ref
+    List,
+    /// A bundle's manifest, provenance and size
+    Info {
+        /// Store entry name (or `name@version`)
+        name: String,
+    },
+}
+
+/// `peregrin logs …` — JSONL run-log observability over arbitrary
+/// log dirs (the retired MCP `runs`/`events`/`explain` tools; `events`
+/// is always bounded — the live feed stays the `events` surface).
+#[derive(Subcommand)]
+enum LogsCommands {
+    /// Scan a dir (recursive) for `*.jsonl` run logs, newest first —
+    /// path, event count, verdict per run
+    Runs {
+        /// Dir to scan (default `<peregrin-home>/runs`)
+        #[arg(long)]
+        dir: Option<PathBuf>,
+        /// Max runs to summarize
+        #[arg(long, default_value_t = 20)]
+        limit: usize,
+    },
+    /// Tail events from a JSONL run log; `--type` filters to one
+    /// event type, `--limit` bounds the tail (default 50)
+    Events {
+        /// Path to the JSONL run log
+        path: PathBuf,
+        /// Only events of this type
+        #[arg(long = "type")]
+        event_type: Option<String>,
+        /// Max events to return (the tail)
+        #[arg(long, default_value_t = 50)]
+        limit: usize,
+    },
+    /// Summarize one run log — verdict, terminal event, per-source/
+    /// per-kind counts, node failures, duration
+    Explain {
+        /// Path to the JSONL run log
+        path: PathBuf,
     },
 }
 
@@ -588,9 +730,18 @@ enum Commands {
     #[command(subcommand)]
     Sessions(SessionsCommands),
     /// Campaign ops — load and run campaign yamls on this machine's
-    /// campaign plane (the `handl` verbs: run, validate)
+    /// campaign plane (the `handl` verbs: run, validate, plus the
+    /// submit+poll agent surface)
     #[command(subcommand)]
     Campaign(CampaignCommands),
+    /// Installed-bundle store ops (install/remove/list/info) — the
+    /// tamias install pipeline under peregrin's store/cache roots
+    #[command(subcommand)]
+    Bundle(BundleCommands),
+    /// JSONL run-log observability — scan dirs, tail events, explain
+    /// runs (bounded; the live feed stays `events`)
+    #[command(subcommand)]
+    Logs(LogsCommands),
     /// Node-local project grouping (/api/projects)
     #[command(subcommand)]
     Projects(ProjectsCommands),
@@ -892,6 +1043,7 @@ fn run_projects(cmd: &ProjectsCommands) -> Result<(), CliError> {
 }
 
 fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
+    let env = ops::OpsEnv::default();
     match cmd {
         CampaignCommands::Run {
             workflow,
@@ -907,7 +1059,71 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
             queue_store.as_deref(),
         )
         .map(|_| ()),
-        CampaignCommands::Validate { workflow } => campaign::validate(workflow).map(|_| ()),
+        CampaignCommands::Validate {
+            path,
+            bundle,
+            workflow,
+        } => {
+            let resolved = agent::resolve_workflow(
+                &env,
+                path.as_deref(),
+                bundle.as_deref(),
+                workflow.as_deref(),
+            )?;
+            campaign::validate(&resolved).map(|_| ())
+        }
+        CampaignCommands::Submit {
+            path,
+            bundle,
+            workflow,
+            config,
+            secrets,
+            dry_run,
+            log,
+        } => agent::campaign_submit(
+            &env,
+            &agent::SubmitArgs {
+                path: path.as_deref(),
+                bundle: bundle.as_deref(),
+                entry: workflow.as_deref(),
+                config: config.as_deref(),
+                secrets: secrets.as_deref(),
+                dry_run: *dry_run,
+                log: log.as_deref(),
+            },
+        )
+        .map(|v| agent::emit(&v)),
+        CampaignCommands::Status { run, log } => {
+            agent::campaign_status(&env, run, log.as_deref()).map(|v| agent::emit(&v))
+        }
+        CampaignCommands::Events {
+            run,
+            event_type,
+            limit,
+            log,
+        } => agent::campaign_events(&env, run, log.as_deref(), event_type.as_deref(), *limit)
+            .map(|v| agent::emit(&v)),
+        CampaignCommands::Exec {
+            workflow,
+            history,
+            config,
+            secrets,
+            dry_run,
+        } => {
+            let config = config.as_deref().map(agent::parse_config_arg).transpose()?;
+            let secrets = secrets
+                .as_deref()
+                .map(agent::parse_secrets_arg)
+                .transpose()?;
+            campaign::exec(
+                workflow,
+                history,
+                config.as_ref(),
+                secrets.as_ref(),
+                *dry_run,
+            )
+            .map(|_| ())
+        }
         CampaignCommands::Serve {
             paths,
             listen,
@@ -923,6 +1139,36 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
             rt,
         ),
     }
+}
+
+fn run_bundle(cmd: &BundleCommands) -> Result<(), CliError> {
+    let env = ops::OpsEnv::default();
+    let out = match cmd {
+        BundleCommands::Install {
+            reference,
+            allow_drivers,
+        } => agent::bundle_install(&env, reference, *allow_drivers),
+        BundleCommands::Remove { name } => agent::bundle_remove(&env, name),
+        BundleCommands::List => agent::bundle_list(&env),
+        BundleCommands::Info { name } => agent::bundle_info(&env, name),
+    }?;
+    agent::emit(&out);
+    Ok(())
+}
+
+fn run_logs(cmd: &LogsCommands) -> Result<(), CliError> {
+    let env = ops::OpsEnv::default();
+    let out = match cmd {
+        LogsCommands::Runs { dir, limit } => agent::logs_runs(&env, dir.as_deref(), *limit),
+        LogsCommands::Events {
+            path,
+            event_type,
+            limit,
+        } => agent::logs_events(path, event_type.as_deref(), *limit),
+        LogsCommands::Explain { path } => agent::logs_explain(path),
+    }?;
+    agent::emit(&out);
+    Ok(())
 }
 
 fn run_config(cmd: &ConfigCommands) -> Result<(), CliError> {
@@ -1002,6 +1248,8 @@ fn dispatch(cli: &Cli, rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
         } => node_ops::sessions_prompt(session_id, text, agent.agent.as_deref(), args),
         Commands::Sessions(cmd) => run_sessions(cmd),
         Commands::Campaign(cmd) => run_campaign(cmd, rt),
+        Commands::Bundle(cmd) => run_bundle(cmd),
+        Commands::Logs(cmd) => run_logs(cmd),
         Commands::Projects(cmd) => run_projects(cmd),
         Commands::Config(cmd) => run_config(cmd),
         Commands::Push(cmd) => run_push(cmd),
@@ -1264,6 +1512,20 @@ mod tests {
                 "--out",
                 "/tmp/x.yaml",
             ],
+            // The agent ops (P-028) — every arm errs or answers fast;
+            // `campaign submit`/`exec` are excluded (they spawn a
+            // detached run — covered by tests/agent_ops.rs instead).
+            vec!["peregrin", "campaign", "validate"],
+            vec!["peregrin", "campaign", "validate", "--bundle", "ghost"],
+            vec!["peregrin", "campaign", "status", "no-such-run"],
+            vec!["peregrin", "campaign", "events", "no-such-run"],
+            vec!["peregrin", "bundle", "list"],
+            vec!["peregrin", "bundle", "info", "ghost"],
+            vec!["peregrin", "bundle", "remove", "ghost"],
+            vec!["peregrin", "bundle", "install", "definitely-not-a-ref"],
+            vec!["peregrin", "logs", "runs", "--dir", "/nonexistent-dir"],
+            vec!["peregrin", "logs", "events", "/nonexistent.jsonl"],
+            vec!["peregrin", "logs", "explain", "/nonexistent.jsonl"],
         ] {
             let cli = cli(&argv);
             let _ = dispatch(&cli, &rt);

@@ -12,6 +12,7 @@
 //! dispatch (`manifest`/`views`/`query`) shared by the
 //! `tamias-driver-peregrin serve` loop.
 
+pub mod agent;
 pub mod api;
 pub mod campaign;
 pub mod cli;
