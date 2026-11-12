@@ -5,9 +5,9 @@
 //! points drivers (the `peregrin` bin, `tamias-driver-peregrin`'s
 //! `run`/ops surfaces) share. Local store verbs over the
 //! Devin/Cline/Claude/Cursor stores, node ops against a running
-//! node's `/api/*` surface, agent config IR verbs, pairing,
-//! `serve` (the node itself, shared with `peregrin-node`), and
-//! `service` management (systemd/launchd).
+//! node's `/api/*` surface, node config verbs (get/set), pairing,
+//! `serve` (the node itself, shared with `peregrin-node`). Host
+//! service management lives in tamias now.
 
 use std::path::PathBuf;
 
@@ -416,8 +416,9 @@ enum ConfigCommands {
 
 // --- campaigns -----------------------------------------------------------------
 
-/// Campaign verbs — the `handl` CLI surface, on this machine's
-/// campaign plane (`peregrin_node::campaign`, in-process).
+/// Campaign verbs — the `peregrin campaign` surface, on this
+/// machine's campaign plane (`peregrin_node::campaign`,
+/// in-process).
 #[derive(Subcommand)]
 enum CampaignCommands {
     /// Load a campaign yaml and execute it locally — prints the run's
@@ -640,7 +641,7 @@ enum PushCommands {
     },
 }
 
-// --- store / service ----------------------------------------------------------
+// --- store / import -------------------------------------------------------------
 
 /// `peregrin import <source>` — foreign config → peregrin node-config
 /// workflow conversion (ADR-0081).
@@ -730,8 +731,8 @@ enum Commands {
     #[command(subcommand)]
     Sessions(SessionsCommands),
     /// Campaign ops — load and run campaign yamls on this machine's
-    /// campaign plane (the `handl` verbs: run, validate, plus the
-    /// submit+poll agent surface)
+    /// campaign plane (run, validate, plus the submit+poll agent
+    /// surface)
     #[command(subcommand)]
     Campaign(CampaignCommands),
     /// Installed-bundle store ops (install/remove/list/info) — the
@@ -745,8 +746,7 @@ enum Commands {
     /// Node-local project grouping (/api/projects)
     #[command(subcommand)]
     Projects(ProjectsCommands),
-    /// Config ops — local agent config IR (list/export/import/install/
-    /// diff) plus the node's server-side config (get/set)
+    /// Config ops — the node's server-side config (get/set)
     #[command(subcommand)]
     Config(ConfigCommands),
     /// Web-push subscription management (/api/push/*)
@@ -1530,11 +1530,10 @@ mod tests {
             let cli = cli(&argv);
             let _ = dispatch(&cli, &rt);
         }
-        // Service verbs + `serve`: under `cfg(coverage)` they're compiled
-        // to fast-Err probes, which is the *only* build where dispatching
-        // them in-process is safe — outside coverage `service install`
-        // writes a real unit and runs `systemctl --user enable --now`,
-        // and `serve` binds :18787 and blocks forever.
+        // `serve`: under `cfg(coverage)` it's compiled to a fast-Err
+        // probe, which is the *only* build where dispatching it
+        // in-process is safe — outside coverage it binds :18787 and
+        // blocks forever.
         #[cfg(coverage)]
         for argv in [vec!["peregrin", "serve"]] {
             let cli = cli(&argv);

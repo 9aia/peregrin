@@ -1,9 +1,10 @@
 //! `peregrin campaign` — the campaign verbs, ported from the TS
-//! `handl` CLI (`apps/cli`). `run` executes a campaign yaml on this
-//! machine's campaign plane in-process (`peregrin_node::campaign` —
-//! the same composition the daemon hosts); `validate` expands a yaml
-//! and summarizes its wiring. The TS `typegen` verb and the
-//! otel/metrics observer flags are not ported yet.
+//! `handl` CLI (`apps/cli`; handl was later renamed peregrin).
+//! `run` executes a campaign yaml on this machine's campaign plane
+//! in-process (`peregrin_node::campaign` — the same composition the
+//! daemon hosts); `validate` expands a yaml and summarizes its
+//! wiring. The TS `typegen` verb and the otel/metrics observer
+//! flags are not ported yet.
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -14,8 +15,8 @@ use serde_json::{Map, Value};
 
 use crate::CliError;
 
-/// `handl run` — load, execute, print the event log one line per
-/// event (`ts source type`), like the TS. `history` swaps the
+/// `campaign run` — load, execute, print the event log one line per
+/// event (`ts source type`), like the TS original. `history` swaps the
 /// in-memory event log for the durable JSONL store at that path
 /// (ADR-0040's `--history` — `peregrin runs`/`explain`/`log` read it
 /// back); omitted keeps the ephemeral default. Returns the log so
@@ -252,7 +253,7 @@ fn expand_campaign_paths(paths: &[PathBuf]) -> Result<Vec<PathBuf>, CliError> {
     Ok(files)
 }
 
-/// `handl validate` — expand the yaml and print the summary plus
+/// `campaign validate` — expand the yaml and print the summary plus
 /// wiring warnings; the lines are returned for tests.
 ///
 /// # Errors
