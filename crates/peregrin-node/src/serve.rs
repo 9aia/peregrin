@@ -29,8 +29,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
 use peregrin_core::{Campaign, Event};
@@ -39,6 +39,7 @@ use peregrin_engine::Injector;
 use peregrin_queue::QueueStore;
 
 use crate::campaign::{self, CampaignError};
+use crate::inject;
 use crate::supervisor::{self, SupervisedOptions};
 
 /// One loaded campaign the daemon hosts.
@@ -111,6 +112,9 @@ pub struct Served {
     /// The shared demux — exposed for tests/status (`repos()`,
     /// `route_count()`).
     pub demux: Option<Arc<SharedWebhook>>,
+    /// The axum listener thread serving the merged router (webhook
+    /// demux + `/api/events/inject`) — `join` collects it.
+    listener_thread: Option<JoinHandle<()>>,
     /// Each campaign's external trigger injector — push events here
     /// for out-of-band feeds (tests, future daemon surfaces). The
     /// webhook routes hold their own clones, so dropping these does
@@ -148,6 +152,12 @@ impl Served {
     /// The first [`CampaignError`] any campaign's loop produced.
     pub fn join(mut self) -> Result<(), CampaignError> {
         self.request_shutdown();
+        // The listener thread exits on the same shutdown flag —
+        // collect it before the supervisors so a wedged socket can't
+        // outlive the drain.
+        if let Some(thread) = self.listener_thread.take() {
+            let _ = thread.join();
+        }
         let mut first_error = None;
         for (name, handle) in std::mem::take(&mut self.joins) {
             match handle.join() {
@@ -295,19 +305,32 @@ pub fn serve_campaigns(
 
     // One shared demux + listener — only when a campaign actually
     // declares `github-webhook` nodes; a fleet of storn-poll/schedule
-    // campaigns needs no socket.
+    // campaigns needs no socket. The same socket also serves
+    // `POST /api/events/inject` ([`inject`]) — the typed-event feed
+    // external producers (bupha's `ci.job.completed`) use to push
+    // triggers into hosted campaigns; it fans out through each
+    // campaign's trigger injector, populated as supervisors spawn.
     let needs_listener = hosted.iter().any(|e| wants_shared_webhook(&e.campaign));
-    let (demux, listener) = if needs_listener {
-        let demux = Arc::new(SharedWebhook::new());
-        let addr = demux
-            .serve(&config.listen, &config.path)
-            .map_err(CampaignError::Serve)?;
-        (Some(demux), Some(addr))
-    } else {
-        (None, None)
-    };
-
     let shutdown = Arc::new(AtomicBool::new(false));
+    let inject_targets: inject::InjectTargets = Arc::new(RwLock::new(Vec::new()));
+    let (demux, listener, listener_thread) = if needs_listener {
+        let demux = Arc::new(SharedWebhook::new());
+        let webhook = demux.router(&config.path).map_err(CampaignError::Serve)?;
+        // Bearer gate: `PEREGRIN_TOKEN` when set (the credential
+        // `peregrin serve` nodes and the bupha worker resolve);
+        // unset leaves the route open — the tokenless-dev
+        // convention. The socket is often tunnel-exposed, so keep
+        // the token configured in production.
+        let token = std::env::var("PEREGRIN_TOKEN")
+            .ok()
+            .filter(|t| !t.is_empty());
+        let router = webhook.merge(inject::router(Arc::clone(&inject_targets), token));
+        let (addr, thread) = inject::serve_listener(&config.listen, router, Arc::clone(&shutdown))
+            .map_err(CampaignError::Serve)?;
+        (Some(demux), Some(addr), Some(thread))
+    } else {
+        (None, None, None)
+    };
     let mut injectors = Vec::with_capacity(hosted.len());
     let mut joins = Vec::with_capacity(hosted.len());
     let mut names = Vec::with_capacity(hosted.len());
@@ -342,6 +365,13 @@ pub fn serve_campaigns(
             ..SupervisedOptions::default()
         };
         let run = supervisor::supervise(&entry.campaign, options);
+        // Register the trigger injector for `/api/events/inject`
+        // fan-out BEFORE moving it into `injectors` — the route
+        // reads this registry at request time.
+        inject_targets
+            .write()
+            .unwrap_or_else(std::sync::PoisonError::into_inner)
+            .push((name.clone(), run.injector.clone()));
         injectors.push(run.injector);
         joins.push((name.clone(), run.join));
         names.push(name);
@@ -351,6 +381,7 @@ pub fn serve_campaigns(
         listener,
         campaigns: names,
         demux,
+        listener_thread,
         injectors,
         shutdown,
         joins,

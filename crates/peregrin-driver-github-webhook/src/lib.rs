@@ -1551,6 +1551,25 @@ impl SharedWebhook {
             .push(route);
     }
 
+    /// The axum app [`serve`](Self::serve) binds — the `path` route
+    /// plus the shared-state body limit. Exposed so `campaign serve`
+    /// can `.merge()` additional routes (the `/api/events/inject`
+    /// fan-out) onto the SAME socket instead of binding a second
+    /// listener. Validates `path` with the same literal-route rule.
+    ///
+    /// # Errors
+    /// `path` failing the literal-route rule — as a displayable
+    /// message.
+    pub fn router(&self, path: &str) -> Result<Router, String> {
+        if !valid_path(path) {
+            return Err(format!(
+                "shared webhook 'path' must be a literal route \
+                 (leading '/', no captures): '{path}'"
+            ));
+        }
+        Ok(app(path, Arc::clone(&self.shared)))
+    }
+
     /// The watched repo names — status surfaces and tests.
     #[must_use]
     pub fn repos(&self) -> Vec<String> {

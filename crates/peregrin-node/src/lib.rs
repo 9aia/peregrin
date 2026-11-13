@@ -16,6 +16,7 @@ pub mod ci_fleet;
 #[cfg(feature = "bupha")]
 pub mod ci_rehydrate;
 pub mod ephemeral;
+pub mod inject;
 pub mod serve;
 pub mod supervisor;
 
