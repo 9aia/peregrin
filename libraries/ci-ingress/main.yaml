@@ -45,11 +45,8 @@ capabilities:
     - BUPHA_WEBHOOK_SECRET
     - BUPHA_WH_9AIA_BUPHA
     - BUPHA_WH_9AIA_CUORA
-    - BUPHA_WH_9AIA_KUDA
-    - BUPHA_WH_9AIA_MIMUS
     - BUPHA_WH_9AIA_MYCO
     - BUPHA_WH_9AIA_PEREGRIN
-    - BUPHA_WH_9AIA_STURN
     - BUPHA_WH_HANDL_LANG_DOCS
     - BUPHA_WH_HANDL_LANG_ENGINE_EXEC
     - BUPHA_WH_HANDL_LANG_ENGINE_EXEC_BYTECODE
@@ -577,12 +574,13 @@ nodes:
       secret_env: BUPHA_WEBHOOK_SECRET
     - name: handl-lang/pitch-2026-lotufo
       secret_env: BUPHA_WEBHOOK_SECRET
-    - name: 9aia/sturn
-      secret_env: BUPHA_WH_9AIA_STURN
-    - name: 9aia/kuda
-      secret_env: BUPHA_WH_9AIA_KUDA
-    - name: 9aia/mimus
-      secret_env: BUPHA_WH_9AIA_MIMUS
+    # 9aia/kuda, 9aia/mimus and 9aia/sturn are deliberately NOT
+    # watched: the bupha fleet (libraries/ci-gate/fleet.toml) skips
+    # them — no ci/check gate by design (mimus documents "no hosted
+    # CI by design"; its scripts/check.sh is a local pre-push floor).
+    # Watching them only produced ci-job entities no worker could
+    # ever claim — pending forever (bupha T-074). Re-add a repo here
+    # only when the fleet gains a [[repo]] spec for it.
     - name: 9aia/cuora
       secret_env: BUPHA_WH_9AIA_CUORA
     - name: 9aia/peregrin
