@@ -1011,33 +1011,6 @@ provider:
         assert_eq!(webhook_secret_env("o/r-n.x"), "PEREGRIN_WH_O_R_N_X");
     }
 
-    /// The shipped ci-gate bundle's manifest must keep validating —
-    /// guards the `provider:` block against schema drift.
-    #[test]
-    fn shipped_ci_gate_manifest_validates() {
-        let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../libraries/ci-gate");
-        let manifest = tamias_core::Manifest::load(&dir).unwrap();
-        assert_eq!(manifest.kind.as_deref(), Some("peregrin-bundle"));
-        let provider = manifest.provider.as_ref().unwrap();
-        // T8-7: `provider.name` is the SHARED campaign-host identity —
-        // every peregrin-bundle declares `peregrin` so their `campaign`
-        // services render one `peregrin-campaign.service`.
-        assert_eq!(provider.name.as_deref(), Some("peregrin"));
-        assert_eq!(provider.services.len(), 1);
-        assert_eq!(provider.services[0].name, "campaign");
-        let exec = &provider.services[0].exec;
-        assert!(exec.contains("campaign serve"), "{exec}");
-        assert!(exec.contains(".config/peregrin/serve"), "{exec}");
-        assert_eq!(provider.ingress.len(), 1);
-        // hooks: [] is deliberate — main.yaml is the full
-        // `peregrin import bupha` artifact with its own inline
-        // github-webhook node; manifest hooks would double-deliver.
-        assert_eq!(
-            provider.ingress[0].hooks,
-            [] as [tamias_core::ProviderHook; 0]
-        );
-    }
-
     /// docs-deploy joins the same shared campaign host (T8-7): same
     /// `provider.name`, same serve-dir exec, no declared hooks (its
     /// campaign yaml owns the repo list).
@@ -1050,15 +1023,15 @@ provider:
         assert_eq!(provider.name.as_deref(), Some("peregrin"));
         assert_eq!(provider.services.len(), 1);
         assert_eq!(provider.services[0].name, "campaign");
-        // Identical exec to ci-gate's — the shared unit converges
-        // last-deploy-wins only while every declarer agrees.
-        let gate = tamias_core::Manifest::load(
-            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../libraries/ci-gate"),
+        // Identical exec to ledger-notify's — the shared unit
+        // converges last-deploy-wins only while every declarer agrees.
+        let other = tamias_core::Manifest::load(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join("../../libraries/ledger-notify"),
         )
         .unwrap();
         assert_eq!(
             provider.services[0].exec,
-            gate.provider.as_ref().unwrap().services[0].exec
+            other.provider.as_ref().unwrap().services[0].exec
         );
         assert!(provider.ingress.iter().all(|i| i.hooks.is_empty()));
     }

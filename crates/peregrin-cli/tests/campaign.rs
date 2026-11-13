@@ -185,7 +185,7 @@ fn validate_a_libraries_campaign() {
 #[test]
 fn validate_docs_deploy_bundle() {
     // PL-009: the docs-deploy bundle ships its own ingress node, so —
-    // unlike ci-gate's include-only main.yaml — it must validate with
+    // unlike an include-only main.yaml — it must validate with
     // zero unemitting-subscription warnings.
     let lines =
         peregrin_cli::campaign::validate(&libraries_dir().join("docs-deploy/main.yaml")).unwrap();

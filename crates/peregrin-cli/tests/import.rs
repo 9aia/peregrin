@@ -2,7 +2,7 @@
 //! config converts to a structurally-complete node-config workflow:
 //! every repo lands in the webhook `repos` watch list, every job gets
 //! its `on:` subscription, secret_env passes through as names only.
-//! Plus the `libraries/ci-gate` + `libraries/release` bundles'
+//! Plus the shipped `libraries/` bundles'
 //! manifest/pack/verify path.
 #![allow(
     clippy::unwrap_used,
@@ -294,15 +294,15 @@ kind = "script"
 }
 
 #[test]
-fn ci_gate_bundle_packs_validates_and_installs() {
-    for bundle in ["ci-gate", "release"] {
+fn shipped_bundles_pack_validate_and_install() {
+    for bundle in ["docs-deploy", "release"] {
         let dir = libraries().join(bundle);
         // Manifest loads + validates.
         let manifest = tamias_core::Manifest::load(&dir).unwrap();
         assert_eq!(manifest.name, bundle);
         let expected = match bundle {
-            "ci-gate" => "0.2.2",
-            _ => "0.1.0",
+            "docs-deploy" => "0.1.1",
+            _ => "0.1.1",
         };
         assert_eq!(manifest.version.as_deref(), Some(expected));
         // The campaign payload parses through the real loader.
@@ -316,8 +316,7 @@ fn ci_gate_bundle_packs_validates_and_installs() {
         );
         assert!(campaign.nodes.iter().any(|n| n.driver == "github-status"));
         assert!(campaign.nodes.iter().all(|n| !n.on.is_empty()));
-        // params.schema.json is valid JSON Schema-ish JSON — ci-gate
-        // 0.2.x ships the fleet artifact without one.
+        // params.schema.json is valid JSON Schema-ish JSON when present.
         let schema_path = dir.join("params.schema.json");
         if schema_path.exists() {
             let schema: serde_json::Value =

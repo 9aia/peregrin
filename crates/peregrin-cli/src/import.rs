@@ -44,7 +44,7 @@
 //! node subscribes `push.<name>.<branch>.**.*`, recovering `clone_url`
 //! (`${event.match.1}` — `**` re-joins the `.`-separated segments) and
 //! `sha` (`${event.match.2}`). This is the same mechanics
-//! `libraries/ci-gate` documents; the importer emits concrete patterns
+//! the retired `ci-gate` bundle documented; the importer emits concrete patterns
 //! instead of `${config.*}` indirection because `on:` is load-time
 //! fixed.
 

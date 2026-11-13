@@ -36,13 +36,17 @@ not loader fragments:
 
 | Directory  | Bundle    | Purpose                                                              |
 | ---------- | --------- | -------------------------------------------------------------------- |
-| `ci-gate/` | `ci-gate` | Push → worktree-at-sha → shell run → `ci/<campaign>` status gate. **Migrating to `9aia/bupha//libraries/ci-gate` (`type: bupha`) — see its README; do not extend.** |
 | `docs-deploy/` | `docs-deploy` | Push to `refs/heads/docs` → worktree → `bun install` + `docs:deploy` (vitepress → gh-pages) → `docs/deploy` status. |
 | `release/` | `release` | Release pipeline driving **tarsi** `tarsi-serve` ops (`plan` → gate → `release`) on release-ref pushes — tarsi is the org release plane (project ADR-0005). |
 
 Each documents its operator params in `params.schema.json` + its
 `README.md` — see `peregrin import bupha` for the fleet-shaped
 equivalent.
+
+CI bundles do **not** live here — CI knowledge is bupha's:
+`ci-ingress` (forge webhook → `ci-job` entities) and `ci-gate`
+(worker fleet) ship from `9aia/bupha/libraries/`; the old
+push-to-verdict `ci-gate` campaign was retired at the T-002 cutover.
 
 ## File conventions
 

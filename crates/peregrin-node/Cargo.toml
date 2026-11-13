@@ -14,7 +14,7 @@ workspace = true
 # `bupha` — host the `kind="ci-job"` entity plane (bupha's CI-job
 # semantics over hypha's EntityPlane port, P-002). Default on: the
 # plane is inert until ci-job entities are created, and the ingress
-# side (`libraries/ci-ingress`) needs it resident to enqueue.
+# side (the ci-ingress bundle, now in bupha's libraries/) needs it resident to enqueue.
 default = ["bupha"]
 bupha = ["dep:bupha-plane", "dep:bupha-config-file"]
 

@@ -3,7 +3,7 @@
 //! `supersede:` + ingress nodes: fake-ingress triggers pushed through
 //! the returned `Injector` exercise latest-wins pending dedupe,
 //! `cancel_running` mid-flight cancels, fifo queueing, the shared
-//! `--history` JSONL, and the ci-gate campaign's live `supersede:`
+//! `--history` JSONL, and the docs-deploy campaign's live `supersede:`
 //! block end to end.
 
 use std::path::{Path, PathBuf};
@@ -352,7 +352,7 @@ fn listener_run_appends_its_boot_failure_to_the_shared_history() {
 }
 
 // ---------------------------------------------------------------------------
-// ci-gate — the shipped `supersede:` block is live config now
+// docs-deploy — the shipped `supersede:` block is live config now
 // ---------------------------------------------------------------------------
 
 fn libraries_dir() -> PathBuf {
@@ -363,9 +363,9 @@ fn libraries_dir() -> PathBuf {
 }
 
 #[test]
-fn ci_gate_supersede_block_parses() {
-    let campaign = campaign::load(&libraries_dir().join("ci-gate/main.yaml")).unwrap();
-    let supersede = campaign.supersede.expect("ci-gate declares supersede:");
+fn docs_deploy_supersede_block_parses() {
+    let campaign = campaign::load(&libraries_dir().join("docs-deploy/main.yaml")).unwrap();
+    let supersede = campaign.supersede.expect("docs-deploy declares supersede:");
     assert_eq!(supersede.key, "{repo}:{ref}");
     assert_eq!(supersede.mode, SupersedeMode::LatestWins);
     assert!(supersede.cancel_running);
@@ -376,7 +376,7 @@ fn ci_gate_supersede_block_parses() {
 }
 
 #[test]
-fn ci_gate_operator_overlay_splits_into_listener_and_workers() {
+fn docs_deploy_operator_overlay_splits_into_listener_and_workers() {
     // The operator node config — `include:` the bundle policy plus a
     // node-level `github-webhook` ingress — is what `campaign run`
     // sees under the systemd unit. The merge carries the bundle's
@@ -388,7 +388,7 @@ fn ci_gate_operator_overlay_splits_into_listener_and_workers() {
         format!(
             r#"
             name: my-gate
-            include: ["{}/ci-gate/main.yaml"]
+            include: ["{}/docs-deploy/main.yaml"]
             nodes:
               - id: gate.ingress
                 driver: github-webhook
@@ -418,7 +418,7 @@ fn ci_gate_operator_overlay_splits_into_listener_and_workers() {
     let (injector, _ingress) = peregrin_engine::ingress();
     let registry = campaign::registry_with_ingress(&injector);
     let (listener, worker) = campaign::split_ingress(&campaign, &registry);
-    // The bundle ships its own `ci.ingress.webhook` since 0.2.x — the
+    // The bundle ships its own webhook ingress node — the
     // listener half holds both webhook nodes; the worker half none.
     assert_eq!(listener.nodes.len(), 2);
     assert!(listener.nodes.iter().any(|n| n.id == "gate.ingress"));
