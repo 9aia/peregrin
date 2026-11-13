@@ -130,7 +130,7 @@ version = "1.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40c48f72fd53cd289104fc64099abca73db4166ad86ea0b4341abe65af83dadc"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -141,7 +141,7 @@ checksum = "291e6a250ff86cd4a820112fb8898808a366d8f9f58ce16d1f538353ad55747d"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -436,48 +436,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 
 [[package]]
-name = "bupha-config"
-version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#cd6b11c347096cf5de23aecc80bd44d2c623cba9"
-dependencies = [
- "bupha-core",
-]
-
-[[package]]
 name = "bupha-config-file"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#cd6b11c347096cf5de23aecc80bd44d2c623cba9"
+source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#f27249ed9b7636d8663ec95f0e5d1f149c382746"
 dependencies = [
- "bupha-config",
- "bupha-config-toml",
- "bupha-config-yaml",
  "bupha-core",
-]
-
-[[package]]
-name = "bupha-config-toml"
-version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#cd6b11c347096cf5de23aecc80bd44d2c623cba9"
-dependencies = [
- "bupha-config",
- "bupha-core",
- "toml",
-]
-
-[[package]]
-name = "bupha-config-yaml"
-version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#cd6b11c347096cf5de23aecc80bd44d2c623cba9"
-dependencies = [
- "bupha-config",
- "bupha-core",
+ "scarab-config",
+ "scarab-config-file",
  "serde_norway",
+ "toml",
 ]
 
 [[package]]
 name = "bupha-core"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#cd6b11c347096cf5de23aecc80bd44d2c623cba9"
+source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#f27249ed9b7636d8663ec95f0e5d1f149c382746"
 dependencies = [
  "serde",
  "serde_json",
@@ -487,7 +460,7 @@ dependencies = [
 [[package]]
 name = "bupha-plane"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#cd6b11c347096cf5de23aecc80bd44d2c623cba9"
+source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#f27249ed9b7636d8663ec95f0e5d1f149c382746"
 dependencies = [
  "async-trait",
  "axum",
@@ -871,7 +844,7 @@ dependencies = [
  "openssl-sys",
  "schannel",
  "socket2",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -887,7 +860,7 @@ dependencies = [
  "openssl-sys",
  "pkg-config",
  "vcpkg",
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -1255,7 +1228,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "39cab71617ae0d63f51a36d69f866391735b51691dbda63cf6f96d042b63efeb"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1746,7 +1719,7 @@ dependencies = [
 [[package]]
 name = "hypha-control"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "serde",
  "serde_json",
@@ -1755,7 +1728,7 @@ dependencies = [
 [[package]]
 name = "hypha-dotenv"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "hypha-secret",
 ]
@@ -1763,7 +1736,7 @@ dependencies = [
 [[package]]
 name = "hypha-http"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "async-trait",
  "axum",
@@ -1790,7 +1763,7 @@ dependencies = [
 [[package]]
 name = "hypha-hub"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "async-trait",
  "axum",
@@ -1806,6 +1779,7 @@ dependencies = [
  "keyring",
  "serde",
  "serde_json",
+ "sha2",
  "tokio",
  "tower-http",
  "tracing",
@@ -1816,7 +1790,7 @@ dependencies = [
 [[package]]
 name = "hypha-keyring"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "hypha-secret",
 ]
@@ -1824,7 +1798,7 @@ dependencies = [
 [[package]]
 name = "hypha-kv"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "serde",
  "serde_json",
@@ -1833,7 +1807,7 @@ dependencies = [
 [[package]]
 name = "hypha-kv-file"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "hypha-kv",
  "serde",
@@ -1843,7 +1817,7 @@ dependencies = [
 [[package]]
 name = "hypha-node-api"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "async-trait",
  "serde",
@@ -1855,7 +1829,7 @@ dependencies = [
 [[package]]
 name = "hypha-outbox"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "rusqlite",
  "serde",
@@ -1869,7 +1843,7 @@ dependencies = [
 [[package]]
 name = "hypha-push"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "base64 0.22.1",
  "futures",
@@ -1884,12 +1858,12 @@ dependencies = [
 [[package]]
 name = "hypha-secret"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 
 [[package]]
 name = "hypha-secret-cuora"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "hypha-secret",
  "serde_json",
@@ -1898,12 +1872,12 @@ dependencies = [
 [[package]]
 name = "hypha-service"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 
 [[package]]
 name = "hypha-sync"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "hypha-outbox",
  "rusqlite",
@@ -1920,7 +1894,7 @@ dependencies = [
 [[package]]
 name = "hypha-systemd"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "hypha-service",
 ]
@@ -1928,7 +1902,7 @@ dependencies = [
 [[package]]
 name = "hypha-telemetry"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#51ff3bd59626ad3002b5e1aded2e1c829651f0cc"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#4cd33db8ea537b19440ae2779ee12c7356626027"
 dependencies = [
  "http 1.5.0",
  "opentelemetry",
@@ -2427,7 +2401,7 @@ version = "0.50.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7957b9740744892f114936ab4a57b3f487491bbeafaf8083688b16841a4240e5"
 dependencies = [
- "windows-sys 0.61.2",
+ "windows-sys 0.59.0",
 ]
 
 [[package]]
@@ -3717,7 +3691,7 @@ dependencies = [
  "errno",
  "libc",
  "linux-raw-sys",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -4364,7 +4338,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c3d1e2c7f27f8d4cb10542a02c49005dbd6e93095799d6f3be745fae9f8fedd4"
 dependencies = [
  "libc",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -4788,7 +4762,7 @@ dependencies = [
  "getrandom 0.4.3",
  "once_cell",
  "rustix",
- "windows-sys 0.61.2",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -5158,7 +5132,7 @@ checksum = "f2f6fb2847f6742cd76af783a2a2c49e9375d0a111c7bef6f71cd9e738c72d6e"
 dependencies = [
  "memoffset",
  "tempfile",
- "windows-sys 0.61.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
