@@ -14,18 +14,24 @@
 //! every `BUPHA_*`/`PEREGRIN_*` fleet secret; `cuora://peregrin/`
 //! copies survive only where the two scopes legitimately diverge
 //! (T-053). Resolution is therefore
-//! a two-scope chain, own scope first:
+//! a three-scope chain, own scope first:
 //!
 //! 1. `cuora://peregrin/<NAME>` — peregrine-owned names
 //!    (`GITHUB_TOKEN`, `push/*`) and any deliberate per-product
 //!    override;
 //! 2. `cuora://bupha/<NAME>` — the canonical fleet copy;
-//! 3. the caller's next leg (OS keyring, env file).
+//! 3. `cuora://secrets-ci-webhooks/<NAME>` — the sealed tamias
+//!    pack holding the migrated `BUPHA_WH_*` webhook secrets
+//!    (vault-less, age-sealed; see cuora's `cuora://<pack>/<secret>`
+//!    read path);
+//! 4. the caller's next leg (OS keyring, env file).
 //!
-//! Own-scope-first ordering means a name present under both scopes
-//! keeps resolving to the peregrin value — the mechanism preserves
-//! today's behavior for names whose scopes legitimately diverge.
-//! `set` always writes the *primary* scope: migrating a shared
+//! Own-scope-first ordering means a name present under several
+//! scopes keeps resolving to the peregrin value — the mechanism
+//! preserves today's behavior for names whose scopes legitimately
+//! diverge — and the pack leg sits last: packs are the migration
+//! target, never an override over either vault scope. `set` always
+//! writes the *primary* scope: migrating a shared
 //! fleet name is `cuora put cuora://bupha/<NAME>`, never this
 //! store. When cuora's `[ref-aliases]` (T-052) lands, the alias
 //! table can replace this client-side chain — the fallback list
@@ -72,6 +78,13 @@ pub const NAMESPACE: &str = "peregrin";
 /// the shared fleet names' single copy lives there.
 pub const FALLBACK_NAMESPACE: &str = "bupha";
 
+/// Sealed-pack fallback namespace — the `secrets-ci-webhooks`
+/// tamias pack holding the migrated `BUPHA_WH_*` webhook secrets
+/// (vault-less, age-sealed). Consulted only when both vault scopes
+/// miss; pack contents are authored via `tamias`/`cuora seal`,
+/// never this store.
+pub const PACK_NAMESPACE: &str = "secrets-ci-webhooks";
+
 /// The env knobs this shim reads — re-exported for consumers that
 /// build their own transport legs (`peregrin-http`'s push backend).
 pub const BIN_ENV: &str = "PEREGRIN_CUORA_BIN";
@@ -93,8 +106,9 @@ const MAX_WORKERS: usize = 32;
 /// `Secrets` over cuora — CLI or `cuora serve` transport per
 /// [`CuoraTransport`]. Thin wrapper over
 /// [`hypha_secret_cuora::CuoraSecrets`] pinned to the `peregrin`
-/// scope plus the `bupha` fallback scope (T-053 — see the module
-/// docs); the env knobs stay peregrin's.
+/// scope plus the `bupha` fleet fallback and the
+/// `secrets-ci-webhooks` sealed-pack fallback (T-053 — see the
+/// module docs); the env knobs stay peregrin's.
 ///
 /// Clones share the serve child — see
 /// [`CuoraSecrets::shared_default`] for why that matters.
@@ -108,6 +122,9 @@ pub struct CuoraSecrets {
     /// Canonical fleet scope — consulted only on a primary miss
     /// (see the module docs' scope-fallback chain).
     fallback: hypha_secret_cuora::CuoraSecrets,
+    /// Sealed-pack scope — consulted only when both vault scopes
+    /// miss (see the module docs' scope-fallback chain).
+    pack: hypha_secret_cuora::CuoraSecrets,
 }
 
 impl Default for CuoraSecrets {
@@ -122,6 +139,7 @@ impl std::fmt::Debug for CuoraSecrets {
             .field("bin", &self.bin)
             .field("transport", &self.inner.transport())
             .field("fallback_scope", &FALLBACK_NAMESPACE)
+            .field("pack_scope", &PACK_NAMESPACE)
             .finish_non_exhaustive()
     }
 }
@@ -152,6 +170,9 @@ impl CuoraSecrets {
                 .with_bin(bin.clone())
                 .with_transport(transport),
             fallback: hypha_secret_cuora::CuoraSecrets::new(FALLBACK_NAMESPACE)
+                .with_bin(bin.clone())
+                .with_transport(transport),
+            pack: hypha_secret_cuora::CuoraSecrets::new(PACK_NAMESPACE)
                 .with_bin(bin)
                 .with_transport(transport),
         }
@@ -207,7 +228,7 @@ impl CuoraSecrets {
                         let mut i = lane;
                         // One child per lane under serve — the
                         // shared `inner` child would serialize the
-                        // whole batch on its request mutex. The
+                        // whole batch on its request mutex. Each
                         // fallback scope gets its own child per
                         // lane too: refs are per-scope and the
                         // actor label must match the scope.
@@ -215,20 +236,27 @@ impl CuoraSecrets {
                             Some((
                                 CuoraServe::new(bin.clone(), NAMESPACE),
                                 CuoraServe::new(bin.clone(), FALLBACK_NAMESPACE),
+                                CuoraServe::new(bin.clone(), PACK_NAMESPACE),
                             ))
                         } else {
                             None
                         };
                         while i < names.len() {
                             let value = match &serve {
-                                Some((primary, fallback)) => {
-                                    primary.get(&rref(names[i])).or_else(|| {
+                                Some((primary, fallback, pack)) => primary
+                                    .get(&rref(names[i]))
+                                    .or_else(|| {
                                         fallback.get(&hypha_secret_cuora::rref(
                                             FALLBACK_NAMESPACE,
                                             names[i],
                                         ))
                                     })
-                                }
+                                    .or_else(|| {
+                                        pack.get(&hypha_secret_cuora::rref(
+                                            PACK_NAMESPACE,
+                                            names[i],
+                                        ))
+                                    }),
                                 None => self.get(names[i]),
                             };
                             lane_results.push((i, value));
@@ -268,11 +296,16 @@ pub fn rref(name: &str) -> String {
 }
 
 impl Secrets for CuoraSecrets {
-    /// Own scope first, then the canonical bupha fleet scope — a
-    /// name present under both keeps resolving to the peregrin
-    /// value, so legitimately-divergent scopes are preserved.
+    /// Own scope first, then the canonical bupha fleet scope, then
+    /// the sealed pack — a name present under several scopes keeps
+    /// resolving to the peregrin value, so legitimately-divergent
+    /// scopes are preserved and the pack (the migration target)
+    /// never overrides either vault scope.
     fn get(&self, name: &str) -> Option<String> {
-        self.inner.get(name).or_else(|| self.fallback.get(name))
+        self.inner
+            .get(name)
+            .or_else(|| self.fallback.get(name))
+            .or_else(|| self.pack.get(name))
     }
 
     /// Deploy-time migration — `cuora put` reads the value on stdin
@@ -385,6 +418,57 @@ mod tests {
             CuoraSecrets::with_bin(bin).get("BUPHA_WH_X"),
             Some("peregrin-value".to_string())
         );
+    }
+
+    #[test]
+    fn get_falls_back_to_sealed_pack_when_vault_scopes_miss() {
+        // Both vault scopes miss; the sealed pack answers — the
+        // secrets-ci-webhooks migration shape.
+        let dir = tempfile::tempdir().unwrap();
+        let bin = stub(
+            dir.path(),
+            "#!/bin/sh\n\
+             for ref in \"$@\"; do :; done\n\
+             case \"$ref\" in\n\
+               cuora://secrets-ci-webhooks/*) printf 'pack-value\\n' ;;\n\
+               *) exit 1 ;;\n\
+             esac\n",
+        );
+        assert_eq!(
+            CuoraSecrets::with_bin(bin).get("BUPHA_WH_9AIA_BUPHA"),
+            Some("pack-value".to_string())
+        );
+    }
+
+    #[test]
+    fn get_prefers_fleet_scope_over_pack() {
+        // Peregrin misses, bupha and the pack both answer — the
+        // fleet vault copy must win: packs are the migration
+        // target, never an override.
+        let dir = tempfile::tempdir().unwrap();
+        let bin = stub(
+            dir.path(),
+            "#!/bin/sh\n\
+             for ref in \"$@\"; do :; done\n\
+             case \"$ref\" in\n\
+               cuora://bupha/*) printf 'fleet-value\\n' ;;\n\
+               cuora://secrets-ci-webhooks/*) printf 'pack-value\\n' ;;\n\
+               *) exit 1 ;;\n\
+             esac\n",
+        );
+        assert_eq!(
+            CuoraSecrets::with_bin(bin).get("BUPHA_WH_9AIA_BUPHA"),
+            Some("fleet-value".to_string())
+        );
+    }
+
+    #[test]
+    fn get_answers_none_when_vault_and_pack_all_miss() {
+        // Every scope in the chain misses — the caller's next leg
+        // (keyring, env file) takes over.
+        let dir = tempfile::tempdir().unwrap();
+        let bin = stub(dir.path(), "#!/bin/sh\nexit 1\n");
+        assert_eq!(CuoraSecrets::with_bin(bin).get("BUPHA_WH_X"), None);
     }
 
     #[test]
