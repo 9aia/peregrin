@@ -290,6 +290,67 @@ fn displaced_pending_run_marks_the_shared_history() {
     assert_eq!(persisted["payload"]["superseded"], true);
 }
 
+#[test]
+fn listener_run_appends_its_boot_failure_to_the_shared_history() {
+    // The pr-heal/T-076 shape: a `github-webhook` listener node whose
+    // repo secret can't resolve — the listener run dies at boot and,
+    // before the fix, left no durable trace (its event log died with
+    // the thread; nothing reached the shared `--history` JSONL).
+    let tmp = tempfile::tempdir().unwrap();
+    let history = tmp.path().join("history.jsonl");
+    let campaign = load(
+        r#"
+        supersede:
+          key: "{repo}"
+          mode: latest-wins
+        nodes:
+          - id: gate.ingress
+            driver: github-webhook
+            on: [start]
+            params:
+              listen: "127.0.0.1:0"
+              repos:
+                - name: "o/r"
+                  secret_env: "PEREGRIN_LISTENER_TEST_MISSING"
+        "#,
+    );
+    // The listener's own drivers hold trigger-channel injectors, so
+    // dropping `run.injector` alone never ends supervision — the
+    // `campaign serve` shutdown flag is the production stop (same as
+    // SIGTERM). Give the listener a beat to hit its boot failure,
+    // then flag shutdown and join.
+    let shutdown = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let run = supervise(
+        &campaign,
+        SupervisedOptions {
+            history: Some(history.clone()),
+            shutdown: Some(std::sync::Arc::clone(&shutdown)),
+            ..SupervisedOptions::default()
+        },
+    );
+    std::thread::sleep(Duration::from_millis(500));
+    shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+    run.join.join().unwrap().unwrap();
+
+    let text = std::fs::read_to_string(&history).unwrap();
+    let file_kinds: Vec<String> = text
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| {
+            serde_json::from_str::<Value>(l).unwrap()["type"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        })
+        .collect();
+    // `node.failed` is the signal that was silent for ~15h in the
+    // pr-heal incident; `workflow.cancelled` is the shutdown drain.
+    assert!(
+        file_kinds.contains(&"node.failed".to_string()),
+        "listener boot failure persisted: {file_kinds:?}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // ci-gate — the shipped `supersede:` block is live config now
 // ---------------------------------------------------------------------------

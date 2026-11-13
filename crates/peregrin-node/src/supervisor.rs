@@ -34,9 +34,8 @@ use std::time::Duration;
 
 use peregrin_core::{Campaign, Event};
 use peregrin_driver::{DriverError, SecretSource};
-use peregrin_engine::{Ingress, Injector, RunOptions, Runner, WaitOutcome, ingress};
+use peregrin_engine::{Ingress, Injector, RunOptions, WaitOutcome, ingress};
 use peregrin_queue::{Decision, Disposition, Job, Queue, QueueStore, QueueStoreError, Supersede};
-use peregrin_store::MemoryDlq;
 use serde_json::json;
 
 use crate::campaign::{self, CampaignError};
@@ -333,7 +332,8 @@ pub struct SupervisedOptions {
     /// thread ([`campaign::default_secret_stores`] for the stock
     /// `record → env → keyring → file` chain).
     pub secret_stores: Arc<dyn Fn() -> Vec<SecretSource> + Send + Sync>,
-    /// The durable history every spawned run appends its events to —
+    /// The durable history every run appends its events to — the
+    /// persistent listener run *and* each spawned worker run share
     /// the `campaign run --history` JSONL `peregrin runs`/`log`/
     /// `explain` read back. `None` keeps run logs ephemeral.
     pub history: Option<PathBuf>,
@@ -470,18 +470,25 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
 
     // The persistent listener run — `with_ingress` gives it the
     // park/cancel channel its serve semantics need (its drivers push
-    // to the queue channel; nothing else arrives). Spawned only when
-    // the campaign actually declares ingress nodes — a `supersede:`
-    // campaign fed purely through the returned injector needs no
-    // listener.
+    // to the queue channel; nothing else arrives), and the shared
+    // `history` sink records its boot/failure events durably — a
+    // listener that dies at startup (`node.failed: secret
+    // unresolved`, a bind error) leaves the same JSONL trace a
+    // spawned run would. Spawned only when the campaign actually
+    // declares ingress nodes — a `supersede:` campaign fed purely
+    // through the returned injector needs no listener.
     let listener = (!listener_campaign.nodes.is_empty()).then(|| {
         let (cancel_injector, cancel_ingress) = ingress();
         let materials = Arc::clone(&materials);
         let thread = thread::spawn(move || {
-            let mut runner = Runner::new(listener_registry)
-                .with_dlq(Box::<MemoryDlq>::default())
-                .with_ingress(cancel_ingress);
-            runner.run(&listener_campaign, &materials.run_options())
+            let mut runner = campaign::listener_runner(
+                listener_registry,
+                cancel_ingress,
+                materials.history.as_deref(),
+            )?;
+            runner
+                .run(&listener_campaign, &materials.run_options())
+                .map_err(CampaignError::Run)
         });
         (thread, cancel_injector)
     });
@@ -542,7 +549,7 @@ fn supervise_loop(
     policy: Supersede,
     trigger_ingress: Ingress,
     worker_campaign: Arc<Campaign>,
-    listener: Option<JoinHandle<Result<Vec<Event>, DriverError>>>,
+    listener: Option<JoinHandle<Result<Vec<Event>, CampaignError>>>,
     listener_injector: Option<Injector>,
     materials: Arc<RunMaterials>,
     queue_store: Option<Arc<dyn QueueStore>>,
@@ -650,7 +657,7 @@ fn supervise_loop(
             Ok(Err(e)) => {
                 tracing::error!("ingress listener run failed: {e}");
                 if first_error.is_none() {
-                    first_error = Some(CampaignError::Run(e));
+                    first_error = Some(e);
                 }
             }
             Err(_) => {

@@ -209,6 +209,40 @@ pub fn split_ingress(campaign: &Campaign, registry: &Registry) -> (Campaign, Cam
     (listener, worker)
 }
 
+/// [`worker_runner`] for the persistent *listener* run — the same
+/// history sink over a caller-supplied registry (the ingress-driver
+/// half from [`crate::supervisor::supervise`]). Without it a listener
+/// that dies at boot (an unresolved secret, a bind failure) leaves no
+/// durable trace: its event log is dropped with the thread.
+///
+/// # Errors
+/// [`CampaignError::Store`] when the log can't be opened.
+pub fn listener_runner(
+    registry: Registry,
+    ingress: Ingress,
+    log_path: Option<&Path>,
+) -> Result<Runner, CampaignError> {
+    let runner = Runner::new(registry)
+        .with_dlq(Box::<MemoryDlq>::default())
+        .with_ingress(ingress);
+    with_history(runner, log_path)
+}
+
+/// Swap `runner`'s in-memory bus for the durable JSONL log at
+/// `log_path`, opened in append mode: every run continues the shared
+/// history file but must not read earlier runs back (a run's `seen`
+/// types are per-run). `None` keeps the memory bus.
+fn with_history(mut runner: Runner, log_path: Option<&Path>) -> Result<Runner, CampaignError> {
+    if let Some(path) = log_path {
+        let store = peregrin_store_json::JsonStore::open_append(path)?;
+        runner = runner.with_bus(Box::new(LocalBus::new(
+            Box::new(store),
+            Arc::new(NoopObserver),
+        )));
+    }
+    Ok(runner)
+}
+
 /// The runner a supervised spawned run gets (docs/reference/
 /// queue-supersede.md): the stock registry (the ingress impls are
 /// never registered — the listener half lives in the persistent run,
@@ -223,15 +257,7 @@ pub fn split_ingress(campaign: &Campaign, registry: &Registry) -> (Campaign, Cam
 /// # Errors
 /// [`CampaignError::Store`] when the log can't be opened.
 pub fn worker_runner(ingress: Ingress, log_path: Option<&Path>) -> Result<Runner, CampaignError> {
-    let mut runner = runner().with_ingress(ingress);
-    if let Some(path) = log_path {
-        let store = peregrin_store_json::JsonStore::open_append(path)?;
-        runner = runner.with_bus(Box::new(LocalBus::new(
-            Box::new(store),
-            Arc::new(NoopObserver),
-        )));
-    }
-    Ok(runner)
+    with_history(runner().with_ingress(ingress), log_path)
 }
 
 /// A runner like [`runner`] but with a live ingress pair: the
