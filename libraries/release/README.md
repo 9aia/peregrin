@@ -17,6 +17,29 @@ queued release is pointless (latest-wins dedupes pending jobs), but a
 half-published crate set is worse than a stale one — an in-flight
 publish is never cancelled.
 
+## Artifacts
+
+The bundle is split into stdlib artifacts (ADR-0029) — `main.yaml`
+carries the campaign-level concerns (`name`, `config`, `supersede`,
+`annotations`, the `nodes:` wiring list) and each node lives in its
+own `.node.yml`:
+
+| File | Role |
+| --- | --- |
+| `match.node.yml` | Gate on `config.repo`/`config.ref`; re-emit `push.release.<clone_url>.<sha>`. |
+| `pending.node.yml` | `pending` `ci/<name>` status on the gated sha. |
+| `build.node.yml` | Detached worktree at the pushed sha → `config.cmd`. |
+| `failmap.node.yml` | `node.failed` → `<node>.failed.<sha>` remap for the verdict. |
+| `status.node.yml` | Verdict → `ci/<name>` commit status (success/failure/error). |
+| `status-params.snippet.yml` | github-status params shared by `pending`/`status` (`snippet: status-params`). |
+| `release.field.yml` | `config.*` surface as a handl field pattern (mirror of `params.schema.json`). |
+
+`main.yaml`'s `nodes:` entries are bare `include:`s; the
+`snippets:` entry declares `status-params` the same way. Loading
+`main.yaml` as the top document also auto-discovers the sibling
+artifacts — the explicit includes/`snippets:` keep the bundle intact
+when `main.yaml` is itself `include:`d into another campaign.
+
 ## Node config
 
 Same shape as `libraries/ci-gate` — an ingress node

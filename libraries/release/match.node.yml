@@ -1,0 +1,30 @@
+# release/match.node.yml — the release gate: repo + ref filter that
+# re-emits a gated push as `push.release.<clone_url>.<sha>`.
+#
+# Part of `libraries/release` (see `main.yaml` for the campaign
+# config, supersede policy, and the full event contract). Wired by
+# `main.yaml`'s `nodes:` include — `on:`/`emits:` are the bundle's
+# fixed internal contract, not a consumer-facing preset.
+#
+# `exit 9` on a repo mismatch lets the shell driver's emit map fall
+# through to `push.unmatched`; the ref check is the gate itself.
+annotations:
+  title: Release gate + router
+  description: Gates pushes on config.repo/config.ref and re-emits matches as push.release.<clone_url>.<sha>.
+  author: peregrin
+  tags: [release, gate, router]
+  since: "0.1.0"
+  see: project/adrs/0081-bupha-peregrin-migration-inventory-queue-semantics-drivers-sinks-ops.md
+
+id: release.match
+driver: shell
+on: [push]
+max_fires: unlimited
+emits: [push.release, push.unmatched]
+params:
+  cmd: |
+    if [ -n "${config.repo}" ] && [ "${event.payload.repo}" != "${config.repo}" ]; then exit 9; fi
+    [ "${event.payload.ref}" = "${config.ref:-refs/heads/main}" ]
+  emit:
+    "0": "push.release.${event.payload.clone_url}.${event.payload.sha}"
+    default: "push.unmatched"

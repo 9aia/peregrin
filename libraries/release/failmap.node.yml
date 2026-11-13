@@ -1,0 +1,22 @@
+# release/failmap.node.yml — re-maps driver-git materialization
+# failures onto `<node>.failed.<sha>` so the status sink can post
+# `error` (plain `node.failed` carries no sha the verdict node can
+# route on).
+#
+# Part of `libraries/release`.
+annotations:
+  title: Release failure remap
+  description: Re-emits node.failed as <node>.failed.<sha> so release.status posts an error verdict.
+  author: peregrin
+  tags: [release, remap, shell]
+  since: "0.1.0"
+
+id: release.failmap
+driver: shell
+on: [node.failed]
+max_fires: unlimited
+params:
+  cmd: 'test -n "${event.payload.node}" && test -n "${event.payload.sha}"'
+  emit:
+    "0": "${event.payload.node}.failed.${event.payload.sha}"
+    default: "release.unmapped"

@@ -1,0 +1,41 @@
+# release/build.node.yml — materializes a detached worktree at the
+# pushed sha (driver-git) and runs the release command inside it.
+#
+# Part of `libraries/release`. The pushed-sha worktree keeps every
+# run hermetic. `env` resolves the registry token through the
+# capability-gated secrets record (`${secret.*}` — "" on a miss)
+# rather than naming it for the impl; the node config's
+# capabilities.secrets grant must cover it.
+#
+# Emits `release.done` on rc 0, `release.failed` otherwise; driver-git
+# materialization failures surface as plain `node.failed` (remapped
+# by failmap.node.yml).
+annotations:
+  title: Release worktree + command
+  description: Checks out the pushed sha into a detached worktree and runs config.cmd (default tarsi-serve release --yes) inside it.
+  author: peregrin
+  tags: [release, git, worktree, shell]
+  since: "0.1.0"
+  see: project/adrs/0081-bupha-peregrin-migration-inventory-queue-semantics-drivers-sinks-ops.md
+
+id: release.build
+driver: git
+on: [push.release.**.*]
+max_fires: unlimited
+emits: [release.done, release.failed]
+params:
+  url: "${event.match.1}"
+  sha: "${event.match.2}"
+  base: "${config.worktree_base:-~/.local/share/peregrin/worktrees}"
+  token_env: "${config.token_env:-GITHUB_TOKEN}"
+  inner:
+    driver: shell
+    params:
+      cmd: "${config.cmd}"
+      timeout: "${config.timeout:-600}"
+      env:
+        CARGO_REGISTRY_TOKEN: "${secret.CARGO_REGISTRY_TOKEN:-}"
+        GITHUB_TOKEN: "${secret.GITHUB_TOKEN:-}"
+  emit:
+    "0": release.done
+    default: release.failed

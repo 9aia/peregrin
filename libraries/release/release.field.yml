@@ -1,0 +1,40 @@
+# release.field.yml — the bundle's `config.*` params surface as a
+# reusable handl field pattern (same convention as
+# `libraries/retry/retry.field.yml`, `libraries/map/map.field.yml`).
+#
+# The release config is flat (no `config.release` namespace — the
+# keys predate the field-pattern convention and are the installed
+# contract), so the pattern types the `config:` document field's
+# subkeys directly. Mirror of `params.schema.json`.
+#
+#   fields:
+#     include: ./release.field.yml
+#
+#   config:
+#     name: release
+#     repo: "9aia/peregrin"
+#     ref: "refs/heads/main"
+#     cmd: "tarsi-serve release --yes"
+#
+# `token_env`/`secret.*` names are secret NAMES, never values.
+
+fields:
+  config:
+    type: object
+    fields:
+      # Status context base — statuses post as ci/<name>.
+      name: { type: string }
+      # owner/name to release; empty releases every watched repo.
+      repo: { type: string }
+      # The release ref.
+      ref: { type: string }
+      # bupha's status redirect; empty = config.repo.
+      status_repo: { type: string }
+      # Release command run inside the worktree.
+      cmd: { type: string }
+      # driver-git worktree base.
+      worktree_base: { type: string }
+      # NAME of the secret holding the forge token. Never the value.
+      token_env: { type: string }
+      # Inner shell timeout in seconds (driver cap: 600).
+      timeout: { type: integer }

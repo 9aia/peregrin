@@ -10,6 +10,25 @@
 # — supersede dedupes pending runs to the newest push but never kills
 # the in-flight one (a half-published crate set is worse than a stale
 # one). The pushed-sha worktree keeps every run hermetic.
+#
+# Artifact layout (stdlib split — `.node.yml`/`.snippet.yml`/
+# `.field.yml`, ADR-0029):
+#
+#   match.node.yml              gate on repo+ref → push.release.<url>.<sha>
+#   pending.node.yml            `pending` ci/<name> status on the gated sha
+#   build.node.yml              worktree at pushed sha → config.cmd
+#   failmap.node.yml            node.failed → <node>.failed.<sha> remap
+#   status.node.yml             verdict → ci/<name> commit status
+#   status-params.snippet.yml   github-status params shared by the
+#                               pending/status nodes (snippet: status-params)
+#   release.field.yml           config.* surface as a handl field pattern
+#
+# `nodes:` below is the wiring list — bare `include:`s of the sibling
+# `.node.yml` files. Loading this file as the top document also
+# auto-discovers those artifacts (dedupe keeps one copy); the explicit
+# includes keep the bundle intact when `main.yaml` is itself `include:`d
+# into another campaign. The `snippets:` entry does the same for
+# `status-params` — node-level `snippet:` refs resolve either way.
 name: release
 
 config:
@@ -37,83 +56,16 @@ annotations:
   since: "0.1.0"
   see: project/adrs/0081-bupha-peregrin-migration-inventory-queue-semantics-drivers-sinks-ops.md
 
+# The github-status params shared by release.pending/release.status —
+# declared here (not just discovered) so the bundle survives being
+# `include:`d into another campaign's document.
+snippets:
+  status-params:
+    include: ./status-params.snippet.yml
+
 nodes:
-  # Gate on repo + ref, re-route as `push.release.<clone_url>.<sha>`.
-  - id: release.match
-    driver: shell
-    on: [push]
-    max_fires: unlimited
-    emits: [push.release, push.unmatched]
-    params:
-      cmd: |
-        if [ -n "${config.repo}" ] && [ "${event.payload.repo}" != "${config.repo}" ]; then exit 9; fi
-        [ "${event.payload.ref}" = "${config.ref:-refs/heads/main}" ]
-      emit:
-        "0": "push.release.${event.payload.clone_url}.${event.payload.sha}"
-        default: "push.unmatched"
-
-  # `pending` on the commit as soon as the push is gated.
-  - id: release.pending
-    driver: github-status
-    on: [push.release.**.*]
-    max_fires: unlimited
-    emits: [release.status-posted]
-    params:
-      repo: "${config.status_repo:-${config.repo}}"
-      sha: "${event.match.2}"
-      state: pending
-      context: "ci/${config.name}"
-      token_env: "${config.token_env}"
-
-  # Detached worktree at the pushed sha → release command inside it.
-  # `env` resolves the registry token through the capability-gated
-  # secrets record (${secret.*} — "" on a miss) rather than naming it
-  # for the impl; the node config's capabilities.secrets grant must
-  # cover it.
-  - id: release.build
-    driver: git
-    on: [push.release.**.*]
-    max_fires: unlimited
-    emits: [release.done, release.failed]
-    params:
-      url: "${event.match.1}"
-      sha: "${event.match.2}"
-      base: "${config.worktree_base:-~/.local/share/peregrin/worktrees}"
-      token_env: "${config.token_env:-GITHUB_TOKEN}"
-      inner:
-        driver: shell
-        params:
-          cmd: "${config.cmd}"
-          timeout: "${config.timeout:-600}"
-          env:
-            CARGO_REGISTRY_TOKEN: "${secret.CARGO_REGISTRY_TOKEN:-}"
-            GITHUB_TOKEN: "${secret.GITHUB_TOKEN:-}"
-      emit:
-        "0": release.done
-        default: release.failed
-
-  # driver-git materialization failures land as plain `node.failed` —
-  # re-map onto `<node>.failed.<sha>` so the sink posts `error`.
-  - id: release.failmap
-    driver: shell
-    on: [node.failed]
-    max_fires: unlimited
-    params:
-      cmd: 'test -n "${event.payload.node}" && test -n "${event.payload.sha}"'
-      emit:
-        "0": "${event.payload.node}.failed.${event.payload.sha}"
-        default: "release.unmapped"
-
-  # The verdict — `ci/<campaign>` context; `.done` → success,
-  # `.failed` → failure, `failed.<sha>` → error.
-  - id: release.status
-    driver: github-status
-    on: [release.done, release.failed, release.failed.*]
-    max_fires: unlimited
-    emits: [release.status-posted]
-    params:
-      repo: "${config.status_repo:-${config.repo}}"
-      sha: "${event.payload.sha:-${event.match.1}}"
-      context: "ci/${config.name}"
-      token_env: "${config.token_env}"
-      description: "${event.type}"
+  - include: ./match.node.yml
+  - include: ./pending.node.yml
+  - include: ./build.node.yml
+  - include: ./failmap.node.yml
+  - include: ./status.node.yml

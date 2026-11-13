@@ -1,0 +1,18 @@
+# release/status-params.snippet.yml — the params shared by the
+# bundle's two github-status nodes (`release.pending`,
+# `release.status`): repo (with the bupha `status_repo` redirect),
+# the `ci/<config.name>` context, and the forge-token env NAME.
+#
+# Referenced via the node-level `snippet:` key, which deep-merges
+# this body under the node's local keys — each status node adds only
+# its `sha`/`state`/`description`. Also auto-discovered into the
+# campaign's `snippets:` table as `status-params` when `main.yaml`
+# loads as the top document (main.yaml declares the same snippet via
+# `include:` so `main.yaml` stays intact when it is itself `include:`d
+# into another campaign).
+#
+# `token_env` is a secret NAME, never a value.
+params:
+  repo: "${config.status_repo:-${config.repo}}"
+  context: "ci/${config.name}"
+  token_env: "${config.token_env}"

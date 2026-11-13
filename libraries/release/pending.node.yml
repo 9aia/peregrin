@@ -1,0 +1,25 @@
+# release/pending.node.yml — posts `pending` on the pushed commit as
+# soon as the push is gated, under the `ci/<config.name>` context.
+#
+# Part of `libraries/release`. The shared github-status params
+# (`repo`/`context`/`token_env`) come from the `status-params`
+# snippet; this node adds the sha capture and the `pending` state.
+annotations:
+  title: Release pending status
+  description: Posts a pending ci/<name> commit status on the gated push's sha.
+  author: peregrin
+  tags: [release, status, github-status]
+  since: "0.1.0"
+
+id: release.pending
+driver: github-status
+snippet: status-params
+on: [push.release.**.*]
+max_fires: unlimited
+emits: [release.status-posted]
+params:
+  # `${event.match.2}` recovers the sha segment of
+  # `push.release.<clone_url>.<sha>` (`**` re-joins clone_url's
+  # segments, so the sha is always the last capture).
+  sha: "${event.match.2}"
+  state: pending

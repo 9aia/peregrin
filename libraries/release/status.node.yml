@@ -1,0 +1,27 @@
+# release/status.node.yml — the verdict: posts the `ci/<config.name>`
+# commit status. `.done` → success, `.failed` → failure,
+# `failed.<sha>` (failmap's remap) → error; the github-status driver
+# derives `state` from the triggering event type.
+#
+# Part of `libraries/release`. The shared github-status params
+# (`repo`/`context`/`token_env`) come from the `status-params`
+# snippet; this node adds the sha fallback and the description.
+annotations:
+  title: Release verdict status
+  description: Posts the ci/<name> commit status verdict — success on release.done, failure on release.failed, error on failed.<sha>.
+  author: peregrin
+  tags: [release, status, github-status]
+  since: "0.1.0"
+
+id: release.status
+driver: github-status
+snippet: status-params
+on: [release.done, release.failed, release.failed.*]
+max_fires: unlimited
+emits: [release.status-posted]
+params:
+  # `release.done`/`release.failed` carry the sha in the payload;
+  # `release.failed.*` (the failmap remap) carries it as the last
+  # match segment instead.
+  sha: "${event.payload.sha:-${event.match.1}}"
+  description: "${event.type}"
