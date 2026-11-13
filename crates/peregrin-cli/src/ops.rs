@@ -182,7 +182,8 @@ fn secret_with(
 pub(crate) fn missing_secret(env: &OpsEnv, name: &str) -> CliError {
     CliError(format!(
         "secret '{name}' unresolved — set it in the environment, cuora \
-         (cuora://peregrin/{name}), the OS keyring (service 'peregrin') \
+         (cuora://peregrin/{name}, falling back to cuora://bupha/{name} \
+         for shared fleet names), the OS keyring (service 'peregrin') \
          or {}",
         env.env_file().display()
     ))
