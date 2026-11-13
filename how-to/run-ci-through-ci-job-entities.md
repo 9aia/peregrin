@@ -86,6 +86,14 @@ Workers poll pending entities, claim what their fleet keys + labels
 cover, and settle — status posting stays worker-side (forge creds
 never leave runner boxes).
 
+**Fork PRs**: `ci.enqueue.pr` also sets the indexDoc's optional
+`cloneUrl`/`headRef` from the webhook payload's `head_clone_url` /
+head `ref` — populated only when the PR head lives on a fork. The
+worker fetches `git fetch <cloneUrl> <headRef>` (then the bare sha)
+before falling back to the repo's own remote, so fork heads that
+aren't in the base clone still check out. Pushes and same-repo PRs
+leave both fields absent.
+
 ## Fleet normalization and `runsOn`
 
 Job specs live in **fleet.toml**, not the campaign: `peregrin serve`
