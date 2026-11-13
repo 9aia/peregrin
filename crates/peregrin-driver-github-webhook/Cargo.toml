@@ -22,6 +22,7 @@ sha2.workspace = true
 hex.workspace = true
 
 [dev-dependencies]
+hypha-secret.workspace = true
 ureq.workspace = true
 peregrin-loader.workspace = true
 peregrin-loader-yaml.workspace = true

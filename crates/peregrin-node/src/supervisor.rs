@@ -26,7 +26,7 @@
 //! sequential drain, exactly as sketched above.
 
 use std::collections::BTreeMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
@@ -36,6 +36,7 @@ use peregrin_core::{Campaign, Event};
 use peregrin_driver::{DriverError, SecretSource};
 use peregrin_engine::{Ingress, Injector, RunOptions, WaitOutcome, ingress};
 use peregrin_queue::{Decision, Disposition, Job, Queue, QueueStore, QueueStoreError, Supersede};
+use peregrin_store::EventStore;
 use serde_json::json;
 
 use crate::campaign::{self, CampaignError};
@@ -357,6 +358,10 @@ pub struct SupervisedOptions {
     /// Called with each finished run's event log, in finish order —
     /// the CLI prints it. Runs on the supervisor thread.
     pub on_run: Option<OnRunDone>,
+    /// Display name for listener-failure logs and the history
+    /// marker — `campaign.name` when unset. `campaign serve` passes
+    /// the resolved hosted name (its file-stem fallback included).
+    pub campaign_name: Option<String>,
 }
 
 /// The per-finished-run callback [`SupervisedOptions::on_run`]
@@ -373,6 +378,7 @@ impl Default for SupervisedOptions {
             shared_webhook: None,
             shutdown: None,
             on_run: None,
+            campaign_name: None,
         }
     }
 }
@@ -444,7 +450,15 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
         shared_webhook,
         shutdown,
         on_run,
+        campaign_name,
     } = options;
+    // The listener-failure log/marker name — the explicit option
+    // wins (`campaign serve`'s resolved hosted name), then the
+    // campaign's own `name`, then a generic label.
+    let campaign_name = campaign_name
+        .filter(|name| !name.is_empty())
+        .or_else(|| (!campaign.name.is_empty()).then(|| campaign.name.clone()))
+        .unwrap_or_else(|| "campaign".to_string());
     let materials = Arc::new(RunMaterials {
         secrets,
         secret_stores,
@@ -507,6 +521,7 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
             queue_store,
             shutdown,
             on_run,
+            campaign_name,
         )
     });
     SupervisedRun {
@@ -549,12 +564,13 @@ fn supervise_loop(
     policy: Supersede,
     trigger_ingress: Ingress,
     worker_campaign: Arc<Campaign>,
-    listener: Option<JoinHandle<Result<Vec<Event>, CampaignError>>>,
+    mut listener: Option<JoinHandle<Result<Vec<Event>, CampaignError>>>,
     listener_injector: Option<Injector>,
     materials: Arc<RunMaterials>,
     queue_store: Option<Arc<dyn QueueStore>>,
     shutdown: Option<Arc<AtomicBool>>,
     mut on_run: Option<OnRunDone>,
+    campaign_name: String,
 ) -> Result<Vec<Event>, CampaignError> {
     /// How long the loop parks on the trigger channel while a run is
     /// active — a finished run can't wake the channel, so the loop
@@ -641,6 +657,25 @@ fn supervise_loop(
                 worker = Some(handle);
             }
         }
+        // A listener run that exits mid-supervision surfaces now —
+        // its JoinHandle is otherwise only joined at shutdown, which
+        // is exactly the "dead ingress invisible until shutdown" gap
+        // (a failed listener run used to leave no trace while the
+        // supervisor kept serving the queue). A *stuck* listener
+        // (still running, e.g. blocked in secret resolution) is not
+        // covered here — that shows up as missing `.listening`
+        // events, not a dead thread.
+        if listener.as_ref().is_some_and(JoinHandle::is_finished)
+            && let Some(handle) = listener.take()
+        {
+            observe_listener_exit(
+                handle.join(),
+                &campaign_name,
+                materials.history.as_deref(),
+                &mut first_error,
+                false,
+            );
+        }
         if triggers_done && worker.is_none() {
             break;
         }
@@ -652,27 +687,101 @@ fn supervise_loop(
         let _ = injector.inject(Event::cancel("supervisor shutdown"));
     }
     if let Some(handle) = listener {
-        match handle.join() {
-            Ok(Ok(_)) => {}
-            Ok(Err(e)) => {
-                tracing::error!("ingress listener run failed: {e}");
-                if first_error.is_none() {
-                    first_error = Some(e);
-                }
-            }
-            Err(_) => {
-                tracing::error!("ingress listener thread panicked");
-                if first_error.is_none() {
-                    first_error = Some(CampaignError::Run(DriverError::new(
-                        "ingress listener thread panicked",
-                    )));
-                }
-            }
-        }
+        observe_listener_exit(
+            handle.join(),
+            &campaign_name,
+            materials.history.as_deref(),
+            &mut first_error,
+            true,
+        );
     }
 
     match first_error {
         Some(error) => Err(error),
         None => Ok(logs),
+    }
+}
+
+/// A finished listener run's outcome, observed mid-loop or at
+/// shutdown: logs the failure with the campaign's name, records it
+/// as `first_error`, and leaves a durable marker in the campaign's
+/// history JSONL. `at_shutdown` marks the drain-time join — a clean
+/// `Ok` there is the expected cancel path and stays silent; mid-loop
+/// it warns (the listener ended while supervision continues).
+fn observe_listener_exit(
+    joined: thread::Result<Result<Vec<Event>, CampaignError>>,
+    campaign_name: &str,
+    history: Option<&Path>,
+    first_error: &mut Option<CampaignError>,
+    at_shutdown: bool,
+) {
+    match joined {
+        Ok(Ok(_)) => {
+            if !at_shutdown {
+                tracing::warn!(campaign = campaign_name, "ingress listener run ended");
+            }
+        }
+        Ok(Err(e)) => {
+            tracing::error!(campaign = campaign_name, "ingress listener run failed: {e}");
+            record_listener_failure(history, campaign_name, &e.to_string());
+            if first_error.is_none() {
+                *first_error = Some(e);
+            }
+        }
+        Err(_) => {
+            tracing::error!(campaign = campaign_name, "ingress listener thread panicked");
+            record_listener_failure(history, campaign_name, "listener thread panicked");
+            if first_error.is_none() {
+                *first_error = Some(CampaignError::Run(DriverError::new(
+                    "ingress listener thread panicked",
+                )));
+            }
+        }
+    }
+}
+
+/// Append a terminal `workflow.failed` marker to the campaign's
+/// history JSONL — reuses the engine's run-failure kind
+/// (`__runner__`-sourced, `node`/`error` payload like
+/// [`Event::workflow_failed`]) rather than inventing a wire kind; the
+/// extra `campaign`/`listener` fields keep it distinguishable from a
+/// worker run's failure. The listener run's own `JsonStore` keeps its
+/// descriptor open; `O_APPEND` keeps a second writer's line atomic.
+/// Written on *any* listener-run error — `Runner::run` only publishes
+/// a terminal event on its graceful paths, so a hard `Err` (an
+/// unresolvable driver, a template failure) or a panic otherwise
+/// leaves the history file ending mid-run with no trace of why.
+/// Best-effort: open/write failures are logged, never fatal — the
+/// listener error itself already propagated.
+fn record_listener_failure(history: Option<&Path>, campaign_name: &str, detail: &str) {
+    let Some(path) = history else {
+        return;
+    };
+    let marker = Event::new(
+        "workflow.failed",
+        json!({
+            "node": "",
+            "error": format!("ingress listener run failed: {detail}"),
+            "campaign": campaign_name,
+            "listener": true,
+        }),
+        "__runner__",
+    );
+    match peregrin_store_json::JsonStore::open_append(path) {
+        Ok(mut store) => {
+            store.append(&marker);
+            if let Some(error) = store.write_error() {
+                tracing::error!(
+                    campaign = campaign_name,
+                    "listener-failure history marker write failed: {error}"
+                );
+            }
+        }
+        Err(error) => {
+            tracing::error!(
+                campaign = campaign_name,
+                "listener-failure history marker open failed: {error}"
+            );
+        }
     }
 }

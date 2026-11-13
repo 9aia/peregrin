@@ -3,11 +3,12 @@
 //! all-match delivery, per-route secrets, dedup, and the
 //! `SharedWebhookDriver` registration path end to end over HTTP.
 
-use std::sync::Arc;
+use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
 use peregrin_core::Node;
-use peregrin_driver::{Driver, ExecutionContext};
+use peregrin_driver::{Driver, ExecutionContext, SecretSource};
 use peregrin_driver_github_webhook::{Route, SharedWebhook, SharedWebhookDriver, signature_header};
 use peregrin_engine::{Ingress, Injector, ingress};
 use serde_json::{Map, Value, json};
@@ -447,6 +448,83 @@ fn shared_driver_registers_pull_request_actions() {
         events[0].payload["pull_request_actions"],
         json!(["opened", "labeled"])
     );
+}
+
+// ---------------------------------------------------------------------------
+// Secret resolution — `secret_env` dedup
+// ---------------------------------------------------------------------------
+
+/// A `Secrets` store that counts `get` calls per name — the dedup
+/// test's observable: N repos sharing one `secret_env` must cost ONE
+/// store lookup, not N (each miss of the record/env legs reaches the
+/// store, and a `cuora`-backed store spawns a process per get).
+struct CountingSecrets {
+    values: BTreeMap<String, String>,
+    lookups: Arc<Mutex<BTreeMap<String, usize>>>,
+}
+
+impl hypha_secret::Secrets for CountingSecrets {
+    fn get(&self, name: &str) -> Option<String> {
+        *self
+            .lookups
+            .lock()
+            .unwrap()
+            .entry(name.to_string())
+            .or_default() += 1;
+        self.values.get(name).cloned()
+    }
+
+    fn set(&self, _name: &str, _value: &str) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn shared_driver_resolves_each_secret_env_once() {
+    let lookups = Arc::new(Mutex::new(BTreeMap::new()));
+    let store = CountingSecrets {
+        values: BTreeMap::from([
+            ("PEREGRIN_TEST_WH_SHARED".to_string(), SECRET_A.to_string()),
+            ("PEREGRIN_TEST_WH_OTHER".to_string(), SECRET_B.to_string()),
+        ]),
+        lookups: Arc::clone(&lookups),
+    };
+    // The secrets live ONLY in the counting store — the record and
+    // ambient env miss, so every resolution is observable. Names are
+    // test-unique so a stray ambient env var can't shadow the store.
+    let mut ctx = ctx_with(&[]);
+    ctx.secret_stores = std::rc::Rc::new(vec![SecretSource {
+        store: std::rc::Rc::new(store),
+        declared_only: false,
+    }]);
+
+    let demux = Arc::new(SharedWebhook::new());
+    let (trigger_inj, _trigger_chan) = ingress();
+    let driver = SharedWebhookDriver::new(trigger_inj, Arc::clone(&demux));
+    // Three repos share one webhook secret, one uses another — the
+    // `repos[]` fan-out shape that made `campaign serve` startup
+    // serialize one vault lookup per spec.
+    let repos: Vec<Value> = (0..3)
+        .map(
+            |i| json!({ "name": format!("acme/repo{i}"), "secret_env": "PEREGRIN_TEST_WH_SHARED" }),
+        )
+        .chain(std::iter::once(
+            json!({ "name": REPO_B, "secret_env": "PEREGRIN_TEST_WH_OTHER" }),
+        ))
+        .collect();
+    let events = driver
+        .invoke(&webhook_node(json!({ "repos": repos })), &[], &ctx)
+        .unwrap();
+    assert_eq!(events[0].kind, "hook.listening");
+    assert_eq!(demux.route_count(), 4);
+
+    let lookups = lookups.lock().unwrap();
+    assert_eq!(
+        lookups.get("PEREGRIN_TEST_WH_SHARED"),
+        Some(&1),
+        "shared secret_env must resolve once, not once per repo"
+    );
+    assert_eq!(lookups.get("PEREGRIN_TEST_WH_OTHER"), Some(&1));
 }
 
 // ---------------------------------------------------------------------------

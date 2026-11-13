@@ -351,6 +351,71 @@ fn listener_run_appends_its_boot_failure_to_the_shared_history() {
     );
 }
 
+#[test]
+fn listener_run_hard_error_surfaces_mid_supervision_with_a_history_marker() {
+    // The other half of the T-076 gap: a listener run that dies on a
+    // hard `Err` — here strict preflight rejects the campaign before
+    // `start` ever publishes, so the history file would otherwise
+    // stay EMPTY — must (a) be observed while the supervisor is
+    // still running, not only at shutdown join, and (b) leave a
+    // durable terminal marker in the shared `--history` JSONL.
+    let tmp = tempfile::tempdir().unwrap();
+    let history = tmp.path().join("history.jsonl");
+    let campaign = load(
+        r#"
+        strict: true
+        supersede:
+          key: "{repo}"
+          mode: latest-wins
+        nodes:
+          - id: gate.ingress
+            driver: github-webhook
+            on: [start]
+            # no `emits` — strict preflight fails the run before any
+            # event publishes
+            params:
+              listen: "127.0.0.1:0"
+              repos:
+                - name: "o/r"
+                  secret_env: "PEREGRIN_LISTENER_TEST_MISSING"
+        "#,
+    );
+    let shutdown = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let run = supervise(
+        &campaign,
+        SupervisedOptions {
+            history: Some(history.clone()),
+            shutdown: Some(std::sync::Arc::clone(&shutdown)),
+            ..SupervisedOptions::default()
+        },
+    );
+    // The listener thread exits on its own; the shutdown flag (the
+    // `campaign serve` SIGTERM path) ends supervision — `run.injector`
+    // stays alive so the trigger channel alone can't end it.
+    std::thread::sleep(Duration::from_millis(500));
+    shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+    let result = run.join.join().unwrap();
+    assert!(result.is_err(), "listener failure must fail the join");
+
+    let text = std::fs::read_to_string(&history).unwrap();
+    let markers: Vec<Value> = text
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| serde_json::from_str::<Value>(l).unwrap())
+        .filter(|e: &Value| e["type"] == "workflow.failed")
+        .collect();
+    assert_eq!(markers.len(), 1, "exactly one terminal marker: {text}");
+    assert_eq!(markers[0]["payload"]["listener"], true);
+    assert!(
+        markers[0]["payload"]["error"]
+            .as_str()
+            .unwrap()
+            .contains("ingress listener run failed"),
+        "marker names the listener failure: {}",
+        markers[0]
+    );
+}
+
 // ---------------------------------------------------------------------------
 // docs-deploy — the shipped `supersede:` block is live config now
 // ---------------------------------------------------------------------------

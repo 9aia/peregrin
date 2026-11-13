@@ -300,11 +300,7 @@ fn shipped_bundles_pack_validate_and_install() {
         // Manifest loads + validates.
         let manifest = tamias_core::Manifest::load(&dir).unwrap();
         assert_eq!(manifest.name, bundle);
-        let expected = match bundle {
-            "docs-deploy" => "0.1.1",
-            _ => "0.1.1",
-        };
-        assert_eq!(manifest.version.as_deref(), Some(expected));
+        assert_eq!(manifest.version.as_deref(), Some("0.1.1"));
         // The campaign payload parses through the real loader.
         let campaign = peregrin_node::campaign::load(&dir.join("main.yaml")).unwrap();
         assert_eq!(campaign.name, bundle);

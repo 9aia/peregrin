@@ -2912,6 +2912,7 @@ version = "0.2.0"
 dependencies = [
  "axum",
  "hex",
+ "hypha-secret",
  "peregrin-core",
  "peregrin-driver",
  "peregrin-engine",

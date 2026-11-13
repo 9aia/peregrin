@@ -338,6 +338,7 @@ pub fn serve_campaigns(
             shared_webhook: demux.as_ref().map(Arc::clone),
             shutdown: Some(Arc::clone(&shutdown)),
             on_run,
+            campaign_name: Some(name.clone()),
             ..SupervisedOptions::default()
         };
         let run = supervisor::supervise(&entry.campaign, options);

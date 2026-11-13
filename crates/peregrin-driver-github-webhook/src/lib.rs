@@ -610,6 +610,13 @@ fn resolve_secrets(
     let deny =
         |reason: &str| DriverError::new(format!("github-webhook node '{}': {reason}", node.id));
     let mut secrets = HashMap::with_capacity(specs.len());
+    // `secret_env` names repeat across repos (one webhook secret per
+    // org, say) — resolve each name once per invoke. `ctx.get_secret`
+    // can spawn a `cuora`/keyring lookup per call and `campaign
+    // serve` resolves every hosted campaign's specs on one shared
+    // session, so N repos sharing a name would otherwise serialize
+    // N identical vault round-trips at listener startup.
+    let mut resolved: HashMap<&str, String> = HashMap::new();
     for spec in specs {
         let env_name = spec.secret_env.as_str();
         let denied = match ctx.capabilities.get("secrets") {
@@ -621,10 +628,16 @@ fn resolve_secrets(
                 "capability 'secrets' not granted for '{env_name}'"
             )));
         }
-        let secret = ctx.get_secret(env_name);
-        if secret.is_empty() {
-            return Err(deny(&format!("secret '{env_name}' unresolved")));
-        }
+        let secret = if let Some(secret) = resolved.get(env_name) {
+            secret.clone()
+        } else {
+            let secret = ctx.get_secret(env_name);
+            if secret.is_empty() {
+                return Err(deny(&format!("secret '{env_name}' unresolved")));
+            }
+            resolved.insert(env_name, secret.clone());
+            secret
+        };
         secrets.insert(spec.name.clone(), secret);
     }
     Ok(secrets)
