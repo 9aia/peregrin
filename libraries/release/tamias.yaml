@@ -1,9 +1,10 @@
 # release — bupha's release.sh role as a peregrin bundle: pushes to
 # the release ref (default refs/heads/main) run the release pipeline
-# (tag → cargo publish) in a detached worktree and post the verdict.
+# (tag → publish per the repo's tarsi.toml) in a detached worktree and post the verdict.
 name: release
 version: "0.1.0"
 description: >-
   Release pipeline gate: push to the release ref → detached worktree
-  at the pushed sha → release command (tag + cargo publish via
-  scripts/release.sh or equivalent) → GitHub commit status.
+  at the pushed sha → release command (tarsi-serve release --yes;
+  the repo's tarsi.toml configures units/publish targets) → GitHub
+  commit status.

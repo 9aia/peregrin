@@ -1,5 +1,5 @@
 # release — the release pipeline campaign (bupha's `release.sh` role:
-# tag → cargo publish on main pushes).
+# tag → publish on main pushes — tarsi-serve release --yes).
 #
 # Same routed-push mechanics as ci-gate (see libraries/ci-gate's
 # README): the match node re-emits a gated push as
@@ -33,7 +33,7 @@ annotations:
   title: Release pipeline
   description: >-
     Push to the release ref → detached worktree → release command
-    (tag + cargo publish) → GitHub commit status.
+    (tag + publish per the repo's tarsi.toml) → GitHub commit status.
   since: "0.1.0"
   see: project/adrs/0081-bupha-peregrin-migration-inventory-queue-semantics-drivers-sinks-ops.md
 

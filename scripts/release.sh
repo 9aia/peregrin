@@ -1,91 +1,55 @@
 #!/usr/bin/env bash
-# Run manually: `./scripts/release.sh` from the repo root (needs
-# `.env` with CARGO_REGISTRY_TOKEN; dist + gh for binary artifacts).
-# bupha is deprecated — no watch registration; releases are operator-run.
-# The leading sleep is the debounce window: only the last invocation
-# in a quiet window releases. Commits/tags are pushed to main.
+# peregrin release — thin shim over tarsi-serve (the org release plane,
+# project ADR-0005; repo config: ./tarsi.toml). One call runs
+# plan → changelog → bump → tag → push; publish targets are off
+# (ADR-0004: crates.io is tamias-only, GitHub Releases unused).
+# Operator-run on main — `tarsi-serve release` is dry-run by
+# default; --yes is the explicit opt-in.
 #
-# crates.io status (T-003): every internal dep carries a `version`
-# req alongside its git source, so `cargo publish` resolves them
-# against the registry — BUT only after the org publishes in order:
-#   hypha 0.1.0 → sepia 0.1.0 → tamias (already publishing) → peregrin
-# Until hypha-*/sepia-* 0.1.0 exist on crates.io the publish loop
-# below fails on the first crate; the tag + binary-release half still
-# works standalone (git tag peregrin-v<ver> && git push --tags).
-# Needs: `cargo-edit` (cargo set-version), `cargo-dist` (dist), `gh`.
+# crates.io publish is GONE: the old per-crate `cargo publish`
+# loop (and its hypha → sepia → tamias → peregrin registry ordering
+# constraint) is retired; every peregrin crate is internal — the
+# `peregrin` command ships as the tamias pack in `libraries/peregrin`
+# (`tamias install --allow-drivers ./libraries/peregrin`), with
+# `peregrin-node`/`peregrin-hub` as tools/bin payload bins.
+# `peregrin-testkit` is publish = false.
+#
+# The org release campaign (`libraries/release`, a peregrin bundle)
+# drives this same `tarsi-serve release --yes` op on pushes — this
+# script is the operator-run equivalent.
+#
+# Preserved repo step: the product pack manifest + README install
+# ref are synced to the new version *before* the release commit
+# lands, so the tagged tree carries consistent versions (the other
+# libraries/* packs version independently — untouched). The pack
+# publish itself stays manual (`cargo xtask pack` stages the
+# payload, then `tamias publish libraries/peregrin`).
 set -euo pipefail
-# worktree-local secrets (gitignored); the service env file is canonical
+cd "$(git rev-parse --show-toplevel)"
+# worktree-local env (gitignored); the service env file is canonical
 [ -f ./.env ] && { set -a; source ./.env; set +a; }
-sleep "${PEREGRIN_RELEASE_DEBOUNCE:-300}"
 
-git fetch origin --tags -q
-last="$(git describe --tags --abbrev=0 2>/dev/null || true)"
-if [ -z "$last" ]; then
-    echo "no tags yet — tag the first release manually to seed the flow"; exit 0
-fi
-changed="$(git diff --name-only "${last}..HEAD")"
+ws_version() { grep -m1 '^version = "' Cargo.toml | cut -d'"' -f2; }
 
-# Publish order — peregrin-* crates, dependencies first (internal
-# edges only; hypha/sepia/tamias deps are already versioned registry
-# reqs). peregrin-testkit is publish = false — excluded.
-order="peregrin-core peregrin-auth peregrin-session peregrin-hub \
-       peregrin-store peregrin-git peregrin-loader peregrin-queue \
-       peregrin-remote peregrin-template peregrin-config \
-       peregrin-bus peregrin-config-toml peregrin-config-yaml \
-       peregrin-config-file peregrin-loader-yaml peregrin-remote-http \
-       peregrin-store-json peregrin-sink-github-status peregrin-driver \
-       peregrin-driver-shell peregrin-driver-agent \
-       peregrin-driver-council peregrin-driver-http \
-       peregrin-driver-human peregrin-driver-git peregrin-engine \
-       peregrin-http peregrin-driver-github-webhook \
-       peregrin-driver-schedule peregrin-driver-sturn \
-       peregrin-driver-subworkflow peregrin-node \
-       peregrin-cli"
-
-touched=""
-for c in $order; do
-    grep -q "^crates/$c/" <<<"$changed" && touched="$touched $c"
-done
-if [ -z "$touched" ]; then echo "no crate changes since $last"; exit 0; fi
-
-published=""
-tags=""
-for c in $order; do
-    grep -qw "$c" <<<"$touched" || continue
-    cargo set-version -p "$c" --bump patch
-    # crates.io rate-limits *new* crates (a time window per push); retry
-    # through it rather than failing the release.
-    for i in $(seq 1 60); do
-        out="$(cargo publish -p "$c" --allow-dirty 2>&1)" && break
-        if grep -q '429\|too many new crates' <<<"$out"; then
-            echo "rate-limited on $c — sleeping 60s"; sleep 60
-        elif grep -q 'already exists\|already uploaded' <<<"$out"; then
-            break
-        else
-            echo "$out" | tail -3; sleep 30
-        fi
-    done
-    published="$published $c"
-    # Per-crate tag — versions diverge independently in a monorepo.
-    ver_c="$(grep -m1 '^version' "crates/$c/Cargo.toml" | cut -d'"' -f2)"
-    tags="$tags $c-v$ver_c"
-done
-
-git commit -aqm "release: bump crate versions" || true
-for t in $tags; do git tag "$t"; done
-ver="$(grep -m1 '^version' crates/peregrin-cli/Cargo.toml | cut -d'"' -f2)"
-git push -q origin HEAD:main --tags
-
-# binaries: releases are manual — GHA workflows were removed org-wide.
-# This script bumps, publishes, and tags; the `dist build` path below
-# produces release tarballs (`peregrin-<target>.tar.gz` — the name
-# install-peregrin probes). To ship:
-#   git tag peregrin-v${ver} && git push origin peregrin-v${ver}
-if command -v dist >/dev/null && command -v gh >/dev/null; then
-    dist build --output-format=json > /tmp/dist-manifest.json 2>&1 || true
-    for f in target/distrib/*; do
-        [ -f "$f" ] && echo "dist artifact: $f"
-    done
+# Learn the version tarsi will bump to (all releasing units share one
+# workspace version — empty output means "don't sync").
+new="$(tarsi-serve plan --dir . | python3 -c '
+import json,sys
+d=json.load(sys.stdin)
+if not d.get("ok"): sys.exit(0)
+units=[u for u in d["result"]["plan"]["units"] if u.get("releases")]
+vs={u["new_version"] for u in units}
+print(vs.pop() if len(vs)==1 else "")
+')"
+old="$(ws_version)"
+if [ -n "$new" ] && [ "$new" != "$old" ]; then
+    sed -i "s/^version: \"${old}\"/version: \"${new}\"/" libraries/peregrin/tamias.yaml
+    sed -i "s|peregrin@${old}|peregrin@${new}|g" README.md
+    git add libraries/peregrin/tamias.yaml README.md
+    git commit -qm "chore(release): sync peregrin@${new} version refs ahead of tarsi bump"
 fi
 
-echo "released:${published} (tags:${tags})"
+tarsi-serve release --dir . --yes
+
+echo "released: peregrin ${new:-$old} (tag peregrin-v${new:-$old}, per-unit tags for the rest)"
+echo "next: cargo xtask pack && tamias publish libraries/peregrin  # ship 9aia:peregrin@${new:-$old} to the org registry"
