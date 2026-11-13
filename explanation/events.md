@@ -41,7 +41,7 @@ This is what makes wildcards work: `on: [pr.*]` catches
 `on: [pr.**]` catches the whole `pr.` subtree. Captured segments are
 addressable in templates as `${event.match.N}` — which is how
 conventions like `push.gated.<repo>.<clone_url>.<sha>` put payload-shaped
-data *into* the type itself (the ci-gate routing idiom). See
+data *into* the type itself (the typed-routing idiom (ci-ingress/docs-deploy use it)). See
 [`on:` event patterns](../reference/on-grammar.md).
 
 ### Emitting

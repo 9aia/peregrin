@@ -17,12 +17,12 @@ provider entrypoints tamias shells out to.
 ## Ref grammar
 
 ```
-tamias install ./ci-gate                                  # filepath — dev loop
-tamias install git:9aia/peregrin/libraries/ci-gate        # shorthand (github), default branch
-tamias install git:github.com/9aia/peregrin//libraries/ci-gate#v0.2.0
-tamias install git:git@github.com:9aia/peregrin//libraries/ci-gate#main
+tamias install ./docs-deploy                                  # filepath — dev loop
+tamias install git:9aia/peregrin/libraries/docs-deploy        # shorthand (github), default branch
+tamias install git:github.com/9aia/peregrin//libraries/docs-deploy#v0.2.0
+tamias install git:git@github.com:9aia/peregrin//libraries/docs-deploy#main
 tamias install git:https://gitlab.com/grp/sub/repo//dir   # any git url
-tamias install https://9aia.com/bundles/ci-gate-0.2.tgz   # non-git tarball
+tamias install https://9aia.com/bundles/docs-deploy-0.1.tgz   # non-git tarball
 ```
 
 - **`git:<url>[//<subdir>][#<ref>]`** — `//` (go-getter convention)
@@ -31,8 +31,8 @@ tamias install https://9aia.com/bundles/ci-gate-0.2.tgz   # non-git tarball
   branch, tag or sha — the git ref *is* the version pin; the resolved
   commit sha is recorded regardless.
 - **Without `//`**, a two-segment prefix is the repo and the remainder
-  is the in-repo path — so `git:9aia/peregrin/libraries/ci-gate` clones
-  `github.com/9aia/peregrin` and takes `libraries/ci-gate` from it.
+  is the in-repo path — so `git:9aia/peregrin/libraries/docs-deploy` clones
+  `github.com/9aia/peregrin` and takes `libraries/docs-deploy` from it.
   This rule only applies to *shorthand* paths: anything containing
   `://`, scp-style `host:path` (`git@…:`), or an explicit local path
   (`/x`, `~/x`, `./x`) parses whole.
@@ -178,7 +178,7 @@ provider:
   `--name`, optional `--config`) is the hidden provider entrypoint
   tamias invokes — it never writes service units itself.
 
-`libraries/ci-gate` is the pilot: `provider.name: peregrin` +
+`libraries/docs-deploy` is the pilot: `provider.name: peregrin` +
 `services[].name: campaign` renders the shared
 `peregrin-campaign.service` hosting every deployed bundle. Its
 `tamias.yaml` ships `ingress[].hooks: []` — the bundle's `main.yaml`

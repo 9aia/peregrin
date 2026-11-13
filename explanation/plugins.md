@@ -31,9 +31,9 @@ a shared fragment library — it becomes a *bundle*: a
 `.node.yml`, `.driver.yml`, `.field.yml` files.
 
 ```bash
-tamias install git:9aia/peregrin//libraries/ci-gate   # → the tamias store
-tamias list && tamias info ci-gate
-tamias deploy ci-gate                                 # materialize + unit
+tamias install git:9aia/peregrin//libraries/docs-deploy   # → the tamias store
+tamias list && tamias info docs-deploy
+tamias deploy docs-deploy                                 # materialize + unit
 ```
 
 - **Install** — fetch from fs/git/http/cf, unpack into tamias's

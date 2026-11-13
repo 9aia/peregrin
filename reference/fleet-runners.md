@@ -13,7 +13,7 @@ node's `/api/node` `capabilities` (alongside `ephemeral`, `sessions`,
 
 ```bash
 PEREGRIN_RUNNER_LABELS=runner:linux,gpu peregrin serve --ephemeral
-PEREGRIN_RUNNER_LABELS=runner:linux,gpu peregrin campaign serve ci-gate.yaml
+PEREGRIN_RUNNER_LABELS=runner:linux,gpu peregrin campaign serve docs-deploy.yaml
 ```
 
 The hub's sync projection persists the advertised capability list,

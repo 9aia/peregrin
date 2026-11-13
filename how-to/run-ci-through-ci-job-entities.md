@@ -22,7 +22,7 @@ github webhook ──► github-webhook node ──► push / pull_request event
                   tamias-driver-bupha worker ── ci.claim/renew/complete
 ```
 
-`libraries/ci-ingress/main.yaml` is a complete campaign: the
+`bupha/libraries/ci-ingress/main.yaml` (the bundle lives in the bupha repo — CI knowledge is bupha's) is a complete campaign: the
 `github-webhook` ingress node (HMAC-verified, one `secret_env` per
 watched repo), `ci.route` re-emitting typed events
 (`{type}.{repo}.{ref}.{clone_url}.{sha}`), and `driver: http`
@@ -41,7 +41,7 @@ feature. Deploy the bundle through tamias — it renders into the
 declares `provider.name: peregrin`, one listener, one history dir):
 
 ```sh
-tamias install ./libraries/ci-ingress     # or a git:/registry ref
+tamias install 9aia/bupha//libraries/ci-ingress   # bundle lives in the bupha repo
 tamias deploy ci-ingress                 # → ~/.config/peregrin/serve/ci-ingress.yaml
 systemctl --user enable --now peregrin-campaign.service
 ```

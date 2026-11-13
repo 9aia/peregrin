@@ -1,14 +1,9 @@
-# Your first gate
+# Your first bundle
 
-> **Note:** the org's own CI gate is migrating back to bupha
-> (`9aia/bupha//libraries/ci-gate`, `type: bupha`) — see org-ledger
-> PL-013. This tutorial still applies to `peregrin-bundle` gates in
-> general; the ci-gate bundle stays live until cutover.
-
-This tutorial walks the operator flow end to end: install the
-`ci-gate` bundle through tamias, deploy the shared campaign host,
-register the repo webhook, and watch pushes turn into commit
-statuses. You'll need the `peregrin`, `peregrin-hub`, and
+This tutorial walks the operator flow end to end on the shipped
+`docs-deploy` bundle: install it through tamias, deploy the shared
+campaign host, register the repo webhook, and watch pushes to the
+`docs` branch turn into `docs/deploy` commit statuses. You'll need the `peregrin`, `peregrin-hub`, and
 `tamias-driver-peregrin` binaries
 ([Getting started](getting-started.md)), `tamias` itself, and a GitHub
 token with `repo` + `admin:repo_hook` scopes.
@@ -17,24 +12,25 @@ Distribution, provisioning, and service lifecycle are **tamias**'s job —
 peregrin ships only the provider (`tamias-driver-peregrin`). See
 [Distribution](../reference/distribution.md) for the boundary.
 
-The bundle: on a `push` event → detached worktree at the pushed sha
-→ your gate command runs inside it → a GitHub commit status posts
-under `ci/<name>`. Newest push on a `{repo}:{ref}` wins; a newer push
-cancels the in-flight run.
+The bundle: on a `push` to `refs/heads/docs` → detached worktree at
+the pushed sha → `bun install` + the vitepress deploy runs inside it
+→ a `docs/deploy` commit status posts on the pushed repo. Newest
+push on a `{repo}:{ref}` wins; a newer push cancels the in-flight
+run.
 
 ## 1. Install the bundle
 
 ```bash
 # `//` splits repo from subdir; `#` pins a ref (it defaults to the
-# repo's default branch — this bundle lives on `v2`).
-tamias install git:9aia/peregrin//libraries/ci-gate#v2
+# repo's default branch).
+tamias install git:9aia/peregrin//libraries/docs-deploy
 tamias list          # installed packages, resolved refs
 ```
 
 ## 2. Deploy it
 
 ```bash
-tamias deploy ci-gate
+tamias deploy docs-deploy
 ```
 
 `tamias deploy` does two things for a `peregrin-bundle`:
@@ -47,11 +43,11 @@ tamias deploy ci-gate
   One process hosts every deployed bundle on a single webhook
   listener, demuxing verified pushes by `repository.full_name`.
 - runs `tamias-driver-peregrin deploy`, which generates the operator
-  node config `~/.config/peregrin/ci-gate.yaml` — the bundle's
+  node config `~/.config/peregrin/docs-deploy.yaml` — the bundle's
   `main.yaml` plus a `github-webhook` ingress node and the
   `capabilities.secrets` grant derived from the manifest's
   `provider.ingress[]` declaration — and drops a copy into the
-  campaign-host dir `~/.config/peregrin/serve/ci-gate.yaml`.
+  campaign-host dir `~/.config/peregrin/serve/docs-deploy.yaml`.
 
 The `capabilities.secrets` block is the grant the secret gate checks:
 the webhook and status drivers may resolve exactly those names,
@@ -75,10 +71,10 @@ Ambient env also resolves — `export GITHUB_TOKEN=…` before a manual
 ## 4. Check the box
 
 ```bash
-tamias driver exec ci-gate health     # JSON probe: webhook ping / unit state
-tamias driver exec ci-gate status     # per-unit is-active/is-enabled
-tamias driver exec ci-gate logs       # journalctl over the provider units
-peregrin campaign validate ~/.config/peregrin/ci-gate.yaml
+tamias driver exec docs-deploy health     # JSON probe: webhook ping / unit state
+tamias driver exec docs-deploy status     # per-unit is-active/is-enabled
+tamias driver exec docs-deploy logs       # journalctl over the provider units
+peregrin campaign validate ~/.config/peregrin/docs-deploy.yaml
 ```
 
 Host diagnostics (`doctor`) live in tamias — `tamias doctor`. Fix
@@ -87,21 +83,20 @@ what they report before continuing.
 ## 5. Register the webhook
 
 ```bash
-tamias driver exec ci-gate hooks register --dry-run   # print the plan first
-tamias driver exec ci-gate hooks register
+tamias driver exec docs-deploy hooks register --dry-run   # print the plan first
+tamias driver exec docs-deploy hooks register
 ```
 
 `hooks register` upserts the forge webhooks the manifest's
-`provider.ingress[].hooks[]` declare — `ci-gate` ships `hooks: []`
-(its `main.yaml` is a full `peregrin import bupha` artifact that owns
-its ingress inline), so for this bundle the hooks already exist or are
-registered by hand; bundles that *do* declare hooks get exact-URL
+`provider.ingress[].hooks[]` declare — `docs-deploy` ships `hooks: []`
+(its `main.yaml` owns the watched-repo list inline), so the hooks
+already exist or are registered by hand; bundles that *do* declare hooks get exact-URL
 upserts here, and `hooks unregister` removes them.
 
 The webhook listener binds `127.0.0.1:29173` on `/hook` (the shared
 `--listen`/`--path` of `campaign serve`) — one socket serves every
 installed `peregrin-bundle`. Point your tunnel or reverse proxy at
-`https://ci.luisfuturist.com` (the manifest's `public_url`).
+`https://docs-deploy.luisfuturist.com` (the manifest's `public_url`).
 
 ### Pull-request triggers (opt-in)
 
@@ -132,7 +127,7 @@ driver's job — the GitHub hook must subscribe to them.
 ```bash
 systemctl --user enable --now peregrin-campaign.service
 systemctl --user status peregrin-campaign.service
-tamias driver exec ci-gate logs          # journalctl over the provider units
+tamias driver exec docs-deploy logs          # journalctl over the provider units
 ```
 
 The unit's `ExecStart` is fixed by the shared provider — `campaign
@@ -142,14 +137,14 @@ with no unit changes.
 
 ## 7. Push and watch
 
-Every push to `owner/repo` on the gated ref flows: webhook →
-verified → `push` event → worktree at the sha → `ci/<name>` status.
+Every push to a watched repo's `docs` branch flows: webhook →
+verified → `push` event → worktree at the sha → `docs/deploy` status.
 
 ```bash
-peregrin runs --history ~/.local/share/peregrin/serve-history/ci-gate.jsonl
-peregrin runs --repo owner/repo --history ~/.local/share/peregrin/serve-history/ci-gate.jsonl
-peregrin log -n 50 --history ~/.local/share/peregrin/serve-history/ci-gate.jsonl
-peregrin explain 1a2b3c --history ~/.local/share/peregrin/serve-history/ci-gate.jsonl
+peregrin runs --history ~/.local/share/peregrin/serve-history/docs-deploy.jsonl
+peregrin runs --repo owner/repo --history ~/.local/share/peregrin/serve-history/docs-deploy.jsonl
+peregrin log -n 50 --history ~/.local/share/peregrin/serve-history/docs-deploy.jsonl
+peregrin explain 1a2b3c --history ~/.local/share/peregrin/serve-history/docs-deploy.jsonl
 ```
 
 `campaign serve --history-dir` appends one JSONL per campaign
@@ -160,8 +155,8 @@ are `done`, `failed`, `cancelled` (superseded), or `running`.
 ## 8. Tear down
 
 ```bash
-tamias driver exec ci-gate hooks unregister   # if hooks were registered
-tamias uninstall ci-gate                      # removes units + payload;
+tamias driver exec docs-deploy hooks unregister   # if hooks were registered
+tamias uninstall docs-deploy                      # removes units + payload;
                                             # the driver drops the generated
                                             # configs (host dir + ~/.config)
 ```
