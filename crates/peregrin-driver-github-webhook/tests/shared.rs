@@ -496,6 +496,7 @@ fn shared_driver_resolves_each_secret_env_once() {
     ctx.secret_stores = std::rc::Rc::new(vec![SecretSource {
         store: std::rc::Rc::new(store),
         declared_only: false,
+        batch: None,
     }]);
 
     let demux = Arc::new(SharedWebhook::new());
@@ -525,6 +526,64 @@ fn shared_driver_resolves_each_secret_env_once() {
         "shared secret_env must resolve once, not once per repo"
     );
     assert_eq!(lookups.get("PEREGRIN_TEST_WH_OTHER"), Some(&1));
+}
+
+/// A `Secrets` backend that only answers through the batch channel —
+/// `get` misses everything, so a resolved route proves
+/// `resolve_secrets` went through `SecretSource::batch`.
+struct BatchOnlySecrets;
+
+impl hypha_secret::Secrets for BatchOnlySecrets {
+    fn get(&self, _name: &str) -> Option<String> {
+        None
+    }
+
+    fn set(&self, _name: &str, _value: &str) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+#[test]
+fn shared_driver_prefers_the_batch_channel() {
+    let demux = Arc::new(SharedWebhook::new());
+    let (trigger_inj, trigger_chan) = ingress();
+    let driver = SharedWebhookDriver::new(trigger_inj, Arc::clone(&demux));
+    let values = BTreeMap::from([
+        ("PEREGRIN_TEST_WH_BATCH_A".to_string(), SECRET_A.to_string()),
+        ("PEREGRIN_TEST_WH_BATCH_B".to_string(), SECRET_B.to_string()),
+    ]);
+    let mut ctx = ctx_with(&[]);
+    ctx.secret_stores = std::rc::Rc::new(vec![SecretSource {
+        store: std::rc::Rc::new(BatchOnlySecrets),
+        declared_only: false,
+        batch: Some(std::rc::Rc::new(move |names: &[&str]| {
+            names
+                .iter()
+                .map(|name| values.get(*name).cloned())
+                .collect()
+        })),
+    }]);
+
+    let params = json!({
+        "repos": [
+            { "name": REPO_A, "secret_env": "PEREGRIN_TEST_WH_BATCH_A" },
+            { "name": REPO_B, "secret_env": "PEREGRIN_TEST_WH_BATCH_B" },
+        ],
+    });
+    let events = driver.invoke(&webhook_node(params), &[], &ctx).unwrap();
+    assert_eq!(events[0].kind, "hook.listening");
+    assert_eq!(demux.route_count(), 2);
+
+    // The batch-resolved secrets sign deliveries end to end — the
+    // verified push lands on the campaign's trigger channel.
+    let base = serving(&demux);
+    let url = format!("{base}/hook");
+    let body = push_body(REPO_A);
+    assert_eq!(
+        post_push(&url, SECRET_A, &body, None),
+        (202, "queued".to_string())
+    );
+    assert_eq!(drain(&trigger_chan).len(), 1);
 }
 
 // ---------------------------------------------------------------------------

@@ -412,16 +412,24 @@ pub fn default_secret_stores() -> Vec<SecretSource> {
 pub fn default_secret_stores_with(cuora: peregrin_secret_cuora::CuoraSecrets) -> Vec<SecretSource> {
     vec![
         SecretSource {
-            store: std::rc::Rc::new(cuora),
+            store: std::rc::Rc::new(cuora.clone()),
             declared_only: true,
+            // The batch channel fuses N sequential vault
+            // round-trips into one parallel fan-out — webhook
+            // listeners resolve ~140 `secret_env` names at startup.
+            batch: Some(std::rc::Rc::new({
+                move |names: &[&str]| cuora.get_many(names)
+            })),
         },
         SecretSource {
             store: std::rc::Rc::new(hypha_keyring::KeyringSecrets::default()),
             declared_only: true,
+            batch: None,
         },
         SecretSource {
             store: std::rc::Rc::new(hypha_dotenv::DotenvSecrets { path: env_file() }),
             declared_only: false,
+            batch: None,
         },
     ]
 }

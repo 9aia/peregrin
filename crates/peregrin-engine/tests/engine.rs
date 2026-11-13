@@ -1527,6 +1527,7 @@ fn secret_source(pairs: &[(&str, &str)], declared_only: bool) -> SecretSource {
                 .collect(),
         )),
         declared_only,
+        batch: None,
     }
 }
 

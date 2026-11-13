@@ -284,6 +284,82 @@ impl ExecutionContext {
         self.get_secret_or(key, "")
     }
 
+    /// `ctx.getSecrets(keys)` — [`ExecutionContext::get_secret`] for
+    /// a batch of names in one pass, same `""`-for-miss contract.
+    ///
+    /// The resolution chain is identical per name — record, then
+    /// ambient env, then each [`SecretSource`] in order with the
+    /// same `declared_only` gating — but store legs that expose a
+    /// [`SecretSource::batch`] channel answer all still-pending
+    /// names in one call instead of N serialized `get`s. That is
+    /// what makes a webhook listener's ~140 `secret_env` startup
+    /// resolution tractable: the cuora serve wire is strictly
+    /// one-request-at-a-time per child, so the backend fans the
+    /// batch out over parallel `cuora serve` processes.
+    ///
+    /// Strict-mode misses are recorded per unresolved name exactly
+    /// like N `get_secret` calls would.
+    pub fn get_secrets(&self, keys: &[&str]) -> Vec<String> {
+        // Per-name legs first — the record and the ambient env are
+        // cheap and always precede every store leg.
+        let mut resolved: Vec<Option<String>> = Vec::with_capacity(keys.len());
+        let mut pending: Vec<usize> = Vec::with_capacity(keys.len());
+        for (i, key) in keys.iter().enumerate() {
+            if let Some(value) = self.secrets.get(*key) {
+                resolved.push(Some(value.clone()));
+            } else if let Ok(value) = std::env::var(key)
+                && !value.is_empty()
+            {
+                resolved.push(Some(value));
+            } else {
+                resolved.push(None);
+                pending.push(i);
+            }
+        }
+        // Store legs in order — a name claimed by an earlier leg is
+        // never offered to a later one, so first-hit precedence is
+        // the same as the per-name chain.
+        for source in self.secret_stores.iter() {
+            if pending.is_empty() {
+                break;
+            }
+            let eligible: Vec<(usize, &str)> = pending
+                .iter()
+                .copied()
+                .filter(|&i| !source.declared_only || self.secret_declared(keys[i]))
+                .map(|i| (i, keys[i]))
+                .collect();
+            if eligible.is_empty() {
+                continue;
+            }
+            let names: Vec<&str> = eligible.iter().map(|(_, name)| *name).collect();
+            let values: Vec<Option<String>> = match &source.batch {
+                Some(batch) => batch(&names),
+                None => names.iter().map(|name| source.store.get(name)).collect(),
+            };
+            // The contract is one Option per name, in order; a short
+            // reply degrades the tail to misses rather than panicking.
+            for ((i, _), value) in eligible
+                .iter()
+                .zip(values.into_iter().chain(std::iter::repeat_with(|| None)))
+            {
+                if let Some(value) = value {
+                    resolved[*i] = Some(value);
+                }
+            }
+            pending.retain(|&i| resolved[i].is_none());
+        }
+        if self.strict {
+            for &i in &pending {
+                self.missing_secrets.borrow_mut().push(keys[i].to_string());
+            }
+        }
+        resolved
+            .into_iter()
+            .map(Option::unwrap_or_default)
+            .collect()
+    }
+
     /// `ctx.getSecret(key, default)` — a non-empty default suppresses
     /// the strict-mode miss (TS `default_ === ""` check). A miss is
     /// only recorded after every leg of [`ExecutionContext::resolve_secret`]
@@ -353,6 +429,14 @@ impl ExecutionContext {
     }
 }
 
+/// Batch-resolution channel for [`SecretSource::batch`] — the same
+/// backend as `store`, exposed when it can answer many names faster
+/// than N serialized `get`s (cuora's serve transport fanning a batch
+/// out over parallel `cuora serve` children). Called with the
+/// still-unresolved names for this leg; must return one `Option`
+/// per name, in order (`None` = miss, same as `Secrets::get`).
+pub type SecretBatch = dyn Fn(&[&str]) -> Vec<Option<String>> + Send + Sync;
+
 /// One fallback store leg of [`ExecutionContext::resolve_secret`] —
 /// a `hypha_secret::Secrets` backend plus whether lookups into it
 /// require the name to be capability-declared.
@@ -367,6 +451,10 @@ pub struct SecretSource {
     /// undeclared name). `false` → always consulted (the env file,
     /// historically the always-available leg).
     pub declared_only: bool,
+    /// Optional batch channel over the same backend —
+    /// [`ExecutionContext::get_secrets`] prefers it over N `get`
+    /// calls when present. `None` → per-name `get`, unchanged.
+    pub batch: Option<Rc<SecretBatch>>,
 }
 
 /// How a driver resolves another driver by name to run it as a

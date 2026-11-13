@@ -600,7 +600,7 @@ fn parse_repo_specs(
 /// Resolve each repo's `secret_env` to its secret — gated the way
 /// `${secret.*}` is (`capabilities.secrets` present and not `false`;
 /// under `strict` the name must match the grant), read through
-/// `ctx.get_secret` so strict-mode misses land on the shared ledger.
+/// `ctx.get_secrets` so strict-mode misses land on the shared ledger.
 /// The `github-status` `token_env` convention, per repo.
 fn resolve_secrets(
     specs: &[RepoSpec],
@@ -610,35 +610,58 @@ fn resolve_secrets(
     let deny =
         |reason: &str| DriverError::new(format!("github-webhook node '{}': {reason}", node.id));
     let mut secrets = HashMap::with_capacity(specs.len());
-    // `secret_env` names repeat across repos (one webhook secret per
-    // org, say) — resolve each name once per invoke. `ctx.get_secret`
-    // can spawn a `cuora`/keyring lookup per call and `campaign
-    // serve` resolves every hosted campaign's specs on one shared
-    // session, so N repos sharing a name would otherwise serialize
-    // N identical vault round-trips at listener startup.
-    let mut resolved: HashMap<&str, String> = HashMap::new();
+    let denied = |env_name: &str| match ctx.capabilities.get("secrets") {
+        None | Some(Value::Bool(false)) => true,
+        Some(grant) => ctx.strict && !capability_matches(env_name, grant),
+    };
+    // Resolve every reachable `secret_env` in one batch — the
+    // per-name `ctx.get_secret` chain is sequential vault I/O, so
+    // ~140 repos meant ~140 serialized round-trips at listener
+    // startup (`campaign serve` registers every hosted campaign's
+    // specs on one shared session). "Reachable" = the specs before
+    // the first capability denial: the assembly loop below errors
+    // there before touching later specs, exactly like the old lazy
+    // loop — their names are never looked up. `secret_env` names
+    // still resolve once per invoke, and `ctx.get_secrets`
+    // preserves the record → env → stores order, the
+    // `declared_only` gating, and the strict-mode miss ledger per
+    // name.
+    //
+    // One deliberate divergence, failure path only: the old loop
+    // also stopped at the first *unresolved* secret, so names
+    // after it were never looked up (no audit events, no strict
+    // misses recorded). The batch resolves the whole reachable set
+    // up front — a failing invoke may audit/record a few extra
+    // read-only lookups before erroring. Success-path semantics
+    // (which secrets land in the route table, which error fires)
+    // are identical.
+    let first_denied = specs.iter().position(|spec| denied(&spec.secret_env));
+    let reachable = first_denied.map_or(specs, |i| &specs[..i]);
+    let mut names: Vec<&str> = Vec::new();
+    let mut seen = HashSet::new();
+    for spec in reachable {
+        if seen.insert(spec.secret_env.as_str()) {
+            names.push(spec.secret_env.as_str());
+        }
+    }
+    let values = ctx.get_secrets(&names);
+    let resolved: HashMap<&str, String> = names
+        .iter()
+        .zip(values)
+        .filter(|(_, value)| !value.is_empty())
+        .map(|(name, value)| (*name, value))
+        .collect();
     for spec in specs {
         let env_name = spec.secret_env.as_str();
-        let denied = match ctx.capabilities.get("secrets") {
-            None | Some(Value::Bool(false)) => true,
-            Some(grant) => ctx.strict && !capability_matches(env_name, grant),
-        };
-        if denied {
+        if denied(env_name) {
             return Err(deny(&format!(
                 "capability 'secrets' not granted for '{env_name}'"
             )));
         }
-        let secret = if let Some(secret) = resolved.get(env_name) {
-            secret.clone()
-        } else {
-            let secret = ctx.get_secret(env_name);
-            if secret.is_empty() {
-                return Err(deny(&format!("secret '{env_name}' unresolved")));
-            }
-            resolved.insert(env_name, secret.clone());
-            secret
+        let Some(secret) = resolved.get(env_name) else {
+            return Err(deny(&format!("secret '{env_name}' unresolved")));
         };
-        secrets.insert(spec.name.clone(), secret);
+        secrets.insert(spec.name.clone(), secret.clone());
     }
     Ok(secrets)
 }

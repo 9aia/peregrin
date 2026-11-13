@@ -184,6 +184,7 @@ fn store(pairs: &[(&str, &str)]) -> peregrin_driver::SecretSource {
                 .collect(),
         )),
         declared_only: false,
+        batch: None,
     }
 }
 
@@ -291,4 +292,90 @@ fn secret_chain_missing_records_ledger_once() {
     // Full-chain miss — recorded.
     assert_eq!(ctx.get_secret(UNSET), "");
     assert_eq!(*ctx.missing_secrets.borrow(), vec![UNSET.to_string()]);
+}
+
+#[test]
+fn get_secrets_batch_channel_preserves_chain_order() {
+    use std::sync::{Arc, Mutex};
+
+    // A batch-capable first leg: `get` would answer from the same
+    // data, but the test proves `get_secrets` prefers `batch` — the
+    // closure records exactly which names it was offered.
+    let seen = Arc::new(Mutex::new(Vec::new()));
+    let data = BTreeMap::from([
+        ("BATCH_A".to_string(), "a-value".to_string()),
+        ("BATCH_B".to_string(), "b-value".to_string()),
+        ("SHARED".to_string(), "first-store".to_string()),
+    ]);
+    let batch_data = data.clone();
+    let batch_seen = Arc::clone(&seen);
+    let batched = peregrin_driver::SecretSource {
+        store: Rc::new(FakeStore(data)),
+        declared_only: false,
+        batch: Some(Rc::new(move |names: &[&str]| {
+            batch_seen
+                .lock()
+                .unwrap()
+                .extend(names.iter().map(|name| (*name).to_string()));
+            names
+                .iter()
+                .map(|name| batch_data.get(*name).cloned())
+                .collect()
+        })),
+    };
+    // Second leg — only sees names the batch leg missed.
+    let ctx = ExecutionContext {
+        strict: true,
+        secrets: Rc::new(BTreeMap::from([(
+            "REC".to_string(),
+            "rec-value".to_string(),
+        )])),
+        secret_stores: Rc::new(vec![
+            batched,
+            store(&[("SHARED", "second-store"), ("LATE", "late-value")]),
+        ]),
+        ..ExecutionContext::default()
+    };
+
+    let out = ctx.get_secrets(&[
+        "REC", "PATH", // ambient env leg — every test process has it
+        "BATCH_A", "SHARED", "LATE", "BATCH_B", UNSET,
+    ]);
+    assert_eq!(
+        out,
+        vec![
+            "rec-value".to_string(),
+            std::env::var("PATH").unwrap(),
+            "a-value".to_string(),
+            "first-store".to_string(), // first-hit store wins over "second-store"
+            "late-value".to_string(),
+            "b-value".to_string(),
+            String::new(),
+        ]
+    );
+    // The batch channel saw only the names record+env missed —
+    // record/env hits are never offered to stores.
+    assert_eq!(
+        *seen.lock().unwrap(),
+        vec![
+            "BATCH_A".to_string(),
+            "SHARED".to_string(),
+            "LATE".to_string(),
+            "BATCH_B".to_string(),
+            UNSET.to_string(),
+        ]
+    );
+    // Strict ledger: only the full-chain miss, once — store hits
+    // (LATE via leg 2) record nothing.
+    assert_eq!(*ctx.missing_secrets.borrow(), vec![UNSET.to_string()]);
+}
+
+#[test]
+fn get_secrets_without_batch_falls_back_per_name() {
+    let ctx = ExecutionContext {
+        secret_stores: Rc::new(vec![store(&[("K1", "v1"), ("K2", "v2")])]),
+        ..ExecutionContext::default()
+    };
+    assert_eq!(ctx.get_secrets(&["K1", "K2", UNSET]), vec!["v1", "v2", ""]);
+    assert!(ctx.get_secrets(&[]).is_empty());
 }
