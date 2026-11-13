@@ -27,6 +27,7 @@ export default defineConfig({
           { text: 'Run a hub', link: '/how-to/run-a-hub' },
           { text: 'Run a CI node', link: '/how-to/run-a-ci-node' },
           { text: 'CI runner fleet', link: '/how-to/ci-runner-fleet' },
+          { text: 'Run CI through ci-job entities', link: '/how-to/run-ci-through-ci-job-entities' },
           { text: 'Serve campaigns', link: '/how-to/serve-campaigns' },
         ],
       },
