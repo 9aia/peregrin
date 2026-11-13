@@ -15,6 +15,17 @@ tag_format = "{unit}-v{version}"
 
 [release.unit_overrides.xtask]
 skip = true
+# Pack-ref sync (T-039): the product pack manifest version + README
+# install ref are rewritten to the new version inside the release
+# commit, so the tagged tree is self-consistent — replaces the
+# release.sh plan+sed pre-step. The other libraries/* packs version
+# independently and stay untouched.
+[release.sync_refs]
+rules = [
+  { files = ["libraries/peregrin/tamias.yaml"], find = "(?m)^version: \"{old}\"", replace = "version: \"{new}\"" },
+  { files = ["README.md"], find = "peregrin@{old}", replace = "peregrin@{new}" },
+]
+
 [publish.crates]
 enabled = false   # ADR-0004: crates.io publishing is tamias-only
 
