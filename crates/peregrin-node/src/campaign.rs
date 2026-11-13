@@ -17,13 +17,13 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use peregrin_bus::{LocalBus, NoopObserver};
+use peregrin_bus::{EventBus, LocalBus, NoopObserver, Observer};
 use peregrin_core::{Campaign, Event};
 use peregrin_driver::{DriverError, NoopDriver, RunnerDriver, SecretSource};
 use peregrin_engine::{Ingress, Injector, Registry, RunOptions, Runner, ingress};
 use peregrin_loader::{LoadError, Loader};
 use peregrin_loader_yaml::YamlLoader;
-use peregrin_store::MemoryDlq;
+use peregrin_store::{MemoryDlq, MemoryStore};
 use peregrin_store_json::JsonStoreError;
 
 /// Campaign-plane failure — the two error channels a run crosses:
@@ -222,10 +222,38 @@ pub fn listener_runner(
     ingress: Ingress,
     log_path: Option<&Path>,
 ) -> Result<Runner, CampaignError> {
+    listener_runner_observed(registry, ingress, log_path, Arc::new(NoopObserver))
+}
+
+/// [`listener_runner`] with a caller-supplied bus [`Observer`] — the
+/// supervisor's startup watchdog wires its "listener produced its
+/// first real event" flag through here. `LocalBus::on_event` is the
+/// only hook that sees *every* published event (the runner's own
+/// `with_observer` slot never receives `on_event`), including the
+/// drivers' readiness emissions (`{id}.listening`, `{id}.watching`)
+/// that signal a healthy bind/register. With `log_path` unset the
+/// bus is still swapped so the observer sees events — the default
+/// `LocalBus::memory()` carries a noop observer.
+///
+/// # Errors
+/// [`CampaignError::Store`] when the log can't be opened.
+pub fn listener_runner_observed(
+    registry: Registry,
+    ingress: Ingress,
+    log_path: Option<&Path>,
+    observer: Arc<dyn Observer>,
+) -> Result<Runner, CampaignError> {
     let runner = Runner::new(registry)
         .with_dlq(Box::<MemoryDlq>::default())
         .with_ingress(ingress);
-    with_history(runner, log_path)
+    let bus: Box<dyn EventBus> = match log_path {
+        Some(path) => Box::new(LocalBus::new(
+            Box::new(peregrin_store_json::JsonStore::open_append(path)?),
+            observer,
+        )),
+        None => Box::new(LocalBus::new(Box::new(MemoryStore::default()), observer)),
+    };
+    Ok(runner.with_bus(bus))
 }
 
 /// Swap `runner`'s in-memory bus for the durable JSONL log at

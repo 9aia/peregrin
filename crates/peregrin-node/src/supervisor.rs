@@ -30,8 +30,9 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
+use peregrin_bus::Observer;
 use peregrin_core::{Campaign, Event};
 use peregrin_driver::{DriverError, SecretSource};
 use peregrin_engine::{Ingress, Injector, RunOptions, WaitOutcome, ingress};
@@ -362,6 +363,18 @@ pub struct SupervisedOptions {
     /// marker — `campaign.name` when unset. `campaign serve` passes
     /// the resolved hosted name (its file-stem fallback included).
     pub campaign_name: Option<String>,
+    /// Startup watchdog for the listener run — how long it may go
+    /// without publishing its first post-`start` event (a driver's
+    /// readiness emission like `{id}.listening`/`{id}.watching`, or
+    /// `node.failed` on a fast boot failure) before the supervisor
+    /// warns and appends a durable `listener.stalled` marker to the
+    /// history JSONL. Covers the "stuck, not dead" gap the
+    /// exit-watch can't see — a run blocked in invoke/secret
+    /// resolution emits nothing at all. Once any real event lands
+    /// the watchdog disarms for good (listeners idle between
+    /// deliveries is normal). `Duration::ZERO` disables. Default:
+    /// 120s, or `PEREGRIN_LISTENER_WATCHDOG_SECS` when set.
+    pub listener_watchdog: Duration,
 }
 
 /// The per-finished-run callback [`SupervisedOptions::on_run`]
@@ -379,6 +392,10 @@ impl Default for SupervisedOptions {
             shutdown: None,
             on_run: None,
             campaign_name: None,
+            listener_watchdog: std::env::var("PEREGRIN_LISTENER_WATCHDOG_SECS")
+                .ok()
+                .and_then(|raw| raw.parse::<u64>().ok())
+                .map_or_else(|| Duration::from_secs(120), Duration::from_secs),
         }
     }
 }
@@ -412,6 +429,36 @@ impl RunMaterials {
             ..RunOptions::default()
         }
     }
+}
+
+/// Bus observer for the listener run's startup watchdog — flips
+/// `ready` on the first event *after* the synthetic `start`. The
+/// run's own `start` publishes before node invoke (where secret
+/// resolution and driver binds happen), so counting it would disarm
+/// the watchdog instantly; the first real emission is a driver's
+/// readiness event (`{id}.listening`, `{id}.watching`) or a fast
+/// `node.failed` — either way the run isn't silently stuck.
+struct ListenerReady {
+    ready: Arc<AtomicBool>,
+}
+
+impl Observer for ListenerReady {
+    fn on_event(&self, event: &Event) {
+        if event.kind != "start" {
+            self.ready.store(true, Ordering::Relaxed);
+        }
+    }
+}
+
+/// The supervisor-loop half of the startup watchdog — `ready` is the
+/// listener thread's flag (flipped by [`ListenerReady`] on its first
+/// post-`start` event), `started`/`timeout` bound the silent window,
+/// `fired` makes the warn+marker a one-shot.
+struct ListenerWatchdog {
+    ready: Arc<AtomicBool>,
+    started: Instant,
+    timeout: Duration,
+    fired: bool,
 }
 
 /// A spawned run's join handle — the finished log or the run's
@@ -451,6 +498,7 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
         shutdown,
         on_run,
         campaign_name,
+        listener_watchdog,
     } = options;
     // The listener-failure log/marker name — the explicit option
     // wins (`campaign serve`'s resolved hosted name), then the
@@ -491,14 +539,23 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
     // spawned run would. Spawned only when the campaign actually
     // declares ingress nodes — a `supersede:` campaign fed purely
     // through the returned injector needs no listener.
+    //
+    // The startup watchdog's `ready` flag rides the listener's bus
+    // observer — armed only when the option is non-zero *and* a
+    // listener actually spawns (resolved below, once the thread
+    // exists).
+    let listener_ready = Arc::new(AtomicBool::new(false));
+    let listener_started = Instant::now();
     let listener = (!listener_campaign.nodes.is_empty()).then(|| {
         let (cancel_injector, cancel_ingress) = ingress();
         let materials = Arc::clone(&materials);
+        let ready = Arc::clone(&listener_ready);
         let thread = thread::spawn(move || {
-            let mut runner = campaign::listener_runner(
+            let mut runner = campaign::listener_runner_observed(
                 listener_registry,
                 cancel_ingress,
                 materials.history.as_deref(),
+                Arc::new(ListenerReady { ready }),
             )?;
             runner
                 .run(&listener_campaign, &materials.run_options())
@@ -507,6 +564,13 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
         (thread, cancel_injector)
     });
     let (listener_thread, listener_injector) = listener.unzip();
+    let listener_watchdog = (listener_thread.is_some() && listener_watchdog > Duration::ZERO)
+        .then_some(ListenerWatchdog {
+            ready: listener_ready,
+            started: listener_started,
+            timeout: listener_watchdog,
+            fired: false,
+        });
 
     let worker_campaign = Arc::new(worker_campaign);
     let policy = Supersede::from(campaign.supersede.clone().unwrap_or_default());
@@ -517,6 +581,7 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
             worker_campaign,
             listener_thread,
             listener_injector,
+            listener_watchdog,
             materials,
             queue_store,
             shutdown,
@@ -566,6 +631,7 @@ fn supervise_loop(
     worker_campaign: Arc<Campaign>,
     mut listener: Option<JoinHandle<Result<Vec<Event>, CampaignError>>>,
     listener_injector: Option<Injector>,
+    mut listener_watchdog: Option<ListenerWatchdog>,
     materials: Arc<RunMaterials>,
     queue_store: Option<Arc<dyn QueueStore>>,
     shutdown: Option<Arc<AtomicBool>>,
@@ -609,7 +675,14 @@ fn supervise_loop(
                 triggers_done = true;
                 trigger_ingress.drain_into(&mut buf);
             } else {
-                let timeout = if worker.is_some() || shutdown.is_some() {
+                // An armed startup watchdog needs the tick too — an
+                // otherwise-idle supervisor would park on
+                // `wait(None)` forever and never observe the stall.
+                let watchdog_pending = listener.is_some()
+                    && listener_watchdog.as_ref().is_some_and(|watchdog| {
+                        !watchdog.fired && !watchdog.ready.load(Ordering::Relaxed)
+                    });
+                let timeout = if worker.is_some() || shutdown.is_some() || watchdog_pending {
                     Some(TICK)
                 } else {
                     None
@@ -662,9 +735,9 @@ fn supervise_loop(
         // is exactly the "dead ingress invisible until shutdown" gap
         // (a failed listener run used to leave no trace while the
         // supervisor kept serving the queue). A *stuck* listener
-        // (still running, e.g. blocked in secret resolution) is not
-        // covered here — that shows up as missing `.listening`
-        // events, not a dead thread.
+        // (still running, e.g. blocked in secret resolution) is the
+        // startup watchdog's job below — dead thread vs silent thread
+        // are different failures.
         if listener.as_ref().is_some_and(JoinHandle::is_finished)
             && let Some(handle) = listener.take()
         {
@@ -674,6 +747,29 @@ fn supervise_loop(
                 materials.history.as_deref(),
                 &mut first_error,
                 false,
+            );
+        }
+        // A *stuck* listener (thread alive, no events) surfaces via
+        // the startup watchdog — warn + one durable `listener.stalled`
+        // marker. Disarms permanently on the first post-`start`
+        // event; a listener that already exited is the exit-watch's
+        // job above, not this one's.
+        if let Some(watchdog) = listener_watchdog.as_mut()
+            && listener.is_some()
+            && !watchdog.fired
+            && !watchdog.ready.load(Ordering::Relaxed)
+            && watchdog.started.elapsed() >= watchdog.timeout
+        {
+            watchdog.fired = true;
+            tracing::warn!(
+                campaign = campaign_name,
+                timeout_ms = watchdog.timeout.as_millis(),
+                "ingress listener run has published no events since start — likely stuck in startup (secret resolution, driver invoke)"
+            );
+            record_listener_stall(
+                materials.history.as_deref(),
+                &campaign_name,
+                watchdog.timeout,
             );
         }
         if triggers_done && worker.is_none() {
@@ -754,9 +850,6 @@ fn observe_listener_exit(
 /// Best-effort: open/write failures are logged, never fatal — the
 /// listener error itself already propagated.
 fn record_listener_failure(history: Option<&Path>, campaign_name: &str, detail: &str) {
-    let Some(path) = history else {
-        return;
-    };
     let marker = Event::new(
         "workflow.failed",
         json!({
@@ -767,20 +860,60 @@ fn record_listener_failure(history: Option<&Path>, campaign_name: &str, detail: 
         }),
         "__runner__",
     );
+    append_listener_marker(history, campaign_name, &marker, "listener-failure");
+}
+
+/// Append a `listener.stalled` marker — the startup watchdog's
+/// durable record for a listener run that published nothing (past
+/// its synthetic `start`) within the timeout: almost certainly
+/// stuck in invoke/secret resolution. Not a `workflow.failed` — the
+/// run is still alive and may recover; the kind mirrors the
+/// `driver.stalled` convention and the `campaign`/`listener` payload
+/// fields keep it distinguishable in `peregrin runs`/`log` output.
+fn record_listener_stall(history: Option<&Path>, campaign_name: &str, timeout: Duration) {
+    let marker = Event::new(
+        "listener.stalled",
+        json!({
+            "campaign": campaign_name,
+            "listener": true,
+            "timeout_ms": timeout.as_millis(),
+            "detail": format!(
+                "ingress listener run published no events within {timeout:?} of start"
+            ),
+        }),
+        "__runner__",
+    );
+    append_listener_marker(history, campaign_name, &marker, "listener-stall");
+}
+
+/// Append `marker` to the campaign's history JSONL. The listener
+/// run's own `JsonStore` keeps its descriptor open; `O_APPEND` keeps
+/// a second writer's line atomic. Best-effort: open/write failures
+/// are logged, never fatal — the condition being recorded already
+/// propagated (or is advisory, for the stall marker).
+fn append_listener_marker(
+    history: Option<&Path>,
+    campaign_name: &str,
+    marker: &Event,
+    label: &str,
+) {
+    let Some(path) = history else {
+        return;
+    };
     match peregrin_store_json::JsonStore::open_append(path) {
         Ok(mut store) => {
-            store.append(&marker);
+            store.append(marker);
             if let Some(error) = store.write_error() {
                 tracing::error!(
                     campaign = campaign_name,
-                    "listener-failure history marker write failed: {error}"
+                    "{label} history marker write failed: {error}"
                 );
             }
         }
         Err(error) => {
             tracing::error!(
                 campaign = campaign_name,
-                "listener-failure history marker open failed: {error}"
+                "{label} history marker open failed: {error}"
             );
         }
     }

@@ -416,6 +416,166 @@ fn listener_run_hard_error_surfaces_mid_supervision_with_a_history_marker() {
     );
 }
 
+/// The silent-listener shape shared by the watchdog tests: a
+/// `github-webhook` ingress node whose trigger kind never arrives —
+/// the run publishes only its synthetic `start`, then parks in
+/// serve-quiet forever. Same observable signature as the incident's
+/// stuck run (blocked in invoke/secret resolution): alive thread,
+/// zero post-`start` events.
+const SILENT_LISTENER_YAML: &str = r#"
+    supersede:
+      key: "{repo}"
+      mode: latest-wins
+    nodes:
+      - id: gate.ingress
+        driver: github-webhook
+        on: [bogus.never]
+        params:
+          listen: "127.0.0.1:0"
+          repos: []
+"#;
+
+fn history_kinds(history: &Path) -> Vec<String> {
+    std::fs::read_to_string(history)
+        .unwrap()
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| {
+            serde_json::from_str::<Value>(l).unwrap()["type"]
+                .as_str()
+                .unwrap()
+                .to_string()
+        })
+        .collect()
+}
+
+#[test]
+fn listener_watchdog_marks_a_listener_that_never_emits() {
+    // The stuck-not-dead half of the T-076 gap: the exit-watch only
+    // sees a dead JoinHandle; a run parked before its first real
+    // event used to leave zero trace. The watchdog must append a
+    // durable `listener.stalled` marker once the timeout lapses.
+    let tmp = tempfile::tempdir().unwrap();
+    let history = tmp.path().join("history.jsonl");
+    let campaign = load(SILENT_LISTENER_YAML);
+    let shutdown = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let run = supervise(
+        &campaign,
+        SupervisedOptions {
+            history: Some(history.clone()),
+            shutdown: Some(std::sync::Arc::clone(&shutdown)),
+            listener_watchdog: Duration::from_millis(300),
+            ..SupervisedOptions::default()
+        },
+    );
+    // Well past the 300ms watchdog — the marker must already be in
+    // the file before shutdown drains the loop.
+    std::thread::sleep(Duration::from_millis(900));
+    shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+    run.join.join().unwrap().unwrap();
+
+    let kinds = history_kinds(&history);
+    assert!(
+        kinds.contains(&"listener.stalled".to_string()),
+        "silent listener left a stall marker: {kinds:?}"
+    );
+    let text = std::fs::read_to_string(&history).unwrap();
+    let marker = text
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .map(|l| serde_json::from_str::<Value>(l).unwrap())
+        .find(|e| e["type"] == "listener.stalled")
+        .unwrap();
+    assert_eq!(marker["payload"]["listener"], true);
+    assert_eq!(marker["payload"]["timeout_ms"], 300);
+}
+
+#[test]
+fn listener_watchdog_disarms_once_the_listener_emits() {
+    // A healthy `github-webhook` node (`on: [start]`, ephemeral
+    // port, no repos) binds and returns `{id}.listening` — the
+    // first post-`start` event disarms the watchdog permanently;
+    // listeners idle between deliveries, so going quiet later is
+    // normal and must never re-arm.
+    let tmp = tempfile::tempdir().unwrap();
+    let history = tmp.path().join("history.jsonl");
+    let campaign = load(
+        r#"
+        supersede:
+          key: "{repo}"
+          mode: latest-wins
+        capabilities:
+          secrets: true
+        nodes:
+          - id: gate.ingress
+            driver: github-webhook
+            on: [start]
+            params:
+              listen: "127.0.0.1:0"
+              repos:
+                - name: "o/r"
+                  secret_env: "PEREGRIN_WATCHDOG_WH_TEST"
+        "#,
+    );
+    let shutdown = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let run = supervise(
+        &campaign,
+        SupervisedOptions {
+            history: Some(history.clone()),
+            secrets: std::collections::BTreeMap::from([(
+                "PEREGRIN_WATCHDOG_WH_TEST".to_string(),
+                "fake-secret".to_string(),
+            )]),
+            shutdown: Some(std::sync::Arc::clone(&shutdown)),
+            listener_watchdog: Duration::from_millis(300),
+            ..SupervisedOptions::default()
+        },
+    );
+    // Several watchdog-timeouts of quiet after the `.listening`
+    // emission — disarmed means no marker, ever.
+    std::thread::sleep(Duration::from_millis(1200));
+    shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+    run.join.join().unwrap().unwrap();
+
+    let kinds = history_kinds(&history);
+    assert!(
+        kinds.iter().any(|k| k == "gate.ingress.listening"),
+        "healthy listener published its readiness event: {kinds:?}"
+    );
+    assert!(
+        !kinds.contains(&"listener.stalled".to_string()),
+        "disarmed watchdog stayed silent: {kinds:?}"
+    );
+}
+
+#[test]
+fn listener_watchdog_zero_disables_the_check() {
+    // `Duration::ZERO` opts out — the silent listener produces no
+    // marker (and, with no armed watchdog, no extra ticking either).
+    let tmp = tempfile::tempdir().unwrap();
+    let history = tmp.path().join("history.jsonl");
+    let campaign = load(SILENT_LISTENER_YAML);
+    let shutdown = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+    let run = supervise(
+        &campaign,
+        SupervisedOptions {
+            history: Some(history.clone()),
+            shutdown: Some(std::sync::Arc::clone(&shutdown)),
+            listener_watchdog: Duration::ZERO,
+            ..SupervisedOptions::default()
+        },
+    );
+    std::thread::sleep(Duration::from_millis(600));
+    shutdown.store(true, std::sync::atomic::Ordering::Relaxed);
+    run.join.join().unwrap().unwrap();
+
+    let kinds = history_kinds(&history);
+    assert!(
+        !kinds.contains(&"listener.stalled".to_string()),
+        "disabled watchdog stayed silent: {kinds:?}"
+    );
+}
+
 // ---------------------------------------------------------------------------
 // docs-deploy — the shipped `supersede:` block is live config now
 // ---------------------------------------------------------------------------
