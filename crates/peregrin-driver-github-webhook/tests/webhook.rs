@@ -205,7 +205,11 @@ fn pr_body(action: &str) -> Vec<u8> {
             "head": {
                 "sha": HEAD_SHA,
                 "ref": "feature/pr",
-                "repo": { "clone_url": "https://github.com/octocat/widgets.git" },
+                "repo": {
+                    "clone_url": "https://github.com/octocat/widgets.git",
+                    "full_name": "octocat/widgets",
+                    "fork": true,
+                },
             },
             "base": { "ref": "main" },
             "user": { "login": "octocat" },
@@ -264,9 +268,46 @@ fn verified_pull_request_injects_head_payload() {
             // The head repo's clone_url (fork-aware) wins over the
             // base repository's.
             "clone_url": "https://github.com/octocat/widgets.git",
+            // Fork head repo → fork flag + the fork's clone URL for
+            // checkout (bupha ci-job `cloneUrl`).
+            "fork": true,
+            "head_clone_url": "https://github.com/octocat/widgets.git",
             "delivery_id": "",
         })
     );
+}
+
+#[test]
+fn pull_request_same_repo_head_is_not_fork() {
+    // Head repo IS the base repo — no fork flag, no head_clone_url.
+    let body = json!({
+        "action": "opened",
+        "number": 9,
+        "pull_request": {
+            "head": {
+                "sha": HEAD_SHA,
+                "ref": "feature/inrepo",
+                "repo": {
+                    "clone_url": "https://github.com/acme/widgets.git",
+                    "full_name": "acme/widgets",
+                    "fork": false,
+                },
+            },
+            "base": { "ref": "main" },
+        },
+        "repository": {
+            "full_name": REPO,
+            "clone_url": "https://github.com/acme/widgets.git",
+        },
+    })
+    .to_string()
+    .into_bytes();
+    let (_driver, chan, base) = serving(default_params(), &default_ctx());
+    assert_eq!(post_pr(&format!("{base}/hook"), SECRET, &body, None).0, 202);
+    let mut drained = Vec::new();
+    assert_eq!(chan.drain_into(&mut drained), 1);
+    assert_eq!(drained[0].payload["fork"], false);
+    assert_eq!(drained[0].payload["head_clone_url"], "");
 }
 
 #[test]
@@ -386,6 +427,9 @@ fn pull_request_clone_url_falls_back_like_push() {
         drained[0].payload["clone_url"],
         "https://ghe.acme/acme/widgets.git"
     );
+    // No head.repo at all → not a fork, no head_clone_url.
+    assert_eq!(drained[0].payload["fork"], false);
+    assert_eq!(drained[0].payload["head_clone_url"], "");
     // actor falls back to pull_request.user.login when sender is absent.
     let body = json!({
         "action": "reopened",

@@ -652,6 +652,15 @@ nodes:
 # Repos that didn't opt into pull_request never match a fleet spec's
 # `events` — a spec-armed plane rejects the create (400 → http.failed
 # in the log) instead of leaving an unclaimable job pending.
+#
+# Fork heads (T-073/bupha): `cloneUrl`/`headRef` carry the head
+# repo's clone URL + head ref — the driver emits `head_clone_url`
+# ONLY for fork deliveries (`fork` flag / head-repo mismatch), ""
+# otherwise, which the plane normalizes to absent. `headRef` is the
+# head branch name (`event.payload.ref`); the worker fetches
+# `cloneUrl` first, then the bare sha, then the repo's own remote —
+# pushes and same-repo PRs leave both fields empty/absent and keep
+# the old single-remote checkout.
 - id: ci.enqueue.pr
   driver: http
   on:
@@ -676,6 +685,8 @@ nodes:
         ref: "refs/heads/${event.payload.base_ref}"
         sha: "${event.payload.sha}"
         event: pull_request
+        cloneUrl: "${event.payload.head_clone_url}"
+        headRef: "${event.payload.ref}"
         sender: "${event.payload.actor}"
         deliveryId: "${event.payload.delivery_id}"
         queue: "${config.queue}"

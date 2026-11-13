@@ -101,6 +101,17 @@ bupha-trigger's convention. Opt a repo in with
 plane 400s PR jobs for repos that didn't opt in (visible as
 `http.failed` in the campaign log, not a silent pending job).
 
+**Fork PRs** carry the head repo's fetch coordinates: the webhook
+driver marks fork deliveries (`fork`) and emits `head_clone_url`
+(the head repo's `clone_url`, empty for same-repo PRs), and
+`ci.enqueue.pr` maps them onto the indexDoc's optional
+`cloneUrl`/`headRef` (`headRef` = the head branch, `ref` in the
+event payload). The bupha worker tries `git fetch <cloneUrl>
+<headRef>` — then the bare sha — before falling back to the repo's
+own remote, so fork heads check out even though they aren't in the
+base clone. Same-repo PRs and pushes leave both fields absent and
+keep the single-remote path.
+
 `deliveryId` is `X-GitHub-Delivery` verbatim (audit/dedup — the
 deterministic entity id already dedups replays). Both enqueue nodes
 set `retries: 3` on the `driver: http` POST: transport failures and
@@ -144,7 +155,8 @@ and `ref`.
 
 ## Not covered yet (filed remainders)
 
-- **Fork-PR shas** — a `pull_request` job checks out the head sha in
-  the base repo's clone (`repo.dir`); fork heads may not exist in
-  the base object store (same limitation as `bupha watch` — the
-  indexDoc has no `clone_url` field to fetch the head repo).
+- **Fork credentials** — `cloneUrl` points at the fork's clone
+  URL; fetching a *private* fork needs worker git credentials that
+  reach it (public forks and the base-repo `refs/pull/*` fallback
+  need nothing extra). A fork this box can't auth still fails the
+  job after the remote fallbacks.

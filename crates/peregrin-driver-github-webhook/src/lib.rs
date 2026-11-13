@@ -28,10 +28,14 @@
 //!
 //! `pull_request` deliveries get the same verify/dedup treatment and
 //! inject `Event{type:"pull_request", payload:{repo, number, action,
-//! sha, ref, base_ref, clone_url, actor, delivery_id}}` — `sha`/`ref`/`clone_url`
+//! sha, ref, base_ref, actor, clone_url, fork, head_clone_url,
+//! delivery_id}}` — `sha`/`ref`/`clone_url`
 //! describe the PR *head* so a campaign can check it out and post
-//! statuses. `params.pull_request_actions` (comma-separated string or
-//! list; default `opened,synchronize,reopened`) filters which actions
+//! statuses. `fork` marks head-repo-is-a-fork deliveries and
+//! `head_clone_url` carries the head repo's clone URL only then
+//! (empty string otherwise — fork PR heads aren't fetchable from
+//! the base clone's remote). `params.pull_request_actions`
+//! (comma-separated string or list; default `opened,synchronize,reopened`) filters which actions
 //! a route accepts — a verified delivery whose action no matched
 //! route wants answers `200 ignored`. Note for fork PRs: the head
 //! sha lives in the base repo's object store, but `clone_url` points
@@ -242,6 +246,12 @@ struct PullRequest {
     base_ref: String,
     actor: String,
     clone_url: Option<String>,
+    /// `pull_request.head.repo` is a fork (or at least a different
+    /// repo than the base) — gates `head_clone_url`.
+    fork: bool,
+    /// `pull_request.head.repo.clone_url` verbatim — `None` when the
+    /// head repo is absent (deleted fork) or the field is missing.
+    head_repo_clone_url: Option<String>,
 }
 
 /// The normalized `check_run` — everything the injected `check_run`
@@ -782,6 +792,34 @@ fn parse_pull_request(v: &Value, repo: &str) -> Delivery {
             .or_else(|| v.pointer("/repository/clone_url"))
             .and_then(Value::as_str)
             .map(str::to_string),
+        // Fork detection — `head.repo.fork` is authoritative, but
+        // forges that omit it still show a different `full_name` or
+        // a head `clone_url` that isn't the base repository's.
+        fork: {
+            let head_repo = v.pointer("/pull_request/head/repo");
+            let flag = head_repo
+                .and_then(|r| r.get("fork"))
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
+            let name_mismatch = head_repo
+                .and_then(|r| r.get("full_name"))
+                .and_then(Value::as_str)
+                .is_some_and(|n| n != repo);
+            let url_mismatch = matches!(
+                (
+                    head_repo
+                        .and_then(|r| r.get("clone_url"))
+                        .and_then(Value::as_str),
+                    v.pointer("/repository/clone_url").and_then(Value::as_str),
+                ),
+                (Some(h), Some(b)) if h != b
+            );
+            flag || name_mismatch || url_mismatch
+        },
+        head_repo_clone_url: v
+            .pointer("/pull_request/head/repo/clone_url")
+            .and_then(Value::as_str)
+            .map(str::to_string),
     })
 }
 
@@ -1098,6 +1136,15 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
                     .clone_url
                     .clone()
                     .unwrap_or_else(|| format!("{}/{repo}.git", route.web_base));
+                // `head_clone_url` is the fork-aware fetch remote —
+                // empty unless the head repo is a fork, so a campaign
+                // can map it straight onto an optional indexDoc
+                // field (`""` reads as absent downstream).
+                let head_clone_url = if pr.fork {
+                    pr.head_repo_clone_url.clone().unwrap_or_default()
+                } else {
+                    String::new()
+                };
                 Event::new(
                     "pull_request",
                     serde_json::json!({
@@ -1109,6 +1156,8 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
                         "base_ref": pr.base_ref,
                         "actor": pr.actor,
                         "clone_url": clone_url,
+                        "fork": pr.fork,
+                        "head_clone_url": head_clone_url,
                         "delivery_id": delivery_id,
                     }),
                     &route.source,
