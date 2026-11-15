@@ -69,5 +69,5 @@ stays out of the engine.
   verbs
 - [Include and snippet resolution](include-resolution.md) — the
   file-level half
-- [Your first gate](../tutorials/first-gate.md) — the install →
-  deploy → hooks flow end to end
+- [Run the docs-deploy bundle](../how-to/run-the-docs-deploy-bundle.md)
+  — the install → deploy → hooks flow end to end

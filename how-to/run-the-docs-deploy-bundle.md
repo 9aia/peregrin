@@ -1,12 +1,13 @@
-# Your first bundle
+# Run the docs-deploy bundle
 
-This tutorial walks the operator flow end to end on the shipped
-`docs-deploy` bundle: install it through tamias, deploy the shared
-campaign host, register the repo webhook, and watch pushes to the
-`docs` branch turn into `docs/deploy` commit statuses. You'll need the `peregrin`, `peregrin-hub`, and
+**Goal:** install the shipped `docs-deploy` bundle through tamias,
+deploy the shared campaign host, register the repo webhook, and have
+pushes to the `docs` branch turn into `docs/deploy` commit statuses.
+
+**Prerequisites:** the `peregrin`, `peregrin-hub`, and
 `tamias-driver-peregrin` binaries
-([Getting started](getting-started.md)), `tamias` itself, and a GitHub
-token with `repo` + `admin:repo_hook` scopes.
+([Getting started](/tutorials/getting-started)), `tamias` itself, and a
+GitHub token with `repo` + `admin:repo_hook` scopes.
 
 Distribution, provisioning, and service lifecycle are **tamias**'s job —
 peregrin ships only the provider (`tamias-driver-peregrin`). See

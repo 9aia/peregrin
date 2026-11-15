@@ -3,6 +3,15 @@
 Why peregrin is designed the way it is — the concepts behind the
 contracts in [Reference](../reference/index.md).
 
+## Orientation
+
+- [Architecture](architecture.md) — nodes, hub, the sepia boundary,
+  planes, where peregrin sits in the org.
+- [Concepts](concepts.md) — the domain vocabulary, defined once.
+- [Boundaries](boundaries.md) — owns / doesn't-own, neighbors named.
+- [Decisions](decisions.md) — ADR-lite: decision → alternative →
+  consequence.
+
 ## The model
 
 - [Abstraction via event types](abstraction.md) — why events are the

@@ -77,7 +77,7 @@ campaign's `params.repos[].name`:
   keep a `push`-only subscription. PR payloads
   carry the head repo's `clone_url`, so fork heads are checkable with
   a suitably scoped token — see
-  [first-gate](../tutorials/first-gate.md#pull-request-triggers-opt-in).
+  [run-the-docs-deploy-bundle](run-the-docs-deploy-bundle.md#pull-request-triggers-opt-in).
 - A campaign whose run has ended simply drops injections; if every
   matching route is closed the listener answers `503`.
 

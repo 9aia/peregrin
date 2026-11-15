@@ -65,9 +65,9 @@ Clients authenticate with `PEREGRIN_HUB_TOKEN` (loopback is open) and
 
 ## Where next
 
-- [Your first gate](first-gate.md) — install a bundle through tamias,
-  deploy a campaign node, register the webhook, watch pushes become
-  commit statuses.
+- [Run the docs-deploy bundle](../how-to/run-the-docs-deploy-bundle.md)
+  — install a bundle through tamias, deploy a campaign node, register
+  the webhook, watch pushes become commit statuses.
 - [Architecture](../explanation/architecture.md) — how nodes, hub, and
   the sepia boundary fit together.
 - [Run a node](../how-to/run-a-node.md) — tokens, non-loopback binds,

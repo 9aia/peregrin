@@ -20,7 +20,6 @@ export default defineConfig({
         text: 'Tutorials',
         items: [
           { text: 'Getting started', link: '/tutorials/getting-started' },
-          { text: 'Your first gate', link: '/tutorials/first-gate' },
         ],
       },
       {
@@ -32,6 +31,7 @@ export default defineConfig({
           { text: 'CI runner fleet', link: '/how-to/ci-runner-fleet' },
           { text: 'Run CI through ci-job entities', link: '/how-to/run-ci-through-ci-job-entities' },
           { text: 'Serve campaigns', link: '/how-to/serve-campaigns' },
+          { text: 'Run the docs-deploy bundle', link: '/how-to/run-the-docs-deploy-bundle' },
         ],
       },
       {
@@ -55,6 +55,9 @@ export default defineConfig({
         text: 'Explanation',
         items: [
           { text: 'Architecture', link: '/explanation/architecture' },
+          { text: 'Concepts', link: '/explanation/concepts' },
+          { text: 'Boundaries', link: '/explanation/boundaries' },
+          { text: 'Decisions', link: '/explanation/decisions' },
           { text: 'Event graph model', link: '/explanation/event-graph-model' },
           { text: 'Events', link: '/explanation/events' },
           { text: 'Abstraction via event types', link: '/explanation/abstraction' },
