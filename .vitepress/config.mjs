@@ -9,11 +9,11 @@ export default defineConfig({
   ignoreDeadLinks: [/^https?:\/\//],
   themeConfig: {
     nav: [
+      { text: '9aia', link: 'https://9aia.com', target: '_blank' },
       { text: 'Tutorials', link: '/tutorials/getting-started' },
       { text: 'How-to', link: '/how-to/' },
       { text: 'Reference', link: '/reference/' },
       { text: 'Explanation', link: '/explanation/' },
-      { text: '9aia', link: 'https://9aia.com' },
     ],
     sidebar: [
       {
