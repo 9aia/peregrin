@@ -1,0 +1,54 @@
+# peregrin — docs/reference generation contract for `cypera`
+# (`cypera gen crate-map|cli`, discovered upward from --repo).
+# Replaces the retired docs/gen-*.py wrappers; schema lives in
+# ../cypera crates/cypera-core/src/repo_config.rs.
+
+[crate_map]
+
+[crate_map.layers]
+"peregrin-core" = "domain"
+"peregrin-template" = "domain"
+"peregrin-bus" = "port"
+"peregrin-config" = "port"
+"peregrin-driver" = "port"
+"peregrin-loader" = "port"
+"peregrin-remote" = "port"
+"peregrin-store" = "port"
+"peregrin-config-toml" = "adapter"
+"peregrin-driver-agent" = "adapter"
+"peregrin-driver-council" = "adapter"
+"peregrin-driver-git" = "adapter"
+"peregrin-driver-github-webhook" = "adapter"
+"peregrin-driver-http" = "adapter"
+"peregrin-driver-human" = "adapter"
+"peregrin-driver-schedule" = "adapter"
+"peregrin-driver-shell" = "adapter"
+"peregrin-driver-sturn" = "adapter"
+"peregrin-driver-subworkflow" = "adapter"
+"peregrin-loader-yaml" = "adapter"
+"peregrin-remote-http" = "adapter"
+"peregrin-store-json" = "adapter"
+"peregrin-queue-sqlite" = "adapter"
+"peregrin-secret-cuora" = "adapter"
+"peregrin-sink-github-status" = "adapter"
+"peregrin-http" = "adapter"
+"peregrin-queue" = "service"
+"peregrin-git" = "service"
+"peregrin-session" = "service"
+"peregrin-auth" = "service"
+"peregrin-engine" = "engine"
+"peregrin-node" = "engine"
+"peregrin-hub" = "engine"
+"peregrin-cli" = "engine"
+"peregrin-testkit" = "testkit"
+"xtask" = "tooling"
+
+[[crate_map.splices]]
+target = "docs/reference/crates.md"
+marker = "<!-- crate-map -->"
+
+[cli]
+package = "peregrin-cli"
+bin = "tamias-driver-peregrin"
+prefix = ["run"]
+out = "docs/reference/cli.md"
