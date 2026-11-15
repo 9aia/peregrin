@@ -52,3 +52,6 @@ package = "peregrin-cli"
 bin = "tamias-driver-peregrin"
 prefix = ["run"]
 out = "docs/reference/cli.md"
+
+[check]
+profile = "engine"
