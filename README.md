@@ -32,19 +32,7 @@ session plane over the wire — it never reimplements it.
 
 ## Layout
 
-| Crate | Role |
-| --- | --- |
-| `crates/peregrin-core` | events, campaign/node/graph model — pure domain |
-| `crates/peregrin-engine` | graph walker/scheduler |
-| `crates/peregrin-driver` | campaign driver port — node drivers run actions for the engine |
-| `crates/peregrin-driver-{agent,council,git,github-webhook,http,human,schedule,shell,sturn,subworkflow}` | driver impls — shell/http/agent/council/human, temporal `schedule`/`delay`, `subworkflow` nesting, worktree-at-sha `git`, ingress `sturn`/`github-webhook` |
-| `crates/peregrin-{loader,store,bus,remote,config,template}` | engine ports; impls `-yaml`/`-json`/`-toml`/`-http` |
-| `crates/peregrin-queue{,-sqlite}` | campaign run scheduler — supersede/dedupe/cancel; durable SQLite store |
-| `crates/peregrin-git` | detached-worktree lifecycle — create/keep/destroy/list/cleanup |
-| `crates/peregrin-secret-cuora` + `crates/peregrin-sink-github-status` | egress — `cuora://` secret resolution, `ci/<campaign>` GitHub commit statuses |
-| `hypha-{node-api,outbox,control,sync,push,http,hub,secret,keyring,dotenv,service,systemd,telemetry}` | extracted substrate crates — entity plane, sync engine, gateway, HTTP surface — git deps on [9aia/hypha](https://github.com/9aia/hypha) |
-| `crates/peregrin-{node,hub,http,session}` | daemons + session-plane transport — `peregrin-http` composes `hypha-http`'s generic routes with `/api/sessions*` under one listener; `peregrin-session` is the sepia-wire client (`ServicePlane`) |
-| `crates/peregrin-{cli,auth,testkit}` | engine lib + `tamias-driver-peregrin`, credentials, fixtures |
+The crate map is generated from the workspace Cargo.tomls — see [AGENTS.md](AGENTS.md) for the dev map and [the docs site](https://9aia.com/peregrin/) for depth.
 
 `libraries/` holds the workflow stdlib (reusable `.node.yml`,
 `.snippet.yml`, `.field.yml` artifacts) plus the `peregrin` product
