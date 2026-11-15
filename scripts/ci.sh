@@ -7,6 +7,9 @@
 # nextest is absent).
 set -euo pipefail
 
+export RUSTC_WRAPPER="${RUSTC_WRAPPER:-sccache}"
+export SCCACHE_CONF="${SCCACHE_CONF:-file://$HOME/.cache/sccache}"
+
 # The gate may run with the minimal systemd PATH
 # (/usr/local/bin:/usr/bin) whenever it starts before the session env is
 # imported — pull the user tool dirs in ourselves so cargo, nextest,
