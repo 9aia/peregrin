@@ -20,7 +20,13 @@ names a sepia type in the substrate.
 
 - `peregrin-core` pure domain (events, campaigns, nodes) — no I/O.
 - Ports: `peregrin-{driver,loader,store,bus,remote,config,template}`;
-  impls `peregrin-{port}-{impl}` (`-shell`, `-yaml`, `-toml`, `-http`).
+  impls are `peregrin-{port}-{impl}` — drivers
+  `{agent,council,git,github-webhook,http,human,schedule,shell,
+  sturn,subworkflow}`, loader `-yaml`, store `-json`, config `-toml`,
+  remote `-http`. Supporting crates: `peregrin-queue{,-sqlite}`
+  (run scheduler), `peregrin-git` (worktrees), `peregrin-secret-cuora`
+  + `peregrin-sink-github-status` (egress), `peregrin-auth`
+  (credentials).
   The substrate crates — `hypha-{node-api,outbox,control,sync,push,
   http,hub}` plus the earlier `hypha-{secret,keyring,dotenv,service,
   systemd,telemetry}` leaves — are extracted to
