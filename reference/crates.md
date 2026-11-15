@@ -2,6 +2,7 @@
 
 Rust workspace, ports-and-adapters — ports are traits, impls are separate crates; the composition roots are `peregrin-node`, `peregrin-hub`, and the `peregrin` CLI.
 
+<!-- crate-map -->
 | crate | layer | purpose |
 |---|---|---|
 | `peregrin-core` | domain | Peregrin domain — events, campaign/node/graph model (pure) |
