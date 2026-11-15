@@ -107,7 +107,7 @@ dependency visible.
 1. Create `libraries/<domain>/<name>.node.yml`.
 2. Use the dotted namespace `id: <domain>.<name>`.
 3. Add an `annotations` block with at least `title`, `description`, and `tags`.
-4. Set `since: "0.1.0"` for the initial release.
+4. Set `since: "<version>"` for the initial release.
 5. Set `timeout`, `emit` defaults, and `max_fires` for resilience.
 6. Run `peregrin campaign validate` on a workflow that uses the node.
 
@@ -119,7 +119,7 @@ Every artifact should declare an `annotations` block. Conventional keys:
 - `description` — one-sentence explanation.
 - `author` — person or team responsible.
 - `tags` — list of labels for search and grouping.
-- `since` — version when introduced. Use `"0.1.0"` for the initial stdlib.
+- `since` — version when introduced. Use the current release version for the initial stdlib.
 - `deprecated` — boolean or deprecation message.
 - `example` — short example value or invocation.
 - `see` — link to related ADR or documentation.
