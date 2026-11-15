@@ -1,12 +1,12 @@
 //! `peregrin campaign serve` — the multi-campaign daemon (PL-007
 //! C1b): N campaign definitions under one process, each driven by
-//! its own [`supervise`] loop (own `supersede:` policy, own queue
+//! its own [`supervise`](crate::supervisor::supervise) loop (own `supersede:` policy, own queue
 //! store, own history file), sharing ONE `github-webhook` ingress
 //! listener.
 //!
 //! The shared listener is a [`SharedWebhook`] demux: every hosted
 //! campaign's `github-webhook` node resolves to
-//! [`SharedWebhookDriver`] via
+//! [`SharedWebhookDriver`](peregrin_driver_github_webhook::SharedWebhookDriver) via
 //! [`campaign::registry_with_ingress_shared`], which registers its
 //! `params.repos` watches — repo `full_name` → secret + the
 //! campaign's trigger channel — instead of binding the default

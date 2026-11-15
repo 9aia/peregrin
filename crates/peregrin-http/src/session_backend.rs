@@ -1,6 +1,6 @@
 //! `SessionPlaneBackend` — peregrin's [`sepia_peregrin::SessionBackend`]
 //! for `kind="sepia-session"`, implemented over the node's own
-//! [`SessionPlane`] plus the [`AppState`] side-channels the session
+//! [`SessionPlane`](peregrin_session::SessionPlane) plus the [`AppState`] side-channels the session
 //! routes own (meta overlay, event feed, held-watch, live listeners,
 //! convert/import seams).
 //!

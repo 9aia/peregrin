@@ -467,7 +467,7 @@ pub fn merged_kinds(state: &AppState, hypha: &hypha_http::HyphaState) -> KindReg
 /// (`hypha_http::app_routes`, fallback-free) merged with the session
 /// routes under ONE listener and ONE 404 fallback (the session
 /// router's). `hypha` is the caller-built substrate state (env-mapped
-/// in `serve`); [`align_substrate`] then wires the shared singletons.
+/// in `serve`); `align_substrate` then wires the shared singletons.
 ///
 /// The returned router is `Router<()>` — serve it with
 /// `into_make_service_with_connect_info::<SocketAddr>()`.
@@ -505,7 +505,7 @@ fn hypha_for(state: &AppState) -> hypha_http::HyphaState {
 /// into `HyphaState` via [`Env::to_hypha`], plus the session-plane
 /// seams (live agents, node capabilities). [`compose`] still unifies
 /// the shared singletons (feed, pairing, push, kinds, cookie) via
-/// [`align_substrate`], so the `HyphaState::from_env` pairing/push
+/// `align_substrate`, so the `HyphaState::from_env` pairing/push
 /// instances opened on the same paths are superseded, not duplicated.
 #[must_use]
 pub fn hypha_state(env: &Env, state: &AppState) -> hypha_http::HyphaState {

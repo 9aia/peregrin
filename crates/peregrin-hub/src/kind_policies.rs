@@ -7,7 +7,7 @@
 //!
 //! Registration is explicit: [`default_kind_policies`] builds the
 //! registry `hub_state_from` hands to the sync engine, the feed hook,
-//! and [`SyncEntityApi`]. A host fronts different integrations by
+//! and [`SyncEntityApi`](hypha_hub::sync_api::SyncEntityApi). A host fronts different integrations by
 //! registering different policies — nothing here is hardcoded into
 //! the gateway paths.
 

@@ -208,7 +208,7 @@ impl Watch {
     /// `git ls-remote <remote> <patterns>` with `repo` as cwd
     /// (fetch-less; a URL/path remote doesn't need `repo` to be a
     /// repo), or `git for-each-ref <patterns>` on the clone in local
-    /// mode (patterns pass through [`deepen_globs`] so `*` keeps
+    /// mode (patterns pass through `deepen_globs` so `*` keeps
     /// `ls-remote`'s depth-agnostic meaning). `ls-remote`'s `HEAD`
     /// and peeled `^{}` lines are filtered; the `BTreeMap` keeps
     /// ticks deterministic.
@@ -252,7 +252,7 @@ impl Watch {
     /// The poll loop — diff [`Watch::heads`] every `self.poll` and
     /// inject the change events under `source` (the node id). Exits
     /// when `stop` flips (checked each tick and inside the sliced
-    /// sleep, so a `Drop`/replace join lags ≤ [`STOP_SLICE`]) or when
+    /// sleep, so a `Drop`/replace join lags ≤ `STOP_SLICE`) or when
     /// the channel closes — `inject` failing after the run ended.
     ///
     /// The first successful poll seeds the baseline without emitting.

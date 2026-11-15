@@ -198,7 +198,7 @@ enum HookAction {
     Unregister,
 }
 
-/// `cli` verb argv (after the `cli` token) → engine argv (argv[0]
+/// `cli` verb argv (after the `cli` token) → engine argv (argv\[0\]
 /// included). `tamias bin exec`/`driver exec` prepend the standard
 /// driver flags — `--dir <entry>` `--name <pkg>` — which the engine
 /// doesn't know; consume the leading run of those two (`--flag v`

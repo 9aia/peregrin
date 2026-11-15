@@ -288,7 +288,7 @@ pub fn install(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, 
 
 /// `deploy` — (re)generate the operator node config from the bundle's
 /// `provider:` block, plus its campaign-host copy under
-/// [`host_dir`]. No unit is written: `tamias deploy` renders
+/// `host_dir`. No unit is written: `tamias deploy` renders
 /// `provider.services[]` into `<provider>-<service>` units itself.
 /// Regenerating overwrites operator hand-edits — the manifest is the
 /// source of truth.

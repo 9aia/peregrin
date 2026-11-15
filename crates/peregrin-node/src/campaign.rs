@@ -141,7 +141,7 @@ pub fn registry_with_ingress(injector: &Injector) -> Registry {
 }
 
 /// [`registry_with_ingress`] for `campaign serve`: `github-webhook`
-/// resolves to [`SharedWebhookDriver`] — it registers the node's repo
+/// resolves to [`SharedWebhookDriver`](peregrin_driver_github_webhook::SharedWebhookDriver) — it registers the node's repo
 /// watches into the shared demux instead of binding its own socket —
 /// while `sturn-poll` and every worker driver are unchanged. The
 /// daemon binds the one listener via `demux.serve(...)`.

@@ -12,7 +12,8 @@
 //!   holding the in-flight job, if any.
 //!
 //! `load` merges the per-key rows back into drain order (`seq`
-//! ascending) and hands the snapshot to [`Queue::restore`], which
+//! ascending) and hands the snapshot to
+//! [`Queue::restore`](peregrin_queue::Queue::restore), which
 //! re-validates every entry against the campaign's `supersede:`
 //! policy — a corrupt row is skipped here with a warning and dropped
 //! there if its key doesn't resolve.

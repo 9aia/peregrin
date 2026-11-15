@@ -7,7 +7,7 @@
 //! plane would come up empty and the hub's next reconcile would even
 //! tombstone the projected rows. The index docs themselves carry the
 //! full ci-job state (`state`, `fence`, `leaseExpiresAt`, `claimedBy`,
-//! … — the `indexDoc` IS the [`CiJob`] spec), so the plane rebuilds
+//! … — the `indexDoc` IS the [`CiJob`](bupha_plane::CiJob) spec), so the plane rebuilds
 //! its working set verbatim: pending lanes in `enqueuedAt` order,
 //! running claims kept until their lease lapses (the lazy sweep then
 //! requeues exactly the dead ones).

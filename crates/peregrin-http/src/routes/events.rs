@@ -2,7 +2,8 @@
 //! into the campaign engine (`GET /api/events` is hypha-http's SSE
 //! feed; this is the write half). External producers — the bupha CI
 //! worker's `ci.job.completed` emit, forge check runners — POST a
-//! `{type, payload}` body; the node's [`EventIngest`] sink fans it
+//! `{type, payload}` body; the node's
+//! [`EventIngest`](crate::EventIngest) sink fans it
 //! out to every *running* `kind="campaign"` entity's ingress channel
 //! (or the one named by `campaign`).
 //!

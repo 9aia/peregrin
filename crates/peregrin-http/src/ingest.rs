@@ -3,7 +3,7 @@
 //! `ci.job.completed` emit, forge check runners, ops tooling) POST a
 //! `{type, payload}` body; the node fans it out to the campaign
 //! engine's live runs — the `kind="campaign"` entity plane's per-run
-//! [`Injector`](peregrin_engine::Injector) channels — through the
+//! `Injector` channels — through the
 //! [`EventDeliver`] sink the composition root wires
 //! ([`AppState::event_ingest`](crate::AppState)).
 //!

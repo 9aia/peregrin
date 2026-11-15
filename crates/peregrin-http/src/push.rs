@@ -110,7 +110,8 @@ fn cuora_put(bin: &PathBuf, key: &str, value: &str) -> std::io::Result<()> {
 /// stays warm as a fallback.
 ///
 /// **Caching is load-bearing.** [`PushStore::open`] *mints* a fresh
-/// VAPID pair on a config miss and [`PushBackend::set_config`]
+/// VAPID pair on a config miss and
+/// [`PushBackend::set_config`](hypha_push::PushBackend::set_config)
 /// returns `()` (write failures are silent), so this backend must
 /// never re-read cuora per call — `config()` is hit on every push
 /// send. Instead the document hydrates **once** at [`Self::open`]

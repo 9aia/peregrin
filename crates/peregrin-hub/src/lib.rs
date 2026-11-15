@@ -7,7 +7,7 @@
 //! - [`kind_policies`] — the `sepia-session`/`campaign`
 //!   [`hypha_sync::KindPolicy`] registry the sync engine, feed hook,
 //!   and entity API consume.
-//! - the `PEREGRIN_*` env contract — [`hub_config`] maps
+//! - the `PEREGRIN_*` env contract — [`HubConfig::from_env`] maps
 //!   `PEREGRIN_HUB_*`/`PEREGRIN_NODE_*`/`PEREGRIN_NODES`/
 //!   `PEREGRIN_HOME` onto [`hypha_hub::HubConfig`] and the env lookup
 //!   [`hub_state`] hands to `hypha_hub::hub_state_from_with`, so no

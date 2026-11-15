@@ -199,7 +199,7 @@ impl CuoraSecrets {
     /// shared child answers one request at a time and each request
     /// costs a vault round-trip, so a listener startup resolving
     /// ~140 `secret_env` names took seconds. `get_many` fans the
-    /// batch out over [`Self::workers`] parallel lanes — under
+    /// batch out over `Self::workers` parallel lanes — under
     /// `serve` each lane is its own `cuora serve` child (spawned
     /// lazily, reaped when the batch returns; audit/guardrail/PDP
     /// semantics per request are unchanged since every request is

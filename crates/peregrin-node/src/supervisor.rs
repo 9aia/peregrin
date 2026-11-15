@@ -346,9 +346,9 @@ pub struct SupervisedOptions {
     pub queue_store: Option<Arc<dyn QueueStore>>,
     /// The shared webhook demux (`campaign serve`) — when set, the
     /// listener run's `github-webhook` nodes register their repo
-    /// watches into it via [`SharedWebhookDriver`] instead of binding
+    /// watches into it via [`SharedWebhookDriver`](peregrin_driver_github_webhook::SharedWebhookDriver) instead of binding
     /// their own socket (one listener for every hosted campaign).
-    /// `None` keeps the solo [`GithubWebhookDriver`] behavior.
+    /// `None` keeps the solo [`GithubWebhookDriver`](peregrin_driver_github_webhook::GithubWebhookDriver) behavior.
     pub shared_webhook: Option<Arc<peregrin_driver_github_webhook::SharedWebhook>>,
     /// Shutdown flag (`campaign serve`'s SIGTERM path) — once set the
     /// loop stops accepting triggers and drains exactly like a
