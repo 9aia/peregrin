@@ -38,3 +38,8 @@ cargo xtask test
 if [ "${PEREGRIN_COVERAGE:-0}" = "1" ]; then
   bash scripts/coverage.sh
 fi
+
+# Docs contract — cypera check + docs/ drift gate. Materializes a
+# detached docs-branch worktree when the run tree lacks one (bupha
+# gate runs), so it is hermetic in CI.
+bash scripts/docs-check.sh
