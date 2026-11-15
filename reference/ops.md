@@ -56,12 +56,13 @@ streaming surface driver:
 
 ## MCP
 
-The driver's optional `mcp` cargo feature embeds the pavo-driver-kit
-surface layer, exposing the same ops manifest as MCP tools on stdio —
-equivalent to the standalone `tamias-driver-mcp` surface driver minus
-the PATH/discovery hop. The hand-rolled `peregrin-mcp` server is
-**removed**; MCP access, where needed, comes through this generated
-surface, not a peregrin-owned binary.
+There is no peregrin-owned MCP surface: the hand-rolled
+`peregrin-mcp` server **and** the driver's embedded `mcp` cargo
+feature are both retired (P-028/T-021). The ops manifest above is
+the whole agent contract — MCP access, where wanted, comes from
+pavo's generic `tamias-driver-mcp` surface driver fronting
+`tamias-driver-peregrin`'s `ops`/`cli.*` queries, exactly like any
+other engine driver.
 
 ## See also
 

@@ -13,5 +13,7 @@
 - [Fleet runners — `runs_on` + hub dispatch](fleet-runners.md)
 - [Queue & supersede](queue-supersede.md)
 - [HTTP API](api.md)
+- [CLI reference](cli.md) — generated from `peregrin --help`
+- [Crates](crates.md) — generated from workspace Cargo.tomls
 - [Engine ops surface](ops.md)
 - [Environment](environment.md)

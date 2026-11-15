@@ -4,6 +4,9 @@ export default defineConfig({
   title: 'peregrin',
   description: 'Event-driven orchestration for agent workflows — nodes, campaigns, remote transport.',
   base: '/peregrin/',
+  // the generated CLI reference quotes upstream URLs (e.g. a node's
+  // `http://localhost:18787`) — external links aren't site pages
+  ignoreDeadLinks: [/^https?:\/\//],
   themeConfig: {
     nav: [
       { text: 'Tutorials', link: '/tutorials/getting-started' },
@@ -42,6 +45,8 @@ export default defineConfig({
           { text: 'Fleet runners', link: '/reference/fleet-runners' },
           { text: 'Distribution', link: '/reference/distribution' },
           { text: 'HTTP API', link: '/reference/api' },
+          { text: 'CLI reference', link: '/reference/cli' },
+          { text: 'Crates', link: '/reference/crates' },
           { text: 'Engine ops surface', link: '/reference/ops' },
           { text: 'Environment', link: '/reference/environment' },
         ],
