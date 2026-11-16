@@ -82,16 +82,19 @@ read those before changing campaign behaviour.
 
 ## Where it sits
 
-In the org's layering — **tamias** (package & content manager: fetch,
-store, dispense) → **engines** (myco records, kuda code maps, mimus
-proofs, sepia sessions, sturn coordination, hypha substrate, tarsi
-releases, cicada schedules, cypera docs) → **orchestration**
-(**peregrin**: campaigns, drivers, fleet dispatch over those engines)
-→ **surfaces** (pavo views, MCP fronts, the experimental web UI).
+In the org's layering — **delivery** (tamias distribution, scarab
+config/templates, tarsi releases, bupha CI) → **memory** (myco
+records, kuda code maps, sturn coordination, hypha substrate) →
+**process** (cuora secrets, mimus proofs, cicada schedules, lasius
+workspace, sepia sessions) → **agency** (**peregrin**: campaigns,
+drivers, fleet dispatch over those layers; **pavo**: views, MCP
+fronts, the experimental web UI).
 
-Peregrin sits at the orchestration layer: it consumes engines as
-providers — `sepia serve` for sessions, hypha's entity substrate as
-git deps, sturn's WAL via the `sturn` driver, tarsi's ops inside the
-`libraries/release` campaign — and exposes one surface upward: the
+Peregrin sits at the agency layer: it orchestrates campaigns *on*
+hypha's entity substrate — campaigns register as `kind="campaign"`
+entities and fleet state lives on the same plane as everything else
+— while consuming the lower layers as providers: `sepia serve` for
+sessions, sturn's WAL via the `sturn` driver, tarsi's ops inside the
+`libraries/release` campaign. It exposes one surface upward: the
 hub's merged API plus the tamias pack that ships the `peregrin`
 command.
