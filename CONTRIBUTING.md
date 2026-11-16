@@ -48,15 +48,15 @@ Follow Diátaxis: `docs/tutorials/` (learn) · `docs/how-to/` (tasks) ·
   tag plus a manual `tamias publish libraries/peregrin` of the pack.
   The release plane is **tarsi** (`tarsi-serve` ops — project
   ADR-0005); peregrin's own `libraries/release` bundle drives those
-  ops in campaigns, and the per-repo `scripts/release.sh` is being
-  converted to a thin shim over `tarsi-serve` (PL-014 E1).
-- The current `scripts/release.sh` still carries the legacy
-  per-crate crates.io publish (`peregrin-cli` et al., dep-ordered)
-  — it predates the shim conversion. `peregrin-testkit` is
+  ops in campaigns. Operators run `tarsi-serve release --dir .
+  --yes` directly — the per-repo `scripts/release.sh` shims were
+  removed org-wide (PL-014 E1).
+- `peregrin-testkit` is
   `publish = false`; the `peregrin` command is the tamias pack's
   `bins[]` shim, and the `peregrin-node`/`peregrin-hub` payload bins
   ship via `libraries/peregrin` (`cargo xtask pack` stages them).
-- Release binaries: `scripts/release.sh` can still build
+- Release binaries: `cargo build --profile dist` + `dist`/`gh`
+  can still build
   `peregrin-<target>.tar.gz` (linux x86_64, macOS aarch64/x86_64)
   carrying the payload bins (`peregrin-node`, `peregrin-hub`,
   `tamias-driver-peregrin`) via `dist`/`gh` —
