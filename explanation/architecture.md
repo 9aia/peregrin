@@ -75,10 +75,14 @@ negotiates protocol versions at spawn.
 ## Ports and adapters
 
 Policy crates are pure; every I/O seam is a port
-(`peregrin-{store,bus,remote,config,secret,service,loader,template}`)
-with impls behind it (`-toml`, `-http`, `-yaml`, `-keyring`, `-dotenv`,
-`-systemd`). Engine semantics are documented in `project/adrs/` —
-read those before changing campaign behaviour.
+(`peregrin-{store,bus,remote,config,loader,driver,queue}`) with impls
+behind it (`-json`, the in-process `LocalBus`, `-http`, `-toml`,
+`-yaml`, `-sqlite`, plus the `peregrin-driver-*` family). Secrets and
+service lifecycle ride hypha's ports (`hypha-secret*`,
+`hypha-service*`) — peregrin's only secret impl is the
+`peregrin-secret-cuora` shim over `hypha-secret-cuora`. Engine
+semantics are documented in `project/adrs/` — read those before
+changing campaign behaviour.
 
 ## Where it sits
 

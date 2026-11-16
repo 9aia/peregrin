@@ -47,7 +47,7 @@ A stock node resolves (`peregrin_node::campaign::registry`):
 
 | Name | Kind | What it does |
 | --- | --- | --- |
-| `shell` | action | `params.cmd` under the system shell; `params.emit` maps `rc` → event type (30 s default, 600 s cap). |
+| `shell` | action | `params.cmd` under the system shell; `params.emit` maps `rc` → event type (30 s default, 7200 s cap). |
 | `http` | action | `params.url`/`method`/`headers`/`body` fetch; 2xx → `http.done`, else `http.failed`. `params.notify` hits the apprise-style notify path. |
 | `agent` | action | `params.runner: devin` (default) spawns the agent CLI; `custom` runs `params.binary` + prompt on stdin. `params.model` switches to a LiteLLM chat-completions call. |
 | `human` | action | `params.prompt` to stderr, line from stdin; `params.expect`/`emit_ok`/`emit_reject`. |

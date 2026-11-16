@@ -18,7 +18,7 @@ merged across nodes, plus `/api/node-status`.
 | `GET /api/events` | SSE feed — session/meta/project/heartbeat |
 | `POST /api/events/inject` | Authenticated typed-event ingest into running campaigns — see below |
 | `GET /api/agents` | Agent runtimes registered on the plane |
-| `GET /api/client/keypair` | Client keypair for the entity plane |
+| `POST /api/client/keypair` | Client keypair for the entity plane |
 
 ## Pairing and auth
 
@@ -124,7 +124,7 @@ read-only SSE feed.
 | `GET /api/projects` | Node-local project grouping of sessions |
 | `GET /api/projects/:id` | One project |
 | `GET /api/config` | Agent config IR (rules, skills, hooks, MCP) |
-| `GET/PUT /api/config/:key` | One config item |
+| `PATCH /api/config/:key` | One config item (`{value}` stored verbatim) |
 
 ## Hub-only
 

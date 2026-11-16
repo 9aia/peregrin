@@ -36,6 +36,11 @@ boundary (`PEREGRIN_NODES` → `HYPHA_NODES`,
 | `PEREGRIN_SWEEP_MS` | `30000` | Idle sweep cadence |
 | `PEREGRIN_PAIR_LIMIT_PER_MIN` | `5` | `/api/pair` attempts per minute per client |
 | `PEREGRIN_PAIR_LIMIT_PER_DAY` | `20` | `/api/pair` attempts per day per client |
+| `PEREGRIN_KV` / `PEREGRIN_KV_PATH` | `$PEREGRIN_HOME/kv.json` | Node-local KV document (`/api/kv*`; push state lives in its `push` namespace) |
+| `PEREGRIN_PUSH_BACKEND` | `kv` | Web Push state: `kv` (the KV `push` namespace) or `cuora` (`cuora://peregrin/push/*`, write-through mirror into KV) |
+| `PEREGRIN_CUORA_BIN` / `PEREGRIN_CUORA_TRANSPORT` / `PEREGRIN_CUORA_WORKERS` | — | cuora broker knobs — binary override, `cli`/`serve` transport, worker count — for `cuora://` secret refs and the cuora push backend |
+| `PEREGRIN_LISTENER_WATCHDOG_SECS` | `120` | Campaign listener watchdog inside `campaign serve` supervisors |
+| `PEREGRIN_BUPHA_CONFIG` | — | bupha fleet config path (file or dir) arming the `ci-job` plane's watched repos — see [Run CI through `ci-job` entities](/how-to/run-ci-through-ci-job-entities) |
 | `PEREGRIN_EPHEMERAL` | off | Ephemeral/CI node mode — SIGTERM-aware shutdown + snapshot flush on exit (`peregrin serve --ephemeral`) |
 | `PEREGRIN_SNAPSHOT_DIR` | `$PEREGRIN_HOME/snapshots` | Shutdown flush output: `<kind>/<id>.snapshot.json` + `index.json` |
 | `PEREGRIN_SNAPSHOT_TARGET` | — | Peer node/hub base URL that receives flushed snapshots via `POST /api/entities/snapshot` |

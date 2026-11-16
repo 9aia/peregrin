@@ -73,7 +73,7 @@ v1's global `max_events`/`--timeout`/`--max-concurrency` run caps
 are likewise unported (`RunOptions` carries only `dry_run`,
 `secrets`, `replay_events`). The bounds that do exist:
 
-- **Driver timeouts** — `shell` defaults to 30 s capped at 600;
+- **Driver timeouts** — `shell` defaults to 30 s capped at 7200;
   `agent` 600 s (0 = none); `http` 300 s; `human` 300 s (0 = wait
   forever); `github-status` 30 s capped at 300.
 - **Retry + circuit breaker** — `retry.max_attempts` with

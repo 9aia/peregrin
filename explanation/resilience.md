@@ -76,7 +76,7 @@ sequential runner — the arithmetic is kept for parity, the OS-probe
 halves are not.
 
 The bounds that *do* constrain the machine today live in drivers:
-hard timeout caps (shell 600 s, http/agent/human 300–600 s),
+hard timeout caps (shell 7200 s, http/agent/human 300–600 s),
 captured-output limits, the webhook 2 MiB body cap. See
 [Loop protection](loop-protection.md) for the run-level picture.
 
