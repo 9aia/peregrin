@@ -8,6 +8,7 @@ export default defineConfig({
   // `http://localhost:18787`) — external links aren't site pages
   ignoreDeadLinks: [/^https?:\/\//],
   themeConfig: {
+    search: { provider: 'local' },
     nav: [
       { text: '9aia', link: 'https://9aia.com', target: '_blank' },
       { text: 'Tutorials', link: '/tutorials/getting-started' },
