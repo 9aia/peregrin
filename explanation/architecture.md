@@ -83,14 +83,14 @@ read those before changing campaign behaviour.
 ## Where it sits
 
 In the org's layering — **delivery** (tamias distribution, scarab
-config/templates, tarsi releases, bupha CI) → **memory** (myco
-records, kuda code maps, sturn coordination, hypha substrate) →
-**process** (cuora secrets, mimus proofs, cicada schedules, lasius
-workspace, sepia sessions) → **agency** (**peregrin**: campaigns,
-drivers, fleet dispatch over those layers; **pavo**: views, MCP
+config/templates, tarsi releases, bupha CI, hypha entity sync) →
+**memory** (myco records, kuda code maps) → **process** (sturn
+coordination, cuora secrets, mimus proofs, cicada schedules, lasius
+workspace, sepia sessions, **peregrin**: campaigns, drivers, fleet
+dispatch over those layers) → **interface** (**pavo**: views, MCP
 fronts, the experimental web UI).
 
-Peregrin sits at the agency layer: it orchestrates campaigns *on*
+Peregrin sits in the process layer: it orchestrates campaigns *on*
 hypha's entity substrate — campaigns register as `kind="campaign"`
 entities and fleet state lives on the same plane as everything else
 — while consuming the lower layers as providers: `sepia serve` for
