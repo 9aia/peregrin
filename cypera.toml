@@ -21,6 +21,7 @@
 "peregrin-driver-github-webhook" = "adapter"
 "peregrin-driver-http" = "adapter"
 "peregrin-driver-human" = "adapter"
+"peregrin-driver-ops" = "adapter"
 "peregrin-driver-schedule" = "adapter"
 "peregrin-driver-shell" = "adapter"
 "peregrin-driver-sturn" = "adapter"

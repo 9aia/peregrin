@@ -33,7 +33,7 @@ nodes through the run's secrets record (`ctx.secrets`,
 ## The run
 
 `peregrin_node::campaign` composes the plane in-process: driver
-registry (agent/http/human/shell/git/github-status/noop/runner),
+registry (agent/http/human/shell/ops/git/github-status/noop/runner),
 `LocalBus`, memory state + DLQ, sequential `Runner`. `run(path,
 options)` is synchronous and returns the event log whose last entry
 is terminal. `runner_with_log(log_path)` swaps in the durable JSONL

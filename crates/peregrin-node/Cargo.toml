@@ -34,6 +34,7 @@ peregrin-driver-agent.workspace = true
 peregrin-driver-council.workspace = true
 peregrin-driver-http.workspace = true
 peregrin-driver-human.workspace = true
+peregrin-driver-ops.workspace = true
 peregrin-driver-github-webhook.workspace = true
 peregrin-driver-sturn.workspace = true
 peregrin-driver-git.workspace = true

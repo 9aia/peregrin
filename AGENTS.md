@@ -21,7 +21,7 @@ names a sepia type in the substrate.
 - `peregrin-core` pure domain (events, campaigns, nodes) — no I/O.
 - Ports: `peregrin-{driver,loader,store,bus,remote,config,template}`;
   impls are `peregrin-{port}-{impl}` — drivers
-  `{agent,council,git,github-webhook,http,human,schedule,shell,
+  `{agent,council,git,github-webhook,http,human,ops,schedule,shell,
   sturn,subworkflow}`, loader `-yaml`, store `-json`, config `-toml`,
   remote `-http`. Supporting crates: `peregrin-queue{,-sqlite}`
   (run scheduler), `peregrin-git` (worktrees), `peregrin-secret-cuora`
