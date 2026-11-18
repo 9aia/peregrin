@@ -98,7 +98,7 @@ fn dry_run_skips_driver_side_effects() {
 #[test]
 fn registry_resolves_the_default_drivers() {
     let registry = campaign::registry();
-    for name in ["agent", "http", "human", "shell", "noop", "runner"] {
+    for name in ["agent", "http", "human", "ops", "shell", "noop", "runner"] {
         assert!(registry.resolve(name).is_ok(), "missing driver {name}");
     }
     // Namespaced resolution — `ns:x` → `ns`.
@@ -263,6 +263,55 @@ nodes:
     let failure = log.iter().find(|e| e.kind == "node.failed").unwrap();
     assert_eq!(failure.payload["error"], "quota exhausted");
     assert!(kinds.contains(&"node.done"), "{kinds:?}");
+}
+
+/// `driver: ops` end to end — a stub `serve_argv` script answers the
+/// `driver.query` wire line, proving registry resolution + spawn +
+/// envelope unwrap + emit mapping without a real `tamias` install.
+#[test]
+fn ops_driver_runs_through_the_serve_wire() {
+    let tmp = tempfile::tempdir().unwrap();
+    // The stub serve: read one request line, answer one canned
+    // envelope — the driver's {ok,result} envelope nested as the op
+    // result, exactly like `tamias serve`'s `driver.query`.
+    let stub = tmp.path().join("stub-serve.sh");
+    std::fs::write(
+        &stub,
+        "#!/bin/sh\nIFS= read -r _line\nprintf '%s\\n' '{\"ok\":true,\"result\":{\"ok\":true,\"result\":{\"query\":\"cli.thing\",\"data\":{\"merged\":true}}}}'\n",
+    )
+    .unwrap();
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        std::fs::set_permissions(&stub, std::fs::Permissions::from_mode(0o755)).unwrap();
+    }
+    let yaml = tmp.path().join("ops.yaml");
+    std::fs::write(
+        &yaml,
+        format!(
+            r#"name: ops-e2e
+nodes:
+  - id: merge
+    driver: ops
+    on: [start]
+    emits: [merge.done, merge.failed]
+    params:
+      driver: lasius
+      query: cli.forge.pr.merge
+      serve_argv: ["{stub}"]
+"#,
+            stub = stub.display()
+        ),
+    )
+    .unwrap();
+    let log = campaign::run(&yaml, &RunOptions::default()).unwrap();
+    let kinds: Vec<&str> = log.iter().map(|e| e.kind.as_str()).collect();
+    assert!(kinds.contains(&"merge.done"), "trace: {kinds:?}");
+    assert_eq!(kinds.last(), Some(&"workflow.done"), "trace: {kinds:?}");
+    let done = log.iter().find(|e| e.kind == "merge.done").unwrap();
+    assert_eq!(done.payload["driver"], "lasius");
+    assert_eq!(done.payload["query"], "cli.forge.pr.merge");
+    assert_eq!(done.payload["result"]["data"]["merged"], true);
 }
 
 // --- secret resolution chain (I-018) ----------------------------------------

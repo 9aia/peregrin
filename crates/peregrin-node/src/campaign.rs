@@ -56,10 +56,11 @@ pub enum CampaignError {
 /// `DefaultDriverRegistryLive` — the drivers a stock node resolves:
 /// the four ported `ac-driver-*` impls, the `github-status` egress
 /// sink, the `delay`/`schedule` temporal drivers (ADR-0018), the
-/// `subworkflow` composition driver (ADR-0022), plus the
-/// `runner`/`noop` builtins. `cli`/`polling`/`python`/`stdin`/
-/// `streaming`/`webhook` and the litellm/apprise plugins are not
-/// ported yet.
+/// `subworkflow` composition driver (ADR-0022), the `ops` driver
+/// proxying bounded tamias-driver queries over `tamias serve`
+/// (P-096), plus the `runner`/`noop` builtins. `cli`/`polling`/
+/// `python`/`stdin`/`streaming`/`webhook` and the litellm/apprise
+/// plugins are not ported yet.
 #[must_use]
 pub fn registry() -> Registry {
     let base = Registry::default()
@@ -79,6 +80,7 @@ pub fn registry() -> Registry {
             Arc::new(peregrin_driver_agent::MockAgentDriver::new()),
         )
         .with("shell", Arc::new(peregrin_driver_shell::ShellDriver::new()))
+        .with("ops", Arc::new(peregrin_driver_ops::OpsDriver::new()))
         .with(
             "subworkflow",
             Arc::new(peregrin_driver_subworkflow::SubworkflowDriver::new()),

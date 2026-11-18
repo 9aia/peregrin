@@ -2922,6 +2922,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "peregrin-driver-ops"
+version = "0.2.0"
+dependencies = [
+ "peregrin-core",
+ "peregrin-driver",
+ "peregrin-template",
+ "serde_json",
+ "tempfile",
+]
+
+[[package]]
 name = "peregrin-driver-schedule"
 version = "0.2.0"
 dependencies = [
@@ -3105,6 +3116,7 @@ dependencies = [
  "peregrin-driver-github-webhook",
  "peregrin-driver-http",
  "peregrin-driver-human",
+ "peregrin-driver-ops",
  "peregrin-driver-schedule",
  "peregrin-driver-shell",
  "peregrin-driver-sturn",

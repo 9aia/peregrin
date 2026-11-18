@@ -1,0 +1,19 @@
+[package]
+name = "peregrin-driver-ops"
+description = "Ops impl of the campaign driver port — proxies bounded tamias-driver queries over `tamias serve`"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+[dependencies]
+peregrin-core.workspace = true
+peregrin-driver.workspace = true
+peregrin-template.workspace = true
+serde_json.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
