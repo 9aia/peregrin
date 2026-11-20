@@ -1,7 +1,7 @@
 +++
 id = "ADR-0091"
 title = "Generic entity plane — distributed primitives over workloads, not sessions"
-status = "open"
+status = "done"
 created = "2026-11-05"
 owner = "devin"
 priority = "high"

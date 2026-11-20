@@ -1,7 +1,7 @@
 +++
 id = "ADR-0092"
 title = "Campaign driver: ops — bounded tamias-driver queries over tamias serve"
-status = "open"
+status = "done"
 created = "2026-11-18"
 owner = "devin"
 priority = "med"
