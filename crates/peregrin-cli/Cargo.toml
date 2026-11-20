@@ -35,6 +35,7 @@ scarab-config-file = { git = "ssh://git@github.com/9aia/scarab.git", rev = "9364
 peregrin-core.workspace = true
 hypha-dotenv.workspace = true
 peregrin-engine.workspace = true
+peregrin-loader.workspace = true
 peregrin-git.workspace = true
 peregrin-http.workspace = true
 hypha-keyring.workspace = true

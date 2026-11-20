@@ -312,13 +312,21 @@ fn shipped_bundles_pack_validate_and_install() {
         );
         assert!(campaign.nodes.iter().any(|n| n.driver == "github-status"));
         assert!(campaign.nodes.iter().all(|n| !n.on.is_empty()));
-        // params.schema.json is valid JSON Schema-ish JSON when present.
+        // params.schema.json validates the bundle's `config:` keys —
+        // the shipped defaults must satisfy their own schema (I-022).
         let schema_path = dir.join("params.schema.json");
         if schema_path.exists() {
             let schema: serde_json::Value =
                 serde_json::from_str(&fs::read_to_string(schema_path).unwrap()).unwrap();
             assert_eq!(schema["type"], "object");
             assert!(schema["properties"].is_object());
+            let violations =
+                peregrin_loader::params_schema::params_violations(&schema, &campaign.config)
+                    .unwrap();
+            assert!(
+                violations.is_empty(),
+                "{bundle} config violates params.schema.json: {violations:?}"
+            );
         }
     }
 }
