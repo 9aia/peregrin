@@ -1,7 +1,7 @@
 +++
 id = "I-017"
 title = "bupha supersede teardown races the dying run"
-status = "open"
+status = "done"
 created = "2026-11-05"
 owner = "devin"
 priority = "med"
