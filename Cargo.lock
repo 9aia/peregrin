@@ -2735,14 +2735,14 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 
 [[package]]
 name = "peregrin-auth"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "hypha-secret",
 ]
 
 [[package]]
 name = "peregrin-bus"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-store",
@@ -2751,7 +2751,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-cli"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap",
  "hypha-dotenv",
@@ -2805,7 +2805,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-config"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "serde_json",
@@ -2813,7 +2813,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-config-toml"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-config",
  "peregrin-core",
@@ -2825,7 +2825,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-core"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "serde",
  "serde_json",
@@ -2835,7 +2835,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "hypha-secret",
  "peregrin-core",
@@ -2846,8 +2846,9 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-agent"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
+ "nix",
  "peregrin-core",
  "peregrin-driver",
  "peregrin-template",
@@ -2858,7 +2859,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-council"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2869,7 +2870,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-git"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2882,7 +2883,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-github-webhook"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "axum",
  "hex",
@@ -2901,7 +2902,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-http"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2912,7 +2913,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-human"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2923,7 +2924,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-ops"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2934,7 +2935,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-schedule"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "chrono",
  "chrono-tz",
@@ -2950,8 +2951,9 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-shell"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
+ "nix",
  "peregrin-core",
  "peregrin-driver",
  "peregrin-template",
@@ -2961,7 +2963,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-sturn"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2976,7 +2978,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-driver-subworkflow"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -2989,7 +2991,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-engine"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "hypha-secret",
  "peregrin-bus",
@@ -3006,7 +3008,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-git"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "serde",
@@ -3017,7 +3019,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-http"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -3055,7 +3057,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-hub"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -3073,7 +3075,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-loader"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "thiserror 2.0.21",
@@ -3081,7 +3083,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-loader-yaml"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-loader",
@@ -3092,7 +3094,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-node"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "axum",
@@ -3154,7 +3156,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-queue"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "serde",
@@ -3163,7 +3165,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-queue-sqlite"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-queue",
@@ -3175,7 +3177,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-remote"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "peregrin-core",
@@ -3183,7 +3185,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-remote-http"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-remote",
@@ -3191,7 +3193,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-secret-cuora"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "hypha-secret",
  "hypha-secret-cuora",
@@ -3200,7 +3202,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-session"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "async-trait",
  "sepia-acp",
@@ -3218,7 +3220,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-sink-github-status"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-driver",
@@ -3229,7 +3231,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-store"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "serde_json",
@@ -3237,7 +3239,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-store-json"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-store",
@@ -3249,7 +3251,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-template"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "serde_json",
@@ -3260,7 +3262,7 @@ dependencies = [
 
 [[package]]
 name = "peregrin-testkit"
-version = "0.2.0"
+version = "0.3.0"
 
 [[package]]
 name = "phf"
@@ -5701,7 +5703,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
 ]
