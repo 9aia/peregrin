@@ -551,3 +551,70 @@ fn dedupe_helpers_cover_edges() {
         json!({"k": "v"})
     );
 }
+
+// --- params.schema.json (ADR-0081 / I-022) ---------------------------------
+
+const PARAMS_SCHEMA: &str = r#"{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["token_env"],
+  "properties": {
+    "token_env": {"type": "string"},
+    "timeout": {"type": "integer", "minimum": 1}
+  }
+}"#;
+
+#[test]
+fn params_schema_accepts_a_valid_config() {
+    let tmp = tempfile::tempdir().unwrap();
+    fs::write(tmp.path().join("params.schema.json"), PARAMS_SCHEMA).unwrap();
+    let campaign = load(
+        "name: test\nconfig:\n  token_env: BUPHA_TOKEN\n  timeout: 60\nnodes: []",
+        tmp.path(),
+    )
+    .unwrap();
+    assert_eq!(
+        campaign.config.get("token_env").and_then(|v| v.as_str()),
+        Some("BUPHA_TOKEN")
+    );
+}
+
+#[test]
+fn params_schema_rejects_a_typoed_key() {
+    let tmp = tempfile::tempdir().unwrap();
+    fs::write(tmp.path().join("params.schema.json"), PARAMS_SCHEMA).unwrap();
+    let err = load(
+        "name: test\nconfig:\n  token_env: BUPHA_TOKEN\n  timout: 60\nnodes: []",
+        tmp.path(),
+    )
+    .unwrap_err();
+    assert!(err.reason().contains("params.schema.json"), "{err}");
+    assert!(err.reason().contains("timout"), "{err}");
+}
+
+#[test]
+fn params_schema_rejects_missing_required_and_wrong_type() {
+    let tmp = tempfile::tempdir().unwrap();
+    fs::write(tmp.path().join("params.schema.json"), PARAMS_SCHEMA).unwrap();
+    let err = load("name: test\nconfig:\n  timeout: 60\nnodes: []", tmp.path()).unwrap_err();
+    assert!(err.reason().contains("token_env"), "{err}");
+    let err = load(
+        "name: test\nconfig:\n  token_env: BUPHA_TOKEN\n  timeout: fast\nnodes: []",
+        tmp.path(),
+    )
+    .unwrap_err();
+    assert!(err.reason().contains("timeout"), "{err}");
+}
+
+#[test]
+fn absent_params_schema_leaves_config_unchecked() {
+    let tmp = tempfile::tempdir().unwrap();
+    // No params.schema.json — arbitrary config keys pass (plain
+    // campaigns are not bundles).
+    load(
+        "name: test\nconfig:\n  anything: goes\nnodes: []",
+        tmp.path(),
+    )
+    .unwrap();
+}

@@ -202,8 +202,43 @@ impl YamlLoader {
         // (local) definition.
         dedupe_node_ids(&mut raw);
         reject_with_key(&raw)?;
+        validate_params_schema(&raw, base_dir)?;
         Ok(raw)
     }
+}
+
+/// `params.schema.json` (ADR-0081 / I-022) — when the loaded file's
+/// directory carries one, the merged `config:` mapping must satisfy
+/// it; a typo'd key fails the load instead of silently resolving
+/// `${config.*}` to an empty string at eval time. Absent schema → no
+/// validation (plain campaigns carry arbitrary `config:` keys).
+fn validate_params_schema(raw: &Map<String, Value>, base_dir: &Path) -> Result<(), LoadError> {
+    let schema_path = base_dir.join(peregrin_loader::params_schema::PARAMS_SCHEMA_FILE);
+    let text = match std::fs::read_to_string(&schema_path) {
+        Ok(text) => text,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(()),
+        Err(e) => {
+            return Err(LoadError::caused(
+                format!("Failed to read {}", schema_path.display()),
+                e,
+            ));
+        }
+    };
+    let schema: Value = serde_json::from_str(&text)
+        .map_err(|e| LoadError::new(format!("{}: invalid JSON: {e}", schema_path.display())))?;
+    let Some(config) = raw.get("config").and_then(Value::as_object) else {
+        return Ok(());
+    };
+    let violations = peregrin_loader::params_schema::params_violations(&schema, config)
+        .map_err(LoadError::new)?;
+    if violations.is_empty() {
+        return Ok(());
+    }
+    Err(LoadError::new(format!(
+        "{} rejected config: {}",
+        schema_path.display(),
+        violations.join("; ")
+    )))
 }
 
 impl Loader for YamlLoader {

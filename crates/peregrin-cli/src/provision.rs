@@ -85,18 +85,70 @@ fn write_config(path: &Path, doc: &Value) -> Result<(), CliError> {
 /// `overrides` module; drivers that generate no config ignore it.
 const OVERRIDES_ENV: &str = "TAMIAS_DEPLOY_OVERRIDES";
 
-/// Merge the ambient deploy-override fragments over `doc` in place.
-/// No env/no fragments → `Ok(())`; a malformed fragment errors —
-/// silently skipping would write config the operator didn't intend.
-fn apply_deploy_overrides(doc: &mut Value) -> Result<(), CliError> {
+/// The ambient deploy-override document — `TAMIAS_DEPLOY_OVERRIDES`
+/// fragments merged (sorted, later wins) via
+/// [`load_override_fragments`]. `Ok(None)` when the env is unset or
+/// the dir holds no mergeable fragments.
+fn deploy_overrides() -> Result<Option<Value>, CliError> {
     let Some(dir) = std::env::var_os(OVERRIDES_ENV).map(PathBuf::from) else {
-        return Ok(());
+        return Ok(None);
     };
-    let Some(overrides) = load_override_fragments(&dir)? else {
+    load_override_fragments(&dir)
+}
+
+/// `params.schema.json` (ADR-0081 / I-022) — when the bundle ships
+/// one beside `main.yaml`, validate the *effective* `config:` mapping
+/// the served campaign will see: the bundle's own defaults in
+/// `main.yaml` deep-merged under the `config:` the deploy-override
+/// fragments contribute (overrides win, same merge the loader
+/// applies). Validating the union — not each source alone — keeps
+/// `required:` honest: an operator override may supply a key the
+/// bundle leaves unset. The generated `config.name` is
+/// provider-reserved (not an operator param) and never enters the
+/// validated map. Absent schema → no validation.
+fn validate_bundle_params(
+    dir: &Path,
+    main: &Path,
+    overrides: Option<&Value>,
+) -> Result<(), CliError> {
+    let schema_path = dir.join(peregrin_loader::params_schema::PARAMS_SCHEMA_FILE);
+    if !schema_path.is_file() {
         return Ok(());
-    };
-    *doc = tamias_core::merge_values(&overrides, doc);
-    Ok(())
+    }
+    let text = std::fs::read_to_string(&schema_path).map_err(|e| CliError(e.to_string()))?;
+    let schema: Value = serde_json::from_str(&text)
+        .map_err(|e| CliError(format!("{}: invalid JSON: {e}", schema_path.display())))?;
+    let main_text = std::fs::read_to_string(main).map_err(|e| CliError(e.to_string()))?;
+    let main_doc: Value = serde_yaml_ng::from_str(&main_text)
+        .map_err(|e| CliError(format!("{}: {e}", main.display())))?;
+    let mut effective = main_doc
+        .get("config")
+        .and_then(Value::as_object)
+        .cloned()
+        .unwrap_or_default();
+    if let Some(override_config) = overrides
+        .and_then(|o| o.get("config"))
+        .and_then(Value::as_object)
+    {
+        effective = match tamias_core::merge_values(
+            &Value::Object(override_config.clone()),
+            &Value::Object(effective),
+        ) {
+            Value::Object(map) => map,
+            _ => Map::new(),
+        };
+    }
+    let violations = peregrin_loader::params_schema::params_violations(&schema, &effective)
+        .map_err(|e| CliError(format!("{}: {e}", schema_path.display())))?;
+    if violations.is_empty() {
+        Ok(())
+    } else {
+        Err(CliError(format!(
+            "config rejected by {}: {}",
+            schema_path.display(),
+            violations.join("; ")
+        )))
+    }
 }
 
 /// Fold every mergeable fragment in `dir` into one document — sorted
@@ -280,8 +332,12 @@ pub fn install(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, 
     );
     doc.insert("include".into(), json!([main.display().to_string()]));
     doc.insert("config".into(), json!({"name": name}));
+    let overrides = deploy_overrides()?;
+    validate_bundle_params(dir, &main, overrides.as_ref())?;
     let mut doc = Value::Object(doc);
-    apply_deploy_overrides(&mut doc)?;
+    if let Some(overrides) = overrides.as_ref() {
+        doc = tamias_core::merge_values(overrides, &doc);
+    }
     write_config(&path, &doc)?;
     Ok(format!("wrote node config {}", path.display()))
 }
@@ -343,8 +399,12 @@ fn deploy_inner(
     }
     let main = bundle_main(dir)?;
     let path = config_path(name, config);
+    let overrides = deploy_overrides()?;
+    validate_bundle_params(dir, &main, overrides.as_ref())?;
     let mut doc = deploy_config_doc(name, &main, dir);
-    apply_deploy_overrides(&mut doc)?;
+    if let Some(overrides) = overrides.as_ref() {
+        doc = tamias_core::merge_values(overrides, &doc);
+    }
     write_config(&path, &doc)?;
     // The campaign host: one generated config per deployed bundle in a
     // shared dir — `campaign serve <dir>` (the provider unit's
@@ -1040,6 +1100,85 @@ provider:
         assert!(text.contains("include:"));
         assert!(!text.contains("github-webhook"));
         assert!(!text.contains("capabilities"));
+    }
+
+    /// A bundle dir carrying `main.yaml` (with a `config:` block) +
+    /// `params.schema.json` — the params-validation fixture shape.
+    fn bundle_dir_with_params(main_config: &str) -> (tempfile::TempDir, PathBuf) {
+        let tmp = tempfile::tempdir().unwrap();
+        let dir = tmp.path().join("bundle@0.1.0");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("main.yaml"),
+            format!("name: bundle\nconfig:\n{main_config}nodes: []\n"),
+        )
+        .unwrap();
+        std::fs::write(
+            dir.join("params.schema.json"),
+            r#"{
+              "$schema": "https://json-schema.org/draft/2020-12/schema",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["token_env"],
+              "properties": {
+                "token_env": {"type": "string"},
+                "timeout": {"type": "integer", "minimum": 1, "maximum": 600}
+              }
+            }"#,
+        )
+        .unwrap();
+        (tmp, dir)
+    }
+
+    #[test]
+    fn deploy_rejects_a_bundle_whose_config_violates_params_schema() {
+        // `timout` is a typo — additionalProperties:false rejects it.
+        let (tmp, dir) = bundle_dir_with_params("  token_env: BUPHA_TOKEN\n  timout: 60\n");
+        let host = tmp.path().join("host");
+        let cfg = tmp.path().join("bundle.yaml");
+        let err = deploy_in(&dir, "bundle", Some(&cfg), &host).unwrap_err();
+        assert!(err.0.contains("params.schema.json"), "{err}");
+        assert!(err.0.contains("timout"), "{err}");
+        // Nothing was written — the bad params never reach the host dir.
+        assert!(!cfg.exists());
+        assert!(!host.join("bundle.yaml").exists());
+    }
+
+    #[test]
+    fn validate_bundle_params_checks_main_and_override_config() {
+        let (tmp, dir) = bundle_dir_with_params("  token_env: BUPHA_TOKEN\n  timeout: 60\n");
+        let main = dir.join("main.yaml");
+        // Bundle defaults pass; no overrides → Ok.
+        validate_bundle_params(&dir, &main, None).unwrap();
+        // A valid operator override passes.
+        let good = json!({"config": {"timeout": 30}});
+        validate_bundle_params(&dir, &main, Some(&good)).unwrap();
+        // A typo'd override key rejects.
+        let typo = json!({"config": {"timout": 30}});
+        let err = validate_bundle_params(&dir, &main, Some(&typo)).unwrap_err();
+        assert!(err.0.contains("timout"), "{err}");
+        // Wrong type rejects (required keys come from the merged
+        // main.yaml defaults, so a partial override stays valid).
+        let wrong = json!({"config": {"timeout": "30"}});
+        assert!(validate_bundle_params(&dir, &main, Some(&wrong)).is_err());
+        // Non-config override sections are not params — ignored.
+        let other = json!({"nodes": [], "config": "not-an-object"});
+        validate_bundle_params(&dir, &main, Some(&other)).unwrap();
+        // No schema → everything passes.
+        let plain = tmp.path().join("plain");
+        std::fs::create_dir_all(&plain).unwrap();
+        std::fs::write(plain.join("main.yaml"), "name: x\n").unwrap();
+        validate_bundle_params(&plain, &plain.join("main.yaml"), Some(&typo)).unwrap();
+    }
+
+    #[test]
+    fn install_rejects_params_schema_violations() {
+        let (tmp, dir) = bundle_dir_with_params("  token_env: BUPHA_TOKEN\n  timeout: 700\n");
+        let cfg = tmp.path().join("bundle.yaml");
+        let err = install(&dir, "bundle", Some(&cfg)).unwrap_err();
+        assert!(err.0.contains("params.schema.json"), "{err}");
+        assert!(err.0.contains("maximum"), "{err}");
+        assert!(!cfg.exists());
     }
 
     #[test]

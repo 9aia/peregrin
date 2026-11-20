@@ -4,6 +4,8 @@
 
 use std::path::Path;
 
+pub mod params_schema;
+
 /// Loader failure — the Rust analogue of the TS
 /// `Data.TaggedError("LoaderError")` (`reason` + optional `cause`,
 /// carried as `#[source]`).

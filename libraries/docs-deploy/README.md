@@ -125,6 +125,13 @@ URL) and adding the missing `BUPHA_WH_9AIA_*` values to
 
 ## Params (validated against `params.schema.json`)
 
+Enforced at `tamias deploy` / `peregrin provision deploy` — the
+effective `config:` (bundle defaults merged under `deploy.d`
+override fragments) must satisfy the schema or the deploy fails —
+and again at campaign load when `params.schema.json` sits beside the
+loaded `main.yaml`. `additionalProperties: false`, so a typo'd key
+rejects instead of silently resolving `${config.*}` to `""`.
+
 | Key | Default | Meaning |
 | --- | --- | --- |
 | `worktree_base` | `~/.local/share/peregrin/worktrees` | `driver-git` `base` |
