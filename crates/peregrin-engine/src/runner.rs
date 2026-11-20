@@ -20,6 +20,7 @@
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, HashMap};
 use std::rc::Rc;
+use std::sync::atomic::AtomicBool;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
 
@@ -129,13 +130,22 @@ struct Shared {
     injected: Rc<RefCell<Vec<Value>>>,
     scheduled: Rc<RefCell<Vec<ScheduledEmit>>>,
     shutdown: Rc<Cell<bool>>,
+    /// The ingress channel's mid-invoke cancel flag — flips the
+    /// instant an injected `workflow.cancel` lands, ahead of the
+    /// loop's next drain, so a driver blocked inside `invoke` (a
+    /// child-process wait) can kill+reap before returning (I-017).
+    cancel: Option<Arc<AtomicBool>>,
     /// The nested-run channel behind `ctx.run_sub` (ADR-0022) —
     /// stamped in `run` once the sub-registry is built.
     sub_runner: Option<Rc<SubRunner>>,
 }
 
 impl Shared {
-    fn new(secrets: BTreeMap<String, String>, secret_stores: Vec<SecretSource>) -> Self {
+    fn new(
+        secrets: BTreeMap<String, String>,
+        secret_stores: Vec<SecretSource>,
+        cancel: Option<Arc<AtomicBool>>,
+    ) -> Self {
         Self {
             secrets: Rc::new(secrets),
             secret_stores: Rc::new(secret_stores),
@@ -143,6 +153,7 @@ impl Shared {
             injected: Rc::new(RefCell::new(Vec::new())),
             scheduled: Rc::new(RefCell::new(Vec::new())),
             shutdown: Rc::new(Cell::new(false)),
+            cancel,
             sub_runner: None,
         }
     }
@@ -227,6 +238,9 @@ pub struct Runner {
     /// into `pending` once per loop iteration (`None` = the run only
     /// sees internally-produced events, the historical behaviour).
     ingress: Option<Ingress>,
+    /// The ingress channel's cancel flag — cloned into every
+    /// `ExecutionContext` the run builds (see `Shared::cancel`).
+    ingress_cancel: Option<Arc<AtomicBool>>,
     /// Optional live mirror of the armed-timer set — refreshed after
     /// every heap mutation so an off-thread observer (the campaign
     /// entity plane's mid-run snapshot export) can read pending
@@ -254,6 +268,7 @@ impl Runner {
             state: Rc::new(RefCell::new(Box::new(MemoryStore::default()))),
             effects: Rc::new(SystemEffects),
             ingress: None,
+            ingress_cancel: None,
             timer_mirror: None,
             idempotency_counter: 0,
             retry_counts: HashMap::new(),
@@ -304,7 +319,18 @@ impl Runner {
     /// them after the events that triggered the current step.
     #[must_use]
     pub fn with_ingress(mut self, ingress: Ingress) -> Self {
+        self.ingress_cancel = Some(ingress.cancel_flag());
         self.ingress = Some(ingress);
+        self
+    }
+
+    /// Share an external cancel flag with this run — no ingress
+    /// channel, just the mid-invoke kill signal. Used for nested
+    /// `run_sub` runners so a parent's `workflow.cancel` reaches
+    /// drivers inside the sub-run (I-017).
+    #[must_use]
+    pub fn with_cancel_flag(mut self, flag: Arc<AtomicBool>) -> Self {
+        self.ingress_cancel = Some(flag);
         self
     }
 
@@ -439,7 +465,11 @@ impl Runner {
         let mut ready: Vec<(Node, Vec<Event>)> = Vec::new();
         let mut failed = false;
         let mut cancelled = false;
-        let mut shared = Shared::new(options.secrets.clone(), options.secret_stores.clone());
+        let mut shared = Shared::new(
+            options.secrets.clone(),
+            options.secret_stores.clone(),
+            self.ingress_cancel.clone(),
+        );
 
         // The `subworkflow` driver's nested-run channel (ADR-0022):
         // each `ctx.run_sub` spins a *fresh* runner — own bus, event
@@ -452,10 +482,18 @@ impl Runner {
         // blocks the sequential walker for the sub-run's duration.
         let sub_registry = self.registry.without_ingress();
         let sub_effects = self.effects.clone();
+        // Nested `run_sub` runners get no ingress channel, but they
+        // share this run's cancel flag — a `workflow.cancel` on the
+        // parent must still kill+reap children spawned inside the
+        // sub-run before its teardown (I-017).
+        let sub_cancel = shared.cancel.clone();
         shared.sub_runner = Some(Rc::new(
             move |sub_campaign: &Campaign, opts: &SubRunOptions| {
                 let mut runner =
                     Runner::new(sub_registry.clone()).with_effects(sub_effects.clone());
+                if let Some(flag) = &sub_cancel {
+                    runner = runner.with_cancel_flag(Arc::clone(flag));
+                }
                 runner.run(
                     sub_campaign,
                     &RunOptions {
@@ -727,6 +765,7 @@ impl Runner {
             injected: spec.shared.injected.clone(),
             scheduled: spec.shared.scheduled.clone(),
             shutdown: spec.shared.shutdown.clone(),
+            cancel: spec.shared.cancel.clone(),
             state: spec.state.clone(),
             dry_run: spec.dry_run,
             idempotency_key: idempotency_key.to_string(),

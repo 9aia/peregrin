@@ -3202,6 +3202,7 @@ dependencies = [
 name = "peregrin-driver-agent"
 version = "0.3.0"
 dependencies = [
+ "nix",
  "peregrin-core",
  "peregrin-driver",
  "peregrin-template",
@@ -3306,6 +3307,7 @@ dependencies = [
 name = "peregrin-driver-shell"
 version = "0.3.0"
 dependencies = [
+ "nix",
  "peregrin-core",
  "peregrin-driver",
  "peregrin-template",

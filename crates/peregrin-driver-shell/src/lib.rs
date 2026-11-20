@@ -176,26 +176,38 @@ fn systemd_run() -> Option<&'static str> {
 /// isolation: a cap without a scope is meaningless. Non-unix or a
 /// missing `systemd-run` surfaces as `Err` — never a silent
 /// unconfined run.
+///
+/// On unix the child becomes a process-group leader
+/// (`process_group(0)`) so [`kill_tree`] can reach the whole
+/// subtree — `cargo build` and friends fork grandchildren that a
+/// plain `Child::kill` on the `sh -c` leader would orphan, still
+/// writing inside the worktree after the leader dies (the I-017
+/// teardown race).
 fn spawn_command(cmd: &str, isolate: bool, memory_max: Option<&str>) -> Result<Command, String> {
     #[cfg(unix)]
     {
+        use std::os::unix::process::CommandExt;
+
         let confine = isolate || memory_max.is_some();
-        if !confine {
-            return Ok(shell_command(cmd));
-        }
-        let Some(bin) = systemd_run() else {
-            return Err(
-                "isolate/memory_max requested but `systemd-run` not found on PATH \
-                 (needs systemd --user)"
-                    .to_string(),
-            );
+        let mut command = if confine {
+            let Some(bin) = systemd_run() else {
+                return Err(
+                    "isolate/memory_max requested but `systemd-run` not found on PATH \
+                     (needs systemd --user)"
+                        .to_string(),
+                );
+            };
+            let mut command = Command::new(bin);
+            command.args(["--user", "--scope", "--quiet", "--collect"]);
+            if let Some(max) = memory_max {
+                command.arg("-p").arg(format!("MemoryMax={max}"));
+            }
+            command.arg("--").arg("sh").arg("-c").arg(cmd);
+            command
+        } else {
+            shell_command(cmd)
         };
-        let mut command = Command::new(bin);
-        command.args(["--user", "--scope", "--quiet", "--collect"]);
-        if let Some(max) = memory_max {
-            command.arg("-p").arg(format!("MemoryMax={max}"));
-        }
-        command.arg("--").arg("sh").arg("-c").arg(cmd);
+        command.process_group(0);
         Ok(command)
     }
     #[cfg(not(unix))]
@@ -205,6 +217,32 @@ fn spawn_command(cmd: &str, isolate: bool, memory_max: Option<&str>) -> Result<C
         }
         Ok(shell_command(cmd))
     }
+}
+
+/// Kill the child's whole process group and reap it — the
+/// kill+wait half of the I-017 ordering: the run's teardown
+/// (a `driver: git` worktree destroy) must not start while any
+/// process still holds files inside it. The child was spawned as a
+/// group leader, so `killpg` reaches grandchildren a plain
+/// `Child::kill` would orphan. ESRCH (group already gone) is fine —
+/// `wait` still reaps the leader. Off-unix falls back to
+/// `Child::kill`; grandchildren there are out of reach either way.
+fn kill_tree(child: &mut Child) -> std::io::Result<std::process::ExitStatus> {
+    #[cfg(unix)]
+    {
+        use nix::sys::signal::{Signal, killpg};
+        use nix::unistd::Pid;
+
+        if let Ok(pgid) = i32::try_from(child.id()) {
+            // Best-effort: ESRCH means the group already exited.
+            let _ = killpg(Pid::from_raw(pgid), Signal::SIGKILL);
+        }
+        // Belt: the leader itself if it escaped the group.
+        let _ = child.kill();
+    }
+    #[cfg(not(unix))]
+    let _ = child.kill();
+    child.wait()
 }
 
 /// Build the system-shell command (`sh -c` unix, `cmd /C` windows).
@@ -246,10 +284,11 @@ fn read_pipe(mut pipe: impl Read + Send + 'static) -> thread::JoinHandle<String>
 }
 
 /// Run `cmd` under the system shell, polling to `timeout` — on
-/// timeout the child is killed and `rc` reads `-1`
-/// (`result.status ?? -1`). Pipes drain on reader threads so a chatty
-/// child can't deadlock the poll. Returns `(rc, stdout, stderr)`;
-/// `Err` mirrors `result.error`.
+/// timeout or `stop()` (the run's cancel flag) the child's whole
+/// process group is killed and reaped ([`kill_tree`]) and `rc` reads
+/// `-1` (`result.status ?? -1`). Pipes drain on reader threads so a
+/// chatty child can't deadlock the poll. Returns `(rc, stdout,
+/// stderr)`; `Err` mirrors `result.error`.
 ///
 /// The child sees a sanitized environment
 /// ([`peregrin_core::child_env`]) plus `params.env` — never the
@@ -262,6 +301,7 @@ fn spawn_shell(
     cwd: Option<&str>,
     isolate: bool,
     memory_max: Option<&str>,
+    stop: &dyn Fn() -> bool,
 ) -> Result<(i64, String, String), String> {
     let mut command = spawn_command(cmd, isolate, memory_max)?;
     if let Some(dir) = cwd {
@@ -285,14 +325,18 @@ fn spawn_shell(
         match child.try_wait() {
             Ok(Some(status)) => break Some(status),
             Ok(None) => {
-                if Instant::now() >= deadline {
-                    let _ = child.kill();
-                    break child.wait().ok();
+                // Cancel (supersede/pause/delete) or the timeout —
+                // either way the whole process group dies and is
+                // reaped *before* `invoke` returns, so the caller's
+                // teardown (a `driver: git` worktree destroy) never
+                // races a still-running grandchild (I-017).
+                if stop() || Instant::now() >= deadline {
+                    break kill_tree(&mut child).ok();
                 }
                 thread::sleep(POLL);
             }
             Err(e) => {
-                let _ = child.kill();
+                let _ = kill_tree(&mut child);
                 return Err(e.to_string());
             }
         }
@@ -376,16 +420,22 @@ impl Driver for ShellDriver {
             .and_then(Value::as_str)
             .map(str::trim)
             .filter(|s| !s.is_empty());
-        let (rc, stdout, stderr) = match spawn_shell(cmd, &env, timeout, cwd, isolate, memory_max) {
-            Err(error) => {
-                return Ok(vec![Event::new(
-                    "node.failed",
-                    serde_json::json!({ "error": error, "cmd": cmd, "rc": -1 }),
-                    &node.id,
-                )]);
-            }
-            Ok(result) => result,
-        };
+        // The run's cancel flag — an injected `workflow.cancel`
+        // (supersede, pause, delete) kills the child mid-invoke
+        // instead of letting it run to `timeout` inside a worktree
+        // the dying run is about to tear down (I-017).
+        let stop = || ctx.shutdown_requested();
+        let (rc, stdout, stderr) =
+            match spawn_shell(cmd, &env, timeout, cwd, isolate, memory_max, &stop) {
+                Err(error) => {
+                    return Ok(vec![Event::new(
+                        "node.failed",
+                        serde_json::json!({ "error": error, "cmd": cmd, "rc": -1 }),
+                        &node.id,
+                    )]);
+                }
+                Ok(result) => result,
+            };
 
         if let Some(mapped) = params
             .get("emit")

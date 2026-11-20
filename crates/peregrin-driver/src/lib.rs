@@ -13,6 +13,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
 use serde_json::{Map, Value};
@@ -123,6 +124,18 @@ pub struct ExecutionContext {
     pub scheduled: Rc<RefCell<Vec<ScheduledEmit>>>,
     /// Set by [`ExecutionContext::request_shutdown`].
     pub shutdown: Rc<Cell<bool>>,
+    /// The run's mid-invoke cancel flag — the engine sets the shared
+    /// `Arc` the instant an injected `workflow.cancel` lands on the
+    /// run's ingress channel, *ahead* of the loop's next drain, so a
+    /// driver blocked inside `invoke` (a child-process wait) sees the
+    /// supersede/cancel immediately instead of at the iteration
+    /// boundary. Drivers that spawn children should poll
+    /// [`ExecutionContext::shutdown_requested`] — which folds this
+    /// flag in — and kill+reap before returning, so a dying run's
+    /// teardown never races its still-running child (I-017).
+    /// `None` on detached contexts and runs without an ingress
+    /// channel.
+    pub cancel: Option<Arc<AtomicBool>>,
     /// The node's state store — scoped when the node declares
     /// `state.key`, else the shared run store (TS `ctx.state`).
     pub state: Rc<RefCell<Box<dyn StateStore>>>,
@@ -177,6 +190,7 @@ impl Default for ExecutionContext {
             injected: Rc::new(RefCell::new(Vec::new())),
             scheduled: Rc::new(RefCell::new(Vec::new())),
             shutdown: Rc::new(Cell::new(false)),
+            cancel: None,
             state: Rc::new(RefCell::new(Box::new(
                 peregrin_store::MemoryStore::default(),
             ))),
@@ -236,9 +250,17 @@ impl ExecutionContext {
         self.shutdown.set(true);
     }
 
-    /// Whether [`ExecutionContext::request_shutdown`] was called.
+    /// Whether shutdown was requested — either
+    /// [`ExecutionContext::request_shutdown`] or an injected
+    /// `workflow.cancel` flipping [`ExecutionContext::cancel`]. This
+    /// is the poll point for drivers blocked inside `invoke`: check
+    /// it in child-wait loops and kill+reap on `true`.
     pub fn shutdown_requested(&self) -> bool {
         self.shutdown.get()
+            || self
+                .cancel
+                .as_ref()
+                .is_some_and(|flag| flag.load(Ordering::Relaxed))
     }
 
     /// Drain queued `emit` events (runner-internal).

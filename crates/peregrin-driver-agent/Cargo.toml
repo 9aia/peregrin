@@ -16,5 +16,8 @@ peregrin-template.workspace = true
 serde_json.workspace = true
 ureq.workspace = true
 
+[target.'cfg(unix)'.dependencies]
+nix = { version = "0.29", default-features = false, features = ["signal"] }
+
 [dev-dependencies]
 tempfile.workspace = true
