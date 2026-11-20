@@ -1,11 +1,12 @@
 +++
 id = "P-002"
 title = "Entity plane vs orchestration plane: keep one repo, enforce dep direction; orchestration becomes an entity-plane integration"
-status = "open"
+status = "done"
 created = "2026-11-09"
 owner = "devin"
 priority = "med"
 labels = ["architecture", "peregrin"]
+done = "2026-11-20"
 +++
 
 ## Context
