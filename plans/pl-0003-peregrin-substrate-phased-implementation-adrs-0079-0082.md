@@ -1,7 +1,7 @@
 +++
 id = "PL-003"
 title = "peregrin substrate — phased implementation (ADRs 0079-0082)"
-status = "open"
+status = "done"
 created = "2026-11-04"
 priority = "high"
 +++
@@ -279,3 +279,22 @@ Phase corrections:
 | P9 docs sweep | **landed** | full diataxis set on docs branch. |
 
 Ledger: ADRs 0079–0082 flipped `open → done` with this audit.
+
+## Close-out addendum (2026-11-20)
+
+Phase audit against main: **P0–P3, P7–P9 done**; **P4 superseded by
+tamias** (source/store/verbs retired — `bbd3d2f`/`afd4d5a`/`5fead64`;
+peregrin keeps only thin `bundle *` delegations to tamias roots);
+**P5 partially superseded** — `peregrin import bupha` + `libraries/
+release` + resilience fragments landed, but the `ci-gate` campaign
+bundle was retired (`00960a39`): production CI is bupha's `ci-ingress`/
+`ci-gate` packs over the `ci-job` entity plane; **P6 partially
+superseded** — provisioning/service/doctor verbs moved to tamias,
+`peregrin-mcp` replaced by the generated ops manifest +
+`tamias-driver-mcp`.
+
+Remaining work is tracked as standalone issues, not plan phases:
+I-022 (params.schema.json validation — in flight), I-023 (OtelObserver
+bridge + tracing/metrics flags), I-017 (supersede teardown ordering).
+P-002 resolved: entity plane lives in hypha; peregrin keeps
+orchestration only.
