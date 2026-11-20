@@ -897,13 +897,31 @@ mod tests {
     /// A bundle dir with `main.yaml` + a `tamias.yaml` carrying a
     /// `provider:` block — the ci-gate pilot shape.
     fn bundle_dir() -> (tempfile::TempDir, PathBuf) {
+        bundle_dir_with_repos(&["9aia/peregrin", "9aia/other"])
+    }
+
+    /// [`bundle_dir`] with caller-chosen github hook repos — the
+    /// hooks tests need names whose `PEREGRIN_WH_*` secrets can't
+    /// exist in the real cuora store (the secret chain resolves
+    /// env → cuora → keyring → env-file; a cuora hit would shadow
+    /// the fixture's env-file value).
+    fn bundle_dir_with_repos(repos: &[&str]) -> (tempfile::TempDir, PathBuf) {
         let tmp = tempfile::tempdir().unwrap();
         let dir = tmp.path().join("ci-gate@0.1.0");
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(dir.join("main.yaml"), "name: ci-gate\nnodes: []\n").unwrap();
+        let mut hooks = String::new();
+        for repo in repos {
+            use std::fmt::Write as _;
+            let _ = write!(
+                hooks,
+                "        - forge: github\n          repo: {repo}\n          events: [push]\n"
+            );
+        }
         std::fs::write(
             dir.join("tamias.yaml"),
-            r#"name: ci-gate
+            format!(
+                r#"name: ci-gate
 version: "0.1.0"
 type: peregrin-bundle
 provider:
@@ -916,17 +934,12 @@ provider:
       listen: 127.0.0.1:39271
       path: /hook
       hooks:
-        - forge: github
-          repo: 9aia/peregrin
-          events: [push]
-        - forge: github
-          repo: 9aia/other
-          events: [push]
-        - forge: gitlab
+{hooks}        - forge: gitlab
           repo: ignored/group
           events: [push]
   verbs: [run, logs]
-"#,
+"#
+            ),
         )
         .unwrap();
         (tmp, dir)
@@ -1230,14 +1243,16 @@ provider:
     }
 
     /// An `OpsEnv` sandbox whose env file carries the test secrets —
-    /// `ops::secret` resolves env → keyring → this file; the file leg
-    /// is what tests exercise (unique names avoid env collisions).
+    /// `ops::secret` resolves env → cuora → keyring → this file; the
+    /// file leg is what tests exercise. The `PEREGRIN_WH_T87_HOOKS_*`
+    /// names pair with `bundle_dir_with_repos`'s fake repos — real
+    /// fleet names would resolve through cuora first.
     fn ops_env(root: &Path) -> crate::ops::OpsEnv {
         let env = crate::ops::OpsEnv::under(root);
         std::fs::create_dir_all(&env.config_dir).unwrap();
         std::fs::write(
             env.env_file(),
-            "T8S_GH_TOKEN=tok-test\nPEREGRIN_WH_9AIA_PEREGRIN=whsec-one\nPEREGRIN_WH_9AIA_OTHER=whsec-two\n",
+            "T8S_GH_TOKEN=tok-test\nPEREGRIN_WH_T87_HOOKS_ONE=whsec-one\nPEREGRIN_WH_T87_HOOKS_TWO=whsec-two\n",
         )
         .unwrap();
         env
@@ -1261,14 +1276,16 @@ provider:
 
     #[test]
     fn hooks_register_upserts_and_unregister_deletes() {
-        let (tmp, dir) = bundle_dir();
+        // Fake repos — `PEREGRIN_WH_T87_HOOKS_*` can't exist in the
+        // real cuora store, so the env-file leg is what resolves.
+        let (tmp, dir) = bundle_dir_with_repos(&["t87-hooks/one", "t87-hooks/two"]);
         let env = ops_env(tmp.path());
         // Forge stub: no existing hooks → register POSTs creates.
         let stub = Stub::gh("[]");
         let api = stub.base.clone();
         let out = hooks(&dir, &env, true, false, Some(&api), Some("T8S_GH_TOKEN")).unwrap();
-        assert!(out.contains("9aia/peregrin: created hook"), "{out}");
-        assert!(out.contains("9aia/other: created hook"), "{out}");
+        assert!(out.contains("t87-hooks/one: created hook"), "{out}");
+        assert!(out.contains("t87-hooks/two: created hook"), "{out}");
         let raw = stub.raw();
         // one GET list + one POST per github repo; bodies carry the
         // hook URL, the resolved secret VALUE (never printed) and events.
@@ -1288,14 +1305,14 @@ provider:
         let api2 = stub2.base.clone();
         let out = hooks(&dir, &env, true, false, Some(&api2), Some("T8S_GH_TOKEN")).unwrap();
         assert!(out.contains("updated hook 7"), "{out}");
-        assert!(stub2.raw().contains("PATCH /repos/9aia/peregrin/hooks/7"));
+        assert!(stub2.raw().contains("PATCH /repos/t87-hooks/one/hooks/7"));
 
         // Unregister: matching hook present → DELETE per repo.
         let stub3 = Stub::gh(existing);
         let api3 = stub3.base.clone();
         let out = hooks(&dir, &env, false, false, Some(&api3), Some("T8S_GH_TOKEN")).unwrap();
         assert!(out.contains("deleted hook 7"), "{out}");
-        assert!(stub3.raw().contains("DELETE /repos/9aia/peregrin/hooks/7"));
+        assert!(stub3.raw().contains("DELETE /repos/t87-hooks/one/hooks/7"));
 
         // Missing token secret → error before any API call.
         let err = hooks(
