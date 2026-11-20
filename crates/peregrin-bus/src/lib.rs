@@ -10,5 +10,5 @@ mod observer;
 pub use bus::{EventBus, LocalBus, PublishResult};
 // Pattern matching lives in `peregrin-core` (pure domain — the
 // template scope pass needs it too); re-exported for compatibility.
-pub use observer::{NoopObserver, Observer, Span};
+pub use observer::{CompositeObserver, NoopObserver, NoopSpan, Observer, Span};
 pub use peregrin_core::{capture_wildcards, matches};

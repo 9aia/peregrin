@@ -36,6 +36,7 @@ members = [
     "crates/peregrin-store",
     "crates/peregrin-store-json",
     "crates/peregrin-template",
+    "crates/peregrin-telemetry",
     "crates/peregrin-testkit",
     "xtask",
 ]
@@ -93,6 +94,7 @@ peregrin-sink-github-status = { path = "crates/peregrin-sink-github-status", ver
 peregrin-store = { path = "crates/peregrin-store", version = "0.3.0" }
 peregrin-store-json = { path = "crates/peregrin-store-json", version = "0.3.0" }
 peregrin-template = { path = "crates/peregrin-template", version = "0.3.0" }
+peregrin-telemetry = { path = "crates/peregrin-telemetry", version = "0.3.0" }
 peregrin-testkit = { path = "crates/peregrin-testkit", version = "0.3.0" }
 
 # sepia — the session plane these crates embed. Git deps on `main`

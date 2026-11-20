@@ -236,12 +236,14 @@ pub fn listener_runner(
 
 /// [`listener_runner`] with a caller-supplied bus [`Observer`] — the
 /// supervisor's startup watchdog wires its "listener produced its
-/// first real event" flag through here. `LocalBus::on_event` is the
-/// only hook that sees *every* published event (the runner's own
-/// `with_observer` slot never receives `on_event`), including the
-/// drivers' readiness emissions (`{id}.listening`, `{id}.watching`)
-/// that signal a healthy bind/register. With `log_path` unset the
-/// bus is still swapped so the observer sees events — the default
+/// first real event" flag through here, and the `--tracing`/
+/// `--metrics` providers wire their OTEL observer through the same
+/// slot. The observer rides BOTH surfaces: the bus (the only hook
+/// that sees *every* published event — `on_event`, including the
+/// drivers' readiness emissions `{id}.listening`/`{id}.watching`
+/// that signal a healthy bind/register) and the runner (the
+/// workflow/node lifecycle hooks). With `log_path` unset the bus is
+/// still swapped so the observer sees events — the default
 /// `LocalBus::memory()` carries a noop observer.
 ///
 /// # Errors
@@ -254,7 +256,8 @@ pub fn listener_runner_observed(
 ) -> Result<Runner, CampaignError> {
     let runner = Runner::new(registry)
         .with_dlq(Box::<MemoryDlq>::default())
-        .with_ingress(ingress);
+        .with_ingress(ingress)
+        .with_observer(observer.clone());
     let bus: Box<dyn EventBus> = match log_path {
         Some(path) => Box::new(LocalBus::new(
             Box::new(peregrin_store_json::JsonStore::open_append(path)?),
@@ -263,21 +266,6 @@ pub fn listener_runner_observed(
         None => Box::new(LocalBus::new(Box::new(MemoryStore::default()), observer)),
     };
     Ok(runner.with_bus(bus))
-}
-
-/// Swap `runner`'s in-memory bus for the durable JSONL log at
-/// `log_path`, opened in append mode: every run continues the shared
-/// history file but must not read earlier runs back (a run's `seen`
-/// types are per-run). `None` keeps the memory bus.
-fn with_history(mut runner: Runner, log_path: Option<&Path>) -> Result<Runner, CampaignError> {
-    if let Some(path) = log_path {
-        let store = peregrin_store_json::JsonStore::open_append(path)?;
-        runner = runner.with_bus(Box::new(LocalBus::new(
-            Box::new(store),
-            Arc::new(NoopObserver),
-        )));
-    }
-    Ok(runner)
 }
 
 /// The runner a supervised spawned run gets (docs/reference/
@@ -294,7 +282,35 @@ fn with_history(mut runner: Runner, log_path: Option<&Path>) -> Result<Runner, C
 /// # Errors
 /// [`CampaignError::Store`] when the log can't be opened.
 pub fn worker_runner(ingress: Ingress, log_path: Option<&Path>) -> Result<Runner, CampaignError> {
-    with_history(runner().with_ingress(ingress), log_path)
+    worker_runner_observed(ingress, log_path, Arc::new(NoopObserver))
+}
+
+/// [`worker_runner`] with a caller-supplied [`Observer`] on both the
+/// runner lifecycle hooks and the bus's `on_event` — the
+/// `--tracing`/`--metrics` providers' slot. Unlike the old
+/// `log_path`-gated bus swap, the bus observer is wired even without
+/// a history file so `on_event` still flows.
+///
+/// # Errors
+/// [`CampaignError::Store`] when the log can't be opened.
+pub fn worker_runner_observed(
+    ingress: Ingress,
+    log_path: Option<&Path>,
+    observer: Arc<dyn Observer>,
+) -> Result<Runner, CampaignError> {
+    let runner = runner()
+        .with_ingress(ingress)
+        .with_observer(observer.clone());
+    match log_path {
+        Some(path) => {
+            let store = peregrin_store_json::JsonStore::open_append(path)?;
+            Ok(runner.with_bus(Box::new(LocalBus::new(Box::new(store), observer))))
+        }
+        None => Ok(runner.with_bus(Box::new(LocalBus::new(
+            Box::new(MemoryStore::default()),
+            observer,
+        )))),
+    }
 }
 
 /// A runner like [`runner`] but with a live ingress pair: the
@@ -305,10 +321,23 @@ pub fn worker_runner(ingress: Ingress, log_path: Option<&Path>) -> Result<Runner
 /// `Event::cancel` from supersede).
 #[must_use]
 pub fn runner_with_ingress() -> (Runner, Injector) {
+    runner_with_ingress_observed(Arc::new(NoopObserver))
+}
+
+/// [`runner_with_ingress`] with a caller-supplied [`Observer`] on
+/// both the runner lifecycle hooks and the bus's `on_event` — the
+/// `--tracing`/`--metrics` providers' slot (ADR-0040).
+#[must_use]
+pub fn runner_with_ingress_observed(observer: Arc<dyn Observer>) -> (Runner, Injector) {
     let (injector, ingress) = ingress();
     let runner = Runner::new(registry_with_ingress(&injector))
         .with_dlq(Box::<MemoryDlq>::default())
-        .with_ingress(ingress);
+        .with_ingress(ingress)
+        .with_observer(observer.clone())
+        .with_bus(Box::new(LocalBus::new(
+            Box::new(MemoryStore::default()),
+            observer,
+        )));
     (runner, injector)
 }
 
@@ -319,9 +348,22 @@ pub fn runner_with_ingress() -> (Runner, Injector) {
 /// [`CampaignError::Store`] when the log can't be read or a line
 /// fails to parse.
 pub fn runner_with_log_ingress(log_path: &Path) -> Result<(Runner, Injector), CampaignError> {
-    let (runner, injector) = runner_with_ingress();
+    runner_with_log_ingress_observed(log_path, Arc::new(NoopObserver))
+}
+
+/// [`runner_with_log_ingress`] with a caller-supplied [`Observer`]
+/// (see [`runner_with_ingress_observed`]).
+///
+/// # Errors
+/// [`CampaignError::Store`] when the log can't be read or a line
+/// fails to parse.
+pub fn runner_with_log_ingress_observed(
+    log_path: &Path,
+    observer: Arc<dyn Observer>,
+) -> Result<(Runner, Injector), CampaignError> {
+    let (runner, injector) = runner_with_ingress_observed(observer.clone());
     let store = peregrin_store_json::JsonStore::open(log_path)?;
-    let bus = LocalBus::new(Box::new(store), Arc::new(NoopObserver));
+    let bus = LocalBus::new(Box::new(store), observer);
     Ok((runner.with_bus(Box::new(bus)), injector))
 }
 
@@ -336,9 +378,22 @@ pub fn runner_with_log_ingress(log_path: &Path) -> Result<(Runner, Injector), Ca
 /// [`CampaignError::Store`] when the log can't be read or a line
 /// fails to parse.
 pub fn runner_with_log(log_path: &Path) -> Result<Runner, CampaignError> {
+    runner_with_log_observed(log_path, Arc::new(NoopObserver))
+}
+
+/// [`runner_with_log`] with a caller-supplied [`Observer`] (see
+/// [`runner_with_ingress_observed`]).
+///
+/// # Errors
+/// [`CampaignError::Store`] when the log can't be read or a line
+/// fails to parse.
+pub fn runner_with_log_observed(
+    log_path: &Path,
+    observer: Arc<dyn Observer>,
+) -> Result<Runner, CampaignError> {
     let store = peregrin_store_json::JsonStore::open(log_path)?;
-    let bus = LocalBus::new(Box::new(store), Arc::new(NoopObserver));
-    Ok(runner().with_bus(Box::new(bus)))
+    let bus = LocalBus::new(Box::new(store), observer.clone());
+    Ok(runner().with_observer(observer).with_bus(Box::new(bus)))
 }
 
 /// TS `loadWorkflow` — yaml file → [`Campaign`], with `include:`/

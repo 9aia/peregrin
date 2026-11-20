@@ -3,17 +3,53 @@
 //! `run` executes a campaign yaml on this machine's campaign plane
 //! in-process (`peregrin_node::campaign` — the same composition the
 //! daemon hosts); `validate` expands a yaml and summarizes its
-//! wiring. The TS `typegen` verb and the otel/metrics observer
-//! flags are not ported yet.
+//! wiring. The TS `typegen` verb is not ported; the otel/metrics
+//! observer flags landed as ADR-0040's `--tracing`/`--metrics`
+//! provider flags ([`ObsArgs`]).
 
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
+use peregrin_bus::Observer;
 use peregrin_core::{Campaign, Event, MaxFires, TriggerMode};
 use peregrin_engine::RunOptions;
+use peregrin_telemetry::{Observability, TelemetryGuard};
 use serde_json::{Map, Value};
 
 use crate::CliError;
+
+/// The ADR-0040 observability flags shared by the campaign verbs —
+/// each signal is a destination string plus an optional provider
+/// (`provider:dest` shorthand on the value itself also works; see
+/// [`Observability::resolve`]). All `None` → the noop observer, the
+/// pre-flag behavior.
+#[derive(Debug, Default)]
+pub struct ObsArgs<'a> {
+    /// `--tracing` destination (OTLP endpoint for the `otlp`
+    /// provider).
+    pub tracing: Option<&'a str>,
+    /// `--tracing-provider` — `otlp` (default) or `noop`.
+    pub tracing_provider: Option<&'a str>,
+    /// `--metrics` destination.
+    pub metrics: Option<&'a str>,
+    /// `--metrics-provider` — `otlp` (default) or `noop`.
+    pub metrics_provider: Option<&'a str>,
+}
+
+/// Resolve [`ObsArgs`] into the composed observer plus the guard
+/// that must stay alive for the run's export lifetime (its `Drop`
+/// flushes and shuts the OTEL providers down).
+fn build_observer(obs: &ObsArgs<'_>) -> Result<(Arc<dyn Observer>, TelemetryGuard), CliError> {
+    let observability = Observability::resolve(
+        obs.tracing,
+        obs.tracing_provider,
+        obs.metrics,
+        obs.metrics_provider,
+    )
+    .map_err(|e| CliError(e.to_string()))?;
+    peregrin_telemetry::build_observer(&observability).map_err(|e| CliError(e.to_string()))
+}
 
 /// `campaign run` — load, execute, print the event log one line per
 /// event (`ts source type`), like the TS original. `history` swaps the
@@ -31,7 +67,9 @@ pub fn run(
     replay: Option<&Path>,
     history: Option<&Path>,
     queue_store: Option<&Path>,
+    obs: &ObsArgs<'_>,
 ) -> Result<Vec<Event>, CliError> {
+    let (observer, _telemetry) = build_observer(obs)?;
     let replay_events = match replay {
         Some(path) => load_replay(path)?,
         None => Vec::new(),
@@ -60,16 +98,18 @@ pub fn run(
         && !dry_run
         && options.replay_events.is_empty()
     {
-        return run_supervised(&campaign, history, queue_store);
+        return run_supervised(&campaign, history, queue_store, Some(observer));
     }
     // Ingress variants: `github-webhook`/`sturn-poll` nodes get a
     // run-scoped `Injector`, and a campaign declaring one serves
     // (parks on the channel) instead of exiting at quiet — the
     // systemd unit's daemon mode. Finite campaigns run unchanged.
-    let (mut runner, _injector) = match history {
-        Some(path) => peregrin_node::campaign::runner_with_log_ingress(path)
-            .map_err(|e| CliError(e.to_string()))?,
-        None => peregrin_node::campaign::runner_with_ingress(),
+    let (mut runner, _injector) = if let Some(path) = history {
+        peregrin_node::campaign::runner_with_log_ingress_observed(path, observer)
+            .map_err(|e| CliError(e.to_string()))?
+    } else {
+        let (runner, injector) = peregrin_node::campaign::runner_with_ingress_observed(observer);
+        (runner, injector)
     };
     let log = runner
         .run(&campaign, &options)
@@ -91,6 +131,7 @@ fn run_supervised(
     campaign: &Campaign,
     history: Option<&Path>,
     queue_store: Option<&Path>,
+    observer: Option<Arc<dyn Observer>>,
 ) -> Result<Vec<Event>, CliError> {
     // `--queue-store` opens the sqlite durable queue — pending
     // triggers + the in-flight marker replay on the next boot
@@ -112,6 +153,7 @@ fn run_supervised(
                 println!("{} {} {}", event.ts, event.source, event.kind);
             }
         })),
+        observer,
         ..peregrin_node::supervisor::SupervisedOptions::default()
     };
     let run = peregrin_node::supervisor::supervise(campaign, options);
@@ -150,8 +192,10 @@ pub fn serve(
     path: &str,
     history_dir: Option<&Path>,
     queue_store_dir: Option<&Path>,
+    obs: &ObsArgs<'_>,
     rt: &tokio::runtime::Runtime,
 ) -> Result<(), CliError> {
+    let (observer, _telemetry) = build_observer(obs)?;
     let files = expand_campaign_paths(paths)?;
     // `~` expands here (not in the unit's ExecStart — systemd argv is
     // data, no shell) so provider manifests can write portable paths.
@@ -195,6 +239,7 @@ pub fn serve(
                     .collect()
             })
             .unwrap_or_default(),
+        observer: Some(observer),
     };
     let served = peregrin_node::serve::serve_campaigns(hosted, &config)
         .map_err(|e| CliError(e.to_string()))?;
@@ -285,7 +330,9 @@ pub fn exec(
     config: Option<&Map<String, Value>>,
     secrets: Option<&BTreeMap<String, String>>,
     dry_run: bool,
+    obs: &ObsArgs<'_>,
 ) -> Result<Vec<Event>, CliError> {
+    let (observer, _telemetry) = build_observer(obs)?;
     let mut campaign =
         peregrin_node::campaign::load(workflow).map_err(|e| CliError(e.to_string()))?;
     if let Some(overrides) = config {
@@ -299,8 +346,8 @@ pub fn exec(
         secret_stores: peregrin_node::campaign::default_secret_stores(),
         ..RunOptions::default()
     };
-    let mut runner =
-        peregrin_node::campaign::runner_with_log(history).map_err(|e| CliError(e.to_string()))?;
+    let mut runner = peregrin_node::campaign::runner_with_log_observed(history, observer)
+        .map_err(|e| CliError(e.to_string()))?;
     runner
         .run(&campaign, &options)
         .map_err(|e| CliError(e.to_string()))

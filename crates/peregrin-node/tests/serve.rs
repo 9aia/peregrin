@@ -112,6 +112,7 @@ fn config(logs: &RunLog) -> ServeConfig {
         queue_store_dir: None,
         managed_dir: None,
         on_run: Some(on_run(logs)),
+        observer: None,
         secrets: Default::default(),
         labels: Vec::new(),
     }

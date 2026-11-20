@@ -416,6 +416,29 @@ enum ConfigCommands {
 
 // --- campaigns -----------------------------------------------------------------
 
+/// ADR-0040 observability flags — `--tracing`/`--metrics` each take
+/// a provider destination (`provider:dest` shorthand on the value,
+/// or `--<signal>-provider` to name the implementation; bare values
+/// default to `otlp`). Absent → noop, the pre-flag behavior.
+#[derive(Args)]
+struct ObsFlags {
+    /// Export engine spans through this destination — e.g.
+    /// `otlp:http://collector:4318/v1/traces` or a bare OTLP
+    /// endpoint (the `otlp` provider appends `/v1/traces`)
+    #[arg(long)]
+    tracing: Option<String>,
+    /// Tracing provider: `otlp` (default) or `noop`
+    #[arg(long)]
+    tracing_provider: Option<String>,
+    /// Export engine metrics through this destination — e.g.
+    /// `otlp:http://collector:4318/v1/metrics`
+    #[arg(long)]
+    metrics: Option<String>,
+    /// Metrics provider: `otlp` (default) or `noop`
+    #[arg(long)]
+    metrics_provider: Option<String>,
+}
+
 /// Campaign verbs — the `peregrin campaign` surface, on this
 /// machine's campaign plane (`peregrin_node::campaign`,
 /// in-process).
@@ -442,6 +465,8 @@ enum CampaignCommands {
         /// (supervisor mode)
         #[arg(long)]
         queue_store: Option<PathBuf>,
+        #[command(flatten)]
+        obs: ObsFlags,
     },
     /// Expand a campaign yaml and summarize its wiring (includes,
     /// nodes, unemitting-subscription warnings)
@@ -480,6 +505,8 @@ enum CampaignCommands {
         /// Explicit JSONL log path (default `<home>/runs/<run-id>.jsonl`)
         #[arg(long)]
         log: Option<PathBuf>,
+        #[command(flatten)]
+        obs: ObsFlags,
     },
     /// Poll a `campaign submit` run — verdict, terminal event, counts
     Status {
@@ -522,6 +549,8 @@ enum CampaignCommands {
         /// Simulate the run without driver side effects
         #[arg(long)]
         dry_run: bool,
+        #[command(flatten)]
+        obs: ObsFlags,
     },
     /// Host N campaign yamls under one process — each gets its own
     /// supervisor (supersede queue, history, worker runs) while ALL
@@ -548,6 +577,8 @@ enum CampaignCommands {
         /// the in-flight run replay per campaign on restart
         #[arg(long)]
         queue_store_dir: Option<PathBuf>,
+        #[command(flatten)]
+        obs: ObsFlags,
     },
     /// Live flow lifecycle on a running `campaign serve` daemon
     /// (ADR-0093) — list/add/remove/reload hosted flows through its
@@ -1100,6 +1131,15 @@ fn run_projects(cmd: &ProjectsCommands) -> Result<(), CliError> {
     }
 }
 
+fn obs_args(flags: &ObsFlags) -> campaign::ObsArgs<'_> {
+    campaign::ObsArgs {
+        tracing: flags.tracing.as_deref(),
+        tracing_provider: flags.tracing_provider.as_deref(),
+        metrics: flags.metrics.as_deref(),
+        metrics_provider: flags.metrics_provider.as_deref(),
+    }
+}
+
 fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<(), CliError> {
     let env = ops::OpsEnv::default();
     match cmd {
@@ -1109,12 +1149,14 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
             replay,
             history,
             queue_store,
+            obs,
         } => campaign::run(
             workflow,
             *dry_run,
             replay.as_deref(),
             history.as_deref(),
             queue_store.as_deref(),
+            &obs_args(obs),
         )
         .map(|_| ()),
         CampaignCommands::Validate {
@@ -1138,6 +1180,7 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
             secrets,
             dry_run,
             log,
+            obs,
         } => agent::campaign_submit(
             &env,
             &agent::SubmitArgs {
@@ -1148,6 +1191,10 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
                 secrets: secrets.as_deref(),
                 dry_run: *dry_run,
                 log: log.as_deref(),
+                tracing: obs.tracing.as_deref(),
+                tracing_provider: obs.tracing_provider.as_deref(),
+                metrics: obs.metrics.as_deref(),
+                metrics_provider: obs.metrics_provider.as_deref(),
             },
         )
         .map(|v| agent::emit(&v)),
@@ -1167,6 +1214,7 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
             config,
             secrets,
             dry_run,
+            obs,
         } => {
             let config = config.as_deref().map(agent::parse_config_arg).transpose()?;
             let secrets = secrets
@@ -1179,6 +1227,7 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
                 config.as_ref(),
                 secrets.as_ref(),
                 *dry_run,
+                &obs_args(obs),
             )
             .map(|_| ())
         }
@@ -1188,12 +1237,14 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
             path,
             history_dir,
             queue_store_dir,
+            obs,
         } => campaign::serve(
             paths,
             listen,
             path,
             history_dir.as_deref(),
             queue_store_dir.as_deref(),
+            &obs_args(obs),
             rt,
         ),
         CampaignCommands::Flows { action } => {
@@ -1636,6 +1687,66 @@ mod tests {
     fn exit_code_both_arms() {
         assert_eq!(exit_code(Ok(())), 0);
         assert_eq!(exit_code(Err(CliError("boom".into()))), 1);
+    }
+
+    #[test]
+    fn campaign_obs_flags_parse() {
+        // ADR-0040 — the four provider flags land on run/exec/
+        // submit/serve via the shared flatten.
+        for argv in [
+            vec![
+                "peregrin",
+                "campaign",
+                "run",
+                "w.yaml",
+                "--tracing",
+                "otlp:http://collector:4318/v1/traces",
+                "--tracing-provider",
+                "otlp",
+                "--metrics",
+                "http://collector:4318",
+                "--metrics-provider",
+                "noop",
+            ],
+            vec![
+                "peregrin",
+                "campaign",
+                "submit",
+                "w.yaml",
+                "--tracing",
+                "noop",
+            ],
+            vec![
+                "peregrin",
+                "campaign",
+                "serve",
+                "w.yaml",
+                "--metrics",
+                "otlp:http://collector:4318/v1/metrics",
+            ],
+        ] {
+            assert!(Cli::try_parse_from(argv.clone()).is_ok(), "argv: {argv:?}");
+        }
+        let cli = cli(&[
+            "peregrin",
+            "campaign",
+            "run",
+            "w.yaml",
+            "--tracing",
+            "otlp:http://collector:4318/v1/traces",
+            "--metrics-provider",
+            "noop",
+        ]);
+        let Commands::Campaign(CampaignCommands::Run { obs, .. }) = cli.command else {
+            panic!("expected campaign run");
+        };
+        assert_eq!(
+            obs.tracing.as_deref(),
+            Some("otlp:http://collector:4318/v1/traces")
+        );
+        assert_eq!(obs.tracing_provider, None);
+        assert_eq!(obs.metrics, None);
+        assert_eq!(obs.metrics_provider.as_deref(), Some("noop"));
     }
 
     #[test]

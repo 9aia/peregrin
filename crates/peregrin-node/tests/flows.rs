@@ -147,6 +147,7 @@ fn config(logs: &RunLog, managed: Option<PathBuf>) -> ServeConfig {
         queue_store_dir: None,
         managed_dir: managed,
         on_run: Some(on_run(logs)),
+        observer: None,
         secrets: BTreeMap::from([(
             "PEREGRIN_FLOWS_TEST_WH_SECRET".to_string(),
             "s3cr3t".to_string(),
@@ -333,6 +334,7 @@ fn flows_router_enforces_the_bearer() {
         None,
         Arc::new(SharedWebhook::new()),
         Arc::new(RwLock::new(Vec::<(String, Injector)>::new())),
+        None,
         None,
         Arc::new(AtomicBool::new(false)),
     ));

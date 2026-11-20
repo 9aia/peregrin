@@ -2947,6 +2947,7 @@ dependencies = [
  "portable-atomic",
  "rand 0.9.5",
  "thiserror 2.0.21",
+ "tokio",
 ]
 
 [[package]]
@@ -3116,6 +3117,7 @@ dependencies = [
  "pavo-driver-kit",
  "pavo-protocol",
  "pavo-testkit",
+ "peregrin-bus",
  "peregrin-config",
  "peregrin-config-toml",
  "peregrin-core",
@@ -3129,6 +3131,7 @@ dependencies = [
  "peregrin-secret-cuora",
  "peregrin-store",
  "peregrin-store-json",
+ "peregrin-telemetry",
  "scarab-config",
  "scarab-config-file",
  "sepia-acp",
@@ -3601,6 +3604,20 @@ dependencies = [
  "peregrin-store",
  "serde_json",
  "tempfile",
+ "thiserror 2.0.21",
+ "tracing",
+]
+
+[[package]]
+name = "peregrin-telemetry"
+version = "0.3.0"
+dependencies = [
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "peregrin-bus",
+ "peregrin-core",
+ "serde_json",
  "thiserror 2.0.21",
  "tracing",
 ]
