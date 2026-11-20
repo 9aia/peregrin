@@ -38,6 +38,7 @@ fn route(secret: &str, injector: &Injector, source: &str) -> Route {
             "success".to_string(),
         ],
         push_refs: Vec::new(),
+        owner: source.to_string(),
     }
 }
 
@@ -901,4 +902,60 @@ fn serve_twice_and_bad_path_are_errors() {
     let bad = SharedWebhook::new();
     assert!(bad.serve("127.0.0.1:0", "no-slash").is_err());
     assert!(bad.serve("127.0.0.1:0", "/{capture}").is_err());
+}
+
+#[test]
+fn unregister_removes_only_the_owners_routes() {
+    // ADR-0093 flow delete: `unregister(owner)` retracts that flow's
+    // routes while other owners' routes on the SAME repo survive
+    // (Vec-removal is the all-match refcount).
+    let demux = SharedWebhook::new();
+    let (inj_a, _chan_a) = ingress();
+    let (inj_b, _chan_b) = ingress();
+    demux.register(REPO_A, route(SECRET_A, &inj_a, "flow-a"));
+    demux.register(REPO_A, route(SECRET_B, &inj_b, "flow-b"));
+    demux.register(REPO_B, route(SECRET_A, &inj_a, "flow-a"));
+
+    assert_eq!(demux.repos_for_owner("flow-a"), vec![REPO_B, REPO_A]);
+    assert_eq!(demux.repos_for_owner("flow-b"), vec![REPO_A]);
+    assert_eq!(demux.route_count(), 3);
+
+    // Removing flow-a drops its two routes, keeps flow-b's.
+    assert_eq!(demux.unregister("flow-a"), 2);
+    assert_eq!(demux.route_count(), 1);
+    assert_eq!(demux.repos_for_owner("flow-a"), Vec::<String>::new());
+    assert_eq!(demux.repos_for_owner("flow-b"), vec![REPO_A]);
+    // The repo entry survives while flow-b still watches it.
+    assert_eq!(demux.repos(), vec![REPO_A]);
+
+    // Removing the last route for a repo drops the repo key.
+    assert_eq!(demux.unregister("flow-b"), 1);
+    assert_eq!(demux.route_count(), 0);
+    assert_eq!(demux.repos(), Vec::<String>::new());
+    // Unknown owner removes nothing.
+    assert_eq!(demux.unregister("ghost"), 0);
+}
+
+#[test]
+fn unregister_stops_deliveries_for_the_removed_owner() {
+    // End-to-end: after unregister the removed flow's channel gets
+    // nothing while the surviving owner's does.
+    let demux = Arc::new(SharedWebhook::new());
+    let (inj_a, chan_a) = ingress();
+    let (inj_b, chan_b) = ingress();
+    demux.register(REPO_A, route(SECRET_A, &inj_a, "flow-a"));
+    demux.register(REPO_A, route(SECRET_A, &inj_b, "flow-b"));
+    let base = serving(&demux);
+    let url = format!("{base}/hook");
+
+    assert_eq!(demux.unregister("flow-a"), 1);
+    let body = push_body(REPO_A);
+    let sig = signature_header(SECRET_A, &body);
+    let headers = [
+        ("x-github-event", "push"),
+        ("x-hub-signature-256", sig.as_str()),
+    ];
+    assert_eq!(post(&url, &headers, &body), (202, "queued".to_string()));
+    assert!(drain(&chan_a).is_empty(), "flow-a must not receive");
+    assert_eq!(drain(&chan_b).len(), 1, "flow-b still receives");
 }

@@ -254,7 +254,7 @@ pub enum NodePushBackend {
     /// [`KvPushBackend`] — `kv.json`'s `push` namespace.
     Kv(KvPushBackend),
     /// [`CuoraPushBackend`] — the cuora broker + kv mirror.
-    Cuora(CuoraPushBackend),
+    Cuora(Box<CuoraPushBackend>),
 }
 
 impl NodePushBackend {
@@ -263,7 +263,7 @@ impl NodePushBackend {
     pub fn for_kind(kv: Arc<dyn KvStore>, kind: crate::env::PushBackendKind) -> Self {
         match kind {
             crate::env::PushBackendKind::Kv => Self::Kv(KvPushBackend(kv)),
-            crate::env::PushBackendKind::Cuora => Self::Cuora(CuoraPushBackend::open(kv)),
+            crate::env::PushBackendKind::Cuora => Self::Cuora(Box::new(CuoraPushBackend::open(kv))),
         }
     }
 }

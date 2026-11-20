@@ -93,7 +93,13 @@ fn token_matches(provided: &str, expected: &str) -> bool {
 /// The bearer gate — `Authorization: Bearer <token>`; no configured
 /// token means everything is allowed (the `/api/*` convention).
 fn authorized(state: &InjectState, headers: &HeaderMap) -> bool {
-    let Some(expected) = state.token.as_deref().filter(|t| !t.is_empty()) else {
+    token_ok(state.token.as_deref(), headers)
+}
+
+/// The shared bearer check — `expected` is the configured token
+/// (`None`/empty = open). The flows API gates on the same credential.
+pub(crate) fn token_ok(expected: Option<&str>, headers: &HeaderMap) -> bool {
+    let Some(expected) = expected.filter(|t| !t.is_empty()) else {
         return true;
     };
     let provided = headers

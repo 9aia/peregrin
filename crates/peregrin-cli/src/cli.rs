@@ -15,7 +15,7 @@ use clap::{Args, Parser, Subcommand, ValueEnum};
 
 use crate::node_ops::{NodeArgs, TargetArgs};
 use crate::{
-    CliError, PEREGRIN_VERSION, agent, api, campaign, import, node_ops, ops, pair, provision,
+    CliError, PEREGRIN_VERSION, agent, api, campaign, flows, import, node_ops, ops, pair, provision,
 };
 
 fn default_peregrin_home() -> PathBuf {
@@ -548,6 +548,64 @@ enum CampaignCommands {
         /// the in-flight run replay per campaign on restart
         #[arg(long)]
         queue_store_dir: Option<PathBuf>,
+    },
+    /// Live flow lifecycle on a running `campaign serve` daemon
+    /// (ADR-0093) — list/add/remove/reload hosted flows through its
+    /// `/api/flows` routes, no restart.
+    Flows {
+        #[command(subcommand)]
+        action: FlowsCommands,
+    },
+}
+
+/// Where `campaign flows …` calls land — the daemon's listener URL
+/// plus its bearer. Per-leaf (not global) so the `cli.campaign.
+/// flows.*` ops carry them as ordinary params.
+#[derive(Args)]
+struct FlowsTarget {
+    /// Daemon base URL (default `PEREGRIN_FLOWS_URL` or
+    /// http://127.0.0.1:29173 — the serve `--listen` default)
+    #[arg(long)]
+    url: Option<String>,
+    /// Bearer token (default `PEREGRIN_TOKEN`, then
+    /// `~/.config/peregrin/env`)
+    #[arg(long)]
+    token: Option<String>,
+}
+
+/// `peregrin campaign flows …` subcommands.
+#[derive(Subcommand)]
+enum FlowsCommands {
+    /// List hosted flows and their state (active/draining)
+    List(FlowsTarget),
+    /// Load a campaign yaml as a live flow — POSTs `{name, yaml}`;
+    /// the daemon validates, persists to its managed dir, and
+    /// spawns the supervisor immediately
+    Load {
+        /// Campaign YAML file to host
+        yaml: PathBuf,
+        /// Flow name (default: the file stem)
+        #[arg(long)]
+        name: Option<String>,
+        #[command(flatten)]
+        target: FlowsTarget,
+    },
+    /// Drain and remove a hosted flow — routes unregister first,
+    /// the pending queue clears, the active run finishes
+    /// asynchronously
+    Unload {
+        /// Hosted flow name
+        name: String,
+        #[command(flatten)]
+        target: FlowsTarget,
+    },
+    /// Drain-then-respawn a flow from its persisted source yaml —
+    /// the `tamias deploy` update path
+    Reload {
+        /// Hosted flow name
+        name: String,
+        #[command(flatten)]
+        target: FlowsTarget,
     },
 }
 
@@ -1138,6 +1196,23 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
             queue_store_dir.as_deref(),
             rt,
         ),
+        CampaignCommands::Flows { action } => {
+            let target_args = match action {
+                FlowsCommands::List(t) => t,
+                FlowsCommands::Load { target, .. }
+                | FlowsCommands::Unload { target, .. }
+                | FlowsCommands::Reload { target, .. } => target,
+            };
+            let target = flows::target(target_args.url.as_deref(), target_args.token.as_deref());
+            match action {
+                FlowsCommands::List(_) => flows::list(&target),
+                FlowsCommands::Load { yaml, name, .. } => {
+                    flows::load(&target, yaml, name.as_deref())
+                }
+                FlowsCommands::Unload { name, .. } => flows::unload(&target, name),
+                FlowsCommands::Reload { name, .. } => flows::reload(&target, name),
+            }
+        }
     }
 }
 

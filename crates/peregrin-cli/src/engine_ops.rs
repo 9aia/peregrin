@@ -76,6 +76,7 @@ const READ_ONLY: &[&str] = &[
     "campaign.validate",
     "campaign.status",
     "campaign.events",
+    "campaign.flows.list",
     "bundle.list",
     "bundle.info",
     "logs.runs",

@@ -146,19 +146,26 @@ pub fn registry_with_ingress(injector: &Injector) -> Registry {
 /// resolves to [`SharedWebhookDriver`](peregrin_driver_github_webhook::SharedWebhookDriver) — it registers the node's repo
 /// watches into the shared demux instead of binding its own socket —
 /// while `sturn-poll` and every worker driver are unchanged. The
-/// daemon binds the one listener via `demux.serve(...)`.
+/// daemon binds the one listener via `demux.serve(...)`. `owner` is
+/// the hosted flow's name — stamped on every registered route so
+/// [`SharedWebhook::unregister`](peregrin_driver_github_webhook::SharedWebhook::unregister)
+/// can retract them on flow delete.
 #[must_use]
 pub fn registry_with_ingress_shared(
     injector: &Injector,
     demux: &Arc<peregrin_driver_github_webhook::SharedWebhook>,
+    owner: &str,
 ) -> Registry {
     registry()
         .with(
             "github-webhook",
-            Arc::new(peregrin_driver_github_webhook::SharedWebhookDriver::new(
-                injector.clone(),
-                Arc::clone(demux),
-            )),
+            Arc::new(
+                peregrin_driver_github_webhook::SharedWebhookDriver::with_owner(
+                    injector.clone(),
+                    Arc::clone(demux),
+                    owner,
+                ),
+            ),
         )
         .with(
             "sturn-poll",

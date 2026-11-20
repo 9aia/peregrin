@@ -180,6 +180,15 @@ impl Queue {
         self.pending.len()
     }
 
+    /// Drop every pending job — the flow-delete path
+    /// (`/api/flows` DELETE): queued triggers for a flow that's going
+    /// away must not run during its drain. Returns the dropped jobs
+    /// in drain order so callers can persist/log them. The active
+    /// run and any pending cancel signal are untouched.
+    pub fn clear_pending(&mut self) -> Vec<Job> {
+        self.pending.drain(..).collect()
+    }
+
     /// No active run and nothing pending — the scheduler is quiet.
     #[must_use]
     pub fn is_idle(&self) -> bool {

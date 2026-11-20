@@ -11,58 +11,66 @@
 //! `params.repos` watches — repo `full_name` → secret + the
 //! campaign's trigger channel — instead of binding the default
 //! `127.0.0.1:29173` socket (N solo listeners would collide). The
-//! daemon binds the socket once here; verified pushes demux
-//! **all-match**: every route whose secret validated the signature
-//! gets the event, so two campaigns watching the same repo both
-//! trigger. Other ingress drivers (`sturn-poll`) are unaffected —
-//! they never bound a socket anyway.
+//! daemon binds the socket once here — **unconditionally**: a fleet
+//! with no webhook flow today may gain one via the flows API
+//! ([`flows`], ADR-0093), and a later-registered flow must still
+//! receive deliveries. Verified pushes demux **all-match**: every
+//! route whose secret validated the signature gets the event, so
+//! two campaigns watching the same repo both trigger. Other ingress
+//! drivers (`sturn-poll`) are unaffected — they never bound a
+//! socket anyway.
 //!
 //! Lifecycle: [`serve_campaigns`] returns a [`Served`] handle —
 //! `request_shutdown` (the CLI wires it to SIGINT/SIGTERM) stops the
-//! listener and sets the flag every supervisor polls; each loop then
-//! takes the trigger-disconnect drain path (active run finishes,
-//! pending queue drains, listener run cancelled) and `join` collects
-//! the results. Queue stores are per-campaign sqlite files
-//! (`<queue_store_dir>/<name>.db`) and histories per-campaign JSONL
-//! (`<history_dir>/<name>.jsonl`) so campaigns never share state.
+//! listener and flags every flow's own shutdown; each supervisor
+//! then takes the trigger-disconnect drain path (active run
+//! finishes, pending queue drains, listener run cancelled) and
+//! [`Served::join`] collects the results via
+//! [`FlowHost::join_all`]. Queue stores are per-campaign sqlite
+//! files (`<queue_store_dir>/<name>.db`) and histories per-campaign
+//! JSONL (`<history_dir>/<name>.jsonl`) so campaigns never share
+//! state.
+//!
+//! The same socket also serves the management API: `POST
+//! /api/events/inject` ([`inject`], the typed-event feed) and the
+//! `/api/flows*` lifecycle routes ([`flows`]) — both bearer-gated
+//! by `PEREGRIN_TOKEN`.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
 use std::thread::JoinHandle;
 
 use peregrin_core::{Campaign, Event};
 use peregrin_driver_github_webhook::SharedWebhook;
 use peregrin_engine::Injector;
-use peregrin_queue::QueueStore;
 
 use crate::campaign::{self, CampaignError};
+use crate::flows::{self, FlowHost, FlowSource};
 use crate::inject;
-use crate::supervisor::{self, SupervisedOptions};
 
 /// One loaded campaign the daemon hosts.
 pub struct HostedCampaign {
     /// The campaign's display/file key — `campaign.name` (or the
     /// yaml's file stem when unnamed), already deduplicated by the
-    /// caller. Names the per-campaign history/queue-store files.
+    /// caller. Names the per-campaign history/queue-store files and
+    /// the demux route owner.
     pub name: String,
     /// The loaded campaign — must be supervise-shaped (`supersede:`
     /// with ingress nodes for trigger-driven runs; finite campaigns
     /// idle, they just never see a trigger).
     pub campaign: Campaign,
-    /// The yaml it loaded from — error messages and future reloads.
-    pub source: PathBuf,
+    /// Where the yaml came from — the file it loaded from (boot +
+    /// managed-dir flows) or posted text (in-memory flows). Reload
+    /// re-reads it.
+    pub source: FlowSource,
 }
 
 /// Per-run event sink — `(campaign_name, run_log)`; the serve-mode
 /// equivalent of `campaign run`'s run-log output.
 pub type RunCallback = Arc<dyn Fn(&str, &[Event]) + Send + Sync>;
-
-/// A campaign supervisor's join handle — drained run logs or the
-/// first run failure.
-type SupervisorJoin = JoinHandle<Result<Vec<Event>, CampaignError>>;
 
 /// `serve_campaigns` wiring — everything the CLI flags map to.
 pub struct ServeConfig {
@@ -83,6 +91,12 @@ pub struct ServeConfig {
     /// and the in-flight marker replay per campaign on restart.
     /// `None` keeps queues in-memory.
     pub queue_store_dir: Option<PathBuf>,
+    /// Where `POST /api/flows` persists posted yamls —
+    /// `<dir>/<name>.yaml`, the same layout `peregrin provision
+    /// deploy` writes, so a restart replays API-added flows. `None`
+    /// keeps API-added flows in-memory only. The CLI fills this
+    /// with the first directory path arg.
+    pub managed_dir: Option<PathBuf>,
     /// Called with `(campaign name, run log)` for every finished
     /// run, in finish order — the CLI prints it. Runs on each
     /// campaign's supervisor thread.
@@ -90,7 +104,7 @@ pub struct ServeConfig {
     /// `RunOptions.secrets` for every campaign's spawned runs — the
     /// explicit record leg of secret resolution (ambient env →
     /// keyring → env file follow via the default stores).
-    pub secrets: BTreeMap<String, String>,
+    pub secrets: std::collections::BTreeMap<String, String>,
     /// This node's runner labels — the `runs_on` matcher's
     /// right-hand side (PL-007 C4). Campaigns whose `runs_on` isn't
     /// fully satisfied are skipped with a warning: a fleet node only
@@ -103,38 +117,43 @@ pub struct ServeConfig {
 /// requests shutdown (the signal flag + listener stop) but can't
 /// join — call [`join`](Self::join) for the drained result.
 pub struct Served {
-    /// The shared listener's bound address — `None` when no hosted
-    /// campaign declares `driver: github-webhook` (nothing to demux
-    /// to, so no socket is bound).
-    pub listener: Option<SocketAddr>,
-    /// Hosted campaign names, in serve order.
+    /// The shared listener's bound address — always bound in serve
+    /// mode (a webhook-free fleet may gain flows via the API).
+    pub listener: SocketAddr,
+    /// Hosted campaign names at boot, in serve order. Flows added
+    /// later appear in [`FlowHost::list`] / `GET /api/flows`, not
+    /// here.
     pub campaigns: Vec<String>,
     /// The shared demux — exposed for tests/status (`repos()`,
-    /// `route_count()`).
-    pub demux: Option<Arc<SharedWebhook>>,
+    /// `route_count()`, `repos_for_owner()`).
+    pub demux: Arc<SharedWebhook>,
+    /// The flow registry — live spawn/delete/reload plus the drain
+    /// join. The `/api/flows` router holds a clone.
+    pub host: Arc<FlowHost>,
     /// The axum listener thread serving the merged router (webhook
-    /// demux + `/api/events/inject`) — `join` collects it.
+    /// demux + `/api/events/inject` + `/api/flows`) — `join`
+    /// collects it.
     listener_thread: Option<JoinHandle<()>>,
-    /// Each campaign's external trigger injector — push events here
-    /// for out-of-band feeds (tests, future daemon surfaces). The
-    /// webhook routes hold their own clones, so dropping these does
-    /// NOT end a webhook campaign's trigger stream — that's what
-    /// [`request_shutdown`](Self::request_shutdown) is for.
+    /// Each boot campaign's external trigger injector — push events
+    /// here for out-of-band feeds (tests, future daemon surfaces).
+    /// The webhook routes hold their own clones, so dropping these
+    /// does NOT end a webhook campaign's trigger stream — that's
+    /// what [`request_shutdown`](Self::request_shutdown) is for.
+    /// Flows spawned later via the API push their own injectors
+    /// into `host.inject_targets`.
     pub injectors: Vec<Injector>,
     shutdown: Arc<AtomicBool>,
-    joins: Vec<(String, SupervisorJoin)>,
 }
 
 impl Served {
-    /// Stop the shared listener and flag every supervisor to drain —
-    /// the SIGTERM path. The listener stops first so no new triggers
-    /// can land between the flag and each loop's final channel drain.
-    /// Idempotent; safe to call before `join`.
+    /// Stop the shared listener and flag every flow's supervisor to
+    /// drain — the SIGTERM path. The listener stops first so no new
+    /// triggers can land between the flag and each loop's final
+    /// channel drain. Idempotent; safe to call before `join`.
     pub fn request_shutdown(&self) {
-        if let Some(demux) = &self.demux {
-            demux.stop();
-        }
+        self.demux.stop();
         self.shutdown.store(true, Ordering::Relaxed);
+        self.host.shutdown_all();
     }
 
     /// Whether shutdown was requested.
@@ -143,13 +162,14 @@ impl Served {
         self.shutdown.load(Ordering::Relaxed)
     }
 
-    /// Drain and join every campaign — first requests shutdown (stop
-    /// accepting triggers), then joins each supervisor loop in serve
-    /// order. Returns the first campaign error after all loops have
-    /// finished (a panicking supervisor thread counts as an error).
+    /// Drain and join every flow — first requests shutdown (stop
+    /// accepting triggers), then joins the listener thread and every
+    /// supervisor loop via [`FlowHost::join_all`]. Returns the first
+    /// campaign error after all loops have finished (a panicking
+    /// supervisor thread counts as an error).
     ///
     /// # Errors
-    /// The first [`CampaignError`] any campaign's loop produced.
+    /// The first [`CampaignError`] any flow's loop produced.
     pub fn join(mut self) -> Result<(), CampaignError> {
         self.request_shutdown();
         // The listener thread exits on the same shutdown flag —
@@ -158,30 +178,7 @@ impl Served {
         if let Some(thread) = self.listener_thread.take() {
             let _ = thread.join();
         }
-        let mut first_error = None;
-        for (name, handle) in std::mem::take(&mut self.joins) {
-            match handle.join() {
-                Ok(Ok(_)) => {}
-                Ok(Err(e)) => {
-                    tracing::error!("campaign '{name}' supervisor failed: {e}");
-                    if first_error.is_none() {
-                        first_error = Some(e);
-                    }
-                }
-                Err(_) => {
-                    let e = CampaignError::Run(peregrin_driver::DriverError::new(format!(
-                        "campaign '{name}' supervisor thread panicked"
-                    )));
-                    if first_error.is_none() {
-                        first_error = Some(e);
-                    }
-                }
-            }
-        }
-        match first_error {
-            Some(e) => Err(e),
-            None => Ok(()),
-        }
+        self.host.join_all()
     }
 }
 
@@ -194,37 +191,11 @@ impl Drop for Served {
     }
 }
 
-/// A filename-safe campaign slug — `[A-Za-z0-9._-]` kept, everything
-/// else `_`; empty becomes `campaign`. Used for `<name>.jsonl` /
-/// `<name>.db` under the history/queue-store dirs.
-fn file_slug(name: &str) -> String {
-    let slug: String = name
-        .chars()
-        .map(|c| {
-            if c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.') {
-                c
-            } else {
-                '_'
-            }
-        })
-        .collect();
-    if slug.is_empty() {
-        "campaign".to_string()
-    } else {
-        slug
-    }
-}
-
-/// Does the campaign declare a `github-webhook` node — i.e. does it
-/// need a route in the shared demux (and therefore the listener)?
-fn wants_shared_webhook(campaign: &Campaign) -> bool {
-    campaign.nodes.iter().any(|n| n.driver == "github-webhook")
-}
-
-/// Boot the daemon: open every per-campaign queue store (fail fast,
-/// before any listener binds), bind the ONE shared webhook listener
-/// when at least one campaign watches repos, then `supervise` each
-/// campaign with the shared demux + shutdown flag wired in.
+/// Boot the daemon: filter the fleet by `runs_on`, bind the ONE
+/// shared listener unconditionally (webhook demux + `/api/events/
+/// inject` + `/api/flows`), then spawn every campaign through
+/// [`FlowHost::spawn`] — the same path `POST /api/flows` uses, so
+/// boot flows and API flows are identical citizens.
 ///
 /// # Errors
 /// [`CampaignError::Serve`] on duplicate campaign names, an empty
@@ -250,7 +221,7 @@ pub fn serve_campaigns(
             } else {
                 tracing::warn!(
                     campaign = %entry.name,
-                    source = %entry.source.display(),
+                    source = %entry.source.describe(),
                     runs_on = ?entry.campaign.runs_on,
                     labels = ?config.labels,
                     "campaign requires runner labels this node doesn't \
@@ -266,7 +237,8 @@ pub fn serve_campaigns(
         ));
     }
     // Names key the per-campaign files — duplicates would share a
-    // history/queue db, so reject them up front.
+    // history/queue db, so reject them up front (`FlowHost::spawn`
+    // re-checks for API-added flows).
     let mut seen = BTreeSet::new();
     for entry in &hosted {
         if !seen.insert(entry.name.clone()) {
@@ -277,114 +249,89 @@ pub fn serve_campaigns(
         }
     }
 
-    // Per-campaign durable stores — opened before the listener binds
-    // so a bad path fails fast (the `campaign run --queue-store`
-    // convention).
-    let mut queue_stores: Vec<Option<Arc<dyn QueueStore>>> = Vec::with_capacity(hosted.len());
-    if let Some(dir) = &config.queue_store_dir {
+    // Durable dirs — created before the listener binds so a bad
+    // path fails fast (the `campaign run --queue-store` convention).
+    for dir in [
+        config.queue_store_dir.as_ref(),
+        config.history_dir.as_ref(),
+        config.managed_dir.as_ref(),
+    ]
+    .into_iter()
+    .flatten()
+    {
         std::fs::create_dir_all(dir)
-            .map_err(|e| CampaignError::Serve(format!("queue store dir {}: {e}", dir.display())))?;
-    }
-    for entry in &hosted {
-        let store = match &config.queue_store_dir {
-            Some(dir) => {
-                let path = dir.join(format!("{}.db", file_slug(&entry.name)));
-                Some(
-                    Arc::new(peregrin_queue_sqlite::SqliteQueueStore::open(&path)?)
-                        as Arc<dyn QueueStore>,
-                )
-            }
-            None => None,
-        };
-        queue_stores.push(store);
-    }
-    if let Some(dir) = &config.history_dir {
-        std::fs::create_dir_all(dir)
-            .map_err(|e| CampaignError::Serve(format!("history dir {}: {e}", dir.display())))?;
+            .map_err(|e| CampaignError::Serve(format!("dir {}: {e}", dir.display())))?;
     }
 
-    // One shared demux + listener — only when a campaign actually
-    // declares `github-webhook` nodes; a fleet of storn-poll/schedule
-    // campaigns needs no socket. The same socket also serves
-    // `POST /api/events/inject` ([`inject`]) — the typed-event feed
-    // external producers (bupha's `ci.job.completed`) use to push
-    // triggers into hosted campaigns; it fans out through each
-    // campaign's trigger injector, populated as supervisors spawn.
-    let needs_listener = hosted.iter().any(|e| wants_shared_webhook(&e.campaign));
+    // One shared demux + listener — ALWAYS bound: the flows API can
+    // add a webhook flow to a fleet that had none at boot, and its
+    // deliveries must reach the demux. The same socket also serves
+    // `POST /api/events/inject` (the typed-event feed external
+    // producers push triggers through) and `/api/flows*`.
+    let demux = Arc::new(SharedWebhook::new());
     let shutdown = Arc::new(AtomicBool::new(false));
-    let inject_targets: inject::InjectTargets = Arc::new(RwLock::new(Vec::new()));
-    let (demux, listener, listener_thread) = if needs_listener {
-        let demux = Arc::new(SharedWebhook::new());
-        let webhook = demux.router(&config.path).map_err(CampaignError::Serve)?;
-        // Bearer gate: `PEREGRIN_TOKEN` when set (the credential
-        // `peregrin serve` nodes and the bupha worker resolve);
-        // unset leaves the route open — the tokenless-dev
-        // convention. The socket is often tunnel-exposed, so keep
-        // the token configured in production.
-        let token = std::env::var("PEREGRIN_TOKEN")
-            .ok()
-            .filter(|t| !t.is_empty());
-        let router = webhook.merge(inject::router(Arc::clone(&inject_targets), token));
-        let (addr, thread) = inject::serve_listener(&config.listen, router, Arc::clone(&shutdown))
+    let inject_targets = inject::InjectTargets::default();
+    let host = Arc::new(FlowHost::new(
+        config.secrets.clone(),
+        config.history_dir.clone(),
+        config.queue_store_dir.clone(),
+        config.labels.clone(),
+        config.on_run.clone(),
+        Arc::clone(&demux),
+        Arc::clone(&inject_targets),
+        config.managed_dir.clone(),
+        Arc::clone(&shutdown),
+    ));
+    let webhook = demux.router(&config.path).map_err(CampaignError::Serve)?;
+    // Bearer gate: `PEREGRIN_TOKEN` when set (the credential
+    // `peregrin serve` nodes and the bupha worker resolve); unset
+    // leaves the route open — the tokenless-dev convention. The
+    // socket is often tunnel-exposed, so keep the token configured
+    // in production. The same token gates `/api/flows*`.
+    let token = std::env::var("PEREGRIN_TOKEN")
+        .ok()
+        .filter(|t| !t.is_empty());
+    let router = webhook
+        .merge(inject::router(Arc::clone(&inject_targets), token.clone()))
+        .merge(flows::router(Arc::clone(&host), token));
+    let (listener, listener_thread) =
+        inject::serve_listener(&config.listen, router, Arc::clone(&shutdown))
             .map_err(CampaignError::Serve)?;
-        (Some(demux), Some(addr), Some(thread))
-    } else {
-        (None, None, None)
-    };
+
     let mut injectors = Vec::with_capacity(hosted.len());
-    let mut joins = Vec::with_capacity(hosted.len());
     let mut names = Vec::with_capacity(hosted.len());
-    for (entry, queue_store) in hosted.into_iter().zip(queue_stores) {
+    for entry in hosted {
         let name = entry.name.clone();
         if !campaign::has_ingress_nodes(&entry.campaign) {
             tracing::warn!(
                 campaign = %name,
-                source = %entry.source.display(),
+                source = %entry.source.describe(),
                 "campaign declares no ingress nodes — it will idle \
                  under `campaign serve` (no trigger source)"
             );
         }
-        let on_run: Option<supervisor::OnRunDone> = config.on_run.as_ref().map(|callback| {
-            let name = name.clone();
-            let callback = Arc::clone(callback);
-            let wrapped: supervisor::OnRunDone =
-                Box::new(move |log: &[Event]| callback(&name, log));
-            wrapped
-        });
-        let options = SupervisedOptions {
-            secrets: config.secrets.clone(),
-            history: config
-                .history_dir
-                .as_ref()
-                .map(|dir| dir.join(format!("{}.jsonl", file_slug(&name)))),
-            queue_store,
-            shared_webhook: demux.as_ref().map(Arc::clone),
-            shutdown: Some(Arc::clone(&shutdown)),
-            on_run,
-            campaign_name: Some(name.clone()),
-            ..SupervisedOptions::default()
-        };
-        let run = supervisor::supervise(&entry.campaign, options);
-        // Register the trigger injector for `/api/events/inject`
-        // fan-out BEFORE moving it into `injectors` — the route
-        // reads this registry at request time.
-        inject_targets
-            .write()
-            .unwrap_or_else(std::sync::PoisonError::into_inner)
-            .push((name.clone(), run.injector.clone()));
-        injectors.push(run.injector);
-        joins.push((name.clone(), run.join));
-        names.push(name);
+        match host.spawn(entry) {
+            Ok(injector) => {
+                injectors.push(injector);
+                names.push(name);
+            }
+            Err(e) => {
+                // Earlier flows are live — drain them before
+                // reporting the boot failure.
+                host.shutdown_all();
+                return Err(e);
+            }
+        }
     }
 
     Ok(Served {
         listener,
         campaigns: names,
         demux,
-        listener_thread,
+        host,
+        listener_thread: Some(listener_thread),
         injectors,
         shutdown,
-        joins,
     })
 }
 

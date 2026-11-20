@@ -343,6 +343,12 @@ pub struct Route {
     /// `push` refs this route accepts — `params.push_refs`; empty
     /// accepts every ref.
     pub push_refs: Vec<String>,
+    /// The owning flow's name (`campaign serve`'s hosted campaign) —
+    /// [`SharedWebhook::unregister`] removes every route an owner
+    /// registered, which is how `/api/flows` DELETE stops a dead
+    /// flow's deliveries. Solo-driver routes carry the node id (the
+    /// solo demux never unregisters).
+    pub owner: String,
 }
 
 /// Per-listener state shared into the request handler — the repo→
@@ -1469,6 +1475,7 @@ impl Driver for GithubWebhookDriver {
                 check_suite_actions: check_suite_actions.clone(),
                 status_states: status_states.clone(),
                 push_refs: push_refs.clone(),
+                owner: node.id.clone(),
             });
         }
         let shared = Arc::new(Shared {
@@ -1549,6 +1556,45 @@ impl SharedWebhook {
             .entry(repo.to_string())
             .or_default()
             .push(route);
+    }
+
+    /// Remove every route `owner` registered — the flow-delete path
+    /// (`/api/flows` DELETE): deliveries stop *before* the supervisor
+    /// drains so no new triggers land on a dying channel. Vec-removal
+    /// is the refcount — routes other owners registered for the same
+    /// repo survive untouched (all-match preserved). Returns the
+    /// number of routes removed.
+    pub fn unregister(&self, owner: &str) -> usize {
+        let mut routes = self
+            .shared
+            .routes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner);
+        let mut removed = 0usize;
+        routes.retain(|_repo, entries| {
+            let before = entries.len();
+            entries.retain(|route| route.owner != owner);
+            removed += before - entries.len();
+            !entries.is_empty()
+        });
+        removed
+    }
+
+    /// The repos `owner` currently watches — status surfaces and
+    /// tests (`/api/flows` GET).
+    #[must_use]
+    pub fn repos_for_owner(&self, owner: &str) -> Vec<String> {
+        let mut repos: Vec<String> = self
+            .shared
+            .routes
+            .lock()
+            .unwrap_or_else(PoisonError::into_inner)
+            .iter()
+            .filter(|(_, entries)| entries.iter().any(|route| route.owner == owner))
+            .map(|(repo, _)| repo.clone())
+            .collect();
+        repos.sort();
+        repos
     }
 
     /// The axum app [`serve`](Self::serve) binds — the `path` route
@@ -1685,6 +1731,11 @@ pub struct SharedWebhookDriver {
     injector: Injector,
     /// The demux this driver's `invoke` registers into.
     demux: Arc<SharedWebhook>,
+    /// The owning flow's name — stamped on every [`Route`] so
+    /// [`SharedWebhook::unregister`] can retract them all on flow
+    /// delete. `campaign serve` passes the hosted campaign name;
+    /// [`Self::new`] leaves it empty (tests never unregister).
+    owner: String,
     output: Vec<EventSchema>,
 }
 
@@ -1706,8 +1757,19 @@ impl SharedWebhookDriver {
             effects,
             injector,
             demux,
+            owner: String::new(),
             output: output_schemas(),
         }
+    }
+
+    /// Like [`Self::new`] but stamps `owner` on every registered
+    /// [`Route`] — `campaign serve`'s flow name, so
+    /// [`SharedWebhook::unregister`] can retract the flow's watches.
+    #[must_use]
+    pub fn with_owner(injector: Injector, demux: Arc<SharedWebhook>, owner: &str) -> Self {
+        let mut driver = Self::new(injector, demux);
+        driver.owner = owner.to_string();
+        driver
     }
 }
 
@@ -1780,6 +1842,7 @@ impl Driver for SharedWebhookDriver {
                     check_suite_actions: check_suite_actions.clone(),
                     status_states: status_states.clone(),
                     push_refs: push_refs.clone(),
+                    owner: self.owner.clone(),
                 },
             );
         }

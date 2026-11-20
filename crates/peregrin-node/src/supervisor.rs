@@ -207,6 +207,28 @@ impl RunSupervisor {
         start
     }
 
+    /// Drop every pending job — the flow-delete path
+    /// (`/api/flows` DELETE). Queued triggers for a flow that's
+    /// going away must not run during its drain; the *active* run is
+    /// untouched (it finishes cooperatively). Pending keys are
+    /// persisted-cleared through the store, and stashed
+    /// `*.superseded` markers are dropped with them — a marker whose
+    /// pending set is gone would otherwise ride an unrelated future
+    /// run of the same key. Returns the number of jobs dropped.
+    pub fn clear_pending(&mut self) -> usize {
+        let dropped = self.queue.clear_pending();
+        self.superseded.clear();
+        if self.store.is_some() {
+            let mut keys: Vec<String> = dropped.iter().map(|job| job.key.clone()).collect();
+            keys.sort();
+            keys.dedup();
+            for key in keys {
+                self.persist_key(&key);
+            }
+        }
+        dropped.len()
+    }
+
     /// No active run and nothing pending.
     #[must_use]
     pub fn is_idle(&self) -> bool {
@@ -408,9 +430,24 @@ pub struct SupervisedRun {
     /// the end of triggers: the supervisor drains its queue and
     /// exits.
     pub injector: Injector,
+    /// Out-of-band commands into the supervisor loop — the flows API
+    /// uses it for [`SupervisorCmd::ClearPending`] on flow delete.
+    /// Senders failing just means the loop already exited.
+    pub control: std::sync::mpsc::Sender<SupervisorCmd>,
     /// The supervisor loop — join for every spawned run's event log
     /// concatenated in finish order, or the first run failure.
     pub join: JoinHandle<Result<Vec<Event>, CampaignError>>,
+}
+
+/// Commands the flows API (`/api/flows`) sends into a live
+/// supervisor — drained on the loop's tick alongside the shutdown
+/// flag. `std::sync::mpsc` keeps it `Send`-cheap; the loop owns the
+/// `RunSupervisor`, so commands can never race its mutations.
+#[derive(Clone, Copy, Debug)]
+pub enum SupervisorCmd {
+    /// Drop every pending job (queued triggers never run); the
+    /// active run finishes normally. The flow-delete path.
+    ClearPending,
 }
 
 /// The `Send`-able half of [`SupervisedOptions`] shared across the
@@ -524,7 +561,9 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
     // hosted campaign's webhook nodes then share the daemon's single
     // listener instead of racing for the default port.
     let listener_registry = match &shared_webhook {
-        Some(demux) => campaign::registry_with_ingress_shared(&trigger_injector, demux),
+        Some(demux) => {
+            campaign::registry_with_ingress_shared(&trigger_injector, demux, &campaign_name)
+        }
         None => campaign::registry_with_ingress(&trigger_injector),
     };
     let (listener_campaign, worker_campaign) =
@@ -574,6 +613,7 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
 
     let worker_campaign = Arc::new(worker_campaign);
     let policy = Supersede::from(campaign.supersede.clone().unwrap_or_default());
+    let (control_tx, control_rx) = std::sync::mpsc::channel::<SupervisorCmd>();
     let join = thread::spawn(move || {
         supervise_loop(
             policy,
@@ -587,10 +627,12 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
             shutdown,
             on_run,
             campaign_name,
+            control_rx,
         )
     });
     SupervisedRun {
         injector: external,
+        control: control_tx,
         join,
     }
 }
@@ -637,6 +679,7 @@ fn supervise_loop(
     shutdown: Option<Arc<AtomicBool>>,
     mut on_run: Option<OnRunDone>,
     campaign_name: String,
+    control_rx: std::sync::mpsc::Receiver<SupervisorCmd>,
 ) -> Result<Vec<Event>, CampaignError> {
     /// How long the loop parks on the trigger channel while a run is
     /// active — a finished run can't wake the channel, so the loop
@@ -689,6 +732,22 @@ fn supervise_loop(
                 };
                 if trigger_ingress.wait(timeout, &mut buf) == WaitOutcome::Disconnected {
                     triggers_done = true;
+                }
+            }
+        }
+        // Out-of-band commands (the flows API) — drained every tick
+        // so an idle supervisor still services them promptly.
+        while let Ok(cmd) = control_rx.try_recv() {
+            match cmd {
+                SupervisorCmd::ClearPending => {
+                    let dropped = supervisor.clear_pending();
+                    if dropped > 0 {
+                        tracing::info!(
+                            campaign = campaign_name,
+                            dropped,
+                            "cleared pending queue (flow delete)"
+                        );
+                    }
                 }
             }
         }

@@ -113,7 +113,7 @@ fn agent() -> &'static ureq::Agent {
     })
 }
 
-fn urlencode(value: &str) -> String {
+pub(crate) fn urlencode(value: &str) -> String {
     use std::fmt::Write as _;
     let mut out = String::with_capacity(value.len());
     for &b in value.as_bytes() {

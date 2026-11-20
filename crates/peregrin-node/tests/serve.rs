@@ -12,6 +12,7 @@ use peregrin_core::{Campaign, Event};
 use peregrin_driver_github_webhook::signature_header;
 use peregrin_loader::Loader;
 use peregrin_loader_yaml::YamlLoader;
+use peregrin_node::flows::FlowSource;
 use peregrin_node::serve::{self, HostedCampaign, ServeConfig};
 use serde_json::json;
 
@@ -23,7 +24,7 @@ fn hosted(name: &str, campaign: Campaign) -> HostedCampaign {
     HostedCampaign {
         name: name.to_string(),
         campaign,
-        source: PathBuf::from(format!("{name}.yaml")),
+        source: FlowSource::Path(PathBuf::from(format!("{name}.yaml"))),
     }
 }
 
@@ -109,6 +110,7 @@ fn config(logs: &RunLog) -> ServeConfig {
         path: "/hook".into(),
         history_dir: None,
         queue_store_dir: None,
+        managed_dir: None,
         on_run: Some(on_run(logs)),
         secrets: Default::default(),
         labels: Vec::new(),
@@ -148,8 +150,9 @@ fn serve_hosts_n_campaigns_and_drains_on_disconnect() {
         &config(&logs),
     )
     .unwrap();
-    // No github-webhook nodes → no shared listener.
-    assert!(served.listener.is_none());
+    // The listener binds unconditionally now — a webhook-free fleet
+    // may gain flows via `/api/flows`.
+    assert_ne!(served.listener.port(), 0);
     assert_eq!(served.campaigns, vec!["alpha", "beta"]);
     assert_eq!(served.injectors.len(), 2);
 
@@ -199,10 +202,8 @@ fn serve_shared_listener_demuxes_by_repo_with_per_campaign_stores() {
 
     // ONE listener for both campaigns — the per-node `listen`
     // params (127.0.0.1:29998) are ignored under the shared demux.
-    let addr = served
-        .listener
-        .expect("webhook campaigns bind the shared listener");
-    let demux = served.demux.clone().unwrap();
+    let addr = served.listener;
+    let demux = served.demux.clone();
     // Listener runs fire async — wait for both campaigns' routes.
     assert!(
         wait_for(|| demux.route_count() == 2),

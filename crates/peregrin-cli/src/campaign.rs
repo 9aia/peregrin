@@ -163,14 +163,19 @@ pub fn serve(
         hosted.push(peregrin_node::serve::HostedCampaign {
             name: peregrin_node::serve::campaign_name(&campaign, file),
             campaign,
-            source: file.clone(),
+            source: peregrin_node::flows::FlowSource::Path(file.clone()),
         });
     }
+    // `POST /api/flows` persists into the first directory arg — the
+    // managed serve dir (`~/.config/peregrin/serve` in the unit).
+    // File-only invocations keep API-added flows in-memory.
+    let managed_dir = paths.iter().map(|p| tilde_path(p)).find(|p| p.is_dir());
     let config = peregrin_node::serve::ServeConfig {
         listen: listen.to_string(),
         path: path.to_string(),
         history_dir,
         queue_store_dir,
+        managed_dir,
         on_run: Some(std::sync::Arc::new(|name: &str, log: &[Event]| {
             for event in log {
                 println!("[{name}] {} {} {}", event.ts, event.source, event.kind);
@@ -193,16 +198,12 @@ pub fn serve(
     };
     let served = peregrin_node::serve::serve_campaigns(hosted, &config)
         .map_err(|e| CliError(e.to_string()))?;
-    match served.listener {
-        Some(addr) => println!(
-            "campaign serve: {} campaigns, webhook listener on http://{addr}{path}",
-            served.campaigns.len()
-        ),
-        None => println!(
-            "campaign serve: {} campaigns (no github-webhook nodes — no listener)",
-            served.campaigns.len()
-        ),
-    }
+    println!(
+        "campaign serve: {} campaigns, listener on http://{}{} (flows api: /api/flows)",
+        served.campaigns.len(),
+        served.listener,
+        path
+    );
     rt.block_on(peregrin_node::shutdown_signal());
     served.join().map_err(|e| CliError(e.to_string()))
 }

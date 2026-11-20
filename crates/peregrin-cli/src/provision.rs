@@ -288,7 +288,8 @@ pub fn install(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, 
 
 /// `deploy` — (re)generate the operator node config from the bundle's
 /// `provider:` block, plus its campaign-host copy under
-/// `host_dir`. No unit is written: `tamias deploy` renders
+/// `host_dir`, then push it to the live `campaign serve` daemon when
+/// reachable (ADR-0093). No unit is written: `tamias deploy` renders
 /// `provider.services[]` into `<provider>-<service>` units itself.
 /// Regenerating overwrites operator hand-edits — the manifest is the
 /// source of truth.
@@ -296,7 +297,7 @@ pub fn install(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, 
 /// # Errors
 /// Fails when the bundle dir has no `main.yaml` or the write fails.
 pub fn deploy(dir: &Path, name: &str, config: Option<&Path>) -> Result<String, CliError> {
-    deploy_in(dir, name, config, &host_dir())
+    deploy_inner(dir, name, config, &host_dir(), true).map(|(line, _)| line)
 }
 
 /// The bundle's declared content type (`tamias.yaml` `type:`) —
@@ -307,19 +308,37 @@ fn bundle_kind(dir: &Path) -> Option<String> {
 }
 
 /// [`deploy`] with the campaign-host dir injected — tests point it at a
-/// tempdir instead of the real `~/.config/peregrin/serve`.
+/// tempdir instead of the real `~/.config/peregrin/serve`, and skip the
+/// live `/api/flows` push (`live: false`) so tests never touch a
+/// running daemon.
+#[cfg(test)]
 fn deploy_in(
     dir: &Path,
     name: &str,
     config: Option<&Path>,
     host: &Path,
 ) -> Result<String, CliError> {
+    deploy_inner(dir, name, config, host, false).map(|(line, _)| line)
+}
+
+/// [`deploy_in`] plus the live flag — returns the operator line and
+/// the rendered doc (the live push serializes it).
+fn deploy_inner(
+    dir: &Path,
+    name: &str,
+    config: Option<&Path>,
+    host: &Path,
+    live: bool,
+) -> Result<(String, Value), CliError> {
     // `peregrin-node` bundles ship no `main.yaml` — there is no
     // campaign to host; `tamias deploy` renders `provider.services[]`
     // (the `peregrin-node.service` unit) itself.
     if bundle_kind(dir).as_deref() == Some("peregrin-node") {
-        return Ok(format!(
-            "{name}: peregrin-node bundle — no campaign config (units render via `tamias deploy {name}`)"
+        return Ok((
+            format!(
+                "{name}: peregrin-node bundle — no campaign config (units render via `tamias deploy {name}`)"
+            ),
+            Value::Null,
         ));
     }
     let main = bundle_main(dir)?;
@@ -332,11 +351,51 @@ fn deploy_in(
     // ExecStart) hosts them all on one listener.
     let host_path = host.join(format!("{name}.yaml"));
     write_config(&host_path, &doc)?;
-    Ok(format!(
-        "wrote node config {} + host config {} (units render via `tamias deploy {name}`)",
-        path.display(),
-        host_path.display()
+    // ADR-0093: the file is the durable half (next boot replays it);
+    // the live push makes the flow effective now — `POST /api/flows`
+    // for a new flow, `…/reload` when the name is already hosted
+    // (reload re-reads the file we just wrote). Unreachable → the
+    // file stands alone.
+    let note = if live {
+        format!(
+            " — {}",
+            live_deploy(&crate::flows::target(None, None), name, &doc)
+        )
+    } else {
+        String::new()
+    };
+    Ok((
+        format!(
+            "wrote node config {} + host config {} (units render via `tamias deploy {name}`){note}",
+            path.display(),
+            host_path.display()
+        ),
+        doc,
     ))
+}
+
+/// The live half of [`deploy`] — POST the rendered doc to the
+/// daemon's `/api/flows`. `409` means the flow is already hosted:
+/// the host file was just rewritten, so `…/reload` picks the new
+/// doc up (drain-then-swap). Returns a short operator-facing note;
+/// never fails the deploy — the file is the fallback either way.
+fn live_deploy(target: &crate::api::NodeTarget, name: &str, doc: &Value) -> String {
+    let Ok(yaml) = serde_yaml_ng::to_string(doc) else {
+        return "live deploy skipped (yaml serialize failed)".to_string();
+    };
+    let body = json!({ "name": name, "yaml": yaml });
+    match crate::api::request(target, "POST", "/api/flows", Some(&body)) {
+        Ok(_) => "flow live".to_string(),
+        Err(e) if e.status == Some(409) => {
+            let path = format!("/api/flows/{}/reload", crate::api::urlencode(name));
+            match crate::api::request(target, "POST", &path, None) {
+                Ok(_) => "flow reloaded live".to_string(),
+                Err(e) => format!("live reload failed: {e}"),
+            }
+        }
+        Err(e) if e.status.is_none() => "daemon unreachable — loads on next boot".to_string(),
+        Err(e) => format!("live deploy failed: {e}"),
+    }
 }
 
 /// `config-schema` — the JSON Schema (draft 2020-12) of the node config
@@ -438,6 +497,11 @@ pub fn config_schema() -> Result<String, CliError> {
 /// # Errors
 /// Best-effort — always returns Ok unless the name is empty.
 pub fn uninstall(name: &str, config: Option<&Path>) -> Result<String, CliError> {
+    // ADR-0093: drop the live flow first — best-effort; the daemon
+    // may be down and the file removal below is the durable half.
+    let target = crate::flows::target(None, None);
+    let path = format!("/api/flows/{}", crate::api::urlencode(name));
+    let _ = crate::api::request(&target, "DELETE", &path, None);
     Ok(uninstall_in(name, config, &host_dir()))
 }
 
@@ -1399,5 +1463,114 @@ provider:
                 "repos[].{k} not in schema"
             );
         }
+    }
+
+    /// Minimal `/api/flows` stub — accepts one connection per queued
+    /// status, drains the request, replies `200 {"ok":true}`-shaped
+    /// JSON with that status. Returns the base URL.
+    fn stub_flows_api(statuses: &[u16]) -> String {
+        use std::io::{Read, Write};
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let addr = listener.local_addr().unwrap();
+        let statuses = statuses.to_vec();
+        std::thread::spawn(move || {
+            for status in statuses {
+                let Ok((mut stream, _)) = listener.accept() else {
+                    break;
+                };
+                stream
+                    .set_read_timeout(Some(std::time::Duration::from_secs(5)))
+                    .unwrap();
+                // Drain head + body so ureq sees a clean response.
+                let mut buf = Vec::new();
+                let mut chunk = [0u8; 8192];
+                let head_end = loop {
+                    match stream.read(&mut chunk) {
+                        Ok(0) | Err(_) => break None,
+                        Ok(n) => {
+                            buf.extend_from_slice(&chunk[..n]);
+                            if let Some(pos) = buf.windows(4).position(|w| w == b"\r\n\r\n") {
+                                break Some(pos + 4);
+                            }
+                        }
+                    }
+                };
+                let Some(head_end) = head_end else { continue };
+                let head = String::from_utf8_lossy(&buf[..head_end]).to_string();
+                let len: usize = head
+                    .lines()
+                    .find_map(|l| {
+                        l.to_ascii_lowercase()
+                            .strip_prefix("content-length:")
+                            .map(str::to_string)
+                    })
+                    .and_then(|v| v.trim().parse().ok())
+                    .unwrap_or(0);
+                let mut body_read = buf.len() - head_end;
+                while body_read < len {
+                    match stream.read(&mut chunk) {
+                        Ok(0) | Err(_) => break,
+                        Ok(n) => {
+                            body_read += n;
+                        }
+                    }
+                }
+                let body = r#"{"ok":true}"#;
+                let reason = match status {
+                    200..=299 => "OK",
+                    409 => "Conflict",
+                    _ => "Error",
+                };
+                let resp = format!(
+                    "HTTP/1.1 {status} {reason}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
+                    body.len()
+                );
+                let _ = stream.write_all(resp.as_bytes());
+            }
+        });
+        format!("http://{addr}")
+    }
+
+    #[test]
+    fn live_deploy_posts_and_reports_flow_live() {
+        let url = stub_flows_api(&[201]);
+        let target = crate::api::NodeTarget {
+            base_url: url,
+            token: None,
+        };
+        let doc = json!({"name": "t87-live", "nodes": []});
+        let note = live_deploy(&target, "t87-live", &doc);
+        assert_eq!(note, "flow live");
+    }
+
+    #[test]
+    fn live_deploy_409_falls_back_to_reload() {
+        // 409 = already hosted → the rewritten host file is picked up
+        // by `…/reload` (drain-then-swap).
+        let url = stub_flows_api(&[409, 202]);
+        let target = crate::api::NodeTarget {
+            base_url: url,
+            token: None,
+        };
+        let doc = json!({"name": "t87-live", "nodes": []});
+        let note = live_deploy(&target, "t87-live", &doc);
+        assert_eq!(note, "flow reloaded live");
+    }
+
+    #[test]
+    fn live_deploy_unreachable_is_nonfatal() {
+        // Nothing listens on this port — deploy must still succeed
+        // off the durable file.
+        let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        let target = crate::api::NodeTarget {
+            base_url: format!("http://127.0.0.1:{port}"),
+            token: None,
+        };
+        let doc = json!({"name": "t87-live", "nodes": []});
+        let note = live_deploy(&target, "t87-live", &doc);
+        assert!(note.contains("unreachable"), "{note}");
+        assert!(note.contains("next boot"), "{note}");
     }
 }

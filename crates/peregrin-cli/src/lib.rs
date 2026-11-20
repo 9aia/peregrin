@@ -18,6 +18,7 @@ pub mod campaign;
 pub mod cli;
 
 pub mod engine_ops;
+pub mod flows;
 pub mod import;
 pub mod node_ops;
 pub mod ops;
