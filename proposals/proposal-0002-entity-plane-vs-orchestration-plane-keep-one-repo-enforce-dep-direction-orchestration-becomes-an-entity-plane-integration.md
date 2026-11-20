@@ -52,3 +52,24 @@ Concretely, after PL-004 lands:
 
 - Do campaign runs need entity semantics (locks, snapshots, takeover) or is engine-internal run state sufficient? If the latter, the planes stay peers and the dep rule is simply "neither imports the other; hub composes".
 - Does `peregrin-bus`/event feed belong to the entity plane (push notifications) or orchestration? Today push consumes session-lifecycle events — post-ADR-0091 this becomes a generic event→notification map owned by the plane.
+
+## Resolution (2026-11-20)
+
+Decided: **the entity plane lives in hypha; peregrin keeps orchestration only.**
+
+The crate-level split the audit found has since become a repo-level
+split — PL-004/PL-005 moved `node-api`/`sync`/`outbox`/`control`/
+`push`/`hub` out of peregrin into the hypha workspace as the
+kind-agnostic `hypha-*` crates (`hypha-node-api`, `hypha-sync`,
+`hypha-outbox`, `hypha-control`, `hypha-push`, `hypha-hub`).
+`sepia-peregrin` registers `kind="sepia-session"` against
+`hypha_http::EntityPlane` from the sepia repo — the integration
+pattern this proposal argued for, already realized.
+
+Peregrin's remaining surface is the orchestration plane: campaigns,
+drivers, loaders, queue, template, bus — plus `peregrin-remote*`
+transport. Campaign runs registering as entity kinds
+(`kind="campaign-run"`) is a hypha-side integration concern when it
+happens, not a peregrin substrate change. The dep-direction rule
+holds trivially now: peregrin does not depend on hypha entity
+crates; integrations bridge at the wire level.
