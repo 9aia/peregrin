@@ -85,6 +85,12 @@ const MAX_TIMEOUT: Duration = Duration::from_secs(7200);
 /// memory; the tail is kept for error context.
 const MAX_CAPTURE: usize = 1024 * 1024;
 
+/// Cancel-poll cadence for the serve wait — the run's
+/// `workflow.cancel` flag is checked between recv slices so a
+/// superseded run can't sit in an unbounded `timeout: None` wait
+/// (I-017).
+const POLL: Duration = Duration::from_millis(50);
+
 /// `driver: ops`. `effects` backs the driver-side param re-resolve
 /// the TS performs inside `invoke`; `output` holds the event schemas.
 pub struct OpsDriver {
@@ -407,6 +413,7 @@ fn serve_once(
     env: &Map<String, Value>,
     request: &Value,
     timeout: Option<Duration>,
+    stop: &dyn Fn() -> bool,
 ) -> Result<Value, String> {
     let line =
         serde_json::to_string(request).map_err(|e| format!("encode driver.query request: {e}"))?;
@@ -467,7 +474,10 @@ fn serve_once(
                 if now >= deadline {
                     break Err(format!("{program} serve timed out after {limit:?}"));
                 }
-                match rx.recv_timeout(deadline - now) {
+                if stop() {
+                    break Err(format!("{program} serve cancelled"));
+                }
+                match rx.recv_timeout((deadline - now).min(POLL)) {
                     Ok(line) => break parse_response(&line),
                     Err(mpsc::RecvTimeoutError::Timeout) => {}
                     Err(mpsc::RecvTimeoutError::Disconnected) => {
@@ -476,9 +486,20 @@ fn serve_once(
                 }
             }
         }
-        None => match rx.recv() {
-            Ok(line) => parse_response(&line),
-            Err(_) => Err(format!("{program} serve: exited without a response")),
+        None => loop {
+            // `timeout: None` waits indefinitely — but still polls
+            // the run's cancel flag so a supersede can't strand the
+            // run inside `invoke` (I-017).
+            if stop() {
+                break Err(format!("{program} serve cancelled"));
+            }
+            match rx.recv_timeout(POLL) {
+                Ok(line) => break parse_response(&line),
+                Err(mpsc::RecvTimeoutError::Timeout) => {}
+                Err(mpsc::RecvTimeoutError::Disconnected) => {
+                    break Err(format!("{program} serve: exited without a response"));
+                }
+            }
         },
     };
     // Reap: kill a still-running child (the response is already in
@@ -622,7 +643,18 @@ impl Driver for OpsDriver {
             );
         }
 
-        let response = serve_once(&program, &args, &env, &Value::Object(request), timeout);
+        // The run's cancel flag — a supersede mid-query kills the
+        // serve child (kill+wait below) instead of waiting out the
+        // deadline inside a worktree the dying run tears down (I-017).
+        let stop = || ctx.shutdown_requested();
+        let response = serve_once(
+            &program,
+            &args,
+            &env,
+            &Value::Object(request),
+            timeout,
+            &stop,
+        );
 
         let mut payload = Map::new();
         payload.insert("driver".to_string(), Value::String(driver.clone()));

@@ -213,6 +213,105 @@ fn injected_workflow_cancel_ends_the_run() {
     assert_eq!(kinds.iter().filter(|k| **k == "node.done").count(), 0);
 }
 
+/// A driver that polls `ctx.shutdown_requested()` like the
+/// child-spawning drivers do — records *when* (relative to invoke
+/// start) the flag first read true, proving the mid-invoke cancel
+/// reaches a blocked driver before the loop's next drain (I-017).
+struct CancelProbeDriver {
+    saw_at: Arc<std::sync::Mutex<Option<std::time::Instant>>>,
+    started: Arc<std::sync::Mutex<Option<std::time::Instant>>>,
+}
+
+impl Driver for CancelProbeDriver {
+    fn name(&self) -> &'static str {
+        "cancel-probe"
+    }
+
+    fn invoke(
+        &self,
+        node: &Node,
+        _triggers: &[Event],
+        ctx: &ExecutionContext,
+    ) -> Result<Vec<Event>, DriverError> {
+        *self.started.lock().unwrap() = Some(std::time::Instant::now());
+        // Poll like a child-wait loop: up to ~5s, exit early on cancel.
+        for _ in 0..1000 {
+            if ctx.shutdown_requested() {
+                *self.saw_at.lock().unwrap() = Some(std::time::Instant::now());
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        Ok(vec![Event::new(
+            node.emits
+                .first()
+                .cloned()
+                .unwrap_or_else(|| format!("{}.done", node.id)),
+            Value::Object(serde_json::Map::new()),
+            &node.id,
+        )])
+    }
+}
+
+#[test]
+fn injected_cancel_reaches_a_blocked_driver_mid_invoke() {
+    // I-017: the cancel flag must flip while `invoke` is still
+    // blocked — the runner only drains ingress between iterations,
+    // so without the side channel a driver would run to its own
+    // timeout inside a worktree the dying run is tearing down.
+    let (injector, chan) = ingress();
+    let flag = chan.cancel_flag();
+    assert!(!flag.load(std::sync::atomic::Ordering::Relaxed));
+    let campaign = load(
+        "
+        nodes:
+          - id: probe
+            driver: cancel-probe
+            on: [start]
+            emits: [probe.done]
+        ",
+    );
+    let saw_at = Arc::new(std::sync::Mutex::new(None));
+    let started = Arc::new(std::sync::Mutex::new(None));
+    let registry = registry().with(
+        "cancel-probe",
+        Arc::new(CancelProbeDriver {
+            saw_at: Arc::clone(&saw_at),
+            started: Arc::clone(&started),
+        }),
+    );
+    let mut runner = Runner::new(registry).with_ingress(chan);
+    let injector2 = injector.clone();
+    let handle = std::thread::spawn(move || {
+        std::thread::sleep(Duration::from_millis(150));
+        injector2.inject(Event::cancel("superseded")).unwrap();
+    });
+    let log = runner.run(&campaign, &RunOptions::default()).unwrap();
+    handle.join().unwrap();
+    assert!(flag.load(std::sync::atomic::Ordering::Relaxed));
+    let started = started.lock().unwrap().unwrap();
+    let saw = saw_at
+        .lock()
+        .unwrap()
+        .expect("driver never observed the cancel flag");
+    // The flag landed ~150ms in; the driver saw it well before its
+    // 5s poll ceiling — mid-invoke, not at a drain boundary.
+    assert!(saw.duration_since(started) < Duration::from_secs(2));
+    assert_eq!(kinds(&log).last(), Some(&"workflow.cancelled"));
+}
+
+#[test]
+fn non_cancel_events_do_not_flip_the_flag() {
+    let (injector, chan) = ingress();
+    let flag = chan.cancel_flag();
+    injector
+        .inject(Event::new("ext.ping", json!({}), "probe"))
+        .unwrap();
+    assert!(!flag.load(std::sync::atomic::Ordering::Relaxed));
+    injector.inject(Event::cancel("now")).unwrap();
+    assert!(flag.load(std::sync::atomic::Ordering::Relaxed));
+}
+
 #[test]
 fn cancel_injected_before_start_cancels_immediately() {
     let (injector, chan) = ingress();

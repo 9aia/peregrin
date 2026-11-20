@@ -242,12 +242,41 @@ fn read_pipe(mut pipe: impl Read + Send + 'static) -> thread::JoinHandle<String>
     })
 }
 
+/// Kill the child's whole process group and reap it — the
+/// kill+wait half of the I-017 ordering: the run's teardown (a
+/// `driver: git` worktree destroy) must not start while any process
+/// still holds files inside it. The child was spawned as a group
+/// leader (`process_group(0)`), so `killpg` reaches grandchildren a
+/// plain `Child::kill` would orphan. ESRCH (group already gone) is
+/// fine — `wait` still reaps the leader. Off-unix falls back to
+/// `Child::kill`; grandchildren there are out of reach either way.
+fn kill_tree(child: &mut Child) -> std::io::Result<std::process::ExitStatus> {
+    #[cfg(unix)]
+    {
+        use nix::sys::signal::{Signal, killpg};
+        use nix::unistd::Pid;
+
+        if let Ok(pgid) = i32::try_from(child.id()) {
+            // Best-effort: ESRCH means the group already exited.
+            let _ = killpg(Pid::from_raw(pgid), Signal::SIGKILL);
+        }
+        // Belt: the leader itself if it escaped the group.
+        let _ = child.kill();
+    }
+    #[cfg(not(unix))]
+    let _ = child.kill();
+    child.wait()
+}
+
 /// `spawnSync(binary, argv, {cwd, env, input, timeout})` — pipes drain
 /// on reader threads and stdin gets its own writer so a child that
-/// never reads can't deadlock the poll. `timeout` kills the child and
-/// reports like Node's `ETIMEDOUT` (`result.error` → `node.failed`);
-/// `None` means no limit. Returns `(rc, stdout, stderr)` where `rc`
-/// is `status ?? -1`; `Err` mirrors `result.error`.
+/// never reads can't deadlock the poll. `timeout` or `stop()` (the
+/// run's cancel flag — an injected `workflow.cancel`, I-017) kills
+/// the child's whole process group and reaps it; timeout reports like
+/// Node's `ETIMEDOUT` (`result.error` → `node.failed`), cancel like a
+/// killed child. `None` timeout means no limit. Returns `(rc,
+/// stdout, stderr)` where `rc` is `status ?? -1`; `Err` mirrors
+/// `result.error`.
 fn spawn_runner(
     binary: &str,
     argv: &[String],
@@ -255,6 +284,7 @@ fn spawn_runner(
     env: &BTreeMap<String, String>,
     input: Option<&str>,
     timeout: Option<Duration>,
+    stop: &dyn Fn() -> bool,
 ) -> Result<(i64, String, String), String> {
     let mut command = Command::new(binary);
     command
@@ -271,6 +301,14 @@ fn spawn_runner(
         })
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
+    // Own process group so `kill_tree` reaches the whole subtree —
+    // `Child::kill` on the leader alone would orphan grandchildren
+    // still writing inside the worktree (I-017).
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
     let mut child: Child = command.spawn().map_err(|e| e.to_string())?;
     let stdin_handle = child.stdin.take().map(|mut pipe| {
         let input = input.unwrap_or_default().to_string();
@@ -287,9 +325,15 @@ fn spawn_runner(
         if let Some(status) = child.try_wait().ok().flatten() {
             break Ok(Some(status));
         }
+        if stop() {
+            // Cancel mid-invoke — kill the group and reap *before*
+            // returning so the caller's teardown never races a
+            // still-running grandchild (I-017). Reads like a killed
+            // child: rc -1 through the normal emit path.
+            break Ok(kill_tree(&mut child).ok());
+        }
         if deadline.is_some_and(|d| Instant::now() >= d) {
-            let _ = child.kill();
-            let _ = child.wait();
+            let _ = kill_tree(&mut child);
             break Err(format!("spawnSync {binary} ETIMEDOUT"));
         }
         thread::sleep(POLL);
@@ -515,8 +559,13 @@ impl Driver for AgentDriver {
             )]);
         }
 
+        // The run's cancel flag — an injected `workflow.cancel`
+        // (supersede, pause, delete) kills the agent mid-invoke
+        // instead of letting it run to `params.timeout` inside a
+        // worktree the dying run is about to tear down (I-017).
+        let stop = || ctx.shutdown_requested();
         let (rc, stdout, stderr) =
-            match spawn_runner(&binary, &argv, &cwd, &env, input.as_deref(), timeout) {
+            match spawn_runner(&binary, &argv, &cwd, &env, input.as_deref(), timeout, &stop) {
                 Err(error) => {
                     return Ok(vec![Event::new(
                         "node.failed",

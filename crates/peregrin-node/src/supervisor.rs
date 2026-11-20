@@ -514,11 +514,17 @@ type RunHandle = JoinHandle<Result<Vec<Event>, CampaignError>>;
 /// — the gate case: the queue never hands out a second job while one
 /// is active.
 ///
-/// Cancellation is cooperative: `cancel_running` lands a
-/// `workflow.cancel` on the *active* run's own ingress channel, so
-/// the run ends at the next loop iteration — an in-flight driver
-/// call (a `shell` inner command, a `git` materialization) finishes
-/// first; there is no forced kill.
+/// Cancellation is cooperative at the workflow level but immediate
+/// for child processes: `cancel_running` lands a `workflow.cancel`
+/// on the *active* run's own ingress channel, flipping a shared
+/// cancel flag the instant it is injected (I-017). Drivers blocked
+/// inside `invoke` — `shell`/`agent` child waits, `ops` serve
+/// queries — poll `ExecutionContext::shutdown_requested`, kill the
+/// child's whole process group, and reap it *before* returning, so
+/// teardown (a `driver: git` worktree destroy) never races a
+/// still-running grandchild. A driver that ignores the flag still
+/// finishes cooperatively at the next loop iteration; there is no
+/// forced kill of the run thread itself.
 ///
 /// The loop ends when every [`Injector`] clone is gone (listeners
 /// exited, callers dropped their handle): it drains the queue —

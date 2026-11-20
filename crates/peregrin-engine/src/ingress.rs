@@ -22,6 +22,8 @@
 //! the channel does not keep a run alive.
 
 use std::fmt;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{Receiver, Sender};
 
 use peregrin_core::Event;
@@ -32,7 +34,21 @@ use peregrin_core::Event;
 #[must_use]
 pub fn ingress() -> (Injector, Ingress) {
     let (tx, rx) = std::sync::mpsc::channel();
-    (Injector { tx }, Ingress { rx })
+    // The mid-invoke cancel flag — set the instant a
+    // `workflow.cancel` is injected, so a driver blocked inside
+    // `invoke` (a child-process wait) sees the cancel *now* instead
+    // of at the runner's next drain. The runner wires it into every
+    // `ExecutionContext` ([`Ingress::cancel_flag`]); the queue's
+    // supersede path relies on it for kill+wait-before-teardown
+    // ordering (I-017).
+    let cancel = Arc::new(AtomicBool::new(false));
+    (
+        Injector {
+            tx,
+            cancel: Arc::clone(&cancel),
+        },
+        Ingress { rx, cancel },
+    )
 }
 
 /// The producer half of the ingress channel — `Send + Sync` +
@@ -41,13 +57,20 @@ pub fn ingress() -> (Injector, Ingress) {
 #[derive(Clone)]
 pub struct Injector {
     tx: Sender<Event>,
+    /// Shared with the run's [`Ingress`] — flipped on `workflow.cancel`.
+    cancel: Arc<AtomicBool>,
 }
 
 impl Injector {
     /// Queue `event` for the run's next drain. Fails with
     /// [`InjectError`] carrying the event back once the run is gone
-    /// (receiver dropped).
+    /// (receiver dropped). A `workflow.cancel` also flips the run's
+    /// cancel flag immediately — drivers blocked in `invoke` poll it
+    /// via `ExecutionContext::shutdown_requested`.
     pub fn inject(&self, event: Event) -> Result<(), InjectError> {
+        if event.kind == "workflow.cancel" {
+            self.cancel.store(true, Ordering::Relaxed);
+        }
         self.tx
             .send(event)
             .map_err(|err| InjectError(Box::new(err.0)))
@@ -58,9 +81,20 @@ impl Injector {
 /// cloneable (draining is the runner's exclusive job).
 pub struct Ingress {
     rx: Receiver<Event>,
+    /// The pair's shared cancel flag — see [`ingress`].
+    cancel: Arc<AtomicBool>,
 }
 
 impl Ingress {
+    /// The run's mid-invoke cancel flag — flips the moment any
+    /// [`Injector`] delivers a `workflow.cancel`, ahead of the
+    /// runner's next drain. `Runner::with_ingress` hands it to every
+    /// `ExecutionContext` the run builds.
+    #[must_use]
+    pub fn cancel_flag(&self) -> Arc<AtomicBool> {
+        Arc::clone(&self.cancel)
+    }
+
     /// Move every queued event into `out`, in arrival order. Returns
     /// the number drained. Non-blocking; a dropped last sender just
     /// means the channel stays empty.
