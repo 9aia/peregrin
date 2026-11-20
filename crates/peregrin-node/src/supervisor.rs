@@ -32,7 +32,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
-use peregrin_bus::Observer;
+use peregrin_bus::{CompositeObserver, NoopObserver, Observer};
 use peregrin_core::{Campaign, Event};
 use peregrin_driver::{DriverError, SecretSource};
 use peregrin_engine::{Ingress, Injector, RunOptions, WaitOutcome, ingress};
@@ -397,6 +397,11 @@ pub struct SupervisedOptions {
     /// deliveries is normal). `Duration::ZERO` disables. Default:
     /// 120s, or `PEREGRIN_LISTENER_WATCHDOG_SECS` when set.
     pub listener_watchdog: Duration,
+    /// The `--tracing`/`--metrics` observer (ADR-0040) — wired into
+    /// every spawned worker run AND the persistent listener run (the
+    /// listener composites it with the startup-watchdog observer).
+    /// `None` keeps the noop default.
+    pub observer: Option<Arc<dyn Observer>>,
 }
 
 /// The per-finished-run callback [`SupervisedOptions::on_run`]
@@ -418,6 +423,7 @@ impl Default for SupervisedOptions {
                 .ok()
                 .and_then(|raw| raw.parse::<u64>().ok())
                 .map_or_else(|| Duration::from_secs(120), Duration::from_secs),
+            observer: None,
         }
     }
 }
@@ -456,6 +462,7 @@ struct RunMaterials {
     secrets: BTreeMap<String, String>,
     secret_stores: Arc<dyn Fn() -> Vec<SecretSource> + Send + Sync>,
     history: Option<PathBuf>,
+    observer: Option<Arc<dyn Observer>>,
 }
 
 impl RunMaterials {
@@ -536,6 +543,7 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
         on_run,
         campaign_name,
         listener_watchdog,
+        observer,
     } = options;
     // The listener-failure log/marker name — the explicit option
     // wins (`campaign serve`'s resolved hosted name), then the
@@ -548,6 +556,7 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
         secrets,
         secret_stores,
         history,
+        observer,
     });
 
     // The queue-facing channel: ingress drivers push triggers here —
@@ -590,11 +599,21 @@ pub fn supervise(campaign: &Campaign, options: SupervisedOptions) -> SupervisedR
         let materials = Arc::clone(&materials);
         let ready = Arc::clone(&listener_ready);
         let thread = thread::spawn(move || {
+            // The watchdog's `on_event` flag rides alongside the
+            // configured observability observer — the listener gets
+            // both (ADR-0040 providers + startup watchdog).
+            let observer: Arc<dyn Observer> = match &materials.observer {
+                Some(configured) => Arc::new(CompositeObserver::new(vec![
+                    Arc::new(ListenerReady { ready }),
+                    Arc::clone(configured),
+                ])),
+                None => Arc::new(ListenerReady { ready }),
+            };
             let mut runner = campaign::listener_runner_observed(
                 listener_registry,
                 cancel_ingress,
                 materials.history.as_deref(),
-                Arc::new(ListenerReady { ready }),
+                observer,
             )?;
             runner
                 .run(&listener_campaign, &materials.run_options())
@@ -649,7 +668,15 @@ fn spawn_worker(
     let campaign = Arc::clone(campaign);
     let materials = Arc::clone(materials);
     thread::spawn(move || {
-        let mut runner = campaign::worker_runner(pending.ingress, materials.history.as_deref())?;
+        let observer = materials
+            .observer
+            .clone()
+            .unwrap_or_else(|| Arc::new(NoopObserver));
+        let mut runner = campaign::worker_runner_observed(
+            pending.ingress,
+            materials.history.as_deref(),
+            observer,
+        )?;
         runner
             .run(&campaign, &materials.run_options())
             .map_err(CampaignError::Run)

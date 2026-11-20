@@ -404,6 +404,14 @@ pub struct SubmitArgs<'a> {
     pub dry_run: bool,
     /// Log override (default `<home>/runs/<run-id>.jsonl`).
     pub log: Option<&'a Path>,
+    /// `--tracing` destination — forwarded to the `exec` child.
+    pub tracing: Option<&'a str>,
+    /// `--tracing-provider` — forwarded to the `exec` child.
+    pub tracing_provider: Option<&'a str>,
+    /// `--metrics` destination — forwarded to the `exec` child.
+    pub metrics: Option<&'a str>,
+    /// `--metrics-provider` — forwarded to the `exec` child.
+    pub metrics_provider: Option<&'a str>,
 }
 
 /// `campaign submit` — resolve the workflow, fail fast on a load
@@ -424,6 +432,10 @@ pub fn campaign_submit(env: &OpsEnv, args: &SubmitArgs<'_>) -> Result<Value, Cli
         secrets,
         dry_run,
         log,
+        tracing,
+        tracing_provider,
+        metrics,
+        metrics_provider,
     } = *args;
     // Parse + resolve before spawning — arg and load errors are
     // synchronous answers, not a dead run id. The child re-parses the
@@ -463,6 +475,18 @@ pub fn campaign_submit(env: &OpsEnv, args: &SubmitArgs<'_>) -> Result<Value, Cli
     }
     if dry_run {
         cmd.arg("--dry-run");
+    }
+    // ADR-0040 observability flags pass through verbatim — the
+    // child `exec` resolves them like `campaign run` does.
+    for (flag, value) in [
+        ("--tracing", tracing),
+        ("--tracing-provider", tracing_provider),
+        ("--metrics", metrics),
+        ("--metrics-provider", metrics_provider),
+    ] {
+        if let Some(value) = value {
+            cmd.arg(flag).arg(value);
+        }
     }
     let child = cmd
         .stdin(Stdio::null())

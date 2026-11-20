@@ -1,0 +1,34 @@
+[package]
+name = "peregrin-telemetry"
+description = "OTEL-backed Observer impls + --tracing/--metrics provider wiring (ADR-0040)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+repository.workspace = true
+license.workspace = true
+
+[lints]
+workspace = true
+
+[dependencies]
+peregrin-bus.workspace = true
+peregrin-core.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+# Pinned exact, same convention as hypha-telemetry: 0.33 pairs with
+# opentelemetry-otlp 0.33.
+opentelemetry = "=0.33.0"
+opentelemetry_sdk = { version = "=0.33.0", default-features = false, features = [
+  "trace",
+  "metrics",
+] }
+opentelemetry-otlp = { version = "=0.33.0", default-features = false, features = [
+  "http-proto",
+  "reqwest-blocking-client",
+  "trace",
+  "metrics",
+] }
+
+[dev-dependencies]
+opentelemetry_sdk = { version = "=0.33.0", features = ["testing"] }

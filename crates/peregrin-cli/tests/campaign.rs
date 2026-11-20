@@ -7,6 +7,8 @@
 use std::path::Path;
 use std::path::PathBuf;
 
+use peregrin_cli::campaign::ObsArgs;
+
 /// The repo's `libraries/` dir — real loader input (includes,
 /// `.node.yml` artifacts).
 fn libraries_dir() -> PathBuf {
@@ -50,7 +52,8 @@ nodes:
 fn run_executes_and_returns_the_log() {
     let tmp = tempfile::tempdir().unwrap();
     let path = write_chain(tmp.path());
-    let log = peregrin_cli::campaign::run(&path, false, None, None, None).unwrap();
+    let log =
+        peregrin_cli::campaign::run(&path, false, None, None, None, &ObsArgs::default()).unwrap();
     assert_eq!(log.last().map(|e| e.kind.as_str()), Some("workflow.done"));
     assert_eq!(
         std::fs::read_to_string(tmp.path().join("alpha.txt")).unwrap(),
@@ -62,7 +65,8 @@ fn run_executes_and_returns_the_log() {
 fn run_dry_run_emits_without_side_effects() {
     let tmp = tempfile::tempdir().unwrap();
     let path = write_chain(tmp.path());
-    let log = peregrin_cli::campaign::run(&path, true, None, None, None).unwrap();
+    let log =
+        peregrin_cli::campaign::run(&path, true, None, None, None, &ObsArgs::default()).unwrap();
     assert_eq!(log.last().map(|e| e.kind.as_str()), Some("workflow.done"));
     assert!(!tmp.path().join("alpha.txt").exists());
 }
@@ -80,7 +84,9 @@ fn run_replay_seeds_from_jsonl_and_json() {
          {\"type\":\"write.done\",\"payload\":{},\"source\":\"write\"}\n",
     )
     .unwrap();
-    let log = peregrin_cli::campaign::run(&path, false, Some(&jsonl), None, None).unwrap();
+    let log =
+        peregrin_cli::campaign::run(&path, false, Some(&jsonl), None, None, &ObsArgs::default())
+            .unwrap();
     let kinds: Vec<&str> = log.iter().map(|e| e.kind.as_str()).collect();
     assert_eq!(kinds.last(), Some(&"workflow.done"), "trace: {kinds:?}");
     // JSON array form parses too.
@@ -90,7 +96,9 @@ fn run_replay_seeds_from_jsonl_and_json() {
         "[{\"type\":\"start\",\"payload\":{},\"source\":\"__runner__\"}]",
     )
     .unwrap();
-    let log = peregrin_cli::campaign::run(&path, false, Some(&json), None, None).unwrap();
+    let log =
+        peregrin_cli::campaign::run(&path, false, Some(&json), None, None, &ObsArgs::default())
+            .unwrap();
     assert!(!log.is_empty());
 }
 
@@ -104,21 +112,32 @@ fn run_replay_errors_on_missing_and_malformed() {
             false,
             Some(Path::new("/nonexistent.jsonl")),
             None,
-            None
+            None,
+            &ObsArgs::default()
         )
         .is_err()
     );
     let bad = tmp.path().join("bad.jsonl");
     std::fs::write(&bad, "{not json\n").unwrap();
-    assert!(peregrin_cli::campaign::run(&path, false, Some(&bad), None, None).is_err());
+    assert!(
+        peregrin_cli::campaign::run(&path, false, Some(&bad), None, None, &ObsArgs::default())
+            .is_err()
+    );
 }
 
 #[test]
 fn run_errors_on_missing_workflow() {
     let tmp = tempfile::tempdir().unwrap();
     assert!(
-        peregrin_cli::campaign::run(&tmp.path().join("nope.yaml"), false, None, None, None)
-            .is_err()
+        peregrin_cli::campaign::run(
+            &tmp.path().join("nope.yaml"),
+            false,
+            None,
+            None,
+            None,
+            &ObsArgs::default()
+        )
+        .is_err()
     );
 }
 
@@ -224,14 +243,32 @@ fn serve_expands_dirs_and_errors_fast() {
     std::fs::create_dir(&bad).unwrap();
     std::fs::write(bad.join("broken.yaml"), "nodes: [unclosed\n").unwrap();
     assert!(
-        peregrin_cli::campaign::serve(&[bad], "127.0.0.1:0", "/hook", None, None, &rt()).is_err()
+        peregrin_cli::campaign::serve(
+            &[bad],
+            "127.0.0.1:0",
+            "/hook",
+            None,
+            None,
+            &ObsArgs::default(),
+            &rt()
+        )
+        .is_err()
     );
 
     // Empty dir → no campaign yamls; missing path → does not exist.
     let empty = tmp.path().join("empty");
     std::fs::create_dir(&empty).unwrap();
     assert!(
-        peregrin_cli::campaign::serve(&[empty], "127.0.0.1:0", "/hook", None, None, &rt()).is_err()
+        peregrin_cli::campaign::serve(
+            &[empty],
+            "127.0.0.1:0",
+            "/hook",
+            None,
+            None,
+            &ObsArgs::default(),
+            &rt()
+        )
+        .is_err()
     );
     assert!(
         peregrin_cli::campaign::serve(
@@ -240,6 +277,7 @@ fn serve_expands_dirs_and_errors_fast() {
             "/hook",
             None,
             None,
+            &ObsArgs::default(),
             &rt()
         )
         .is_err()
@@ -261,6 +299,7 @@ fn serve_expands_tilde_in_paths() {
         "/hook",
         None,
         None,
+        &ObsArgs::default(),
         &rt,
     )
     .unwrap_err()

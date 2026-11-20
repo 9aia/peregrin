@@ -179,6 +179,10 @@ pub struct FlowHost {
     /// (the first directory path arg). `None` keeps API-added flows
     /// in-memory only ([`FlowSource::Text`]).
     pub managed_dir: Option<PathBuf>,
+    /// The `--tracing`/`--metrics` observer (ADR-0040) shared by
+    /// every flow's listener + worker runs. `None` keeps the noop
+    /// default.
+    pub observer: Option<Arc<dyn peregrin_bus::Observer>>,
     /// The daemon-wide shutdown flag — `Served::request_shutdown`
     /// sets it (stops the listener) and every flow's own flag.
     /// Spawns after it refuse.
@@ -276,6 +280,7 @@ impl FlowHost {
         demux: Arc<SharedWebhook>,
         inject_targets: InjectTargets,
         managed_dir: Option<PathBuf>,
+        observer: Option<Arc<dyn peregrin_bus::Observer>>,
         shutdown: Arc<AtomicBool>,
     ) -> Self {
         Self {
@@ -287,6 +292,7 @@ impl FlowHost {
             demux,
             inject_targets,
             managed_dir,
+            observer,
             shutdown,
             flows: RwLock::new(BTreeMap::new()),
         }
@@ -409,6 +415,7 @@ impl FlowHost {
             shutdown: Some(Arc::clone(&shutdown)),
             on_run,
             campaign_name: Some(name.to_string()),
+            observer: self.observer.clone(),
             ..supervisor::SupervisedOptions::default()
         };
         let run = supervisor::supervise(campaign, options);

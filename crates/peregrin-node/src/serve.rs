@@ -111,6 +111,10 @@ pub struct ServeConfig {
     /// hosts campaigns it declared itself eligible for. The CLI
     /// fills this from `PEREGRIN_RUNNER_LABELS`.
     pub labels: Vec<String>,
+    /// The `--tracing`/`--metrics` observer (ADR-0040) shared by
+    /// every hosted flow's listener + worker runs. `None` keeps the
+    /// noop default.
+    pub observer: Option<Arc<dyn peregrin_bus::Observer>>,
 }
 
 /// The daemon in flight — [`serve_campaigns`]'s return. `Drop`
@@ -280,6 +284,7 @@ pub fn serve_campaigns(
         Arc::clone(&demux),
         Arc::clone(&inject_targets),
         config.managed_dir.clone(),
+        config.observer.clone(),
         Arc::clone(&shutdown),
     ));
     let webhook = demux.router(&config.path).map_err(CampaignError::Serve)?;

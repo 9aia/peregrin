@@ -192,3 +192,102 @@ fn wildcard_trigger_matches() {
     assert_eq!(result.ready.len(), 1);
     assert_eq!(result.ready[0].1[0].kind, "shard.9.ready");
 }
+
+// --- CompositeObserver (ADR-0040) -----------------------------------
+
+use peregrin_bus::{CompositeObserver, NoopObserver, Observer, Span};
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::sync::{Arc, Mutex};
+
+/// Records which observer saw each hook; spans record end/attribute.
+#[derive(Default)]
+struct RecordingObserver {
+    name: &'static str,
+    events: Arc<Mutex<Vec<String>>>,
+    span_ends: Arc<AtomicUsize>,
+}
+
+struct RecordingSpan {
+    name: &'static str,
+    events: Arc<Mutex<Vec<String>>>,
+    span_ends: Arc<AtomicUsize>,
+}
+
+impl Span for RecordingSpan {
+    fn end(&mut self) {
+        self.span_ends.fetch_add(1, Ordering::Relaxed);
+        self.events
+            .lock()
+            .unwrap()
+            .push(format!("{}:end", self.name));
+    }
+
+    fn set_attribute(&mut self, key: &str, _value: &serde_json::Value) {
+        self.events
+            .lock()
+            .unwrap()
+            .push(format!("{}:attr:{key}", self.name));
+    }
+
+    fn traceparent(&self) -> String {
+        format!("tp-{}", self.name)
+    }
+}
+
+impl Observer for RecordingObserver {
+    fn on_node_start(&self, _node: &Node, _triggers: &[Event]) -> Box<dyn Span> {
+        Box::new(RecordingSpan {
+            name: self.name,
+            events: Arc::clone(&self.events),
+            span_ends: Arc::clone(&self.span_ends),
+        })
+    }
+
+    fn on_event(&self, event: &Event) {
+        self.events
+            .lock()
+            .unwrap()
+            .push(format!("{}:{}", self.name, event.kind));
+    }
+}
+
+#[test]
+fn composite_fans_hooks_to_all_delegates() {
+    let events = Arc::new(Mutex::new(Vec::new()));
+    let ends_a = Arc::new(AtomicUsize::new(0));
+    let ends_b = Arc::new(AtomicUsize::new(0));
+    let a = RecordingObserver {
+        name: "a",
+        events: Arc::clone(&events),
+        span_ends: Arc::clone(&ends_a),
+    };
+    let b = RecordingObserver {
+        name: "b",
+        events: Arc::clone(&events),
+        span_ends: Arc::clone(&ends_b),
+    };
+    let composite = CompositeObserver::new(vec![
+        Arc::new(a) as Arc<dyn Observer>,
+        Arc::new(b) as Arc<dyn Observer>,
+        Arc::new(NoopObserver),
+    ]);
+    let n = node("n1", &[]);
+    let mut span = composite.on_node_start(&n, &[]);
+    // Attribute/error calls fan out through the composite span.
+    span.set_attribute("k", &json!(1));
+    span.record_error("e");
+    assert_eq!(span.traceparent(), "tp-a");
+    composite.on_node_end(&n, &[], None, &mut *span);
+    composite.on_event(&ev("x.y"));
+
+    let log = events.lock().unwrap().clone();
+    assert!(log.contains(&"a:attr:k".to_string()), "{log:?}");
+    assert!(log.contains(&"b:attr:k".to_string()), "{log:?}");
+    assert!(log.contains(&"a:x.y".to_string()), "{log:?}");
+    assert!(log.contains(&"b:x.y".to_string()), "{log:?}");
+    // Each delegate's on_node_end ended ITS OWN span once; the
+    // composite fallback end is a second (idempotent-by-contract)
+    // end — RecordingSpan counts every call, so expect 2 per span.
+    assert_eq!(ends_a.load(Ordering::Relaxed), 2);
+    assert_eq!(ends_b.load(Ordering::Relaxed), 2);
+}
