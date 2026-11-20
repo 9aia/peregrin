@@ -1,7 +1,7 @@
 +++
 id = "ADR-0093"
 title = "Flows API: tamias-managed live lifecycle for campaign flows"
-status = "open"
+status = "done"
 created = "2026-11-20"
 owner = "devin"
 priority = "med"
