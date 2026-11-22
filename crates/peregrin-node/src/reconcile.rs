@@ -51,6 +51,59 @@ const DEFAULT_GRACE: Duration = Duration::from_secs(3600);
 /// latency without a watch channel.
 const SHUTDOWN_POLL: Duration = Duration::from_secs(5);
 
+/// Expand `$VAR`/`${VAR}` in a config path — campaign yaml defaults
+/// keep `$HOME` portable (the shell expands it at run time), but the
+/// reconcile root needs the real filesystem path to match session
+/// cwds. Unknown vars are left literal.
+fn expand_env_path(raw: &str) -> PathBuf {
+    let mut out = String::with_capacity(raw.len());
+    let mut chars = raw.chars().peekable();
+    while let Some(c) = chars.next() {
+        if c != '$' {
+            out.push(c);
+            continue;
+        }
+        let (name, braced) = if chars.next_if_eq(&'{').is_some() {
+            let mut n = String::new();
+            for c in chars.by_ref() {
+                if c == '}' {
+                    break;
+                }
+                n.push(c);
+            }
+            (n, true)
+        } else {
+            let mut n = String::new();
+            while let Some(&c) = chars.peek() {
+                if c.is_ascii_alphanumeric() || c == '_' {
+                    n.push(c);
+                    chars.next();
+                } else {
+                    break;
+                }
+            }
+            (n, false)
+        };
+        if name.is_empty() {
+            out.push('$');
+            continue;
+        }
+        if let Ok(v) = std::env::var(&name) {
+            out.push_str(&v);
+        } else {
+            out.push('$');
+            if braced {
+                out.push('{');
+            }
+            out.push_str(&name);
+            if braced {
+                out.push('}');
+            }
+        }
+    }
+    PathBuf::from(out)
+}
+
 /// A campaign's reconcile roots — display name + worktree base.
 pub struct ReconcileRoot {
     /// Campaign name (ledger `campaign` field on reconcile writes).
@@ -425,6 +478,15 @@ pub fn spawn(roots: Vec<ReconcileRoot>, shutdown: Arc<AtomicBool>) -> Option<Joi
         .ok()
         .and_then(|v| v.parse::<i64>().ok())
         .unwrap_or_else(|| i64::try_from(DEFAULT_GRACE.as_secs()).unwrap_or(i64::MAX));
+    // Campaign config keeps `$HOME` portable — expand to the real
+    // path or cwd matching never fires.
+    let roots: Vec<ReconcileRoot> = roots
+        .into_iter()
+        .map(|r| ReconcileRoot {
+            name: r.name,
+            worktree_base: expand_env_path(&r.worktree_base.to_string_lossy()),
+        })
+        .collect();
     std::thread::Builder::new()
         .name("session-reconcile".to_string())
         .spawn(move || {
@@ -565,6 +627,27 @@ mod tests {
         assert_eq!(classify(false, None, false, now), Verdict::Keep);
         // No ledger but cwd under a base → orphan.
         assert_eq!(classify(true, None, false, now), Verdict::Orphan);
+    }
+
+    #[test]
+    fn expand_env_path_substitutes_vars() {
+        let home = std::env::var("HOME").unwrap();
+        assert_eq!(
+            expand_env_path("$HOME/.local/share/x"),
+            PathBuf::from(format!("{home}/.local/share/x"))
+        );
+        assert_eq!(
+            expand_env_path("${HOME}/wt"),
+            PathBuf::from(format!("{home}/wt"))
+        );
+        // No vars / unknown vars stay literal.
+        assert_eq!(expand_env_path("/abs/path"), PathBuf::from("/abs/path"));
+        assert_eq!(
+            expand_env_path("$PEREGRIN_RECONCILE_NOPE_XYZ/wt"),
+            PathBuf::from("$PEREGRIN_RECONCILE_NOPE_XYZ/wt")
+        );
+        // Trailing/lone $ survives.
+        assert_eq!(expand_env_path("/a/$"), PathBuf::from("/a/$"));
     }
 
     #[test]
