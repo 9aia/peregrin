@@ -18,6 +18,7 @@ pub mod ci_rehydrate;
 pub mod ephemeral;
 pub mod flows;
 pub mod inject;
+pub mod reconcile;
 pub mod serve;
 pub mod supervisor;
 

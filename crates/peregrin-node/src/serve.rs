@@ -146,6 +146,9 @@ pub struct Served {
     /// Flows spawned later via the API push their own injectors
     /// into `host.inject_targets`.
     pub injectors: Vec<Injector>,
+    /// The session reconcile loop (P-054) — `None` when disabled or
+    /// no campaign declares a `worktree_base`.
+    reconcile: Option<JoinHandle<()>>,
     shutdown: Arc<AtomicBool>,
 }
 
@@ -180,6 +183,9 @@ impl Served {
         // collect it before the supervisors so a wedged socket can't
         // outlive the drain.
         if let Some(thread) = self.listener_thread.take() {
+            let _ = thread.join();
+        }
+        if let Some(thread) = self.reconcile.take() {
             let _ = thread.join();
         }
         self.host.join_all()
@@ -303,6 +309,24 @@ pub fn serve_campaigns(
         inject::serve_listener(&config.listen, router, Arc::clone(&shutdown))
             .map_err(CampaignError::Serve)?;
 
+    // Reconcile roots (P-054): every campaign's `worktree_base`
+    // config — the session registry/ledger dirs the cleanup nodes
+    // write under. Collected before `hosted` is consumed below.
+    let reconcile_roots: Vec<crate::reconcile::ReconcileRoot> = hosted
+        .iter()
+        .filter_map(|entry| {
+            entry
+                .campaign
+                .config
+                .get("worktree_base")
+                .and_then(serde_json::Value::as_str)
+                .map(|base| crate::reconcile::ReconcileRoot {
+                    name: entry.name.clone(),
+                    worktree_base: PathBuf::from(base),
+                })
+        })
+        .collect();
+
     let mut injectors = Vec::with_capacity(hosted.len());
     let mut names = Vec::with_capacity(hosted.len());
     for entry in hosted {
@@ -329,6 +353,11 @@ pub fn serve_campaigns(
         }
     }
 
+    // Session reconcile (P-054): expires retained sessions, retries
+    // failed deletes, reaps orphans — runs beside the supervisors on
+    // the same shutdown flag.
+    let reconcile = crate::reconcile::spawn(reconcile_roots, Arc::clone(&shutdown));
+
     Ok(Served {
         listener,
         campaigns: names,
@@ -336,6 +365,7 @@ pub fn serve_campaigns(
         host,
         listener_thread: Some(listener_thread),
         injectors,
+        reconcile,
         shutdown,
     })
 }
