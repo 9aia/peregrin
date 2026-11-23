@@ -34,7 +34,7 @@
 //! the audit trail.
 
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -554,10 +554,11 @@ impl Driver for CouncilDriver {
             .map(str::to_string)
             .unwrap_or_default();
         if let Some(prompt_file) = non_empty_str(&params, "prompt_file") {
-            let path = if Path::new(prompt_file).is_absolute() {
-                PathBuf::from(prompt_file)
+            let path = peregrin_core::expand_path(Path::new(prompt_file));
+            let path = if path.is_absolute() {
+                path
             } else {
-                self.effects.cwd().join(prompt_file)
+                self.effects.cwd().join(path)
             };
             let bytes = self
                 .effects

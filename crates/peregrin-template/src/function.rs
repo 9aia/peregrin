@@ -114,11 +114,11 @@ fn file_call(args: &[Value], ctx: &Context<'_>) -> Result<Value, TemplateError> 
     let Some(raw) = args.first().and_then(Value::as_str) else {
         return Err(TemplateError::new("file() requires a string path"));
     };
-    let raw_path = Path::new(raw);
+    let raw_path = peregrin_core::expand_path(Path::new(raw));
     let resolved = if raw_path.is_absolute() {
-        normalize(raw_path)
+        normalize(&raw_path)
     } else {
-        normalize(&ctx.effects.cwd().join(raw_path))
+        normalize(&ctx.effects.cwd().join(&raw_path))
     };
     check_capability("file", &resolved.to_string_lossy(), ctx)?;
     let bytes = ctx

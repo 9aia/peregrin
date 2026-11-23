@@ -8,6 +8,7 @@
 //! materialized worktree.
 
 use std::io::Read;
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 use std::thread;
@@ -305,7 +306,10 @@ fn spawn_shell(
 ) -> Result<(i64, String, String), String> {
     let mut command = spawn_command(cmd, isolate, memory_max)?;
     if let Some(dir) = cwd {
-        command.current_dir(dir);
+        // `~`/`~/…` expands to the user's home — the shared
+        // `peregrin_core::expand_path` convention every path param
+        // follows; a literal `~` would ENOENT at spawn.
+        command.current_dir(peregrin_core::expand_path(Path::new(dir)));
     }
     command
         .env_clear()

@@ -123,28 +123,10 @@ pub enum Error {
     Cleanup(Vec<PathBuf>),
 }
 
-/// `~` / `~/…` expansion, matching the workspace `home_dir`
-/// convention (`$HOME`, else `$USERPROFILE`, else `/`). Non-`~`
-/// paths and non-UTF-8 paths pass through untouched.
-#[must_use]
-pub fn expand_path(path: &Path) -> PathBuf {
-    let Some(text) = path.to_str() else {
-        return path.to_path_buf();
-    };
-    if text == "~" {
-        return home_dir();
-    }
-    if let Some(rest) = text.strip_prefix("~/") {
-        return home_dir().join(rest);
-    }
-    path.to_path_buf()
-}
-
-fn home_dir() -> PathBuf {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map_or_else(|| PathBuf::from("/"), PathBuf::from)
-}
+/// `~` / `~/…` expansion — lives in `peregrin-core` now that every
+/// driver's path params share the convention; re-exported here so
+/// existing `peregrin_git::expand_path` callers keep working.
+pub use peregrin_core::expand_path;
 
 /// Lexically make `path` absolute (no fs access — a dead cwd keeps
 /// the relative form rather than erroring). `unwrap_or`'s eagerly

@@ -253,3 +253,21 @@ fn oversized_output_is_capped_not_unbounded() {
     let stdout = out[0].payload["stdout"].as_str().unwrap();
     assert_eq!(stdout.len(), 10 * 1024 * 1024);
 }
+
+#[test]
+#[cfg(unix)]
+fn params_cwd_tilde_expands_to_home() {
+    let d = ShellDriver::new();
+    let ctx = ExecutionContext::default();
+    // `cwd: "~"` must spawn in $HOME — a literal `~` would ENOENT.
+    let out = d
+        .invoke(&node(json!({"cmd": "pwd", "cwd": "~"})), &[], &ctx)
+        .unwrap();
+    assert_eq!(out[0].kind, "cmd.done");
+    let stdout = out[0].payload["stdout"].as_str().unwrap();
+    let expected = peregrin_core::expand_path(std::path::Path::new("~"));
+    assert_eq!(
+        std::fs::canonicalize(stdout.trim()).unwrap(),
+        std::fs::canonicalize(&expected).unwrap()
+    );
+}

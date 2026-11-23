@@ -892,8 +892,18 @@ impl<G: Git + Clone> Driver for GitDriver<G> {
             .and_then(Value::as_str)
             .filter(|dir| !dir.is_empty());
         let cwd = match cwd {
-            Some(dir) if !Path::new(dir).is_absolute() => worktree.path.join(dir),
-            _ => worktree.path.clone(),
+            // `~` expands per the shared `peregrin_core::expand_path`
+            // convention before the absolute check — a literal `~`
+            // would otherwise join under the worktree as `~/…`.
+            Some(dir) => {
+                let expanded = expand_path(Path::new(dir));
+                if expanded.is_absolute() {
+                    worktree.path.clone()
+                } else {
+                    worktree.path.join(expanded)
+                }
+            }
+            None => worktree.path.clone(),
         };
         inner_params.insert("cwd".to_string(), Value::String(cwd.display().to_string()));
         // `env` bindings injected under whatever the inner params
