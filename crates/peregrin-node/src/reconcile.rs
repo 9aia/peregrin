@@ -51,8 +51,9 @@ const DEFAULT_GRACE: Duration = Duration::from_secs(3600);
 /// latency without a watch channel.
 const SHUTDOWN_POLL: Duration = Duration::from_secs(5);
 /// Hard bound on one pass — a wedged agent probe inside `sepia
-/// serve` (e.g. a hung `devin acp`) must not stall reconcile forever;
-/// on timeout the future is dropped, which kills the serve child.
+/// serve` (e.g. a hung `devin acp`) must not stall reconcile forever.
+/// On timeout the pass future is abandoned and the serve child is
+/// shut down explicitly ([`run_pass`]).
 const PASS_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// Expand `$VAR`/`${VAR}` in a config path — campaign yaml defaults
@@ -424,9 +425,16 @@ async fn pass(plane: &ServicePlane, roots: &[ReconcileRoot], grace_secs: i64) ->
     stats
 }
 
+/// Grace for the post-pass `shutdown` RPC before giving up — a
+/// wedged serve gets dropped anyway (child kill is best-effort).
+const SHUTDOWN_GRACE: Duration = Duration::from_secs(10);
+
 /// One pass end-to-end: resolve + spawn `sepia serve`, run
-/// [`pass`]. A fresh child per pass keeps a wedged serve from
-/// poisoning later runs.
+/// [`pass`], then `shutdown` the child. A fresh child per pass keeps
+/// a wedged serve from poisoning later runs — and dropping alone
+/// does NOT reap it: the client's reader tasks hold the child Arc,
+/// so `kill_on_drop` never fires. The explicit `shutdown` RPC ends
+/// the serve, EOFs the readers, and only then does the child die.
 async fn run_pass(roots: &[ReconcileRoot], grace: i64) -> PassStats {
     let Some(target) = sepia_serve() else {
         tracing::debug!("session reconcile: no sepia binary resolved");
@@ -437,16 +445,32 @@ async fn run_pass(roots: &[ReconcileRoot], grace: i64) -> PassStats {
         args: target.args,
         env: Vec::new(),
     };
-    match SepiaService::spawn(spec).await {
-        Ok(service) => pass(&ServicePlane(service), roots, grace).await,
+    let service = match SepiaService::spawn(spec).await {
+        Ok(service) => service,
         Err(e) => {
             tracing::warn!("session reconcile: sepia serve spawn failed: {e}");
-            PassStats {
+            return PassStats {
                 errors: 1,
                 ..PassStats::default()
-            }
+            };
         }
-    }
+    };
+    let plane = ServicePlane(service);
+    let stats = if let Ok(s) = tokio::time::timeout(PASS_TIMEOUT, pass(&plane, roots, grace)).await
+    {
+        s
+    } else {
+        tracing::warn!(
+            "session reconcile: pass exceeded {}s — abandoning",
+            PASS_TIMEOUT.as_secs()
+        );
+        PassStats {
+            errors: 1,
+            ..PassStats::default()
+        }
+    };
+    let _ = tokio::time::timeout(SHUTDOWN_GRACE, plane.0.shutdown()).await;
+    stats
 }
 
 /// Sleep in shutdown-poll slices until the interval elapses or
@@ -509,20 +533,7 @@ pub fn spawn(roots: Vec<ReconcileRoot>, shutdown: Arc<AtomicBool>) -> Option<Joi
                     if shutdown.load(Ordering::Relaxed) {
                         return;
                     }
-                    let stats = if let Ok(s) =
-                        tokio::time::timeout(PASS_TIMEOUT, run_pass(&roots, grace)).await
-                    {
-                        s
-                    } else {
-                        tracing::warn!(
-                            "session reconcile: pass exceeded {}s — abandoning",
-                            PASS_TIMEOUT.as_secs()
-                        );
-                        PassStats {
-                            errors: 1,
-                            ..PassStats::default()
-                        }
-                    };
+                    let stats = run_pass(&roots, grace).await;
                     if stats.deleted > 0 || stats.errors > 0 {
                         tracing::info!(
                             listed = stats.listed,
