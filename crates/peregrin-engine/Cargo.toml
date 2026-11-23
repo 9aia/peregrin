@@ -10,6 +10,7 @@ license.workspace = true
 [lints]
 workspace = true
 [dependencies]
+chrono.workspace = true
 peregrin-bus.workspace = true
 peregrin-core.workspace = true
 peregrin-driver.workspace = true

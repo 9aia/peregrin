@@ -53,7 +53,8 @@ fn run_executes_and_returns_the_log() {
     let tmp = tempfile::tempdir().unwrap();
     let path = write_chain(tmp.path());
     let log =
-        peregrin_cli::campaign::run(&path, false, None, None, None, &ObsArgs::default()).unwrap();
+        peregrin_cli::campaign::run(&path, false, None, None, None, None, &ObsArgs::default())
+            .unwrap();
     assert_eq!(log.last().map(|e| e.kind.as_str()), Some("workflow.done"));
     assert_eq!(
         std::fs::read_to_string(tmp.path().join("alpha.txt")).unwrap(),
@@ -65,8 +66,8 @@ fn run_executes_and_returns_the_log() {
 fn run_dry_run_emits_without_side_effects() {
     let tmp = tempfile::tempdir().unwrap();
     let path = write_chain(tmp.path());
-    let log =
-        peregrin_cli::campaign::run(&path, true, None, None, None, &ObsArgs::default()).unwrap();
+    let log = peregrin_cli::campaign::run(&path, true, None, None, None, None, &ObsArgs::default())
+        .unwrap();
     assert_eq!(log.last().map(|e| e.kind.as_str()), Some("workflow.done"));
     assert!(!tmp.path().join("alpha.txt").exists());
 }
@@ -84,9 +85,16 @@ fn run_replay_seeds_from_jsonl_and_json() {
          {\"type\":\"write.done\",\"payload\":{},\"source\":\"write\"}\n",
     )
     .unwrap();
-    let log =
-        peregrin_cli::campaign::run(&path, false, Some(&jsonl), None, None, &ObsArgs::default())
-            .unwrap();
+    let log = peregrin_cli::campaign::run(
+        &path,
+        false,
+        Some(&jsonl),
+        None,
+        None,
+        None,
+        &ObsArgs::default(),
+    )
+    .unwrap();
     let kinds: Vec<&str> = log.iter().map(|e| e.kind.as_str()).collect();
     assert_eq!(kinds.last(), Some(&"workflow.done"), "trace: {kinds:?}");
     // JSON array form parses too.
@@ -96,9 +104,16 @@ fn run_replay_seeds_from_jsonl_and_json() {
         "[{\"type\":\"start\",\"payload\":{},\"source\":\"__runner__\"}]",
     )
     .unwrap();
-    let log =
-        peregrin_cli::campaign::run(&path, false, Some(&json), None, None, &ObsArgs::default())
-            .unwrap();
+    let log = peregrin_cli::campaign::run(
+        &path,
+        false,
+        Some(&json),
+        None,
+        None,
+        None,
+        &ObsArgs::default(),
+    )
+    .unwrap();
     assert!(!log.is_empty());
 }
 
@@ -113,6 +128,7 @@ fn run_replay_errors_on_missing_and_malformed() {
             Some(Path::new("/nonexistent.jsonl")),
             None,
             None,
+            None,
             &ObsArgs::default()
         )
         .is_err()
@@ -120,8 +136,16 @@ fn run_replay_errors_on_missing_and_malformed() {
     let bad = tmp.path().join("bad.jsonl");
     std::fs::write(&bad, "{not json\n").unwrap();
     assert!(
-        peregrin_cli::campaign::run(&path, false, Some(&bad), None, None, &ObsArgs::default())
-            .is_err()
+        peregrin_cli::campaign::run(
+            &path,
+            false,
+            Some(&bad),
+            None,
+            None,
+            None,
+            &ObsArgs::default()
+        )
+        .is_err()
     );
 }
 
@@ -132,6 +156,7 @@ fn run_errors_on_missing_workflow() {
         peregrin_cli::campaign::run(
             &tmp.path().join("nope.yaml"),
             false,
+            None,
             None,
             None,
             None,
@@ -362,4 +387,239 @@ fn peregrin_binary_runs_a_campaign() {
     let stdout = String::from_utf8_lossy(&out.stdout);
     assert!(stdout.contains("workflow: meta-create"), "stdout: {stdout}");
     assert!(stdout.contains("OK"), "stdout: {stdout}");
+}
+
+/// A one-node campaign whose shell exits 1 — the `emit` map routes it
+/// onto `gate.failed`, so the run still ends `workflow.done` while
+/// the verdict must read `fail`.
+fn write_failing_gate(dir: &Path) -> PathBuf {
+    let yaml = r#"name: failing-gate
+nodes:
+  - id: gate
+    driver: shell
+    on: [start]
+    emits: [gate.passed, gate.failed]
+    params:
+      cmd: "false"
+      emit:
+        "0": gate.passed
+        default: gate.failed
+"#;
+    let path = dir.join("failing-gate.yaml");
+    std::fs::write(&path, yaml).unwrap();
+    path
+}
+
+#[test]
+fn run_writes_result_document_on_pass() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = write_chain(tmp.path());
+    let result_path = tmp.path().join("out").join("run.result.json");
+    let log = peregrin_cli::campaign::run(
+        &path,
+        false,
+        None,
+        None,
+        None,
+        Some(&result_path),
+        &ObsArgs::default(),
+    )
+    .unwrap();
+    assert_eq!(log.last().map(|e| e.kind.as_str()), Some("workflow.done"));
+    let doc: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&result_path).unwrap()).unwrap();
+    assert_eq!(doc["campaign"], "e2e-chain");
+    assert_eq!(doc["verdict"], "pass");
+    assert_eq!(doc["failed_events"], serde_json::json!([]));
+    let nodes = doc["nodes"].as_array().unwrap();
+    assert_eq!(nodes.len(), 2);
+    assert_eq!(nodes[0]["id"], "write");
+    assert_eq!(nodes[0]["status"], "completed");
+    assert_eq!(nodes[0]["rc"], 0);
+    assert!(nodes[0]["secs"].is_number());
+    assert!(nodes[0]["fires"].is_number());
+    assert_eq!(nodes[1]["id"], "check");
+    assert_eq!(nodes[1]["status"], "completed");
+    assert_eq!(nodes[1]["conclusion"], "success");
+}
+
+#[test]
+fn run_writes_fail_verdict_when_a_node_fails() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = write_failing_gate(tmp.path());
+    let result_path = tmp.path().join("gate.result.json");
+    // The run still *completes* — `campaign run` returns Ok and the
+    // process exit code stays 0; the artifact carries the verdict.
+    let log = peregrin_cli::campaign::run(
+        &path,
+        false,
+        None,
+        None,
+        None,
+        Some(&result_path),
+        &ObsArgs::default(),
+    )
+    .unwrap();
+    assert_eq!(log.last().map(|e| e.kind.as_str()), Some("workflow.done"));
+    let doc: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&result_path).unwrap()).unwrap();
+    assert_eq!(doc["verdict"], "fail");
+    assert_eq!(doc["conclusion"], "failure");
+    assert_eq!(doc["failed_events"], serde_json::json!(["gate.failed"]));
+    let gate = &doc["nodes"][0];
+    assert_eq!(gate["id"], "gate");
+    assert_eq!(gate["status"], "completed");
+    assert_eq!(gate["conclusion"], "failure");
+    assert_eq!(gate["rc"], 1);
+}
+
+#[test]
+fn run_history_implies_result_sibling() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = write_chain(tmp.path());
+    let history = tmp.path().join("runs.jsonl");
+    peregrin_cli::campaign::run(
+        &path,
+        false,
+        None,
+        Some(&history),
+        None,
+        None,
+        &ObsArgs::default(),
+    )
+    .unwrap();
+    // `<history>.result.json` — `with_extension` swaps `.jsonl`.
+    let result_path = tmp.path().join("runs.result.json");
+    let doc: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&result_path).unwrap()).unwrap();
+    assert_eq!(doc["verdict"], "pass");
+    assert!(history.exists(), "history log still written");
+}
+
+#[test]
+fn run_result_path_beats_history_derivation() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = write_chain(tmp.path());
+    let history = tmp.path().join("runs.jsonl");
+    let explicit = tmp.path().join("explicit.json");
+    peregrin_cli::campaign::run(
+        &path,
+        false,
+        None,
+        Some(&history),
+        None,
+        Some(&explicit),
+        &ObsArgs::default(),
+    )
+    .unwrap();
+    assert!(explicit.exists());
+    assert!(
+        !tmp.path().join("runs.result.json").exists(),
+        "explicit --result wins over the history-derived sibling"
+    );
+}
+
+#[test]
+fn run_load_failure_writes_error_verdict() {
+    let tmp = tempfile::tempdir().unwrap();
+    let missing = tmp.path().join("nope.yaml");
+    let result_path = tmp.path().join("err.result.json");
+    assert!(
+        peregrin_cli::campaign::run(
+            &missing,
+            false,
+            None,
+            None,
+            None,
+            Some(&result_path),
+            &ObsArgs::default()
+        )
+        .is_err()
+    );
+    let doc: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&result_path).unwrap()).unwrap();
+    assert_eq!(doc["verdict"], "error");
+    assert_eq!(doc["conclusion"], "failure");
+    assert_eq!(doc["campaign"], "nope");
+}
+
+/// A campaign whose `result:` block declares the verdict mapping —
+/// the emitted `gate.pass` kind has no `.failed` segment, so without
+/// the declaration the heuristic still passes; the block pins the
+/// GH Checks vocabulary end-to-end.
+#[test]
+fn run_declared_result_block_maps_conclusion() {
+    let tmp = tempfile::tempdir().unwrap();
+    let yaml = r#"name: declared-gate
+result:
+  - event: gate.pass
+    conclusion: success
+  - event: gate.fail
+    conclusion: failure
+nodes:
+  - id: gate
+    driver: shell
+    on: [start]
+    emits: [gate.pass]
+    params:
+      cmd: "true"
+      emit:
+        "0": gate.pass
+"#;
+    let path = tmp.path().join("declared-gate.yaml");
+    std::fs::write(&path, yaml).unwrap();
+    let result_path = tmp.path().join("declared.result.json");
+    peregrin_cli::campaign::run(
+        &path,
+        false,
+        None,
+        None,
+        None,
+        Some(&result_path),
+        &ObsArgs::default(),
+    )
+    .unwrap();
+    let doc: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&result_path).unwrap()).unwrap();
+    assert_eq!(doc["schema"], "peregrin/run-result/1");
+    assert_eq!(doc["status"], "completed");
+    assert_eq!(doc["verdict"], "pass");
+    assert_eq!(doc["conclusion"], "success");
+    assert_eq!(doc["output"]["title"], "declared-gate");
+    assert!(doc["run_id"].as_str().is_some_and(|id| id.len() == 16));
+    assert!(doc["started_at"].is_string());
+    assert!(doc["completed_at"].is_string());
+}
+
+/// `run_id` is stable for a run — projecting the same finished run's
+/// log twice yields the same id (the engine test pins the
+/// `from_log`/`run_result` equivalence; here the artifact itself is
+/// the stable document).
+#[test]
+fn run_result_document_is_deterministic_in_shape() {
+    let tmp = tempfile::tempdir().unwrap();
+    let path = write_chain(tmp.path());
+    let first = tmp.path().join("first.json");
+    let second = tmp.path().join("second.json");
+    for out in [&first, &second] {
+        peregrin_cli::campaign::run(
+            &path,
+            false,
+            None,
+            None,
+            None,
+            Some(out),
+            &ObsArgs::default(),
+        )
+        .unwrap();
+    }
+    let a: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&first).unwrap()).unwrap();
+    let b: serde_json::Value =
+        serde_json::from_str(&std::fs::read_to_string(&second).unwrap()).unwrap();
+    // Distinct runs → distinct run_ids; identical shape otherwise.
+    assert_ne!(a["run_id"], b["run_id"]);
+    for key in ["schema", "campaign", "status", "verdict", "conclusion"] {
+        assert_eq!(a[key], b[key], "{key} drifted between runs");
+    }
 }

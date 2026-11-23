@@ -1029,6 +1029,87 @@ pub struct Supersede {
     pub cancel_running: bool,
 }
 
+/// The GitHub Checks–compatible run conclusion — the canonical
+/// outcome vocabulary `RunResult.conclusion` (peregrin-engine) and a
+/// campaign's `result:` declarations share. Serialized snake_case
+/// (`timed_out`, `action_required`).
+///
+/// Lifecycle (`running`/`completed`/`cancelled`) is deliberately *not*
+/// here — it lives on `RunResult.status`; a conclusion only exists
+/// once a run reaches a terminal state.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Conclusion {
+    /// The gate passed.
+    Success,
+    /// The gate ran and failed (a node failed, a declared `failure`
+    /// event fired, or the engine errored mid-run).
+    Failure,
+    /// Neither success nor failure — informational/undetermined.
+    Neutral,
+    /// Deliberately not run (e.g. a path filter skipped the gate).
+    Skipped,
+    /// Exceeded its time budget.
+    TimedOut,
+    /// Cancelled before finishing.
+    Cancelled,
+    /// Blocked on operator action.
+    ActionRequired,
+}
+
+/// One `result:` rule — a declared event kind mapped to the
+/// conclusion it asserts when it fires.
+///
+/// ```yaml
+/// result:
+///   - event: gate.pass
+///     conclusion: success
+///   - event: gate.fail
+///     conclusion: failure
+/// ```
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub struct ResultRule {
+    /// The event kind this rule answers for (`event:`; `type:` reads
+    /// too, matching `EventSchema`'s wire name).
+    #[serde(rename = "event", alias = "type")]
+    pub event: String,
+    /// The conclusion a fired `event` contributes.
+    pub conclusion: Conclusion,
+}
+
+impl ResultRule {
+    /// Strict per-rule parse — `event` must be a non-empty string and
+    /// `conclusion` a known [`Conclusion`]; anything else is a
+    /// [`ModelError`] on the `result` field (same strictness as
+    /// `supersede:`).
+    fn from_value(value: &Value) -> Result<Self, ModelError> {
+        let invalid = |detail: String| ModelError {
+            field: "result",
+            detail: Some(detail),
+        };
+        let Some(object) = value.as_object() else {
+            return Err(invalid("each 'result' entry must be a mapping".to_string()));
+        };
+        let event = object
+            .get("event")
+            .or_else(|| object.get("type"))
+            .and_then(Value::as_str)
+            .filter(|s| !s.is_empty())
+            .ok_or_else(|| invalid("'result' entry requires a non-empty 'event'".to_string()))?;
+        let conclusion = object
+            .get("conclusion")
+            .ok_or_else(|| invalid("'result' entry requires 'conclusion'".to_string()))
+            .and_then(|v| {
+                serde_json::from_value::<Conclusion>(v.clone())
+                    .map_err(|e| invalid(format!("bad 'conclusion': {e}")))
+            })?;
+        Ok(Self {
+            event: event.to_string(),
+            conclusion,
+        })
+    }
+}
+
 /// A campaign — a named graph of nodes plus its triggers (port of the
 /// TS `Workflow`).
 #[derive(Clone, Debug, Default, PartialEq, serde::Serialize, serde::Deserialize)]
@@ -1093,6 +1174,20 @@ pub struct Campaign {
     /// ```
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub runs_on: Vec<String>,
+    /// `result:` — declared event→conclusion rules for the
+    /// `RunResult` projection (docs/reference/run-result.md). When a
+    /// declared event fires, its rule supplies the run conclusion —
+    /// the last decisive event in the log wins; events with no rule
+    /// fall back to the engine's `*.failed`/nonzero-`rc` heuristic.
+    /// Empty keeps the pure-heuristic verdict.
+    ///
+    /// ```yaml
+    /// result:
+    ///   - event: gate.pass
+    ///     conclusion: success
+    /// ```
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub result: Vec<ResultRule>,
     /// Directory the campaign was loaded from — the anchor `include:`
     /// and `subworkflow` `params.path` resolve against (ADR-0022).
     /// Provenance metadata the loader stamps after [`Campaign::from_dict`];
@@ -1135,6 +1230,14 @@ impl Campaign {
                 },
             )?),
         };
+        let result = match raw.get("result") {
+            None | Some(Value::Null) => Vec::new(),
+            Some(Value::Array(items)) => items
+                .iter()
+                .map(ResultRule::from_value)
+                .collect::<Result<Vec<_>, _>>()?,
+            Some(_) => return Err(ModelError::not_array("result")),
+        };
         // `raw.include ?? raw.includes ?? []` — JS `??` also falls
         // through on `null`.
         let imports = match raw.get("include") {
@@ -1160,6 +1263,7 @@ impl Campaign {
             annotations: map_or_empty(raw.get("annotations")),
             supersede,
             runs_on: string_list(raw.get("runs_on"), &[]),
+            result,
             source_dir: None,
         })
     }
@@ -1246,6 +1350,12 @@ impl Campaign {
             d.insert(
                 "supersede".to_string(),
                 serde_json::to_value(supersede).unwrap_or(Value::Null),
+            );
+        }
+        if !self.result.is_empty() {
+            d.insert(
+                "result".to_string(),
+                serde_json::to_value(&self.result).unwrap_or(Value::Null),
             );
         }
         Value::Object(d)

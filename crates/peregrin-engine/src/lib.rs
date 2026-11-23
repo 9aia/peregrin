@@ -11,12 +11,14 @@
 
 mod ingress;
 mod registry;
+mod result;
 mod runner;
 mod safety;
 
 pub use ingress::{Ingress, InjectError, Injector, WaitOutcome, ingress};
 pub use peregrin_driver::SecretSource;
 pub use registry::Registry;
+pub use result::{NodeResult, NodeStatus, RunOutput, RunResult, RunStatus, RunVerdict};
 pub use runner::{PendingTimer, RunOptions, Runner};
 pub use safety::{
     CapabilityChecker, ResourceGate, SchemaValidator, build_validator, validate_object,

@@ -11,6 +11,7 @@ pub use capability::{capability_matches, glob_match};
 pub use env::{CHILD_ENV_ALLOWLIST, child_env, sanitize_env};
 pub use matching::{capture_wildcards, matches, subscribes_to};
 pub use model::{
-    Campaign, Event, EventSchema, FunctionDefinition, MaxFires, ModelError, Node, PythonImport,
-    Supersede, SupersedeMode, TriggerMode, js_string, js_truthy, runs_on_satisfied,
+    Campaign, Conclusion, Event, EventSchema, FunctionDefinition, MaxFires, ModelError, Node,
+    PythonImport, ResultRule, Supersede, SupersedeMode, TriggerMode, js_string, js_truthy,
+    runs_on_satisfied,
 };

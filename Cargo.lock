@@ -3350,6 +3350,7 @@ dependencies = [
 name = "peregrin-engine"
 version = "0.3.0"
 dependencies = [
+ "chrono",
  "hypha-secret",
  "peregrin-bus",
  "peregrin-core",
@@ -3448,6 +3449,11 @@ dependencies = [
  "peregrin-loader",
  "serde_json",
  "serde_yaml_ng",
+ "tamias-core",
+ "tamias-install",
+ "tamias-registry",
+ "tamias-registry-local",
+ "tamias-store-local",
  "tempfile",
 ]
 

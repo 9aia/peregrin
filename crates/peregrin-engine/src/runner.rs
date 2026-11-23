@@ -39,9 +39,11 @@ use peregrin_template::{
 
 use crate::ingress::{Ingress, WaitOutcome};
 use crate::registry::Registry;
+use crate::result::{NodeFireStats, RunResult, RunVerdict};
 use crate::safety::{
     CapabilityChecker, ResourceGate, build_validator, validate_object, validate_record,
 };
+use peregrin_core::Conclusion;
 
 /// `runWorkflow` options (TS `RunOptions`).
 #[derive(Default)]
@@ -250,6 +252,9 @@ pub struct Runner {
     idempotency_counter: u64,
     retry_counts: HashMap<String, u64>,
     circuit_states: HashMap<String, CircuitState>,
+    /// Per-node fire accounting for the [`RunResult`] projection —
+    /// fires + summed `execute_node` wall time, reset per `run`.
+    node_stats: HashMap<String, NodeFireStats>,
     timers: std::collections::BinaryHeap<ScheduledTick>,
     timer_seq: u64,
 }
@@ -273,6 +278,7 @@ impl Runner {
             idempotency_counter: 0,
             retry_counts: HashMap::new(),
             circuit_states: HashMap::new(),
+            node_stats: HashMap::new(),
             timers: std::collections::BinaryHeap::new(),
             timer_seq: 0,
         }
@@ -383,6 +389,29 @@ impl Runner {
     #[must_use]
     pub fn pending_timers(&self) -> Vec<PendingTimer> {
         self.timer_snapshot()
+    }
+
+    /// Project the finished run into a [`RunResult`] — the
+    /// machine-readable verdict document (`campaign run --result`).
+    /// Call after [`Self::run`] returns `Ok`; the `Err` path uses
+    /// [`Self::run_result_error`]. The projection reads the bus log
+    /// plus this run's per-node fire stats — no parallel tracking.
+    #[must_use]
+    pub fn run_result(&self, campaign: &Campaign) -> RunResult {
+        RunResult::project(campaign, &self.bus.log(), Some(&self.node_stats))
+    }
+
+    /// [`Self::run_result`] with the verdict forced to `error` — a
+    /// campaign-plane `Err` still leaves a partial log and whatever
+    /// node stats accumulated, worth recording for CI forensics.
+    #[must_use]
+    pub fn run_result_error(&self, campaign: &Campaign) -> RunResult {
+        let mut result = self.run_result(campaign);
+        result.verdict = RunVerdict::Error;
+        // GH Checks has no `error` conclusion — `failure` is the
+        // closest honest mapping (see result.rs module docs).
+        result.conclusion = Conclusion::Failure;
+        result
     }
 
     /// Push the current [`Self::timer_snapshot`] into the live mirror,
@@ -719,6 +748,7 @@ impl Runner {
         self.idempotency_counter = 0;
         self.retry_counts.clear();
         self.circuit_states.clear();
+        self.node_stats.clear();
         self.timers.clear();
         self.timer_seq = 0;
         self.sync_timer_mirror();
@@ -819,9 +849,16 @@ impl Runner {
         let fires = self.bus.fire_count(&node.id);
 
         let reserved = self.gate.acquire(Self::resource_weight(node));
+        let started = Instant::now();
         let result = self.execute_node_gated(
             node, triggers, campaign, options, shared, log, fires, &mut *span,
         );
+        // Fire accounting for the `RunResult` projection — recorded
+        // even when the fire errored (a propagating `DriverError`
+        // still counts as a fire).
+        let stats = self.node_stats.entry(node.id.clone()).or_default();
+        stats.fires += 1;
+        stats.secs += started.elapsed().as_secs_f64();
         self.gate.release(reserved);
         result
     }

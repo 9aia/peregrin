@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use peregrin_bus::Observer;
 use peregrin_core::{Campaign, Event, MaxFires, TriggerMode};
-use peregrin_engine::RunOptions;
+use peregrin_engine::{RunOptions, RunResult};
 use peregrin_telemetry::{Observability, TelemetryGuard};
 use serde_json::{Map, Value};
 
@@ -55,21 +55,36 @@ fn build_observer(obs: &ObsArgs<'_>) -> Result<(Arc<dyn Observer>, TelemetryGuar
 /// event (`ts source type`), like the TS original. `history` swaps the
 /// in-memory event log for the durable JSONL store at that path
 /// (ADR-0040's `--history` — `peregrin runs`/`explain`/`log` read it
-/// back); omitted keeps the ephemeral default. Returns the log so
-/// callers (tests, future hub surfaces) can inspect the run.
+/// back); omitted keeps the ephemeral default. `result` names the
+/// `RunResult` verdict document to write at run end; omitted, a
+/// `--history` path implies `<history>.result.json` (the
+/// `with_extension("result.json")` sibling — `runs.jsonl` becomes
+/// `runs.result.json`). Returns the log so callers (tests, future
+/// hub surfaces) can inspect the run.
+///
+/// The process exit code stays `0` on a *completed* run whatever the
+/// verdict — node failure is data in the artifact, not an exit
+/// status (CI gates read the document). Campaign-plane failures
+/// (loader/engine `Err`) still exit nonzero *and* leave an
+/// `"verdict": "error"` document when a result path resolved.
 ///
 /// # Errors
-/// [`CliError`] on replay-log read/parse failure or a campaign-plane
-/// failure (loader, engine, store open).
+/// [`CliError`] on replay-log read/parse failure, a campaign-plane
+/// failure (loader, engine, store open), or a result-document write
+/// failure.
 pub fn run(
     workflow: &Path,
     dry_run: bool,
     replay: Option<&Path>,
     history: Option<&Path>,
     queue_store: Option<&Path>,
+    result: Option<&Path>,
     obs: &ObsArgs<'_>,
 ) -> Result<Vec<Event>, CliError> {
     let (observer, _telemetry) = build_observer(obs)?;
+    let result_path = result
+        .map(Path::to_path_buf)
+        .or_else(|| history.map(result_path_for));
     let replay_events = match replay {
         Some(path) => load_replay(path)?,
         None => Vec::new(),
@@ -85,7 +100,21 @@ pub fn run(
     // names only) and the env file as the last leg
     // (record → env → keyring → file).
     options.secret_stores = peregrin_node::campaign::default_secret_stores();
-    let campaign = peregrin_node::campaign::load(workflow).map_err(|e| CliError(e.to_string()))?;
+    let campaign = match peregrin_node::campaign::load(workflow) {
+        Ok(campaign) => campaign,
+        Err(e) => {
+            // A load failure is still a campaign-plane verdict —
+            // write the `error` document before surfacing the error.
+            if let Some(path) = &result_path {
+                let label = workflow
+                    .file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("(unnamed)");
+                write_run_result(path, &RunResult::error(label))?;
+            }
+            return Err(CliError(e.to_string()));
+        }
+    };
     // Supervisor mode (docs/reference/queue-supersede.md): a declared
     // `supersede:` policy *plus* an ingress-driver node turns
     // `campaign run` into the sequential-run loop the systemd unit
@@ -98,7 +127,7 @@ pub fn run(
         && !dry_run
         && options.replay_events.is_empty()
     {
-        return run_supervised(&campaign, history, queue_store, Some(observer));
+        return run_supervised(&campaign, history, queue_store, result_path, Some(observer));
     }
     // Ingress variants: `github-webhook`/`sturn-poll` nodes get a
     // run-scoped `Injector`, and a campaign declaring one serves
@@ -111,13 +140,71 @@ pub fn run(
         let (runner, injector) = peregrin_node::campaign::runner_with_ingress_observed(observer);
         (runner, injector)
     };
-    let log = runner
-        .run(&campaign, &options)
-        .map_err(|e| CliError(e.to_string()))?;
+    let outcome = runner.run(&campaign, &options);
+    // The verdict document is written for BOTH outcomes — an engine
+    // `Err` still projects whatever partial log/stats accumulated,
+    // with the verdict forced to `error`.
+    let result_doc = match &outcome {
+        Ok(_) => runner.run_result(&campaign),
+        Err(_) => runner.run_result_error(&campaign),
+    };
+    if let Some(path) = &result_path {
+        write_run_result(path, &result_doc)?;
+    }
+    let log = outcome.map_err(|e| CliError(e.to_string()))?;
     for event in &log {
         println!("{} {} {}", event.ts, event.source, event.kind);
     }
     Ok(log)
+}
+
+/// The `--history`-implied result path — `runs.jsonl` →
+/// `runs.result.json` (`with_extension` swaps the JSONL suffix; an
+/// extensionless or dotted path still lands beside it deterministically).
+fn result_path_for(history: &Path) -> PathBuf {
+    history.with_extension("result.json")
+}
+
+/// Serialize a [`RunResult`] and write it — pretty JSON plus a
+/// trailing newline, parent dirs created (a `--result sub/dir/x.json`
+/// shouldn't fail on a missing dir the way a typo'd `--history`
+/// parent would have already).
+fn write_run_result(path: &Path, result: &RunResult) -> Result<(), CliError> {
+    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| CliError(format!("create result dir {}: {e}", parent.display())))?;
+    }
+    let json = serde_json::to_string_pretty(result)
+        .map_err(|e| CliError(format!("serialize run result: {e}")))?;
+    std::fs::write(path, format!("{json}\n"))
+        .map_err(|e| CliError(format!("write run result {}: {e}", path.display())))
+}
+
+/// Append one finished run's [`RunResult`] as a JSONL line — the
+/// supervisor-mode shape (many runs share one `--result`/`--history`
+/// sibling, so the file is newline-delimited rather than a single
+/// document). Best-effort inside the `on_run` callback: a write
+/// failure warns on stderr, it can't fail the run retroactively.
+fn append_run_result(path: &Path, result: &RunResult) {
+    use std::io::Write as _;
+
+    let write = || -> Result<(), std::io::Error> {
+        if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+            std::fs::create_dir_all(parent)?;
+        }
+        let mut file = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(path)?;
+        let line = serde_json::to_string(result).unwrap_or_default();
+        writeln!(file, "{line}")
+    };
+    if let Err(e) = write() {
+        eprintln!(
+            "campaign run: failed to append run result to {}: {e}",
+            path.display()
+        );
+    }
 }
 
 /// Supervisor mode for `run` — `peregrin_node::supervisor::supervise`
@@ -127,10 +214,18 @@ pub fn run(
 /// run shares — `peregrin runs`/`log`/`explain` read it back). Blocks
 /// until the trigger channel closes — the ingress listeners exiting —
 /// and the queue drains; returns the logs concatenated for callers.
+///
+/// `result` is the per-run [`RunResult`] sink: supervisor mode has no
+/// single verdict (runs spawn per trigger), so the path — explicit
+/// `--result` or the `--history`-derived sibling — is appended to as
+/// JSONL, one result document per finished run (log-only projection:
+/// no `secs`/`fires`, which live on the worker runner inside the
+/// supervisor).
 fn run_supervised(
     campaign: &Campaign,
     history: Option<&Path>,
     queue_store: Option<&Path>,
+    result: Option<PathBuf>,
     observer: Option<Arc<dyn Observer>>,
 ) -> Result<Vec<Event>, CliError> {
     // `--queue-store` opens the sqlite durable queue — pending
@@ -145,12 +240,16 @@ fn run_supervised(
         })
         .transpose()
         .map_err(|e| CliError(format!("failed to open queue store: {e}")))?;
+    let result_campaign = campaign.clone();
     let options = peregrin_node::supervisor::SupervisedOptions {
         history: history.map(Path::to_path_buf),
         queue_store: store,
-        on_run: Some(Box::new(|log: &[Event]| {
+        on_run: Some(Box::new(move |log: &[Event]| {
             for event in log {
                 println!("{} {} {}", event.ts, event.source, event.kind);
+            }
+            if let Some(path) = &result {
+                append_run_result(path, &RunResult::from_log(&result_campaign, log));
             }
         })),
         observer,

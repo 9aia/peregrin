@@ -465,6 +465,14 @@ enum CampaignCommands {
         /// (supervisor mode)
         #[arg(long)]
         queue_store: Option<PathBuf>,
+        /// Write the run's machine-readable verdict document
+        /// (`{campaign, verdict, nodes, failed_events}`) to this JSON
+        /// file at run end — `pass`/`fail`/`error` for CI gates.
+        /// Default: `<history>.result.json` when `--history` is set.
+        /// Supervisor-mode campaigns append one JSON object per run
+        /// (JSONL) since runs spawn per trigger.
+        #[arg(long)]
+        result: Option<PathBuf>,
         #[command(flatten)]
         obs: ObsFlags,
     },
@@ -1149,6 +1157,7 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
             replay,
             history,
             queue_store,
+            result,
             obs,
         } => campaign::run(
             workflow,
@@ -1156,6 +1165,7 @@ fn run_campaign(cmd: &CampaignCommands, rt: &tokio::runtime::Runtime) -> Result<
             replay.as_deref(),
             history.as_deref(),
             queue_store.as_deref(),
+            result.as_deref(),
             &obs_args(obs),
         )
         .map(|_| ()),
