@@ -50,6 +50,10 @@ const DEFAULT_GRACE: Duration = Duration::from_secs(3600);
 /// Sleep slice while waiting out the interval — bounds shutdown
 /// latency without a watch channel.
 const SHUTDOWN_POLL: Duration = Duration::from_secs(5);
+/// Hard bound on one pass — a wedged agent probe inside `sepia
+/// serve` (e.g. a hung `devin acp`) must not stall reconcile forever;
+/// on timeout the future is dropped, which kills the serve child.
+const PASS_TIMEOUT: Duration = Duration::from_secs(300);
 
 /// Expand `$VAR`/`${VAR}` in a config path — campaign yaml defaults
 /// keep `$HOME` portable (the shell expands it at run time), but the
@@ -505,7 +509,20 @@ pub fn spawn(roots: Vec<ReconcileRoot>, shutdown: Arc<AtomicBool>) -> Option<Joi
                     if shutdown.load(Ordering::Relaxed) {
                         return;
                     }
-                    let stats = run_pass(&roots, grace).await;
+                    let stats = if let Ok(s) =
+                        tokio::time::timeout(PASS_TIMEOUT, run_pass(&roots, grace)).await
+                    {
+                        s
+                    } else {
+                        tracing::warn!(
+                            "session reconcile: pass exceeded {}s — abandoning",
+                            PASS_TIMEOUT.as_secs()
+                        );
+                        PassStats {
+                            errors: 1,
+                            ..PassStats::default()
+                        }
+                    };
                     if stats.deleted > 0 || stats.errors > 0 {
                         tracing::info!(
                             listed = stats.listed,
