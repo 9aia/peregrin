@@ -6,3 +6,4 @@
 - [Run a CI runner fleet](ci-runner-fleet.md)
 - [Run CI through `ci-job` entities](run-ci-through-ci-job-entities.md)
 - [Serve a fleet of campaigns](serve-campaigns.md)
+- [Gate a campaign run on its verdict](gate-on-run-result.md)

@@ -41,6 +41,11 @@ Drive a peregrin node over its API, or convert sessions between the Devin, Cline
 * [`peregrin campaign status`↴](#peregrin-campaign-status)
 * [`peregrin campaign events`↴](#peregrin-campaign-events)
 * [`peregrin campaign serve`↴](#peregrin-campaign-serve)
+* [`peregrin campaign flows`↴](#peregrin-campaign-flows)
+* [`peregrin campaign flows list`↴](#peregrin-campaign-flows-list)
+* [`peregrin campaign flows load`↴](#peregrin-campaign-flows-load)
+* [`peregrin campaign flows unload`↴](#peregrin-campaign-flows-unload)
+* [`peregrin campaign flows reload`↴](#peregrin-campaign-flows-reload)
 * [`peregrin bundle`↴](#peregrin-bundle)
 * [`peregrin bundle install`↴](#peregrin-bundle-install)
 * [`peregrin bundle remove`↴](#peregrin-bundle-remove)
@@ -614,6 +619,7 @@ Campaign ops — load and run campaign yamls on this machine's campaign plane (r
 * `status` — Poll a `campaign submit` run — verdict, terminal event, counts
 * `events` — Bounded tail of a `campaign submit` run's event log
 * `serve` — Host N campaign yamls under one process — each gets its own supervisor (supersede queue, history, worker runs) while ALL `github-webhook` nodes share ONE listener that demuxes verified pushes by `repository.full_name` (all-match). SIGINT/ SIGTERM drains every campaign and exits
+* `flows` — Live flow lifecycle on a running `campaign serve` daemon (ADR-0093) — list/add/remove/reload hosted flows through its `/api/flows` routes, no restart
 
 ###### **Options:**
 
@@ -635,6 +641,11 @@ Load a campaign yaml and execute it locally — prints the run's event log, one 
 * `--replay <REPLAY>` — A JSON/JSONL event log to seed (replay) the run with
 * `--history <HISTORY>` — Persist the run's event log to this JSONL file (ADR-0040's --history; `peregrin runs`/`explain`/`log` read it back)
 * `--queue-store <QUEUE_STORE>` — Durable supersede-queue store (sqlite) — pending triggers and the in-flight run survive a restart and replay on boot. Only applies to `supersede:` campaigns with ingress nodes (supervisor mode)
+* `--result <RESULT>` — Write the run's machine-readable verdict document (`{campaign, verdict, nodes, failed_events}`) to this JSON file at run end — `pass`/`fail`/`error` for CI gates. Default: `<history>.result.json` when `--history` is set. Supervisor-mode campaigns append one JSON object per run (JSONL) since runs spawn per trigger
+* `--tracing <TRACING>` — Export engine spans through this destination — e.g. `otlp:http://collector:4318/v1/traces` or a bare OTLP endpoint (the `otlp` provider appends `/v1/traces`)
+* `--tracing-provider <TRACING_PROVIDER>` — Tracing provider: `otlp` (default) or `noop`
+* `--metrics <METRICS>` — Export engine metrics through this destination — e.g. `otlp:http://collector:4318/v1/metrics`
+* `--metrics-provider <METRICS_PROVIDER>` — Metrics provider: `otlp` (default) or `noop`
 * `-h, --help` — Print help
 
 ## `peregrin campaign validate`
@@ -671,6 +682,10 @@ Submit a workflow/bundle run on this machine's campaign plane — returns `{run_
 * `--secrets <SECRETS>` — JSON object of secret name→value for this run
 * `--dry-run` — Simulate the run without driver side effects
 * `--log <LOG>` — Explicit JSONL log path (default `<home>/runs/<run-id>.jsonl`)
+* `--tracing <TRACING>` — Export engine spans through this destination — e.g. `otlp:http://collector:4318/v1/traces` or a bare OTLP endpoint (the `otlp` provider appends `/v1/traces`)
+* `--tracing-provider <TRACING_PROVIDER>` — Tracing provider: `otlp` (default) or `noop`
+* `--metrics <METRICS>` — Export engine metrics through this destination — e.g. `otlp:http://collector:4318/v1/metrics`
+* `--metrics-provider <METRICS_PROVIDER>` — Metrics provider: `otlp` (default) or `noop`
 * `-h, --help` — Print help
 
 ## `peregrin campaign status`
@@ -721,6 +736,88 @@ Host N campaign yamls under one process — each gets its own supervisor (supers
 * `--path <PATH>` — Shared hook path (literal route) [default: /hook]
 * `--history-dir <HISTORY_DIR>` — Per-campaign durable history dir — each campaign appends to &lt;dir&gt;/&lt;campaign-name&gt;.jsonl (`peregrin runs`/`log`/ `explain` read them back)
 * `--queue-store-dir <QUEUE_STORE_DIR>` — Per-campaign durable supersede-queue dir — each campaign opens &lt;dir&gt;/&lt;campaign-name&gt;.db so pending triggers and the in-flight run replay per campaign on restart
+* `--tracing <TRACING>` — Export engine spans through this destination — e.g. `otlp:http://collector:4318/v1/traces` or a bare OTLP endpoint (the `otlp` provider appends `/v1/traces`)
+* `--tracing-provider <TRACING_PROVIDER>` — Tracing provider: `otlp` (default) or `noop`
+* `--metrics <METRICS>` — Export engine metrics through this destination — e.g. `otlp:http://collector:4318/v1/metrics`
+* `--metrics-provider <METRICS_PROVIDER>` — Metrics provider: `otlp` (default) or `noop`
+* `-h, --help` — Print help
+
+## `peregrin campaign flows`
+
+Live flow lifecycle on a running `campaign serve` daemon (ADR-0093) — list/add/remove/reload hosted flows through its `/api/flows` routes, no restart
+
+**Usage:** `peregrin campaign flows <COMMAND>`
+
+###### **Commands:**
+
+* `list` — List hosted flows and their state (active/draining)
+* `load` — Load a campaign yaml as a live flow — POSTs `{name, yaml}`; the daemon validates, persists to its managed dir, and spawns the supervisor immediately
+* `unload` — Drain and remove a hosted flow — routes unregister first, the pending queue clears, the active run finishes asynchronously
+* `reload` — Drain-then-respawn a flow from its persisted source yaml — the `tamias deploy` update path
+
+###### **Options:**
+
+* `-h, --help` — Print help
+
+## `peregrin campaign flows list`
+
+List hosted flows and their state (active/draining)
+
+**Usage:** `peregrin campaign flows list [OPTIONS]`
+
+###### **Options:**
+
+* `--url <URL>` — Daemon base URL (default `PEREGRIN_FLOWS_URL` or http://127.0.0.1:29173 — the serve `--listen` default)
+* `--token <TOKEN>` — Bearer token (default `PEREGRIN_TOKEN`, then `~/.config/peregrin/env`)
+* `-h, --help` — Print help
+
+## `peregrin campaign flows load`
+
+Load a campaign yaml as a live flow — POSTs `{name, yaml}`; the daemon validates, persists to its managed dir, and spawns the supervisor immediately
+
+**Usage:** `peregrin campaign flows load [OPTIONS] <YAML>`
+
+###### **Arguments:**
+
+* `<YAML>` — Campaign YAML file to host
+
+###### **Options:**
+
+* `--name <NAME>` — Flow name (default: the file stem)
+* `--url <URL>` — Daemon base URL (default `PEREGRIN_FLOWS_URL` or http://127.0.0.1:29173 — the serve `--listen` default)
+* `--token <TOKEN>` — Bearer token (default `PEREGRIN_TOKEN`, then `~/.config/peregrin/env`)
+* `-h, --help` — Print help
+
+## `peregrin campaign flows unload`
+
+Drain and remove a hosted flow — routes unregister first, the pending queue clears, the active run finishes asynchronously
+
+**Usage:** `peregrin campaign flows unload [OPTIONS] <NAME>`
+
+###### **Arguments:**
+
+* `<NAME>` — Hosted flow name
+
+###### **Options:**
+
+* `--url <URL>` — Daemon base URL (default `PEREGRIN_FLOWS_URL` or http://127.0.0.1:29173 — the serve `--listen` default)
+* `--token <TOKEN>` — Bearer token (default `PEREGRIN_TOKEN`, then `~/.config/peregrin/env`)
+* `-h, --help` — Print help
+
+## `peregrin campaign flows reload`
+
+Drain-then-respawn a flow from its persisted source yaml — the `tamias deploy` update path
+
+**Usage:** `peregrin campaign flows reload [OPTIONS] <NAME>`
+
+###### **Arguments:**
+
+* `<NAME>` — Hosted flow name
+
+###### **Options:**
+
+* `--url <URL>` — Daemon base URL (default `PEREGRIN_FLOWS_URL` or http://127.0.0.1:29173 — the serve `--listen` default)
+* `--token <TOKEN>` — Bearer token (default `PEREGRIN_TOKEN`, then `~/.config/peregrin/env`)
 * `-h, --help` — Print help
 
 ## `peregrin bundle`

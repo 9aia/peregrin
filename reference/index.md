@@ -12,6 +12,7 @@
 - [Distribution — bundles, tamias, provider](distribution.md)
 - [Fleet runners — `runs_on` + hub dispatch](fleet-runners.md)
 - [Queue & supersede](queue-supersede.md)
+- [Run result — the `campaign run` verdict artifact](run-result.md)
 - [HTTP API](api.md)
 - [CLI reference](cli.md) — generated from `peregrin --help`
 - [Crates](crates.md) — generated from workspace Cargo.tomls

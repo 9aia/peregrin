@@ -47,6 +47,21 @@ everything above it is
 blind to which side of the fork it's on. The manifest handshake
 negotiates protocol versions at spawn.
 
+## The bupha boundary
+
+CI is the same split seen from the other side. Peregrin owns all
+workflow semantics — including the gate itself: a repo's committed
+`workflows/gate.yaml` is a peregrin campaign composing
+`tamias:handl-gates//…` fragments, and forge webhook ingress is a
+campaign driver that normalizes deliveries into agnostic entities
+(`ci-job`). Bupha is the per-push runner adapter — queue, detached
+worktree@sha, runner, forge status write-back through `lasius-forge`
+— and in production never parses forge payloads; its own `github`
+source is the standalone/dev fallback. The contract between them is
+the `run.result` artifact (GH Checks-style
+status/conclusion/output): bupha maps `conclusion` onto the forge
+commit status. `ci.sh` is being retired in favor of `gate.yaml`.
+
 ## Planes
 
 - **Session plane** — the sepia surface: sessions, agents, attach,

@@ -62,6 +62,16 @@ tamias install https://9aia.com/bundles/docs-deploy-0.1.tgz   # non-git tarball
   mismatch; `tamias doctor` runs store/cache/registry/content-type
   diagnostics.
 
+Workflow YAML can also reach *into* the store at load time:
+`include: tamias:<spec>//<path>` (and the
+`${include(tamias:…)}` form) merges a file from a bundle's store
+entry into the loading document. `<spec>` resolves store-first
+(`name`, `name@<label>`, `@scope/name`); on a miss a ref-shaped spec
+(`git:`/`cf:`/`http(s)`/`<registry>:<name>@<version>`/path) is
+fetched through `tamias install`'s pipeline and committed to the
+store — includes may fetch, failures are loud. See
+[Include resolution](../explanation/include-resolution.md).
+
 ## `include:` composition
 
 A manifest may declare `include: […]` — base bundles whose payloads
