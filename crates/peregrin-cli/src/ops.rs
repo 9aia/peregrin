@@ -17,9 +17,9 @@ use std::time::Duration;
 
 use serde_json::{Value, json};
 
-use hypha_dotenv::DotenvSecrets;
-use hypha_keyring::KeyringSecrets;
-use hypha_secret::Secrets;
+use cuora_secret::Secrets;
+use cuora_secret_dotenv::DotenvSecrets;
+use cuora_secret_keyring::KeyringSecrets;
 use peregrin_config::ConfigSource;
 use peregrin_core::Campaign;
 
@@ -151,31 +151,22 @@ fn cli(e: impl std::fmt::Display) -> CliError {
 /// config; values only ever resolve through here (the per-impl
 /// binding rule).
 pub(crate) fn secret(env: &OpsEnv, name: &str) -> Option<String> {
-    secret_with(
-        env,
-        name,
-        peregrin_secret_cuora::CuoraSecrets::shared_default(),
-    )
+    secret_with(env, name, peregrin_node::campaign::shared_cuora())
 }
 
 /// [`secret`] with an explicit cuora leg — the test seam (a stub
-/// `cuora` binary on `CuoraSecrets.bin`).
+/// `cuora` binary on [`cuora_secret_cuora::CuoraSecrets`]'s bin).
 fn secret_with(
     env: &OpsEnv,
     name: &str,
-    cuora: &peregrin_secret_cuora::CuoraSecrets,
+    cuora: &cuora_secret_cuora::CuoraSecrets,
 ) -> Option<String> {
     std::env::var(name)
         .ok()
         .filter(|v| !v.is_empty())
         .or_else(|| cuora.get(name))
-        .or_else(|| KeyringSecrets::default().get(name))
-        .or_else(|| {
-            DotenvSecrets {
-                path: env.env_file(),
-            }
-            .get(name)
-        })
+        .or_else(|| KeyringSecrets::new("peregrin").get(name))
+        .or_else(|| DotenvSecrets::new(env.env_file()).get(name))
 }
 
 /// The unresolved-secret error — names the file the value could land in.
@@ -758,7 +749,7 @@ mod tests {
         let name = "PEREGRIN_SECRET_CHAIN_TEST";
         std::fs::write(env.env_file(), format!("{name}=from-env-file\n")).unwrap();
 
-        let cuora = peregrin_secret_cuora::CuoraSecrets::with_bin(stub_cuora(
+        let cuora = peregrin_node::campaign::cuora_store().with_bin(stub_cuora(
             dir.path(),
             "from-cuora",
             false,
@@ -769,7 +760,7 @@ mod tests {
         );
 
         let failing =
-            peregrin_secret_cuora::CuoraSecrets::with_bin(stub_cuora(dir.path(), "", true));
+            peregrin_node::campaign::cuora_store().with_bin(stub_cuora(dir.path(), "", true));
         assert_eq!(
             secret_with(&env, name, &failing).as_deref(),
             Some("from-env-file")

@@ -460,12 +460,12 @@ impl ExecutionContext {
 pub type SecretBatch = dyn Fn(&[&str]) -> Vec<Option<String>> + Send + Sync;
 
 /// One fallback store leg of [`ExecutionContext::resolve_secret`] —
-/// a `hypha_secret::Secrets` backend plus whether lookups into it
+/// a `cuora_secret::Secrets` backend plus whether lookups into it
 /// require the name to be capability-declared.
 #[derive(Clone)]
 pub struct SecretSource {
     /// The backend consulted on a record+env miss.
-    pub store: Rc<dyn hypha_secret::Secrets>,
+    pub store: Rc<dyn cuora_secret::Secrets>,
     /// `true` → consulted only when the merged
     /// `capabilities.secrets` grant matches the name — the
     /// OS-keyring leg's opt-in (a per-lookup `secret-tool` spawn and
