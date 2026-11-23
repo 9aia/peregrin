@@ -230,7 +230,12 @@ fn cancel_running_injects_workflow_cancel_into_the_active_run() {
     let kinds: Vec<&str> = log.iter().map(|e| e.kind.as_str()).collect();
     assert_eq!(log.last().unwrap().kind, "workflow.cancelled");
     assert!(kinds.contains(&"push"), "the first trigger ran");
-    assert!(kinds.contains(&"build.done"), "in-flight step finished");
+    // I-017: the cancel flag kills the in-flight `sleep` mid-invoke —
+    // the step reports its kill instead of finishing (`build.done`).
+    assert!(
+        !kinds.contains(&"build.done"),
+        "cancelled run's step was killed, not finished: {kinds:?}"
+    );
 
     // The superseding job is now queued behind nothing — finish
     // hands it out and it runs to done.
