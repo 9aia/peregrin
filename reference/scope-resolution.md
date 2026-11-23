@@ -94,6 +94,17 @@ means "the trigger".
 `config.<path>` walks the campaign `config:` map. Missing key or
 non-object step → miss.
 
+Config *values* are templates too: the runner resolves the whole
+`config:` map once per run, in YAML declaration order, before the
+bus binds `count_from` lookups and before any `${config.*}` read.
+Each value's `${env()}`/`${file()}`/`${shell()}`/`${secret.*}`/
+`${config.*}` expressions resolve through the same pipeline —
+`${config.*}` references see only the already-resolved earlier keys
+(self/later references miss: verbatim in lenient mode, a strict-audit
+error under `strict`). Function and secret lookups bind the
+*campaign-level* `capabilities:`/`RunOptions.secrets` — node-level
+grants don't exist at materialization time.
+
 ### `params`
 
 `params` resolves against the node's declared `params:` map with

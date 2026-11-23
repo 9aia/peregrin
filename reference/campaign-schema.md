@@ -15,7 +15,7 @@ aren't arrays are a hard error.
 | `nodes` | `[Node]` | The graph — see node fields below. |
 | `events` | `[EventSchema]` | Declared event contracts; under `strict` every entry must compile a payload schema. |
 | `functions` | map or `[FunctionDefinition]` | YAML-declared template functions. Map form injects the key as `name`. Fields: `driver`, `params`, `capabilities`, `requires_capability`, `deterministic`, `returns`. |
-| `config` | map | Campaign config — `${config.*}` in templates; also `fan_in.count_from` source. |
+| `config` | map | Campaign config — `${config.*}` in templates; also `fan_in.count_from` source. Values are templates themselves: `${env()}`/`${file()}`/`${shell()}`/`${secret.*}`/`${config.*}` resolve once per run, in declaration order (each value sees the already-resolved earlier keys), under the campaign-level `capabilities:` — see [Scope resolution](scope-resolution.md#config). |
 | `include` | `[path]` | File composition (alias `includes`). |
 | `import` | `[path \| {file, as}]` | Python modules for python-driver handlers. |
 | `stop_on` | `[type]` | Exact-match run terminators. |
