@@ -99,24 +99,25 @@ peregrin-template = { path = "crates/peregrin-template", version = "0.3.0" }
 peregrin-telemetry = { path = "crates/peregrin-telemetry", version = "0.3.0" }
 peregrin-testkit = { path = "crates/peregrin-testkit", version = "0.3.0" }
 
-# sepia — the session plane these crates embed. Git deps on `main`
-# (the branch carrying the `sepia serve` store-op surface —
-# `sessions.export`/`import`/`convert`); sibling-checkout path deps
-# ride `[patch]` (see `.cargo/config.toml.example`).
-sepia-core = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-proto = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-acp = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-session = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-driver = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-host = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-meta = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-convert = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-testkit = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
-sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "0.2.0" }
+# sepia — the session plane these crates embed, plus `sepia-http`'s
+# session REST surface (PL-027). Pinned to the `decouple/pl-027` rev
+# until that branch lands on `main` — repin to `main` then; sibling-
+# checkout path deps ride `[patch]` (see `.cargo/config.toml.example`).
+sepia-core = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-proto = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-acp = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-session = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-driver = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-host = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-meta = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-convert = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-testkit = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+sepia-http = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
 
 # hypha — the extracted substrate (PL-005): leaf crates landed in P4a
 # (secrets, telemetry, service/systemd, dotenv); the entity-plane
