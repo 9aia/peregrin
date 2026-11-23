@@ -618,3 +618,366 @@ fn absent_params_schema_leaves_config_unchecked() {
     )
     .unwrap();
 }
+
+// --- tamias: include refs ----------------------------------------------------
+//
+// `tamias:<name>[@<label>]//<path>` resolves against the tamias install
+// store. Tests hand-write store entries (`.tamias-store.json` records —
+// the same on-disk shape `tamias install` commits) into a tempdir and
+// load through `load_str_with_tamias_store` — edition-2024 forbids
+// `env::set_var`, so the env chain can't be exercised here.
+
+/// Write a fake store entry — dir `<store>/<dir_name>/` carrying
+/// `files` plus a minimal `.tamias-store.json` record.
+fn fake_store_entry(
+    store: &Path,
+    dir_name: &str,
+    name: &str,
+    version: Option<&str>,
+    installed_at: u64,
+    files: &[(&str, &str)],
+) {
+    let entry = store.join(dir_name);
+    fs::create_dir_all(&entry).unwrap();
+    for (rel, text) in files {
+        let path = entry.join(rel);
+        fs::create_dir_all(path.parent().unwrap()).unwrap();
+        fs::write(path, text).unwrap();
+    }
+    let version_json = version.map_or_else(|| "null".to_string(), |v| format!("\"{v}\""));
+    fs::write(
+        entry.join(".tamias-store.json"),
+        format!(
+            "{{\"name\":\"{name}\",\"version\":{version_json},\"source_ref\":\"./x\",\
+             \"resolved\":\"sha256:abc\",\"digest\":\"sha256:def\",\"installed_at\":{installed_at}}}"
+        ),
+    )
+    .unwrap();
+}
+
+fn load_with_store(
+    text: &str,
+    dir: &Path,
+    store: &Path,
+) -> Result<peregrin_core::Campaign, peregrin_loader::LoadError> {
+    YamlLoader.load_str_with_tamias_store(text, dir, store)
+}
+
+#[test]
+fn tamias_include_merges_a_bundle_fragment() {
+    let tmp = tempfile::tempdir().unwrap();
+    // The store must sit outside `base_dir` — `.handl/` discovery scans
+    // the workdir recursively and would eat `*.node.yml` payload files.
+    let store_tmp = tempfile::tempdir().unwrap();
+    let store = store_tmp.path().join("store");
+    fake_store_entry(
+        &store,
+        "handl-gates@0.2.0",
+        "handl-gates",
+        Some("0.2.0"),
+        1_700_000_000,
+        &[("lib/rust-gate.node.yml", "timeout: 42\n")],
+    );
+    let campaign = load_with_store(
+        "name: test\nnodes:\n  - id: gate\n    on: [start]\n    params:\n      include: tamias:handl-gates//lib/rust-gate.node.yml\n      cmd: gate.sh",
+        tmp.path(),
+        &store,
+    )
+    .unwrap();
+    let params = &campaign.nodes[0].params;
+    assert_eq!(params["timeout"], 42);
+    assert_eq!(params["cmd"], "gate.sh");
+    assert!(params.get("include").is_none());
+}
+
+#[test]
+fn tamias_include_version_pin_and_latest_installed() {
+    let tmp = tempfile::tempdir().unwrap();
+    let store = tmp.path().join("store");
+    // 0.1.0 installed *after* 0.2.0 — an unpinned ref takes the most
+    // recently installed entry, a pin takes the named label.
+    fake_store_entry(
+        &store,
+        "handl-gates@0.2.0",
+        "handl-gates",
+        Some("0.2.0"),
+        1_700_000_000,
+        &[("frag.yaml", "timeout: 200\n")],
+    );
+    fake_store_entry(
+        &store,
+        "handl-gates@0.1.0",
+        "handl-gates",
+        Some("0.1.0"),
+        1_700_000_100,
+        &[("frag.yaml", "timeout: 100\n")],
+    );
+    let pinned = load_with_store(
+        "name: test\nnodes:\n  - id: n\n    on: [start]\n    params:\n      include: tamias:handl-gates@0.2.0//frag.yaml",
+        tmp.path(),
+        &store,
+    )
+    .unwrap();
+    assert_eq!(pinned.nodes[0].params["timeout"], 200);
+    let latest = load_with_store(
+        "name: test\nnodes:\n  - id: n\n    on: [start]\n    params:\n      include: tamias:handl-gates//frag.yaml",
+        tmp.path(),
+        &store,
+    )
+    .unwrap();
+    assert_eq!(latest.nodes[0].params["timeout"], 100);
+}
+
+#[test]
+fn tamias_include_missing_bundle_names_tamias_install() {
+    let tmp = tempfile::tempdir().unwrap();
+    // The store must sit outside `base_dir` — `.handl/` discovery scans
+    // the workdir recursively and would eat `*.node.yml` payload files.
+    let store_tmp = tempfile::tempdir().unwrap();
+    let store = store_tmp.path().join("store");
+    fake_store_entry(
+        &store,
+        "handl-gates@0.2.0",
+        "handl-gates",
+        Some("0.2.0"),
+        1_700_000_000,
+        &[("frag.yaml", "timeout: 1\n")],
+    );
+    let err = load_with_store(
+        "name: test\nnodes:\n  - id: n\n    on: [start]\n    params:\n      include: tamias:ghost//frag.yaml",
+        tmp.path(),
+        &store,
+    )
+    .unwrap_err();
+    assert!(err.reason().contains("'ghost' is not installed"), "{err}");
+    assert!(err.reason().contains("tamias install"), "{err}");
+    // A missing *file* inside an installed bundle is a plain read error.
+    let err = load_with_store(
+        "name: test\nnodes:\n  - id: n\n    on: [start]\n    params:\n      include: tamias:handl-gates//missing.yaml",
+        tmp.path(),
+        &store,
+    )
+    .unwrap_err();
+    assert!(err.reason().starts_with("Failed to read file:"), "{err}");
+}
+
+#[test]
+fn tamias_include_expression_and_escape_guard() {
+    let tmp = tempfile::tempdir().unwrap();
+    // The store must sit outside `base_dir` — `.handl/` discovery scans
+    // the workdir recursively and would eat `*.node.yml` payload files.
+    let store_tmp = tempfile::tempdir().unwrap();
+    let store = store_tmp.path().join("store");
+    fake_store_entry(
+        &store,
+        "handl-gates@0.2.0",
+        "handl-gates",
+        Some("0.2.0"),
+        1_700_000_000,
+        &[("env.yaml", "REGION: us-east-1\n")],
+    );
+    // ${include(tamias:…)} whole-string form injects the parsed doc.
+    let campaign = load_with_store(
+        "name: test\nnodes:\n  - id: n\n    driver: shell\n    on: [start]\n    params:\n      env: ${include(tamias:handl-gates//env.yaml)}",
+        tmp.path(),
+        &store,
+    )
+    .unwrap();
+    assert_eq!(
+        campaign.nodes[0].params["env"],
+        serde_json::json!({"REGION": "us-east-1"})
+    );
+    // `..` may not escape the bundle root.
+    let err = load_with_store(
+        "name: test\nnodes:\n  - id: n\n    on: [start]\n    params:\n      include: tamias:handl-gates//../ghost@9.9/env.yaml",
+        tmp.path(),
+        &store,
+    )
+    .unwrap_err();
+    assert!(err.reason().contains("escapes the bundle root"), "{err}");
+}
+
+// --- tamias: fetch-on-miss ---------------------------------------------------
+//
+// A store miss with a ref-shaped spec (`git:`/`cf:`/`http(s)`/`<registry>:`/
+// path) installs through `tamias-install`'s pipeline and commits the store
+// entry; store-name shapes stay store-only. `load_str_with_tamias_roots`
+// injects both roots so fetches never touch the real `~/.local|cache`.
+
+/// A loadable campaign pulling `frag.yaml` out of `spec`.
+fn tamias_campaign(spec: &str) -> String {
+    format!(
+        "name: test\nnodes:\n  - id: n\n    on: [start]\n    params:\n      include: tamias:{spec}//frag.yaml"
+    )
+}
+
+fn load_with_roots(
+    text: &str,
+    dir: &Path,
+    roots: &peregrin_loader_yaml::TamiasRoots,
+) -> Result<peregrin_core::Campaign, peregrin_loader::LoadError> {
+    YamlLoader.load_str_with_tamias_roots(text, dir, roots)
+}
+
+#[test]
+fn tamias_include_fetches_an_fs_ref_on_store_miss() {
+    let tmp = tempfile::tempdir().unwrap();
+    // An installable fs ref — a package dir with a `tamias.yaml`
+    // manifest and the fragment the include pulls.
+    let pkg = tmp.path().join("pkg");
+    fs::create_dir_all(&pkg).unwrap();
+    fs::write(
+        pkg.join("tamias.yaml"),
+        "name: fetched-bundle\nversion: 1.0.0\n",
+    )
+    .unwrap();
+    fs::write(pkg.join("frag.yaml"), "timeout: 77\n").unwrap();
+    let roots =
+        peregrin_loader_yaml::TamiasRoots::new(tmp.path().join("store"), tmp.path().join("cache"));
+    let spec = format!("{}", pkg.display());
+    let campaign = load_with_roots(&tamias_campaign(&spec), tmp.path(), &roots).unwrap();
+    assert_eq!(campaign.nodes[0].params["timeout"], 77);
+    // The fetch committed a provenance-carrying store entry.
+    let entries = tamias_store_local::Store::new(tmp.path().join("store"))
+        .entries()
+        .unwrap();
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].record.name, "fetched-bundle");
+    assert_eq!(entries[0].record.source_ref, spec);
+    // The source dir is gone — the *name* spec now resolves store-side.
+    fs::remove_dir_all(&pkg).unwrap();
+    let campaign = load_with_roots(&tamias_campaign("fetched-bundle"), tmp.path(), &roots).unwrap();
+    assert_eq!(campaign.nodes[0].params["timeout"], 77);
+}
+
+#[test]
+fn tamias_include_fetch_failure_is_loud() {
+    let tmp = tempfile::tempdir().unwrap();
+    let roots =
+        peregrin_loader_yaml::TamiasRoots::new(tmp.path().join("store"), tmp.path().join("cache"));
+    // Ref-shaped but unfetchable — a missing fs path fails the install.
+    let err = load_with_roots(
+        &tamias_campaign("/nonexistent-pkg-peregrin-test"),
+        tmp.path(),
+        &roots,
+    )
+    .unwrap_err();
+    assert!(err.reason().contains("fetch failed"), "{err}");
+    assert!(
+        err.reason().contains("/nonexistent-pkg-peregrin-test"),
+        "{err}"
+    );
+    // An unknown registry label reaches registry resolution and fails
+    // there — never a silent fallback.
+    let err = load_with_roots(
+        &tamias_campaign("peregrin-test-no-such-reg:pkg@1.0.0"),
+        tmp.path(),
+        &roots,
+    )
+    .unwrap_err();
+    assert!(err.reason().contains("unknown registry"), "{err}");
+    // Store-name shapes never reach the fetch path — the miss error
+    // keeps the store-only contract.
+    for spec in ["ghost", "ghost@9.9.9", "@scope/ghost"] {
+        let err = load_with_roots(&tamias_campaign(spec), tmp.path(), &roots).unwrap_err();
+        assert!(err.reason().contains("store-only"), "{spec}: {err}");
+        assert!(err.reason().contains("tamias install"), "{spec}: {err}");
+    }
+}
+
+/// Env marker for the respawned child — edition-2024 forbids
+/// `env::set_var`, so env-dependent tests re-exec the test binary with
+/// the vars set (the pattern `peregrin-driver-shell` uses).
+const REG_CHILD: &str = "PERE_TAMIAS_REG_CHILD";
+
+#[test]
+fn tamias_include_named_registry_fetch() {
+    if std::env::var_os(REG_CHILD).is_some() {
+        named_registry_child();
+        return;
+    }
+    let tmp = tempfile::tempdir().unwrap();
+    let root = tmp.path();
+    // A free loopback port for the fixture registry's dev http surface.
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+    let home = root.join("home");
+    let cache = root.join("cache");
+    fs::create_dir_all(&home).unwrap();
+    fs::create_dir_all(&cache).unwrap();
+    // `TAMIAS_CONFIG` — the explicit-file leg of tamias's config chain.
+    let config = root.join("tamias.toml");
+    fs::write(
+        &config,
+        format!("[registries.fixture]\nkind = \"http\"\nurl = \"http://127.0.0.1:{port}\"\n"),
+    )
+    .unwrap();
+    let exe = std::env::current_exe().unwrap();
+    let test = std::thread::current().name().unwrap().to_string();
+    let out = std::process::Command::new(exe)
+        .args([test.as_str(), "--exact", "--nocapture"])
+        .env(REG_CHILD, "1")
+        .env("TAMIAS_CONFIG", &config)
+        .env("TAMIAS_HOME", &home)
+        .env("TAMIAS_CACHE", &cache)
+        .env("PERE_TAMIAS_REG_ROOT", root)
+        .env("PERE_TAMIAS_REG_PORT", port.to_string())
+        .output()
+        .unwrap();
+    assert!(
+        out.status.success(),
+        "inner run failed: {}",
+        String::from_utf8_lossy(&out.stderr)
+    );
+}
+
+/// The respawned half — builds + publishes + serves a fixture registry,
+/// then loads `tamias:fixture:reg-pkg@1.4.0//frag.yaml` through the
+/// env-derived roots (`TAMIAS_HOME`/`TAMIAS_CACHE`/`TAMIAS_CONFIG`).
+fn named_registry_child() {
+    use std::path::PathBuf;
+
+    use tamias_registry::Registry as _;
+
+    let root = PathBuf::from(std::env::var_os("PERE_TAMIAS_REG_ROOT").unwrap());
+    let port = std::env::var("PERE_TAMIAS_REG_PORT").unwrap();
+    // Publish `reg-pkg@1.4.0` into a local registry dir, then serve it
+    // over the dev http surface (`GET /<key>`, `PUT /<key>`).
+    let src = root.join("src");
+    fs::create_dir_all(&src).unwrap();
+    fs::write(src.join("tamias.yaml"), "name: reg-pkg\nversion: 1.4.0\n").unwrap();
+    fs::write(src.join("frag.yaml"), "timeout: 88\n").unwrap();
+    let reg = root.join("registry-store");
+    let manifest = tamias_core::Manifest::load(&src).unwrap();
+    tamias_registry_local::LocalRegistry::new(&reg)
+        .publish(&src, &manifest, None)
+        .unwrap();
+    let addr = format!("127.0.0.1:{port}");
+    let served = reg.clone();
+    let serve_addr = addr.clone();
+    std::thread::spawn(move || {
+        let _ = tamias_registry_local::serve_http(&serve_addr, &served);
+    });
+    for _ in 0..100 {
+        if std::net::TcpStream::connect(&addr).is_ok() {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+    // The load: env-derived store (`$TAMIAS_HOME/store`) + cache
+    // (`$TAMIAS_CACHE`) + config (`$TAMIAS_CONFIG`).
+    let tmp = tempfile::tempdir().unwrap();
+    let campaign = YamlLoader
+        .load_str(&tamias_campaign("fixture:reg-pkg@1.4.0"), tmp.path())
+        .unwrap();
+    assert_eq!(campaign.nodes[0].params["timeout"], 88);
+    // The store commit recorded the verbatim registry ref.
+    let store = PathBuf::from(std::env::var_os("TAMIAS_HOME").unwrap()).join("store");
+    let entries = tamias_store_local::Store::new(&store).entries().unwrap();
+    assert_eq!(entries.len(), 1);
+    assert_eq!(entries[0].record.name, "reg-pkg");
+    assert_eq!(entries[0].record.source_ref, "fixture:reg-pkg@1.4.0");
+}

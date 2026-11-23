@@ -56,7 +56,7 @@ fn dirname(path: &Path) -> &Path {
 }
 
 /// `path.normalize` — lexical `..`/`.` collapsing; never touches the fs.
-fn normalize(path: &Path) -> PathBuf {
+pub(crate) fn normalize(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();
     for component in path.components() {
         match component {
@@ -79,6 +79,25 @@ fn full_path(include_path: &str, base_dir: &Path) -> PathBuf {
         candidate.to_path_buf()
     } else {
         normalize(&base_dir.join(candidate))
+    }
+}
+
+/// Include-target resolution — plain paths anchor at `base_dir` like
+/// before; `tamias:<spec>//<path>` refs resolve through the tamias
+/// install store, fetching ref-shaped specs on a miss (see
+/// `crate::tamias`).
+fn resolve_include_target(
+    include_path: &str,
+    base_dir: &Path,
+    tamias: Option<&crate::tamias::TamiasRoots>,
+) -> Result<PathBuf, LoadError> {
+    if crate::tamias::is_tamias_ref(include_path) {
+        match tamias {
+            Some(roots) => crate::tamias::resolve_with_roots(roots, include_path),
+            None => crate::tamias::resolve(include_path),
+        }
+    } else {
+        Ok(full_path(include_path, base_dir))
     }
 }
 
@@ -149,13 +168,17 @@ pub fn merge_documents(local: &Value, imported: &Value) -> Value {
 pub(crate) fn resolve_include_dict(
     value: &Value,
     base_dir: &Path,
+    tamias: Option<&crate::tamias::TamiasRoots>,
     seen: &mut HashSet<String>,
 ) -> Result<Value, LoadError> {
     match value {
         Value::Object(map) => {
             let mut resolved = Map::with_capacity(map.len());
             for (key, val) in map {
-                resolved.insert(key.clone(), resolve_include_dict(val, base_dir, seen)?);
+                resolved.insert(
+                    key.clone(),
+                    resolve_include_dict(val, base_dir, tamias, seen)?,
+                );
             }
             let Some(include_value) = resolved.remove("include") else {
                 return Ok(Value::Object(resolved));
@@ -169,7 +192,7 @@ pub(crate) fn resolve_include_dict(
                 let Some(include_path) = include_path.as_str() else {
                     return Err(LoadError::new("include path must be a string"));
                 };
-                let full = full_path(include_path, base_dir);
+                let full = resolve_include_target(include_path, base_dir, tamias)?;
                 let key = full.to_string_lossy().into_owned();
                 if seen.contains(&key) {
                     return Err(LoadError::new(format!("circular include detected: {key}")));
@@ -177,7 +200,7 @@ pub(crate) fn resolve_include_dict(
                 seen.insert(key.clone());
                 let text = read_text_file(&full)?;
                 let parsed = parse_yaml(&text)?;
-                let imported = resolve_include_dict(&parsed, dirname(&full), seen)?;
+                let imported = resolve_include_dict(&parsed, dirname(&full), tamias, seen)?;
                 seen.remove(&key);
                 merged = deep_merge(&merged, &imported);
             }
@@ -186,7 +209,7 @@ pub(crate) fn resolve_include_dict(
         Value::Array(items) => {
             let mut out = Vec::with_capacity(items.len());
             for item in items {
-                out.push(resolve_include_dict(item, base_dir, seen)?);
+                out.push(resolve_include_dict(item, base_dir, tamias, seen)?);
             }
             Ok(Value::Array(out))
         }
@@ -204,9 +227,10 @@ pub(crate) fn resolve_include_dict(
 fn resolve_include_value(
     include_path: &str,
     base_dir: &Path,
+    tamias: Option<&crate::tamias::TamiasRoots>,
     seen: &mut HashSet<String>,
 ) -> Result<Value, LoadError> {
-    let full = full_path(include_path.trim(), base_dir);
+    let full = resolve_include_target(include_path.trim(), base_dir, tamias)?;
     let key = full.to_string_lossy().into_owned();
     if seen.contains(&key) {
         return Err(LoadError::new(format!("circular include detected: {key}")));
@@ -214,8 +238,8 @@ fn resolve_include_value(
     seen.insert(key.clone());
     let text = read_text_file(&full)?;
     let parsed = parse_yaml(&text)?;
-    let content = resolve_include_dict(&parsed, dirname(&full), seen)?;
-    let content = resolve_include_strings(&content, dirname(&full), seen)?;
+    let content = resolve_include_dict(&parsed, dirname(&full), tamias, seen)?;
+    let content = resolve_include_strings(&content, dirname(&full), tamias, seen)?;
     seen.remove(&key);
     Ok(content)
 }
@@ -227,17 +251,18 @@ fn resolve_include_value(
 pub(crate) fn resolve_include_strings(
     value: &Value,
     base_dir: &Path,
+    tamias: Option<&crate::tamias::TamiasRoots>,
     seen: &mut HashSet<String>,
 ) -> Result<Value, LoadError> {
     match value {
         Value::String(s) => {
             if let Some(inner) = whole_expression(s.trim(), "include") {
-                return resolve_include_value(inner, base_dir, seen);
+                return resolve_include_value(inner, base_dir, tamias, seen);
             }
             let matches = scan_expressions(s, "include");
             let mut result = s.clone();
             for (start, end, inner) in matches.into_iter().rev() {
-                let val = resolve_include_value(inner, base_dir, seen)?;
+                let val = resolve_include_value(inner, base_dir, tamias, seen)?;
                 result.replace_range(start..end, &js_string(&val));
             }
             Ok(Value::String(result))
@@ -246,19 +271,22 @@ pub(crate) fn resolve_include_strings(
             let mut out = Map::with_capacity(map.len());
             for (key, val) in map {
                 let resolved =
-                    resolve_include_strings(&Value::String(key.clone()), base_dir, seen)?;
+                    resolve_include_strings(&Value::String(key.clone()), base_dir, tamias, seen)?;
                 let resolved_key = match resolved {
                     Value::String(k) => k,
                     other => js_string(&other),
                 };
-                out.insert(resolved_key, resolve_include_strings(val, base_dir, seen)?);
+                out.insert(
+                    resolved_key,
+                    resolve_include_strings(val, base_dir, tamias, seen)?,
+                );
             }
             Ok(Value::Object(out))
         }
         Value::Array(items) => {
             let mut out = Vec::with_capacity(items.len());
             for item in items {
-                out.push(resolve_include_strings(item, base_dir, seen)?);
+                out.push(resolve_include_strings(item, base_dir, tamias, seen)?);
             }
             Ok(Value::Array(out))
         }

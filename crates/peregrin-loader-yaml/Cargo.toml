@@ -14,6 +14,16 @@ peregrin-core.workspace = true
 peregrin-loader.workspace = true
 serde_json.workspace = true
 serde_yaml_ng.workspace = true
+# `tamias:` include refs resolve against the install store and fetch
+# ref-shaped specs on a miss through the shared install pipeline —
+# the same tamias crates `peregrin-cli`'s bundle ops use
+# (workspace-pinned).
+tamias-core.workspace = true
+tamias-store-local.workspace = true
+tamias-install.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+# The named-registry fetch test serves a fixture registry over http.
+tamias-registry.workspace = true
+tamias-registry-local.workspace = true

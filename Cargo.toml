@@ -66,6 +66,8 @@ tamias-source-http = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f
 tamias-store-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
 tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
 tamias-install = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
+tamias-registry = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
+tamias-registry-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
 peregrin-driver = { path = "crates/peregrin-driver", version = "0.3.0" }
 peregrin-driver-agent = { path = "crates/peregrin-driver-agent", version = "0.3.0" }
 peregrin-driver-council = { path = "crates/peregrin-driver-council", version = "0.3.0" }

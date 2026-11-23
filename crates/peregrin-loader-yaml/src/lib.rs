@@ -20,6 +20,7 @@
 mod discover;
 mod expand;
 mod parse;
+mod tamias;
 
 use std::collections::HashSet;
 use std::path::Path;
@@ -34,6 +35,7 @@ use expand::{
     resolve_snippet_refs, resolve_snippet_strings,
 };
 use parse::{parse_json, parse_yaml, read_text_file};
+pub use tamias::TamiasRoots;
 
 /// `autoDiscover` — fold discovered `*.node`/`*.snippet`/`*.config`/
 /// `*.event.json`/`*.fn` artifacts into the raw mapping.
@@ -177,12 +179,49 @@ impl YamlLoader {
     /// typed-model pass). `base_dir` anchors relative includes and
     /// `.handl/` discovery.
     pub fn load_raw(&self, text: &str, base_dir: &Path) -> Result<Map<String, Value>, LoadError> {
+        Self::load_raw_inner(text, base_dir, None)
+    }
+
+    /// [`load_raw`](Self::load_raw) with `tamias:` includes resolved
+    /// against an explicit store root instead of the
+    /// `TAMIAS_HOME`/XDG/HOME chain — for embedded hosts and tests.
+    /// The fetch cache stays env-derived (`TAMIAS_CACHE`/XDG/`HOME`);
+    /// use [`load_raw_with_tamias_roots`](Self::load_raw_with_tamias_roots)
+    /// to pin both.
+    pub fn load_raw_with_tamias_store(
+        &self,
+        text: &str,
+        base_dir: &Path,
+        store_root: &Path,
+    ) -> Result<Map<String, Value>, LoadError> {
+        self.load_raw_with_tamias_roots(text, base_dir, &TamiasRoots::store_only(store_root))
+    }
+
+    /// [`load_raw`](Self::load_raw) with `tamias:` includes resolved
+    /// against explicit store + fetch-cache roots — the pair a
+    /// store-miss fetch installs through. For embedded hosts and
+    /// tests.
+    pub fn load_raw_with_tamias_roots(
+        &self,
+        text: &str,
+        base_dir: &Path,
+        roots: &TamiasRoots,
+    ) -> Result<Map<String, Value>, LoadError> {
+        Self::load_raw_inner(text, base_dir, Some(roots))
+    }
+
+    fn load_raw_inner(
+        text: &str,
+        base_dir: &Path,
+        tamias: Option<&TamiasRoots>,
+    ) -> Result<Map<String, Value>, LoadError> {
         let parsed = parse_yaml(text)?;
         let Value::Object(mut raw) = parsed else {
             return Err(LoadError::new("workflow must be a mapping"));
         };
         auto_discover(&mut raw, base_dir)?;
-        let resolved = resolve_include_dict(&Value::Object(raw), base_dir, &mut HashSet::new())?;
+        let resolved =
+            resolve_include_dict(&Value::Object(raw), base_dir, tamias, &mut HashSet::new())?;
         let Value::Object(raw) = resolved else {
             return Err(LoadError::new("workflow must be a mapping"));
         };
@@ -193,7 +232,7 @@ impl YamlLoader {
         };
         let raw = resolve_snippet_refs(&Value::Object(raw), &snippets, &mut HashSet::new())?;
         let raw = resolve_snippet_strings(&raw, &snippets, &mut HashSet::new())?;
-        let raw = resolve_include_strings(&raw, base_dir, &mut HashSet::new())?;
+        let raw = resolve_include_strings(&raw, base_dir, tamias, &mut HashSet::new())?;
         let Value::Object(mut raw) = raw else {
             return Err(LoadError::new("workflow must be a mapping"));
         };
@@ -264,6 +303,40 @@ impl Loader for YamlLoader {
     /// the same anchor includes resolve against.
     fn load_str(&self, text: &str, base_dir: &Path) -> Result<peregrin_core::Campaign, LoadError> {
         let raw = self.load_raw(text, base_dir)?;
+        let mut campaign = peregrin_core::Campaign::from_dict(&Value::Object(raw))
+            .map_err(|e| LoadError::new(e.to_string()))?;
+        campaign.source_dir = Some(base_dir.to_path_buf());
+        Ok(campaign)
+    }
+}
+
+impl YamlLoader {
+    /// [`load_str`](Loader::load_str) with `tamias:` includes resolved
+    /// against an explicit store root — see
+    /// [`load_raw_with_tamias_store`](Self::load_raw_with_tamias_store).
+    pub fn load_str_with_tamias_store(
+        &self,
+        text: &str,
+        base_dir: &Path,
+        store_root: &Path,
+    ) -> Result<peregrin_core::Campaign, LoadError> {
+        let raw = self.load_raw_with_tamias_store(text, base_dir, store_root)?;
+        let mut campaign = peregrin_core::Campaign::from_dict(&Value::Object(raw))
+            .map_err(|e| LoadError::new(e.to_string()))?;
+        campaign.source_dir = Some(base_dir.to_path_buf());
+        Ok(campaign)
+    }
+
+    /// [`load_str`](Loader::load_str) with `tamias:` includes resolved
+    /// against explicit store + fetch-cache roots — see
+    /// [`load_raw_with_tamias_roots`](Self::load_raw_with_tamias_roots).
+    pub fn load_str_with_tamias_roots(
+        &self,
+        text: &str,
+        base_dir: &Path,
+        roots: &TamiasRoots,
+    ) -> Result<peregrin_core::Campaign, LoadError> {
+        let raw = self.load_raw_with_tamias_roots(text, base_dir, roots)?;
         let mut campaign = peregrin_core::Campaign::from_dict(&Value::Object(raw))
             .map_err(|e| LoadError::new(e.to_string()))?;
         campaign.source_dir = Some(base_dir.to_path_buf());
