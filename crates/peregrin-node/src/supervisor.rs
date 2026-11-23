@@ -110,10 +110,12 @@ impl RunSupervisor {
     /// A supervisor over `policy` *with* a durable [`QueueStore`] —
     /// loads the persisted snapshot and replays it through
     /// [`Queue::restore`] before this supervisor accepts anything:
-    /// pending submissions come back in drain order and an
-    /// interrupted run's marker re-queues at the front
-    /// (at-least-once). Entries the restore validation rejects are
-    /// logged and dropped.
+    /// pending submissions come back in drain order and a stale
+    /// in-flight marker from the dead process is reclaimed (its
+    /// trigger is consumed, not re-run — re-queueing it at the front
+    /// of the single-slot queue can wedge every pending trigger
+    /// behind a hung re-run). Entries the restore validation rejects
+    /// are logged and dropped.
     ///
     /// # Errors
     /// [`QueueStoreError`] when the store can't be read — a corrupt
@@ -130,6 +132,15 @@ impl RunSupervisor {
             tracing::warn!(
                 "queue store: dropped {} persisted job(s) that failed re-validation",
                 restored.dropped.len()
+            );
+        }
+        if let Some(job) = &restored.reclaimed {
+            tracing::warn!(
+                "queue store: reclaimed stale in-flight marker \
+                 (seq {}, kind {}) — its owner process is gone; \
+                 the interrupted trigger is not re-run",
+                job.seq,
+                job.event.kind
             );
         }
         Ok(Self {
@@ -362,9 +373,11 @@ pub struct SupervisedOptions {
     /// `explain` read back. `None` keeps run logs ephemeral.
     pub history: Option<PathBuf>,
     /// The durable queue store (`campaign run --queue-store`) —
-    /// pending triggers and the in-flight marker survive a restart:
-    /// on boot the supervisor replays the snapshot before accepting
-    /// new triggers. `None` keeps the queue in-memory only.
+    /// pending triggers and the in-flight marker persist across a
+    /// restart: on boot the supervisor replays the snapshot before
+    /// accepting new triggers, reclaiming the stale running marker
+    /// (its owner process is gone — the interrupted trigger is not
+    /// re-run). `None` keeps the queue in-memory only.
     pub queue_store: Option<Arc<dyn QueueStore>>,
     /// The shared webhook demux (`campaign serve`) — when set, the
     /// listener run's `github-webhook` nodes register their repo
@@ -721,9 +734,11 @@ fn supervise_loop(
     const TICK: Duration = Duration::from_millis(100);
 
     // Boot: with a store, load + replay the persisted queue *before*
-    // the loop accepts any trigger — restored pending jobs (the
-    // interrupted run re-queued at the front) drain ahead of anything
-    // that arrives from here on.
+    // the loop accepts any trigger — restored pending jobs drain
+    // ahead of anything that arrives from here on, and the stale
+    // in-flight marker is reclaimed (never re-run: its owner is a
+    // dead process, and a wedged re-run would block the whole
+    // single-slot queue behind it).
     let mut supervisor = match queue_store {
         Some(store) => RunSupervisor::with_store(policy, store)?,
         None => RunSupervisor::new(policy),

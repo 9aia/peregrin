@@ -1,12 +1,12 @@
 #![allow(clippy::unwrap_used, clippy::pedantic)]
 //! Durable-queue tests — `Queue::snapshot`/`Queue::restore` round-trips,
-//! the running-marker front re-queue, restore-time re-validation, and
+//! the stale running-marker reclaim, restore-time re-validation, and
 //! the `fifo` per-key bound.
 
 use peregrin_core::Event;
 use peregrin_queue::{
     Disposition, Job, MAX_PENDING_PER_KEY, MemoryQueueStore, Mode, Queue, QueueSnapshot,
-    QueueStore, RestoreOutcome, Supersede,
+    QueueStore, Supersede,
 };
 use serde_json::{Value, json};
 
@@ -34,7 +34,7 @@ fn pending_shas(queue: &Queue) -> Vec<&str> {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn snapshot_restore_round_trips_pending_and_running() {
+fn snapshot_restore_round_trips_pending_and_reclaims_running() {
     let mut q = Queue::new(policy("{repo}", Mode::Fifo, false));
     q.submit(ev(json!({"repo": "a", "sha": "1"})));
     q.submit(ev(json!({"repo": "b", "sha": "2"})));
@@ -42,15 +42,19 @@ fn snapshot_restore_round_trips_pending_and_running() {
     q.submit(ev(json!({"repo": "c", "sha": "3"})));
 
     let snapshot = q.snapshot();
-    assert_eq!(snapshot.running, Some(active));
+    assert_eq!(snapshot.running, Some(active.clone()));
     assert_eq!(snapshot.pending.len(), 2);
 
-    let RestoreOutcome { queue, dropped } =
-        Queue::restore(policy("{repo}", Mode::Fifo, false), snapshot);
-    assert!(dropped.is_empty());
-    // The interrupted run re-queues at the FRONT — at-least-once.
-    assert_eq!(pending_shas(&queue), ["1", "2", "3"]);
-    assert!(queue.active().is_none(), "restore never marks a run active");
+    let outcome = Queue::restore(policy("{repo}", Mode::Fifo, false), snapshot);
+    // The stale in-flight marker is reclaimed — its owner process is
+    // gone; pending restores in drain order and dispatches.
+    assert_eq!(outcome.reclaimed, Some(active));
+    assert!(outcome.dropped.is_empty());
+    assert_eq!(pending_shas(&outcome.queue), ["2", "3"]);
+    assert!(
+        outcome.queue.active().is_none(),
+        "restore never marks a run active"
+    );
 }
 
 #[test]
@@ -150,10 +154,10 @@ fn restore_dedupes_pending_like_live_submits() {
 }
 
 #[test]
-fn running_marker_requeues_at_front_under_latest_wins() {
+fn running_marker_is_reclaimed_under_latest_wins() {
     // running key "a" seq 1 + pending same-key "a" seq 5 (newer):
-    // latest-wins supersedes the interrupted run with the newer
-    // trigger — it inherits the front position.
+    // the stale marker never re-enters the queue — the newer
+    // trigger is the only survivor either way.
     let snapshot = QueueSnapshot {
         pending: vec![Job {
             seq: 5,
@@ -166,12 +170,20 @@ fn running_marker_requeues_at_front_under_latest_wins() {
             event: ev(json!({"repo": "a", "sha": "interrupted"})),
         }),
     };
-    let restored = Queue::restore(policy("{repo}", Mode::LatestWins, false), snapshot).queue;
-    assert_eq!(pending_shas(&restored), ["newer"]);
+    let outcome = Queue::restore(policy("{repo}", Mode::LatestWins, false), snapshot);
+    assert_eq!(pending_shas(&outcome.queue), ["newer"]);
+    assert_eq!(
+        outcome.reclaimed.unwrap().event.payload["sha"],
+        "interrupted"
+    );
 }
 
 #[test]
-fn running_marker_requeues_at_front_under_fifo() {
+fn running_marker_is_reclaimed_under_fifo() {
+    // fifo used to re-queue the interrupted run at the front
+    // (at-least-once); now the stale marker is reclaimed outright —
+    // a dead process's job must never hold the single run slot
+    // ahead of pending triggers.
     let snapshot = QueueSnapshot {
         pending: vec![Job {
             seq: 5,
@@ -184,9 +196,16 @@ fn running_marker_requeues_at_front_under_fifo() {
             event: ev(json!({"repo": "a", "sha": "interrupted"})),
         }),
     };
-    let restored = Queue::restore(policy("{repo}", Mode::Fifo, false), snapshot).queue;
-    // fifo: every trigger runs — interrupted first, then pending.
-    assert_eq!(pending_shas(&restored), ["interrupted", "pending"]);
+    let mut outcome = Queue::restore(policy("{repo}", Mode::Fifo, false), snapshot);
+    assert_eq!(pending_shas(&outcome.queue), ["pending"]);
+    assert_eq!(
+        outcome.reclaimed.unwrap().event.payload["sha"],
+        "interrupted"
+    );
+    // The pending job drains immediately — nothing stale holds the
+    // run slot.
+    let drained = outcome.queue.drain().unwrap();
+    assert_eq!(drained.event.payload["sha"], "pending");
 }
 
 // ---------------------------------------------------------------------------
@@ -249,8 +268,10 @@ fn memory_store_round_trips_a_snapshot() {
     let snapshot = store.load().unwrap();
     assert_eq!(snapshot.running, Some(active));
     assert_eq!(snapshot.pending.len(), 2);
-    let restored = Queue::restore(policy("{repo}", Mode::Fifo, false), snapshot).queue;
-    assert_eq!(pending_shas(&restored), ["1", "2", "3"]);
+    let outcome = Queue::restore(policy("{repo}", Mode::Fifo, false), snapshot);
+    // The stale marker is reclaimed; pending restores in drain order.
+    assert!(outcome.reclaimed.is_some());
+    assert_eq!(pending_shas(&outcome.queue), ["2", "3"]);
 }
 
 #[test]

@@ -14,9 +14,12 @@
 //! `load` merges the per-key rows back into drain order (`seq`
 //! ascending) and hands the snapshot to
 //! [`Queue::restore`](peregrin_queue::Queue::restore), which
-//! re-validates every entry against the campaign's `supersede:`
-//! policy — a corrupt row is skipped here with a warning and dropped
-//! there if its key doesn't resolve.
+//! re-validates every pending entry against the campaign's
+//! `supersede:` policy and *reclaims* the `queue_running` marker —
+//! it is stale by definition at boot (its owner process is gone), so
+//! the interrupted trigger is consumed rather than re-run — a
+//! corrupt row is skipped here with a warning and dropped there if
+//! its key doesn't resolve.
 
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard};
