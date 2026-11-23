@@ -14,18 +14,13 @@ workspace = true
 peregrin-bus.workspace = true
 peregrin-core.workspace = true
 serde_json.workspace = true
-thiserror.workspace = true
+lampy-telemetry.workspace = true
+lampy-telemetry-otel.workspace = true
 tracing.workspace = true
-# Pinned exact, same convention as hypha-telemetry: 0.33 pairs with
-# opentelemetry-otlp 0.33.
+# Pinned exact, same convention lampy uses: 0.33 pairs with
+# opentelemetry-otlp 0.33 (the exporter itself lives in lampy).
 opentelemetry = "=0.33.0"
 opentelemetry_sdk = { version = "=0.33.0", default-features = false, features = [
-  "trace",
-  "metrics",
-] }
-opentelemetry-otlp = { version = "=0.33.0", default-features = false, features = [
-  "http-proto",
-  "reqwest-blocking-client",
   "trace",
   "metrics",
 ] }

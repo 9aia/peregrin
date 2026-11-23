@@ -1330,7 +1330,10 @@ fn run_push(cmd: &PushCommands) -> Result<(), CliError> {
 /// coverage comes from tests that launch `peregrin serve` for real.
 #[cfg(coverage)]
 fn serve(ephemeral: bool) -> Result<(), CliError> {
-    let _telemetry = hypha_telemetry::init();
+    let spec = lampy_telemetry::TelemetrySpec::service("peregrin")
+        .with_alias("PEREGRIN")
+        .with_alias("HYPHA");
+    let _telemetry = lampy_telemetry_otel::init(&spec, env!("CARGO_PKG_NAME"));
     let mut env = peregrin_http::Env::parse().map_err(|e| CliError(e.to_string()))?;
     env.ephemeral |= ephemeral;
     let _ = env;
@@ -1344,7 +1347,10 @@ fn serve(ephemeral: bool) -> Result<(), CliError> {
     // fmt + RUST_LOG as always; OTLP span export layered on when
     // HYPHA_OTEL_ENDPOINT / OTEL_EXPORTER_OTLP_* is set. The guard's
     // Drop flushes the provider when `block_on` returns.
-    let _telemetry = hypha_telemetry::init();
+    let spec = lampy_telemetry::TelemetrySpec::service("peregrin")
+        .with_alias("PEREGRIN")
+        .with_alias("HYPHA");
+    let _telemetry = lampy_telemetry_otel::init(&spec, env!("CARGO_PKG_NAME"));
     let mut env = peregrin_http::Env::parse().map_err(|e| CliError(e.to_string()))?;
     // `--ephemeral` is the flag spelling of `PEREGRIN_EPHEMERAL=1`.
     env.ephemeral |= ephemeral;

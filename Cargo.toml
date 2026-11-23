@@ -126,7 +126,11 @@ sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main",
 # capabilities, hub credential env) pending merge to `main`; flip back
 # to `main` once it lands. All hypha deps MUST share one branch/rev —
 # mixed revisions duplicate crates and split types.
-hypha-telemetry = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+# Telemetry expertise lives in 9aia/lampy (P-042/PL-023) — pinned
+# git dep, rev = lampy decouple/pl-023. `HYPHA_OTEL_*` remains a
+# supported alias (peregrin rode hypha-telemetry's env contract).
+lampy-telemetry = { git = "ssh://git@github.com/9aia/lampy.git", rev = "04c89924413c5e169e5b6c48d7e5897be53be85c", version = "0.1.0" }
+lampy-telemetry-otel = { git = "ssh://git@github.com/9aia/lampy.git", rev = "04c89924413c5e169e5b6c48d7e5897be53be85c", version = "0.1.0" }
 hypha-secret = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-secret-cuora = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-keyring = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }

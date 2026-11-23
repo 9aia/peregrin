@@ -2504,6 +2504,29 @@ dependencies = [
 ]
 
 [[package]]
+name = "lampy-telemetry"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/lampy.git?rev=04c89924413c5e169e5b6c48d7e5897be53be85c#04c89924413c5e169e5b6c48d7e5897be53be85c"
+dependencies = [
+ "thiserror 2.0.21",
+]
+
+[[package]]
+name = "lampy-telemetry-otel"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/lampy.git?rev=04c89924413c5e169e5b6c48d7e5897be53be85c#04c89924413c5e169e5b6c48d7e5897be53be85c"
+dependencies = [
+ "http 1.5.0",
+ "lampy-telemetry",
+ "opentelemetry",
+ "opentelemetry-otlp",
+ "opentelemetry_sdk",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "lazy_static"
 version = "1.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3112,7 +3135,8 @@ dependencies = [
  "hypha-keyring",
  "hypha-secret",
  "hypha-systemd",
- "hypha-telemetry",
+ "lampy-telemetry",
+ "lampy-telemetry-otel",
  "nix",
  "pavo-driver-kit",
  "pavo-protocol",
@@ -3388,7 +3412,7 @@ dependencies = [
  "hypha-kv",
  "hypha-kv-file",
  "hypha-push",
- "hypha-telemetry",
+ "lampy-telemetry-otel",
  "nix",
  "peregrin-secret-cuora",
  "peregrin-session",
@@ -3423,7 +3447,8 @@ dependencies = [
  "hypha-hub",
  "hypha-node-api",
  "hypha-sync",
- "hypha-telemetry",
+ "lampy-telemetry",
+ "lampy-telemetry-otel",
  "peregrin-core",
  "serde_json",
  "tempfile",
@@ -3472,7 +3497,8 @@ dependencies = [
  "hypha-keyring",
  "hypha-node-api",
  "hypha-secret",
- "hypha-telemetry",
+ "lampy-telemetry",
+ "lampy-telemetry-otel",
  "nix",
  "peregrin-bus",
  "peregrin-core",
@@ -3618,13 +3644,13 @@ dependencies = [
 name = "peregrin-telemetry"
 version = "0.3.0"
 dependencies = [
+ "lampy-telemetry",
+ "lampy-telemetry-otel",
  "opentelemetry",
- "opentelemetry-otlp",
  "opentelemetry_sdk",
  "peregrin-bus",
  "peregrin-core",
  "serde_json",
- "thiserror 2.0.21",
  "tracing",
 ]
 
