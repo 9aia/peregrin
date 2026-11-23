@@ -30,6 +30,21 @@ takeover decisions, multi-node merge/route/queue) plus orchestration
 (campaigns, drivers, transport). `peregrin-node` drives sepia's
 session plane over the wire — it never reimplements it.
 
+## Boundary with bupha
+
+peregrin owns *all workflow semantics* — including CI gates, which
+are just campaigns. A repo's gate is a committed
+`workflows/gate.yaml` composing `tamias:handl-gates//…` fragments,
+and forge webhook ingress is a campaign driver
+(`github-webhook` → `ci-job` entities) that normalizes deliveries
+into agnostic entities. bupha is the per-push runner adapter —
+queue, detached worktree@sha, runner, forge status write-back via
+`lasius-forge` — and in production never parses forge payloads; its
+own `github` source is the standalone/dev fallback. The contract
+between them is the `run.result` artifact (GH Checks-style
+status/conclusion/output): bupha maps `conclusion` → forge commit
+status. `ci.sh` is being retired in favor of `gate.yaml`.
+
 ## Layout
 
 The crate map is generated from the workspace Cargo.tomls — see [AGENTS.md](AGENTS.md) for the dev map and [the docs site](https://9aia.com/peregrin/) for depth.
