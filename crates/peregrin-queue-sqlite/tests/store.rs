@@ -114,6 +114,44 @@ fn corrupt_rows_are_skipped_on_load() {
 }
 
 #[test]
+fn stale_running_marker_is_reclaimed_on_restore() {
+    use peregrin_queue::{Mode, Queue, Supersede};
+
+    let path = store_path("queue.db");
+    {
+        // "Process 1" dies mid-run: A in-flight, B pending.
+        let store = SqliteQueueStore::open(&path).unwrap();
+        store.persist_key("a", &[job(2, "a", "B")]).unwrap();
+        store.set_running(Some(&job(1, "a", "A"))).unwrap();
+    }
+    // "Process 2" opens the same file. `load` still reports the
+    // marker — the store moves bytes — but `Queue::restore` (the
+    // boot path every supervisor takes) reclaims it: the owner is a
+    // dead process, so the interrupted trigger is consumed, not
+    // re-run, and pending jobs dispatch immediately.
+    let store = SqliteQueueStore::open(&path).unwrap();
+    let snapshot = store.load().unwrap();
+    assert!(snapshot.running.is_some(), "store reports the marker");
+    let outcome = Queue::restore(
+        Supersede {
+            key: "{repo}".to_string(),
+            mode: Mode::Fifo,
+            cancel_running: false,
+        },
+        snapshot,
+    );
+    assert_eq!(
+        outcome.reclaimed.unwrap().event.payload["sha"],
+        "A",
+        "stale in-flight marker reclaimed"
+    );
+    let mut queue = outcome.queue;
+    let drained = queue.drain().unwrap();
+    assert_eq!(drained.event.payload["sha"], "B");
+    assert!(queue.drain().is_none(), "nothing stale re-queued");
+}
+
+#[test]
 fn empty_store_loads_an_empty_snapshot() {
     let path = store_path("queue.db");
     let store = SqliteQueueStore::open(&path).unwrap();

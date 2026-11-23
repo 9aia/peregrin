@@ -5,9 +5,12 @@
 //! clobber each other) plus the in-flight marker.
 //!
 //! Semantics mirror bupha's proven `PersistedQueue{pending, running}`
-//! lesson: on boot the `running` job re-queues at the *front*
-//! (at-least-once — an interrupted run gets another shot) and pending
-//! entries restore in drain order. [`crate::Queue::restore`] does the
+//! shape: pending entries restore in drain order and the `running`
+//! marker comes back *reclaimed* — [`crate::Queue::restore`] treats
+//! it as stale (its owner process is gone at boot) rather than
+//! re-queueing a dead process's job at the front of the
+//! single-slot queue, where a wedged re-run would block every
+//! pending trigger behind it. [`crate::Queue::restore`] does the
 //! re-validation and re-enqueueing; the store only moves bytes.
 //!
 //! [`MemoryQueueStore`] is the in-memory impl — tests and embedders
@@ -69,7 +72,10 @@ impl From<std::io::Error> for QueueStoreError {
 pub trait QueueStore: Send + Sync {
     /// Load the persisted snapshot — pending jobs merged across all
     /// keys in drain order (`seq` ascending) plus the in-flight
-    /// marker. Corrupt *entries* may be skipped by the impl (they're
+    /// marker. The marker is *stale* whenever `load` runs at boot —
+    /// its owner process is gone; [`crate::Queue::restore`] reclaims
+    /// it rather than re-running the dead process's job. Corrupt
+    /// *entries* may be skipped by the impl (they're
     /// re-validated again by [`crate::Queue::restore`]); a failure to
     /// read the store itself is an error.
     ///
