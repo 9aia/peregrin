@@ -21,6 +21,4 @@ sepia-driver-cursor = { path = "../sepia/crates/sepia-driver-cursor" }
 hypha-secret = { path = "../hypha/crates/hypha-secret" }
 hypha-keyring = { path = "../hypha/crates/hypha-keyring" }
 hypha-dotenv = { path = "../hypha/crates/hypha-dotenv" }
-hypha-service = { path = "../hypha/crates/hypha-service" }
-hypha-systemd = { path = "../hypha/crates/hypha-systemd" }
 hypha-telemetry = { path = "../hypha/crates/hypha-telemetry" }
