@@ -806,7 +806,7 @@ async fn held_watch_and_project_feeds() {
 /* ---- fake planes: every op Ok / every op Err ------------------------*/
 
 use peregrin_session::SessionPlane;
-use sepia_acp::PromptPart;
+use sepia_acp::{AvailableCommand, PromptPart};
 use sepia_proto::SessionEvent;
 use sepia_session::{
     AgentInfo, AttachResult, ControlError, ControlErrorCode, CreateResult, HistoryOptions,
@@ -918,6 +918,24 @@ impl SessionPlane for OkPlane {
         }
         Ok(wait_result(id))
     }
+    async fn commands(
+        &self,
+        _id: &str,
+        _a: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError> {
+        Ok(Vec::new())
+    }
+    async fn command(
+        &self,
+        _id: &str,
+        _n: &str,
+        _args: Option<&str>,
+        _text: Option<&str>,
+        _t: Option<Duration>,
+        _a: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        Err(boom())
+    }
     async fn set_mode(&self, _id: &str, _m: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Ok(())
     }
@@ -984,24 +1002,6 @@ impl SessionPlane for OkPlane {
     ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
         let (_tx, rx) = broadcast::channel(8);
         Ok(rx)
-    }
-    async fn commands(
-        &self,
-        _id: &str,
-        _a: Option<&str>,
-    ) -> Result<Vec<sepia_acp::AvailableCommand>, ControlError> {
-        Ok(vec![])
-    }
-    async fn command(
-        &self,
-        _id: &str,
-        _name: &str,
-        _args: Option<&str>,
-        _text: Option<&str>,
-        _timeout: Option<Duration>,
-        _a: Option<&str>,
-    ) -> Result<PromptWaitResult, ControlError> {
-        Err(ControlError::new(ControlErrorCode::Unsupported, "stub"))
     }
     async fn list_agents(&self) -> Vec<AgentInfo> {
         vec![]
@@ -1071,6 +1071,24 @@ impl SessionPlane for FailPlane {
     ) -> Result<PromptWaitResult, ControlError> {
         Err(boom())
     }
+    async fn commands(
+        &self,
+        _id: &str,
+        _a: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError> {
+        Err(boom())
+    }
+    async fn command(
+        &self,
+        _id: &str,
+        _n: &str,
+        _args: Option<&str>,
+        _text: Option<&str>,
+        _t: Option<Duration>,
+        _a: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        Err(boom())
+    }
     async fn set_mode(&self, _id: &str, _m: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Err(boom())
     }
@@ -1130,24 +1148,6 @@ impl SessionPlane for FailPlane {
         _a: Option<&str>,
     ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
         Err(boom())
-    }
-    async fn commands(
-        &self,
-        _id: &str,
-        _a: Option<&str>,
-    ) -> Result<Vec<sepia_acp::AvailableCommand>, ControlError> {
-        Ok(vec![])
-    }
-    async fn command(
-        &self,
-        _id: &str,
-        _name: &str,
-        _args: Option<&str>,
-        _text: Option<&str>,
-        _timeout: Option<Duration>,
-        _a: Option<&str>,
-    ) -> Result<PromptWaitResult, ControlError> {
-        Err(ControlError::new(ControlErrorCode::Unsupported, "stub"))
     }
     async fn list_agents(&self) -> Vec<AgentInfo> {
         vec![]
@@ -2054,6 +2054,24 @@ impl SessionPlane for StreamPlane {
     ) -> Result<PromptWaitResult, ControlError> {
         unimplemented!()
     }
+    async fn commands(
+        &self,
+        _id: &str,
+        _a: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError> {
+        unimplemented!()
+    }
+    async fn command(
+        &self,
+        _id: &str,
+        _n: &str,
+        _args: Option<&str>,
+        _text: Option<&str>,
+        _t: Option<Duration>,
+        _a: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        unimplemented!()
+    }
     async fn set_mode(&self, _id: &str, _m: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Ok(())
     }
@@ -2122,24 +2140,6 @@ impl SessionPlane for StreamPlane {
             return Ok(rx);
         }
         Ok(self.tx.subscribe())
-    }
-    async fn commands(
-        &self,
-        _id: &str,
-        _a: Option<&str>,
-    ) -> Result<Vec<sepia_acp::AvailableCommand>, ControlError> {
-        Ok(vec![])
-    }
-    async fn command(
-        &self,
-        _id: &str,
-        _name: &str,
-        _args: Option<&str>,
-        _text: Option<&str>,
-        _timeout: Option<Duration>,
-        _a: Option<&str>,
-    ) -> Result<PromptWaitResult, ControlError> {
-        Err(ControlError::new(ControlErrorCode::Unsupported, "stub"))
     }
     async fn list_agents(&self) -> Vec<AgentInfo> {
         vec![]
