@@ -2,17 +2,23 @@
 //! with `include`/`snippet` expansion and `.handl/` file discovery
 //! (port of `ac-loader-yaml` + `ac-file-router`).
 //!
-//! Pipeline (matching the TS `loadRaw`, in order):
+//! The generic expansion passes (`include:`/`snippet:` keys,
+//! `${include(...)}`/`${snippet(...)}` strings, `tamias:` refs) are
+//! delegated to [`scarab_compose::Composer`] — the same pipeline,
+//! minus the campaign-model concerns that stay here. Pipeline
+//! (matching the TS `loadRaw`, in order):
 //! 1. parse YAML → must be a mapping
 //! 2. auto-discover `.handl/` + base-dir `*.node/snippet/config/fn/event`
 //!    artifacts and fold them into the raw mapping
-//! 3. `resolveIncludeDict` — dict-level `include:` keys
-//! 4. `resolveSnippetDefinitions` — `snippets:` inheritance fixpoint
-//! 5. `resolveSnippetRefs` — dict-level `snippet:` keys
-//! 6. `resolveSnippetStrings` — `${snippet(name)}` expressions
-//! 7. `resolveIncludeStrings` — `${include(path)}` expressions
-//! 8. `rejectWithKey` — `with:` fields are a hard error
-//! 9. `Campaign::from_dict` — typed model + load-time normalization
+//! 3. `scarab-compose` expansion — `include:` dict keys, `snippets:`
+//!    inheritance fixpoint, `snippet:` keys, `${snippet(...)}` then
+//!    `${include(...)}` strings (a document-level `extends:` chain
+//!    would also resolve here; campaigns don't use it)
+//! 4. `dedupe_node_ids` — include/overlay array concats keep the
+//!    first (local) definition of a redefined node `id`
+//! 5. `rejectWithKey` — `with:` fields are a hard error
+//! 6. `params.schema.json` validation (via `scarab-validate`)
+//! 7. `Campaign::from_dict` — typed model + load-time normalization
 //!
 //! Template `${...}` expressions (`${state.*}`, `${config.*}`, …) are
 //! *not* touched here — they resolve at eval time in peregrin-template.
@@ -20,22 +26,17 @@
 mod discover;
 mod expand;
 mod parse;
-mod tamias;
 
-use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use peregrin_loader::{LoadError, Loader};
+use scarab_compose::Composer;
+pub use scarab_compose::TamiasRoots;
 use serde_json::{Map, Value};
 
 pub use discover::{DiscoveredFiles, Entry, discover};
 pub use expand::{dedupe_node_ids, deep_merge, merge_documents};
-use expand::{
-    resolve_include_dict, resolve_include_strings, resolve_snippet_definitions,
-    resolve_snippet_refs, resolve_snippet_strings,
-};
 use parse::{parse_json, parse_yaml, read_text_file};
-pub use tamias::TamiasRoots;
 
 /// `autoDiscover` — fold discovered `*.node`/`*.snippet`/`*.config`/
 /// `*.event.json`/`*.fn` artifacts into the raw mapping.
@@ -194,7 +195,10 @@ impl YamlLoader {
         base_dir: &Path,
         store_root: &Path,
     ) -> Result<Map<String, Value>, LoadError> {
-        self.load_raw_with_tamias_roots(text, base_dir, &TamiasRoots::store_only(store_root))
+        // Store root pinned, fetch cache env-derived — the
+        // `Composer::with_tamias_roots` shape for one pinned leg.
+        let roots = TamiasRoots::new(store_root, cache_root());
+        Self::load_raw_inner(text, base_dir, Some(&roots))
     }
 
     /// [`load_raw`](Self::load_raw) with `tamias:` includes resolved
@@ -219,21 +223,26 @@ impl YamlLoader {
         let Value::Object(mut raw) = parsed else {
             return Err(LoadError::new("workflow must be a mapping"));
         };
+        // Discovery folds `.handl/`/base-dir artifacts into the mapping
+        // *before* expansion — discovered snippets/nodes/config take
+        // part in the include/snippet passes like inline content.
         auto_discover(&mut raw, base_dir)?;
-        let resolved =
-            resolve_include_dict(&Value::Object(raw), base_dir, tamias, &mut HashSet::new())?;
-        let Value::Object(raw) = resolved else {
-            return Err(LoadError::new("workflow must be a mapping"));
+        // `Composer` consumes text, not a `Value` — the post-discovery
+        // mapping round-trips through YAML. The parse already coerced
+        // keys to strings, so re-parse is lossless for our purposes.
+        let text = serde_yaml_ng::to_string(&Value::Object(raw))
+            .map_err(|e| LoadError::caused("Failed to serialize workflow", e))?;
+        let composer = match tamias {
+            // `None` → env-derived roots (`TAMIAS_HOME`/XDG/`HOME`),
+            // the same chain `Composer::new` and the old local
+            // `tamias::resolve` used.
+            Some(roots) => Composer::with_tamias_roots(roots.clone()),
+            None => Composer::new(),
         };
-        let snippets = match raw.get("snippets") {
-            None => Map::new(),
-            Some(Value::Object(map)) => resolve_snippet_definitions(map)?,
-            Some(_) => return Err(LoadError::new("'snippets' must be a mapping")),
-        };
-        let raw = resolve_snippet_refs(&Value::Object(raw), &snippets, &mut HashSet::new())?;
-        let raw = resolve_snippet_strings(&raw, &snippets, &mut HashSet::new())?;
-        let raw = resolve_include_strings(&raw, base_dir, tamias, &mut HashSet::new())?;
-        let Value::Object(mut raw) = raw else {
+        let resolved = composer
+            .resolve_yaml(&text, base_dir)
+            .map_err(|e| LoadError::caused(e.reason().to_string(), e))?;
+        let Value::Object(mut raw) = resolved else {
             return Err(LoadError::new("workflow must be a mapping"));
         };
         // Include/overlay merges concat `nodes:` local-first — a
@@ -244,6 +253,21 @@ impl YamlLoader {
         validate_params_schema(&raw, base_dir)?;
         Ok(raw)
     }
+}
+
+/// The tamias fetch-cache root — `tamias-cli`'s `cache_root` chain
+/// (`TAMIAS_CACHE` → `XDG_CACHE_HOME` → `HOME`), the env-derived leg of
+/// [`load_raw_with_tamias_store`](YamlLoader::load_raw_with_tamias_store).
+/// (The store root is pinned by the caller; `Composer::new` covers the
+/// both-env-derived case.)
+fn cache_root() -> PathBuf {
+    if let Some(root) = std::env::var_os("TAMIAS_CACHE") {
+        return PathBuf::from(root);
+    }
+    std::env::var_os("XDG_CACHE_HOME")
+        .map(|d| PathBuf::from(d).join("tamias/fetch"))
+        .or_else(|| std::env::var_os("HOME").map(|h| PathBuf::from(h).join(".cache/tamias/fetch")))
+        .unwrap_or_else(|| PathBuf::from(".tamias/fetch"))
 }
 
 /// `params.schema.json` (ADR-0081 / I-022) — when the loaded file's

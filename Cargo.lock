@@ -3435,8 +3435,8 @@ dependencies = [
 name = "peregrin-loader"
 version = "0.3.0"
 dependencies = [
- "jsonschema",
  "peregrin-core",
+ "scarab-validate",
  "serde_json",
  "thiserror 2.0.21",
 ]
@@ -3447,10 +3447,10 @@ version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-loader",
+ "scarab-compose",
  "serde_json",
  "serde_yaml_ng",
  "tamias-core",
- "tamias-install",
  "tamias-registry",
  "tamias-registry-local",
  "tamias-store-local",
@@ -4219,6 +4219,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "scarab-compose"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=85e50d57110b2f785a5c11d8cf55de7737d67257#85e50d57110b2f785a5c11d8cf55de7737d67257"
+dependencies = [
+ "serde_json",
+ "serde_yaml_ng",
+ "tamias-core",
+ "tamias-install",
+ "tamias-store-local",
+ "thiserror 2.0.21",
+ "toml",
+]
+
+[[package]]
 name = "scarab-config"
 version = "0.1.0"
 source = "git+ssh://git@github.com/9aia/scarab.git?rev=9364df88fad0ca46bd838467717a823893f47438#9364df88fad0ca46bd838467717a823893f47438"
@@ -4256,6 +4270,15 @@ dependencies = [
  "scarab-config",
  "serde",
  "serde_yaml_ng",
+]
+
+[[package]]
+name = "scarab-validate"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=85e50d57110b2f785a5c11d8cf55de7737d67257#85e50d57110b2f785a5c11d8cf55de7737d67257"
+dependencies = [
+ "jsonschema",
+ "serde_json",
 ]
 
 [[package]]

@@ -11,8 +11,6 @@ license.workspace = true
 workspace = true
 [dependencies]
 peregrin-core.workspace = true
+scarab-validate.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true
-# `params.schema.json` validation — the org already carries it
-# (kuda-records); draft-2020-12 covers the shipped bundle schemas.
-jsonschema = "0.60.2"
