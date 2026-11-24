@@ -6,7 +6,8 @@
 //!
 //! - [`kind_policies`] — the `sepia-session`/`campaign`
 //!   [`hypha_sync::KindPolicy`] registry the sync engine, feed hook,
-//!   and entity API consume.
+//!   and entity API consume, plus the bupha-provided `ci-job`
+//!   policy (`bupha-peregrin`, P-047).
 //! - the `PEREGRIN_*` env contract — [`HubConfig::from_env`] maps
 //!   `PEREGRIN_HUB_*`/`PEREGRIN_NODE_*`/`PEREGRIN_NODES`/
 //!   `PEREGRIN_HOME` onto [`hypha_hub::HubConfig`] and the env lookup

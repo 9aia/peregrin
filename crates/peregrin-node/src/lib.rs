@@ -11,10 +11,6 @@
 
 pub mod campaign;
 pub mod campaign_entity;
-#[cfg(feature = "bupha")]
-pub mod ci_fleet;
-#[cfg(feature = "bupha")]
-pub mod ci_rehydrate;
 pub mod ephemeral;
 pub mod flows;
 pub mod inject;
@@ -23,28 +19,6 @@ pub mod serve;
 pub mod supervisor;
 
 pub use campaign_entity::{CAMPAIGN_KIND, CampaignEntityPlane};
-
-/// The `kind="ci-job"` entity plane — bupha's CI-job semantics over
-/// hypha's `EntityPlane` port (P-002, the bupha↔hypha/peregrin
-/// seam). `labels` are this node's advertised capabilities — the
-/// `runsOn` claim gate's right-hand side, the same list campaign
-/// `runs_on` matchers read. Only exists under the `bupha` feature.
-/// `watched` is the fleet-resolved spec list ([`ci_fleet::fleet_specs`])
-/// — when non-empty the plane normalizes ci-job indexDocs against it
-/// at create (P-002's "resolved at ingest", sourced from the same
-/// `Config::watched()` the worker execs against).
-#[cfg(feature = "bupha")]
-#[must_use]
-pub fn ci_job_plane(
-    labels: Vec<String>,
-    watched: Vec<bupha_plane::WatchedRepo>,
-) -> Arc<dyn peregrin_http::EntityPlane> {
-    Arc::new(
-        bupha_plane::CiJobPlane::new()
-            .with_labels(labels)
-            .with_watched(watched),
-    )
-}
 
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -131,9 +105,9 @@ pub async fn serve(env: &Env) -> std::io::Result<()> {
 /// The `AppState` both plane modes mount — convert/import ride the
 /// `SessionPlane` itself (`sessions.convert`/`sessions.import` over
 /// `sepia serve`, `Local`'s driver-wire ops in-process), so the seam
-/// wiring is identical either way. Async because the `bupha`
-/// feature's ci-job plane rehydrates from the hub entity index
-/// before the listener binds (T-072).
+/// wiring is identical either way. Async because the ci-job plane
+/// rehydrates from the hub entity index before the listener binds
+/// (T-072).
 async fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
     let convert = {
         let plane = Arc::clone(plane);
@@ -176,7 +150,6 @@ async fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
     // The ci-job plane's `runsOn` gate reads the same capability
     // list — a bupha worker's `[worker] labels` are advertised here
     // via `PEREGRIN_RUNNER_LABELS` (P-002 §4).
-    #[cfg(feature = "bupha")]
     let ci_labels = labels.clone();
     let campaign_plane = Arc::new(CampaignEntityPlane::new().with_labels(labels));
     // `POST /api/events/inject` fans typed events out to every
@@ -198,20 +171,21 @@ async fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
                 )
             },
         )));
-    #[cfg(feature = "bupha")]
-    {
-        // Keep the concrete `Arc` — boot rehydration (T-072) feeds
-        // the hub's entity-index docs straight into the plane before
-        // `run` binds the listener (so the hub's first reconcile sees
-        // the restored state, not an empty plane).
-        let ci_plane = Arc::new(
-            bupha_plane::CiJobPlane::new()
-                .with_labels(ci_labels)
-                .with_watched(ci_fleet::fleet_specs()),
-        );
-        state = state.with_kind(ci_plane.clone());
-        ci_rehydrate::rehydrate(env, &state.node_identity().id, &ci_plane).await;
-    }
+    // The ci-job plane ships from the bupha repo (`bupha-peregrin`,
+    // P-047 — the provider owns the adapter, mirroring
+    // `sepia-peregrin`): keep the concrete `Arc` — boot rehydration
+    // (T-072) feeds the hub's entity-index docs straight into the
+    // plane before `run` binds the listener (so the hub's first
+    // reconcile sees the restored state, not an empty plane).
+    let ci_plane = bupha_peregrin::ci_job_plane(ci_labels, bupha_peregrin::fleet_specs());
+    state = state.with_kind(ci_plane.clone());
+    bupha_peregrin::rehydrate(
+        env.snapshot_target.as_deref(),
+        env.snapshot_token.as_deref(),
+        &state.node_identity().id,
+        &ci_plane,
+    )
+    .await;
     state
 }
 

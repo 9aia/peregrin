@@ -14,9 +14,10 @@ workspace = true
 # credentials, push, HTTP/SSE bridges) lives in `hypha-hub` (PL-005
 # P4b). This crate keeps the Peregrin-specific half: the
 # `PEREGRIN_*` env contract mapped onto `hypha_hub::HubConfig`, the
-# sepia-session/campaign `KindPolicy` registry, and the
-# `peregrin-hub` binary.
+# sepia-session/campaign `KindPolicy` registry plus the bupha-provided
+# ci-job policy, and the `peregrin-hub` binary.
 [dependencies]
+bupha-peregrin.workspace = true
 hypha-hub.workspace = true
 hypha-http.workspace = true
 hypha-node-api.workspace = true

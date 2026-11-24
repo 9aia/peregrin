@@ -154,14 +154,12 @@ hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", vers
 hypha-kv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-kv-file = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 
-# bupha — the `kind="ci-job"` entity plane (P-002, the
-# bupha↔hypha/peregrin seam). Git dep on `main` like the other
-# sibling integrations; `peregrin-node`'s default-on `bupha` feature
-# registers `CiJobPlane` next to `CampaignEntityPlane`.
-bupha-plane = { git = "ssh://git@github.com/9aia/bupha.git", branch = "main", version = "0.2.0" }
-# Fleet-config loading for the ci-job plane's indexDoc normalization
-# (`CiJobPlane::with_watched`) — `peregrin-node`'s `bupha` feature.
-bupha-config-file = { git = "ssh://git@github.com/9aia/bupha.git", branch = "main", version = "0.2.0" }
+# bupha — the `kind="ci-job"` entity plane + hub kind policy + fleet
+# specs + boot rehydrate (P-002, the bupha↔hypha/peregrin seam;
+# P-047 moved the adapter into the provider repo, mirroring
+# `sepia-peregrin`). Pinned to the `decouple/pl-028` rev until that
+# branch lands on `main` — repin to `main` then.
+bupha-peregrin = { git = "ssh://git@github.com/9aia/bupha.git", rev = "1e083b3298c05e1f0f1b0d48aeed78ccf61da7ae", version = "0.2.0" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }
@@ -280,10 +278,14 @@ inherits = "release"
 lto = "fat"
 codegen-units = 1
 
-# bupha-plane declares `hypha-http` over `https://github.com/9aia/
+# bupha's hypha deps (bupha-plane's hypha-http, bupha-peregrin's
+# hypha-{http,node-api,sync}) declare `https://github.com/9aia/
 # hypha.git` (bupha's CI fetches unauthenticated) while every
 # peregrin hypha dep is `ssh://` — patch the https source onto the
-# ssh git dep so the graph holds ONE hypha-http. Two sources would
-# duplicate the crate and split `EntityPlane`/`KindRegistry` types.
+# ssh git dep so the graph holds ONE hypha per crate. Two sources
+# would duplicate the crates and split `EntityPlane`/`KindRegistry`/
+# `KindPolicy` types.
 [patch."https://github.com/9aia/hypha.git"]
 hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-node-api = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+hypha-sync = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }

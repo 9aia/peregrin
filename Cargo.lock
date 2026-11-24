@@ -490,7 +490,7 @@ checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 [[package]]
 name = "bupha-config-file"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#f27249ed9b7636d8663ec95f0e5d1f149c382746"
+source = "git+ssh://git@github.com/9aia/bupha.git?rev=1e083b3298c05e1f0f1b0d48aeed78ccf61da7ae#1e083b3298c05e1f0f1b0d48aeed78ccf61da7ae"
 dependencies = [
  "bupha-core",
  "scarab-config",
@@ -502,7 +502,7 @@ dependencies = [
 [[package]]
 name = "bupha-core"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#f27249ed9b7636d8663ec95f0e5d1f149c382746"
+source = "git+ssh://git@github.com/9aia/bupha.git?rev=1e083b3298c05e1f0f1b0d48aeed78ccf61da7ae#1e083b3298c05e1f0f1b0d48aeed78ccf61da7ae"
 dependencies = [
  "serde",
  "serde_json",
@@ -510,9 +510,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "bupha-peregrin"
+version = "0.2.0"
+source = "git+ssh://git@github.com/9aia/bupha.git?rev=1e083b3298c05e1f0f1b0d48aeed78ccf61da7ae#1e083b3298c05e1f0f1b0d48aeed78ccf61da7ae"
+dependencies = [
+ "bupha-config-file",
+ "bupha-plane",
+ "hypha-http",
+ "hypha-node-api",
+ "hypha-sync",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "bupha-plane"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?branch=main#f27249ed9b7636d8663ec95f0e5d1f149c382746"
+source = "git+ssh://git@github.com/9aia/bupha.git?rev=1e083b3298c05e1f0f1b0d48aeed78ccf61da7ae#1e083b3298c05e1f0f1b0d48aeed78ccf61da7ae"
 dependencies = [
  "async-trait",
  "axum",
@@ -3428,6 +3443,7 @@ version = "0.3.0"
 dependencies = [
  "async-trait",
  "axum",
+ "bupha-peregrin",
  "hypha-http",
  "hypha-hub",
  "hypha-node-api",
@@ -3473,8 +3489,7 @@ version = "0.3.0"
 dependencies = [
  "async-trait",
  "axum",
- "bupha-config-file",
- "bupha-plane",
+ "bupha-peregrin",
  "chrono",
  "cuora-secret",
  "cuora-secret-cuora",
