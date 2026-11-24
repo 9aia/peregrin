@@ -326,7 +326,7 @@ async fn token_gate_and_pairing() {
             dir2,
         )
     };
-    app_state.pairing = Some(Pairing::open(
+    app_state.session.pairing = Some(Pairing::open(
         _dir.path().join("pair-code"),
         _dir.path().join("tokens.json"),
     ));
@@ -985,6 +985,24 @@ impl SessionPlane for OkPlane {
         let (_tx, rx) = broadcast::channel(8);
         Ok(rx)
     }
+    async fn commands(
+        &self,
+        _id: &str,
+        _a: Option<&str>,
+    ) -> Result<Vec<sepia_acp::AvailableCommand>, ControlError> {
+        Ok(vec![])
+    }
+    async fn command(
+        &self,
+        _id: &str,
+        _name: &str,
+        _args: Option<&str>,
+        _text: Option<&str>,
+        _timeout: Option<Duration>,
+        _a: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        Err(ControlError::new(ControlErrorCode::Unsupported, "stub"))
+    }
     async fn list_agents(&self) -> Vec<AgentInfo> {
         vec![]
     }
@@ -1112,6 +1130,24 @@ impl SessionPlane for FailPlane {
         _a: Option<&str>,
     ) -> Result<broadcast::Receiver<Vec<SessionEvent>>, ControlError> {
         Err(boom())
+    }
+    async fn commands(
+        &self,
+        _id: &str,
+        _a: Option<&str>,
+    ) -> Result<Vec<sepia_acp::AvailableCommand>, ControlError> {
+        Ok(vec![])
+    }
+    async fn command(
+        &self,
+        _id: &str,
+        _name: &str,
+        _args: Option<&str>,
+        _text: Option<&str>,
+        _timeout: Option<Duration>,
+        _a: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        Err(ControlError::new(ControlErrorCode::Unsupported, "stub"))
     }
     async fn list_agents(&self) -> Vec<AgentInfo> {
         vec![]
@@ -2087,6 +2123,24 @@ impl SessionPlane for StreamPlane {
         }
         Ok(self.tx.subscribe())
     }
+    async fn commands(
+        &self,
+        _id: &str,
+        _a: Option<&str>,
+    ) -> Result<Vec<sepia_acp::AvailableCommand>, ControlError> {
+        Ok(vec![])
+    }
+    async fn command(
+        &self,
+        _id: &str,
+        _name: &str,
+        _args: Option<&str>,
+        _text: Option<&str>,
+        _timeout: Option<Duration>,
+        _a: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        Err(ControlError::new(ControlErrorCode::Unsupported, "stub"))
+    }
     async fn list_agents(&self) -> Vec<AgentInfo> {
         vec![]
     }
@@ -2108,7 +2162,7 @@ async fn sse_pump_lagged_and_dropped_client_arms() {
         let mut state = AppState::new(Arc::new(plane))
             .with_meta(meta)
             .with_keep_alive(Duration::ZERO);
-        state.feed = feed.clone();
+        state.session.feed = feed.clone();
         (peregrin_http::app(state), feed, dir)
     };
 

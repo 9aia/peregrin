@@ -10,14 +10,11 @@ license.workspace = true
 [lints]
 workspace = true
 [dependencies]
-sepia-acp.workspace = true
+sepia-http.workspace = true
+sepia-meta.workspace = true
+sepia-peregrin.workspace = true
 sepia-session.workspace = true
 peregrin-session.workspace = true
-sepia-convert.workspace = true
-sepia-core.workspace = true
-sepia-meta.workspace = true
-sepia-proto.workspace = true
-sepia-peregrin.workspace = true
 hypha-push.workspace = true
 hypha-http.workspace = true
 hypha-kv.workspace = true
@@ -34,14 +31,15 @@ tracing.workspace = true
 uuid.workspace = true
 time.workspace = true
 axum = "0.8"
-http-body-util = "0.1"
-sha2 = "0.10"
-form_urlencoded = "1"
 nix = { version = "0.29", default-features = false, features = ["hostname", "user"] }
 [dev-dependencies]
+sepia-acp.workspace = true
+sepia-convert.workspace = true
+sepia-core.workspace = true
+sepia-proto.workspace = true
+sepia-testkit.workspace = true
 hypha-push.workspace = true
 tokio = { workspace = true, features = ["test-util"] }
 tower = { version = "0.5", features = ["util"] }
 tempfile.workspace = true
-sepia-testkit.workspace = true
 tracing-subscriber = { version = "0.3", features = ["fmt"] }
