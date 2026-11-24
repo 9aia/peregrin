@@ -132,22 +132,22 @@ sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main",
 # capabilities, hub credential env) pending merge to `main`; flip back
 # to `main` once it lands. All hypha deps MUST share one branch/rev —
 # mixed revisions duplicate crates and split types.
-hypha-telemetry = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-secret = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-secret-cuora = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-keyring = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-dotenv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-service = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-systemd = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-node-api = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-outbox = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-control = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-sync = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-push = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-kv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-kv-file = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-telemetry = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-secret = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-secret-cuora = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-keyring = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-dotenv = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-service = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-systemd = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-node-api = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-outbox = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-control = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-sync = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-push = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-http = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-hub = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-kv = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-kv-file = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 
 # bupha — the `kind="ci-job"` entity plane (P-002, the
 # bupha↔hypha/peregrin seam). Git dep on `main` like the other
@@ -275,10 +275,13 @@ inherits = "release"
 lto = "fat"
 codegen-units = 1
 
-# bupha-plane declares `hypha-http` over `https://github.com/9aia/
-# hypha.git` (bupha's CI fetches unauthenticated) while every
-# peregrin hypha dep is `ssh://` — patch the https source onto the
-# ssh git dep so the graph holds ONE hypha-http. Two sources would
-# duplicate the crate and split `EntityPlane`/`KindRegistry` types.
-[patch."https://github.com/9aia/hypha.git"]
-hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
+# sepia's git deps (branch = "main") still declare hypha over
+# `ssh://` until its decouple/pl-032 lands — patch the ssh source
+# onto https so the graph holds ONE hypha-* set. Two sources would
+# duplicate the crates and split `EntityPlane`/`KindRegistry` types.
+[patch."ssh://git@github.com/9aia/hypha.git"]
+hypha-http = { git = "https://github.com/9aia/hypha.git", branch = "main" }
+hypha-kv = { git = "https://github.com/9aia/hypha.git", branch = "main" }
+hypha-kv-file = { git = "https://github.com/9aia/hypha.git", branch = "main" }
+hypha-push = { git = "https://github.com/9aia/hypha.git", branch = "main" }
+hypha-telemetry = { git = "https://github.com/9aia/hypha.git", branch = "main" }
