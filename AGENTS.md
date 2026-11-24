@@ -28,8 +28,7 @@ names a sepia type in the substrate.
   + `peregrin-sink-github-status` (egress), `peregrin-auth`
   (credentials).
   The substrate crates — `hypha-{node-api,outbox,control,sync,push,
-  http,hub}` plus the earlier `hypha-{secret,keyring,dotenv,service,
-  systemd}` leaves — are extracted to
+  http,hub}` — are extracted to
   [9aia/hypha](https://github.com/9aia/hypha) and consumed as git
   deps. `peregrin-http` composes them: `compose`/`hypha_state` merge
   `hypha_http`'s generic routes (`/api/entities*`, `/api/events`,

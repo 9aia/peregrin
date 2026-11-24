@@ -576,7 +576,7 @@ fn uninstall_in(name: &str, config: Option<&Path>, host: &Path) -> String {
     if host_path.is_file() {
         let _ = std::fs::remove_file(&host_path);
     }
-    let _ = hypha_systemd::remove(&hypha_systemd::default_unit_dir(), name);
+    let _ = tamias_deploy_systemd::LocalDeploy::new().uninstall(name);
     format!("removed config + host config + legacy unit for {name}")
 }
 
@@ -1203,7 +1203,7 @@ provider:
 
     #[test]
     fn uninstall_removes_the_host_config() {
-        // A fake name keeps `hypha_systemd::remove` off any real unit —
+        // A fake name keeps the legacy-unit `uninstall` off any real unit —
         // the host-dir leg is what this test covers.
         let tmp = tempfile::tempdir().unwrap();
         let host = tmp.path().join("host");

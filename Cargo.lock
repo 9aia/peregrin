@@ -912,36 +912,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cuora-secret"
-version = "1.0.4"
-source = "git+ssh://git@github.com/9aia/cuora.git?rev=f81164366bd436a7d4cf204c6e7a83555f50302f#f81164366bd436a7d4cf204c6e7a83555f50302f"
-
-[[package]]
-name = "cuora-secret-cuora"
-version = "1.0.4"
-source = "git+ssh://git@github.com/9aia/cuora.git?rev=f81164366bd436a7d4cf204c6e7a83555f50302f#f81164366bd436a7d4cf204c6e7a83555f50302f"
-dependencies = [
- "cuora-secret",
- "serde_json",
-]
-
-[[package]]
-name = "cuora-secret-dotenv"
-version = "1.0.4"
-source = "git+ssh://git@github.com/9aia/cuora.git?rev=f81164366bd436a7d4cf204c6e7a83555f50302f#f81164366bd436a7d4cf204c6e7a83555f50302f"
-dependencies = [
- "cuora-secret",
-]
-
-[[package]]
-name = "cuora-secret-keyring"
-version = "1.0.4"
-source = "git+ssh://git@github.com/9aia/cuora.git?rev=f81164366bd436a7d4cf204c6e7a83555f50302f#f81164366bd436a7d4cf204c6e7a83555f50302f"
-dependencies = [
- "cuora-secret",
-]
-
-[[package]]
 name = "curl"
 version = "0.4.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1930,16 +1900,24 @@ dependencies = [
 [[package]]
 name = "hypha-control"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "serde",
  "serde_json",
 ]
 
 [[package]]
+name = "hypha-dotenv"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+dependencies = [
+ "hypha-secret",
+]
+
+[[package]]
 name = "hypha-http"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "async-trait",
  "axum",
@@ -1966,7 +1944,7 @@ dependencies = [
 [[package]]
 name = "hypha-hub"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "async-trait",
  "axum",
@@ -1991,9 +1969,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "hypha-keyring"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+dependencies = [
+ "hypha-secret",
+]
+
+[[package]]
 name = "hypha-kv"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "serde",
  "serde_json",
@@ -2002,7 +1988,7 @@ dependencies = [
 [[package]]
 name = "hypha-kv-file"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "hypha-kv",
  "serde",
@@ -2012,7 +1998,7 @@ dependencies = [
 [[package]]
 name = "hypha-node-api"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "async-trait",
  "serde",
@@ -2024,7 +2010,7 @@ dependencies = [
 [[package]]
 name = "hypha-outbox"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "rusqlite",
  "serde",
@@ -2038,7 +2024,7 @@ dependencies = [
 [[package]]
 name = "hypha-push"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "base64 0.22.1",
  "futures",
@@ -2051,14 +2037,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "hypha-service"
+name = "hypha-secret"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+
+[[package]]
+name = "hypha-secret-cuora"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+dependencies = [
+ "hypha-secret",
+ "serde_json",
+]
 
 [[package]]
 name = "hypha-sync"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "hypha-outbox",
  "rusqlite",
@@ -2073,17 +2068,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "hypha-systemd"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
-dependencies = [
- "hypha-service",
-]
-
-[[package]]
 name = "hypha-telemetry"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "http 1.5.0",
  "opentelemetry",
@@ -3091,7 +3078,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 name = "peregrin-auth"
 version = "0.3.0"
 dependencies = [
- "cuora-secret",
+ "hypha-secret",
 ]
 
 [[package]]
@@ -3108,11 +3095,9 @@ name = "peregrin-cli"
 version = "0.3.0"
 dependencies = [
  "clap",
- "cuora-secret",
- "cuora-secret-cuora",
- "cuora-secret-dotenv",
- "cuora-secret-keyring",
- "hypha-systemd",
+ "hypha-dotenv",
+ "hypha-keyring",
+ "hypha-secret",
  "hypha-telemetry",
  "nix",
  "pavo-driver-kit",
@@ -3129,6 +3114,7 @@ dependencies = [
  "peregrin-node",
  "peregrin-queue",
  "peregrin-queue-sqlite",
+ "peregrin-secret-cuora",
  "peregrin-store",
  "peregrin-store-json",
  "peregrin-telemetry",
@@ -3146,7 +3132,8 @@ dependencies = [
  "serde_norway",
  "serde_yaml_ng",
  "tamias-cache-local",
- "tamias-core",
+ "tamias-core 0.1.4",
+ "tamias-deploy-systemd",
  "tamias-install",
  "tamias-source",
  "tamias-source-fs",
@@ -3194,7 +3181,7 @@ dependencies = [
 name = "peregrin-driver"
 version = "0.3.0"
 dependencies = [
- "cuora-secret",
+ "hypha-secret",
  "peregrin-core",
  "peregrin-store",
  "serde_json",
@@ -3243,8 +3230,8 @@ name = "peregrin-driver-github-webhook"
 version = "0.3.0"
 dependencies = [
  "axum",
- "cuora-secret",
  "hex",
+ "hypha-secret",
  "peregrin-core",
  "peregrin-driver",
  "peregrin-engine",
@@ -3350,7 +3337,8 @@ dependencies = [
 name = "peregrin-engine"
 version = "0.3.0"
 dependencies = [
- "cuora-secret",
+ "chrono",
+ "hypha-secret",
  "peregrin-bus",
  "peregrin-core",
  "peregrin-driver",
@@ -3380,7 +3368,6 @@ version = "0.3.0"
 dependencies = [
  "async-trait",
  "axum",
- "cuora-secret-cuora",
  "form_urlencoded",
  "futures",
  "http-body-util",
@@ -3390,6 +3377,7 @@ dependencies = [
  "hypha-push",
  "hypha-telemetry",
  "nix",
+ "peregrin-secret-cuora",
  "peregrin-session",
  "sepia-acp",
  "sepia-convert",
@@ -3434,8 +3422,8 @@ dependencies = [
 name = "peregrin-loader"
 version = "0.3.0"
 dependencies = [
- "jsonschema",
  "peregrin-core",
+ "scarab-validate",
  "serde_json",
  "thiserror 2.0.21",
 ]
@@ -3446,8 +3434,13 @@ version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-loader",
+ "scarab-compose",
  "serde_json",
  "serde_yaml_ng",
+ "tamias-core 0.1.4",
+ "tamias-registry",
+ "tamias-registry-local",
+ "tamias-store-local",
  "tempfile",
 ]
 
@@ -3460,13 +3453,12 @@ dependencies = [
  "bupha-config-file",
  "bupha-plane",
  "chrono",
- "cuora-secret",
- "cuora-secret-cuora",
- "cuora-secret-dotenv",
- "cuora-secret-keyring",
  "futures",
+ "hypha-dotenv",
  "hypha-http",
+ "hypha-keyring",
  "hypha-node-api",
+ "hypha-secret",
  "hypha-telemetry",
  "nix",
  "peregrin-bus",
@@ -3489,6 +3481,7 @@ dependencies = [
  "peregrin-loader-yaml",
  "peregrin-queue",
  "peregrin-queue-sqlite",
+ "peregrin-secret-cuora",
  "peregrin-session",
  "peregrin-sink-github-status",
  "peregrin-store",
@@ -3548,6 +3541,15 @@ version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-remote",
+]
+
+[[package]]
+name = "peregrin-secret-cuora"
+version = "0.3.0"
+dependencies = [
+ "hypha-secret",
+ "hypha-secret-cuora",
+ "tempfile",
 ]
 
 [[package]]
@@ -4204,6 +4206,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "scarab-compose"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=85e50d57110b2f785a5c11d8cf55de7737d67257#85e50d57110b2f785a5c11d8cf55de7737d67257"
+dependencies = [
+ "serde_json",
+ "serde_yaml_ng",
+ "tamias-core 0.1.4",
+ "tamias-install",
+ "tamias-store-local",
+ "thiserror 2.0.21",
+ "toml",
+]
+
+[[package]]
 name = "scarab-config"
 version = "0.1.0"
 source = "git+ssh://git@github.com/9aia/scarab.git?rev=9364df88fad0ca46bd838467717a823893f47438#9364df88fad0ca46bd838467717a823893f47438"
@@ -4241,6 +4257,15 @@ dependencies = [
  "scarab-config",
  "serde",
  "serde_yaml_ng",
+]
+
+[[package]]
+name = "scarab-validate"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=85e50d57110b2f785a5c11d8cf55de7737d67257#85e50d57110b2f785a5c11d8cf55de7737d67257"
+dependencies = [
+ "jsonschema",
+ "serde_json",
 ]
 
 [[package]]
@@ -4999,7 +5024,7 @@ name = "tamias-bin"
 version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-driver",
 ]
 
@@ -5010,7 +5035,7 @@ source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5
 dependencies = [
  "serde",
  "serde_json",
- "tamias-core",
+ "tamias-core 0.1.4",
 ]
 
 [[package]]
@@ -5019,7 +5044,7 @@ version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
  "serde",
- "tamias-core",
+ "tamias-core 0.1.4",
 ]
 
 [[package]]
@@ -5028,7 +5053,7 @@ version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
  "tamias-config",
- "tamias-core",
+ "tamias-core 0.1.4",
  "toml",
 ]
 
@@ -5039,7 +5064,7 @@ source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5
 dependencies = [
  "serde_yaml_ng",
  "tamias-config",
- "tamias-core",
+ "tamias-core 0.1.4",
 ]
 
 [[package]]
@@ -5061,13 +5086,48 @@ dependencies = [
 ]
 
 [[package]]
+name = "tamias-core"
+version = "0.2.0"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=9e03e45b8a68dabccc38290f39e8b80523c20832#9e03e45b8a68dabccc38290f39e8b80523c20832"
+dependencies = [
+ "flate2",
+ "hex",
+ "schemars",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_yaml_ng",
+ "sha2",
+ "tar",
+ "thiserror 2.0.21",
+ "toml",
+]
+
+[[package]]
+name = "tamias-deploy"
+version = "0.2.1"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=9e03e45b8a68dabccc38290f39e8b80523c20832#9e03e45b8a68dabccc38290f39e8b80523c20832"
+dependencies = [
+ "tamias-core 0.2.0",
+]
+
+[[package]]
+name = "tamias-deploy-systemd"
+version = "0.2.1"
+source = "git+ssh://git@github.com/9aia/tamias.git?rev=9e03e45b8a68dabccc38290f39e8b80523c20832#9e03e45b8a68dabccc38290f39e8b80523c20832"
+dependencies = [
+ "tamias-core 0.2.0",
+ "tamias-deploy",
+]
+
+[[package]]
 name = "tamias-driver"
 version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
  "serde_json",
  "serde_yaml_ng",
- "tamias-core",
+ "tamias-core 0.1.4",
 ]
 
 [[package]]
@@ -5081,7 +5141,7 @@ dependencies = [
  "tamias-bin",
  "tamias-cache-local",
  "tamias-config",
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-driver",
  "tamias-sign",
  "tamias-source",
@@ -5101,7 +5161,7 @@ name = "tamias-publish"
 version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-source",
  "tamias-source-fs",
  "tamias-store-local",
@@ -5116,7 +5176,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "tamias-core",
+ "tamias-core 0.1.4",
 ]
 
 [[package]]
@@ -5125,7 +5185,7 @@ version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
  "serde_json",
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-registry",
  "ureq",
 ]
@@ -5136,7 +5196,7 @@ version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
  "serde_json",
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-registry",
 ]
 
@@ -5149,7 +5209,7 @@ dependencies = [
  "tamias-config",
  "tamias-config-toml",
  "tamias-config-yml",
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-publish",
  "tamias-registry",
  "tamias-registry-cf",
@@ -5162,7 +5222,7 @@ version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
  "tamias-config",
- "tamias-core",
+ "tamias-core 0.1.4",
 ]
 
 [[package]]
@@ -5170,7 +5230,7 @@ name = "tamias-source"
 version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
- "tamias-core",
+ "tamias-core 0.1.4",
 ]
 
 [[package]]
@@ -5178,7 +5238,7 @@ name = "tamias-source-cf"
 version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-registry",
  "tamias-registry-cf",
  "tamias-source",
@@ -5190,7 +5250,7 @@ name = "tamias-source-fs"
 version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-source",
 ]
 
@@ -5199,7 +5259,7 @@ name = "tamias-source-git"
 version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-source",
 ]
 
@@ -5208,7 +5268,7 @@ name = "tamias-source-http"
 version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-source",
  "ureq",
 ]
@@ -5219,7 +5279,7 @@ version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
  "tamias-config",
- "tamias-core",
+ "tamias-core 0.1.4",
  "tamias-registry-open",
  "tamias-source",
  "tamias-source-cf",
@@ -5231,7 +5291,7 @@ version = "0.1.5"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
 dependencies = [
  "serde_json",
- "tamias-core",
+ "tamias-core 0.1.4",
 ]
 
 [[package]]

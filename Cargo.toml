@@ -67,6 +67,7 @@ tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f
 tamias-install = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
 tamias-registry = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
 tamias-registry-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
+tamias-deploy-systemd = { git = "ssh://git@github.com/9aia/tamias.git", rev = "9e03e45b8a68dabccc38290f39e8b80523c20832", version = "0.2" }
 peregrin-driver = { path = "crates/peregrin-driver", version = "0.3.0" }
 peregrin-driver-agent = { path = "crates/peregrin-driver-agent", version = "0.3.0" }
 peregrin-driver-council = { path = "crates/peregrin-driver-council", version = "0.3.0" }
@@ -142,8 +143,6 @@ cuora-secret = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd
 cuora-secret-cuora = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd436a7d4cf204c6e7a83555f50302f", version = "1.0.0" }
 cuora-secret-keyring = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd436a7d4cf204c6e7a83555f50302f", version = "1.0.0" }
 cuora-secret-dotenv = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd436a7d4cf204c6e7a83555f50302f", version = "1.0.0" }
-hypha-service = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-systemd = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-node-api = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-outbox = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
 hypha-control = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }

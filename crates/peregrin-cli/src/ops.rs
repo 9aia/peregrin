@@ -93,7 +93,7 @@ impl Default for OpsEnv {
             store_root: tamias_store_root(),
             cache_root: tamias_cache_root(),
             config_dir: config_dir(),
-            unit_dir: hypha_systemd::default_unit_dir(),
+            unit_dir: tamias_deploy_systemd::unit_dir(),
             home: peregrin_node::peregrin_home(),
         }
     }
