@@ -116,6 +116,7 @@ impl AgentRuntime for MockRuntime {
                 env: None,
                 model: None,
                 fallbacks: None,
+                ..Default::default()
             },
         )
         .await

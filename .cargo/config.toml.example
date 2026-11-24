@@ -22,9 +22,15 @@ sepia-driver-cursor = { path = "../sepia/crates/sepia-driver-cursor" }
 bupha-peregrin = { path = "../bupha/crates/bupha-peregrin" }
 
 # Same trick for the extracted hypha substrate crates — sibling
-# checkout at ../hypha.
-[patch."ssh://git@github.com/9aia/hypha.git"]
-hypha-secret = { path = "../hypha/crates/hypha-secret" }
-hypha-keyring = { path = "../hypha/crates/hypha-keyring" }
-hypha-dotenv = { path = "../hypha/crates/hypha-dotenv" }
-hypha-telemetry = { path = "../hypha/crates/hypha-telemetry" }
+# checkout at ../hypha. The patch key is the https spelling the
+# manifests declare (org-wide since PL-032).
+[patch."https://github.com/9aia/hypha.git"]
+hypha-node-api = { path = "../hypha/crates/hypha-node-api" }
+hypha-outbox = { path = "../hypha/crates/hypha-outbox" }
+hypha-control = { path = "../hypha/crates/hypha-control" }
+hypha-sync = { path = "../hypha/crates/hypha-sync" }
+hypha-push = { path = "../hypha/crates/hypha-push" }
+hypha-http = { path = "../hypha/crates/hypha-http" }
+hypha-hub = { path = "../hypha/crates/hypha-hub" }
+hypha-kv = { path = "../hypha/crates/hypha-kv" }
+hypha-kv-file = { path = "../hypha/crates/hypha-kv-file" }

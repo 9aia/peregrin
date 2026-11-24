@@ -105,33 +105,31 @@ scarab-compose = { git = "ssh://git@github.com/9aia/scarab.git", rev = "85e50d57
 scarab-validate = { git = "ssh://git@github.com/9aia/scarab.git", rev = "85e50d57110b2f785a5c11d8cf55de7737d67257", version = "0.1" }
 
 # sepia — the session plane these crates embed, plus `sepia-http`'s
-# session REST surface (PL-027). Pinned to the `decouple/pl-027` rev
-# until that branch lands on `main` — repin to `main` then; sibling-
-# checkout path deps ride `[patch]` (see `.cargo/config.toml.example`).
-sepia-core = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-proto = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-acp = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-session = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-driver = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-host = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-meta = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-convert = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-testkit = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
-sepia-http = { git = "ssh://git@github.com/9aia/sepia.git", rev = "d027657fa069a31f88f23f78c9fc705e8775003a", version = "0.2.0" }
+# session REST surface (PL-027). Tracks `main` — PL-027 and PL-032
+# have landed, so it carries the `sepia serve` store-op surface,
+# https hypha deps, and the org-canonical pavo rev: the graph needs
+# no `[patch]` bridge. Cargo.lock pins the resolved rev.
+sepia-core = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-proto = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-acp = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-session = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-driver = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-host = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-meta = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-convert = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-testkit = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-driver-devin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-driver-cline = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-driver-claude = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-driver-cursor = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-peregrin = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
+sepia-http = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", version = "1.0.0" }
 
-# hypha — the extracted substrate (PL-005): leaf crates landed in P4a
-# (secrets, telemetry, service/systemd, dotenv); the entity-plane
-# crates landed in P4b (node-api, outbox, control, sync, push, http,
-# hub). Git deps on `p4b-compat` — the integration-seam additions
-# (entity host payload, auth-cookie name, agent lister, node
-# capabilities, hub credential env) pending merge to `main`; flip back
-# to `main` once it lands. All hypha deps MUST share one branch/rev —
-# mixed revisions duplicate crates and split types.
+# hypha — the extracted substrate (PL-005): the entity-plane crates
+# (node-api, outbox, control, sync, push, http, hub, kv, kv-file)
+# track `main` over `https` — the org-wide spelling (bupha's CI
+# fetches unauthenticated). All hypha deps MUST share one
+# branch/rev — mixed revisions duplicate crates and split types.
 # Telemetry expertise lives in 9aia/lampy (P-042/PL-023) — pinned
 # git dep, rev = lampy decouple/pl-023. `HYPHA_OTEL_*` remains a
 # supported alias (peregrin rode hypha-telemetry's env contract).
@@ -144,15 +142,15 @@ cuora-secret = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd
 cuora-secret-cuora = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd436a7d4cf204c6e7a83555f50302f", version = "1.0.0" }
 cuora-secret-keyring = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd436a7d4cf204c6e7a83555f50302f", version = "1.0.0" }
 cuora-secret-dotenv = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd436a7d4cf204c6e7a83555f50302f", version = "1.0.0" }
-hypha-node-api = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-outbox = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-control = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-sync = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-push = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-hub = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-kv = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
-hypha-kv-file = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main", version = "0.1.0" }
+hypha-node-api = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
+hypha-outbox = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
+hypha-control = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
+hypha-sync = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
+hypha-push = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
+hypha-http = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
+hypha-hub = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
+hypha-kv = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
+hypha-kv-file = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
 
 # bupha — the `kind="ci-job"` entity plane + hub kind policy + fleet
 # specs + boot rehydrate (P-002, the bupha↔hypha/peregrin seam;
@@ -277,15 +275,3 @@ panic = "unwind" # keep unwind: tests + tokio supervise panics
 inherits = "release"
 lto = "fat"
 codegen-units = 1
-
-# bupha's hypha deps (bupha-plane's hypha-http, bupha-peregrin's
-# hypha-{http,node-api,sync}) declare `https://github.com/9aia/
-# hypha.git` (bupha's CI fetches unauthenticated) while every
-# peregrin hypha dep is `ssh://` — patch the https source onto the
-# ssh git dep so the graph holds ONE hypha per crate. Two sources
-# would duplicate the crates and split `EntityPlane`/`KindRegistry`/
-# `KindPolicy` types.
-[patch."https://github.com/9aia/hypha.git"]
-hypha-http = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-node-api = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
-hypha-sync = { git = "ssh://git@github.com/9aia/hypha.git", branch = "main" }
