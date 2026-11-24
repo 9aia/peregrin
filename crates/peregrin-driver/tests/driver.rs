@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use hypha_secret::Secrets;
+use cuora_secret::Secrets;
 use peregrin_core::Event;
 use peregrin_driver::{Driver, DriverError, ExecutionContext, NoopDriver, RunnerDriver};
 use serde_json::json;
@@ -166,6 +166,10 @@ fn exec_ctx_channels_and_secrets() {
 struct FakeStore(BTreeMap<String, String>);
 
 impl Secrets for FakeStore {
+    fn name(&self) -> &'static str {
+        "fake"
+    }
+
     fn get(&self, name: &str) -> Option<String> {
         self.0.get(name).cloned()
     }

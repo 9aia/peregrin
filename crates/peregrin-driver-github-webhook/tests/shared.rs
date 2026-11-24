@@ -464,7 +464,11 @@ struct CountingSecrets {
     lookups: Arc<Mutex<BTreeMap<String, usize>>>,
 }
 
-impl hypha_secret::Secrets for CountingSecrets {
+impl cuora_secret::Secrets for CountingSecrets {
+    fn name(&self) -> &'static str {
+        "counting"
+    }
+
     fn get(&self, name: &str) -> Option<String> {
         *self
             .lookups
@@ -534,7 +538,11 @@ fn shared_driver_resolves_each_secret_env_once() {
 /// `resolve_secrets` went through `SecretSource::batch`.
 struct BatchOnlySecrets;
 
-impl hypha_secret::Secrets for BatchOnlySecrets {
+impl cuora_secret::Secrets for BatchOnlySecrets {
+    fn name(&self) -> &'static str {
+        "batch-only"
+    }
+
     fn get(&self, _name: &str) -> Option<String> {
         None
     }

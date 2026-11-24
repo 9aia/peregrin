@@ -912,6 +912,36 @@ dependencies = [
 ]
 
 [[package]]
+name = "cuora-secret"
+version = "1.0.4"
+source = "git+ssh://git@github.com/9aia/cuora.git?rev=f81164366bd436a7d4cf204c6e7a83555f50302f#f81164366bd436a7d4cf204c6e7a83555f50302f"
+
+[[package]]
+name = "cuora-secret-cuora"
+version = "1.0.4"
+source = "git+ssh://git@github.com/9aia/cuora.git?rev=f81164366bd436a7d4cf204c6e7a83555f50302f#f81164366bd436a7d4cf204c6e7a83555f50302f"
+dependencies = [
+ "cuora-secret",
+ "serde_json",
+]
+
+[[package]]
+name = "cuora-secret-dotenv"
+version = "1.0.4"
+source = "git+ssh://git@github.com/9aia/cuora.git?rev=f81164366bd436a7d4cf204c6e7a83555f50302f#f81164366bd436a7d4cf204c6e7a83555f50302f"
+dependencies = [
+ "cuora-secret",
+]
+
+[[package]]
+name = "cuora-secret-keyring"
+version = "1.0.4"
+source = "git+ssh://git@github.com/9aia/cuora.git?rev=f81164366bd436a7d4cf204c6e7a83555f50302f#f81164366bd436a7d4cf204c6e7a83555f50302f"
+dependencies = [
+ "cuora-secret",
+]
+
+[[package]]
 name = "curl"
 version = "0.4.51"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1900,24 +1930,16 @@ dependencies = [
 [[package]]
 name = "hypha-control"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "serde",
  "serde_json",
 ]
 
 [[package]]
-name = "hypha-dotenv"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
-dependencies = [
- "hypha-secret",
-]
-
-[[package]]
 name = "hypha-http"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "async-trait",
  "axum",
@@ -1944,7 +1966,7 @@ dependencies = [
 [[package]]
 name = "hypha-hub"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "async-trait",
  "axum",
@@ -1969,17 +1991,9 @@ dependencies = [
 ]
 
 [[package]]
-name = "hypha-keyring"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
-dependencies = [
- "hypha-secret",
-]
-
-[[package]]
 name = "hypha-kv"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "serde",
  "serde_json",
@@ -1988,7 +2002,7 @@ dependencies = [
 [[package]]
 name = "hypha-kv-file"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "hypha-kv",
  "serde",
@@ -1998,7 +2012,7 @@ dependencies = [
 [[package]]
 name = "hypha-node-api"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "async-trait",
  "serde",
@@ -2010,7 +2024,7 @@ dependencies = [
 [[package]]
 name = "hypha-outbox"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "rusqlite",
  "serde",
@@ -2024,7 +2038,7 @@ dependencies = [
 [[package]]
 name = "hypha-push"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "base64 0.22.1",
  "futures",
@@ -2037,28 +2051,14 @@ dependencies = [
 ]
 
 [[package]]
-name = "hypha-secret"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
-
-[[package]]
-name = "hypha-secret-cuora"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
-dependencies = [
- "hypha-secret",
- "serde_json",
-]
-
-[[package]]
 name = "hypha-service"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 
 [[package]]
 name = "hypha-sync"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "hypha-outbox",
  "rusqlite",
@@ -2075,7 +2075,7 @@ dependencies = [
 [[package]]
 name = "hypha-systemd"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "hypha-service",
 ]
@@ -2083,7 +2083,7 @@ dependencies = [
 [[package]]
 name = "hypha-telemetry"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
 dependencies = [
  "http 1.5.0",
  "opentelemetry",
@@ -2501,29 +2501,6 @@ dependencies = [
  "security-framework 3.7.0",
  "windows-sys 0.60.2",
  "zeroize",
-]
-
-[[package]]
-name = "lampy-telemetry"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/lampy.git?rev=04c89924413c5e169e5b6c48d7e5897be53be85c#04c89924413c5e169e5b6c48d7e5897be53be85c"
-dependencies = [
- "thiserror 2.0.21",
-]
-
-[[package]]
-name = "lampy-telemetry-otel"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/lampy.git?rev=04c89924413c5e169e5b6c48d7e5897be53be85c#04c89924413c5e169e5b6c48d7e5897be53be85c"
-dependencies = [
- "http 1.5.0",
- "lampy-telemetry",
- "opentelemetry",
- "opentelemetry-otlp",
- "opentelemetry_sdk",
- "tracing",
- "tracing-opentelemetry",
- "tracing-subscriber",
 ]
 
 [[package]]
@@ -3114,7 +3091,7 @@ checksum = "9b4f627cb1b25917193a259e49bdad08f671f8d9708acfd5fe0a8c1455d87220"
 name = "peregrin-auth"
 version = "0.3.0"
 dependencies = [
- "hypha-secret",
+ "cuora-secret",
 ]
 
 [[package]]
@@ -3131,12 +3108,12 @@ name = "peregrin-cli"
 version = "0.3.0"
 dependencies = [
  "clap",
- "hypha-dotenv",
- "hypha-keyring",
- "hypha-secret",
+ "cuora-secret",
+ "cuora-secret-cuora",
+ "cuora-secret-dotenv",
+ "cuora-secret-keyring",
  "hypha-systemd",
- "lampy-telemetry",
- "lampy-telemetry-otel",
+ "hypha-telemetry",
  "nix",
  "pavo-driver-kit",
  "pavo-protocol",
@@ -3152,7 +3129,6 @@ dependencies = [
  "peregrin-node",
  "peregrin-queue",
  "peregrin-queue-sqlite",
- "peregrin-secret-cuora",
  "peregrin-store",
  "peregrin-store-json",
  "peregrin-telemetry",
@@ -3218,7 +3194,7 @@ dependencies = [
 name = "peregrin-driver"
 version = "0.3.0"
 dependencies = [
- "hypha-secret",
+ "cuora-secret",
  "peregrin-core",
  "peregrin-store",
  "serde_json",
@@ -3267,8 +3243,8 @@ name = "peregrin-driver-github-webhook"
 version = "0.3.0"
 dependencies = [
  "axum",
+ "cuora-secret",
  "hex",
- "hypha-secret",
  "peregrin-core",
  "peregrin-driver",
  "peregrin-engine",
@@ -3374,8 +3350,7 @@ dependencies = [
 name = "peregrin-engine"
 version = "0.3.0"
 dependencies = [
- "chrono",
- "hypha-secret",
+ "cuora-secret",
  "peregrin-bus",
  "peregrin-core",
  "peregrin-driver",
@@ -3405,6 +3380,7 @@ version = "0.3.0"
 dependencies = [
  "async-trait",
  "axum",
+ "cuora-secret-cuora",
  "form_urlencoded",
  "futures",
  "http-body-util",
@@ -3412,9 +3388,8 @@ dependencies = [
  "hypha-kv",
  "hypha-kv-file",
  "hypha-push",
- "lampy-telemetry-otel",
+ "hypha-telemetry",
  "nix",
- "peregrin-secret-cuora",
  "peregrin-session",
  "sepia-acp",
  "sepia-convert",
@@ -3447,8 +3422,7 @@ dependencies = [
  "hypha-hub",
  "hypha-node-api",
  "hypha-sync",
- "lampy-telemetry",
- "lampy-telemetry-otel",
+ "hypha-telemetry",
  "peregrin-core",
  "serde_json",
  "tempfile",
@@ -3460,8 +3434,8 @@ dependencies = [
 name = "peregrin-loader"
 version = "0.3.0"
 dependencies = [
+ "jsonschema",
  "peregrin-core",
- "scarab-validate",
  "serde_json",
  "thiserror 2.0.21",
 ]
@@ -3472,13 +3446,8 @@ version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-loader",
- "scarab-compose",
  "serde_json",
  "serde_yaml_ng",
- "tamias-core",
- "tamias-registry",
- "tamias-registry-local",
- "tamias-store-local",
  "tempfile",
 ]
 
@@ -3491,14 +3460,14 @@ dependencies = [
  "bupha-config-file",
  "bupha-plane",
  "chrono",
+ "cuora-secret",
+ "cuora-secret-cuora",
+ "cuora-secret-dotenv",
+ "cuora-secret-keyring",
  "futures",
- "hypha-dotenv",
  "hypha-http",
- "hypha-keyring",
  "hypha-node-api",
- "hypha-secret",
- "lampy-telemetry",
- "lampy-telemetry-otel",
+ "hypha-telemetry",
  "nix",
  "peregrin-bus",
  "peregrin-core",
@@ -3520,7 +3489,6 @@ dependencies = [
  "peregrin-loader-yaml",
  "peregrin-queue",
  "peregrin-queue-sqlite",
- "peregrin-secret-cuora",
  "peregrin-session",
  "peregrin-sink-github-status",
  "peregrin-store",
@@ -3583,15 +3551,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "peregrin-secret-cuora"
-version = "0.3.0"
-dependencies = [
- "hypha-secret",
- "hypha-secret-cuora",
- "tempfile",
-]
-
-[[package]]
 name = "peregrin-session"
 version = "0.3.0"
 dependencies = [
@@ -3644,13 +3603,13 @@ dependencies = [
 name = "peregrin-telemetry"
 version = "0.3.0"
 dependencies = [
- "lampy-telemetry",
- "lampy-telemetry-otel",
  "opentelemetry",
+ "opentelemetry-otlp",
  "opentelemetry_sdk",
  "peregrin-bus",
  "peregrin-core",
  "serde_json",
+ "thiserror 2.0.21",
  "tracing",
 ]
 
@@ -4245,20 +4204,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "scarab-compose"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/scarab.git?rev=85e50d57110b2f785a5c11d8cf55de7737d67257#85e50d57110b2f785a5c11d8cf55de7737d67257"
-dependencies = [
- "serde_json",
- "serde_yaml_ng",
- "tamias-core",
- "tamias-install",
- "tamias-store-local",
- "thiserror 2.0.21",
- "toml",
-]
-
-[[package]]
 name = "scarab-config"
 version = "0.1.0"
 source = "git+ssh://git@github.com/9aia/scarab.git?rev=9364df88fad0ca46bd838467717a823893f47438#9364df88fad0ca46bd838467717a823893f47438"
@@ -4296,15 +4241,6 @@ dependencies = [
  "scarab-config",
  "serde",
  "serde_yaml_ng",
-]
-
-[[package]]
-name = "scarab-validate"
-version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/scarab.git?rev=85e50d57110b2f785a5c11d8cf55de7737d67257#85e50d57110b2f785a5c11d8cf55de7737d67257"
-dependencies = [
- "jsonschema",
- "serde_json",
 ]
 
 [[package]]

@@ -446,6 +446,72 @@ pub fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
         .collect()
 }
 
+/// Ref namespace — every peregrin secret name lives under
+/// `cuora://peregrin/…` so `cuora list` shows the whole surface.
+pub const CUORA_SCOPE: &str = "peregrin";
+/// Canonical fleet scope — the shared fleet names' single copy
+/// lives at `cuora://bupha/<NAME>` (T-053); consulted only on a
+/// primary miss.
+pub const CUORA_FALLBACK_SCOPE: &str = "bupha";
+/// Sealed-pack scope — the `secrets-ci-webhooks` tamias pack; last
+/// in the chain (packs are the migration target, never an override).
+pub const CUORA_PACK_SCOPE: &str = "secrets-ci-webhooks";
+/// The env knobs the cuora leg reads — the `<PRODUCT>_CUORA_*`
+/// convention (binary override for tests, transport selector,
+/// `get_many` fan-out width).
+pub const CUORA_BIN_ENV: &str = "PEREGRIN_CUORA_BIN";
+pub const CUORA_TRANSPORT_ENV: &str = "PEREGRIN_CUORA_TRANSPORT";
+pub const CUORA_WORKERS_ENV: &str = "PEREGRIN_CUORA_WORKERS";
+/// Default `get_many` fan-out — the serve wire is strictly
+/// one-request-at-a-time per `cuora serve` child, so batch
+/// throughput scales with child processes.
+const CUORA_DEFAULT_WORKERS: usize = 8;
+/// Ceiling on `PEREGRIN_CUORA_WORKERS` — each worker is a `cuora
+/// serve` child (or a concurrent `cuora get` process under cli).
+const CUORA_MAX_WORKERS: usize = 32;
+
+/// The peregrin cuora store — own scope first, then the canonical
+/// bupha fleet scope, then the sealed pack (the ex-
+/// `peregrin-secret-cuora` chain, now native
+/// [`cuora_secret_cuora::CuoraSecrets::with_fallbacks`]). Own-scope-
+/// first preserves names whose scopes legitimately diverge; `set`
+/// always writes the primary scope.
+#[must_use]
+pub fn cuora_store() -> cuora_secret_cuora::CuoraSecrets {
+    cuora_secret_cuora::CuoraSecrets::from_env(CUORA_SCOPE, CUORA_BIN_ENV, CUORA_TRANSPORT_ENV)
+        .with_fallbacks(vec![
+            cuora_secret_cuora::CuoraSecrets::from_env(
+                CUORA_FALLBACK_SCOPE,
+                CUORA_BIN_ENV,
+                CUORA_TRANSPORT_ENV,
+            ),
+            cuora_secret_cuora::CuoraSecrets::from_env(
+                CUORA_PACK_SCOPE,
+                CUORA_BIN_ENV,
+                CUORA_TRANSPORT_ENV,
+            ),
+        ])
+}
+
+/// The process-wide default store — worth sharing under the serve
+/// transport (a fresh store per lookup would spawn and reap
+/// `cuora serve` on every secret read); a no-op under `cli`.
+#[must_use]
+pub fn shared_cuora() -> &'static cuora_secret_cuora::CuoraSecrets {
+    static DEFAULT: std::sync::OnceLock<cuora_secret_cuora::CuoraSecrets> =
+        std::sync::OnceLock::new();
+    DEFAULT.get_or_init(cuora_store)
+}
+
+/// `PEREGRIN_CUORA_WORKERS`, clamped — the `get_many` fan-out.
+#[must_use]
+pub fn cuora_workers() -> usize {
+    std::env::var(CUORA_WORKERS_ENV)
+        .ok()
+        .and_then(|v| v.parse::<usize>().ok())
+        .map_or(CUORA_DEFAULT_WORKERS, |n| n.clamp(1, CUORA_MAX_WORKERS))
+}
+
 /// The default fallback secret stores for `RunOptions.secret_stores`
 /// — the tail of the documented `record → env → cuora → keyring →
 /// file` chain (`ExecutionContext::resolve_secret` runs the record
@@ -453,10 +519,9 @@ pub fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
 /// that missed both):
 ///
 /// 1. **Cuora broker** (`cuora get cuora://peregrin/<NAME>` via the
-///    `cuora` CLI — `peregrin-secret-cuora`) — the canonical store;
-///    `declared_only` like the keyring leg since a lookup spawns a
-///    process, so only names the merged `capabilities.secrets`
-///    grant declares are ever looked up.
+///    `cuora` CLI) — the canonical store; `declared_only` like the
+///    keyring leg since a lookup spawns a process, so only names the
+///    merged `capabilities.secrets` grant declares are ever looked up.
 /// 2. **OS keyring** (`secret-tool`, service `peregrin`) —
 ///    `declared_only`, legacy read-through kept during the cuora
 ///    migration.
@@ -467,13 +532,15 @@ pub fn secrets_from_env_file(path: &Path) -> BTreeMap<String, String> {
 /// values, cross into events or logs.
 #[must_use]
 pub fn default_secret_stores() -> Vec<SecretSource> {
-    default_secret_stores_with(peregrin_secret_cuora::CuoraSecrets::shared_default().clone())
+    default_secret_stores_with(shared_cuora().clone())
 }
 
 /// [`default_secret_stores`] with an explicit cuora leg — the test
-/// seam (a stub `cuora` binary on `CuoraSecrets.bin`).
+/// seam (a stub `cuora` binary via [`cuora_store`]'s env knobs or
+/// [`cuora_secret_cuora::CuoraSecrets::with_bin`]).
 #[must_use]
-pub fn default_secret_stores_with(cuora: peregrin_secret_cuora::CuoraSecrets) -> Vec<SecretSource> {
+pub fn default_secret_stores_with(cuora: cuora_secret_cuora::CuoraSecrets) -> Vec<SecretSource> {
+    let workers = cuora_workers();
     vec![
         SecretSource {
             store: std::rc::Rc::new(cuora.clone()),
@@ -481,17 +548,17 @@ pub fn default_secret_stores_with(cuora: peregrin_secret_cuora::CuoraSecrets) ->
             // The batch channel fuses N sequential vault
             // round-trips into one parallel fan-out — webhook
             // listeners resolve ~140 `secret_env` names at startup.
-            batch: Some(std::rc::Rc::new({
-                move |names: &[&str]| cuora.get_many(names)
+            batch: Some(std::rc::Rc::new(move |names: &[&str]| {
+                cuora.get_many(names, workers)
             })),
         },
         SecretSource {
-            store: std::rc::Rc::new(hypha_keyring::KeyringSecrets::default()),
+            store: std::rc::Rc::new(cuora_secret_keyring::KeyringSecrets::new("peregrin")),
             declared_only: true,
             batch: None,
         },
         SecretSource {
-            store: std::rc::Rc::new(hypha_dotenv::DotenvSecrets { path: env_file() }),
+            store: std::rc::Rc::new(cuora_secret_dotenv::DotenvSecrets::new(env_file())),
             declared_only: false,
             batch: None,
         },
@@ -561,9 +628,11 @@ mod tests {
     #[test]
     fn default_secret_stores_orders_cuora_first() {
         let dir = tempfile::tempdir().unwrap();
-        let stores = default_secret_stores_with(peregrin_secret_cuora::CuoraSecrets::with_bin(
-            stub_cuora(dir.path(), "from-cuora", false),
-        ));
+        let stores = default_secret_stores_with(cuora_store().with_bin(stub_cuora(
+            dir.path(),
+            "from-cuora",
+            false,
+        )));
         assert_eq!(stores.len(), 3);
         assert!(stores[0].declared_only);
         assert!(stores[1].declared_only);

@@ -12,7 +12,15 @@ use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::{Arc, Mutex};
 
-use peregrin_secret_cuora::{BIN_ENV, CuoraServe, CuoraTransport, NAMESPACE, TRANSPORT_ENV};
+use cuora_secret_cuora::{CuoraServe, CuoraTransport};
+
+/// The env knobs — the `<PRODUCT>_CUORA_*` convention, same names
+/// `peregrin_node::campaign::cuora_store` reads (kept local: the
+/// push backend predates and outlives the node's store helper).
+const BIN_ENV: &str = "PEREGRIN_CUORA_BIN";
+const TRANSPORT_ENV: &str = "PEREGRIN_CUORA_TRANSPORT";
+/// Audit actor + serve-client label — the `peregrin` scope.
+const NAMESPACE: &str = "peregrin";
 
 use hypha_kv::KvStore;
 use hypha_push::{Kind, PushStore};

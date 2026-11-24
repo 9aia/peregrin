@@ -10,4 +10,4 @@ license.workspace = true
 [lints]
 workspace = true
 [dependencies]
-hypha-secret.workspace = true
+cuora-secret.workspace = true

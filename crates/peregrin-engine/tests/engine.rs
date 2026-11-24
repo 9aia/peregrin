@@ -1508,7 +1508,11 @@ fn retired_node_drops_its_deferred_emissions() {
 
 struct FakeSecrets(std::collections::BTreeMap<String, String>);
 
-impl hypha_secret::Secrets for FakeSecrets {
+impl cuora_secret::Secrets for FakeSecrets {
+    fn name(&self) -> &'static str {
+        "fake"
+    }
+
     fn get(&self, name: &str) -> Option<String> {
         self.0.get(name).cloned()
     }
