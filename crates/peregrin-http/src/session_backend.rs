@@ -18,7 +18,7 @@
 //! and [`peregrin_session::ServicePlane`] (`sepia serve` wire) — both
 //! already expose every verb the trait needs.
 
-use sepia_acp::PromptPart;
+use sepia_acp::{AvailableCommand, PromptPart};
 use sepia_core::Session;
 use sepia_meta::{RunSpan, SessionMeta};
 use sepia_peregrin::SessionBackend;
@@ -206,6 +206,29 @@ impl SessionBackend for SessionPlaneBackend {
         self.state
             .plane
             .prompt_wait(id, parts.to_vec(), agent, timeout)
+            .await
+    }
+
+    async fn commands(
+        &self,
+        id: &str,
+        agent: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError> {
+        self.state.plane.commands(id, agent).await
+    }
+
+    async fn command(
+        &self,
+        id: &str,
+        name: &str,
+        args: Option<&str>,
+        text: Option<&str>,
+        timeout: Option<std::time::Duration>,
+        agent: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        self.state
+            .plane
+            .command(id, name, args, text, timeout, agent)
             .await
     }
 

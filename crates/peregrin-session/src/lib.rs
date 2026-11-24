@@ -389,6 +389,7 @@ async fn handshake(client: &DriverClient) -> Result<Manifest, RpcError> {
 
 /* ---- typed surface over `sepia serve`'s methods ---- */
 
+use sepia_acp::AvailableCommand;
 use sepia_acp::types::PromptPart;
 use sepia_core::Session;
 use sepia_proto::SessionEvent;
@@ -598,6 +599,51 @@ impl SepiaService {
         self.decode("sessions.prompt_wait", p).await
     }
 
+    /// `sessions.commands` — the agent's advertised slash commands.
+    pub async fn commands_t(
+        &self,
+        id: &str,
+        agent: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError> {
+        let mut p = Self::agent_param(agent);
+        p["id"] = json!(id);
+        self.decode("sessions.commands", p).await
+    }
+
+    /// `sessions.command` — invoke one advertised slash command as a
+    /// prompt turn. `args` is the `/{name} <args>` shorthand; `text`
+    /// is the verbatim command line and wins. Same call-timeout
+    /// reasoning as `prompt_wait_t` — the wire call blocks for the
+    /// whole turn.
+    pub async fn command_t(
+        &self,
+        id: &str,
+        name: &str,
+        args: Option<&str>,
+        text: Option<&str>,
+        timeout: Option<Duration>,
+        agent: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        let mut p = Self::agent_param(agent);
+        p["id"] = json!(id);
+        p["name"] = json!(name);
+        if let Some(a) = args {
+            p["args"] = json!(a);
+        }
+        if let Some(t) = text {
+            p["text"] = json!(t);
+        }
+        if let Some(t) = timeout.filter(|t| !t.is_zero()) {
+            p["timeoutMs"] = json!(t.as_millis() as u64);
+        }
+        let budget = timeout.map_or_else(
+            || Duration::from_secs(48 * 3600),
+            |t| t + Duration::from_secs(300),
+        );
+        self.current().set_call_timeout(budget);
+        self.decode("sessions.command", p).await
+    }
+
     /// `sessions.cancel`.
     pub async fn cancel_t(&self, id: &str, agent: Option<&str>) -> Result<(), ControlError> {
         let mut p = Self::agent_param(agent);
@@ -798,6 +844,25 @@ pub trait SessionPlane: Send + Sync {
         agent: Option<&str>,
         timeout: Option<Duration>,
     ) -> Result<PromptWaitResult, ControlError>;
+    /// The live session's advertised slash commands — the agent's
+    /// last `available_commands_update`; empty when it never sent one.
+    async fn commands(
+        &self,
+        id: &str,
+        agent: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError>;
+    /// Invoke one advertised slash command as a prompt turn —
+    /// `name` must be advertised (`unsupported` otherwise); `args`
+    /// appends to the `/{name}` line, `text` overrides it verbatim.
+    async fn command(
+        &self,
+        id: &str,
+        name: &str,
+        args: Option<&str>,
+        text: Option<&str>,
+        timeout: Option<Duration>,
+        agent: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError>;
     /// Switch a live session's agent mode (`sessions.set_mode` → ACP
     /// `session/set_mode`) — the unattended-run knob for agents that
     /// gate tool use behind permission prompts.
@@ -950,6 +1015,26 @@ impl SessionPlane for LocalPlane {
         timeout: Option<Duration>,
     ) -> Result<PromptWaitResult, ControlError> {
         self.0.prompt_wait(id, &parts, agent, timeout).await
+    }
+    async fn commands(
+        &self,
+        id: &str,
+        agent: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError> {
+        self.0.session_commands(id, agent).await
+    }
+    async fn command(
+        &self,
+        id: &str,
+        name: &str,
+        args: Option<&str>,
+        text: Option<&str>,
+        timeout: Option<Duration>,
+        agent: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        self.0
+            .session_command(id, name, args, text, timeout, agent)
+            .await
     }
     async fn set_mode(
         &self,
@@ -1160,6 +1245,24 @@ impl SessionPlane for ServicePlane {
         timeout: Option<Duration>,
     ) -> Result<PromptWaitResult, ControlError> {
         self.0.prompt_wait_t(id, parts, agent, timeout).await
+    }
+    async fn commands(
+        &self,
+        id: &str,
+        agent: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError> {
+        self.0.commands_t(id, agent).await
+    }
+    async fn command(
+        &self,
+        id: &str,
+        name: &str,
+        args: Option<&str>,
+        text: Option<&str>,
+        timeout: Option<Duration>,
+        agent: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        self.0.command_t(id, name, args, text, timeout, agent).await
     }
     async fn set_mode(
         &self,

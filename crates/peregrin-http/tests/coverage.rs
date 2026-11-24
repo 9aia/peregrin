@@ -806,7 +806,7 @@ async fn held_watch_and_project_feeds() {
 /* ---- fake planes: every op Ok / every op Err ------------------------*/
 
 use peregrin_session::SessionPlane;
-use sepia_acp::PromptPart;
+use sepia_acp::{AvailableCommand, PromptPart};
 use sepia_proto::SessionEvent;
 use sepia_session::{
     AgentInfo, AttachResult, ControlError, ControlErrorCode, CreateResult, HistoryOptions,
@@ -917,6 +917,24 @@ impl SessionPlane for OkPlane {
             return Err(boom());
         }
         Ok(wait_result(id))
+    }
+    async fn commands(
+        &self,
+        _id: &str,
+        _a: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError> {
+        Ok(Vec::new())
+    }
+    async fn command(
+        &self,
+        _id: &str,
+        _n: &str,
+        _args: Option<&str>,
+        _text: Option<&str>,
+        _t: Option<Duration>,
+        _a: Option<&str>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        Err(boom())
     }
     async fn set_mode(&self, _id: &str, _m: &str, _a: Option<&str>) -> Result<(), ControlError> {
         Ok(())
@@ -1050,6 +1068,24 @@ impl SessionPlane for FailPlane {
         _p: Vec<PromptPart>,
         _a: Option<&str>,
         _t: Option<Duration>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        Err(boom())
+    }
+    async fn commands(
+        &self,
+        _id: &str,
+        _a: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError> {
+        Err(boom())
+    }
+    async fn command(
+        &self,
+        _id: &str,
+        _n: &str,
+        _args: Option<&str>,
+        _text: Option<&str>,
+        _t: Option<Duration>,
+        _a: Option<&str>,
     ) -> Result<PromptWaitResult, ControlError> {
         Err(boom())
     }
@@ -2015,6 +2051,24 @@ impl SessionPlane for StreamPlane {
         _p: Vec<PromptPart>,
         _a: Option<&str>,
         _t: Option<Duration>,
+    ) -> Result<PromptWaitResult, ControlError> {
+        unimplemented!()
+    }
+    async fn commands(
+        &self,
+        _id: &str,
+        _a: Option<&str>,
+    ) -> Result<Vec<AvailableCommand>, ControlError> {
+        unimplemented!()
+    }
+    async fn command(
+        &self,
+        _id: &str,
+        _n: &str,
+        _args: Option<&str>,
+        _text: Option<&str>,
+        _t: Option<Duration>,
+        _a: Option<&str>,
     ) -> Result<PromptWaitResult, ControlError> {
         unimplemented!()
     }

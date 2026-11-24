@@ -26,7 +26,9 @@ use serde_json::Value;
 pub fn code_status(code: ControlErrorCode) -> StatusCode {
     match code {
         ControlErrorCode::NotFound => StatusCode::NOT_FOUND,
-        ControlErrorCode::Invalid | ControlErrorCode::UnknownAgent => StatusCode::BAD_REQUEST,
+        ControlErrorCode::Invalid
+        | ControlErrorCode::UnknownAgent
+        | ControlErrorCode::Unsupported => StatusCode::BAD_REQUEST,
         ControlErrorCode::Locked | ControlErrorCode::Conflict | ControlErrorCode::Busy => {
             StatusCode::CONFLICT
         }

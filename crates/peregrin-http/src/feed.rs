@@ -762,6 +762,24 @@ mod cov_more_tests {
         ) -> Result<sepia_session::PromptWaitResult, ControlError> {
             unimplemented!()
         }
+        async fn commands(
+            &self,
+            _: &str,
+            _: Option<&str>,
+        ) -> Result<Vec<sepia_acp::AvailableCommand>, ControlError> {
+            unimplemented!()
+        }
+        async fn command(
+            &self,
+            _: &str,
+            _: &str,
+            _: Option<&str>,
+            _: Option<&str>,
+            _: Option<std::time::Duration>,
+            _: Option<&str>,
+        ) -> Result<sepia_session::PromptWaitResult, ControlError> {
+            unimplemented!()
+        }
         async fn set_mode(&self, _: &str, _: &str, _: Option<&str>) -> Result<(), ControlError> {
             unimplemented!()
         }
