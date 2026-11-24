@@ -29,7 +29,7 @@ names a sepia type in the substrate.
   (credentials).
   The substrate crates — `hypha-{node-api,outbox,control,sync,push,
   http,hub}` plus the earlier `hypha-{secret,keyring,dotenv,service,
-  systemd,telemetry}` leaves — are extracted to
+  systemd}` leaves — are extracted to
   [9aia/hypha](https://github.com/9aia/hypha) and consumed as git
   deps. `peregrin-http` composes them: `compose`/`hypha_state` merge
   `hypha_http`'s generic routes (`/api/entities*`, `/api/events`,
@@ -58,7 +58,7 @@ names a sepia type in the substrate.
   `--node`/`--token` and degrade cleanly with no node. No embedded
   MCP surface — `tamias-driver-mcp` (pavo) fronts the ops manifest
   generically) ·
-  `hypha-telemetry` (git dep) · `peregrin-testkit` · `xtask`.
+  `lampy-telemetry`/`lampy-telemetry-otel` (git deps — 9aia/lampy, P-042; `HYPHA_OTEL_*` remains an alias) · `peregrin-testkit` · `xtask`.
 - `libraries/` — workflow stdlib artifacts plus the `peregrin`
   product pack (`type: files`, `bins[]`); `libraries/release` is the
   release campaign — it drives **tarsi**'s `tarsi-serve` ops

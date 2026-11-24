@@ -8,80 +8,10 @@ use std::time::{Duration, Instant};
 
 use opentelemetry::trace::{Span as _, SpanKind, Status, TraceContextExt, Tracer as _};
 use opentelemetry::{Context, KeyValue};
-use opentelemetry_sdk::metrics::SdkMeterProvider;
-use opentelemetry_sdk::trace::{SdkTracer, SdkTracerProvider};
-use opentelemetry_sdk::{Resource, trace::Span as SdkSpan};
+use opentelemetry_sdk::trace::{SdkTracer, Span as SdkSpan};
 use peregrin_bus::{Observer, Span};
 use peregrin_core::{Campaign, Event, Node};
 use serde_json::Value;
-
-use crate::TelemetryError;
-
-const SERVICE_NAME: &str = "peregrin";
-/// OTLP/HTTP signal paths appended to base-URL endpoints (mirrors
-/// `OTEL_EXPORTER_OTLP_ENDPOINT` semantics, same as hypha-telemetry).
-const TRACES_PATH: &str = "/v1/traces";
-const METRICS_PATH: &str = "/v1/metrics";
-
-/// `base` → the signal's full URL: verbatim when it already names
-/// the path, else the path appended to the trimmed base.
-fn signal_url(base: &str, path: &str) -> String {
-    let base = base.trim().trim_end_matches('/');
-    if base.ends_with(path) {
-        base.to_string()
-    } else {
-        format!("{base}{path}")
-    }
-}
-
-fn resource() -> Resource {
-    Resource::builder().with_service_name(SERVICE_NAME).build()
-}
-
-/// Build the tracing provider for an `otlp` tracing spec —
-/// `endpoint` is the flag's raw destination (`None` lets the
-/// exporter resolve `OTEL_EXPORTER_OTLP_*` itself).
-///
-/// # Errors
-/// [`TelemetryError::Exporter`] when the OTLP exporter fails to
-/// build.
-pub fn tracer_provider(endpoint: Option<&str>) -> Result<SdkTracerProvider, TelemetryError> {
-    use opentelemetry_otlp::WithExportConfig;
-    let mut builder = opentelemetry_otlp::SpanExporter::builder().with_http();
-    if let Some(dest) = endpoint {
-        builder = builder.with_endpoint(signal_url(dest, TRACES_PATH));
-    }
-    let exporter = builder.build().map_err(|source| TelemetryError::Exporter {
-        signal: "tracing",
-        source,
-    })?;
-    Ok(SdkTracerProvider::builder()
-        .with_batch_exporter(exporter)
-        .with_resource(resource())
-        .build())
-}
-
-/// Build the metrics provider for an `otlp` metrics spec.
-///
-/// # Errors
-/// [`TelemetryError::Exporter`] when the OTLP exporter fails to
-/// build.
-pub fn meter_provider(endpoint: Option<&str>) -> Result<SdkMeterProvider, TelemetryError> {
-    use opentelemetry_otlp::WithExportConfig;
-    let mut builder = opentelemetry_otlp::MetricExporter::builder().with_http();
-    if let Some(dest) = endpoint {
-        builder = builder.with_endpoint(signal_url(dest, METRICS_PATH));
-    }
-    let exporter = builder.build().map_err(|source| TelemetryError::Exporter {
-        signal: "metrics",
-        source,
-    })?;
-    let reader = opentelemetry_sdk::metrics::PeriodicReader::builder(exporter).build();
-    Ok(SdkMeterProvider::builder()
-        .with_reader(reader)
-        .with_resource(resource())
-        .build())
-}
 
 /// `usize` → `i64` attribute value, saturating (a count can never
 /// legitimately exceed `i64::MAX`).
@@ -153,7 +83,7 @@ pub struct OtelObserver {
 
 impl OtelObserver {
     /// An observer exporting through `tracer` (a
-    /// [`SdkTracerProvider::tracer`] handle).
+    /// `SdkTracerProvider::tracer` handle).
     #[must_use]
     pub fn new(tracer: SdkTracer) -> Self {
         Self {
@@ -304,7 +234,7 @@ pub struct OtelMetricsObserver {
 
 impl OtelMetricsObserver {
     /// An observer recording through `meter` (a
-    /// [`SdkMeterProvider::meter`] handle).
+    /// `SdkMeterProvider::meter` handle).
     #[must_use]
     pub fn new(meter: opentelemetry::metrics::Meter) -> Self {
         Self {
@@ -392,8 +322,8 @@ mod tests {
     use super::*;
     use opentelemetry::metrics::MeterProvider as _;
     use opentelemetry::trace::TracerProvider as _;
-    use opentelemetry_sdk::metrics::PeriodicReader;
-    use opentelemetry_sdk::trace::InMemorySpanExporterBuilder;
+    use opentelemetry_sdk::metrics::{PeriodicReader, SdkMeterProvider};
+    use opentelemetry_sdk::trace::{InMemorySpanExporterBuilder, SdkTracerProvider};
     use peregrin_bus::NoopSpan;
 
     fn campaign() -> Campaign {
@@ -414,22 +344,6 @@ mod tests {
             driver: "shell".to_string(),
             ..Node::default()
         }
-    }
-
-    #[test]
-    fn signal_url_appends_path_once() {
-        assert_eq!(
-            signal_url("http://c:4318/", TRACES_PATH),
-            "http://c:4318/v1/traces"
-        );
-        assert_eq!(
-            signal_url("http://c:4318/v1/traces", TRACES_PATH),
-            "http://c:4318/v1/traces"
-        );
-        assert_eq!(
-            signal_url("http://c:4318", METRICS_PATH),
-            "http://c:4318/v1/metrics"
-        );
     }
 
     #[test]
