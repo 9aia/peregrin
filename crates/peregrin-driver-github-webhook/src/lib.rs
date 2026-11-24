@@ -24,7 +24,8 @@
 //! → `202 queued` with `Event{type:"push", payload:{repo, ref, sha,
 //! before, actor, clone_url, delivery_id}, source: <node id>}`
 //! injected (`delivery_id` = `X-GitHub-Delivery`, "" when absent —
-//! feeds the ci-job indexDoc's `deliveryId`).
+//! feeds the ci-job indexDoc's `deliveryId`; the wire contract is
+//! documented in `bupha-peregrin`'s crate docs, P-047).
 //!
 //! `pull_request` deliveries get the same verify/dedup treatment and
 //! inject `Event{type:"pull_request", payload:{repo, number, action,
@@ -1105,9 +1106,11 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
     }
     // `X-GitHub-Delivery` — dedup key AND payload field: the ci-job
     // indexDoc's `deliveryId` (P-002 §1, audit/dedup) templates off
-    // `event.payload.delivery_id`. Always emitted (empty string when
-    // the header is absent) so `${event.payload.delivery_id}`
-    // resolves to "" rather than passing through verbatim.
+    // `event.payload.delivery_id` — the producer half of the wire
+    // contract `bupha-peregrin` documents (P-047). Always emitted
+    // (empty string when the header is absent) so
+    // `${event.payload.delivery_id}` resolves to "" rather than
+    // passing through verbatim.
     let delivery_id = header(headers, "x-github-delivery").unwrap_or_default();
     if !delivery_id.is_empty() {
         let fresh = shared

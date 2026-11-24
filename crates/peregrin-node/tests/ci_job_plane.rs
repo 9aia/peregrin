@@ -1,9 +1,8 @@
-#![cfg(feature = "bupha")]
 #![allow(clippy::unwrap_used, clippy::pedantic, clippy::missing_panics_doc)]
 
 //! `kind="ci-job"` end-to-end through the composed entity surface —
-//! the plane `peregrin-node` registers under the `bupha` feature
-//! (P-002, T-061): create *is* `ci.enqueue`, `ci.claim` CASes
+//! the plane `peregrin-node` registers via `bupha-peregrin` (P-002,
+//! T-061, P-047): create *is* `ci.enqueue`, `ci.claim` CASes
 //! `pending→running`, `ci.complete` lands the terminal state.
 
 use std::collections::HashMap;
@@ -12,8 +11,8 @@ use std::sync::{Arc, Mutex};
 use axum::Router;
 use axum::body::{Body, to_bytes};
 use axum::http::{Method, Request, StatusCode};
+use bupha_peregrin::ci_job_plane;
 use peregrin_http::{AppState, app};
-use peregrin_node::ci_job_plane;
 use peregrin_session::LocalPlane;
 use sepia_core::storage::SessionRepository;
 use sepia_core::{Session, StorageError};
