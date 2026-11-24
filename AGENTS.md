@@ -159,3 +159,13 @@ peregrin provision {install,deploy,uninstall} --dir <dir> --name <name> [--confi
 `peregrin install/remove/…`, `create`, `deploy`, `destroy`, and `service`
 verbs are **gone** from the peregrin CLI — run them via `tamias`. Host
 diagnostics (`doctor`) also live in tamias now.
+
+## Specs
+
+`specs/<name>.toml` is this repo's mimus-standard conformance spec —
+approval-gated. Any change requires a live org proposal
+(`proposal-NNNN`, status open|done) referenced in the spec header or
+commit range, and no coverage regression vs merge-base. Guard:
+workspace `../../scripts/spec-guard.py`; sweep:
+`../../scripts/standard.sh`; regenerate coverage only via
+`../../scripts/gen-repo-specs.py`.
