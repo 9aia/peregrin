@@ -226,8 +226,9 @@ impl Queue {
     }
 
     /// The persistable view of this queue — pending jobs in drain
-    /// order plus the in-flight marker. [`Queue::restore`] is the
-    /// inverse.
+    /// order plus the in-flight marker. [`Queue::restore`] rebuilds
+    /// the pending set; the marker comes back reclaimed (its owner
+    /// is gone by the time a snapshot is restored).
     #[must_use]
     pub fn snapshot(&self) -> QueueSnapshot {
         QueueSnapshot {
@@ -246,23 +247,32 @@ impl Queue {
     /// [`Queue::submit`], so a restored queue can never hold a state
     /// live submits couldn't produce.
     ///
-    /// The `running` marker re-queues at the *front*: a well-formed
-    /// snapshot's running job carries the smallest `seq` (it was
-    /// drained before everything still pending), so merging it into
-    /// the pending set and sorting by `seq` lands it first — the
-    /// interrupted run gets another shot (at-least-once). Under
-    /// `latest-wins` a newer same-key pending entry still supersedes
-    /// it, exactly as it would have live.
+    /// The `running` marker is *reclaimed*, not re-run: restore only
+    /// happens at boot, so the process that owned the in-flight run
+    /// is necessarily gone — a fresh process cannot own the old job.
+    /// Re-queueing it would put a dead process's trigger back at the
+    /// front of the single-slot queue, and when that re-run wedges
+    /// (a driver blocked on a resource the dead run held, or simply
+    /// a very long run) every pending trigger waits behind it
+    /// forever — the flow looks alive but never dispatches. The
+    /// interrupted trigger is considered consumed: its run already
+    /// started, so partial effects happened either way. It comes
+    /// back on [`RestoreOutcome::reclaimed`] for the caller to log.
     #[must_use]
     pub fn restore(policy: Supersede, snapshot: QueueSnapshot) -> RestoreOutcome {
         let mut queue = Queue::new(policy);
         let mut entries = snapshot.pending;
-        if let Some(running) = snapshot.running {
-            entries.push(running);
-        }
+        let reclaimed = snapshot.running;
         // Continue the submit counter past every persisted token so
-        // post-restore submits can't collide with restored `seq`s.
-        queue.seq = entries.iter().map(|job| job.seq).max().unwrap_or(0);
+        // post-restore submits can't collide with restored `seq`s —
+        // the reclaimed marker's token counts too: it was the highest
+        // seq in flight when the process died.
+        queue.seq = entries
+            .iter()
+            .map(|job| job.seq)
+            .chain(reclaimed.iter().map(|job| job.seq))
+            .max()
+            .unwrap_or(0);
         // Pending is `seq`-sorted by invariant (see `Job::seq`); the
         // sort is stable so equal tokens keep snapshot order.
         entries.sort_by_key(|job| job.seq);
@@ -274,7 +284,11 @@ impl Queue {
             }
             queue.place(job);
         }
-        RestoreOutcome { queue, dropped }
+        RestoreOutcome {
+            queue,
+            dropped,
+            reclaimed,
+        }
     }
 }
 
@@ -285,7 +299,9 @@ impl Queue {
 pub struct QueueSnapshot {
     /// Pending submissions in drain order.
     pub pending: Vec<Job>,
-    /// The in-flight job — re-queues at the front on restore.
+    /// The in-flight job at snapshot time — stale by definition when
+    /// a [`Queue::restore`] consumes it (its owner process is gone);
+    /// reclaimed rather than re-run.
     pub running: Option<Job>,
 }
 
@@ -300,4 +316,9 @@ pub struct RestoreOutcome {
     /// the policy's resolution — corrupt rows or a `supersede:`
     /// config change since they were written.
     pub dropped: Vec<Job>,
+    /// The persisted in-flight marker, reclaimed at restore — its
+    /// owner process is gone, so the job is not re-run (see
+    /// [`Queue::restore`] for why re-queueing it can wedge the
+    /// queue). `None` when the snapshot had no running marker.
+    pub reclaimed: Option<Job>,
 }

@@ -87,9 +87,12 @@ fn emit_kind(node: &Node) -> String {
 /// the parent campaign's directory (`ctx.campaign_dir`), falling back
 /// to the process cwd — the same anchoring `include:` applies.
 fn full_path(path: &str, campaign_dir: Option<&Path>) -> PathBuf {
-    let candidate = Path::new(path);
+    // `~`/`~/…` expands to the user's home before the absolute check —
+    // the shared `peregrin_core::expand_path` convention; a literal
+    // `~` would otherwise join under the campaign dir.
+    let candidate = peregrin_core::expand_path(Path::new(path));
     if candidate.is_absolute() {
-        return candidate.to_path_buf();
+        return candidate;
     }
     campaign_dir
         .map_or_else(|| PathBuf::from("."), Path::to_path_buf)

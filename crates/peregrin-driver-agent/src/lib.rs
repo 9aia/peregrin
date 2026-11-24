@@ -19,7 +19,7 @@
 
 use std::collections::BTreeMap;
 use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::{Child, Command, Stdio};
 use std::sync::Arc;
 use std::thread;
@@ -401,10 +401,12 @@ impl Driver for AgentDriver {
             .and_then(Value::as_str)
             .unwrap_or("devin")
             .to_string();
-        let cwd = params
-            .get("cwd")
-            .and_then(Value::as_str)
-            .map_or_else(|| self.effects.cwd(), PathBuf::from);
+        let cwd = params.get("cwd").and_then(Value::as_str).map_or_else(
+            || self.effects.cwd(),
+            // `~` expands per the shared `peregrin_core::expand_path`
+            // convention — a literal `~` would ENOENT at spawn.
+            |dir| peregrin_core::expand_path(Path::new(dir)),
+        );
         // `spawnSync`'s `timeout` — 0/undefined means no limit.
         let timeout = params
             .get("timeout")
@@ -418,10 +420,11 @@ impl Driver for AgentDriver {
         let prompt_text = if let Some(prompt) = non_empty_str(&params, "prompt") {
             prompt.to_string()
         } else if let Some(prompt_file) = non_empty_str(&params, "prompt_file") {
-            let path = if Path::new(prompt_file).is_absolute() {
-                PathBuf::from(prompt_file)
+            let path = peregrin_core::expand_path(Path::new(prompt_file));
+            let path = if path.is_absolute() {
+                path
             } else {
-                self.effects.cwd().join(prompt_file)
+                self.effects.cwd().join(path)
             };
             let bytes = self.effects.read_file(&path).map_err(|error| {
                 DriverError::new(format!(
@@ -638,7 +641,7 @@ impl Driver for MockAgentDriver {
         let prompt = if let Some(prompt) = non_empty_str(&params, "prompt") {
             prompt.to_string()
         } else if let Some(prompt_file) = non_empty_str(&params, "prompt_file") {
-            let path = PathBuf::from(prompt_file);
+            let path = peregrin_core::expand_path(Path::new(prompt_file));
             let path = if path.is_absolute() {
                 path
             } else {

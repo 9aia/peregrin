@@ -27,7 +27,9 @@ use std::time::{Duration, Instant};
 use serde_json::{Map, Value};
 
 use peregrin_bus::{EventBus, LocalBus, NoopObserver, Observer, capture_wildcards};
-use peregrin_core::{Campaign, Event, EventSchema, FunctionDefinition, MaxFires, Node, js_string};
+use peregrin_core::{
+    Campaign, Event, EventSchema, FunctionDefinition, MaxFires, Node, capability_matches, js_string,
+};
 use peregrin_driver::{
     Driver, DriverError, ExecutionContext, ScheduledEmit, SecretSource, SubRunOptions, SubRunner,
 };
@@ -35,6 +37,7 @@ use peregrin_store::{DeadLetterQueue, MemoryStore, NoopDlq, StateStore};
 use peregrin_template::{
     Context, Effects, EventScope, NodeScope, Options, ParamsScope, Scope, SecretScope, StateScope,
     SystemEffects, TemplateError, TemplateFunction, resolve_params, resolve_template_opts,
+    resolve_value_opts,
 };
 
 use crate::ingress::{Ingress, WaitOutcome};
@@ -140,6 +143,11 @@ struct Shared {
     /// The nested-run channel behind `ctx.run_sub` (ADR-0022) —
     /// stamped in `run` once the sub-registry is built.
     sub_runner: Option<Rc<SubRunner>>,
+    /// The run's resolved `config:` map — `run` resolves the
+    /// campaign's declared values once (template expressions like
+    /// `${env(...)}` included) before anything binds `${config.*}`;
+    /// every `ExecutionContext` shares it.
+    config: Rc<Map<String, Value>>,
 }
 
 impl Shared {
@@ -157,6 +165,7 @@ impl Shared {
             shutdown: Rc::new(Cell::new(false)),
             cancel,
             sub_runner: None,
+            config: Rc::new(Map::new()),
         }
     }
 
@@ -488,7 +497,12 @@ impl Runner {
         }
 
         let validator = build_validator(&campaign.events);
-        self.bus.reset(&campaign.nodes, &campaign.config);
+        // `config:` values are templates too — resolve them once,
+        // before the bus binds `count_from` lookups and before any
+        // `${config.*}` scope read, so every consumer sees resolved
+        // values.
+        let config = self.resolve_run_config(campaign, options)?;
+        self.bus.reset(&campaign.nodes, &config);
         self.reset_state();
         let mut pending: Vec<Event> = Vec::new();
         let mut ready: Vec<(Node, Vec<Event>)> = Vec::new();
@@ -499,6 +513,7 @@ impl Runner {
             options.secret_stores.clone(),
             self.ingress_cancel.clone(),
         );
+        shared.config = Rc::new(config);
 
         // The `subworkflow` driver's nested-run channel (ADR-0022):
         // each `ctx.run_sub` spins a *fresh* runner — own bus, event
@@ -766,6 +781,94 @@ impl Runner {
         n as u64
     }
 
+    /// Campaign `config:` values are templates too — `${env(...)}`,
+    /// `${file(...)}`, `${shell(...)}`, `${secret.*}`, and
+    /// `${config.*}` all resolve here, once per run, before the bus
+    /// binds `count_from` lookups and before any node's
+    /// `${config.*}` scope read. Without this pass a config value
+    /// like `"${env("GATE_REPO", "")}"` would reach drivers as
+    /// literal placeholder text.
+    ///
+    /// Resolution order is the YAML declaration order (`Map`
+    /// preserves it): each value's `${config.*}` references see the
+    /// already-resolved *earlier* keys; self/later references miss —
+    /// verbatim in lenient mode, a strict-audit error under
+    /// `strict: true`.
+    ///
+    /// The capability map and secret chain are the campaign-level
+    /// ones (`campaign.capabilities` + `RunOptions.secrets`/
+    /// `secret_stores`): node-level grants don't exist yet at
+    /// materialization time, so a `capabilities.env` grant declared
+    /// only on a node does *not* unlock `${env()}` inside `config:`.
+    ///
+    /// # Errors
+    /// [`DriverError`] when a value fails template resolution
+    /// (strict audit, capability denial, `file()`/`shell()` I/O).
+    fn resolve_run_config(
+        &self,
+        campaign: &Campaign,
+        options: &RunOptions,
+    ) -> Result<Map<String, Value>, DriverError> {
+        if campaign.config.is_empty() {
+            return Ok(Map::new());
+        }
+        let tctx = Context {
+            strict: campaign.strict,
+            missing_secrets: Rc::new(RefCell::new(Vec::new())),
+            capabilities: campaign.capabilities.clone(),
+            effects: &*self.effects,
+        };
+        // The same legs `ExecutionContext::resolve_secret` walks —
+        // secrets record → ambient env → fallback stores, with
+        // `declared_only` sources gated by the campaign's
+        // `capabilities.secrets` grant.
+        let secrets = options.secrets.clone();
+        let secret_stores = options.secret_stores.clone();
+        let secret_caps = campaign.capabilities.clone();
+        let secret_view = move |name: &str| -> Option<String> {
+            if let Some(value) = secrets.get(name) {
+                return Some(value.clone());
+            }
+            if let Ok(value) = std::env::var(name)
+                && !value.is_empty()
+            {
+                return Some(value);
+            }
+            for source in &secret_stores {
+                if source.declared_only
+                    && !secret_caps
+                        .get("secrets")
+                        .is_some_and(|grant| capability_matches(name, grant))
+                {
+                    continue;
+                }
+                if let Some(value) = source.store.get(name) {
+                    return Some(value);
+                }
+            }
+            None
+        };
+        let mut resolved = Map::with_capacity(campaign.config.len());
+        for (key, value) in &campaign.config {
+            let out = resolve_value_opts(
+                value,
+                &tctx,
+                &Options {
+                    node: None,
+                    functions: &[],
+                    scope: Scope {
+                        config: Some(&resolved),
+                        secrets: Some(&secret_view),
+                        ..Scope::default()
+                    },
+                },
+            )
+            .map_err(|error| DriverError::new(format!("config '{key}': {}", error.reason)))?;
+            resolved.insert(key.clone(), out);
+        }
+        Ok(resolved)
+    }
+
     /// Build a template [`Context`] from an execution ctx — the
     /// missing-secrets ledger is shared (`Rc`) both ways.
     fn template_ctx<'a>(&'a self, exec: &ExecutionContext) -> Context<'a> {
@@ -786,7 +889,7 @@ impl Runner {
             capabilities.insert(key.clone(), value.clone());
         }
         ExecutionContext {
-            config: Rc::new(spec.campaign.config.clone()),
+            config: spec.shared.config.clone(),
             params: spec.params.clone(),
             secrets: spec.shared.secrets.clone(),
             secret_stores: spec.shared.secret_stores.clone(),

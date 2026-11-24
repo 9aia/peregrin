@@ -6,6 +6,7 @@ mod capability;
 mod env;
 mod matching;
 mod model;
+mod path;
 
 pub use capability::{capability_matches, glob_match};
 pub use env::{CHILD_ENV_ALLOWLIST, child_env, sanitize_env};
@@ -15,3 +16,4 @@ pub use model::{
     PythonImport, ResultRule, Supersede, SupersedeMode, TriggerMode, js_string, js_truthy,
     runs_on_satisfied,
 };
+pub use path::expand_path;

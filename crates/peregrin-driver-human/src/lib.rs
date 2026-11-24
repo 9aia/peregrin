@@ -16,7 +16,7 @@
 //! detached thread and `recv_timeout` bounds it — an unanswered read
 //! lingers until stdin closes, matching the abort's leftover readline.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use std::sync::mpsc;
 use std::thread;
@@ -234,10 +234,11 @@ impl Driver for HumanDriver {
             .and_then(Value::as_str)
             .filter(|file| !file.is_empty())
         {
-            let path = if Path::new(prompt_file).is_absolute() {
-                PathBuf::from(prompt_file)
+            let path = peregrin_core::expand_path(Path::new(prompt_file));
+            let path = if path.is_absolute() {
+                path
             } else {
-                self.effects.cwd().join(prompt_file)
+                self.effects.cwd().join(path)
             };
             let bytes = self.effects.read_file(&path).map_err(DriverError::new)?;
             let contents = String::from_utf8_lossy(&bytes);

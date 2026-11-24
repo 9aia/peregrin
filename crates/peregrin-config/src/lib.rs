@@ -15,7 +15,7 @@
 //! local-path fields so TOML and YAML sources get identical
 //! semantics.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 /// A config source — returns the loaded [`peregrin_core::Campaign`].
 pub trait ConfigSource: Send + Sync {
@@ -23,26 +23,15 @@ pub trait ConfigSource: Send + Sync {
     fn load(&self) -> Result<peregrin_core::Campaign, String>;
 }
 
-/// `$HOME`, else `$USERPROFILE`, else `/` — the workspace `home_dir`
-/// convention (peregrin-git's `expand_path`).
-fn home_dir() -> PathBuf {
-    std::env::var_os("HOME")
-        .or_else(|| std::env::var_os("USERPROFILE"))
-        .map_or_else(|| PathBuf::from("/"), PathBuf::from)
-}
-
-/// `~` / `~/…` expansion on a string path — same rules as
-/// peregrin-git's `expand_path` (no shellexpand dep). `~user`, plain
-/// and absolute paths pass through untouched.
+/// `~` / `~/…` expansion on a string path — delegates to
+/// [`peregrin_core::expand_path`], the single `~`-expansion
+/// convention every path param shares. `~user`, plain and absolute
+/// paths pass through untouched.
 #[must_use]
 pub fn expand_tilde(path: &str) -> String {
-    if path == "~" {
-        return home_dir().to_string_lossy().into_owned();
-    }
-    if let Some(rest) = path.strip_prefix("~/") {
-        return home_dir().join(rest).to_string_lossy().into_owned();
-    }
-    path.into()
+    peregrin_core::expand_path(Path::new(path))
+        .to_string_lossy()
+        .into_owned()
 }
 
 /// Expand `~` in the campaign's local-path fields — the `include:` and

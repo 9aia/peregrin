@@ -35,19 +35,15 @@ pub fn params_violations(
     schema: &Value,
     config: &Map<String, Value>,
 ) -> Result<Vec<String>, String> {
-    let validator = jsonschema::validator_for(schema)
-        .map_err(|e| format!("{PARAMS_SCHEMA_FILE} is not a usable schema: {e}"))?;
+    // scarab-validate's `Violation` Display is `path: message` (bare
+    // message at the root) — the same strings this function used to
+    // format by hand.
+    let compiled = scarab_validate::Schema::compile(schema)?;
     let instance = Value::Object(config.clone());
-    Ok(validator
-        .iter_errors(&instance)
-        .map(|e| {
-            let path = e.instance_path();
-            if path.is_empty() {
-                e.to_string()
-            } else {
-                format!("{path}: {e}")
-            }
-        })
+    Ok(compiled
+        .validate(&instance)
+        .iter()
+        .map(ToString::to_string)
         .collect())
 }
 

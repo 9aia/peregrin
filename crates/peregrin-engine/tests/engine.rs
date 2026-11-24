@@ -1715,3 +1715,100 @@ fn pending_timers_and_replay_timers_seam() {
     );
     assert_eq!(log.last().unwrap().kind, "workflow.done");
 }
+
+// ---------------------------------------------------------------------------
+// Campaign `config:` template resolution — `config:` values resolve
+// `${env()}`/`${file()}`/`${shell()}`/`${secret.*}`/`${config.*}` once
+// per run, in declaration order, before any `${config.*}` scope read.
+// ---------------------------------------------------------------------------
+
+#[test]
+fn config_values_resolve_env_and_config_refs() {
+    let campaign = load(
+        r#"
+        name: config-env
+        capabilities:
+          env: true
+        config:
+          repo: '${env("PATH")}'
+          fallback: '${env("PEREGRIN_TEST_DEFINITELY_UNSET_CFG", "dflt")}'
+          derived: '${config.repo}-suffix'
+          nested:
+            inner: '${env("PATH")}'
+        nodes:
+          - id: echo
+            driver: scope-echo
+            on: [start]
+            emits: [echo.done]
+            params:
+              repo: "${config.repo}"
+              fallback: "${config.fallback}"
+              derived: "${config.derived}"
+              inner: "${config.nested.inner}"
+        "#,
+    );
+    let log = run(&campaign);
+    let evt = log.iter().find(|e| e.kind == "echo.done").unwrap();
+    let p = &evt.payload["params"];
+    let path = std::env::var("PATH").unwrap();
+    assert_eq!(p["repo"], json!(path));
+    assert_eq!(p["fallback"], json!("dflt"));
+    // `${config.repo}` inside a config value sees the *resolved*
+    // earlier key — declaration order is the resolution order.
+    assert_eq!(p["derived"], json!(format!("{path}-suffix")));
+    assert_eq!(p["inner"], json!(path));
+}
+
+#[test]
+fn config_values_resolve_secrets_through_the_run_chain() {
+    let campaign = load(
+        r#"
+        name: config-secret
+        capabilities:
+          secrets: true
+        config:
+          token: '${secret.TOKEN}'
+        nodes:
+          - id: echo
+            driver: scope-echo
+            on: [start]
+            emits: [echo.done]
+            params:
+              token: "${config.token}"
+        "#,
+    );
+    let mut opts = RunOptions::default();
+    opts.secrets
+        .insert("TOKEN".to_string(), "s3cr3t".to_string());
+    let log = Runner::new(registry()).run(&campaign, &opts).unwrap();
+    let evt = log.iter().find(|e| e.kind == "echo.done").unwrap();
+    assert_eq!(evt.payload["params"]["token"], json!("s3cr3t"));
+}
+
+#[test]
+fn config_forward_reference_misses_and_stays_literal() {
+    // `later` is declared after `early` — `${config.later}` inside
+    // `early` misses (only the resolved prefix is visible) and, in
+    // lenient mode, passes through verbatim like any other miss.
+    let campaign = load(
+        r#"
+        name: config-fwd
+        config:
+          early: 'pre-${config.later}'
+          later: done
+        nodes:
+          - id: echo
+            driver: scope-echo
+            on: [start]
+            emits: [echo.done]
+            params:
+              early: "${config.early}"
+              later: "${config.later}"
+        "#,
+    );
+    let log = run(&campaign);
+    let evt = log.iter().find(|e| e.kind == "echo.done").unwrap();
+    let p = &evt.payload["params"];
+    assert_eq!(p["early"], json!("pre-${config.later}"));
+    assert_eq!(p["later"], json!("done"));
+}

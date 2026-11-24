@@ -91,9 +91,13 @@ fn cancel_running_supersedes_the_active_run() {
         cancelled < done,
         "the superseding run executes after: {kinds:?}"
     );
-    // The in-flight `sleep` fire completed before the cancel landed —
-    // `build.done` precedes `workflow.cancelled` in run 1's log.
-    assert_eq!(kinds[cancelled - 1], "build.done", "trace: {kinds:?}");
+    // I-017: cancel kills the in-flight child mid-invoke — the sleep
+    // never finishes, so run 1 emits no `build.done`; its node reports
+    // the kill (`node.failed`/`event.invalid`) before `workflow.cancelled`.
+    assert!(
+        !kinds[..cancelled].contains(&"build.done"),
+        "cancelled run's step was killed, not finished: {kinds:?}"
+    );
     // Both triggers published — sha 1 in the superseded run, sha 2 in
     // its replacement.
     let pushes: Vec<&Event> = logs.iter().filter(|e| e.kind == "push").collect();

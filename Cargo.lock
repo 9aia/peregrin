@@ -1900,7 +1900,7 @@ dependencies = [
 [[package]]
 name = "hypha-control"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "serde",
  "serde_json",
@@ -1909,7 +1909,7 @@ dependencies = [
 [[package]]
 name = "hypha-dotenv"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "hypha-secret",
 ]
@@ -1917,7 +1917,7 @@ dependencies = [
 [[package]]
 name = "hypha-http"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "async-trait",
  "axum",
@@ -1944,7 +1944,7 @@ dependencies = [
 [[package]]
 name = "hypha-hub"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "async-trait",
  "axum",
@@ -1971,7 +1971,7 @@ dependencies = [
 [[package]]
 name = "hypha-keyring"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "hypha-secret",
 ]
@@ -1979,7 +1979,7 @@ dependencies = [
 [[package]]
 name = "hypha-kv"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "serde",
  "serde_json",
@@ -1988,7 +1988,7 @@ dependencies = [
 [[package]]
 name = "hypha-kv-file"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "hypha-kv",
  "serde",
@@ -1998,7 +1998,7 @@ dependencies = [
 [[package]]
 name = "hypha-node-api"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "async-trait",
  "serde",
@@ -2010,7 +2010,7 @@ dependencies = [
 [[package]]
 name = "hypha-outbox"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "rusqlite",
  "serde",
@@ -2024,7 +2024,7 @@ dependencies = [
 [[package]]
 name = "hypha-push"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "base64 0.22.1",
  "futures",
@@ -2039,12 +2039,12 @@ dependencies = [
 [[package]]
 name = "hypha-secret"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 
 [[package]]
 name = "hypha-secret-cuora"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "hypha-secret",
  "serde_json",
@@ -2053,7 +2053,7 @@ dependencies = [
 [[package]]
 name = "hypha-sync"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "hypha-outbox",
  "rusqlite",
@@ -2070,7 +2070,7 @@ dependencies = [
 [[package]]
 name = "hypha-telemetry"
 version = "0.1.0"
-source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#08ae38d655d956a43353bc405c285e33e39f5fff"
+source = "git+ssh://git@github.com/9aia/hypha.git?branch=main#41dbbd49dd9985e26c63c4c7267f4c4b0a21e7e9"
 dependencies = [
  "http 1.5.0",
  "opentelemetry",
@@ -3422,8 +3422,8 @@ dependencies = [
 name = "peregrin-loader"
 version = "0.3.0"
 dependencies = [
- "jsonschema",
  "peregrin-core",
+ "scarab-validate",
  "serde_json",
  "thiserror 2.0.21",
 ]
@@ -3434,10 +3434,10 @@ version = "0.3.0"
 dependencies = [
  "peregrin-core",
  "peregrin-loader",
+ "scarab-compose",
  "serde_json",
  "serde_yaml_ng",
  "tamias-core 0.1.4",
- "tamias-install",
  "tamias-registry",
  "tamias-registry-local",
  "tamias-store-local",
@@ -4206,6 +4206,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "scarab-compose"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=85e50d57110b2f785a5c11d8cf55de7737d67257#85e50d57110b2f785a5c11d8cf55de7737d67257"
+dependencies = [
+ "serde_json",
+ "serde_yaml_ng",
+ "tamias-core 0.1.4",
+ "tamias-install",
+ "tamias-store-local",
+ "thiserror 2.0.21",
+ "toml",
+]
+
+[[package]]
 name = "scarab-config"
 version = "0.1.0"
 source = "git+ssh://git@github.com/9aia/scarab.git?rev=9364df88fad0ca46bd838467717a823893f47438#9364df88fad0ca46bd838467717a823893f47438"
@@ -4243,6 +4257,15 @@ dependencies = [
  "scarab-config",
  "serde",
  "serde_yaml_ng",
+]
+
+[[package]]
+name = "scarab-validate"
+version = "0.1.0"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=85e50d57110b2f785a5c11d8cf55de7737d67257#85e50d57110b2f785a5c11d8cf55de7737d67257"
+dependencies = [
+ "jsonschema",
+ "serde_json",
 ]
 
 [[package]]

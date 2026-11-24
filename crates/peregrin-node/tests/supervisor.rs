@@ -230,7 +230,12 @@ fn cancel_running_injects_workflow_cancel_into_the_active_run() {
     let kinds: Vec<&str> = log.iter().map(|e| e.kind.as_str()).collect();
     assert_eq!(log.last().unwrap().kind, "workflow.cancelled");
     assert!(kinds.contains(&"push"), "the first trigger ran");
-    assert!(kinds.contains(&"build.done"), "in-flight step finished");
+    // I-017: the cancel flag kills the in-flight `sleep` mid-invoke —
+    // the step reports its kill instead of finishing (`build.done`).
+    assert!(
+        !kinds.contains(&"build.done"),
+        "cancelled run's step was killed, not finished: {kinds:?}"
+    );
 
     // The superseding job is now queued behind nothing — finish
     // hands it out and it runs to done.
@@ -286,7 +291,7 @@ fn caller_held_injector_still_emits_mid_run() {
 // ---------------------------------------------------------------------------
 
 #[test]
-fn store_replays_pending_and_running_across_a_restart() {
+fn store_replays_pending_and_reclaims_stale_running_across_a_restart() {
     use std::sync::Arc;
 
     use peregrin_queue::{MemoryQueueStore, QueueStore};
@@ -310,16 +315,19 @@ fn store_replays_pending_and_running_across_a_restart() {
     assert_eq!(persisted.pending.len(), 2);
 
     // "Process 2": same store — the snapshot replays before any new
-    // trigger. A re-queues at the FRONT (at-least-once), then B, C.
+    // trigger. A's marker is *stale* (its owner is gone) and is
+    // reclaimed, not re-run: pending B, C dispatch immediately —
+    // a dead process's job must never hold the single run slot
+    // ahead of live triggers (the queue-running wedge).
     let mut s2 = RunSupervisor::with_store(policy, store).unwrap();
     assert!(s2.queue().active().is_none());
-    assert_eq!(s2.queue().pending_len(), 3);
+    assert_eq!(s2.queue().pending_len(), 2);
 
-    // A new trigger arrives — the restored front job starts first,
+    // A new trigger arrives — the restored pending jobs drain first,
     // the new one queues behind everything.
     let outcome = s2.submit(trigger("d", json!({"sha": "D"})));
     let first = outcome.start.expect("restored queue drains");
-    assert_eq!(first.job.event.payload["sha"], "A");
+    assert_eq!(first.job.event.payload["sha"], "B");
 
     let shas: Vec<String> = [first]
         .into_iter()
@@ -328,8 +336,8 @@ fn store_replays_pending_and_running_across_a_restart() {
         .collect();
     assert_eq!(
         shas,
-        ["A", "B", "C", "D"],
-        "replay order: interrupted, pending, new"
+        ["B", "C", "D"],
+        "replay order: pending, new — the stale running job never re-runs"
     );
     assert!(s2.is_idle());
 }

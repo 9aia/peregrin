@@ -100,6 +100,12 @@ peregrin-template = { path = "crates/peregrin-template", version = "0.3.0" }
 peregrin-telemetry = { path = "crates/peregrin-telemetry", version = "0.3.0" }
 peregrin-testkit = { path = "crates/peregrin-testkit", version = "0.3.0" }
 
+# scarab — config/template expertise; peregrin-loader-yaml's
+# include/snippet/`tamias:` expansion and params.schema validation
+# delegate to the compose/validate legs (rev-pinned like tamias).
+scarab-compose = { git = "ssh://git@github.com/9aia/scarab.git", rev = "85e50d57110b2f785a5c11d8cf55de7737d67257", version = "0.1" }
+scarab-validate = { git = "ssh://git@github.com/9aia/scarab.git", rev = "85e50d57110b2f785a5c11d8cf55de7737d67257", version = "0.1" }
+
 # sepia — the session plane these crates embed. Git deps on `main`
 # (the branch carrying the `sepia serve` store-op surface —
 # `sessions.export`/`import`/`convert`); sibling-checkout path deps
