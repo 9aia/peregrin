@@ -24,9 +24,11 @@ names a sepia type in the substrate.
   `{agent,council,git,github-webhook,http,human,ops,schedule,shell,
   sturn,subworkflow}`, loader `-yaml`, store `-json`, config `-toml`,
   remote `-http`. Supporting crates: `peregrin-queue{,-sqlite}`
-  (run scheduler), `peregrin-git` (worktrees), `peregrin-secret-cuora`
-  + `peregrin-sink-github-status` (egress), `peregrin-auth`
-  (credentials).
+  (run scheduler), `peregrin-git` (worktrees),
+  `peregrin-sink-github-status` (egress), `peregrin-auth`
+  (credentials). Secrets resolve through cuora's `cuora-secret*`
+  family and service lifecycle through `tamias-deploy-systemd` —
+  both git deps (P-043/PL-025).
   The substrate crates — `hypha-{node-api,outbox,control,sync,push,
   http,hub}` — are extracted to
   [9aia/hypha](https://github.com/9aia/hypha) and consumed as git
