@@ -20,6 +20,7 @@ Rust workspace, ports-and-adapters — ports are traits, impls are separate crat
 | `peregrin-driver-github-webhook` | adapter | GitHub webhook ingress driver — HMAC-verified push events into the engine's ingress channel |
 | `peregrin-driver-http` | adapter | HTTP impl of the campaign driver port |
 | `peregrin-driver-human` | adapter | Human-in-the-loop impl of the campaign driver port |
+| `peregrin-driver-ops` | adapter | Ops impl of the campaign driver port — proxies bounded tamias-driver queries over `tamias serve` |
 | `peregrin-driver-schedule` | adapter | Temporal scheduling drivers — `delay` (fixed wait) and `schedule` (cron fire) over the engine's deferred-emission channel (ADR-0018) |
 | `peregrin-driver-shell` | adapter | Shell impl of the campaign driver port |
 | `peregrin-driver-sturn` | adapter | sturn WAL-ref poller — ingress impl of the campaign driver port (`sturn snap` → run) |
@@ -28,9 +29,9 @@ Rust workspace, ports-and-adapters — ports are traits, impls are separate crat
 | `peregrin-loader-yaml` | adapter | YAML impl of the campaign loader port |
 | `peregrin-queue-sqlite` | adapter | SQLite QueueStore impl — the durable supersede queue behind campaign run --queue-store |
 | `peregrin-remote-http` | adapter | HTTP+SSE impl of the transport port |
-| `peregrin-secret-cuora` | adapter | Cuora `Secrets` impl — resolves `cuora://peregrin/&lt;NAME&gt;` through the cuora CLI |
 | `peregrin-sink-github-status` | adapter | GitHub commit-status sink — egress driver posting ci/&lt;campaign&gt; verdicts |
 | `peregrin-store-json` | adapter | Durable JSONL impl of the event-store port (v1 ac-store-json) |
+| `peregrin-telemetry` | adapter | OTEL-backed Observer impls + --tracing/--metrics provider wiring (ADR-0040) |
 | `peregrin-auth` | service | Pairing + node credentials |
 | `peregrin-git` | service | Explicit detached-worktree lifecycle — create, keep-for-debug, destroy, list, cleanup |
 | `peregrin-queue` | service | Campaign-level run scheduler — supersede key, latest-wins/fifo dedupe, active-run cancel |
