@@ -101,8 +101,8 @@ peregrin-testkit = { path = "crates/peregrin-testkit", version = "0.3.0" }
 # scarab — config/template expertise; peregrin-loader-yaml's
 # include/snippet/`tamias:` expansion and params.schema validation
 # delegate to the compose/validate legs (rev-pinned like tamias).
-scarab-compose = { git = "ssh://git@github.com/9aia/scarab.git", rev = "4e32a347dd775efdccc675d0e1f4a10e7a26153f", version = "0.2" }
-scarab-validate = { git = "ssh://git@github.com/9aia/scarab.git", rev = "4e32a347dd775efdccc675d0e1f4a10e7a26153f", version = "0.2" }
+scarab-compose = { git = "ssh://git@github.com/9aia/scarab.git", rev = "20dabb1ad957b22bc8f3432feeadee09aa69371a", version = "0.2" }
+scarab-validate = { git = "ssh://git@github.com/9aia/scarab.git", rev = "20dabb1ad957b22bc8f3432feeadee09aa69371a", version = "0.2" }
 
 # sepia — the session plane these crates embed, plus `sepia-http`'s
 # session REST surface (PL-027). Tracks `main` — PL-027 and PL-032
@@ -138,10 +138,10 @@ lampy-telemetry-otel = { git = "ssh://git@github.com/9aia/lampy.git", rev = "7fc
 # Secrets port + impls moved to cuora (P-043) — the forked
 # hypha-secret*/peregrin-secret-cuora crates are retired; consumers
 # re-point at the unified cuora-secret* family.
-cuora-secret = { git = "ssh://git@github.com/9aia/cuora.git", rev = "d979b0f40d06e82d0258121083d7d9c89660cb96", version = "2.0.0" }
-cuora-secret-cuora = { git = "ssh://git@github.com/9aia/cuora.git", rev = "d979b0f40d06e82d0258121083d7d9c89660cb96", version = "2.0.0" }
-cuora-secret-keyring = { git = "ssh://git@github.com/9aia/cuora.git", rev = "d979b0f40d06e82d0258121083d7d9c89660cb96", version = "2.0.0" }
-cuora-secret-dotenv = { git = "ssh://git@github.com/9aia/cuora.git", rev = "d979b0f40d06e82d0258121083d7d9c89660cb96", version = "2.0.0" }
+cuora-secret = { git = "ssh://git@github.com/9aia/cuora.git", rev = "c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372", version = "2.0.0" }
+cuora-secret-cuora = { git = "ssh://git@github.com/9aia/cuora.git", rev = "c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372", version = "2.0.0" }
+cuora-secret-keyring = { git = "ssh://git@github.com/9aia/cuora.git", rev = "c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372", version = "2.0.0" }
+cuora-secret-dotenv = { git = "ssh://git@github.com/9aia/cuora.git", rev = "c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372", version = "2.0.0" }
 hypha-node-api = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
 hypha-outbox = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
 hypha-control = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
@@ -157,7 +157,7 @@ hypha-kv-file = { git = "https://github.com/9aia/hypha.git", branch = "main", ve
 # P-047 moved the adapter into the provider repo, mirroring
 # `sepia-peregrin`). Pinned to the `decouple/pl-028` rev until that
 # branch lands on `main` — repin to `main` then.
-bupha-peregrin = { git = "ssh://git@github.com/9aia/bupha.git", rev = "775c650ab08e0bf6101193f11389d731165a1440", version = "0.3" }
+bupha-peregrin = { git = "ssh://git@github.com/9aia/bupha.git", rev = "b41d3ee27cdcd42b0a079ff20909402ccd23c849", version = "0.3" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }

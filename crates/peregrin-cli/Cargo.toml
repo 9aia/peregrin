@@ -30,8 +30,8 @@ tamias-store-local.workspace = true
 tamias-cache-local.workspace = true
 peregrin-config.workspace = true
 peregrin-config-toml.workspace = true
-scarab-config = { git = "ssh://git@github.com/9aia/scarab.git", rev = "4e32a347dd775efdccc675d0e1f4a10e7a26153f", version = "0.2" }
-scarab-config-file = { git = "ssh://git@github.com/9aia/scarab.git", rev = "4e32a347dd775efdccc675d0e1f4a10e7a26153f", version = "0.2" }
+scarab-config = { git = "ssh://git@github.com/9aia/scarab.git", rev = "20dabb1ad957b22bc8f3432feeadee09aa69371a", version = "0.2" }
+scarab-config-file = { git = "ssh://git@github.com/9aia/scarab.git", rev = "20dabb1ad957b22bc8f3432feeadee09aa69371a", version = "0.2" }
 peregrin-core.workspace = true
 cuora-secret-dotenv.workspace = true
 peregrin-engine.workspace = true
@@ -72,13 +72,13 @@ nix = { version = "0.29", default-features = false, features = ["fs", "user"] }
 # `cargo install --git` works without a sibling ../pavo checkout;
 # `rev` pins the driver-authoring layer (`serve_stdio`, manifest/
 # capabilities builders).
-pavo-protocol = { git = "https://github.com/9aia/pavo", rev = "f6235d10f990e9f7735d8a53495e94a57a640949", version = "0.1.0" }
-pavo-driver-kit = { git = "https://github.com/9aia/pavo", rev = "f6235d10f990e9f7735d8a53495e94a57a640949", version = "0.1.0" }
+pavo-protocol = { git = "https://github.com/9aia/pavo", rev = "44e6ed8cf5307778c4c7559dc214d1f99f9a1e30", version = "0.1.0" }
+pavo-driver-kit = { git = "https://github.com/9aia/pavo", rev = "44e6ed8cf5307778c4c7559dc214d1f99f9a1e30", version = "0.1.0" }
 [dev-dependencies]
 tempfile.workspace = true
 # Conformance gate — `cargo test` runs pavo's wire-contract suite
 # against this crate's own `tamias-driver-peregrin serve` binary.
-pavo-testkit = { git = "https://github.com/9aia/pavo", rev = "f6235d10f990e9f7735d8a53495e94a57a640949" }
+pavo-testkit = { git = "https://github.com/9aia/pavo", rev = "44e6ed8cf5307778c4c7559dc214d1f99f9a1e30" }
 sepia-testkit.workspace = true
 serde_json.workspace = true
 tokio = { workspace = true, features = ["rt"] }

@@ -490,11 +490,11 @@ checksum = "72f5acc6cb2ba439de613abc23857ec3d78374d8ed5ac84e9d11336e87da8649"
 [[package]]
 name = "bupha-config-file"
 version = "0.3.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?rev=775c650ab08e0bf6101193f11389d731165a1440#775c650ab08e0bf6101193f11389d731165a1440"
+source = "git+ssh://git@github.com/9aia/bupha.git?rev=b41d3ee27cdcd42b0a079ff20909402ccd23c849#b41d3ee27cdcd42b0a079ff20909402ccd23c849"
 dependencies = [
  "bupha-core",
- "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347)",
- "scarab-config-file 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347)",
+ "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=4e32a347dd775efdccc675d0e1f4a10e7a26153f)",
+ "scarab-config-file 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=4e32a347dd775efdccc675d0e1f4a10e7a26153f)",
  "serde_yaml_ng",
  "toml",
 ]
@@ -502,7 +502,7 @@ dependencies = [
 [[package]]
 name = "bupha-core"
 version = "0.3.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?rev=775c650ab08e0bf6101193f11389d731165a1440#775c650ab08e0bf6101193f11389d731165a1440"
+source = "git+ssh://git@github.com/9aia/bupha.git?rev=b41d3ee27cdcd42b0a079ff20909402ccd23c849#b41d3ee27cdcd42b0a079ff20909402ccd23c849"
 dependencies = [
  "serde",
  "serde_json",
@@ -512,7 +512,7 @@ dependencies = [
 [[package]]
 name = "bupha-peregrin"
 version = "0.3.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?rev=775c650ab08e0bf6101193f11389d731165a1440#775c650ab08e0bf6101193f11389d731165a1440"
+source = "git+ssh://git@github.com/9aia/bupha.git?rev=b41d3ee27cdcd42b0a079ff20909402ccd23c849#b41d3ee27cdcd42b0a079ff20909402ccd23c849"
 dependencies = [
  "bupha-config-file",
  "bupha-plane",
@@ -527,7 +527,7 @@ dependencies = [
 [[package]]
 name = "bupha-plane"
 version = "0.3.0"
-source = "git+ssh://git@github.com/9aia/bupha.git?rev=775c650ab08e0bf6101193f11389d731165a1440#775c650ab08e0bf6101193f11389d731165a1440"
+source = "git+ssh://git@github.com/9aia/bupha.git?rev=b41d3ee27cdcd42b0a079ff20909402ccd23c849#b41d3ee27cdcd42b0a079ff20909402ccd23c849"
 dependencies = [
  "async-trait",
  "axum",
@@ -929,12 +929,12 @@ dependencies = [
 [[package]]
 name = "cuora-secret"
 version = "2.0.0"
-source = "git+ssh://git@github.com/9aia/cuora.git?rev=d979b0f40d06e82d0258121083d7d9c89660cb96#d979b0f40d06e82d0258121083d7d9c89660cb96"
+source = "git+ssh://git@github.com/9aia/cuora.git?rev=c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372#c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372"
 
 [[package]]
 name = "cuora-secret-cuora"
 version = "2.0.0"
-source = "git+ssh://git@github.com/9aia/cuora.git?rev=d979b0f40d06e82d0258121083d7d9c89660cb96#d979b0f40d06e82d0258121083d7d9c89660cb96"
+source = "git+ssh://git@github.com/9aia/cuora.git?rev=c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372#c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372"
 dependencies = [
  "cuora-secret",
  "serde_json",
@@ -943,7 +943,7 @@ dependencies = [
 [[package]]
 name = "cuora-secret-dotenv"
 version = "2.0.0"
-source = "git+ssh://git@github.com/9aia/cuora.git?rev=d979b0f40d06e82d0258121083d7d9c89660cb96#d979b0f40d06e82d0258121083d7d9c89660cb96"
+source = "git+ssh://git@github.com/9aia/cuora.git?rev=c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372#c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372"
 dependencies = [
  "cuora-secret",
 ]
@@ -951,7 +951,7 @@ dependencies = [
 [[package]]
 name = "cuora-secret-keyring"
 version = "2.0.0"
-source = "git+ssh://git@github.com/9aia/cuora.git?rev=d979b0f40d06e82d0258121083d7d9c89660cb96#d979b0f40d06e82d0258121083d7d9c89660cb96"
+source = "git+ssh://git@github.com/9aia/cuora.git?rev=c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372#c3a1e0a9601ec4dd8a3dbbe64c973a4d03418372"
 dependencies = [
  "cuora-secret",
 ]
@@ -3080,7 +3080,7 @@ dependencies = [
 [[package]]
 name = "pavo-driver-kit"
 version = "0.1.0"
-source = "git+https://github.com/9aia/pavo?rev=f6235d10f990e9f7735d8a53495e94a57a640949#f6235d10f990e9f7735d8a53495e94a57a640949"
+source = "git+https://github.com/9aia/pavo?rev=44e6ed8cf5307778c4c7559dc214d1f99f9a1e30#44e6ed8cf5307778c4c7559dc214d1f99f9a1e30"
 dependencies = [
  "pavo-protocol",
  "serde",
@@ -3090,7 +3090,7 @@ dependencies = [
 [[package]]
 name = "pavo-protocol"
 version = "0.1.0"
-source = "git+https://github.com/9aia/pavo?rev=f6235d10f990e9f7735d8a53495e94a57a640949#f6235d10f990e9f7735d8a53495e94a57a640949"
+source = "git+https://github.com/9aia/pavo?rev=44e6ed8cf5307778c4c7559dc214d1f99f9a1e30#44e6ed8cf5307778c4c7559dc214d1f99f9a1e30"
 dependencies = [
  "serde",
  "serde_json",
@@ -3100,7 +3100,7 @@ dependencies = [
 [[package]]
 name = "pavo-testkit"
 version = "0.1.0"
-source = "git+https://github.com/9aia/pavo?rev=f6235d10f990e9f7735d8a53495e94a57a640949#f6235d10f990e9f7735d8a53495e94a57a640949"
+source = "git+https://github.com/9aia/pavo?rev=44e6ed8cf5307778c4c7559dc214d1f99f9a1e30#44e6ed8cf5307778c4c7559dc214d1f99f9a1e30"
 dependencies = [
  "pavo-protocol",
  "serde",
@@ -3190,8 +3190,8 @@ dependencies = [
  "peregrin-store",
  "peregrin-store-json",
  "peregrin-telemetry",
- "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=4e32a347dd775efdccc675d0e1f4a10e7a26153f)",
- "scarab-config-file 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=4e32a347dd775efdccc675d0e1f4a10e7a26153f)",
+ "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a)",
+ "scarab-config-file 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a)",
  "sepia-acp",
  "sepia-convert",
  "sepia-core",
@@ -3203,15 +3203,15 @@ dependencies = [
  "serde_json",
  "serde_norway",
  "serde_yaml_ng",
- "tamias-cache-local 0.3.0",
- "tamias-core 0.3.0",
+ "tamias-cache-local",
+ "tamias-core",
  "tamias-deploy-systemd",
- "tamias-install 0.3.0",
- "tamias-source 0.3.0",
- "tamias-source-fs 0.3.0",
- "tamias-source-git 0.3.0",
- "tamias-source-http 0.3.0",
- "tamias-store-local 0.3.0",
+ "tamias-install",
+ "tamias-source",
+ "tamias-source-fs",
+ "tamias-source-git",
+ "tamias-source-http",
+ "tamias-store-local",
  "tempfile",
  "time",
  "tokio",
@@ -3233,8 +3233,8 @@ version = "0.3.0"
 dependencies = [
  "peregrin-config",
  "peregrin-core",
- "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=4e32a347dd775efdccc675d0e1f4a10e7a26153f)",
- "scarab-config-toml 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=4e32a347dd775efdccc675d0e1f4a10e7a26153f)",
+ "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a)",
+ "scarab-config-toml 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a)",
  "serde_json",
  "tempfile",
 ]
@@ -3509,10 +3509,10 @@ dependencies = [
  "scarab-compose",
  "serde_json",
  "serde_yaml_ng",
- "tamias-core 0.3.0",
- "tamias-registry 0.3.0",
- "tamias-registry-local 0.3.0",
- "tamias-store-local 0.3.0",
+ "tamias-core",
+ "tamias-registry",
+ "tamias-registry-local",
+ "tamias-store-local",
  "tempfile",
 ]
 
@@ -4271,13 +4271,13 @@ dependencies = [
 [[package]]
 name = "scarab-compose"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/scarab.git?rev=4e32a347dd775efdccc675d0e1f4a10e7a26153f#4e32a347dd775efdccc675d0e1f4a10e7a26153f"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a#20dabb1ad957b22bc8f3432feeadee09aa69371a"
 dependencies = [
  "serde_json",
  "serde_yaml_ng",
- "tamias-core 0.1.4",
- "tamias-install 0.1.5",
- "tamias-store-local 0.1.5",
+ "tamias-core",
+ "tamias-install",
+ "tamias-store-local",
  "thiserror 2.0.21",
  "toml",
 ]
@@ -4293,7 +4293,7 @@ dependencies = [
 [[package]]
 name = "scarab-config"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347#23b6d45da9803d737ed951300542fa837d6e7347"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a#20dabb1ad957b22bc8f3432feeadee09aa69371a"
 dependencies = [
  "serde_json",
 ]
@@ -4309,11 +4309,11 @@ dependencies = [
 [[package]]
 name = "scarab-config-file"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347#23b6d45da9803d737ed951300542fa837d6e7347"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a#20dabb1ad957b22bc8f3432feeadee09aa69371a"
 dependencies = [
- "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347)",
- "scarab-config-toml 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347)",
- "scarab-config-yaml 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347)",
+ "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a)",
+ "scarab-config-toml 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a)",
+ "scarab-config-yaml 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a)",
  "serde",
  "serde_json",
 ]
@@ -4343,9 +4343,9 @@ dependencies = [
 [[package]]
 name = "scarab-config-toml"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347#23b6d45da9803d737ed951300542fa837d6e7347"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a#20dabb1ad957b22bc8f3432feeadee09aa69371a"
 dependencies = [
- "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347)",
+ "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a)",
  "serde",
  "toml",
 ]
@@ -4373,9 +4373,9 @@ dependencies = [
 [[package]]
 name = "scarab-config-yaml"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347#23b6d45da9803d737ed951300542fa837d6e7347"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a#20dabb1ad957b22bc8f3432feeadee09aa69371a"
 dependencies = [
- "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=23b6d45da9803d737ed951300542fa837d6e7347)",
+ "scarab-config 0.2.0 (git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a)",
  "serde",
  "serde_yaml_ng",
 ]
@@ -4403,7 +4403,7 @@ dependencies = [
 [[package]]
 name = "scarab-validate"
 version = "0.2.0"
-source = "git+ssh://git@github.com/9aia/scarab.git?rev=4e32a347dd775efdccc675d0e1f4a10e7a26153f#4e32a347dd775efdccc675d0e1f4a10e7a26153f"
+source = "git+ssh://git@github.com/9aia/scarab.git?rev=20dabb1ad957b22bc8f3432feeadee09aa69371a#20dabb1ad957b22bc8f3432feeadee09aa69371a"
 dependencies = [
  "jsonschema",
  "serde_json",
@@ -5193,30 +5193,11 @@ dependencies = [
 
 [[package]]
 name = "tamias-bin"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "tamias-core 0.1.4",
- "tamias-driver 0.1.5",
-]
-
-[[package]]
-name = "tamias-bin"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-core 0.3.0",
- "tamias-driver 0.3.0",
-]
-
-[[package]]
-name = "tamias-cache-local"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "serde",
- "serde_json",
- "tamias-core 0.1.4",
+ "tamias-core",
+ "tamias-driver",
 ]
 
 [[package]]
@@ -5226,16 +5207,7 @@ source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd35
 dependencies = [
  "serde",
  "serde_json",
- "tamias-core 0.3.0",
-]
-
-[[package]]
-name = "tamias-config"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "serde",
- "tamias-core 0.1.4",
+ "tamias-core",
 ]
 
 [[package]]
@@ -5247,45 +5219,7 @@ dependencies = [
  "scarab-config-toml 0.1.0",
  "scarab-config-yaml 0.1.0",
  "serde",
- "tamias-core 0.3.0",
-]
-
-[[package]]
-name = "tamias-config-toml"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "tamias-config 0.1.5",
- "tamias-core 0.1.4",
- "toml",
-]
-
-[[package]]
-name = "tamias-config-yml"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "serde_yaml_ng",
- "tamias-config 0.1.5",
- "tamias-core 0.1.4",
-]
-
-[[package]]
-name = "tamias-core"
-version = "0.1.4"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "flate2",
- "hex",
- "schemars",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "sha2",
- "tar",
- "thiserror 2.0.21",
- "toml",
+ "tamias-core",
 ]
 
 [[package]]
@@ -5311,7 +5245,7 @@ name = "tamias-deploy"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-core 0.3.0",
+ "tamias-core",
 ]
 
 [[package]]
@@ -5319,18 +5253,8 @@ name = "tamias-deploy-systemd"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-core 0.3.0",
+ "tamias-core",
  "tamias-deploy",
-]
-
-[[package]]
-name = "tamias-driver"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "serde_json",
- "serde_yaml_ng",
- "tamias-core 0.1.4",
 ]
 
 [[package]]
@@ -5340,33 +5264,7 @@ source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd35
 dependencies = [
  "serde_json",
  "serde_yaml_ng",
- "tamias-core 0.3.0",
-]
-
-[[package]]
-name = "tamias-install"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "serde",
- "serde_json",
- "serde_yaml_ng",
- "tamias-bin 0.1.5",
- "tamias-cache-local 0.1.5",
- "tamias-config 0.1.5",
- "tamias-core 0.1.4",
- "tamias-driver 0.1.5",
- "tamias-sign 0.1.5",
- "tamias-source 0.1.5",
- "tamias-source-cf 0.1.5",
- "tamias-source-fs 0.1.5",
- "tamias-source-git 0.1.5",
- "tamias-source-http 0.1.5",
- "tamias-source-registry 0.1.5",
- "tamias-store-local 0.1.5",
- "tempfile",
- "toml",
- "tracing",
+ "tamias-core",
 ]
 
 [[package]]
@@ -5378,19 +5276,19 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml_ng",
- "tamias-bin 0.3.0",
- "tamias-cache-local 0.3.0",
- "tamias-config 0.3.0",
- "tamias-core 0.3.0",
- "tamias-driver 0.3.0",
- "tamias-sign 0.3.0",
- "tamias-source 0.3.0",
- "tamias-source-cf 0.3.0",
- "tamias-source-fs 0.3.0",
- "tamias-source-git 0.3.0",
- "tamias-source-http 0.3.0",
- "tamias-source-registry 0.3.0",
- "tamias-store-local 0.3.0",
+ "tamias-bin",
+ "tamias-cache-local",
+ "tamias-config",
+ "tamias-core",
+ "tamias-driver",
+ "tamias-sign",
+ "tamias-source",
+ "tamias-source-cf",
+ "tamias-source-fs",
+ "tamias-source-git",
+ "tamias-source-http",
+ "tamias-source-registry",
+ "tamias-store-local",
  "tempfile",
  "toml",
  "tracing",
@@ -5398,38 +5296,15 @@ dependencies = [
 
 [[package]]
 name = "tamias-publish"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "tamias-core 0.1.4",
- "tamias-source 0.1.5",
- "tamias-source-fs 0.1.5",
- "tamias-store-local 0.1.5",
- "tempfile",
-]
-
-[[package]]
-name = "tamias-publish"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-bin 0.3.0",
- "tamias-core 0.3.0",
- "tamias-source 0.3.0",
- "tamias-source-fs 0.3.0",
- "tamias-store-local 0.3.0",
+ "tamias-bin",
+ "tamias-core",
+ "tamias-source",
+ "tamias-source-fs",
+ "tamias-store-local",
  "tempfile",
-]
-
-[[package]]
-name = "tamias-registry"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "semver",
- "serde",
- "serde_json",
- "tamias-core 0.1.4",
 ]
 
 [[package]]
@@ -5440,18 +5315,7 @@ dependencies = [
  "semver",
  "serde",
  "serde_json",
- "tamias-core 0.3.0",
-]
-
-[[package]]
-name = "tamias-registry-cf"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "serde_json",
- "tamias-core 0.1.4",
- "tamias-registry 0.1.5",
- "ureq",
+ "tamias-core",
 ]
 
 [[package]]
@@ -5460,19 +5324,9 @@ version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
  "serde_json",
- "tamias-core 0.3.0",
- "tamias-registry 0.3.0",
+ "tamias-core",
+ "tamias-registry",
  "ureq",
-]
-
-[[package]]
-name = "tamias-registry-local"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "serde_json",
- "tamias-core 0.1.4",
- "tamias-registry 0.1.5",
 ]
 
 [[package]]
@@ -5481,24 +5335,8 @@ version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
  "serde_json",
- "tamias-core 0.3.0",
- "tamias-registry 0.3.0",
-]
-
-[[package]]
-name = "tamias-registry-open"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "serde_json",
- "tamias-config 0.1.5",
- "tamias-config-toml",
- "tamias-config-yml",
- "tamias-core 0.1.4",
- "tamias-publish 0.1.5",
- "tamias-registry 0.1.5",
- "tamias-registry-cf 0.1.5",
- "tamias-registry-local 0.1.5",
+ "tamias-core",
+ "tamias-registry",
 ]
 
 [[package]]
@@ -5507,21 +5345,12 @@ version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
  "serde_json",
- "tamias-config 0.3.0",
- "tamias-core 0.3.0",
- "tamias-publish 0.3.0",
- "tamias-registry 0.3.0",
- "tamias-registry-cf 0.3.0",
- "tamias-registry-local 0.3.0",
-]
-
-[[package]]
-name = "tamias-sign"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "tamias-config 0.1.5",
- "tamias-core 0.1.4",
+ "tamias-config",
+ "tamias-core",
+ "tamias-publish",
+ "tamias-registry",
+ "tamias-registry-cf",
+ "tamias-registry-local",
 ]
 
 [[package]]
@@ -5529,16 +5358,8 @@ name = "tamias-sign"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-config 0.3.0",
- "tamias-core 0.3.0",
-]
-
-[[package]]
-name = "tamias-source"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "tamias-core 0.1.4",
+ "tamias-config",
+ "tamias-core",
 ]
 
 [[package]]
@@ -5546,19 +5367,7 @@ name = "tamias-source"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-core 0.3.0",
-]
-
-[[package]]
-name = "tamias-source-cf"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "tamias-core 0.1.4",
- "tamias-registry 0.1.5",
- "tamias-registry-cf 0.1.5",
- "tamias-source 0.1.5",
- "tamias-source-http 0.1.5",
+ "tamias-core",
 ]
 
 [[package]]
@@ -5566,20 +5375,11 @@ name = "tamias-source-cf"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-core 0.3.0",
- "tamias-registry 0.3.0",
- "tamias-registry-cf 0.3.0",
- "tamias-source 0.3.0",
- "tamias-source-http 0.3.0",
-]
-
-[[package]]
-name = "tamias-source-fs"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "tamias-core 0.1.4",
- "tamias-source 0.1.5",
+ "tamias-core",
+ "tamias-registry",
+ "tamias-registry-cf",
+ "tamias-source",
+ "tamias-source-http",
 ]
 
 [[package]]
@@ -5587,17 +5387,8 @@ name = "tamias-source-fs"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-core 0.3.0",
- "tamias-source 0.3.0",
-]
-
-[[package]]
-name = "tamias-source-git"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "tamias-core 0.1.4",
- "tamias-source 0.1.5",
+ "tamias-core",
+ "tamias-source",
 ]
 
 [[package]]
@@ -5605,18 +5396,8 @@ name = "tamias-source-git"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-core 0.3.0",
- "tamias-source 0.3.0",
-]
-
-[[package]]
-name = "tamias-source-http"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "tamias-core 0.1.4",
- "tamias-source 0.1.5",
- "ureq",
+ "tamias-core",
+ "tamias-source",
 ]
 
 [[package]]
@@ -5624,21 +5405,9 @@ name = "tamias-source-http"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-core 0.3.0",
- "tamias-source 0.3.0",
+ "tamias-core",
+ "tamias-source",
  "ureq",
-]
-
-[[package]]
-name = "tamias-source-registry"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "tamias-config 0.1.5",
- "tamias-core 0.1.4",
- "tamias-registry-open 0.1.5",
- "tamias-source 0.1.5",
- "tamias-source-cf 0.1.5",
 ]
 
 [[package]]
@@ -5646,20 +5415,11 @@ name = "tamias-source-registry"
 version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
- "tamias-config 0.3.0",
- "tamias-core 0.3.0",
- "tamias-registry-open 0.3.0",
- "tamias-source 0.3.0",
- "tamias-source-cf 0.3.0",
-]
-
-[[package]]
-name = "tamias-store-local"
-version = "0.1.5"
-source = "git+ssh://git@github.com/9aia/tamias.git?rev=255f44cbb530fd11a38b4fee5356524bf927e402#255f44cbb530fd11a38b4fee5356524bf927e402"
-dependencies = [
- "serde_json",
- "tamias-core 0.1.4",
+ "tamias-config",
+ "tamias-core",
+ "tamias-registry-open",
+ "tamias-source",
+ "tamias-source-cf",
 ]
 
 [[package]]
@@ -5668,7 +5428,7 @@ version = "0.3.0"
 source = "git+ssh://git@github.com/9aia/tamias.git?rev=cbbc0e048cd5f28358245dd3555bee274b8da19d#cbbc0e048cd5f28358245dd3555bee274b8da19d"
 dependencies = [
  "serde_json",
- "tamias-core 0.3.0",
+ "tamias-core",
 ]
 
 [[package]]
