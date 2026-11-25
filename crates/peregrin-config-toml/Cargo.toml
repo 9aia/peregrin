@@ -12,8 +12,8 @@ workspace = true
 [dependencies]
 peregrin-config.workspace = true
 peregrin-core.workspace = true
-scarab-config = { git = "ssh://git@github.com/9aia/scarab.git", rev = "9364df88fad0ca46bd838467717a823893f47438", version = "0.1" }
-scarab-config-toml = { git = "ssh://git@github.com/9aia/scarab.git", rev = "9364df88fad0ca46bd838467717a823893f47438", version = "0.1" }
+scarab-config = { git = "ssh://git@github.com/9aia/scarab.git", rev = "23b6d45da9803d737ed951300542fa837d6e7347", version = "0.2" }
+scarab-config-toml = { git = "ssh://git@github.com/9aia/scarab.git", rev = "23b6d45da9803d737ed951300542fa837d6e7347", version = "0.2" }
 serde_json.workspace = true
 
 [dev-dependencies]

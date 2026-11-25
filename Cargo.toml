@@ -57,17 +57,17 @@ peregrin-cli = { path = "crates/peregrin-cli", version = "0.3.0" }
 peregrin-config = { path = "crates/peregrin-config", version = "0.3.0" }
 peregrin-config-toml = { path = "crates/peregrin-config-toml", version = "0.3.0" }
 peregrin-core = { path = "crates/peregrin-core", version = "0.3.0" }
-tamias-core = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
-tamias-source = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
-tamias-source-fs = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
-tamias-source-git = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
-tamias-source-http = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
-tamias-store-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
-tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
-tamias-install = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
-tamias-registry = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
-tamias-registry-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "255f44cbb530fd11a38b4fee5356524bf927e402", version = "0.1" }
-tamias-deploy-systemd = { git = "ssh://git@github.com/9aia/tamias.git", rev = "9e03e45b8a68dabccc38290f39e8b80523c20832", version = "0.2" }
+tamias-core = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
+tamias-source = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
+tamias-source-fs = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
+tamias-source-git = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
+tamias-source-http = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
+tamias-store-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
+tamias-cache-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
+tamias-install = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
+tamias-registry = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
+tamias-registry-local = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
+tamias-deploy-systemd = { git = "ssh://git@github.com/9aia/tamias.git", rev = "ddc61e5b13d7f0b39ea3bfd950be18b1a48ddc38", version = "0.3" }
 peregrin-driver = { path = "crates/peregrin-driver", version = "0.3.0" }
 peregrin-driver-agent = { path = "crates/peregrin-driver-agent", version = "0.3.0" }
 peregrin-driver-council = { path = "crates/peregrin-driver-council", version = "0.3.0" }
@@ -101,8 +101,8 @@ peregrin-testkit = { path = "crates/peregrin-testkit", version = "0.3.0" }
 # scarab — config/template expertise; peregrin-loader-yaml's
 # include/snippet/`tamias:` expansion and params.schema validation
 # delegate to the compose/validate legs (rev-pinned like tamias).
-scarab-compose = { git = "ssh://git@github.com/9aia/scarab.git", rev = "85e50d57110b2f785a5c11d8cf55de7737d67257", version = "0.1" }
-scarab-validate = { git = "ssh://git@github.com/9aia/scarab.git", rev = "85e50d57110b2f785a5c11d8cf55de7737d67257", version = "0.1" }
+scarab-compose = { git = "ssh://git@github.com/9aia/scarab.git", rev = "23b6d45da9803d737ed951300542fa837d6e7347", version = "0.2" }
+scarab-validate = { git = "ssh://git@github.com/9aia/scarab.git", rev = "23b6d45da9803d737ed951300542fa837d6e7347", version = "0.2" }
 
 # sepia — the session plane these crates embed, plus `sepia-http`'s
 # session REST surface (PL-027). Tracks `main` — PL-027 and PL-032
@@ -133,15 +133,15 @@ sepia-http = { git = "ssh://git@github.com/9aia/sepia.git", branch = "main", ver
 # Telemetry expertise lives in 9aia/lampy (P-042/PL-023) — pinned
 # git dep, rev = lampy decouple/pl-023. `HYPHA_OTEL_*` remains a
 # supported alias (peregrin rode hypha-telemetry's env contract).
-lampy-telemetry = { git = "ssh://git@github.com/9aia/lampy.git", rev = "04c89924413c5e169e5b6c48d7e5897be53be85c", version = "0.1.0" }
-lampy-telemetry-otel = { git = "ssh://git@github.com/9aia/lampy.git", rev = "04c89924413c5e169e5b6c48d7e5897be53be85c", version = "0.1.0" }
+lampy-telemetry = { git = "ssh://git@github.com/9aia/lampy.git", rev = "7fc154c3d6e516221658414a6d1c7d9617792e3d", version = "0.2" }
+lampy-telemetry-otel = { git = "ssh://git@github.com/9aia/lampy.git", rev = "7fc154c3d6e516221658414a6d1c7d9617792e3d", version = "0.2" }
 # Secrets port + impls moved to cuora (P-043) — the forked
 # hypha-secret*/peregrin-secret-cuora crates are retired; consumers
 # re-point at the unified cuora-secret* family.
-cuora-secret = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd436a7d4cf204c6e7a83555f50302f", version = "1.0.0" }
-cuora-secret-cuora = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd436a7d4cf204c6e7a83555f50302f", version = "1.0.0" }
-cuora-secret-keyring = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd436a7d4cf204c6e7a83555f50302f", version = "1.0.0" }
-cuora-secret-dotenv = { git = "ssh://git@github.com/9aia/cuora.git", rev = "f81164366bd436a7d4cf204c6e7a83555f50302f", version = "1.0.0" }
+cuora-secret = { git = "ssh://git@github.com/9aia/cuora.git", rev = "2a2539a8d879a76aab95987ea532d054736dca22", version = "2.0.0" }
+cuora-secret-cuora = { git = "ssh://git@github.com/9aia/cuora.git", rev = "2a2539a8d879a76aab95987ea532d054736dca22", version = "2.0.0" }
+cuora-secret-keyring = { git = "ssh://git@github.com/9aia/cuora.git", rev = "2a2539a8d879a76aab95987ea532d054736dca22", version = "2.0.0" }
+cuora-secret-dotenv = { git = "ssh://git@github.com/9aia/cuora.git", rev = "2a2539a8d879a76aab95987ea532d054736dca22", version = "2.0.0" }
 hypha-node-api = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
 hypha-outbox = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
 hypha-control = { git = "https://github.com/9aia/hypha.git", branch = "main", version = "0.2.0" }
@@ -157,7 +157,7 @@ hypha-kv-file = { git = "https://github.com/9aia/hypha.git", branch = "main", ve
 # P-047 moved the adapter into the provider repo, mirroring
 # `sepia-peregrin`). Pinned to the `decouple/pl-028` rev until that
 # branch lands on `main` — repin to `main` then.
-bupha-peregrin = { git = "ssh://git@github.com/9aia/bupha.git", rev = "1e083b3298c05e1f0f1b0d48aeed78ccf61da7ae", version = "0.2.0" }
+bupha-peregrin = { git = "ssh://git@github.com/9aia/bupha.git", rev = "ffcf71471d23e8ad61eb500b3f10f208d81e0d4a", version = "0.3" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }
