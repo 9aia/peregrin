@@ -63,9 +63,10 @@ An ephemeral runner (`--ephemeral` / `PEREGRIN_EPHEMERAL`) that dies
 mid-run is reaped by the hub after `PEREGRIN_EPHEMERAL_DEAD_AFTER`:
 its projected entities drop and outbox writes queued for it
 dead-letter. Campaign entities hosted by `campaign serve` keep their
-durable SQLite queue — on restart, interrupted runs requeue at the
-front per the queue's at-least-once semantics, and `supersede` keys
-still dedupe retriggered work.
+durable SQLite queue — on restart, pending triggers restore in drain
+order while the interrupted run's marker is reclaimed (its owner is
+dead at boot; the trigger is considered consumed), and `supersede`
+keys still dedupe retriggered work.
 
 ## Hub-side dispatch
 

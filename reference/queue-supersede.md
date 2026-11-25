@@ -147,9 +147,14 @@ mode only) opens a sqlite `QueueStore`
 - **What replays** — on boot, `RunSupervisor::with_store` loads the
   snapshot and runs it through `Queue::restore` *before* the loop
   accepts new triggers: pending jobs restore in drain order and the
-  interrupted run's marker re-queues at the **front**
-  (at-least-once — it gets another shot). Under `latest-wins` a newer
-  same-key pending entry still supersedes it, exactly as live.
+  interrupted run's marker is **reclaimed, not re-run** — restore
+  only happens at boot, so the process that owned the in-flight run
+  is necessarily gone; re-queueing its trigger would park a dead
+  run's job at the front of the single-slot queue where a wedged
+  re-run blocks every pending trigger forever. The interrupted
+  trigger is considered consumed (its run already started, so
+  partial effects happened either way) and comes back on
+  `RestoreOutcome::reclaimed` for the caller to log.
 - **Re-validation** — persisted rows aren't a trust boundary: each
   entry's stored key must match `policy.key_of(event)` (a changed
   `supersede:` block or corrupt row drops it, logged), and restored
