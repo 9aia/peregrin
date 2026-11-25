@@ -9,10 +9,12 @@ This is the same ports-and-adapters split the rest of the workspace
 follows: policy crates are pure, every I/O seam is a port
 (`peregrin-{store,bus,remote,config,loader,template}`) with impls
 behind it (`-json`, `-toml`, `-yaml`, `-http`). The generic substrate
-seams — secrets (`hypha-secret` + `-keyring`/`-dotenv`), services
-(`hypha-service` + `-systemd`), the entity plane, outbox, sync, and
-the generic HTTP surface — are `hypha-*` crates consumed as git deps;
-peregrin keeps the integration ports. See
+seams — the entity plane, outbox, sync, and the generic HTTP
+surface — are `hypha-*` crates consumed as git deps; the other
+generic halves live in their own repos: secrets resolve through
+cuora's `cuora-secret*` family, service lifecycle through tamias's
+`tamias-deploy-systemd`, telemetry through `lampy-telemetry*`.
+Peregrin keeps the integration ports. See
 [Architecture](architecture.md#ports-and-adapters).
 
 ## The event log — `EventStore`

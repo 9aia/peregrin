@@ -37,11 +37,14 @@ run` needs the printed event log, nothing more. A hosted node wants
 spans and metrics. A debug session wants per-event logging. The port
 lets each deployment pick without touching `peregrin-engine`.
 
-On the daemon side, `hypha-telemetry` layers `tracing` (fmt +
-`RUST_LOG`) with OTLP span export when `HYPHA_OTEL_ENDPOINT` (or
-`OTEL_EXPORTER_OTLP_*`) is set — node and hub observability, one
-crate. The engine-level `Observer` is the campaign-run half of the
-same seam; v1's `OtelObserver` for runs is not ported yet.
+On the daemon side, `lampy-telemetry`/`lampy-telemetry-otel`
+(9aia/lampy, P-042/PL-023) layers `tracing` (fmt + `RUST_LOG`)
+with OTLP span export when `LAMPY_OTEL_ENDPOINT` (or
+`OTEL_EXPORTER_OTLP_*`) is set — `PEREGRIN_OTEL_*`/`HYPHA_OTEL_*`
+remain supported aliases. Node and hub observability, one crate.
+The engine-level `Observer` is the campaign-run half of the
+same seam; v1's
+`OtelObserver` for runs is not ported yet.
 
 ## See also
 
