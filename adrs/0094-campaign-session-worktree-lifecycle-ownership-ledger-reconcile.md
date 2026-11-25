@@ -1,7 +1,7 @@
 +++
 id = "ADR-0094"
 title = "Campaign session/worktree lifecycle: per-run ownership, cleanup ledger, in-service reconcile"
-status = "accepted"
+status = "done"
 created = "2026-11-23"
 owner = "devin"
 priority = "high"
