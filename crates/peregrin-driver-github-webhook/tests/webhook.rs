@@ -265,6 +265,9 @@ fn verified_pull_request_injects_head_payload() {
             "base_ref": "main",
             // sender.login wins over pull_request.user.login.
             "actor": "hubot",
+            // `author` is always the PR author — authorization gates
+            // key on it, not the action's sender.
+            "author": "octocat",
             // The head repo's clone_url (fork-aware) wins over the
             // base repository's.
             "clone_url": "https://github.com/octocat/widgets.git",

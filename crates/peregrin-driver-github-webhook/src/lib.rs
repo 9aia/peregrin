@@ -29,7 +29,7 @@
 //!
 //! `pull_request` deliveries get the same verify/dedup treatment and
 //! inject `Event{type:"pull_request", payload:{repo, number, action,
-//! sha, ref, base_ref, actor, clone_url, fork, head_clone_url,
+//! sha, ref, base_ref, actor, author, clone_url, fork, head_clone_url,
 //! delivery_id}}` — `sha`/`ref`/`clone_url`
 //! describe the PR *head* so a campaign can check it out and post
 //! statuses. `fork` marks head-repo-is-a-fork deliveries and
@@ -246,6 +246,12 @@ struct PullRequest {
     git_ref: String,
     base_ref: String,
     actor: String,
+    /// `pull_request.user.login` — the PR *author*, distinct from
+    /// `actor` (the user who performed THIS action). Authorization
+    /// gates must use the author: a maintainer syncing/reopening a
+    /// fork PR makes `actor` a trusted collaborator while the head
+    /// still carries the author's code.
+    author: String,
     clone_url: Option<String>,
     /// `pull_request.head.repo` is a fork (or at least a different
     /// repo than the base) — gates `head_clone_url`.
@@ -827,6 +833,7 @@ fn parse_pull_request(v: &Value, repo: &str) -> Delivery {
                 sender
             }
         },
+        author: text(v.pointer("/pull_request/user/login")),
         // The head repo's clone_url wins (fork PRs point at the
         // fork); the base repository's is the fallback, then each
         // route's `api_base` web base — same rule as `push`.
@@ -1200,6 +1207,7 @@ fn respond(shared: &Shared, headers: &HeaderMap, body: &[u8]) -> (StatusCode, &'
                         "ref": pr.git_ref,
                         "base_ref": pr.base_ref,
                         "actor": pr.actor,
+                        "author": pr.author,
                         "clone_url": clone_url,
                         "fork": pr.fork,
                         "head_clone_url": head_clone_url,
