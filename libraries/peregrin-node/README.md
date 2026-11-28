@@ -26,6 +26,14 @@ systemctl --user enable --now peregrin-node.service
   `PEREGRIN_HOST`/`PEREGRIN_PORT`/`PEREGRIN_TOKEN` and the
   `PEREGRIN_*` tuning knobs live there (names only, values never
   ship in the bundle).
+- **ci-job durability:** set `PEREGRIN_SNAPSHOT_TARGET` to the hub
+  base URL (e.g. `http://127.0.0.1:13000`) and
+  `PEREGRIN_SNAPSHOT_TOKEN` to the hub bearer
+  (`PEREGRIN_HUB_TOKEN`). Without them the node's `kind="ci-job"`
+  plane boots empty on every restart — the plane is in-memory and
+  rehydrates only from the hub's entity index. Same vars the
+  ephemeral shutdown flush uses; see
+  `docs/how-to/run-ci-through-ci-job-entities.md`.
 - `tamias driver exec peregrin-node status|logs|health` probes the
   rendered unit (`is-active`/`journalctl` — there is no ingress
   HTTP probe).
