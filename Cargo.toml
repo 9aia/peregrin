@@ -155,9 +155,8 @@ hypha-kv-file = { git = "https://github.com/9aia/hypha.git", branch = "main", ve
 # bupha — the `kind="ci-job"` entity plane + hub kind policy + fleet
 # specs + boot rehydrate (P-002, the bupha↔hypha/peregrin seam;
 # P-047 moved the adapter into the provider repo, mirroring
-# `sepia-peregrin`). Pinned to the `decouple/pl-028` rev until that
-# branch lands on `main` — repin to `main` then.
-bupha-peregrin = { git = "ssh://git@github.com/9aia/bupha.git", rev = "b41d3ee27cdcd42b0a079ff20909402ccd23c849", version = "0.3" }
+# `sepia-peregrin`). Rev-pinned to `main`; bump on adapter changes.
+bupha-peregrin = { git = "ssh://git@github.com/9aia/bupha.git", rev = "92bc3f4eec1b56cfc336a0b23b9b2ccffcbedce1", version = "0.3" }
 
 # External dependencies — pin conservative majors/minors.
 serde = { version = "1.0", features = ["derive"] }

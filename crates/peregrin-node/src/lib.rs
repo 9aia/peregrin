@@ -179,10 +179,21 @@ async fn app_state(env: &Env, plane: &Arc<dyn SessionPlane>) -> AppState {
     // reconcile sees the restored state, not an empty plane).
     let ci_plane = bupha_peregrin::ci_job_plane(ci_labels, bupha_peregrin::fleet_specs());
     state = state.with_kind(ci_plane.clone());
+    // Bucket ids the entity-index may key this node's rows under:
+    // the self id (bare-node targets) and `PEREGRIN_SNAPSHOT_NODE`
+    // (the hub registry id — hub buckets key on `PEREGRIN_NODES`'s
+    // operator-chosen `id=`, which the node cannot know).
+    let node_id = state.node_identity().id;
+    let mut bucket_ids = vec![node_id.as_str()];
+    if let Some(hub_id) = env.snapshot_node.as_deref() {
+        if hub_id != node_id.as_str() {
+            bucket_ids.push(hub_id);
+        }
+    }
     bupha_peregrin::rehydrate(
         env.snapshot_target.as_deref(),
         env.snapshot_token.as_deref(),
-        &state.node_identity().id,
+        &bucket_ids,
         &ci_plane,
     )
     .await;

@@ -104,7 +104,10 @@ pub struct Env {
     /// `PEREGRIN_SNAPSHOT_NODE` — optional `?node=` selector sent with
     /// the handoff POST; meaningful when `snapshot_target` is a hub
     /// (routes the import to that hub-registered node). `None` = the
-    /// target's default/primary node.
+    /// target's default/primary node. Also the ci-job rehydrate
+    /// bucket id: hub `entity-index` buckets key on the
+    /// `PEREGRIN_NODES` registry id, so a hub-targeted node needs
+    /// this set to its own `id=` entry to find its rows.
     pub snapshot_node: Option<String>,
     /// `PEREGRIN_RUNNER_LABELS` — comma-separated runner/fleet labels
     /// (`runner:linux,gpu`) appended to the `/api/node` capability
